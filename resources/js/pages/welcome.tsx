@@ -1,4 +1,5 @@
 import { BankLogo } from '@/components/bank-logo';
+import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -65,30 +66,6 @@ import {
     useMemo,
     useState,
 } from 'react';
-
-const LANDING_IMAGES = [
-    {
-        key: 'bank-accounts',
-        light: '/images/landing/whisper.money_light_3.png',
-        dark: '/images/landing/whisper.money_dark_3.png',
-        alt: 'Your transactions at a glance',
-        className: 'left-[-24%] group-hover:left-[-32%]',
-    },
-    {
-        key: 'unlock-key',
-        light: '/images/landing/whisper.money_light_2.png',
-        dark: '/images/landing/whisper.money_dark_2.png',
-        alt: 'Manage all your accounts in a single place',
-        className: '',
-    },
-    {
-        key: 'transactions',
-        light: '/images/landing/whisper.money_light_1.png',
-        dark: '/images/landing/whisper.money_dark_1.png',
-        alt: 'Analyze your money, how it evolves, and how do you spent it',
-        className: 'left-[32%] group-hover:left-[48%]',
-    },
-] as const;
 
 type PopularBank = {
     name: string;
@@ -2406,6 +2383,32 @@ function LandingPlanCard({
     );
 }
 
+function HeroBenefits({ className }: { className?: string }) {
+    const benefits = [
+        __('Bank sync and automatic categories'),
+        __('Budgets that warn you before you overspend'),
+        __('Never shared, never sold, open source'),
+    ];
+
+    return (
+        <ul
+            className={cn(
+                'flex flex-col gap-3 text-[15px] font-medium sm:text-base',
+                className,
+            )}
+        >
+            {benefits.map((benefit) => (
+                <li key={benefit} className="flex items-center gap-3">
+                    <span className="inline-flex size-6 flex-none items-center justify-center rounded-full bg-green-600/12 text-green-700 dark:bg-green-400/16 dark:text-green-400">
+                        <CheckIcon className="size-3.5" strokeWidth={3} />
+                    </span>
+                    {benefit}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 function FaqItem({ question, answer }: { question: string; answer: string }) {
     const [open, setOpen] = useState(false);
 
@@ -2466,15 +2469,23 @@ export default function Welcome({
     popularBanks,
     comparisonLinks,
     integrationsLink,
+    language,
 }: {
     canRegister?: boolean;
     popularBanks: PopularBank[];
     comparisonLinks: ComparisonLink[];
     integrationsLink: { heading: string; path: string };
+    /** The language the page is written in, not the format region in `locale`. */
+    language: string;
 }) {
     const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const cta = useLandingCta(canRegister);
+    const ctaLabel = cta.isSignedIn
+        ? __('Go to Dashboard')
+        : canRegister
+          ? __('Get Started')
+          : __('Log in');
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
 
@@ -2897,102 +2908,72 @@ export default function Welcome({
                 <Header canRegister={canRegister} />
 
                 <main className="flex flex-1 flex-col">
-                    <section className="relative w-full overflow-hidden px-6 py-28 sm:py-32 md:py-40">
-                        <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-12">
-                            <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-start gap-6 sm:gap-8">
+                    <section className="relative w-full overflow-hidden px-6 pt-28 pb-12 sm:pt-32 sm:pb-16 md:pt-40 md:pb-20 lg:pt-28">
+                        {/*
+                         * One grid for both layouts: stacked below lg, in DOM
+                         * order, and split from lg up, where the copy fills the
+                         * left column (benefits before the CTA) around the
+                         * tilted video on the right.
+                         */}
+                        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1.25fr] lg:grid-rows-[auto_auto_auto] lg:gap-x-16 lg:gap-y-7">
+                            <div className="flex flex-col items-start gap-6 lg:col-start-1 lg:row-start-1">
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
                                         {__('Private & Secure')}
                                     </span>
                                 </span>
-                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
+                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-[2.75rem] lg:leading-tight xl:text-[3.5rem] xl:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
                                         'All your money in one place. No spreadsheets. Private.',
                                     )}
                                 </h1>
-                                <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-balance text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
+                                <p className="max-w-[840px] text-lg leading-8 font-medium text-balance text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
                                     {__(
                                         'Understand your finances and make better decisions without the friction. Track expenses, create budgets, and achieve your goals\u2014all in one place.',
                                     )}
                                 </p>
-                                <div className="flex w-full max-w-lg flex-col gap-4">
-                                    {isMobile ? (
-                                        <InstallAppButton />
-                                    ) : (
-                                        <div className="flex w-full flex-row gap-4">
-                                            <Link
-                                                href={cta.href}
-                                                className="w-full"
-                                            >
-                                                <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                    {cta.isSignedIn
-                                                        ? __('Go to Dashboard')
-                                                        : canRegister
-                                                          ? __('Get Started')
-                                                          : __('Log in')}
+                            </div>
+
+                            <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center">
+                                <HeroVideo
+                                    language={language}
+                                    cta={{ href: cta.href, label: ctaLabel }}
+                                />
+                            </div>
+
+                            <div className="flex w-full max-w-lg flex-col gap-4 lg:col-start-1 lg:row-start-3">
+                                {isMobile ? (
+                                    <InstallAppButton />
+                                ) : (
+                                    <div className="flex w-full flex-row gap-4">
+                                        <Link
+                                            href={cta.href}
+                                            className="w-full"
+                                        >
+                                            <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
+                                                {ctaLabel}
+                                            </Button>
+                                        </Link>
+                                        {demoEnabled && !cta.isSignedIn && (
+                                            <Link href="/login?demo=1">
+                                                <Button
+                                                    variant={'secondary'}
+                                                    size={'lg'}
+                                                    className="h-14"
+                                                >
+                                                    {__('Check Demo')}
                                                 </Button>
                                             </Link>
-                                            {demoEnabled && !cta.isSignedIn && (
-                                                <Link href="/login?demo=1">
-                                                    <Button
-                                                        variant={'secondary'}
-                                                        size={'lg'}
-                                                        className="h-14"
-                                                    >
-                                                        {__('Check Demo')}
-                                                    </Button>
-                                                </Link>
-                                            )}
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__('Your data stays private. Always.')}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="group relative sm:px-24">
-                                {LANDING_IMAGES.map((image, index) => (
-                                    <div
-                                        key={image.key}
-                                        className={cn(
-                                            'relative z-10 transition-all delay-200 duration-700 ease-in-out',
-                                            'rotate-[-24deg] skew-y-12 group-hover:rotate-[-12deg] group-hover:skew-y-6',
-                                            'max-sm:rotate-[-16deg] max-sm:skew-y-8 max-sm:group-hover:rotate-[-8deg] max-sm:group-hover:skew-y-4',
-                                            index < LANDING_IMAGES.length - 1 &&
-                                                'h-[24px]',
-                                            image.className,
                                         )}
-                                    >
-                                        <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
-                                            <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                                <div className="rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                    <img
-                                                        src={image.light}
-                                                        alt={image.alt}
-                                                        className="w-full rounded-lg dark:hidden"
-                                                    />
-
-                                                    <img
-                                                        src={image.dark}
-                                                        alt={image.alt}
-                                                        className="hidden w-full rounded-lg dark:block"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
-                                ))}
-
-                                <div
-                                    data-slot="glow"
-                                    className="animate-appear-zoom absolute top-[50%] mt-32 w-full opacity-0 delay-2000 lg:mt-4"
-                                >
-                                    <div className="absolute left-1/2 h-[256px] w-[60%] -translate-x-1/2 -translate-y-1/2 scale-[2.5] rounded-[50%] bg-radial from-[#1b1b18]/50 from-10% to-[#1b1b18]/0 to-60% opacity-20 sm:h-[512px] dark:from-[#EDEDEC]/50 dark:to-[#EDEDEC]/0 dark:opacity-100"></div>
-                                    <div className="absolute left-1/2 h-[128px] w-[40%] -translate-x-1/2 -translate-y-1/2 scale-200 rounded-[50%] bg-radial from-[#1b1b18]/30 from-10% to-[#1b1b18]/0 to-60% opacity-20 sm:h-[256px] dark:from-[#EDEDEC]/30 dark:to-[#EDEDEC]/0 dark:opacity-100"></div>
-                                </div>
+                                )}
+                                <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                                    {__('Your data stays private. Always.')}
+                                </p>
                             </div>
+
+                            <HeroBenefits className="lg:col-start-1 lg:row-start-2" />
                         </div>
                     </section>
 

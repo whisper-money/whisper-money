@@ -83,6 +83,7 @@ Route::get('/', function () {
         'popularBanks' => $popularBanks,
         'comparisonLinks' => ComparisonPages::index(app()->getLocale()),
         'integrationsLink' => IntegrationsPage::link(app()->getLocale()),
+        'language' => app()->getLocale(),
     ]);
 })->name('home');
 
