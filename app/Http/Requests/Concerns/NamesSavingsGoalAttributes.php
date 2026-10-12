@@ -46,8 +46,10 @@ trait NamesSavingsGoalAttributes
         $locale = $user->formatLocale();
         $messages = [];
 
-        foreach (['target_amount', 'monthly_target_amount'] as $field) {
-            $messages["{$field}.min"] = __('The :attribute must be at least :amount.', ['amount' => Money::formatIn(1, $currency, $locale)]);
+        // Each field with its own floor: a target needs a cent, what is
+        // already saved may be nothing.
+        foreach (['target_amount' => 1, 'monthly_target_amount' => 1, 'initial_amount' => 0] as $field => $min) {
+            $messages["{$field}.min"] = __('The :attribute must be at least :amount.', ['amount' => Money::formatIn($min, $currency, $locale)]);
             $messages["{$field}.max"] = __('The :attribute can\'t be more than :amount.', ['amount' => Money::formatIn(SavingsGoal::MAX_AMOUNT, $currency, $locale)]);
         }
 
