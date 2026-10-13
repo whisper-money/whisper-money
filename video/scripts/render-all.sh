@@ -8,8 +8,6 @@ cd "$(dirname "$0")/.."
 command -v ffmpeg >/dev/null || { echo 'ffmpeg is required (brew install ffmpeg)' >&2; exit 1; }
 
 OUTPUT_DIR=../public/images/landing_videos
-# Dashboard scene, once every counter and sparkline has settled.
-POSTER_FRAME=670
 CRF=${CRF:-20}
 
 # Bundle and intermediate renders live outside the repo, where eslint never sees them.
@@ -20,16 +18,20 @@ mkdir -p "$OUTPUT_DIR"
 bunx remotion bundle --out-dir="$WORK_DIR/bundle"
 
 for locale in en es; do
+    # Each locale has its own timeline (the voice-over sets the scene lengths).
+    poster_frame=$(bun scripts/poster-frame.ts "$locale")
+
     for theme in dark light; do
         name="product-$locale-$theme"
         props="{\"locale\":\"$locale\",\"theme\":\"$theme\"}"
 
         bunx remotion render "$WORK_DIR/bundle" LandingVideo "$WORK_DIR/$name.mp4" \
-            --props="$props" --codec=h264 --crf="$CRF" --pixel-format=yuv420p --muted
+            --props="$props" --codec=h264 --crf="$CRF" --pixel-format=yuv420p \
+            --audio-codec=aac --audio-bitrate=128k
         # Moov atom first so the browser starts playing before the download ends.
-        ffmpeg -y -loglevel error -i "$WORK_DIR/$name.mp4" -c copy -an -movflags +faststart "$OUTPUT_DIR/$name.mp4"
+        ffmpeg -y -loglevel error -i "$WORK_DIR/$name.mp4" -c copy -movflags +faststart "$OUTPUT_DIR/$name.mp4"
 
         bunx remotion still "$WORK_DIR/bundle" LandingVideo "$OUTPUT_DIR/$name.jpg" \
-            --props="$props" --frame="$POSTER_FRAME" --image-format=jpeg --jpeg-quality=80
+            --props="$props" --frame="$poster_frame" --image-format=jpeg --jpeg-quality=80
     done
 done

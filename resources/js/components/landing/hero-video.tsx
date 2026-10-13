@@ -238,12 +238,12 @@ export function HeroVideo({
                         <span className="inline-flex size-9 items-center justify-center rounded-full bg-white text-[#1b1b18] xl:size-11 dark:text-[#0a0a0a]">
                             <PlayIcon className="size-4.5 translate-x-px fill-current" />
                         </span>
-                        {__('See it in 40 seconds')}
+                        {__('See it in 46 seconds')}
                     </span>
                 </span>
             </button>
             <p className="relative text-center text-[13px] font-medium text-[#706f6c] lg:hidden dark:text-[#A1A09A]">
-                {__('Tap to watch · 0:40')}
+                {__('Tap to watch · 0:46')}
             </p>
             {tourSources && (
                 <ProductTourDialog
