@@ -312,7 +312,7 @@ function accountWithAGapInItsBankHistory(bool $withImportedGap = true): array
 {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->connected()->create([
+    $account = Account::factory()->withBalance()->connected()->create([
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'ext-123',
