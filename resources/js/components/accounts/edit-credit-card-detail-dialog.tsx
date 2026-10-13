@@ -38,11 +38,24 @@ type DateField = 'statement_closing_date' | 'payment_due_date';
 /** The dates as the inputs hold them: an empty string while unset. */
 type DateValues = Record<DateField, string>;
 
-/** Mirrors StatementFrequency::maxDaysToPay() on the server. */
-const MAX_DAYS_TO_PAY: Record<StatementFrequency, number> = {
-    monthly: 45,
-    weekly: 7,
+/** What a card without a stored frequency repeats on, as on the server. */
+export const DEFAULT_STATEMENT_FREQUENCY: StatementFrequency = 'monthly';
+
+/**
+ * Each frequency the toggle offers. `maxDaysToPay` mirrors
+ * StatementFrequency::maxDaysToPay() on the server.
+ */
+const STATEMENT_FREQUENCIES: Record<
+    StatementFrequency,
+    { maxDaysToPay: number }
+> = {
+    monthly: { maxDaysToPay: 45 },
+    weekly: { maxDaysToPay: 7 },
 };
+
+export function statementFrequencyLabel(frequency: StatementFrequency): string {
+    return frequency === 'weekly' ? __('Weekly') : __('Monthly');
+}
 
 function datesOf(detail: CreditCardDetail | null): DateValues {
     return {
@@ -66,7 +79,7 @@ export function EditCreditCardDetailDialog({
 }: EditCreditCardDetailDialogProps) {
     const [dates, setDates] = useState<DateValues>(datesOf(detail));
     const [frequency, setFrequency] = useState<StatementFrequency>(
-        detail?.statement_frequency ?? 'monthly',
+        detail?.statement_frequency ?? DEFAULT_STATEMENT_FREQUENCY,
     );
     const [creditLimit, setCreditLimit] = useState<number | null>(
         detail?.credit_limit ?? null,
@@ -84,7 +97,9 @@ export function EditCreditCardDetailDialog({
     useEffect(() => {
         if (open) {
             setDates(datesOf(detail));
-            setFrequency(detail?.statement_frequency ?? 'monthly');
+            setFrequency(
+                detail?.statement_frequency ?? DEFAULT_STATEMENT_FREQUENCY,
+            );
             setCreditLimit(detail?.credit_limit ?? null);
             setErrors({});
         }
@@ -130,7 +145,7 @@ export function EditCreditCardDetailDialog({
             label: __('Payment due date'),
             hint: __(
                 'The day that statement is charged, at most :days days after it closes.',
-                { days: MAX_DAYS_TO_PAY[frequency] },
+                { days: STATEMENT_FREQUENCIES[frequency].maxDaysToPay },
             ),
         },
     ];
@@ -192,12 +207,19 @@ export function EditCreditCardDetailDialog({
                             }}
                             disabled={isSubmitting}
                         >
-                            <ToggleGroupItem value="monthly" className="flex-1">
-                                {__('Monthly')}
-                            </ToggleGroupItem>
-                            <ToggleGroupItem value="weekly" className="flex-1">
-                                {__('Weekly')}
-                            </ToggleGroupItem>
+                            {(
+                                Object.keys(
+                                    STATEMENT_FREQUENCIES,
+                                ) as StatementFrequency[]
+                            ).map((option) => (
+                                <ToggleGroupItem
+                                    key={option}
+                                    value={option}
+                                    className="flex-1"
+                                >
+                                    {statementFrequencyLabel(option)}
+                                </ToggleGroupItem>
+                            ))}
                         </ToggleGroup>
                         <InputError message={errors.statement_frequency} />
                     </div>

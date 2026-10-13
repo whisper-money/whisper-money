@@ -1,4 +1,8 @@
-import { EditCreditCardDetailDialog } from '@/components/accounts/edit-credit-card-detail-dialog';
+import {
+    DEFAULT_STATEMENT_FREQUENCY,
+    EditCreditCardDetailDialog,
+    statementFrequencyLabel,
+} from '@/components/accounts/edit-credit-card-detail-dialog';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -59,7 +63,10 @@ export function CreditCardStatementCard({
                 {statement ? (
                     <StatementSummary
                         statement={statement}
-                        frequency={detail?.statement_frequency ?? 'monthly'}
+                        frequency={
+                            detail?.statement_frequency ??
+                            DEFAULT_STATEMENT_FREQUENCY
+                        }
                         currencyCode={currencyCode}
                     />
                 ) : (
@@ -159,7 +166,7 @@ function StatementSummary({
                 <span className="flex items-baseline justify-between gap-2">
                     <span className="font-medium">{__('Current cycle')}</span>
                     <span className="text-xs text-muted-foreground">
-                        {frequency === 'weekly' ? __('Weekly') : __('Monthly')}
+                        {statementFrequencyLabel(frequency)}
                     </span>
                 </span>
                 <span className="flex flex-wrap items-baseline gap-1">
