@@ -6,7 +6,8 @@
     "studio": "remotion studio",
     "render": "remotion render LandingVideo out/landing-en-dark.mp4",
     "still": "remotion still LandingVideo out/still.png",
-    "render:all": "sh scripts/render-all.sh"
+    "render:all": "sh scripts/render-all.sh",
+    "voice": "bun scripts/voice.ts"
   },
   "dependencies": {
     "@remotion/cli": "4.0.535",

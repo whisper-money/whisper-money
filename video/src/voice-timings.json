@@ -1,0 +1,1066 @@
+{
+    "es": {
+        "hook": {
+            "key": "dfefebea4bb5",
+            "duration": 2.08,
+            "words": [
+                {
+                    "word": "¿Dónde",
+                    "start": 0,
+                    "end": 0.32
+                },
+                {
+                    "word": "se",
+                    "start": 0.4,
+                    "end": 0.48
+                },
+                {
+                    "word": "fue",
+                    "start": 0.52,
+                    "end": 0.64
+                },
+                {
+                    "word": "tu",
+                    "start": 0.72,
+                    "end": 0.8
+                },
+                {
+                    "word": "dinero",
+                    "start": 0.88,
+                    "end": 1.12
+                },
+                {
+                    "word": "el",
+                    "start": 1.16,
+                    "end": 1.2
+                },
+                {
+                    "word": "mes",
+                    "start": 1.28,
+                    "end": 1.36
+                },
+                {
+                    "word": "pasado?",
+                    "start": 1.44,
+                    "end": 2.08
+                }
+            ]
+        },
+        "noTracking": {
+            "key": "55f7b37517e2",
+            "duration": 2.4,
+            "words": [
+                {
+                    "word": "Si",
+                    "start": 0,
+                    "end": 0.16
+                },
+                {
+                    "word": "no",
+                    "start": 0.24,
+                    "end": 0.32
+                },
+                {
+                    "word": "lo",
+                    "start": 0.36,
+                    "end": 0.4
+                },
+                {
+                    "word": "controlas,",
+                    "start": 0.6,
+                    "end": 1.28
+                },
+                {
+                    "word": "vas",
+                    "start": 1.4,
+                    "end": 1.52
+                },
+                {
+                    "word": "a",
+                    "start": 1.56,
+                    "end": 1.6
+                },
+                {
+                    "word": "ciegas.",
+                    "start": 1.68,
+                    "end": 2.4
+                }
+            ]
+        },
+        "spreadsheet": {
+            "key": "6e1c27ed5b84",
+            "duration": 4.64,
+            "words": [
+                {
+                    "word": "¿Y",
+                    "start": 0,
+                    "end": 0.08
+                },
+                {
+                    "word": "el",
+                    "start": 0.16,
+                    "end": 0.24
+                },
+                {
+                    "word": "Excel?",
+                    "start": 0.44,
+                    "end": 0.84
+                },
+                {
+                    "word": "Horas",
+                    "start": 1.04,
+                    "end": 1.44
+                },
+                {
+                    "word": "tecleando…",
+                    "start": 1.52,
+                    "end": 2.48
+                },
+                {
+                    "word": "y",
+                    "start": 2.52,
+                    "end": 2.56
+                },
+                {
+                    "word": "se",
+                    "start": 2.64,
+                    "end": 2.72
+                },
+                {
+                    "word": "rompe",
+                    "start": 2.84,
+                    "end": 3.04
+                },
+                {
+                    "word": "cuando",
+                    "start": 3.12,
+                    "end": 3.44
+                },
+                {
+                    "word": "más",
+                    "start": 3.52,
+                    "end": 3.68
+                },
+                {
+                    "word": "lo",
+                    "start": 3.76,
+                    "end": 3.84
+                },
+                {
+                    "word": "necesitas.",
+                    "start": 3.88,
+                    "end": 4.64
+                }
+            ]
+        },
+        "turn": {
+            "key": "f912ee9274f0",
+            "duration": 2.8,
+            "words": [
+                {
+                    "word": "Hay",
+                    "start": 0,
+                    "end": 0.16
+                },
+                {
+                    "word": "una",
+                    "start": 0.28,
+                    "end": 0.4
+                },
+                {
+                    "word": "forma",
+                    "start": 0.52,
+                    "end": 0.64
+                },
+                {
+                    "word": "mejor:",
+                    "start": 0.72,
+                    "end": 1.52
+                },
+                {
+                    "word": "Whisper",
+                    "start": 1.6,
+                    "end": 2
+                },
+                {
+                    "word": "Money.",
+                    "start": 2.08,
+                    "end": 2.8
+                }
+            ]
+        },
+        "sync": {
+            "key": "f642f12f846f",
+            "duration": 4.88,
+            "words": [
+                {
+                    "word": "Conecta",
+                    "start": 0,
+                    "end": 0.36
+                },
+                {
+                    "word": "tus",
+                    "start": 0.4,
+                    "end": 0.56
+                },
+                {
+                    "word": "bancos",
+                    "start": 0.6,
+                    "end": 1.12
+                },
+                {
+                    "word": "y",
+                    "start": 1.2,
+                    "end": 1.28
+                },
+                {
+                    "word": "cada",
+                    "start": 1.36,
+                    "end": 1.6
+                },
+                {
+                    "word": "movimiento",
+                    "start": 1.68,
+                    "end": 2.16
+                },
+                {
+                    "word": "se",
+                    "start": 2.24,
+                    "end": 2.32
+                },
+                {
+                    "word": "sincroniza",
+                    "start": 2.36,
+                    "end": 3.04
+                },
+                {
+                    "word": "y",
+                    "start": 3.12,
+                    "end": 3.16
+                },
+                {
+                    "word": "se",
+                    "start": 3.2,
+                    "end": 3.28
+                },
+                {
+                    "word": "categoriza",
+                    "start": 3.36,
+                    "end": 4.08
+                },
+                {
+                    "word": "solo.",
+                    "start": 4.16,
+                    "end": 4.96
+                }
+            ]
+        },
+        "dashboard": {
+            "key": "2748c0c7d4e1",
+            "duration": 4.48,
+            "words": [
+                {
+                    "word": "Patrimonio,",
+                    "start": 0,
+                    "end": 0.88
+                },
+                {
+                    "word": "flujo",
+                    "start": 0.96,
+                    "end": 1.2
+                },
+                {
+                    "word": "de",
+                    "start": 1.28,
+                    "end": 1.36
+                },
+                {
+                    "word": "caja",
+                    "start": 1.44,
+                    "end": 1.84
+                },
+                {
+                    "word": "y",
+                    "start": 1.92,
+                    "end": 2.08
+                },
+                {
+                    "word": "todas",
+                    "start": 2.16,
+                    "end": 2.4
+                },
+                {
+                    "word": "tus",
+                    "start": 2.453,
+                    "end": 2.56
+                },
+                {
+                    "word": "cuentas,",
+                    "start": 2.6,
+                    "end": 3.24
+                },
+                {
+                    "word": "de",
+                    "start": 3.28,
+                    "end": 3.36
+                },
+                {
+                    "word": "un",
+                    "start": 3.44,
+                    "end": 3.52
+                },
+                {
+                    "word": "vistazo.",
+                    "start": 3.56,
+                    "end": 4.56
+                }
+            ]
+        },
+        "budgets": {
+            "key": "e2b032602185",
+            "duration": 4,
+            "words": [
+                {
+                    "word": "Presupuestos",
+                    "start": 0,
+                    "end": 0.64
+                },
+                {
+                    "word": "que",
+                    "start": 0.72,
+                    "end": 0.8
+                },
+                {
+                    "word": "te",
+                    "start": 0.84,
+                    "end": 0.88
+                },
+                {
+                    "word": "avisan",
+                    "start": 0.92,
+                    "end": 1.36
+                },
+                {
+                    "word": "antes",
+                    "start": 1.56,
+                    "end": 1.76
+                },
+                {
+                    "word": "de",
+                    "start": 1.8,
+                    "end": 1.84
+                },
+                {
+                    "word": "pasarte,",
+                    "start": 1.92,
+                    "end": 2.72
+                },
+                {
+                    "word": "no",
+                    "start": 2.88,
+                    "end": 2.96
+                },
+                {
+                    "word": "después.",
+                    "start": 3.08,
+                    "end": 4
+                }
+            ]
+        },
+        "privacy": {
+            "key": "04c6b049309a",
+            "duration": 3.84,
+            "words": [
+                {
+                    "word": "Y",
+                    "start": 0,
+                    "end": 0.08
+                },
+                {
+                    "word": "privado",
+                    "start": 0.16,
+                    "end": 0.48
+                },
+                {
+                    "word": "por",
+                    "start": 0.56,
+                    "end": 0.64
+                },
+                {
+                    "word": "diseño:",
+                    "start": 0.72,
+                    "end": 1.6
+                },
+                {
+                    "word": "tus",
+                    "start": 1.653,
+                    "end": 1.76
+                },
+                {
+                    "word": "datos",
+                    "start": 1.84,
+                    "end": 2.32
+                },
+                {
+                    "word": "son",
+                    "start": 2.4,
+                    "end": 2.72
+                },
+                {
+                    "word": "solo",
+                    "start": 2.76,
+                    "end": 3.04
+                },
+                {
+                    "word": "tuyos.",
+                    "start": 3.08,
+                    "end": 3.84
+                }
+            ]
+        },
+        "comparison": {
+            "key": "6a8da16d1df6",
+            "duration": 4.4,
+            "words": [
+                {
+                    "word": "Ni",
+                    "start": 0,
+                    "end": 0.16
+                },
+                {
+                    "word": "adivinar,",
+                    "start": 0.24,
+                    "end": 0.96
+                },
+                {
+                    "word": "ni",
+                    "start": 1,
+                    "end": 1.04
+                },
+                {
+                    "word": "teclear.",
+                    "start": 1.12,
+                    "end": 2.08
+                },
+                {
+                    "word": "Minutos",
+                    "start": 2.2,
+                    "end": 2.56
+                },
+                {
+                    "word": "al",
+                    "start": 2.6,
+                    "end": 2.64
+                },
+                {
+                    "word": "mes,",
+                    "start": 2.72,
+                    "end": 3.28
+                },
+                {
+                    "word": "no",
+                    "start": 3.36,
+                    "end": 3.52
+                },
+                {
+                    "word": "horas.",
+                    "start": 3.6,
+                    "end": 4.4
+                }
+            ]
+        },
+        "cta": {
+            "key": "068886fc54b2",
+            "duration": 4.8,
+            "words": [
+                {
+                    "word": "Todo",
+                    "start": 0,
+                    "end": 0.24
+                },
+                {
+                    "word": "tu",
+                    "start": 0.32,
+                    "end": 0.4
+                },
+                {
+                    "word": "dinero",
+                    "start": 0.48,
+                    "end": 0.8
+                },
+                {
+                    "word": "en",
+                    "start": 0.88,
+                    "end": 1.04
+                },
+                {
+                    "word": "un",
+                    "start": 1.12,
+                    "end": 1.2
+                },
+                {
+                    "word": "solo",
+                    "start": 1.28,
+                    "end": 1.52
+                },
+                {
+                    "word": "sitio.",
+                    "start": 1.6,
+                    "end": 2.32
+                },
+                {
+                    "word": "Empieza",
+                    "start": 2.4,
+                    "end": 2.72
+                },
+                {
+                    "word": "gratis",
+                    "start": 2.96,
+                    "end": 3.2
+                },
+                {
+                    "word": "en",
+                    "start": 3.32,
+                    "end": 3.44
+                },
+                {
+                    "word": "whisper",
+                    "start": 3.48,
+                    "end": 3.92
+                },
+                {
+                    "word": "punto",
+                    "start": 4,
+                    "end": 4.24
+                },
+                {
+                    "word": "money.",
+                    "start": 4.32,
+                    "end": 4.88
+                }
+            ]
+        }
+    },
+    "en": {
+        "hook": {
+            "key": "19cf796b7e33",
+            "duration": 1.92,
+            "words": [
+                {
+                    "word": "Where",
+                    "start": 0,
+                    "end": 0.24
+                },
+                {
+                    "word": "did",
+                    "start": 0.32,
+                    "end": 0.4
+                },
+                {
+                    "word": "your",
+                    "start": 0.48,
+                    "end": 0.56
+                },
+                {
+                    "word": "money",
+                    "start": 0.64,
+                    "end": 0.88
+                },
+                {
+                    "word": "go",
+                    "start": 0.96,
+                    "end": 1.04
+                },
+                {
+                    "word": "last",
+                    "start": 1.12,
+                    "end": 1.36
+                },
+                {
+                    "word": "month?",
+                    "start": 1.44,
+                    "end": 1.92
+                }
+            ]
+        },
+        "noTracking": {
+            "key": "0fdc12edba36",
+            "duration": 2.48,
+            "words": [
+                {
+                    "word": "If",
+                    "start": 0,
+                    "end": 0.16
+                },
+                {
+                    "word": "you",
+                    "start": 0.2,
+                    "end": 0.24
+                },
+                {
+                    "word": "don't",
+                    "start": 0.28,
+                    "end": 0.48
+                },
+                {
+                    "word": "track",
+                    "start": 0.64,
+                    "end": 0.8
+                },
+                {
+                    "word": "it,",
+                    "start": 0.88,
+                    "end": 1.16
+                },
+                {
+                    "word": "you're",
+                    "start": 1.2,
+                    "end": 1.28
+                },
+                {
+                    "word": "just",
+                    "start": 1.36,
+                    "end": 1.6
+                },
+                {
+                    "word": "guessing.",
+                    "start": 1.72,
+                    "end": 2.48
+                }
+            ]
+        },
+        "spreadsheet": {
+            "key": "2fd683998673",
+            "duration": 4.88,
+            "words": [
+                {
+                    "word": "And",
+                    "start": 0,
+                    "end": 0.16
+                },
+                {
+                    "word": "spreadsheets?",
+                    "start": 0.24,
+                    "end": 1.28
+                },
+                {
+                    "word": "Hours",
+                    "start": 1.48,
+                    "end": 1.68
+                },
+                {
+                    "word": "of",
+                    "start": 1.76,
+                    "end": 1.84
+                },
+                {
+                    "word": "typing…",
+                    "start": 1.92,
+                    "end": 2.827
+                },
+                {
+                    "word": "and",
+                    "start": 2.853,
+                    "end": 2.88
+                },
+                {
+                    "word": "they",
+                    "start": 3,
+                    "end": 3.12
+                },
+                {
+                    "word": "break",
+                    "start": 3.28,
+                    "end": 3.44
+                },
+                {
+                    "word": "when",
+                    "start": 3.52,
+                    "end": 3.6
+                },
+                {
+                    "word": "you",
+                    "start": 3.64,
+                    "end": 3.68
+                },
+                {
+                    "word": "need",
+                    "start": 3.76,
+                    "end": 3.84
+                },
+                {
+                    "word": "them",
+                    "start": 3.92,
+                    "end": 4
+                },
+                {
+                    "word": "most.",
+                    "start": 4.08,
+                    "end": 4.96
+                }
+            ]
+        },
+        "turn": {
+            "key": "f5ef0c66024d",
+            "duration": 2.48,
+            "words": [
+                {
+                    "word": "There's",
+                    "start": 0,
+                    "end": 0.2
+                },
+                {
+                    "word": "a",
+                    "start": 0.24,
+                    "end": 0.32
+                },
+                {
+                    "word": "better",
+                    "start": 0.4,
+                    "end": 0.64
+                },
+                {
+                    "word": "way:",
+                    "start": 0.72,
+                    "end": 1.36
+                },
+                {
+                    "word": "Whisper",
+                    "start": 1.44,
+                    "end": 1.76
+                },
+                {
+                    "word": "Money.",
+                    "start": 1.84,
+                    "end": 2.48
+                }
+            ]
+        },
+        "sync": {
+            "key": "012497bfba8b",
+            "duration": 4.08,
+            "words": [
+                {
+                    "word": "Connect",
+                    "start": 0,
+                    "end": 0.32
+                },
+                {
+                    "word": "your",
+                    "start": 0.4,
+                    "end": 0.48
+                },
+                {
+                    "word": "banks,",
+                    "start": 0.72,
+                    "end": 1.12
+                },
+                {
+                    "word": "and",
+                    "start": 1.24,
+                    "end": 1.36
+                },
+                {
+                    "word": "every",
+                    "start": 1.44,
+                    "end": 1.6
+                },
+                {
+                    "word": "transaction",
+                    "start": 1.68,
+                    "end": 2.32
+                },
+                {
+                    "word": "syncs",
+                    "start": 2.4,
+                    "end": 2.72
+                },
+                {
+                    "word": "and",
+                    "start": 2.8,
+                    "end": 2.96
+                },
+                {
+                    "word": "sorts",
+                    "start": 3.04,
+                    "end": 3.24
+                },
+                {
+                    "word": "itself.",
+                    "start": 3.28,
+                    "end": 4.16
+                }
+            ]
+        },
+        "dashboard": {
+            "key": "2652ee2eb78a",
+            "duration": 3.68,
+            "words": [
+                {
+                    "word": "Net",
+                    "start": 0,
+                    "end": 0.24
+                },
+                {
+                    "word": "worth,",
+                    "start": 0.32,
+                    "end": 0.8
+                },
+                {
+                    "word": "cashflow",
+                    "start": 0.96,
+                    "end": 1.36
+                },
+                {
+                    "word": "and",
+                    "start": 1.52,
+                    "end": 1.68
+                },
+                {
+                    "word": "every",
+                    "start": 1.76,
+                    "end": 2
+                },
+                {
+                    "word": "account,",
+                    "start": 2.24,
+                    "end": 2.72
+                },
+                {
+                    "word": "at",
+                    "start": 2.8,
+                    "end": 2.88
+                },
+                {
+                    "word": "a",
+                    "start": 2.907,
+                    "end": 2.933
+                },
+                {
+                    "word": "glance.",
+                    "start": 2.96,
+                    "end": 3.68
+                }
+            ]
+        },
+        "budgets": {
+            "key": "2679655b2673",
+            "duration": 3.52,
+            "words": [
+                {
+                    "word": "Budgets",
+                    "start": 0,
+                    "end": 0.4
+                },
+                {
+                    "word": "that",
+                    "start": 0.52,
+                    "end": 0.64
+                },
+                {
+                    "word": "warn",
+                    "start": 0.76,
+                    "end": 0.88
+                },
+                {
+                    "word": "you",
+                    "start": 0.96,
+                    "end": 1.04
+                },
+                {
+                    "word": "before",
+                    "start": 1.28,
+                    "end": 1.52
+                },
+                {
+                    "word": "you",
+                    "start": 1.56,
+                    "end": 1.6
+                },
+                {
+                    "word": "overspend,",
+                    "start": 1.68,
+                    "end": 2.52
+                },
+                {
+                    "word": "not",
+                    "start": 2.56,
+                    "end": 2.72
+                },
+                {
+                    "word": "after.",
+                    "start": 2.8,
+                    "end": 3.6
+                }
+            ]
+        },
+        "privacy": {
+            "key": "62acf303da35",
+            "duration": 3.68,
+            "words": [
+                {
+                    "word": "And",
+                    "start": 0,
+                    "end": 0.08
+                },
+                {
+                    "word": "it's",
+                    "start": 0.16,
+                    "end": 0.32
+                },
+                {
+                    "word": "private",
+                    "start": 0.4,
+                    "end": 0.8
+                },
+                {
+                    "word": "by",
+                    "start": 0.88,
+                    "end": 1.04
+                },
+                {
+                    "word": "design.",
+                    "start": 1.48,
+                    "end": 1.96
+                },
+                {
+                    "word": "Your",
+                    "start": 2,
+                    "end": 2.16
+                },
+                {
+                    "word": "data",
+                    "start": 2.24,
+                    "end": 2.64
+                },
+                {
+                    "word": "is",
+                    "start": 2.72,
+                    "end": 2.88
+                },
+                {
+                    "word": "yours.",
+                    "start": 2.96,
+                    "end": 3.76
+                }
+            ]
+        },
+        "comparison": {
+            "key": "cd778a1be977",
+            "duration": 4.56,
+            "words": [
+                {
+                    "word": "Stop",
+                    "start": 0,
+                    "end": 0.32
+                },
+                {
+                    "word": "guessing.",
+                    "start": 0.4,
+                    "end": 1.2
+                },
+                {
+                    "word": "Stop",
+                    "start": 1.32,
+                    "end": 1.44
+                },
+                {
+                    "word": "typing.",
+                    "start": 1.52,
+                    "end": 2.48
+                },
+                {
+                    "word": "Minutes",
+                    "start": 2.64,
+                    "end": 2.8
+                },
+                {
+                    "word": "a",
+                    "start": 2.88,
+                    "end": 2.92
+                },
+                {
+                    "word": "month,",
+                    "start": 2.96,
+                    "end": 3.44
+                },
+                {
+                    "word": "not",
+                    "start": 3.56,
+                    "end": 3.68
+                },
+                {
+                    "word": "hours.",
+                    "start": 3.76,
+                    "end": 4.56
+                }
+            ]
+        },
+        "cta": {
+            "key": "148797fdf2f9",
+            "duration": 4.32,
+            "words": [
+                {
+                    "word": "All",
+                    "start": 0,
+                    "end": 0.24
+                },
+                {
+                    "word": "your",
+                    "start": 0.32,
+                    "end": 0.4
+                },
+                {
+                    "word": "money",
+                    "start": 0.56,
+                    "end": 0.72
+                },
+                {
+                    "word": "in",
+                    "start": 0.8,
+                    "end": 0.96
+                },
+                {
+                    "word": "one",
+                    "start": 1.04,
+                    "end": 1.2
+                },
+                {
+                    "word": "place.",
+                    "start": 1.28,
+                    "end": 2.04
+                },
+                {
+                    "word": "Start",
+                    "start": 2.08,
+                    "end": 2.4
+                },
+                {
+                    "word": "free",
+                    "start": 2.48,
+                    "end": 2.8
+                },
+                {
+                    "word": "at",
+                    "start": 2.92,
+                    "end": 3.04
+                },
+                {
+                    "word": "whisper",
+                    "start": 3.08,
+                    "end": 3.44
+                },
+                {
+                    "word": "dot",
+                    "start": 3.52,
+                    "end": 3.68
+                },
+                {
+                    "word": "money.",
+                    "start": 3.76,
+                    "end": 4.4
+                }
+            ]
+        }
+    }
+}
