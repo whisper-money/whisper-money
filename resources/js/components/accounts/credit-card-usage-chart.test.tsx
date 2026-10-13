@@ -42,6 +42,7 @@ vi.mock('recharts', () => ({
 const withDates: CreditCardDetail = {
     statement_closing_date: '2026-10-05',
     payment_due_date: '2026-10-20',
+    statement_frequency: 'monthly',
     credit_limit: 100000,
 };
 

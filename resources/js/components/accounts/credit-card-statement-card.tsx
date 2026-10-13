@@ -1,4 +1,8 @@
-import { EditCreditCardDetailDialog } from '@/components/accounts/edit-credit-card-detail-dialog';
+import {
+    DEFAULT_STATEMENT_FREQUENCY,
+    EditCreditCardDetailDialog,
+    statementFrequencyLabel,
+} from '@/components/accounts/edit-credit-card-detail-dialog';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +12,7 @@ import type {
     CreditCardDetail,
     CreditCardStatement,
     CurrencyCode,
+    StatementFrequency,
 } from '@/types/account';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -58,6 +63,10 @@ export function CreditCardStatementCard({
                 {statement ? (
                     <StatementSummary
                         statement={statement}
+                        frequency={
+                            detail?.statement_frequency ??
+                            DEFAULT_STATEMENT_FREQUENCY
+                        }
                         currencyCode={currencyCode}
                     />
                 ) : (
@@ -92,9 +101,11 @@ export function CreditCardStatementCard({
 
 function StatementSummary({
     statement,
+    frequency,
     currencyCode,
 }: {
     statement: CreditCardStatement;
+    frequency: StatementFrequency;
     currencyCode: CurrencyCode;
 }) {
     const locale = useLocale();
@@ -152,7 +163,12 @@ function StatementSummary({
             </div>
 
             <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3 text-sm dark:bg-muted/20">
-                <span className="font-medium">{__('Current cycle')}</span>
+                <span className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{__('Current cycle')}</span>
+                    <span className="text-xs text-muted-foreground">
+                        {statementFrequencyLabel(frequency)}
+                    </span>
+                </span>
                 <span className="flex flex-wrap items-baseline gap-1">
                     {currentCycle.amount < 0 ? (
                         <CreditNote

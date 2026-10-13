@@ -30,6 +30,7 @@ vi.mock('@/contexts/privacy-mode-context', () => ({
 const detail = {
     statement_closing_date: '2026-03-05',
     payment_due_date: '2026-03-20',
+    statement_frequency: 'monthly' as const,
     credit_limit: 300000,
 };
 
@@ -103,6 +104,20 @@ describe('CreditCardStatementCard', () => {
             ),
         ).toBeInTheDocument();
         expect(screen.getByText('Estimate')).toBeInTheDocument();
+        expect(screen.getByText('Monthly')).toBeInTheDocument();
+    });
+
+    it('labels the cycle of a weekly card', () => {
+        render(
+            <CreditCardStatementCard
+                accountId="card-1"
+                currencyCode="EUR"
+                detail={{ ...detail, statement_frequency: 'weekly' }}
+                statement={statement(false)}
+            />,
+        );
+
+        expect(screen.getByText('Weekly')).toBeInTheDocument();
     });
 
     it('warns that an open cycle can still grow', () => {
@@ -155,6 +170,7 @@ describe('CreditCardStatementCard', () => {
             {
                 statement_closing_date: '2026-03-05',
                 payment_due_date: '2026-03-22',
+                statement_frequency: 'monthly',
                 credit_limit: 300000,
             },
             expect.any(Object),
@@ -192,6 +208,7 @@ describe('CreditCardStatementCard', () => {
             {
                 statement_closing_date: null,
                 payment_due_date: null,
+                statement_frequency: 'monthly',
                 credit_limit: 150000,
             },
             expect.any(Object),
@@ -206,6 +223,7 @@ describe('CreditCardStatementCard', () => {
                 detail={{
                     statement_closing_date: null,
                     payment_due_date: null,
+                    statement_frequency: 'monthly',
                     credit_limit: 300000,
                 }}
                 statement={null}
