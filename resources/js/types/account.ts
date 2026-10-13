@@ -106,13 +106,18 @@ export interface LoanDetail {
     remaining_months: number | null;
 }
 
+/** How often a credit card statement closes, mirroring App\Enums\StatementFrequency. */
+export type StatementFrequency = 'monthly' | 'weekly';
+
 /**
  * What the user set on a credit card. The statement dates are the anchor its
- * cycles repeat from; they travel together, both set or both null.
+ * cycles repeat from, every month or every week; they travel together, both
+ * set or both null.
  */
 export interface CreditCardDetail {
     statement_closing_date: string | null;
     payment_due_date: string | null;
+    statement_frequency: StatementFrequency;
     /** In the card currency's minor units. */
     credit_limit: number | null;
 }
