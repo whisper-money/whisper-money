@@ -8,6 +8,9 @@ use Inertia\Testing\AssertableInertia;
 /**
  * Fakes both UserJot endpoints: the roadmap listing returns one submission per
  * status, and each submission detail reports two status changes.
+ *
+ * Like the real API, the listing only filters on `statuses`: any other key is
+ * ignored and the planned submissions come back.
  */
 function fakeUserJot(): void
 {
@@ -24,8 +27,8 @@ function fakeUserJot(): void
             ]]]]);
         }
 
-        preg_match('/(PLANNED|PROGRESS|COMPLETED)/', $url, $matches);
-        $status = $matches[1] ?? 'PLANNED';
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+        $status = json_decode((string) ($query['input'] ?? ''), true)['json']['statuses'][0] ?? 'PLANNED';
 
         return Http::response(['result' => ['data' => ['json' => [
             'submissions' => [

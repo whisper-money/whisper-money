@@ -65,7 +65,7 @@ class RoadmapController extends Controller
         foreach (self::STATUSES as $userJotStatus => $status) {
             $submissions = Http::withHeader('x-host', self::HOST)
                 ->get(self::ROADMAP_ENDPOINT, [
-                    'input' => $this->input(['limit' => 50, 'status' => [$userJotStatus]]),
+                    'input' => $this->input(['limit' => 50, 'statuses' => [$userJotStatus]]),
                 ])
                 ->throw()
                 ->json('result.data.json.submissions', []);
