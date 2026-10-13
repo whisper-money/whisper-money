@@ -4,6 +4,7 @@ use App\Enums\AccountType;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Enums\StatementFrequency;
 use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
@@ -1643,6 +1644,45 @@ it('sets and clears the statement dates of a credit card through update_account'
     ])->assertOk();
 
     expect($card->creditCardDetail()->exists())->toBeFalse();
+});
+
+it('creates a weekly credit card and switches it back to monthly through update_account', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'statement_closing_date' => '2026-10-01',
+        'payment_due_date' => '2026-10-05',
+        'statement_frequency' => 'weekly',
+    ])->assertOk()->assertSee('"statement_frequency":"weekly"', false);
+
+    $card = $user->accounts()->sole();
+
+    expect($card->creditCardDetail->statement_frequency)->toBe(StatementFrequency::Weekly);
+
+    callWriteTool($user, UpdateAccount::class, [
+        'account_id' => $card->id,
+        'statement_frequency' => 'monthly',
+    ])->assertOk()->assertSee('"statement_frequency":"monthly"', false);
+
+    expect($card->creditCardDetail()->sole()->statement_frequency)->toBe(StatementFrequency::Monthly);
+});
+
+it('rejects a weekly credit card charged more than a week after closing', function () {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'statement_closing_date' => '2026-10-01',
+        'payment_due_date' => '2026-10-09',
+        'statement_frequency' => 'weekly',
+    ])->assertHasErrors(['7 days']);
+
+    expect($user->accounts()->exists())->toBeFalse();
 });
 
 it('creates a credit card with its credit limit', function () {

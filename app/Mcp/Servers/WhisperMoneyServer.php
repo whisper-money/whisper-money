@@ -148,7 +148,9 @@ account, and the app counts only that slice of it in their figures — changing 
 also reweighs the budgets that already counted the account.
 When a credit card row carries `credit_card_statement`, it is an estimate of the
 next charge (`is_final` false means the cycle is still open), computed from the
-statement dates in `credit_card_detail`; it is not a transaction.
+statement dates in `credit_card_detail`; it is not a transaction. Those dates are
+one cycle, and later cycles repeat monthly or weekly from them, as
+`statement_frequency` says.
 `credit_card_usage` is how much of the card is in use: `used` adds up what is
 still to be charged between `period_from` and today (the pending statement plus
 the open cycle, or the calendar month when the card has no statement dates), and

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatementFrequency;
 use Carbon\CarbonImmutable;
 use Database\Factories\CreditCardDetailFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,12 +15,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * statement dates, each optional.
  *
  * The dates are one closing date and the date that statement is charged. They
- * are an anchor, not a schedule. Later cycles are projected a month at a time
- * from them, and when the bank moves the dates the user edits them, which sets
- * a new anchor. They travel together: both set or both null.
+ * are an anchor, not a schedule. Later cycles are projected a month or a week
+ * at a time from them, as `statement_frequency` says, and when the bank moves
+ * the dates the user edits them, which sets a new anchor. They travel
+ * together: both set or both null.
  *
  * @property CarbonImmutable|null $statement_closing_date
  * @property CarbonImmutable|null $payment_due_date
+ * @property StatementFrequency $statement_frequency
  * @property int|null $credit_limit in the card currency's minor units
  */
 class CreditCardDetail extends Model
@@ -31,7 +34,13 @@ class CreditCardDetail extends Model
         'account_id',
         'statement_closing_date',
         'payment_due_date',
+        'statement_frequency',
         'credit_limit',
+    ];
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'statement_frequency' => StatementFrequency::Monthly->value,
     ];
 
     /** @var list<string> */
@@ -46,6 +55,7 @@ class CreditCardDetail extends Model
         return [
             'statement_closing_date' => 'immutable_date:Y-m-d',
             'payment_due_date' => 'immutable_date:Y-m-d',
+            'statement_frequency' => StatementFrequency::class,
             'credit_limit' => 'integer',
         ];
     }
@@ -56,7 +66,8 @@ class CreditCardDetail extends Model
     }
 
     /**
-     * Nothing left worth keeping a row for.
+     * Nothing left worth keeping a row for. The frequency alone is not worth
+     * it: it means nothing without the dates.
      */
     public function isBlank(): bool
     {

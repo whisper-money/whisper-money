@@ -211,7 +211,7 @@ it('presents the credit limit and what is left of it', function () {
     WhisperMoneyServer::actingAs($user)
         ->tool(ListAccounts::class, [])
         ->assertOk()
-        ->assertSee('"credit_card_detail":{"statement_closing_date":null,"payment_due_date":null,"credit_limit":100000}', false)
+        ->assertSee('"credit_card_detail":{"statement_closing_date":null,"payment_due_date":null,"statement_frequency":"monthly","credit_limit":100000}', false)
         ->assertSee('"credit_card_statement":null', false)
         ->assertSee('"credit_card_usage":{"limit":100000,"used":2500,"available":97500,"period_from":"2026-03-01","period_to":"2026-03-31"}', false);
 });

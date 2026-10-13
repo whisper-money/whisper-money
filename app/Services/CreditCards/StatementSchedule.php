@@ -2,12 +2,13 @@
 
 namespace App\Services\CreditCards;
 
+use App\Enums\StatementFrequency;
 use App\Models\CreditCardDetail;
 use Carbon\CarbonImmutable;
 
 /**
- * The monthly statement cycles of a credit card, projected from one anchor
- * closing date and its due date.
+ * The statement cycles of a credit card, monthly or weekly, projected from
+ * one anchor closing date and its due date.
  *
  * Every cycle is projected from the anchor itself, never from the cycle before
  * it: chaining month by month would let a closing on the 31st fall to the 28th
@@ -18,6 +19,7 @@ final readonly class StatementSchedule
     public function __construct(
         private CarbonImmutable $closingAnchor,
         private CarbonImmutable $dueAnchor,
+        private StatementFrequency $frequency = StatementFrequency::Monthly,
     ) {}
 
     /**
@@ -33,18 +35,18 @@ final readonly class StatementSchedule
             return null;
         }
 
-        return new self($closingDate, $dueDate);
+        return new self($closingDate, $dueDate, $detail->statement_frequency);
     }
 
     /**
-     * The cycle $offset months away from the anchor one (negative goes back).
+     * The cycle $offset cycles away from the anchor one (negative goes back).
      */
     public function cycle(int $offset): StatementCycle
     {
         return new StatementCycle(
             periodFrom: $this->closingDate($offset - 1)->addDay(),
             closingDate: $this->closingDate($offset),
-            dueDate: $this->dueAnchor->addMonthsNoOverflow($offset),
+            dueDate: $this->frequency->addCycles($this->dueAnchor, $offset),
         );
     }
 
@@ -83,12 +85,12 @@ final readonly class StatementSchedule
 
     private function closingDate(int $offset): CarbonImmutable
     {
-        return $this->closingAnchor->addMonthsNoOverflow($offset);
+        return $this->frequency->addCycles($this->closingAnchor, $offset);
     }
 
     private function openOffsetOn(CarbonImmutable $day): int
     {
-        $offset = ($day->year - $this->closingAnchor->year) * 12 + $day->month - $this->closingAnchor->month;
+        $offset = $this->frequency->approximateCyclesBetween($this->closingAnchor, $day);
 
         while ($this->closingDate($offset)->lessThan($day)) {
             $offset++;
