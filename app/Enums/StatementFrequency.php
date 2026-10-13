@@ -30,7 +30,7 @@ enum StatementFrequency: string
      * $date moved $cycles statements away (negative goes back). Months never
      * overflow, so a closing on the 31st lands on the last day of short months.
      */
-    public function shift(CarbonImmutable $date, int $cycles): CarbonImmutable
+    public function addCycles(CarbonImmutable $date, int $cycles): CarbonImmutable
     {
         return match ($this) {
             self::Monthly => $date->addMonthsNoOverflow($cycles),
@@ -42,7 +42,7 @@ enum StatementFrequency: string
      * A first guess at how many statements separate $from and $to, close
      * enough for a couple of correction steps to finish the job.
      */
-    public function estimateCyclesBetween(CarbonImmutable $from, CarbonImmutable $to): int
+    public function approximateCyclesBetween(CarbonImmutable $from, CarbonImmutable $to): int
     {
         return match ($this) {
             self::Monthly => ($to->year - $from->year) * 12 + $to->month - $from->month,

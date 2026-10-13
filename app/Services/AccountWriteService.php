@@ -139,10 +139,11 @@ class AccountWriteService
      */
     public function syncCreditCardDetail(Account $account, array $data): void
     {
-        $attributes = [
-            ...Arr::only($data, ['statement_closing_date', 'payment_due_date', 'credit_limit']),
-            ...array_filter(Arr::only($data, ['statement_frequency'])),
-        ];
+        $attributes = Arr::only($data, ['statement_closing_date', 'payment_due_date', 'credit_limit']);
+
+        if (($data['statement_frequency'] ?? null) !== null) {
+            $attributes['statement_frequency'] = $data['statement_frequency'];
+        }
 
         if ($attributes === []) {
             return;

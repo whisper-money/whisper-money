@@ -525,6 +525,26 @@ it('caps the gap between closing and due date by the statement frequency', funct
     'monthly, 46 days' => ['monthly', '2026-05-17', false],
 ]);
 
+it('checks the gap against the stored frequency when only the dates are sent', function () {
+    test()->detail->update(['statement_frequency' => StatementFrequency::Weekly]);
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-04-01',
+            'payment_due_date' => '2026-04-21',
+        ])
+        ->assertSessionHasErrors('payment_due_date');
+});
+
+it('checks the stored dates when only the frequency is sent', function () {
+    // The stored statement is charged 15 days after it closes.
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['statement_frequency' => 'weekly'])
+        ->assertSessionHasErrors('statement_frequency');
+
+    expect(test()->detail->fresh()->statement_frequency)->toBe(StatementFrequency::Monthly);
+});
+
 it('saves a weekly statement frequency and sends it back', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-03 12:00', 'UTC'));
 
@@ -605,4 +625,12 @@ it('only takes statement dates on a credit card', function () {
         ->assertNotFound();
 
     assertDatabaseMissing('credit_card_details', ['account_id' => $checking->id]);
+});
+
+it('refuses another user before validating against the stored card', function () {
+    $intruder = User::factory()->onboarded()->create();
+
+    actingAs($intruder)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['statement_frequency' => 'weekly'])
+        ->assertForbidden();
 });

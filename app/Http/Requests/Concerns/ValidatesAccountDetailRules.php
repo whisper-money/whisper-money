@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\PropertyType;
 use App\Enums\StatementFrequency;
 use App\Models\Account;
+use App\Models\CreditCardDetail;
 use App\Rules\PaymentDueAfterStatementClosing;
 use Closure;
 use Illuminate\Validation\Rule;
@@ -86,16 +87,19 @@ trait ValidatesAccountDetailRules
      * Validation rules for what a credit card carries: its limit and its
      * statement dates, each optional, and null clears it. The two dates travel
      * together, since one is meaningless without the other. The frequency they
-     * repeat at is optional too: left out, the stored one stays.
+     * repeat at is optional too: left out, the stored one stays. $stored is
+     * the card's current detail, which the payload is checked on top of.
      *
      * @return array<string, array<mixed>>
      */
-    protected function creditCardDetailRules(): array
+    protected function creditCardDetailRules(?CreditCardDetail $stored = null): array
     {
+        $dueWithinCycle = new PaymentDueAfterStatementClosing($stored);
+
         return [
             'statement_closing_date' => ['nullable', 'required_with:payment_due_date', 'date_format:Y-m-d'],
-            'payment_due_date' => ['nullable', 'required_with:statement_closing_date', 'date_format:Y-m-d', new PaymentDueAfterStatementClosing],
-            'statement_frequency' => ['nullable', Rule::enum(StatementFrequency::class)],
+            'payment_due_date' => ['nullable', 'required_with:statement_closing_date', 'date_format:Y-m-d', $dueWithinCycle],
+            'statement_frequency' => ['bail', 'nullable', Rule::enum(StatementFrequency::class), $dueWithinCycle],
             ...$this->creditLimitRules(),
         ];
     }

@@ -46,7 +46,7 @@ final readonly class StatementSchedule
         return new StatementCycle(
             periodFrom: $this->closingDate($offset - 1)->addDay(),
             closingDate: $this->closingDate($offset),
-            dueDate: $this->frequency->shift($this->dueAnchor, $offset),
+            dueDate: $this->frequency->addCycles($this->dueAnchor, $offset),
         );
     }
 
@@ -85,12 +85,12 @@ final readonly class StatementSchedule
 
     private function closingDate(int $offset): CarbonImmutable
     {
-        return $this->frequency->shift($this->closingAnchor, $offset);
+        return $this->frequency->addCycles($this->closingAnchor, $offset);
     }
 
     private function openOffsetOn(CarbonImmutable $day): int
     {
-        $offset = $this->frequency->estimateCyclesBetween($this->closingAnchor, $day);
+        $offset = $this->frequency->approximateCyclesBetween($this->closingAnchor, $day);
 
         while ($this->closingDate($offset)->lessThan($day)) {
             $offset++;

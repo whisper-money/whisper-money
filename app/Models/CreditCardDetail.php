@@ -40,7 +40,7 @@ class CreditCardDetail extends Model
 
     /** @var array<string, mixed> */
     protected $attributes = [
-        'statement_frequency' => 'monthly',
+        'statement_frequency' => StatementFrequency::Monthly->value,
     ];
 
     /** @var list<string> */
