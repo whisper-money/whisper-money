@@ -80,7 +80,7 @@ class PaymentDueAfterStatementClosing implements DataAwareRule, ValidationRule
         $sent = $this->data['statement_frequency'] ?? null;
 
         return (is_string($sent) ? StatementFrequency::tryFrom($sent) : null)
-            ?? $this->stored?->statement_frequency
+            ?? $this->stored->statement_frequency
             ?? StatementFrequency::Monthly;
     }
 
