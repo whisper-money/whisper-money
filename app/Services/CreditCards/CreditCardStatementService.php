@@ -68,6 +68,7 @@ class CreditCardStatementService
             'credit_card_detail' => $detail === null ? null : [
                 'statement_closing_date' => $detail->statement_closing_date?->toDateString(),
                 'payment_due_date' => $detail->payment_due_date?->toDateString(),
+                'statement_frequency' => $detail->statement_frequency->value,
                 'credit_limit' => $detail->credit_limit,
             ],
             ...$this->figuresOn($account, $today),

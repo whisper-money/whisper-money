@@ -66,7 +66,7 @@ class UpdateAccount extends WriteTool
             'currency_code' => ['sometimes', 'string', Rule::in($this->allowedCurrencyCodes($user))],
             'ownership_percentage' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'ownership_applies_to_balance' => ['sometimes', 'boolean'],
-            ...$this->detailRules($type, creating: false),
+            ...$this->detailRules($type, creating: false, storedCreditCard: $account->creditCardDetail),
         ]);
 
         $missingLoanFields = app(AccountWriteService::class)->update($account, [
