@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\AccountType;
+use App\Enums\StatementFrequency;
 use App\Models\Account;
 use App\Models\CreditCardDetail;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -26,5 +27,21 @@ class CreditCardDetailFactory extends Factory
             'statement_closing_date' => $closingDate->toDateString(),
             'payment_due_date' => $closingDate->copy()->addDays(fake()->numberBetween(5, 20))->toDateString(),
         ];
+    }
+
+    /**
+     * A card whose statement closes every week and is charged a few days later.
+     */
+    public function weekly(): static
+    {
+        return $this->state(function (): array {
+            $closingDate = now()->startOfWeek()->addDays(fake()->numberBetween(0, 6));
+
+            return [
+                'statement_closing_date' => $closingDate->toDateString(),
+                'payment_due_date' => $closingDate->copy()->addDays(fake()->numberBetween(1, 7))->toDateString(),
+                'statement_frequency' => StatementFrequency::Weekly,
+            ];
+        });
     }
 }

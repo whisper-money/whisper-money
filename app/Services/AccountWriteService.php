@@ -129,16 +129,20 @@ class AccountWriteService
     }
 
     /**
-     * Set what the payload carries of a credit card's limit and statement
-     * dates, leaving the rest alone. The dates become the anchor every later
-     * cycle is projected from; null clears a field. Clearing the dates keeps
-     * the limit, and the row goes only once neither is left.
+     * Set what the payload carries of a credit card's limit, statement dates
+     * and statement frequency, leaving the rest alone. The dates become the
+     * anchor every later cycle is projected from; null clears a field, except
+     * the frequency, which null leaves alone. Clearing the dates keeps the
+     * limit, and the row goes only once neither is left.
      *
      * @param  array<string, mixed>  $data
      */
     public function syncCreditCardDetail(Account $account, array $data): void
     {
-        $attributes = Arr::only($data, ['statement_closing_date', 'payment_due_date', 'credit_limit']);
+        $attributes = [
+            ...Arr::only($data, ['statement_closing_date', 'payment_due_date', 'credit_limit']),
+            ...array_filter(Arr::only($data, ['statement_frequency'])),
+        ];
 
         if ($attributes === []) {
             return;

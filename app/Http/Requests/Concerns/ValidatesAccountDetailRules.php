@@ -4,6 +4,7 @@ namespace App\Http\Requests\Concerns;
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Enums\StatementFrequency;
 use App\Models\Account;
 use App\Rules\PaymentDueAfterStatementClosing;
 use Closure;
@@ -84,7 +85,8 @@ trait ValidatesAccountDetailRules
     /**
      * Validation rules for what a credit card carries: its limit and its
      * statement dates, each optional, and null clears it. The two dates travel
-     * together, since one is meaningless without the other.
+     * together, since one is meaningless without the other. The frequency they
+     * repeat at is optional too: left out, the stored one stays.
      *
      * @return array<string, array<mixed>>
      */
@@ -93,6 +95,7 @@ trait ValidatesAccountDetailRules
         return [
             'statement_closing_date' => ['nullable', 'required_with:payment_due_date', 'date_format:Y-m-d'],
             'payment_due_date' => ['nullable', 'required_with:statement_closing_date', 'date_format:Y-m-d', new PaymentDueAfterStatementClosing],
+            'statement_frequency' => ['nullable', Rule::enum(StatementFrequency::class)],
             ...$this->creditLimitRules(),
         ];
     }

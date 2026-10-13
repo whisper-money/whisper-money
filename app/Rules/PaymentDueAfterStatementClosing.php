@@ -2,6 +2,7 @@
 
 namespace App\Rules;
 
+use App\Enums\StatementFrequency;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
@@ -11,13 +12,13 @@ use Throwable;
 
 /**
  * A credit card statement is charged after it closes, and not long after:
- * banks give a few days to a few weeks. Anything past the limit is a typo, and
- * projecting it would leave two statements unpaid at once.
+ * banks give a few days to a few weeks on a monthly card, and a weekly one is
+ * charged within the week. Anything past the limit is a typo, and projecting
+ * it would leave two statements unpaid at once. The limit follows the
+ * `statement_frequency` sent alongside, monthly when there is none.
  */
 class PaymentDueAfterStatementClosing implements DataAwareRule, ValidationRule
 {
-    public const MAX_DAYS_TO_PAY = 45;
-
     /** @var array<string, mixed> */
     private array $data = [];
 
@@ -49,9 +50,20 @@ class PaymentDueAfterStatementClosing implements DataAwareRule, ValidationRule
             return;
         }
 
-        if ($closingDate->diffInDays($dueDate) > self::MAX_DAYS_TO_PAY) {
-            $fail(__('The payment due date must be within :days days of the statement closing date.', ['days' => self::MAX_DAYS_TO_PAY]));
+        $maxDaysToPay = $this->frequency()->maxDaysToPay();
+
+        if ($closingDate->diffInDays($dueDate) > $maxDaysToPay) {
+            $fail(__('The payment due date must be within :days days of the statement closing date.', ['days' => $maxDaysToPay]));
         }
+    }
+
+    private function frequency(): StatementFrequency
+    {
+        $frequency = $this->data['statement_frequency'] ?? null;
+
+        return is_string($frequency)
+            ? StatementFrequency::tryFrom($frequency) ?? StatementFrequency::Monthly
+            : StatementFrequency::Monthly;
     }
 
     private static function parse(mixed $value): ?CarbonImmutable

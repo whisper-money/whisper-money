@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\CategoryType;
+use App\Enums\StatementFrequency;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\CreditCardDetail;
@@ -102,6 +103,38 @@ it('charges the open cycle as a provisional amount once the due date has passed'
         'due_date' => '2026-04-20',
         'amount' => 2500,
         'is_final' => false,
+    ]);
+});
+
+it('adds up a week of purchases on a weekly card', function () {
+    // Closes every Thursday and is charged the Monday after.
+    test()->detail->update([
+        'statement_closing_date' => '2026-10-01',
+        'payment_due_date' => '2026-10-05',
+        'statement_frequency' => StatementFrequency::Weekly,
+    ]);
+    cardTransaction(-1000, '2026-09-24');
+    cardTransaction(-2000, '2026-09-25');
+    cardTransaction(-4000, '2026-10-01');
+    cardTransaction(-8000, '2026-10-02');
+
+    $figures = figuresOn('2026-10-03');
+
+    expect($figures['credit_card_statement']['next_payment'])->toMatchArray([
+        'period_from' => '2026-09-25',
+        'closing_date' => '2026-10-01',
+        'due_date' => '2026-10-05',
+        'amount' => 6000,
+        'is_final' => true,
+    ])->and($figures['credit_card_statement']['current_cycle'])->toMatchArray([
+        'period_from' => '2026-10-02',
+        'closing_date' => '2026-10-08',
+        'due_date' => '2026-10-12',
+        'amount' => 8000,
+    ])->and($figures['credit_card_usage'])->toMatchArray([
+        'used' => 14000,
+        'period_from' => '2026-09-25',
+        'period_to' => '2026-10-08',
     ]);
 });
 
@@ -250,6 +283,7 @@ it('sends the details and the estimate for a credit card', function () {
         ->assertInertia(fn ($page) => $page
             ->where('account.credit_card_detail.statement_closing_date', '2026-03-05')
             ->where('account.credit_card_detail.payment_due_date', '2026-03-20')
+            ->where('account.credit_card_detail.statement_frequency', 'monthly')
             ->where('account.credit_card_statement.next_payment.amount', 1000)
             ->where('account.credit_card_statement.next_payment.is_final', true));
 });
@@ -473,6 +507,76 @@ it('accepts a due date exactly 45 days after closing', function () {
             'payment_due_date' => '2026-05-16',
         ])
         ->assertSessionHasNoErrors();
+});
+
+it('caps the gap between closing and due date by the statement frequency', function (string $frequency, string $dueDate, bool $passes) {
+    $response = actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-04-01',
+            'payment_due_date' => $dueDate,
+            'statement_frequency' => $frequency,
+        ]);
+
+    $passes ? $response->assertSessionHasNoErrors() : $response->assertSessionHasErrors('payment_due_date');
+})->with([
+    'weekly, 7 days' => ['weekly', '2026-04-08', true],
+    'weekly, 8 days' => ['weekly', '2026-04-09', false],
+    'monthly, 45 days' => ['monthly', '2026-05-16', true],
+    'monthly, 46 days' => ['monthly', '2026-05-17', false],
+]);
+
+it('saves a weekly statement frequency and sends it back', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-03 12:00', 'UTC'));
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-10-01',
+            'payment_due_date' => '2026-10-05',
+            'statement_frequency' => 'weekly',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(test()->detail->fresh()->statement_frequency)->toBe(StatementFrequency::Weekly);
+
+    actingAs(test()->user)
+        ->get(route('accounts.show', test()->card))
+        ->assertInertia(fn ($page) => $page
+            ->where('account.credit_card_detail.statement_frequency', 'weekly')
+            ->where('account.credit_card_statement.current_cycle.closing_date', '2026-10-08'));
+});
+
+it('keeps the stored statement frequency when it is not sent', function () {
+    test()->detail->update(['statement_frequency' => StatementFrequency::Weekly]);
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-10-01',
+            'payment_due_date' => '2026-10-05',
+            'statement_frequency' => null,
+        ])
+        ->assertSessionHasNoErrors();
+
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['credit_limit' => 50000])
+        ->assertSessionHasNoErrors();
+
+    expect(test()->detail->fresh()->statement_frequency)->toBe(StatementFrequency::Weekly);
+});
+
+it('forgets a card left with only its statement frequency', function () {
+    test()->detail->update(['statement_frequency' => StatementFrequency::Weekly]);
+
+    actingAs(test()->user)
+        ->delete(route('accounts.credit-card-detail.destroy', test()->card))
+        ->assertSessionHasNoErrors();
+
+    assertDatabaseMissing('credit_card_details', ['account_id' => test()->card->id]);
+});
+
+it('rejects an unknown statement frequency', function () {
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), ['statement_frequency' => 'biweekly'])
+        ->assertSessionHasErrors('statement_frequency');
 });
 
 it('does not let another user set the statement dates', function () {
