@@ -3,7 +3,9 @@ import { type Locale } from './copy';
 import voiceTimings from './voice-timings.json';
 import { SCENE_IDS, type SceneId } from './voiceover';
 
-export type VoiceClip = { key: string; duration: number; words: { word: string; start: number; end: number }[] };
+export type VoiceWord = { word: string; start: number; end: number };
+
+export type VoiceClip = { key: string; duration: number; words: VoiceWord[] };
 
 export type VoiceTimings = Partial<Record<Locale, Partial<Record<SceneId, VoiceClip>>>>;
 
@@ -44,9 +46,20 @@ const DESIGN_DURATIONS: Record<SceneId, number> = {
 /**
  * "The Light" (Alex Jones / Xander Jones) changes at fixed points: the build enters at 12.0 s and
  * the bigger lift at 36.0 s. The timeline makes them land on the start of the Turn ("there's a
- * better way") and Comparison scenes.
+ * better way") and Comparison scenes. `loudness` is the integrated loudness (LUFS) of each stretch
+ * from its start in seconds, measured with ffmpeg's ebur128, which the soundtrack ducks against.
  */
-export const MUSIC = { src: 'music/the-light.mp3', buildAt: 12, liftAt: 36 };
+export const MUSIC = {
+    src: 'music/the-light.mp3',
+    buildAt: 12,
+    liftAt: 36,
+    loudness: [
+        [0, -25],
+        [12, -20.7],
+        [24, -18.2],
+        [36, -14.8],
+    ] as [number, number][],
+};
 const BUILD_SCENE: SceneId = 'turn';
 const LIFT_SCENE: SceneId = 'comparison';
 
@@ -67,7 +80,11 @@ export function voiceClip(locale: Locale, scene: SceneId): VoiceClip {
 export function wordFrame(locale: Locale, scene: SceneId, word: string): number {
     const spoken = voiceClip(locale, scene).words.find((candidate) => candidate.word.startsWith(word));
 
-    return VOICE_DELAY + Math.round((spoken?.start ?? 0) * FPS);
+    if (spoken === undefined) {
+        throw new Error(`The ${locale}/${scene} voice clip never says "${word}"`);
+    }
+
+    return VOICE_DELAY + Math.round(spoken.start * FPS);
 }
 
 function minimumDuration(locale: Locale, scene: SceneId, isLast: boolean): number {
@@ -78,7 +95,7 @@ function minimumDuration(locale: Locale, scene: SceneId, isLast: boolean): numbe
 }
 
 /** Spreads the frames missing between the build and the lift over the scenes in between. */
-function alignToMusic(durations: number[]): number[] {
+function alignToMusic(locale: Locale, durations: number[]): number[] {
     const build = SCENE_IDS.indexOf(BUILD_SCENE);
     const lift = SCENE_IDS.indexOf(LIFT_SCENE);
     const between = durations.slice(build, lift);
@@ -86,7 +103,7 @@ function alignToMusic(durations: number[]): number[] {
     const missing = (MUSIC.liftAt - MUSIC.buildAt) * FPS - span;
 
     if (missing < 0) {
-        throw new Error(`The scenes between the music build and lift are ${-missing} frames too long to line up`);
+        throw new Error(`The ${locale} scenes between the music build and lift are ${-missing} frames too long to line up`);
     }
 
     return durations.map((duration, index) => {
@@ -101,7 +118,7 @@ function alignToMusic(durations: number[]): number[] {
 }
 
 export function timeline(locale: Locale): Timeline {
-    const durations = alignToMusic(SCENE_IDS.map((id, index) => minimumDuration(locale, id, index === SCENE_IDS.length - 1)));
+    const durations = alignToMusic(locale, SCENE_IDS.map((id, index) => minimumDuration(locale, id, index === SCENE_IDS.length - 1)));
     let from = 0;
 
     const scenes = SCENE_IDS.map((id, index) => {

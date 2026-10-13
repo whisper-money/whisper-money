@@ -1,7 +1,7 @@
 {
     "es": {
         "hook": {
-            "key": "4840662172e3",
+            "key": "dfefebea4bb5",
             "duration": 2.08,
             "words": [
                 {
@@ -47,7 +47,7 @@
             ]
         },
         "noTracking": {
-            "key": "e48c1a408d7b",
+            "key": "55f7b37517e2",
             "duration": 2.4,
             "words": [
                 {
@@ -88,7 +88,7 @@
             ]
         },
         "spreadsheet": {
-            "key": "3dd718dcab4f",
+            "key": "6e1c27ed5b84",
             "duration": 4.64,
             "words": [
                 {
@@ -154,7 +154,7 @@
             ]
         },
         "turn": {
-            "key": "b03a02d0f311",
+            "key": "f912ee9274f0",
             "duration": 2.8,
             "words": [
                 {
@@ -190,7 +190,7 @@
             ]
         },
         "sync": {
-            "key": "876ec27fbcbe",
+            "key": "f642f12f846f",
             "duration": 4.88,
             "words": [
                 {
@@ -256,7 +256,7 @@
             ]
         },
         "dashboard": {
-            "key": "2a1dc222666c",
+            "key": "2748c0c7d4e1",
             "duration": 4.48,
             "words": [
                 {
@@ -317,7 +317,7 @@
             ]
         },
         "budgets": {
-            "key": "bcb79334501b",
+            "key": "e2b032602185",
             "duration": 4,
             "words": [
                 {
@@ -368,7 +368,7 @@
             ]
         },
         "privacy": {
-            "key": "e2ad5f38c5df",
+            "key": "04c6b049309a",
             "duration": 3.84,
             "words": [
                 {
@@ -419,7 +419,7 @@
             ]
         },
         "comparison": {
-            "key": "f4fa69bebcdb",
+            "key": "6a8da16d1df6",
             "duration": 4.4,
             "words": [
                 {
@@ -470,7 +470,7 @@
             ]
         },
         "cta": {
-            "key": "760409029935",
+            "key": "068886fc54b2",
             "duration": 4.8,
             "words": [
                 {
@@ -543,7 +543,7 @@
     },
     "en": {
         "hook": {
-            "key": "191d56df5fe9",
+            "key": "19cf796b7e33",
             "duration": 1.92,
             "words": [
                 {
@@ -584,7 +584,7 @@
             ]
         },
         "noTracking": {
-            "key": "ca51f532eba8",
+            "key": "0fdc12edba36",
             "duration": 2.48,
             "words": [
                 {
@@ -630,7 +630,7 @@
             ]
         },
         "spreadsheet": {
-            "key": "38edfb726611",
+            "key": "2fd683998673",
             "duration": 4.88,
             "words": [
                 {
@@ -701,7 +701,7 @@
             ]
         },
         "turn": {
-            "key": "d6aec6ab593f",
+            "key": "f5ef0c66024d",
             "duration": 2.48,
             "words": [
                 {
@@ -737,7 +737,7 @@
             ]
         },
         "sync": {
-            "key": "bc82ad0e01b4",
+            "key": "012497bfba8b",
             "duration": 4.08,
             "words": [
                 {
@@ -793,7 +793,7 @@
             ]
         },
         "dashboard": {
-            "key": "e60bed42130e",
+            "key": "2652ee2eb78a",
             "duration": 3.68,
             "words": [
                 {
@@ -844,7 +844,7 @@
             ]
         },
         "budgets": {
-            "key": "6794a076fb63",
+            "key": "2679655b2673",
             "duration": 3.52,
             "words": [
                 {
@@ -895,7 +895,7 @@
             ]
         },
         "privacy": {
-            "key": "8aafe6831259",
+            "key": "62acf303da35",
             "duration": 3.68,
             "words": [
                 {
@@ -946,7 +946,7 @@
             ]
         },
         "comparison": {
-            "key": "4ead7bd0d0c1",
+            "key": "cd778a1be977",
             "duration": 4.56,
             "words": [
                 {
@@ -997,7 +997,7 @@
             ]
         },
         "cta": {
-            "key": "bacf59b166b6",
+            "key": "148797fdf2f9",
             "duration": 4.32,
             "words": [
                 {

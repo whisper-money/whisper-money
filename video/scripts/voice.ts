@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { type Locale } from '../src/copy';
-import { type VoiceTimings } from '../src/timeline';
+import { type VoiceTimings, type VoiceWord } from '../src/timeline';
 import { SCENE_IDS, spokenLine } from '../src/voiceover';
 
 const VOICE = {
@@ -26,6 +26,7 @@ const VOICE = {
 // Same gain on every clip so sentences keep their relative level, then a limiter at -1.5 dBTP.
 const MASTER_GAIN_DB = 5;
 const MASTER_LIMIT_DB = -1.5;
+const MASTER_FILTER = `volume=${MASTER_GAIN_DB}dB,alimiter=limit=${Math.pow(10, MASTER_LIMIT_DB / 20).toFixed(4)}:attack=4:release=60:level=disabled`;
 
 const ROOT = path.resolve(import.meta.dir, '..');
 const TIMINGS_FILE = path.join(ROOT, 'src/voice-timings.json');
@@ -76,14 +77,17 @@ async function synthesize(locale: Locale, text: string, previous?: string, next?
 function master(raw: Buffer, destination: string): number {
     const workDir = mkdtempSync(path.join(tmpdir(), 'voice-'));
     const source = path.join(workDir, 'raw.mp3');
-    writeFileSync(source, raw);
-    const limit = Math.pow(10, MASTER_LIMIT_DB / 20).toFixed(4);
-    execFileSync('ffmpeg', [
-        ...['-hide_banner', '-loglevel', 'error', '-y', '-i', source],
-        ...['-af', `volume=${MASTER_GAIN_DB}dB,alimiter=limit=${limit}:attack=4:release=60:level=disabled`],
-        ...['-ar', '44100', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '128k', destination],
-    ]);
-    rmSync(workDir, { recursive: true });
+
+    try {
+        writeFileSync(source, raw);
+        execFileSync('ffmpeg', [
+            ...['-hide_banner', '-loglevel', 'error', '-y', '-i', source],
+            ...['-af', MASTER_FILTER],
+            ...['-ar', '44100', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '128k', destination],
+        ]);
+    } finally {
+        rmSync(workDir, { recursive: true });
+    }
 
     const duration = execFileSync('ffprobe', [
         ...['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', destination],
@@ -92,9 +96,9 @@ function master(raw: Buffer, destination: string): number {
     return Number(duration.toString().trim());
 }
 
-function words(alignment: Alignment): { word: string; start: number; end: number }[] {
-    const result: { word: string; start: number; end: number }[] = [];
-    let current: { word: string; start: number; end: number } | null = null;
+function words(alignment: Alignment): VoiceWord[] {
+    const result: VoiceWord[] = [];
+    let current: VoiceWord | null = null;
 
     alignment.characters.forEach((character, index) => {
         if (/\s/.test(character)) {
@@ -119,7 +123,13 @@ const round = (seconds: number): number => Math.round(seconds * 1000) / 1000;
 
 const timings: VoiceTimings = existsSync(TIMINGS_FILE) ? JSON.parse(readFileSync(TIMINGS_FILE, 'utf8')) : {};
 const onlyLocale = option('locale');
-const locales: Locale[] = typeof onlyLocale === 'string' ? [onlyLocale as Locale] : ['en', 'es'];
+const LOCALES: Locale[] = ['en', 'es'];
+const locales = typeof onlyLocale === 'string' ? LOCALES.filter((locale) => locale === onlyLocale) : LOCALES;
+
+if (locales.length === 0) {
+    console.error(`Unknown locale "${onlyLocale}", expected one of: ${LOCALES.join(', ')}`);
+    process.exit(1);
+}
 
 for (const locale of locales) {
     mkdirSync(path.join(ROOT, 'public/voice', locale), { recursive: true });
@@ -127,8 +137,11 @@ for (const locale of locales) {
 
     for (const [index, scene] of SCENE_IDS.entries()) {
         const text = spokenLine(locale, scene);
+        const previous = index > 0 ? spokenLine(locale, SCENE_IDS[index - 1]) : undefined;
+        const next = index < SCENE_IDS.length - 1 ? spokenLine(locale, SCENE_IDS[index + 1]) : undefined;
+        // Everything that shapes the clip: the line, its neighbours (they set the delivery), voice and mastering.
         const key = createHash('sha1')
-            .update(JSON.stringify([text, locale, VOICE]))
+            .update(JSON.stringify([text, previous, next, locale, VOICE, MASTER_FILTER]))
             .digest('hex')
             .slice(0, 12);
         const clip = path.join(ROOT, 'public/voice', locale, `${scene}.mp3`);
@@ -138,8 +151,6 @@ for (const locale of locales) {
             continue;
         }
 
-        const previous = index > 0 ? spokenLine(locale, SCENE_IDS[index - 1]) : undefined;
-        const next = index < SCENE_IDS.length - 1 ? spokenLine(locale, SCENE_IDS[index + 1]) : undefined;
         const response = await synthesize(locale, text, previous, next);
         const duration = master(Buffer.from(response.audio_base64, 'base64'), clip);
         const spokenWords = words(response.alignment);

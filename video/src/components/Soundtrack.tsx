@@ -13,16 +13,8 @@ const DUCK_RELEASE = 15;
 const GAP_GAIN_DB = -6.5;
 /** Music loudness under a line: about 19 dB below the mastered voice (≈ -16 LUFS). */
 const UNDER_VOICE_LUFS = -35;
-/** Integrated loudness of each stretch of the track (start in seconds → LUFS), measured with ebur128. */
-const MUSIC_LOUDNESS: [number, number][] = [
-    [0, -25],
-    [MUSIC.buildAt, -20.7],
-    [24, -18.2],
-    [MUSIC.liftAt, -14.8],
-];
-
 function musicLoudness(trackSeconds: number): number {
-    return MUSIC_LOUDNESS.filter(([start]) => trackSeconds >= start).at(-1)?.[1] ?? MUSIC_LOUDNESS[0][1];
+    return MUSIC.loudness.filter(([start]) => trackSeconds >= start).at(-1)?.[1] ?? MUSIC.loudness[0][1];
 }
 
 /** 1 while a line plays, easing to 0 in the gaps between lines. */
