@@ -15,7 +15,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { CreditCardDetail, CurrencyCode } from '@/types/account';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import type {
+    CreditCardDetail,
+    CurrencyCode,
+    StatementFrequency,
+} from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -33,8 +38,11 @@ type DateField = 'statement_closing_date' | 'payment_due_date';
 /** The dates as the inputs hold them: an empty string while unset. */
 type DateValues = Record<DateField, string>;
 
-/** Mirrors PaymentDueAfterStatementClosing::MAX_DAYS_TO_PAY on the server. */
-const MAX_DAYS_TO_PAY = 45;
+/** Mirrors StatementFrequency::maxDaysToPay() on the server. */
+const MAX_DAYS_TO_PAY: Record<StatementFrequency, number> = {
+    monthly: 45,
+    weekly: 7,
+};
 
 function datesOf(detail: CreditCardDetail | null): DateValues {
     return {
@@ -46,8 +54,8 @@ function datesOf(detail: CreditCardDetail | null): DateValues {
 /**
  * Sets a card's credit limit and the two dates its statement estimate is
  * projected from, each optional. Any closing date and its due date will do:
- * later cycles repeat monthly from them, and editing them when the bank moves
- * the dates sets a new anchor.
+ * later cycles repeat from them every month or every week, as the frequency
+ * says, and editing them when the bank moves the dates sets a new anchor.
  */
 export function EditCreditCardDetailDialog({
     accountId,
@@ -57,11 +65,16 @@ export function EditCreditCardDetailDialog({
     onOpenChange,
 }: EditCreditCardDetailDialogProps) {
     const [dates, setDates] = useState<DateValues>(datesOf(detail));
+    const [frequency, setFrequency] = useState<StatementFrequency>(
+        detail?.statement_frequency ?? 'monthly',
+    );
     const [creditLimit, setCreditLimit] = useState<number | null>(
         detail?.credit_limit ?? null,
     );
     const [errors, setErrors] = useState<
-        Partial<Record<DateField | 'credit_limit', string>>
+        Partial<
+            Record<DateField | 'credit_limit' | 'statement_frequency', string>
+        >
     >({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const hasDates = Boolean(
@@ -71,6 +84,7 @@ export function EditCreditCardDetailDialog({
     useEffect(() => {
         if (open) {
             setDates(datesOf(detail));
+            setFrequency(detail?.statement_frequency ?? 'monthly');
             setCreditLimit(detail?.credit_limit ?? null);
             setErrors({});
         }
@@ -92,6 +106,7 @@ export function EditCreditCardDetailDialog({
             {
                 statement_closing_date: dates.statement_closing_date || null,
                 payment_due_date: dates.payment_due_date || null,
+                statement_frequency: frequency,
                 credit_limit: creditLimit,
             },
             visitOptions,
@@ -115,7 +130,7 @@ export function EditCreditCardDetailDialog({
             label: __('Payment due date'),
             hint: __(
                 'The day that statement is charged, at most :days days after it closes.',
-                { days: MAX_DAYS_TO_PAY },
+                { days: MAX_DAYS_TO_PAY[frequency] },
             ),
         },
     ];
@@ -126,9 +141,13 @@ export function EditCreditCardDetailDialog({
                 <DialogHeader>
                     <DialogTitle>{__('Card details')}</DialogTitle>
                     <DialogDescription>
-                        {__(
-                            'Every field is optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
-                        )}
+                        {frequency === 'weekly'
+                            ? __(
+                                  'Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.',
+                              )
+                            : __(
+                                  'Every field is optional. Later statements are assumed to repeat on the same days every month. If your bank moves them, update them here.',
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -154,6 +173,33 @@ export function EditCreditCardDetailDialog({
                             )}
                         </p>
                         <InputError message={errors.credit_limit} />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label id="credit_card_statement_frequency_label">
+                            {__('Statement frequency')}
+                        </Label>
+                        <ToggleGroup
+                            type="single"
+                            variant="outline"
+                            className="w-full"
+                            aria-labelledby="credit_card_statement_frequency_label"
+                            value={frequency}
+                            onValueChange={(value) => {
+                                if (value) {
+                                    setFrequency(value as StatementFrequency);
+                                }
+                            }}
+                            disabled={isSubmitting}
+                        >
+                            <ToggleGroupItem value="monthly" className="flex-1">
+                                {__('Monthly')}
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="weekly" className="flex-1">
+                                {__('Weekly')}
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                        <InputError message={errors.statement_frequency} />
                     </div>
 
                     {fields.map((field) => (

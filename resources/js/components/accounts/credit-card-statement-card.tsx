@@ -8,6 +8,7 @@ import type {
     CreditCardDetail,
     CreditCardStatement,
     CurrencyCode,
+    StatementFrequency,
 } from '@/types/account';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -58,6 +59,7 @@ export function CreditCardStatementCard({
                 {statement ? (
                     <StatementSummary
                         statement={statement}
+                        frequency={detail?.statement_frequency ?? 'monthly'}
                         currencyCode={currencyCode}
                     />
                 ) : (
@@ -92,9 +94,11 @@ export function CreditCardStatementCard({
 
 function StatementSummary({
     statement,
+    frequency,
     currencyCode,
 }: {
     statement: CreditCardStatement;
+    frequency: StatementFrequency;
     currencyCode: CurrencyCode;
 }) {
     const locale = useLocale();
@@ -152,7 +156,12 @@ function StatementSummary({
             </div>
 
             <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3 text-sm dark:bg-muted/20">
-                <span className="font-medium">{__('Current cycle')}</span>
+                <span className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{__('Current cycle')}</span>
+                    <span className="text-xs text-muted-foreground">
+                        {frequency === 'weekly' ? __('Weekly') : __('Monthly')}
+                    </span>
+                </span>
                 <span className="flex flex-wrap items-baseline gap-1">
                     {currentCycle.amount < 0 ? (
                         <CreditNote
