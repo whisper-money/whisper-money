@@ -94,7 +94,9 @@ cannot change later, and a new target applies from the month in progress. A
 month with status `partial` (created in its last 5 days) or `archived` (archived
 during it) has no verdict and stays out of months met, the streak and the
 cumulative figures — mention what was saved, not whether it was met. An account
-already auto-tagged by another running monthly goal is refused.
+already auto-tagged by another running monthly goal is refused. Creating a
+monthly goal is not open to every account yet: if `kind: monthly` is refused,
+offer a one-off goal instead; existing monthly goals still list and update.
 
 ## What bites
 

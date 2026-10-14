@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Features\MonthlySavingsGoals;
 use App\Mail\MonthlySavingsGoalReminderEmail;
 use App\Models\Account;
 use App\Models\SavingsGoal;
@@ -14,6 +15,7 @@ use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Pennant\Feature;
 
 function noticesUser(): User
 {
@@ -38,7 +40,10 @@ function noticesSave(SavingsGoal $goal, int $amount, string $date): void
     ])->labels()->attach($goal->label_id);
 }
 
-beforeEach(fn () => Mail::fake());
+beforeEach(function () {
+    Mail::fake();
+    Feature::define(MonthlySavingsGoals::class, true);
+});
 
 test('closing a month rings the bell once with how it went', function () {
     $this->travelTo(Carbon::parse('2026-10-15'));
