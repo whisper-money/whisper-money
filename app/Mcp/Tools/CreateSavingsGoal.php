@@ -22,7 +22,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Create a savings goal: one-off (a total, optionally by a date) or monthly (an amount or share of income each month). Monthly can auto-tag a savings account\'s past and future transfers.')]
+#[Description('Create a savings goal: one-off (a total, optionally by a date) or, where the account has it enabled, monthly (an amount or share of income each month, optionally auto-tagging a savings account).')]
 class CreateSavingsGoal extends WriteTool
 {
     use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesSavingsGoalWrites;
@@ -34,7 +34,7 @@ class CreateSavingsGoal extends WriteTool
     {
         return [
             'name' => $schema->string()->description('Goal name. It also names the label its contributions are tagged with, so it must not clash with an existing label.')->required(),
-            'kind' => $schema->string()->enum(array_column(SavingsGoalKind::cases(), 'value'))->description('"one_off" to reach a total once, "monthly" to save towards a target every calendar month. Fixed once created.')->required(),
+            'kind' => $schema->string()->enum(array_column(SavingsGoalKind::cases(), 'value'))->description('"one_off" to reach a total once, "monthly" to save towards a target every calendar month. Fixed once created. "monthly" is refused unless the user\'s account has monthly goals enabled.')->required(),
             'target_amount' => $schema->integer()->description('One-off only, required: the total to reach, in the user currency\'s minor units.'),
             'initial_amount' => $schema->integer()->description('One-off only: what is already saved towards it, in minor units.'),
             'target_date' => $schema->string()->description('One-off only: date to reach the total by, YYYY-MM-DD, in the future.'),
@@ -50,6 +50,12 @@ class CreateSavingsGoal extends WriteTool
     protected function write(Request $request, User $user): Response
     {
         $kind = SavingsGoalKind::tryFrom($request->string('kind')->toString());
+
+        if ($kind === SavingsGoalKind::Monthly && ! $user->canCreateMonthlySavingsGoals()) {
+            throw ValidationException::withMessages([
+                'kind' => 'Monthly savings goals are not available on this account yet, so none can be created. Offer a one_off goal instead; any monthly goal the user already has can still be listed and updated.',
+            ]);
+        }
         [$otherKindRules, $messages] = $kind === null ? [[], []] : $this->otherKindFieldRules($kind);
 
         $validated = $request->validate([
