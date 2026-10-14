@@ -6,7 +6,7 @@ import {
     daysLeftLabel,
     monthDate,
 } from '@/lib/monthly-savings';
-import { SavingsGoal } from '@/types/savings-goal';
+import { MonthlyVerdicts, SavingsGoal } from '@/types/savings-goal';
 import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Repeat } from 'lucide-react';
@@ -15,6 +15,8 @@ import { MonthlySavingsGoalCard } from './monthly-savings-goal-card';
 
 interface Props {
     goals: SavingsGoal[];
+    /** How every goal, archived ones included, did last month. */
+    lastMonth: MonthlyVerdicts | null;
     currencyCode: string;
 }
 
@@ -23,10 +25,14 @@ interface Props {
  * monthly goal, then one card per goal. It sits above the reorderable list on
  * purpose — a goal that starts over every month is not ranked against budgets.
  */
-export function MonthlySavingsSection({ goals, currencyCode }: Props) {
+export function MonthlySavingsSection({
+    goals,
+    lastMonth,
+    currencyCode,
+}: Props) {
     const locale = useLocale();
     const currentMonth = currentMonthOf(goals);
-    const aggregate = aggregateMonthlyGoals(goals, currentMonth);
+    const aggregate = aggregateMonthlyGoals(goals);
 
     return (
         <section
@@ -71,19 +77,19 @@ export function MonthlySavingsSection({ goals, currencyCode }: Props) {
                             </span>
                         )}
                     </div>
-                    {aggregate.previousTotal > 0 && (
+                    {lastMonth && (
                         <div className="flex flex-col gap-0.5">
                             <span className="text-muted-foreground capitalize">
                                 {formatDate(
-                                    monthDate(aggregate.previousMonth),
+                                    monthDate(lastMonth.month),
                                     'MMMM',
                                     locale,
                                 )}
                             </span>
                             <span className="font-semibold">
                                 {__(':met of :total met', {
-                                    met: aggregate.previousMet,
-                                    total: aggregate.previousTotal,
+                                    met: lastMonth.met,
+                                    total: lastMonth.total,
                                 })}
                             </span>
                         </div>

@@ -83,6 +83,8 @@ class EmailPresenter
             $this->spendingTile($summary, $locale),
             $this->budgetsTile($summary, $locale),
             $this->goalTile($summary, $locale),
+            // Last, so it only takes a slot the existing tiles leave free.
+            $this->monthlyGoalsTile($summary, $locale),
         ]);
 
         return array_slice(array_values($tiles), 0, self::MAX_TILES);
@@ -125,7 +127,27 @@ class EmailPresenter
      */
     private function budgetsTile(MonthlySummary $summary, string $locale): ?array
     {
-        $total = (int) $summary->figure('budgets.total', 0);
+        return $this->metTile($summary, 'budgets', __('Budgets'), $locale);
+    }
+
+    /**
+     * Counts only: like the rest of the email, no absolute amount.
+     *
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
+     */
+    private function monthlyGoalsTile(MonthlySummary $summary, string $locale): ?array
+    {
+        return $this->metTile($summary, 'monthly_goals', __('Monthly savings goals'), $locale);
+    }
+
+    /**
+     * How many of a section's items were met, out of how many.
+     *
+     * @return array{value: string, label: string, sub: string, tone: ?string}|null
+     */
+    private function metTile(MonthlySummary $summary, string $section, string $label, string $locale): ?array
+    {
+        $total = (int) $summary->figure($section.'.total', 0);
 
         if ($total <= 0) {
             return null;
@@ -133,10 +155,10 @@ class EmailPresenter
 
         return [
             'value' => __(':met of :total', [
-                'met' => Figures::count((int) $summary->figure('budgets.met', 0), $locale),
+                'met' => Figures::count((int) $summary->figure($section.'.met', 0), $locale),
                 'total' => Figures::count($total, $locale),
             ]),
-            'label' => __('Budgets'),
+            'label' => $label,
             'sub' => __('met'),
             'tone' => null,
         ];
