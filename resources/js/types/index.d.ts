@@ -176,6 +176,7 @@ export type NotificationKind =
     | 'monthly_summary'
     | 'achievement'
     | 'achievements_welcome'
+    | 'monthly_savings_goal'
     | 'other';
 
 /** One row in the bell, already worded for the reader's language. */

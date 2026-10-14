@@ -3973,5 +3973,19 @@
     "Already used by “:goal”": "Ya la usa «:goal»",
     "Auto-tags transfers into :account": "Etiqueta automáticamente lo que entra en :account",
     "There are no savings accounts in this space. Link contributions to the goal by hand.": "No hay cuentas de ahorro en este espacio. Vincula las aportaciones al objetivo a mano.",
-    "There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.": "No hay cuentas de ahorro libres en este espacio: todas alimentan ya otro objetivo mensual. Vincula las aportaciones al objetivo a mano."
+    "There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.": "No hay cuentas de ahorro libres en este espacio: todas alimentan ya otro objetivo mensual. Vincula las aportaciones al objetivo a mano.",
+    "Partial month: it started too late to have a target. The first full month counts.": "Mes parcial: empezó demasiado tarde para tener objetivo. Cuenta el primer mes completo.",
+    "No full month before it was archived": "Ningún mes completo antes de archivarlo",
+    "An email 5 days before the month ends when a monthly goal is still short of its target. The default applies to newly created goals.": "Un email 5 días antes de cerrar el mes si aún no has cumplido un objetivo mensual. El valor por defecto se aplica a los objetivos nuevos.",
+    "Default (new monthly goals)": "Por defecto (objetivos mensuales nuevos)",
+    "Monthly savings goals": "Objetivos de ahorro mensual",
+    ":count months in a row": ":count meses seguidos",
+    ":goal: :month goal met": ":goal: objetivo de :month cumplido",
+    ":goal: :month goal missed": ":goal: objetivo de :month no cumplido",
+    "{1}1 day left in :month|[2,*]:days days left in :month": "{1}Queda 1 día de :month|[2,*]Quedan :days días de :month",
+    "{1}1 day left to reach this month's savings targets|[2,*]:days days left to reach this month's savings targets": "{1}Queda 1 día para cumplir los objetivos de ahorro de este mes|[2,*]Quedan :days días para cumplir los objetivos de ahorro de este mes",
+    "{1}Hi :name, this monthly goal is still short of its :month target:|[2,*]Hi :name, these monthly goals are still short of their :month target:": "{1}Hola :name, a este objetivo mensual aún le falta para cumplir el de :month:|[2,*]Hola :name, a estos objetivos mensuales aún les falta para cumplir el de :month:",
+    "**:goal**: you are at :percent% of it.": "**:goal**: vas al :percent %.",
+    "View your goals": "Ver tus objetivos",
+    "You can turn this reminder off on each goal or in [notification settings](:url).": "Puedes desactivar este recordatorio en cada objetivo o en los [ajustes de notificaciones](:url)."
 }
