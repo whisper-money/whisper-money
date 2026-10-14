@@ -15,6 +15,24 @@ import { SavingsGoal } from '@/types/savings-goal';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
+import {
+    isMonthlyTargetValid,
+    MonthlyTargetFields,
+    monthlyTargetPayload,
+    MonthlyTargetValue,
+    ReminderField,
+} from './monthly/monthly-goal-fields';
+
+function monthlyTargetOf(savingsGoal: SavingsGoal): MonthlyTargetValue {
+    return {
+        type: savingsGoal.monthly_target_type ?? 'amount',
+        amount: savingsGoal.monthly_target_amount ?? 0,
+        rate:
+            savingsGoal.monthly_target_rate === null
+                ? ''
+                : String(savingsGoal.monthly_target_rate),
+    };
+}
 
 interface Props {
     savingsGoal: SavingsGoal;
@@ -39,6 +57,13 @@ export function EditSavingsGoalDialog({
     const [targetDate, setTargetDate] = useState<string>(
         savingsGoal.target_date ?? '',
     );
+    const [monthlyTarget, setMonthlyTarget] = useState<MonthlyTargetValue>(
+        monthlyTargetOf(savingsGoal),
+    );
+    const [notifyReminder, setNotifyReminder] = useState(
+        savingsGoal.notify_on_month_end_reminder,
+    );
+    const isMonthly = savingsGoal.kind === 'monthly';
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -48,6 +73,8 @@ export function EditSavingsGoalDialog({
             setTargetAmount(savingsGoal.target_amount);
             setInitialAmount(savingsGoal.initial_amount);
             setTargetDate(savingsGoal.target_date ?? '');
+            setMonthlyTarget(monthlyTargetOf(savingsGoal));
+            setNotifyReminder(savingsGoal.notify_on_month_end_reminder);
             setErrors({});
         }
     }, [open, savingsGoal]);
@@ -59,12 +86,18 @@ export function EditSavingsGoalDialog({
 
         router.patch(
             update({ savingsGoal: savingsGoal.id }).url,
-            {
-                name,
-                target_amount: targetAmount,
-                initial_amount: initialAmount,
-                target_date: targetDate || null,
-            },
+            isMonthly
+                ? {
+                      name,
+                      ...monthlyTargetPayload(monthlyTarget),
+                      notify_on_month_end_reminder: notifyReminder,
+                  }
+                : {
+                      name,
+                      target_amount: targetAmount,
+                      initial_amount: initialAmount,
+                      target_date: targetDate || null,
+                  },
             {
                 onSuccess: () => onOpenChange(false),
                 onError: (formErrors) =>
@@ -105,69 +138,95 @@ export function EditSavingsGoalDialog({
                             )}
                         </div>
 
-                        <div className="space-y-2">
-                            <UILabel htmlFor="edit-goal-target">
-                                {__('Target Amount')}
-                            </UILabel>
-                            <AmountInput
-                                id="edit-goal-target"
-                                value={targetAmount}
-                                onChange={setTargetAmount}
-                                currencyCode={currencyCode}
-                            />
-                            {errors.target_amount && (
-                                <p className="text-sm text-destructive">
-                                    {errors.target_amount}
+                        {isMonthly ? (
+                            <>
+                                <MonthlyTargetFields
+                                    idPrefix="edit-goal"
+                                    value={monthlyTarget}
+                                    onChange={setMonthlyTarget}
+                                    currencyCode={currencyCode}
+                                    errors={errors}
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    {__(
+                                        'A new target applies from this month on. Past months keep the target they had.',
+                                    )}
                                 </p>
-                            )}
-                        </div>
+                                <ReminderField
+                                    id="edit-goal-reminder"
+                                    checked={notifyReminder}
+                                    onChange={setNotifyReminder}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <UILabel htmlFor="edit-goal-target">
+                                        {__('Target Amount')}
+                                    </UILabel>
+                                    <AmountInput
+                                        id="edit-goal-target"
+                                        value={targetAmount}
+                                        onChange={setTargetAmount}
+                                        currencyCode={currencyCode}
+                                    />
+                                    {errors.target_amount && (
+                                        <p className="text-sm text-destructive">
+                                            {errors.target_amount}
+                                        </p>
+                                    )}
+                                </div>
 
-                        <div className="space-y-2">
-                            <UILabel htmlFor="edit-goal-initial">
-                                {__('Already Saved')}{' '}
-                                <span className="text-muted-foreground">
-                                    {__('(optional)')}
-                                </span>
-                            </UILabel>
-                            <AmountInput
-                                id="edit-goal-initial"
-                                value={initialAmount}
-                                onChange={setInitialAmount}
-                                currencyCode={currencyCode}
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                {__(
-                                    'What you had already put aside before creating this goal. Linked transactions add on top of it.',
-                                )}
-                            </p>
-                            {errors.initial_amount && (
-                                <p className="text-sm text-destructive">
-                                    {errors.initial_amount}
-                                </p>
-                            )}
-                        </div>
+                                <div className="space-y-2">
+                                    <UILabel htmlFor="edit-goal-initial">
+                                        {__('Already Saved')}{' '}
+                                        <span className="text-muted-foreground">
+                                            {__('(optional)')}
+                                        </span>
+                                    </UILabel>
+                                    <AmountInput
+                                        id="edit-goal-initial"
+                                        value={initialAmount}
+                                        onChange={setInitialAmount}
+                                        currencyCode={currencyCode}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'What you had already put aside before creating this goal. Linked transactions add on top of it.',
+                                        )}
+                                    </p>
+                                    {errors.initial_amount && (
+                                        <p className="text-sm text-destructive">
+                                            {errors.initial_amount}
+                                        </p>
+                                    )}
+                                </div>
 
-                        <div className="space-y-2">
-                            <UILabel htmlFor="edit-goal-target-date">
-                                {__('Target Date')}{' '}
-                                <span className="text-muted-foreground">
-                                    {__('(optional)')}
-                                </span>
-                            </UILabel>
-                            <Input
-                                id="edit-goal-target-date"
-                                type="date"
-                                min="1900-01-01"
-                                max="2100-01-01"
-                                value={targetDate}
-                                onChange={(e) => setTargetDate(e.target.value)}
-                            />
-                            {errors.target_date && (
-                                <p className="text-sm text-destructive">
-                                    {errors.target_date}
-                                </p>
-                            )}
-                        </div>
+                                <div className="space-y-2">
+                                    <UILabel htmlFor="edit-goal-target-date">
+                                        {__('Target Date')}{' '}
+                                        <span className="text-muted-foreground">
+                                            {__('(optional)')}
+                                        </span>
+                                    </UILabel>
+                                    <Input
+                                        id="edit-goal-target-date"
+                                        type="date"
+                                        min="1900-01-01"
+                                        max="2100-01-01"
+                                        value={targetDate}
+                                        onChange={(e) =>
+                                            setTargetDate(e.target.value)
+                                        }
+                                    />
+                                    {errors.target_date && (
+                                        <p className="text-sm text-destructive">
+                                            {errors.target_date}
+                                        </p>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <DialogFooter>
@@ -181,7 +240,11 @@ export function EditSavingsGoalDialog({
                         <Button
                             type="submit"
                             disabled={
-                                isSubmitting || !name || targetAmount <= 0
+                                isSubmitting ||
+                                !name ||
+                                (isMonthly
+                                    ? !isMonthlyTargetValid(monthlyTarget)
+                                    : targetAmount <= 0)
                             }
                         >
                             {isSubmitting

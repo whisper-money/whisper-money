@@ -37,8 +37,6 @@ it('creates a savings goal from the planning page and opens it', function () {
         ->click('Create')
         ->click('[role="menuitem"]:has-text("Savings Goal")')
         ->assertSee('Create Savings Goal')
-        // The amount goes in first: AmountInput only reports its value when it
-        // loses focus, and filling the next field is what takes focus from it.
         ->fill('#goal-target', '1000')
         ->fill('#goal-target-date', $targetDate)
         ->fill('#goal-name', 'Trip to Japan')
@@ -60,6 +58,36 @@ it('creates a savings goal from the planning page and opens it', function () {
         ->assertSee('Trip to Japan')
         ->assertSee('0%')
         ->assertNoJavascriptErrors();
+});
+
+// The amount is typed last and the button clicked once: it has to unlock while
+// the field still has the focus, or the first click lands on a disabled button
+// and only a second one submits.
+it('creates a monthly goal with a single click right after typing the amount', function () {
+    $user = PlanningFixtures::user();
+
+    actingAs($user);
+
+    $page = visit('/budgets');
+
+    $page->assertSee('Planning')
+        ->click('Create')
+        ->click('[role="menuitem"]:has-text("Savings Goal")')
+        ->assertSee('Create Savings Goal')
+        ->click('[role="dialog"] button:has-text("Monthly (recurring)")')
+        ->fill('#goal-name', 'Rainy day fund')
+        ->click('#goal-monthly-target')
+        ->fill('#goal-monthly-target', '300')
+        ->assertScript("document.activeElement.id === 'goal-monthly-target'")
+        ->assertScript("!document.querySelector('[role=\"dialog\"] button[type=\"submit\"]').disabled")
+        ->click('[role="dialog"] button[type="submit"]')
+        ->assertSee('Rainy day fund')
+        ->assertNoJavascriptErrors();
+
+    $goal = SavingsGoal::query()->where('user_id', $user->id)->sole();
+
+    expect($goal->name)->toBe('Rainy day fund')
+        ->and($goal->monthly_target_amount)->toBe(30000);
 });
 
 // The typo behind #963. A five-digit year is a date the field accepts happily,
@@ -148,8 +176,8 @@ it('edits the target and archives the goal, which moves it to the archived secti
 
     $page->assertSee('New kitchen')
         ->assertSee('25%')
-        ->click('[aria-label="More options"]')
-        ->click('[role="menuitem"]:has-text("Edit goal")')
+        // Edit and Archive sit in the page header; only Delete is in the menu.
+        ->click('button:text-is("Edit")')
         ->assertSee('Edit Savings Goal')
         // Focus first: an AmountInput rewrites itself with the amount it
         // already holds the moment it gains focus, which lands on top of a
@@ -165,8 +193,7 @@ it('edits the target and archives the goal, which moves it to the archived secti
 
     expect($goal->fresh()->target_amount)->toBe(50000);
 
-    $page->click('[aria-label="More options"]')
-        ->click('[role="menuitem"]:has-text("Archive goal")')
+    $page->click('button:text-is("Archive")')
         ->assertSee('Archive savings goal')
         ->assertSee('The amount saved is frozen at what it is today, whatever happens to those transactions afterwards.')
         ->click('[role="alertdialog"] button:has-text("Archive goal")')

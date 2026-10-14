@@ -12,10 +12,13 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
+use App\Services\SavingsGoals\MonthlySavingsGoalStats;
+use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,7 +45,11 @@ class SavingsGoalController extends Controller
      */
     private const TRANSACTION_RELATIONS = ['account.bank', 'category', 'labels'];
 
-    public function __construct(private SavingsGoalService $goals) {}
+    public function __construct(
+        private SavingsGoalService $goals,
+        private MonthlySavingsGoalStats $monthlyStats,
+        private SavingsGoalPeriodService $periods,
+    ) {}
 
     public function store(StoreSavingsGoalRequest $request): RedirectResponse
     {
@@ -67,19 +74,15 @@ class SavingsGoalController extends Controller
                 ->get()
             : collect();
 
-        $stats = SavingsGoal::project(
-            $savingsGoal->savedAmountInCents(),
-            $savingsGoal->target_amount,
-            SavingsGoal::effectiveStart($savingsGoal->created_at, $transactions->first()?->transaction_date),
-            $savingsGoal->target_date,
-            $savingsGoal->measuredAt(),
-            $savingsGoal->initial_amount,
-        );
+        $isMonthly = $savingsGoal->isMonthly();
 
         return Inertia::render('savings-goals/show', [
             'savingsGoal' => $savingsGoal,
             'transactions' => $transactions->values(),
-            'stats' => $stats,
+            // A monthly goal is read month by month; the one-off projection
+            // towards a total means nothing for it.
+            'stats' => $isMonthly ? null : $this->oneOffStats($savingsGoal, $transactions),
+            'monthly' => $isMonthly ? $this->monthlyStats->forGoal($savingsGoal) : null,
             'categories' => Category::query()
                 ->where('user_id', $user->id)
                 ->forDisplay()
@@ -112,6 +115,24 @@ class SavingsGoalController extends Controller
                 ->limit($this->recentTransactionsLimit($request))
                 ->get()),
         ]);
+    }
+
+    /**
+     * Progress and projection of a one-off goal towards its total.
+     *
+     * @param  Collection<int, Transaction>  $transactions  its tagged transactions, oldest first
+     * @return array<string, mixed>
+     */
+    private function oneOffStats(SavingsGoal $savingsGoal, Collection $transactions): array
+    {
+        return SavingsGoal::project(
+            $savingsGoal->savedAmountInCents(),
+            $savingsGoal->target_amount,
+            SavingsGoal::effectiveStart($savingsGoal->created_at, $transactions->first()?->transaction_date),
+            $savingsGoal->target_date,
+            $savingsGoal->measuredAt(),
+            $savingsGoal->initial_amount,
+        );
     }
 
     /**
@@ -151,6 +172,11 @@ class SavingsGoalController extends Controller
             ->all();
 
         $changes = $label->transactions()->sync($ids);
+
+        // A write, so the months a read only showed are persisted here too.
+        if ($savingsGoal->isMonthly() && ! $savingsGoal->isArchived()) {
+            $this->periods->advance($savingsGoal);
+        }
 
         $touched = array_merge($changes['attached'], $changes['detached']);
 

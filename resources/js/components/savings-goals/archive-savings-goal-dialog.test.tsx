@@ -41,6 +41,27 @@ describe('ArchiveSavingsGoalDialog', () => {
         expect(screen.getByText(/This cannot be undone/)).toBeInTheDocument();
     });
 
+    it('tells a monthly goal what happens to its months instead', () => {
+        render(
+            <ArchiveSavingsGoalDialog
+                savingsGoal={{ ...savingsGoal, kind: 'monthly' } as SavingsGoal}
+                open={true}
+                onOpenChange={() => {}}
+            />,
+        );
+
+        expect(
+            screen.getByText(/This month becomes a partial month/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Month-end reminders stop/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Every past month keeps its target/),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/amount saved is frozen/)).toBeNull();
+    });
+
     it('posts to the archive endpoint of the goal it was given', () => {
         render(
             <ArchiveSavingsGoalDialog
