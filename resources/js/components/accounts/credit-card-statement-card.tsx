@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLocale } from '@/hooks/use-locale';
 import type {
     CreditCardDetail,
+    CreditCardPreviousStatement,
     CreditCardStatement,
     CurrencyCode,
     StatementFrequency,
@@ -195,11 +196,76 @@ function StatementSummary({
                 </span>
             </div>
 
+            <PreviousStatementLine
+                statement={statement.previous_statement}
+                currencyCode={currencyCode}
+            />
+
             <p className="text-xs text-muted-foreground">
                 {__(
                     'Estimated from the transactions recorded on this card, leaving out repayments. Your bank statement is the final word.',
                 )}
             </p>
+        </div>
+    );
+}
+
+/**
+ * The statement before the one charged next, so a payment made on it shows
+ * where it went instead of looking like it did nothing. When the app has no
+ * purchases for that period it says so rather than read the payment as an
+ * overpayment. Left out while nothing was bought or paid on it.
+ */
+function PreviousStatementLine({
+    statement,
+    currencyCode,
+}: {
+    statement: CreditCardPreviousStatement;
+    currencyCode: CurrencyCode;
+}) {
+    const locale = useLocale();
+
+    if (statement.purchases === 0 && statement.paid === 0) {
+        return null;
+    }
+
+    const amount = (amountInCents: number) => (
+        <AmountDisplay
+            amountInCents={amountInCents}
+            currencyCode={currencyCode}
+            weight="medium"
+            monospace
+        />
+    );
+
+    return (
+        <div
+            className="flex flex-col gap-1 text-sm"
+            data-testid="previous-statement"
+        >
+            <span className="font-medium">
+                {__('Statement :from – :to', {
+                    from: formatDateMedium(statement.period_from, locale),
+                    to: formatDateMedium(statement.closing_date, locale),
+                })}
+            </span>
+            <span className="flex flex-wrap items-baseline gap-1 text-muted-foreground">
+                {statement.has_recorded_purchases && (
+                    <>
+                        {__('purchases')} {amount(statement.purchases)}
+                        <span aria-hidden>·</span>
+                    </>
+                )}
+                {__('paid')} {amount(statement.paid)}
+                <span aria-hidden>·</span>
+                {statement.has_recorded_purchases ? (
+                    <>
+                        {__('pending')} {amount(statement.pending)}
+                    </>
+                ) : (
+                    __('No purchases recorded for that period')
+                )}
+            </span>
         </div>
     );
 }

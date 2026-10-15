@@ -130,11 +130,42 @@ export interface CreditCardStatementCycle {
     amount: number;
 }
 
+/**
+ * A repayment booked on the card, with the statement it pays: the last one
+ * closed before it was made. `amount` is positive, in minor units.
+ */
+export interface CreditCardPayment {
+    date: string;
+    amount: number;
+    period_from: string;
+    closing_date: string;
+    due_date: string;
+}
+
+/**
+ * The statement before the one charged next, against what was paid on it.
+ * `pending` never goes below zero. `has_recorded_purchases` is false when the
+ * statement ends before the card's first recorded purchase, so the app has no
+ * data to check the payments against.
+ */
+export interface CreditCardPreviousStatement {
+    period_from: string;
+    closing_date: string;
+    due_date: string;
+    purchases: number;
+    paid: number;
+    pending: number;
+    has_recorded_purchases: boolean;
+}
+
 /** The server's estimate of what a credit card charges next. */
 export interface CreditCardStatement {
     /** `is_final` once the statement has closed and its amount no longer moves. */
     next_payment: CreditCardStatementCycle & { is_final: boolean };
     current_cycle: CreditCardStatementCycle;
+    /** Repayments booked in the usage window, oldest first. */
+    payments: CreditCardPayment[];
+    previous_statement: CreditCardPreviousStatement;
 }
 
 /**

@@ -20,6 +20,7 @@ import { Progress } from '@/components/ui/progress';
 import { useLocale } from '@/hooks/use-locale';
 import type {
     CreditCardDetail,
+    CreditCardPayment,
     CreditCardUsage,
     CurrencyCode,
 } from '@/types/account';
@@ -34,13 +35,22 @@ import { __ } from '@/utils/i18n';
 import { eachDayOfInterval, format } from 'date-fns';
 import { Gauge } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
-import { Area, AreaChart, ReferenceLine, XAxis, YAxis } from 'recharts';
+import {
+    Area,
+    AreaChart,
+    ReferenceDot,
+    ReferenceLine,
+    XAxis,
+    YAxis,
+} from 'recharts';
 
 interface CreditCardUsageChartProps {
     accountId: string;
     currencyCode: CurrencyCode;
     usage: CreditCardUsage;
     detail: CreditCardDetail | null;
+    /** Repayments to mark on the line, each with the statement it pays. */
+    payments?: CreditCardPayment[];
 }
 
 export interface UsageChartPoint {
@@ -64,6 +74,31 @@ export function usageChartData(usage: CreditCardUsage): UsageChartPoint[] {
 
         return { date, used: usedOn.get(date) ?? null };
     });
+}
+
+/**
+ * The payments to mark on the line, grouped by day, keeping only the days the
+ * line reaches: a payment booked after today has no point to sit on.
+ */
+export function paymentsByDay(
+    payments: CreditCardPayment[],
+    data: UsageChartPoint[],
+): Map<string, CreditCardPayment[]> {
+    const charted = new Set(
+        data.filter((point) => point.used !== null).map((point) => point.date),
+    );
+    const byDay = new Map<string, CreditCardPayment[]>();
+
+    payments
+        .filter((payment) => charted.has(payment.date))
+        .forEach((payment) =>
+            byDay.set(payment.date, [
+                ...(byDay.get(payment.date) ?? []),
+                payment,
+            ]),
+        );
+
+    return byDay;
 }
 
 interface UsagePeriod {
@@ -117,6 +152,7 @@ export function CreditCardUsageChart({
     currencyCode,
     usage,
     detail,
+    payments = [],
 }: CreditCardUsageChartProps) {
     const locale = useLocale();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -138,6 +174,7 @@ export function CreditCardUsageChart({
                     available={usage.available}
                     currencyCode={currencyCode}
                     period={period}
+                    payments={payments}
                 />
             )}
 
@@ -217,12 +254,14 @@ function LimitUsage({
     available,
     currencyCode,
     period,
+    payments,
 }: {
     usage: CreditCardUsage;
     limit: number;
     available: number;
     currencyCode: CurrencyCode;
     period: UsagePeriod;
+    payments: CreditCardPayment[];
 }) {
     const isOverLimit = available < 0;
     // Refunds can outweigh purchases and leave `used` below zero.
@@ -309,6 +348,7 @@ function LimitUsage({
                     usage={usage}
                     limit={limit}
                     currencyCode={currencyCode}
+                    payments={payments}
                 />
                 <PeriodExplanation period={period} />
             </CardContent>
@@ -316,17 +356,37 @@ function LimitUsage({
     );
 }
 
+/** What a payment pays, for the tooltip of the day it was made. */
+export function paymentNote(
+    payment: CreditCardPayment,
+    currencyCode: CurrencyCode,
+    locale: string,
+): string {
+    return __('Payment of :amount for the statement :from – :to', {
+        amount: formatCurrency(payment.amount, currencyCode, locale),
+        from: formatDateMedium(payment.period_from, locale),
+        to: formatDateMedium(payment.closing_date, locale),
+    });
+}
+
 function UsageChart({
     usage,
     limit,
     currencyCode,
+    payments,
 }: {
     usage: CreditCardUsage;
     limit: number;
     currencyCode: CurrencyCode;
+    payments: CreditCardPayment[];
 }) {
     const locale = useLocale();
     const data = useMemo(() => usageChartData(usage), [usage]);
+    const paymentDays = useMemo(
+        () => paymentsByDay(payments, data),
+        [payments, data],
+    );
+    const usedOn = new Map(data.map((point) => [point.date, point.used]));
 
     if (usage.daily.length === 0) {
         return (
@@ -360,9 +420,27 @@ function UsageChart({
                 <ChartTooltip
                     content={
                         <ChartTooltipContent
-                            labelFormatter={(date) =>
-                                formatDateMedium(String(date), locale)
-                            }
+                            labelFormatter={(date) => (
+                                <span className="flex flex-col gap-0.5">
+                                    <span>
+                                        {formatDateMedium(String(date), locale)}
+                                    </span>
+                                    {paymentDays
+                                        .get(String(date))
+                                        ?.map((payment, index) => (
+                                            <span
+                                                key={index}
+                                                className="font-normal text-emerald-700 dark:text-emerald-400"
+                                            >
+                                                {paymentNote(
+                                                    payment,
+                                                    currencyCode,
+                                                    locale,
+                                                )}
+                                            </span>
+                                        ))}
+                                </span>
+                            )}
                             valueFormatter={(value: number) =>
                                 formatCurrency(value, currencyCode, locale)
                             }
@@ -391,6 +469,17 @@ function UsageChart({
                     activeDot={{ r: 5 }}
                     fillOpacity={1}
                 />
+                {[...paymentDays.keys()].map((date) => (
+                    <ReferenceDot
+                        key={date}
+                        x={date}
+                        y={usedOn.get(date) ?? 0}
+                        r={5}
+                        fill="var(--color-emerald-600)"
+                        stroke="var(--background)"
+                        strokeWidth={2}
+                    />
+                ))}
             </AreaChart>
         </ChartContainer>
     );

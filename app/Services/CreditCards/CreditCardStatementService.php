@@ -12,6 +12,7 @@ use App\Services\ExchangeRateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 
@@ -78,7 +79,8 @@ class CreditCardStatementService
     /**
      * What a credit card's ledger says as of $today: the estimate its
      * statement dates give (null while it has none) and how much of the card
-     * is in use. Both come from one query. Reads the `creditCardDetail`
+     * is in use. Both come from one query (two when a payment settles a
+     * statement with no purchases, see hasRecordedPurchasesBy). Reads the `creditCardDetail`
      * relation, so eager-load it when presenting several cards.
      *
      * Usage covers what is still to be charged: from the statement paid next
@@ -88,10 +90,17 @@ class CreditCardStatementService
      * they have not drawn on the limit yet. `available` goes negative over
      * the limit, and both are null while no limit is set.
      *
+     * The estimate also lists the repayments booked in that window, each with
+     * the statement it pays, and sums up the statement before the one paid
+     * next, which is the one those repayments usually settle. Repayments never
+     * bring usage down: they mostly pay purchases from before the window.
+     *
      * @return array{
      *     credit_card_statement: array{
      *         next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool},
      *         current_cycle: array{period_from: string, closing_date: string, due_date: string, amount: int},
+     *         payments: list<array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
+     *         previous_statement: array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool},
      *     }|null,
      *     credit_card_usage: array{
      *         limit: int|null,
@@ -108,11 +117,13 @@ class CreditCardStatementService
         $schedule = StatementSchedule::fromDetail($account->creditCardDetail);
         $nextPayment = $schedule?->nextPaymentOn($today);
         $currentCycle = $schedule?->openCycleOn($today);
+        $previousStatement = $nextPayment === null ? null : $schedule->closedCycleBefore($nextPayment['cycle']->periodFrom);
 
         $from = $nextPayment['cycle']->periodFrom ?? $today->startOfMonth();
         $to = $currentCycle->closingDate ?? $today->endOfMonth()->startOfDay();
 
-        $transactions = $this->chargeableTransactions($account, $from, $to);
+        [$repayments, $transactions] = $this->ledgerRows($account, $previousStatement->periodFrom ?? $from, $to)
+            ->partition(fn (Transaction $transaction): bool => self::isRepayment($transaction));
 
         return [
             'credit_card_statement' => $nextPayment === null || $currentCycle === null ? null : [
@@ -125,42 +136,124 @@ class CreditCardStatementService
                     ...$currentCycle->toArray(),
                     'amount' => $this->amountToPay($transactions, $currentCycle, $account->currency_code),
                 ],
+                ...$this->paymentAttribution($account, $schedule, $previousStatement, $transactions, $repayments, $from),
             ],
             'credit_card_usage' => $this->usage($transactions, $from, $to, $today, $account),
         ];
     }
 
     /**
-     * The card's rows that end up on a statement between two dates, read on the
-     * date the bank booked them: users move `transaction_date` to tidy their
-     * cashflow, while `source_date` keeps the bank's.
-     *
-     * Repayments are left out: rows in a transfer category, and uncategorized
-     * inflows, which on a card are almost always the repayment itself. Both
-     * are filtered in SQL so a card costs one query, however many are listed.
+     * The card's rows booked between two dates, read on the date the bank
+     * booked them: users move `transaction_date` to tidy their cashflow,
+     * while `source_date` keeps the bank's. Each row carries its category
+     * type, so repayments can be told apart without another query.
      *
      * @return Collection<int, Transaction>
      */
-    private function chargeableTransactions(Account $account, CarbonImmutable $from, CarbonImmutable $to): Collection
+    private function ledgerRows(Account $account, CarbonImmutable $from, CarbonImmutable $to): Collection
     {
-        $transactions = $account->transactions()
-            ->leftJoin('categories', fn (JoinClause $join) => $join
-                ->on('categories.id', '=', 'transactions.category_id')
-                ->whereNull('categories.deleted_at'))
+        $transactions = $this->ledgerQuery($account)
             ->whereRaw('COALESCE(transactions.source_date, transactions.transaction_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
-            ->where(fn (Builder $query) => $query
-                ->whereNull('categories.type')
-                ->orWhere('categories.type', '!=', CategoryType::Transfer->value))
-            ->where(fn (Builder $query) => $query
-                ->whereNotNull('transactions.category_id')
-                ->orWhere('transactions.amount', '<=', 0))
-            ->select('transactions.*')
             ->get()
             ->each(fn (Transaction $transaction) => $transaction->setRelation('account', $account));
 
         $this->preloadExchangeRates($transactions, $account->currency_code);
 
         return $transactions;
+    }
+
+    /**
+     * @return HasMany<Transaction, Account>
+     */
+    private function ledgerQuery(Account $account): HasMany
+    {
+        return $account->transactions()
+            ->leftJoin('categories', fn (JoinClause $join) => $join
+                ->on('categories.id', '=', 'transactions.category_id')
+                ->whereNull('categories.deleted_at'))
+            ->select('transactions.*', 'categories.type as category_type');
+    }
+
+    /**
+     * Whether a row repays the card instead of ending up on a statement: rows
+     * in a transfer category, and uncategorized inflows, which on a card are
+     * almost always the repayment itself.
+     */
+    private static function isRepayment(Transaction $transaction): bool
+    {
+        return $transaction->getAttribute('category_type') === CategoryType::Transfer->value
+            || ($transaction->category_id === null && $transaction->amount > 0);
+    }
+
+    /**
+     * The repayments booked from $from on, each with the statement it pays
+     * (the last one closed before it was made), and what the statement before
+     * the one paid next adds up to, has been paid and is still pending.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, Transaction>  $repayments
+     * @return array{
+     *     payments: list<array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
+     *     previous_statement: array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool},
+     * }
+     */
+    private function paymentAttribution(Account $account, StatementSchedule $schedule, StatementCycle $previousStatement, Collection $transactions, Collection $repayments, CarbonImmutable $from): array
+    {
+        $payments = $repayments
+            ->filter(fn (Transaction $transaction): bool => $transaction->amount > 0 && self::bookedOn($transaction)->greaterThanOrEqualTo($from))
+            ->sortBy(fn (Transaction $transaction): string => self::bookedOn($transaction)->toDateString())
+            ->map(fn (Transaction $transaction): array => [
+                'date' => self::bookedOn($transaction)->toDateString(),
+                'amount' => $this->convertFullTransactionAmount($transaction, $account->currency_code),
+                ...$schedule->closedCycleBefore(self::bookedOn($transaction))->toArray(),
+            ])
+            ->values();
+
+        $purchases = $this->amountToPay($transactions, $previousStatement, $account->currency_code);
+        $paid = $payments->where('closing_date', $previousStatement->closingDate->toDateString())->sum('amount');
+
+        return [
+            'payments' => $payments->all(),
+            'previous_statement' => [
+                ...$previousStatement->toArray(),
+                'purchases' => $purchases,
+                'paid' => $paid,
+                'pending' => max(0, $purchases - $paid),
+                'has_recorded_purchases' => $this->hasRecordedPurchasesBy($account, $previousStatement, $transactions, $paid),
+            ],
+        ];
+    }
+
+    /**
+     * Whether the card has any purchase booked by the end of $statement. When
+     * it has none, the app holds no data for that statement, so what was paid
+     * on it cannot be checked against what it charged.
+     *
+     * Looks back in SQL only when the statement itself is empty and something
+     * was paid on it, so a card listed without such a payment still costs one
+     * query. An empty statement nobody paid has nothing to explain.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     */
+    private function hasRecordedPurchasesBy(Account $account, StatementCycle $statement, Collection $transactions, int $paid): bool
+    {
+        if ($transactions->contains(fn (Transaction $transaction): bool => self::bookedOn($transaction)->lessThanOrEqualTo($statement->closingDate))) {
+            return true;
+        }
+
+        if ($paid === 0) {
+            return false;
+        }
+
+        return $this->ledgerQuery($account)
+            ->whereRaw('COALESCE(transactions.source_date, transactions.transaction_date) < ?', [$statement->periodFrom->toDateString()])
+            ->where(fn (Builder $query) => $query
+                ->whereNull('categories.type')
+                ->orWhere('categories.type', '!=', CategoryType::Transfer->value))
+            ->where(fn (Builder $query) => $query
+                ->whereNotNull('transactions.category_id')
+                ->orWhere('transactions.amount', '<=', 0))
+            ->exists();
     }
 
     /**

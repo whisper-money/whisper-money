@@ -2965,5 +2965,11 @@
     "Re-evaluation queued": "Réévaluation en file d'attente",
     "Your transactions will be updated in the background shortly. Reload the page later to see the changes.": "Vos transactions seront mises à jour en arrière-plan sous peu. Rechargez la page plus tard pour voir les modifications.",
     "Statement frequency": "Fréquence du relevé",
-    "Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.": "Tous les champs sont facultatifs. Les relevés suivants sont supposés tomber le même jour de la semaine chaque semaine. Si votre banque les déplace, mettez-les à jour ici."
+    "Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.": "Tous les champs sont facultatifs. Les relevés suivants sont supposés tomber le même jour de la semaine chaque semaine. Si votre banque les déplace, mettez-les à jour ici.",
+    "Statement :from – :to": "Relevé :from – :to",
+    "purchases": "achats",
+    "paid": "payé",
+    "pending": "restant",
+    "No purchases recorded for that period": "Aucun achat enregistré pour cette période",
+    "Payment of :amount for the statement :from – :to": "Paiement de :amount pour le relevé :from – :to"
 }

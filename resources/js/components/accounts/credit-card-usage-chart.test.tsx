@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
     CreditCardUsageChart,
+    paymentNote,
+    paymentsByDay,
     usageChartData,
 } from './credit-card-usage-chart';
 
@@ -34,6 +36,7 @@ vi.mock('@/components/ui/chart', () => ({
 vi.mock('recharts', () => ({
     AreaChart: () => null,
     Area: () => null,
+    ReferenceDot: () => null,
     ReferenceLine: () => null,
     XAxis: () => null,
     YAxis: () => null,
@@ -84,6 +87,45 @@ describe('usageChartData', () => {
         expect(points[1]).toEqual({ date: '2026-10-02', used: 25000 });
         expect(points[2]).toEqual({ date: '2026-10-03', used: null });
         expect(points.at(-1)).toEqual({ date: '2026-10-31', used: null });
+    });
+});
+
+describe('paymentsByDay', () => {
+    const payment = (date: string, amount = 5000) => ({
+        date,
+        amount,
+        period_from: '2026-09-07',
+        closing_date: '2026-10-06',
+        due_date: '2026-10-26',
+    });
+
+    it('groups the payments by the day the line reaches', () => {
+        const byDay = paymentsByDay(
+            [
+                payment('2026-10-01'),
+                payment('2026-10-01', 2000),
+                payment('2026-10-02'),
+            ],
+            usageChartData(usage()),
+        );
+
+        expect(byDay.get('2026-10-01')).toHaveLength(2);
+        expect(byDay.get('2026-10-02')).toHaveLength(1);
+    });
+
+    it('leaves out payments past the last known day', () => {
+        const byDay = paymentsByDay(
+            [payment('2026-10-20')],
+            usageChartData(usage()),
+        );
+
+        expect(byDay.size).toBe(0);
+    });
+
+    it('names the statement a payment pays', () => {
+        expect(paymentNote(payment('2026-10-01', 96335), 'MXN', 'en-US')).toBe(
+            'Payment of MX$963.35 for the statement Sep 7, 2026 – Oct 6, 2026',
+        );
     });
 });
 

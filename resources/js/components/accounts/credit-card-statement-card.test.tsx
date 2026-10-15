@@ -1,4 +1,7 @@
-import type { CreditCardStatement } from '@/types/account';
+import type {
+    CreditCardPreviousStatement,
+    CreditCardStatement,
+} from '@/types/account';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +37,11 @@ const detail = {
     credit_limit: 300000,
 };
 
-function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
+function statement(
+    isFinal: boolean,
+    amount = 12345,
+    previous: Partial<CreditCardPreviousStatement> = {},
+): CreditCardStatement {
     return {
         next_payment: {
             period_from: '2026-02-06',
@@ -49,7 +56,29 @@ function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
             due_date: '2026-04-20',
             amount: 4000,
         },
+        payments: [],
+        previous_statement: {
+            period_from: '2026-01-06',
+            closing_date: '2026-02-05',
+            due_date: '2026-02-20',
+            purchases: 0,
+            paid: 0,
+            pending: 0,
+            has_recorded_purchases: true,
+            ...previous,
+        },
     };
+}
+
+function renderStatement(cardStatement: CreditCardStatement) {
+    return render(
+        <CreditCardStatementCard
+            accountId="card-1"
+            currencyCode="EUR"
+            detail={detail}
+            statement={cardStatement}
+        />,
+    );
 }
 
 describe('CreditCardStatementCard', () => {
@@ -243,6 +272,46 @@ describe('CreditCardStatementCard', () => {
         expect(screen.getByLabelText('Credit limit')).toHaveValue('3000.00');
         expect(
             screen.queryByRole('button', { name: 'Remove dates' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('sums up the previous statement against what was paid on it', () => {
+        renderStatement(
+            statement(true, 12345, {
+                purchases: 50000,
+                paid: 40000,
+                pending: 10000,
+            }),
+        );
+
+        const line = screen.getByTestId('previous-statement');
+        expect(line).toHaveTextContent('Statement Jan 6, 2026 – Feb 5, 2026');
+        expect(line).toHaveTextContent(
+            /purchases €500\.00\s*·\s*paid €400\.00\s*·\s*pending €100\.00/,
+        );
+    });
+
+    it('says no purchases are recorded instead of reading a payment as an overpayment', () => {
+        renderStatement(
+            statement(true, 12345, {
+                paid: 96335,
+                has_recorded_purchases: false,
+            }),
+        );
+
+        const line = screen.getByTestId('previous-statement');
+        expect(line).toHaveTextContent(
+            /paid €963\.35\s*·\s*No purchases recorded for that period/,
+        );
+        expect(line).not.toHaveTextContent('pending');
+        expect(line).not.toHaveTextContent('purchases €');
+    });
+
+    it('leaves the previous statement out while nothing was bought or paid on it', () => {
+        renderStatement(statement(true));
+
+        expect(
+            screen.queryByTestId('previous-statement'),
         ).not.toBeInTheDocument();
     });
 });
