@@ -354,7 +354,7 @@ function LimitUsage({
                 {payments.length > 0 && (
                     <p className="text-xs text-muted-foreground">
                         {__(
-                            'Dots on the line mark payments to the card and the statement each one pays.',
+                            'Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.',
                         )}
                     </p>
                 )}

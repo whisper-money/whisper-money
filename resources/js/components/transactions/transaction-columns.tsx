@@ -5,11 +5,11 @@ import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { StatementPaymentNote } from '@/components/accounts/statement-payment-note';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
+import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';

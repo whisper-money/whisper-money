@@ -67,6 +67,7 @@ import {
     supportsInvestedAmount,
     type AreaUnit,
     type CreditCardDetail,
+    type CreditCardPayment,
     type CreditCardStatement,
     type CreditCardUsage,
     type LoanDetail,
@@ -122,6 +123,9 @@ function MoreOptionsMenu({ children }: { children: ReactNode }) {
         </DropdownMenu>
     );
 }
+
+/** One empty list for every render, so the chart's memoised work holds. */
+const NO_PAYMENTS: CreditCardPayment[] = [];
 
 export default function AccountShow({
     account,
@@ -393,7 +397,10 @@ export default function AccountShow({
                         currencyCode={account.currency_code}
                         usage={account.credit_card_usage}
                         detail={account.credit_card_detail ?? null}
-                        payments={account.credit_card_statement?.payments ?? []}
+                        payments={
+                            account.credit_card_statement?.payments ??
+                            NO_PAYMENTS
+                        }
                     />
                 ) : (
                     <AccountBalanceChart

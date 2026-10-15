@@ -249,7 +249,8 @@ class CreditCardStatementService
      * Looks back in SQL only when the statement itself is empty and something
      * was paid on it, so a card listed without such a payment still costs one
      * query. An empty statement nobody paid has nothing to explain. The rows
-     * stream until the first purchase, so isRepayment stays the one rule.
+     * come in chunks until the first purchase, so isRepayment stays the one
+     * rule.
      *
      * @param  Collection<int, Transaction>  $transactions
      */
@@ -265,7 +266,8 @@ class CreditCardStatementService
 
         return $this->ledgerQuery($account)
             ->whereRaw('COALESCE(transactions.source_date, transactions.transaction_date) < ?', [$statement->periodFrom->toDateString()])
-            ->cursor()
+            ->orderBy('transactions.id')
+            ->lazy(100)
             ->contains(fn (Transaction $transaction): bool => ! self::isRepayment($transaction));
     }
 

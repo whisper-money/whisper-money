@@ -262,15 +262,15 @@ function PreviousStatementLine({
             <span className="flex flex-wrap items-baseline gap-1 text-muted-foreground">
                 {statement.has_recorded_purchases && (
                     <>
-                        {__('purchases')} {amount(statement.purchases)}
+                        {__('Purchases')} {amount(statement.purchases)}
                         <span aria-hidden>·</span>
                     </>
                 )}
-                {__('paid')} {amount(statement.paid)}
+                {__('Paid')} {amount(statement.paid)}
                 <span aria-hidden>·</span>
                 {statement.has_recorded_purchases ? (
                     <>
-                        {__('pending')} {amount(statement.pending)}
+                        {__('Pending')} {amount(statement.pending)}
                     </>
                 ) : (
                     __('No purchases recorded for that period')

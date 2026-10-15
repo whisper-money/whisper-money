@@ -288,7 +288,7 @@ describe('CreditCardStatementCard', () => {
         const line = screen.getByTestId('previous-statement');
         expect(line).toHaveTextContent('Statement Jan 6, 2026 – Feb 5, 2026');
         expect(line).toHaveTextContent(
-            /purchases €500\.00\s*·\s*paid €400\.00\s*·\s*pending €100\.00/,
+            /Purchases €500\.00\s*·\s*Paid €400\.00\s*·\s*Pending €100\.00/,
         );
     });
 
@@ -302,10 +302,10 @@ describe('CreditCardStatementCard', () => {
 
         const line = screen.getByTestId('previous-statement');
         expect(line).toHaveTextContent(
-            /paid €963\.35\s*·\s*No purchases recorded for that period/,
+            /Paid €963\.35\s*·\s*No purchases recorded for that period/,
         );
-        expect(line).not.toHaveTextContent('pending');
-        expect(line).not.toHaveTextContent('purchases €');
+        expect(line).not.toHaveTextContent('Pending');
+        expect(line).not.toHaveTextContent('Purchases €');
     });
 
     it('leaves the previous statement out while nothing was bought or paid on it', () => {
@@ -327,7 +327,7 @@ describe('CreditCardStatementCard', () => {
             ),
         ).toBeInTheDocument();
         expect(screen.getByTestId('previous-statement')).toHaveTextContent(
-            /pending €0\.00/,
+            /Pending €0\.00/,
         );
     });
 
