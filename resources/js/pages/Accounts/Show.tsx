@@ -161,6 +161,17 @@ export default function AccountShow({
     // A credit card has a limit and what is in use of it instead of a
     // balance: no balance chart and no balance actions.
     const isCreditCard = account.type === 'credit_card';
+    const statementPayments = useMemo(
+        () =>
+            isCreditCard
+                ? new Map(
+                      (account.credit_card_statement?.payments ?? []).map(
+                          (payment) => [payment.transaction_id, payment],
+                      ),
+                  )
+                : undefined,
+        [isCreditCard, account.credit_card_statement],
+    );
 
     function handleTransactionCreated() {
         // A credit card's statement estimate is computed on the server from
@@ -478,6 +489,7 @@ export default function AccountShow({
                             maxHeight={600}
                             hideColumns={['bank', 'account']}
                             headerActions={addTransactionButton}
+                            statementPayments={statementPayments}
                             onBalanceUpdated={() =>
                                 setChartRefreshKey((key) => key + 1)
                             }

@@ -209,12 +209,12 @@ it('ignores other accounts', function () {
 
 it('attributes a payment made between closing and due date to the statement that just closed', function () {
     cardTransaction(-3000, '2026-01-10');
-    cardTransaction(3000, '2026-02-12', ['category_id' => test()->transfer->id]);
-    cardTransaction(1200, '2026-03-08', ['category_id' => null]);
+    $previous = cardTransaction(3000, '2026-02-12', ['category_id' => test()->transfer->id]);
+    $next = cardTransaction(1200, '2026-03-08', ['category_id' => null]);
 
     expect(estimateOn('2026-03-10')['payments'])->toBe([
-        ['date' => '2026-02-12', 'amount' => 3000, 'period_from' => '2026-01-06', 'closing_date' => '2026-02-05', 'due_date' => '2026-02-20'],
-        ['date' => '2026-03-08', 'amount' => 1200, 'period_from' => '2026-02-06', 'closing_date' => '2026-03-05', 'due_date' => '2026-03-20'],
+        ['transaction_id' => $previous->id, 'date' => '2026-02-12', 'amount' => 3000, 'period_from' => '2026-01-06', 'closing_date' => '2026-02-05', 'due_date' => '2026-02-20'],
+        ['transaction_id' => $next->id, 'date' => '2026-03-08', 'amount' => 1200, 'period_from' => '2026-02-06', 'closing_date' => '2026-03-05', 'due_date' => '2026-03-20'],
     ]);
 });
 

@@ -100,7 +100,7 @@ class CreditCardStatementService
      *     credit_card_statement: array{
      *         next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool, paid: int},
      *         current_cycle: array{period_from: string, closing_date: string, due_date: string, amount: int},
-     *         payments: list<array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
+     *         payments: list<array{transaction_id: string, date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
      *         previous_statement: array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool},
      *     }|null,
      *     credit_card_usage: array{
@@ -194,7 +194,7 @@ class CreditCardStatementService
      * the statement it pays: the last one closed before it was made.
      *
      * @param  Collection<int, Transaction>  $repayments
-     * @return Collection<int, array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>
+     * @return Collection<int, array{transaction_id: string, date: string, amount: int, period_from: string, closing_date: string, due_date: string}>
      */
     private function paymentsBetween(Collection $repayments, StatementSchedule $schedule, CarbonImmutable $from, CarbonImmutable $today, string $currency): Collection
     {
@@ -203,6 +203,7 @@ class CreditCardStatementService
                 && self::bookedOn($transaction)->betweenIncluded($from, $today))
             ->sortBy(fn (Transaction $transaction): string => self::bookedOn($transaction)->toDateString())
             ->map(fn (Transaction $transaction): array => [
+                'transaction_id' => $transaction->id,
                 'date' => self::bookedOn($transaction)->toDateString(),
                 'amount' => $this->convertFullTransactionAmount($transaction, $currency),
                 ...$schedule->closedCycleBefore(self::bookedOn($transaction))->toArray(),

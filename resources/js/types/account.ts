@@ -135,6 +135,7 @@ export interface CreditCardStatementCycle {
  * closed before it was made. `amount` is positive, in minor units.
  */
 export interface CreditCardPayment {
+    transaction_id: string;
     date: string;
     amount: number;
     period_from: string;
