@@ -16,28 +16,21 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
         ->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->fill('#display_name', $displayName)
         ->click('[data-testid="bank-select"]')
-        ->wait(0.5)
         ->fill('input[placeholder="Search bank..."]', $bankName)
-        ->wait(0.5)
         ->click($bankName)
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click("[role=\"option\"]:has-text(\"{$type}\")")
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
-        ->click("[role=\"option\"]:has-text(\"{$currency}\")")
-        ->wait(0.3);
+        ->click("[role=\"option\"]:has-text(\"{$currency}\")");
 
     if ($balance !== null) {
         $page->fill('#balance', $balance);
     }
 
     $page->click('[data-testid="submit-account"]')
-        ->wait(2)
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.')
         ->assertNoJavascriptErrors();
 }
 
@@ -69,7 +62,7 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -114,7 +107,6 @@ it('redirects free users to subscribe when reconnecting a bank connection', func
     $page->assertSee('Connections')
         ->assertSee('Reconnect')
         ->click('Reconnect')
-        ->wait(3)
         ->assertPathIs('/subscribe')
         ->assertNoJavascriptErrors();
 });
@@ -131,23 +123,16 @@ it('can create a new bank account', function () {
         ->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->fill('#display_name', 'My Savings Account')
         ->click('[data-testid="bank-select"]')
-        ->wait(0.5)
         ->fill('input[placeholder="Search bank..."]', 'My Bank')
-        ->wait(0.5)
         ->click('My Bank')
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Savings")')
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(0.3)
         ->click('[data-testid="submit-account"]')
-        ->wait(2)
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('accounts', [
@@ -169,22 +154,17 @@ it('can create a manual account without a bank', function () {
         ->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->assertSee('Bank (optional)')
         ->fill('#display_name', 'Cash')
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Checking")')
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(0.3)
         ->click('[data-testid="submit-account"]')
-        ->wait(2)
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.')
         ->assertNoJavascriptErrors();
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Cash')
         ->assertNoJavascriptErrors();
@@ -210,28 +190,21 @@ it('can create a loan account with balance and loan details', function () {
         ->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->fill('#display_name', 'Home Mortgage')
         ->click('[data-testid="bank-select"]')
-        ->wait(0.5)
         ->fill('input[placeholder="Search bank..."]', 'Mortgage Bank')
-        ->wait(0.5)
         ->click('Mortgage Bank')
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Loan")')
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(0.3)
         ->fill('#balance', '180000')
         ->fill('#annual_interest_rate', '3.5')
         ->fill('#loan_term_months', '360')
         ->fill('#loan_start_date', '2024-01-01')
         ->fill('#original_amount', '250000')
         ->click('[data-testid="submit-account"]')
-        ->wait(2)
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.')
         ->assertNoJavascriptErrors();
 
     $loan = Account::query()
@@ -309,37 +282,26 @@ it('can create a real estate account linked to an existing loan', function () {
         ->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->fill('#display_name', 'City Apartment')
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(0.3)
         ->fill('#balance', '320000')
         ->click('button[name="property_type"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Residential")')
-        ->wait(0.3)
         ->fill('#address', '123 Linked Street')
         ->fill('#purchase_price', '275000')
         ->fill('#purchase_date', '2024-02-01')
         ->fill('#area_value', '82')
         ->click('button[name="area_unit"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("m²")')
-        ->wait(0.3)
         ->click('button[name="linked_loan_account_id"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Primary Mortgage")')
-        ->wait(0.3)
         ->fill('#notes', 'Main residence')
         ->fill('#revaluation_percentage', '2.5')
         ->click('[data-testid="submit-account"]')
-        ->wait(2)
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.')
         ->assertNoJavascriptErrors();
 
     $account = Account::query()
@@ -390,12 +352,11 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
         ->fill('input[placeholder="Filter accounts..."]', 'Checking')
-        ->wait(0.5)
         ->assertNoJavascriptErrors();
 });
 
@@ -410,19 +371,17 @@ it('can edit an existing account via dropdown menu', function () {
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.5)
         ->click('Edit')
-        ->wait(1)
         ->assertSee('Edit Account')
         ->fill('#display_name', 'Updated Account Name')
         ->click('button[type="submit"]:has-text("Update")')
-        ->wait(2);
+        ->assertDontSee('Edit Account');
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
@@ -438,20 +397,16 @@ it('can clear the bank of an existing account via the edit dialog', function () 
 
     createAccountViaUI($page, 'Wallet', 'Clear Bank', 'Checking', 'EUR');
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.5)
         ->click('Edit')
-        ->wait(1)
         ->assertSee('Edit Account')
         ->click('[data-testid="bank-select"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("No bank")')
-        ->wait(0.3)
         ->click('button[type="submit"]:has-text("Update")')
-        ->wait(2)
+        ->assertDontSee('Edit Account')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('accounts', [
@@ -472,22 +427,20 @@ it('can delete an account via dropdown menu', function () {
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Bank accounts')
         ->assertSee('Account To Delete')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.5)
         ->click('Delete')
-        ->wait(0.5)
         ->assertSee('Delete Account')
         ->fill('#confirm', 'DELETE')
-        ->wait(0.3)
         ->click('button[type="submit"]:has-text("Delete")')
-        ->wait(2);
+        ->waitForText('No accounts found');
 
-    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded']);
 
-    $page->assertDontSee('Account To Delete')
+    $page->waitForText('No accounts found')
+        ->assertDontSee('Account To Delete')
         ->assertNoJavascriptErrors();
 });

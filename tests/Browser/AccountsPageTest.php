@@ -49,7 +49,7 @@ it('shows account cards for existing accounts', function () {
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Accounts')
         ->waitForText('My Checking')
@@ -79,7 +79,7 @@ it('shows multiple accounts grouped by type', function () {
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->assertSee('Accounts')
         ->waitForText('Daily Checking')
@@ -102,11 +102,10 @@ it('can navigate to account details page', function () {
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->waitForText('Navigable Account')
         ->click('Details →')
-        ->wait(2)
         ->assertSee('Update balance')
         ->assertSee('Nav Bank')
         ->assertNoJavascriptErrors();
@@ -134,23 +133,19 @@ it('can update and view balance history from account details page', function () 
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->waitForText('Tracked Checking')
         ->click('Details →')
-        ->wait(2)
         ->assertSee('Import balances')
         ->click('Update balance')
-        ->wait(1)
+        ->assertValue('#balance-amount', '100000.00')
         ->fill('#balance-amount', '120000.00')
         ->click('#balance-date')
         ->fill('#balance-date', '2024-02-01')
         ->click('button[type="submit"]:has-text("Save")')
-        ->wait(2)
         ->click('button[aria-label="More options"]')
-        ->wait(0.5)
         ->click('See balances')
-        ->wait(2)
         ->assertSee('Balance History')
         ->assertSee('Feb 1, 2024')
         ->assertSee('Jan 1, 2024')
@@ -214,32 +209,25 @@ it('can link and unlink a loan from the real estate details page', function () {
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->waitForText('Beach Condo')
         ->click('Details →')
-        ->wait(2)
         ->assertSee('Property Details')
         ->assertDontSee('Linked Mortgage / Loan')
         ->click('Edit')
-        ->wait(1)
         ->assertSee('Edit Property Details')
         ->click('xpath=//label[contains(., "Linked Mortgage / Loan")]/following::button[@role="combobox"][1]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Beach Mortgage")')
-        ->wait(0.5)
         ->click('button[type="submit"]:has-text("Save")')
-        ->wait(2)
+        ->assertDontSee('Edit Property Details')
         ->assertSee('Linked Mortgage / Loan')
         ->assertSee('Beach Mortgage (Mortgage Bank)')
         ->click('Edit')
-        ->wait(1)
         ->click('xpath=//label[contains(., "Linked Mortgage / Loan")]/following::button[@role="combobox"][1]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("No linked loan")')
-        ->wait(0.5)
         ->click('button[type="submit"]:has-text("Save")')
-        ->wait(2)
+        ->assertDontSee('Edit Property Details')
         ->assertDontSee('Beach Mortgage (Mortgage Bank)')
         ->assertNoJavascriptErrors();
 
@@ -272,7 +260,7 @@ it('does not show other users accounts', function () {
     actingAs($user);
 
     $page = visit('/accounts');
-    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
+    $page->navigate('/accounts', ['waitUntil' => 'domcontentloaded']);
 
     $page->waitForText('My Own Account')
         ->assertDontSee('Someone Elses Account')
