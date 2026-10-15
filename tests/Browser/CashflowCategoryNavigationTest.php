@@ -29,7 +29,6 @@ it('clicking an expense category on cashflow page navigates to transactions with
 
     $page->waitForText('Groceries', 10)
         ->click('Groceries')
-        ->wait(2)
         ->assertPathIs('/transactions')
         ->assertQueryStringHas('category_ids', $category->id)
         ->assertNoJavascriptErrors();
@@ -58,7 +57,6 @@ it('clicking an income category on cashflow page navigates to transactions with 
 
     $page->waitForText('Salary', 10)
         ->click('Salary')
-        ->wait(2)
         ->assertPathIs('/transactions')
         ->assertQueryStringHas('category_ids', $category->id)
         ->assertNoJavascriptErrors();

@@ -20,7 +20,6 @@ it('captures the hub with nothing in it yet', function () {
 
     visit('/onboarding?step=create-account')
         ->resize(430, 932)
-        ->wait(1)
         ->assertSee("Let's build the picture")
         ->assertSee('Connect a bank')
         ->assertSee('Add one myself')
@@ -56,7 +55,6 @@ it('captures the hub asking for what the bank never returns', function () {
 
     visit('/onboarding?step=create-account')
         ->resize(430, 932)
-        ->wait(1)
         ->assertSee("3 in. What's missing?")
         ->assertSee('BBVA · syncing daily')
         ->assertSee('Usually missed')

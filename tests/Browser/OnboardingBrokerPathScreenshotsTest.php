@@ -55,7 +55,7 @@ it('captures the brokers sitting under the banks in the picker', function () {
         ->assertSee('Brokers and exchanges')
         // What each one hands over, before the user spends a screen on it.
         ->assertSee('holdings, not movements')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'broker-section')
         ->assertNoJavascriptErrors();
 });
@@ -71,7 +71,7 @@ it('captures the list the hub opens on a pension or a broker', function () {
         ->assertSee('Indexa Capital')
         ->assertSee('Coinbase')
         ->assertSee('Interactive Brokers')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'broker-list')
         ->assertNoJavascriptErrors();
 });
@@ -90,7 +90,7 @@ it('captures the credential form, saying no transactions are coming', function (
         ->assertSee('Read-only, always')
         ->assertSee('No transactions')
         ->assertSee('Stored encrypted. Revoke it from Indexa Capital whenever you like.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'broker-connect')
         ->assertNoJavascriptErrors();
 });
@@ -109,7 +109,7 @@ it('captures the one provider that does bring movements in', function () {
         ->waitForText('Connect Wise', 5)
         ->assertSee('balance lands in your net worth')
         ->assertDontSee('No transactions')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'broker-connect-wise')
         ->assertNoJavascriptErrors();
 });

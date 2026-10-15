@@ -62,7 +62,8 @@ it('lets an upfront subscriber self-refund from billing settings', function () {
         ->assertSee('Keep my plan')
         ->screenshot(filename: 'refund-confirm-step')
         ->click('Confirm refund')
-        ->wait(3)
+        ->waitForEvent('networkidle')
+        ->wait(1)
         ->assertDontSee('Money-back guarantee')
         ->screenshot(filename: 'refund-completed')
         ->assertNoJavascriptErrors();
@@ -82,7 +83,6 @@ it('lets the user back out of the refund without charging anything', function ()
         ->click('Request a refund')
         ->waitForText('Keep my plan', 5)
         ->click('Keep my plan')
-        ->wait(1)
         ->assertSee('Request a refund')
         ->assertDontSee('Confirm refund')
         ->assertNoJavascriptErrors();

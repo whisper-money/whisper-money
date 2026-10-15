@@ -11,7 +11,6 @@ it('can register a new user', function () {
         ->fill('password', 'password123')
         ->fill('password_confirmation', 'password123')
         ->click('@register-user-button')
-        ->wait(2)
         ->assertPathIs('/email/verify')
         ->assertNoJavascriptErrors();
 
@@ -48,7 +47,6 @@ it('can login with valid credentials', function () {
         ->fill('email', 'test@example.com')
         ->fill('password', 'password123')
         ->click('@login-button')
-        ->wait(2)
         ->assertSee('Dashboard')
         ->assertPathIs('/dashboard')
         ->assertNoJavascriptErrors();
@@ -68,7 +66,6 @@ it('shows validation error for invalid login credentials', function () {
         ->fill('email', 'test@example.com')
         ->fill('password', 'wrongpassword')
         ->click('@login-button')
-        ->wait(1)
         ->assertSee('These credentials do not match our records')
         ->assertNoJavascriptErrors();
 });
@@ -86,7 +83,6 @@ it('can navigate from register to login', function () {
 
     $page->assertSee('Create an account')
         ->click('Log in')
-        ->wait(1)
         ->assertSee('Log in to your account')
         ->assertPathIs('/login')
         ->assertNoJavascriptErrors();

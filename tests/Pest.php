@@ -46,6 +46,13 @@ pest()->extend(TestCase::class)
 
 pest()->browser()->timeout(15000);
 
+/**
+ * True once every finite animation on the page has finished, so a screenshot
+ * catches the settled frame. Infinite ones (spinners, skeleton pulses) never
+ * finish and are left out. assertScript() retries it until it holds.
+ */
+const ANIMATIONS_SETTLED = "document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)";
+
 /*
 |--------------------------------------------------------------------------
 | Transient AI provider failures
@@ -98,6 +105,21 @@ pest()->beforeEach(function () {
 pest()->beforeEach(function () {
     Http::preventStrayRequests();
 })->in('Feature');
+
+/*
+|--------------------------------------------------------------------------
+| Keep the currency rate provider out of Browser tests
+|--------------------------------------------------------------------------
+|
+| Any page that shows a movement in another currency asks the server for a
+| rate, and the server asks a public CDN. The app is served from the test
+| process itself, so every one of those round trips stalls the browser: an
+| out-of-range date walks back through days of 404s and held a single test
+| for 40 seconds. The fake answers 1:1 and only matches the provider's URLs.
+*/
+pest()->beforeEach(function () {
+    fakeCurrencyApi();
+})->in('Browser');
 
 /*
 |--------------------------------------------------------------------------
@@ -292,22 +314,15 @@ function bindMockStripeClientForStats(array $byStatus): void
 function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
 {
     $page->click('Create Category')
-        ->wait(0.5)
         ->fill('name', $name)
         ->click('Select an icon')
-        ->wait(0.5)
         ->click('//div[@role="option"][1]')
-        ->wait(0.3)
         ->click('Select a color')
-        ->wait(0.5)
         ->click("//div[@role=\"option\"][contains(., \"{$color}\")]")
-        ->wait(0.3)
         ->click('Select a type')
-        ->wait(0.5)
         ->click("//div[@role=\"option\"][contains(., \"{$type}\")]")
-        ->wait(0.3)
         ->click('button[type="submit"]')
-        ->wait(2);
+        ->assertDontSee('Add a new category to organize your transactions.');
 }
 
 function createAccountViaUI($page, string $displayName, string $bankName, string $type = 'Checking', string $currency = 'USD'): void
@@ -316,23 +331,16 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
     $page->click('Create Account')
         ->waitForText('Manual', 5)
         ->click('Manual')
-        ->wait(0.5)
         ->fill('#display_name', $displayName)
         ->click('[data-testid="bank-select"]')
-        ->wait(0.5)
         ->fill('input[placeholder="Search bank..."]', $bankName)
-        ->wait(0.5)
         ->click($bankName)
         ->click('button[name="type"]')
-        ->wait(0.5)
         ->click("[role=\"option\"]:has-text(\"{$type}\")")
-        ->wait(0.3)
         ->click('button[name="currency_code"]')
-        ->wait(0.5)
         ->click("[role=\"option\"]:has-text(\"{$currency}\")")
-        ->wait(0.3)
         ->click('[data-testid="submit-account"]')
-        ->wait(2);
+        ->assertDontSee('Create a bank account, loan, or property to track it manually.');
 }
 
 /**

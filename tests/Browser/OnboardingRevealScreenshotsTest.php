@@ -133,7 +133,7 @@ it('captures the answer to the guess the flow opened with', function () {
         ->assertSee('MERCADONA')
         ->assertSee('Who you paid most')
         ->assertSee('Sort my merchants')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'reveal-spending')
         ->assertNoJavascriptErrors();
 });
@@ -175,7 +175,7 @@ it('captures what someone with no movements gets instead', function () {
         ->assertSee('Connected')
         ->assertSee('Add a current account')
         ->assertSee('Continue without one')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'reveal-assets')
         ->assertNoJavascriptErrors();
 });
@@ -212,7 +212,7 @@ it('captures the month that has not finished, without a verdict on it', function
         ->assertSee('The month isn’t over')
         ->assertDontSee('You guessed')
         ->assertSee('Who you paid most')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'reveal-partial-month')
         ->assertNoJavascriptErrors();
 });

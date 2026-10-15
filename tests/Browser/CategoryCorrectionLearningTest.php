@@ -57,7 +57,12 @@ it('learns a forward rule from an inline correction and lets the user undo it', 
     )->toBeTrue();
 
     // Undo removes the learned rule (the correction itself stays applied).
-    $page->click('Undo')->wait(2);
+    $page->click('Undo');
+
+    // The undo is a request with no UI echo; wait for the rule to be gone.
+    for ($attempt = 0; $attempt < 100 && AutomationRule::query()->origin(RuleOrigin::Correction)->exists(); $attempt++) {
+        usleep(100_000);
+    }
 
     expect(AutomationRule::query()->origin(RuleOrigin::Correction)->exists())->toBeFalse();
 });

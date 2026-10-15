@@ -42,7 +42,7 @@ it('splits a transaction into two parts and merges it back', function () {
         ->fill('#split-amount-1', '20')
         ->waitForText('All shared out', 5)
         ->click('[data-testid="submit-split"]')
-        ->wait(1.5)
+        ->assertDontSee('All shared out')
         ->assertNoJavascriptErrors();
 
     expect(Transaction::query()->where('split_parent_id', $original->id)->pluck('amount')->sort()->values()->all())
@@ -83,7 +83,7 @@ it('splits from the row menu, the entry point people actually use', function () 
         ->fill('#split-amount-1', '15')
         ->waitForText('All shared out', 5)
         ->click('[data-testid="submit-split"]')
-        ->wait(1.5)
+        ->assertDontSee('All shared out')
         ->assertNoJavascriptErrors();
 
     expect(Transaction::query()->where('split_parent_id', $original->id)->pluck('amount')->sort()->values()->all())

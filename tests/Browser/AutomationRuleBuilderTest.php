@@ -21,21 +21,18 @@ it('can create an automation rule with visual builder', function () {
     createCategoryViaUI($page, 'Groceries');
 
     // Now visit automation rules page
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Test Rule')
         ->assertSee('Conditions')
         ->assertSee('Description')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Groceries')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2)
+        ->assertDontSee('Create Automation Rule')
         ->assertSee('Test Rule')
         ->assertNoJavascriptErrors();
 
@@ -55,24 +52,20 @@ it('can add multiple conditions to a group', function () {
 
     createCategoryViaUI($page, 'Shopping');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Multi-Condition Rule')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Condition')
-        ->wait(0.5)
         ->assertSee('AND')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Shopping')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Multi-Condition Rule')
         ->assertNoJavascriptErrors();
@@ -92,24 +85,20 @@ it('can add multiple groups', function () {
 
     createCategoryViaUI($page, 'Food');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Multi-Group Rule')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Group')
-        ->wait(0.5)
         ->assertSee('Groups joined by')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Food')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Multi-Group Rule')
         ->assertNoJavascriptErrors();
@@ -129,26 +118,21 @@ it('can select different field types and operators', function () {
 
     createCategoryViaUI($page, 'Bills');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Amount Rule')
         ->click('button:has-text("Description")')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Amount")')
-        ->wait(1)
         // After selecting Amount, the value input becomes the masked AmountInput
         ->fill('input[placeholder="Value"]', '-5')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Bills')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Amount Rule')
         ->assertNoJavascriptErrors();
@@ -171,35 +155,30 @@ it('can edit an existing rule with visual builder', function () {
 
     createCategoryViaUI($page, 'Transport');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     // First create a rule to edit
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Original Rule')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Transport')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     // Now edit it
     $page->assertSee('Original Rule')
         ->click('button[aria-label="Actions"]')
-        ->wait(0.5)
         ->click('Edit')
-        ->wait(1)
         ->assertSee('Edit Automation Rule')
         ->fill('title', 'Updated Rule')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Edit Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Updated Rule')
         ->assertNoJavascriptErrors();
@@ -214,15 +193,12 @@ it('validates that at least one condition is required', function () {
 
     createCategoryViaUI($page, 'Entertainment');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Invalid Rule')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Entertainment')
         ->click('[data-testid="submit-automation-rule"]')
         ->assertSee('At least one valid condition is required')
@@ -243,27 +219,22 @@ it('can toggle group operators between AND and OR', function () {
 
     createCategoryViaUI($page, 'Health');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'OR Rule')
         ->fill('input[placeholder="Value"]', 'test')
         ->click('Add Condition')
-        ->wait(0.5)
         ->assertSee('AND')
         ->click('[data-testid="toggle-condition-operator"]')
-        ->wait(0.5)
         ->assertSee('OR')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Health')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('OR Rule')
         ->assertNoJavascriptErrors();
@@ -283,29 +254,22 @@ it('can use is empty operator for nullable fields', function () {
 
     createCategoryViaUI($page, 'Travel');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Empty Creditor Rule')
         ->click('button:has-text("Description")')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Creditor Name")')
-        ->wait(1)
         // Click the operator dropdown - it shows "contains" by default for Creditor Name
         ->click('button[role="combobox"]:has-text("contains")')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("is empty")')
-        ->wait(0.5)
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Travel')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Empty Creditor Rule')
         ->assertNoJavascriptErrors();
@@ -328,31 +292,24 @@ it('can build an exception rule and reopen it with the negative operator', funct
 
     createCategoryViaUI($page, 'Subscriptions');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Automation rules settings')
-        ->wait(1)
         ->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Exception Rule')
         ->fill('input[placeholder="Value"]', 'keyword')
         ->click('Add Condition')
-        ->wait(0.5)
         // A new group joins its conditions with OR; the exception needs AND.
         ->click('[data-testid="toggle-condition-operator"]')
-        ->wait(0.5)
         ->assertSee('AND')
         // The second condition, still on the "contains" default it was created with.
         ->click('button[role="combobox"]:has-text("contains") >> nth=1')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("does not contain")')
-        ->wait(0.5)
         ->fill('input[placeholder="Value"] >> nth=1', 'visa card')
         ->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click('Subscriptions')
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 
     $rule = AutomationRule::where('user_id', $user->id)->sole();
 
@@ -361,13 +318,11 @@ it('can build an exception rule and reopen it with the negative operator', funct
         ['!' => ['in' => ['visa card', ['var' => 'description']]]],
     ]]);
 
-    $page->navigate('/settings/automation-rules')->wait(1);
+    $page->navigate('/settings/automation-rules');
 
     $page->assertSee('Exception Rule')
         ->click('button[aria-label="Actions"]')
-        ->wait(0.5)
         ->click('Edit')
-        ->wait(1)
         ->assertSee('Edit Automation Rule')
         ->assertSee('does not contain')
         ->assertNoJavascriptErrors();
@@ -379,21 +334,18 @@ it('can build an exception rule and reopen it with the negative operator', funct
 function openRuleWithTwoConditions($page, string $title): void
 {
     $page->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', $title)
         ->fill('input[placeholder="Value"]', 'first')
         ->click('Add Condition')
-        ->wait(0.5)
         ->fill('input[placeholder="Value"] >> nth=1', 'second');
 }
 
 function saveRuleWithCategory($page, string $category): void
 {
     $page->click('[data-testid="action-category-select"]')
-        ->wait(0.5)
         ->click($category)
         ->click('[data-testid="submit-automation-rule"]')
-        ->wait(2);
+        ->assertDontSee('Create Automation Rule');
 }
 
 // Order never changes what a rule matches, so all it has to do is come back the
@@ -407,21 +359,20 @@ it('can move a group up with its arrow and keeps the order', function () {
 
     createCategoryViaUI($page, 'Groceries');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->click('button:has-text("Create Rule")')
-        ->wait(0.5)
         ->fill('title', 'Ordered Groups Rule')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Group')
-        ->wait(0.5)
         ->fill('input[placeholder="Value"] >> nth=1', 'market')
         ->assertDisabled('button[aria-label="Move group 1 up"]')
-        ->keys('button[aria-label="Move group 2 up"]', ['Enter'])
-        ->wait(0.5);
+        ->keys('button[aria-label="Move group 2 up"]', ['Enter']);
 
     // The pressed ↑ is now disabled at the top, so keyboard focus moves to ↓
     // instead of falling back to the page.
+    $page->assertScript('document.activeElement.getAttribute("aria-label")', 'Move group 1 down');
+
     expect($page->script('document.activeElement.getAttribute("aria-label")'))
         ->toBe('Move group 1 down');
 
@@ -446,7 +397,7 @@ it('can drag a condition with the keyboard without closing the dialog', function
 
     createCategoryViaUI($page, 'Shopping');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     openRuleWithTwoConditions($page, 'Dragged Rule');
 
@@ -460,8 +411,7 @@ it('can drag a condition with the keyboard without closing the dialog', function
         ->wait(0.3)
         ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['ArrowUp'])
         ->wait(0.3)
-        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Space'])
-        ->wait(0.5);
+        ->keys('button[aria-label="Drag to reorder"] >> nth=1', ['Space']);
 
     saveRuleWithCategory($page, 'Shopping');
 
@@ -484,7 +434,7 @@ it('moves conditions with labelled arrows on a phone', function () {
 
     createCategoryViaUI($page, 'Bills');
 
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->navigate('/settings/automation-rules');
 
     $page->resize(390, 844);
 
@@ -492,15 +442,15 @@ it('moves conditions with labelled arrows on a phone', function () {
 
     // Phones swap the drag handle for arrows inside a box titled with its position.
     $page->click('Add Condition')
-        ->wait(0.5)
         ->fill('input[placeholder="Value"] >> nth=2', 'third')
         ->assertSee('Condition 3')
         ->assertDisabled('button[aria-label="Move condition 1 up"]')
-        ->keys('button[aria-label="Move condition 1 down"]', ['Enter'])
-        ->wait(0.5);
+        ->keys('button[aria-label="Move condition 1 down"]', ['Enter']);
 
     // The condition is now the second one, and focus stays on its arrow so the
     // next Enter keeps moving it.
+    $page->assertScript('document.activeElement.getAttribute("aria-label")', 'Move condition 2 down');
+
     expect($page->script('document.activeElement.getAttribute("aria-label")'))
         ->toBe('Move condition 2 down');
 
