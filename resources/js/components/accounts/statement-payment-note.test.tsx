@@ -1,7 +1,7 @@
 import type { CreditCardPayment } from '@/types/account';
 import { describe, expect, it } from 'vitest';
 
-import { statementPaymentText } from './statement-payment-badge';
+import { statementPaymentText } from './statement-payment-note';
 
 const payment: CreditCardPayment = {
     transaction_id: 'payment-1',

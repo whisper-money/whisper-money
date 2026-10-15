@@ -5,7 +5,7 @@ import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { Fragment } from 'react';
 
-import { StatementPaymentBadge } from '@/components/accounts/statement-payment-badge';
+import { StatementPaymentNote } from '@/components/accounts/statement-payment-note';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
@@ -258,11 +258,6 @@ export function createTransactionColumns({
                                         text={transaction.description}
                                     />
                                 </div>
-                                {statementPayment && (
-                                    <StatementPaymentBadge
-                                        payment={statementPayment}
-                                    />
-                                )}
                                 {showLabels && hasLabels && (
                                     <LabelBadges
                                         labels={transactionLabels}
@@ -270,6 +265,11 @@ export function createTransactionColumns({
                                     />
                                 )}
                             </div>
+                            {statementPayment && (
+                                <StatementPaymentNote
+                                    payment={statementPayment}
+                                />
+                            )}
                             {showNotes && hasNotes && (
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                     <div className="truncate text-muted-foreground/80">

@@ -133,33 +133,42 @@ describe('createTransactionColumns statement payments', () => {
             notes: null,
         }) as unknown as ServerTransaction;
 
-    it('marks a repayment with the statement it pays', () => {
+    it('notes the statement a repayment pays under its description', () => {
         renderDescription(
             row('payment-1'),
             new Map([[payment.transaction_id, payment]]),
         );
 
-        expect(screen.getByTestId('statement-payment-badge')).toHaveTextContent(
+        const note = screen.getByTestId('statement-payment-note');
+        // Its own line under the description, not a pill beside it.
+        expect(
+            screen
+                .getByText('Merpag Débito -> BBVA Crédito')
+                .compareDocumentPosition(note) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(note.querySelector('svg')).not.toBeNull();
+        expect(note).toHaveTextContent(
             /^Statement payment Aug 7(, 2026)? – Sep 6(, 2026)?$/,
         );
     });
 
-    it('leaves other rows without a badge', () => {
+    it('leaves other rows without the note', () => {
         renderDescription(
             row('purchase-1'),
             new Map([[payment.transaction_id, payment]]),
         );
 
         expect(
-            screen.queryByTestId('statement-payment-badge'),
+            screen.queryByTestId('statement-payment-note'),
         ).not.toBeInTheDocument();
     });
 
-    it('shows no badge outside a credit card page', () => {
+    it('shows no note outside a credit card page', () => {
         renderDescription(row('payment-1'));
 
         expect(
-            screen.queryByTestId('statement-payment-badge'),
+            screen.queryByTestId('statement-payment-note'),
         ).not.toBeInTheDocument();
     });
 });
