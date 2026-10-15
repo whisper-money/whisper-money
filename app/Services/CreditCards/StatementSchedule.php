@@ -60,6 +60,15 @@ final readonly class StatementSchedule
     }
 
     /**
+     * The last cycle whose closing date is before $day: the statement a
+     * payment made on $day pays.
+     */
+    public function closedCycleBefore(CarbonImmutable $day): StatementCycle
+    {
+        return $this->cycle($this->openOffsetOn($day) - 1);
+    }
+
+    /**
      * The statement charged next as of $today, and whether it is final.
      *
      * A closed statement whose due date has not passed yet (the due date

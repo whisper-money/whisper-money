@@ -204,6 +204,99 @@ it('ignores other accounts', function () {
 });
 
 // -------------------------------------------------------------------
+// Payment attribution
+// -------------------------------------------------------------------
+
+it('attributes a payment made between closing and due date to the statement that just closed', function () {
+    cardTransaction(-3000, '2026-01-10');
+    $previous = cardTransaction(3000, '2026-02-12', ['category_id' => test()->transfer->id]);
+    $next = cardTransaction(1200, '2026-03-08', ['category_id' => null]);
+
+    expect(estimateOn('2026-03-10')['payments'])->toBe([
+        ['transaction_id' => $previous->id, 'date' => '2026-02-12', 'amount' => 3000, 'period_from' => '2026-01-06', 'closing_date' => '2026-02-05', 'due_date' => '2026-02-20'],
+        ['transaction_id' => $next->id, 'date' => '2026-03-08', 'amount' => 1200, 'period_from' => '2026-02-06', 'closing_date' => '2026-03-05', 'due_date' => '2026-03-20'],
+    ]);
+});
+
+it('attributes a payment made after the due date to the last statement closed before it', function () {
+    cardTransaction(2500, '2026-02-25', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['payments'])->sequence(
+        fn ($payment) => $payment->toMatchArray(['period_from' => '2026-01-06', 'closing_date' => '2026-02-05']),
+    );
+});
+
+it('reads a payment on the date the bank booked it', function () {
+    cardTransaction(2500, '2026-03-08', ['category_id' => null, 'source_date' => '2026-03-04']);
+
+    expect(estimateOn('2026-03-10')['payments'][0])->toMatchArray(['date' => '2026-03-04', 'closing_date' => '2026-02-05']);
+});
+
+it('says how much of the next payment is already paid', function () {
+    cardTransaction(-5000, '2026-02-10');
+    cardTransaction(2000, '2026-03-08', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['next_payment'])->toMatchArray(['amount' => 5000, 'paid' => 2000]);
+});
+
+it('lists neither payments booked after today nor transfers out of the card', function () {
+    cardTransaction(2000, '2026-03-12', ['category_id' => test()->transfer->id]);
+    cardTransaction(-300, '2026-03-08', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['payments'])->toBe([]);
+});
+
+it('sums up the previous statement against what was paid on it', function () {
+    cardTransaction(-3000, '2026-01-10');
+    cardTransaction(-2000, '2026-02-05');
+    cardTransaction(4000, '2026-02-12', ['category_id' => test()->transfer->id]);
+    cardTransaction(-700, '2026-02-07');
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toBe([
+        'period_from' => '2026-01-06',
+        'closing_date' => '2026-02-05',
+        'due_date' => '2026-02-20',
+        'purchases' => 5000,
+        'paid' => 4000,
+        'pending' => 1000,
+        'has_recorded_purchases' => true,
+    ]);
+});
+
+it('floors the pending amount at zero when a statement is overpaid', function () {
+    cardTransaction(-1000, '2026-01-10');
+    cardTransaction(4000, '2026-02-12', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toMatchArray(['purchases' => 1000, 'paid' => 4000, 'pending' => 0]);
+});
+
+it('flags a paid statement from before the card has any recorded purchase', function () {
+    cardTransaction(4000, '2026-02-12', ['category_id' => test()->transfer->id]);
+    cardTransaction(-500, '2026-02-10');
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toMatchArray([
+        'purchases' => 0,
+        'paid' => 4000,
+        'pending' => 0,
+        'has_recorded_purchases' => false,
+    ]);
+});
+
+it('knows an empty paid statement has recorded purchases from before it', function () {
+    cardTransaction(-800, '2025-12-20');
+    cardTransaction(4000, '2026-02-12', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toMatchArray(['purchases' => 0, 'has_recorded_purchases' => true]);
+});
+
+it('does not let a payment bring the usage down', function () {
+    cardTransaction(-3000, '2026-02-10');
+    cardTransaction(3000, '2026-02-12', ['category_id' => test()->transfer->id]);
+
+    expect(figuresOn('2026-03-10')['credit_card_usage']['used'])->toBe(3000);
+});
+
+// -------------------------------------------------------------------
 // Credit usage
 // -------------------------------------------------------------------
 

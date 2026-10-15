@@ -3895,5 +3895,15 @@
     "Re-evaluation queued": "Reevaluación en cola",
     "Your transactions will be updated in the background shortly. Reload the page later to see the changes.": "Tus movimientos se actualizarán en segundo plano en breve. Recarga la página más tarde para ver los cambios.",
     "Statement frequency": "Frecuencia del extracto",
-    "Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.": "Todos los campos son opcionales. Se asume que los siguientes extractos se repiten el mismo día de la semana cada semana. Si tu banco los cambia, actualízalos aquí."
+    "Every field is optional. Later statements are assumed to repeat on the same weekday every week. If your bank moves them, update them here.": "Todos los campos son opcionales. Se asume que los siguientes extractos se repiten el mismo día de la semana cada semana. Si tu banco los cambia, actualízalos aquí.",
+    "Statement :from – :to": "Extracto :from – :to",
+    "Purchases": "Compras",
+    "Paid": "Pagado",
+    "Pending": "Pendiente",
+    "No purchases recorded for that period": "No hay compras registradas en ese periodo",
+    "Payment of :amount for the statement :from – :to": "Pago de :amount del extracto :from – :to",
+    "Already paid": "Ya pagado",
+    "Some purchases from that period may not be recorded here.": "Puede que algunas compras de ese periodo no estén registradas aquí.",
+    "Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.": "Los puntos de la línea marcan los pagos a la tarjeta y el extracto que paga cada uno. No reducen el crédito dispuesto.",
+    "Statement payment :from – :to": "Pago extracto :from – :to"
 }

@@ -1,4 +1,7 @@
-import type { CreditCardStatement } from '@/types/account';
+import type {
+    CreditCardPreviousStatement,
+    CreditCardStatement,
+} from '@/types/account';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -34,7 +37,11 @@ const detail = {
     credit_limit: 300000,
 };
 
-function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
+function statement(
+    isFinal: boolean,
+    amount = 12345,
+    previous: Partial<CreditCardPreviousStatement> = {},
+): CreditCardStatement {
     return {
         next_payment: {
             period_from: '2026-02-06',
@@ -42,6 +49,7 @@ function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
             due_date: '2026-03-20',
             amount,
             is_final: isFinal,
+            paid: 0,
         },
         current_cycle: {
             period_from: '2026-03-06',
@@ -49,7 +57,29 @@ function statement(isFinal: boolean, amount = 12345): CreditCardStatement {
             due_date: '2026-04-20',
             amount: 4000,
         },
+        payments: [],
+        previous_statement: {
+            period_from: '2026-01-06',
+            closing_date: '2026-02-05',
+            due_date: '2026-02-20',
+            purchases: 0,
+            paid: 0,
+            pending: 0,
+            has_recorded_purchases: true,
+            ...previous,
+        },
     };
+}
+
+function renderStatement(cardStatement: CreditCardStatement) {
+    return render(
+        <CreditCardStatementCard
+            accountId="card-1"
+            currencyCode="EUR"
+            detail={detail}
+            statement={cardStatement}
+        />,
+    );
 }
 
 describe('CreditCardStatementCard', () => {
@@ -244,5 +274,69 @@ describe('CreditCardStatementCard', () => {
         expect(
             screen.queryByRole('button', { name: 'Remove dates' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('sums up the previous statement against what was paid on it', () => {
+        renderStatement(
+            statement(true, 12345, {
+                purchases: 50000,
+                paid: 40000,
+                pending: 10000,
+            }),
+        );
+
+        const line = screen.getByTestId('previous-statement');
+        expect(line).toHaveTextContent('Statement Jan 6, 2026 – Feb 5, 2026');
+        expect(line).toHaveTextContent(
+            /Purchases €500\.00\s*·\s*Paid €400\.00\s*·\s*Pending €100\.00/,
+        );
+    });
+
+    it('says no purchases are recorded instead of reading a payment as an overpayment', () => {
+        renderStatement(
+            statement(true, 12345, {
+                paid: 96335,
+                has_recorded_purchases: false,
+            }),
+        );
+
+        const line = screen.getByTestId('previous-statement');
+        expect(line).toHaveTextContent(
+            /Paid €963\.35\s*·\s*No purchases recorded for that period/,
+        );
+        expect(line).not.toHaveTextContent('Pending');
+        expect(line).not.toHaveTextContent('Purchases €');
+    });
+
+    it('leaves the previous statement out while nothing was bought or paid on it', () => {
+        renderStatement(statement(true));
+
+        expect(
+            screen.queryByTestId('previous-statement'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('notes that some purchases may be missing when more was paid than recorded', () => {
+        renderStatement(
+            statement(true, 12345, { purchases: 5000, paid: 96335 }),
+        );
+
+        expect(
+            screen.getByText(
+                'Some purchases from that period may not be recorded here.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('previous-statement')).toHaveTextContent(
+            /Pending €0\.00/,
+        );
+    });
+
+    it('says how much of the next payment is already paid', () => {
+        const cardStatement = statement(true);
+        cardStatement.next_payment.paid = 2000;
+        renderStatement(cardStatement);
+
+        expect(screen.getByText('Already paid')).toBeInTheDocument();
+        expect(screen.getByText('€20.00')).toBeInTheDocument();
     });
 });

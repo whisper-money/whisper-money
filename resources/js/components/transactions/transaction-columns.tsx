@@ -9,6 +9,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
+import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
-import { type Account, type Bank } from '@/types/account';
+import {
+    type Account,
+    type Bank,
+    type CreditCardPayment,
+} from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
@@ -52,6 +57,11 @@ interface CreateColumnsOptions {
     categorizingIds?: Set<string>;
     /** A label every row already carries, so showing it would say nothing. */
     hiddenLabelId?: string;
+    /**
+     * Credit card repayments by transaction id, with the statement each one
+     * pays. Only the credit card account page passes it.
+     */
+    statementPayments?: Map<string, CreditCardPayment>;
 }
 
 export function createTransactionColumns({
@@ -72,6 +82,7 @@ export function createTransactionColumns({
     isDateHidden = false,
     categorizingIds,
     hiddenLabelId,
+    statementPayments,
 }: CreateColumnsOptions): ColumnDef<ServerTransaction>[] {
     return [
         {
@@ -226,6 +237,7 @@ export function createTransactionColumns({
 
                 const hasLabels = transactionLabels.length > 0;
                 const hasNotes = !!transaction.notes;
+                const statementPayment = statementPayments?.get(transaction.id);
 
                 return (
                     // The split mark sits in its own gutter, so everything
@@ -253,6 +265,11 @@ export function createTransactionColumns({
                                     />
                                 )}
                             </div>
+                            {statementPayment && (
+                                <StatementPaymentNote
+                                    payment={statementPayment}
+                                />
+                            )}
                             {showNotes && hasNotes && (
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                     <div className="truncate text-muted-foreground/80">
