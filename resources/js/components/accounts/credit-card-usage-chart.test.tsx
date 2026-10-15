@@ -1,4 +1,8 @@
-import type { CreditCardDetail, CreditCardUsage } from '@/types/account';
+import type {
+    CreditCardDetail,
+    CreditCardPayment,
+    CreditCardUsage,
+} from '@/types/account';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -67,6 +71,7 @@ function usage(overrides: Partial<CreditCardUsage> = {}): CreditCardUsage {
 function renderChart(
     cardUsage: CreditCardUsage,
     detail: CreditCardDetail | null = null,
+    payments: CreditCardPayment[] = [],
 ) {
     return render(
         <CreditCardUsageChart
@@ -74,6 +79,7 @@ function renderChart(
             currencyCode="EUR"
             usage={cardUsage}
             detail={detail}
+            payments={payments}
         />,
     );
 }
@@ -210,5 +216,26 @@ describe('CreditCardUsageChart', () => {
         expect(
             screen.getByText(/Payments to the card are not subtracted\./),
         ).toBeInTheDocument();
+    });
+
+    it('explains the payment dots only when there are payments', () => {
+        const dotsNote =
+            'Dots on the line mark payments to the card and the statement each one pays.';
+        const { unmount } = renderChart(usage());
+
+        expect(screen.queryByText(dotsNote)).not.toBeInTheDocument();
+        unmount();
+
+        renderChart(usage(), null, [
+            {
+                date: '2026-10-02',
+                amount: 5000,
+                period_from: '2026-09-07',
+                closing_date: '2026-10-06',
+                due_date: '2026-10-26',
+            },
+        ]);
+
+        expect(screen.getByText(dotsNote)).toBeInTheDocument();
     });
 });

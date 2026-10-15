@@ -49,6 +49,7 @@ function statement(
             due_date: '2026-03-20',
             amount,
             is_final: isFinal,
+            paid: 0,
         },
         current_cycle: {
             period_from: '2026-03-06',
@@ -313,5 +314,29 @@ describe('CreditCardStatementCard', () => {
         expect(
             screen.queryByTestId('previous-statement'),
         ).not.toBeInTheDocument();
+    });
+
+    it('notes that some purchases may be missing when more was paid than recorded', () => {
+        renderStatement(
+            statement(true, 12345, { purchases: 5000, paid: 96335 }),
+        );
+
+        expect(
+            screen.getByText(
+                'Some purchases from that period may not be recorded here.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('previous-statement')).toHaveTextContent(
+            /pending €0\.00/,
+        );
+    });
+
+    it('says how much of the next payment is already paid', () => {
+        const cardStatement = statement(true);
+        cardStatement.next_payment.paid = 2000;
+        renderStatement(cardStatement);
+
+        expect(screen.getByText('Already paid')).toBeInTheDocument();
+        expect(screen.getByText('€20.00')).toBeInTheDocument();
     });
 });

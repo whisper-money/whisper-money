@@ -160,8 +160,14 @@ export interface CreditCardPreviousStatement {
 
 /** The server's estimate of what a credit card charges next. */
 export interface CreditCardStatement {
-    /** `is_final` once the statement has closed and its amount no longer moves. */
-    next_payment: CreditCardStatementCycle & { is_final: boolean };
+    /**
+     * `is_final` once the statement has closed and its amount no longer moves;
+     * `paid` adds up the repayments already made on it.
+     */
+    next_payment: CreditCardStatementCycle & {
+        is_final: boolean;
+        paid: number;
+    };
     current_cycle: CreditCardStatementCycle;
     /** Repayments booked in the usage window, oldest first. */
     payments: CreditCardPayment[];

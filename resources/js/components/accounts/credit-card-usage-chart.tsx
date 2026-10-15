@@ -50,7 +50,7 @@ interface CreditCardUsageChartProps {
     usage: CreditCardUsage;
     detail: CreditCardDetail | null;
     /** Repayments to mark on the line, each with the statement it pays. */
-    payments?: CreditCardPayment[];
+    payments: CreditCardPayment[];
 }
 
 export interface UsageChartPoint {
@@ -152,7 +152,7 @@ export function CreditCardUsageChart({
     currencyCode,
     usage,
     detail,
-    payments = [],
+    payments,
 }: CreditCardUsageChartProps) {
     const locale = useLocale();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -351,6 +351,13 @@ function LimitUsage({
                     payments={payments}
                 />
                 <PeriodExplanation period={period} />
+                {payments.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                        {__(
+                            'Dots on the line mark payments to the card and the statement each one pays.',
+                        )}
+                    </p>
+                )}
             </CardContent>
         </>
     );
@@ -386,7 +393,10 @@ function UsageChart({
         () => paymentsByDay(payments, data),
         [payments, data],
     );
-    const usedOn = new Map(data.map((point) => [point.date, point.used]));
+    const usedOn = useMemo(
+        () => new Map(data.map((point) => [point.date, point.used])),
+        [data],
+    );
 
     if (usage.daily.length === 0) {
         return (
@@ -429,7 +439,7 @@ function UsageChart({
                                         .get(String(date))
                                         ?.map((payment, index) => (
                                             <span
-                                                key={index}
+                                                key={`${payment.date}-${index}`}
                                                 className="font-normal text-emerald-700 dark:text-emerald-400"
                                             >
                                                 {paymentNote(

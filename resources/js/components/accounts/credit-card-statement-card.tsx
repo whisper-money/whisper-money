@@ -150,6 +150,16 @@ function StatementSummary({
                         })}
                     </span>
                 )}
+                {nextPayment.paid > 0 && (
+                    <span className="flex flex-wrap items-baseline gap-1 text-sm text-emerald-700 dark:text-emerald-400">
+                        {__('Already paid')}
+                        <AmountDisplay
+                            amountInCents={nextPayment.paid}
+                            currencyCode={currencyCode}
+                            monospace
+                        />
+                    </span>
+                )}
                 <span className="text-xs text-muted-foreground">
                     {nextPayment.is_final
                         ? __(
@@ -266,6 +276,14 @@ function PreviousStatementLine({
                     __('No purchases recorded for that period')
                 )}
             </span>
+            {statement.has_recorded_purchases &&
+                statement.paid > statement.purchases && (
+                    <span className="text-xs text-muted-foreground">
+                        {__(
+                            'Some purchases from that period may not be recorded here.',
+                        )}
+                    </span>
+                )}
         </div>
     );
 }

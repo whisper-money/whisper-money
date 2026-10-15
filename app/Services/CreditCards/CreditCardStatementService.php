@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\JoinClause;
@@ -80,8 +79,9 @@ class CreditCardStatementService
      * What a credit card's ledger says as of $today: the estimate its
      * statement dates give (null while it has none) and how much of the card
      * is in use. Both come from one query (two when a payment settles a
-     * statement with no purchases, see hasRecordedPurchasesBy). Reads the `creditCardDetail`
-     * relation, so eager-load it when presenting several cards.
+     * statement with no purchases, see hasRecordedPurchasesBy). Reads the
+     * `creditCardDetail` relation, so eager-load it when presenting several
+     * cards.
      *
      * Usage covers what is still to be charged: from the statement paid next
      * (a closed one not charged yet, or else the open cycle) through the open
@@ -90,14 +90,15 @@ class CreditCardStatementService
      * they have not drawn on the limit yet. `available` goes negative over
      * the limit, and both are null while no limit is set.
      *
-     * The estimate also lists the repayments booked in that window, each with
-     * the statement it pays, and sums up the statement before the one paid
-     * next, which is the one those repayments usually settle. Repayments never
-     * bring usage down: they mostly pay purchases from before the window.
+     * The estimate also lists the repayments booked in that window up to
+     * today, each with the statement it pays, says how much of the next
+     * payment is already paid, and sums up the statement before it, which is
+     * the one those repayments usually settle. Repayments never bring usage
+     * down: they mostly pay purchases from before the window.
      *
      * @return array{
      *     credit_card_statement: array{
-     *         next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool},
+     *         next_payment: array{period_from: string, closing_date: string, due_date: string, amount: int, is_final: bool, paid: int},
      *         current_cycle: array{period_from: string, closing_date: string, due_date: string, amount: int},
      *         payments: list<array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
      *         previous_statement: array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool},
@@ -124,6 +125,7 @@ class CreditCardStatementService
 
         [$repayments, $transactions] = $this->ledgerRows($account, $previousStatement->periodFrom ?? $from, $to)
             ->partition(fn (Transaction $transaction): bool => self::isRepayment($transaction));
+        $payments = $schedule === null ? collect() : $this->paymentsBetween($repayments, $schedule, $from, $today, $account->currency_code);
 
         return [
             'credit_card_statement' => $nextPayment === null || $currentCycle === null ? null : [
@@ -131,12 +133,14 @@ class CreditCardStatementService
                     ...$nextPayment['cycle']->toArray(),
                     'amount' => $this->amountToPay($transactions, $nextPayment['cycle'], $account->currency_code),
                     'is_final' => $nextPayment['is_final'],
+                    'paid' => self::paidOn($payments, $nextPayment['cycle']),
                 ],
                 'current_cycle' => [
                     ...$currentCycle->toArray(),
                     'amount' => $this->amountToPay($transactions, $currentCycle, $account->currency_code),
                 ],
-                ...$this->paymentAttribution($account, $schedule, $previousStatement, $transactions, $repayments, $from),
+                'payments' => $payments->all(),
+                'previous_statement' => $this->previousStatementSummary($account, $previousStatement, $transactions, $payments),
             ],
             'credit_card_usage' => $this->usage($transactions, $from, $to, $today, $account),
         ];
@@ -186,41 +190,53 @@ class CreditCardStatementService
     }
 
     /**
-     * The repayments booked from $from on, each with the statement it pays
-     * (the last one closed before it was made), and what the statement before
-     * the one paid next adds up to, has been paid and is still pending.
+     * The repayments booked from $from through $today, oldest first, each with
+     * the statement it pays: the last one closed before it was made.
      *
-     * @param  Collection<int, Transaction>  $transactions
      * @param  Collection<int, Transaction>  $repayments
-     * @return array{
-     *     payments: list<array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>,
-     *     previous_statement: array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool},
-     * }
+     * @return Collection<int, array{date: string, amount: int, period_from: string, closing_date: string, due_date: string}>
      */
-    private function paymentAttribution(Account $account, StatementSchedule $schedule, StatementCycle $previousStatement, Collection $transactions, Collection $repayments, CarbonImmutable $from): array
+    private function paymentsBetween(Collection $repayments, StatementSchedule $schedule, CarbonImmutable $from, CarbonImmutable $today, string $currency): Collection
     {
-        $payments = $repayments
-            ->filter(fn (Transaction $transaction): bool => $transaction->amount > 0 && self::bookedOn($transaction)->greaterThanOrEqualTo($from))
+        return $repayments
+            ->filter(fn (Transaction $transaction): bool => $transaction->amount > 0
+                && self::bookedOn($transaction)->betweenIncluded($from, $today))
             ->sortBy(fn (Transaction $transaction): string => self::bookedOn($transaction)->toDateString())
             ->map(fn (Transaction $transaction): array => [
                 'date' => self::bookedOn($transaction)->toDateString(),
-                'amount' => $this->convertFullTransactionAmount($transaction, $account->currency_code),
+                'amount' => $this->convertFullTransactionAmount($transaction, $currency),
                 ...$schedule->closedCycleBefore(self::bookedOn($transaction))->toArray(),
             ])
             ->values();
+    }
 
-        $purchases = $this->amountToPay($transactions, $previousStatement, $account->currency_code);
-        $paid = $payments->where('closing_date', $previousStatement->closingDate->toDateString())->sum('amount');
+    /**
+     * @param  Collection<int, array{closing_date: string, amount: int}>  $payments
+     */
+    private static function paidOn(Collection $payments, StatementCycle $statement): int
+    {
+        return $payments->where('closing_date', $statement->closingDate->toDateString())->sum('amount');
+    }
+
+    /**
+     * What the statement before the one paid next adds up to, has been paid
+     * and is still pending.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, array{closing_date: string, amount: int}>  $payments
+     * @return array{period_from: string, closing_date: string, due_date: string, purchases: int, paid: int, pending: int, has_recorded_purchases: bool}
+     */
+    private function previousStatementSummary(Account $account, StatementCycle $statement, Collection $transactions, Collection $payments): array
+    {
+        $purchases = $this->amountToPay($transactions, $statement, $account->currency_code);
+        $paid = self::paidOn($payments, $statement);
 
         return [
-            'payments' => $payments->all(),
-            'previous_statement' => [
-                ...$previousStatement->toArray(),
-                'purchases' => $purchases,
-                'paid' => $paid,
-                'pending' => max(0, $purchases - $paid),
-                'has_recorded_purchases' => $this->hasRecordedPurchasesBy($account, $previousStatement, $transactions, $paid),
-            ],
+            ...$statement->toArray(),
+            'purchases' => $purchases,
+            'paid' => $paid,
+            'pending' => max(0, $purchases - $paid),
+            'has_recorded_purchases' => $this->hasRecordedPurchasesBy($account, $statement, $transactions, $paid),
         ];
     }
 
@@ -231,7 +247,8 @@ class CreditCardStatementService
      *
      * Looks back in SQL only when the statement itself is empty and something
      * was paid on it, so a card listed without such a payment still costs one
-     * query. An empty statement nobody paid has nothing to explain.
+     * query. An empty statement nobody paid has nothing to explain. The rows
+     * stream until the first purchase, so isRepayment stays the one rule.
      *
      * @param  Collection<int, Transaction>  $transactions
      */
@@ -247,13 +264,8 @@ class CreditCardStatementService
 
         return $this->ledgerQuery($account)
             ->whereRaw('COALESCE(transactions.source_date, transactions.transaction_date) < ?', [$statement->periodFrom->toDateString()])
-            ->where(fn (Builder $query) => $query
-                ->whereNull('categories.type')
-                ->orWhere('categories.type', '!=', CategoryType::Transfer->value))
-            ->where(fn (Builder $query) => $query
-                ->whereNotNull('transactions.category_id')
-                ->orWhere('transactions.amount', '<=', 0))
-            ->exists();
+            ->cursor()
+            ->contains(fn (Transaction $transaction): bool => ! self::isRepayment($transaction));
     }
 
     /**

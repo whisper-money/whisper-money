@@ -382,7 +382,7 @@ export default function AccountShow({
                         currencyCode={account.currency_code}
                         usage={account.credit_card_usage}
                         detail={account.credit_card_detail ?? null}
-                        payments={account.credit_card_statement?.payments}
+                        payments={account.credit_card_statement?.payments ?? []}
                     />
                 ) : (
                     <AccountBalanceChart

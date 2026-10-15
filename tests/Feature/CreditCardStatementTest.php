@@ -232,6 +232,20 @@ it('reads a payment on the date the bank booked it', function () {
     expect(estimateOn('2026-03-10')['payments'][0])->toMatchArray(['date' => '2026-03-04', 'closing_date' => '2026-02-05']);
 });
 
+it('says how much of the next payment is already paid', function () {
+    cardTransaction(-5000, '2026-02-10');
+    cardTransaction(2000, '2026-03-08', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['next_payment'])->toMatchArray(['amount' => 5000, 'paid' => 2000]);
+});
+
+it('lists neither payments booked after today nor transfers out of the card', function () {
+    cardTransaction(2000, '2026-03-12', ['category_id' => test()->transfer->id]);
+    cardTransaction(-300, '2026-03-08', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['payments'])->toBe([]);
+});
+
 it('sums up the previous statement against what was paid on it', function () {
     cardTransaction(-3000, '2026-01-10');
     cardTransaction(-2000, '2026-02-05');
