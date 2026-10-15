@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@1,400;1,500;1,600;1,700&display=swap');
+@import './fonts.css';
 
 @import 'tailwindcss';
 
