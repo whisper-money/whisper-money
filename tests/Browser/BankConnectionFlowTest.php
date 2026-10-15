@@ -51,7 +51,7 @@ it('connects a bank during onboarding and asks which accounts to keep', function
         ->assertSee('Your password stays at your bank')
         ->assertSee('This bank is still in beta')
         ->click('button:has-text("Continue to Banco de Sabadell")')
-        ->wait(3);
+        ->waitForText('Banco de Sabadell gave us 2 accounts', 5);
 
     // Two accounts is a decision, so nothing is created until the user makes it.
     $connection = $user->bankingConnections()->sole();
@@ -60,9 +60,8 @@ it('connects a bank during onboarding and asks which accounts to keep', function
         ->and($connection->aspsp_name)->toBe('Banco de Sabadell')
         ->and($connection->accounts()->count())->toBe(0);
 
-    $page->waitForText('Banco de Sabadell gave us 2 accounts', 5)
-        ->click('button:has-text("Track these 2")')
-        ->wait(3);
+    $page->click('button:has-text("Track these 2")')
+        ->assertDontSee('Banco de Sabadell gave us 2 accounts');
 
     expect($connection->fresh()->status)->toBe(BankingConnectionStatus::Active)
         ->and($connection->accounts()->count())->toBe(2);
@@ -84,9 +83,7 @@ it('connects a bank from settings and maps accounts', function () {
         ->click('Connect Bank')
         ->waitForText('Select the country', 5)
         ->click('[role="dialog"] [role="combobox"]')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Spain")')
-        ->wait(0.3)
         ->click('button:has-text("Continue")')
         ->waitForText('Banco de Sabadell', 5)
         // Sabadell is a beta connector in the fake catalogue.
@@ -96,17 +93,16 @@ it('connects a bank from settings and maps accounts', function () {
         ->waitForText('You will be redirected', 5)
         ->assertSee('This bank is still in beta')
         ->click('[role="dialog"] button:has-text("Connect")')
-        ->wait(3);
+        ->assertPathBeginsWith('/open-banking/connections/')
+        ->assertSee('Map Bank Accounts');
 
     // An onboarded user lands on the account-mapping screen (status awaiting_mapping).
     $connection = $user->bankingConnections()->sole();
     expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping)
         ->and($connection->pending_accounts_data)->toHaveCount(2);
 
-    $page->assertPathBeginsWith('/open-banking/connections/')
-        ->assertSee('Map Bank Accounts')
-        ->click('button:has-text("Save & Sync")')
-        ->wait(3);
+    $page->click('button:has-text("Save & Sync")')
+        ->assertPathIs('/settings/connections');
 
     expect($connection->fresh()->status)->toBe(BankingConnectionStatus::Active)
         ->and($connection->accounts()->count())->toBe(2);
@@ -174,7 +170,7 @@ it('reconnects an expired connection from settings', function () {
     $page->assertSee('Banco de Sabadell')
         ->assertSee('Expired')
         ->click('Reconnect')
-        ->wait(3);
+        ->assertDontSee('Expired');
 
     $connection->refresh();
 

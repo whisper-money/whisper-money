@@ -19,7 +19,6 @@ it('redirects new registration to email verification', function () {
         ->fill('password', 'password123456')
         ->fill('password_confirmation', 'password123456')
         ->click('@register-user-button')
-        ->wait(3)
         ->assertPathIs('/email/verify')
         ->assertNoJavascriptErrors();
 
@@ -40,7 +39,6 @@ it('syncs user currency from first onboarding account after signup', function ()
         ->fill('password', 'password123456')
         ->fill('password_confirmation', 'password123456')
         ->click('@register-user-button')
-        ->wait(3)
         ->assertPathIs('/email/verify')
         ->assertNoJavascriptErrors();
 
@@ -55,27 +53,18 @@ it('syncs user currency from first onboarding account after signup', function ()
     $page = visit('/onboarding?step=create-account');
 
     $page->assertPathIs('/onboarding')
-        ->wait(1)
         ->assertSee("Let's build the picture")
         ->click('Add one myself')
-        ->wait(1)
         ->fill('#display_name', 'Euro Checking Account')
         ->click('Select bank...')
-        ->wait(1)
         ->fill('[placeholder="Search bank..."]', 'Signup')
-        ->wait(1)
         ->click('Signup Test Bank')
-        ->wait(1)
         ->click('Select account type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Checking")')
-        ->wait(1)
         ->click('button[name="currency_code"]')
-        ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(1)
         ->click('Add this account')
-        ->wait(5)
+        ->assertSee('Bring in your history')
         ->assertNoJavascriptErrors();
 
     $user->refresh();
@@ -138,20 +127,14 @@ it('walks the four questions and reads the answers back', function () {
     $page = visit('/onboarding');
 
     $page->click('Start')
-        ->wait(1)
         ->assertSee('What do you want to change?')
         ->click('Understand where it all goes')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         ->assertSee('How do you keep track today?')
         ->click('A spreadsheet')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         ->assertSee('What did you spend last month?')
         ->click('Lock in my guess')
-        ->wait(1)
         // The plan step is the whole point of asking: it hands the answers back.
         ->assertSee("Here's what happens next")
         ->assertSee('understand where it all goes')
@@ -184,7 +167,7 @@ it('shows existing accounts instead of create form when accounts exist', functio
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
+    $page
         // Should show the hub with what is already in, not the empty one
         ->assertSee("1 in. What's missing?")
         ->assertSee('Test Bank')
@@ -209,12 +192,10 @@ it('allows continuing with existing accounts', function () {
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
-        ->assertSee("1 in. What's missing?")
+    $page->assertSee("1 in. What's missing?")
         ->assertSee('Existing Bank')
         // The step ends when the user says it does, not when they add one thing
         ->click("That's everything — continue")
-        ->wait(3)
         // Nothing to sync, so the syncing step hands straight over to the
         // reveal, which has no movements to reveal for this user.
         ->assertSee('You’re worth')
@@ -222,7 +203,6 @@ it('allows continuing with existing accounts', function () {
         // no month to read: the step after it depends on their plan, so what is
         // asserted here is that the flow leaves the reveal at all.
         ->click('Continue')
-        ->wait(3)
         ->assertDontSee('You’re worth')
         ->assertNoJavascriptErrors();
 });
@@ -254,8 +234,7 @@ it('returns to the accounts step when bank authorization fails during onboarding
 
     // The accounts step opens on its failure screen, which names the bank that
     // refused and says what it did not leave behind — not on the hub listing.
-    $page->wait(1)
-        ->assertPathIs('/onboarding')
+    $page->assertPathIs('/onboarding')
         ->assertQueryStringHas('step', 'create-account')
         ->assertSee('Failing Bank didn’t let us in')
         ->assertSee('Nothing was created')
@@ -276,7 +255,7 @@ it('deep links straight to the connections step via ?step=create-account', funct
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
+    $page
         // Lands on the accounts hub, skipping the questions entirely.
         ->assertSee("Let's build the picture")
         ->assertSee('Connect a bank')
@@ -294,8 +273,7 @@ it('polls and shows a connection finalized in another browser', function () {
 
     // User sits on the connections step with no accounts yet.
     $page = visit('/onboarding?step=create-account');
-    $page->wait(1)
-        ->assertSee("Let's build the picture")
+    $page->assertSee("Let's build the picture")
         ->assertDontSee('Polled Bank');
 
     // The bank flow is finalized elsewhere (iOS PWA -> Safari): an account is
@@ -313,8 +291,7 @@ it('polls and shows a connection finalized in another browser', function () {
     ]);
 
     // The 4s poll picks it up and the connection appears without a manual refresh.
-    $page->wait(6)
-        ->assertSee("1 in. What's missing?")
+    $page->assertSee("1 in. What's missing?")
         ->assertSee('Polled Bank')
         ->assertNoJavascriptErrors();
 });
@@ -340,14 +317,11 @@ it('shows import transactions step after account creation', function () {
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
-        ->click("That's everything — continue")
-        ->wait(3)
+    $page->click("That's everything — continue")
         // Existing accounts no longer trigger import, and there is nothing to
         // sync — so the reveal has nothing to show but the balances.
         ->assertSee('You’re worth')
         ->click('Continue')
-        ->wait(3)
         ->assertDontSee('You’re worth')
         ->assertNoJavascriptErrors();
 });
@@ -369,7 +343,7 @@ it('shows add another account form without first account restriction', function 
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
+    $page
         // At this point, the hub lists what the user already has
         ->assertSee("1 in. What's missing?")
         ->assertSee('Primary Bank')
@@ -389,18 +363,14 @@ it('hides the connected plan price after connected setup is selected once', func
 
     // The row no longer says a plan is chosen at the end, because it is not:
     // it names the price and leads to the gate, which is where the plan starts.
-    $page->wait(1)
-        ->assertSee('Standard plan, from')
+    $page->assertSee('Standard plan, from')
         ->assertSee('/month')
         ->assertDontSee("You'll choose a plan at the end of the onboarding.")
         ->click('Connect a bank')
-        ->wait(1)
         ->assertSee('Connecting a bank needs Standard')
         ->click('Not now — I’ll add accounts by hand')
-        ->wait(1)
         ->assertSee('Add it yourself')
         ->click('Back')
-        ->wait(1)
         ->assertSee("Let's build the picture")
         ->assertDontSee('Standard plan, from')
         ->assertDontSee('/month')
@@ -416,25 +386,17 @@ it('creates a real estate account during onboarding by default', function () {
 
     $page = visit('/onboarding?step=create-account');
 
-    $page->wait(1)
-        ->assertSee("Let's build the picture")
+    $page->assertSee("Let's build the picture")
         ->click('Add one myself')
-        ->wait(1)
         ->fill('#display_name', 'My Apartment')
         ->click('Select account type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Real Estate")')
-        ->wait(1)
         ->click('button[name="currency_code"]')
-        ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(1)
         ->click('Select property type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Residential")')
-        ->wait(1)
         ->click('Add this account')
-        ->wait(5)
+        ->assertSee('Set Account Balance')
         ->assertNoJavascriptErrors();
 
     $user->refresh();
@@ -463,24 +425,17 @@ it('does not ask for a balance twice when the form already took one', function (
     $this->actingAs($user);
 
     visit('/onboarding?step=create-account')
-        ->wait(1)
         ->assertSee("Let's build the picture")
         ->click('Add one myself')
-        ->wait(1)
         ->fill('#display_name', 'Hipoteca')
         ->click('Select account type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Loan")')
-        ->wait(1)
         ->click('button[name="currency_code"]')
-        ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(1)
         ->fill('#balance', '120000')
         ->click('Add this account')
-        ->wait(5)
-        ->assertDontSee('Set Account Balance')
         ->assertSee("What's missing?")
+        ->assertDontSee('Set Account Balance')
         ->assertNoJavascriptErrors();
 
     expect($user->accounts()->count())->toBe(1);
@@ -494,20 +449,13 @@ it('still asks for a balance when the form was left without one', function () {
     $this->actingAs($user);
 
     visit('/onboarding?step=create-account')
-        ->wait(1)
         ->click('Add one myself')
-        ->wait(1)
         ->fill('#display_name', 'Plan de pensiones')
         ->click('Select account type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Loan")')
-        ->wait(1)
         ->click('button[name="currency_code"]')
-        ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(1)
         ->click('Add this account')
-        ->wait(5)
         ->assertSee('Set Account Balance')
         ->assertNoJavascriptErrors();
 });
@@ -540,114 +488,91 @@ it('completes entire onboarding flow with account creation, transaction import, 
     // Steps 1-5: the promise and the four questions
     $page->assertSee('Find out where your money actually went')
         ->click('Start')
-        ->wait(1)
         ->click('Understand where it all goes')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         ->click('In my head')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         ->click('Lock in my guess')
-        ->wait(1)
         ->assertSee("Here's what happens next")
-        ->click("Let's go")
-        ->wait(1);
+        ->click("Let's go");
 
     // Step 6: the accounts hub, empty. Take the by-hand route and fill the form.
     $page->assertSee("Let's build the picture")
         ->assertSee('Connect a bank')
         ->click('Add one myself')
-        ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')
-        ->wait(1)
         ->fill('[placeholder="Search bank..."]', 'Chase')
-        ->wait(2)
         ->click('Chase Bank')
-        ->wait(1)
         ->click('Select account type')
-        ->wait(1)
         ->click('[role="option"]:has-text("Checking")')
-        ->wait(1)
         ->click('button[name="currency_code"]')
-        ->wait(1)
         ->click('[role="option"]:has-text("EUR")')
-        ->wait(1)
-        ->click('Add this account')
-        ->wait(5);
+        ->click('Add this account');
 
     // The import is screens of the flow now, and the only account that can take
     // a file is the one just created — so it opens straight on the file.
     $page->assertSee('Bring in your history')
-        ->attach('input[type="file"]', __DIR__.'/assets/test-transactions.csv')
-        ->wait(2);
+        ->attach('input[type="file"]', __DIR__.'/assets/test-transactions.csv');
 
     // The columns we guessed, for the user to disagree with.
     $page->assertSee('Did we read it right?')
-        ->click("That's right")
-        ->wait(3);
+        ->click("That's right");
 
     // The preview, where nothing has been written yet.
     $page->assertSee('5 movements')
-        ->click('Import 5 movements')
-        ->wait(15);
+        ->click('Import 5 movements');
 
     // After import completes, back to the hub with the account in it
     $page->assertSee('My Checking Account')
         ->assertSee('Usually missed')
         // One click, not two: the import step completes itself, so the hub is
         // already the screen by the time this runs.
-        ->click("That's everything — continue")
-        ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
+        ->click("That's everything — continue");
 
     // The reveal: five movements in one month is under the bar, so this user
     // gets the balances variant.
     $page->assertSee('You’re worth')
-        ->click('Continue')
-        ->wait(2);
+        ->click('Continue');
 
     // AI Suggestions - the AI cannot be switched on without a plan, so this
     // user meets the gate rather than the consent prompt. Decline it and the
     // flow carries on unpaid, which is the whole point of the way past it.
     $page->assertSee('AI sorting needs Standard')
-        ->click('I’ll sort them myself')
-        ->wait(2);
+        ->click('I’ll sort them myself');
 
     // Teach us - the movements the rules could not place. Skipping is no longer
     // a way through the step: the minimum has to be filed for real.
     $page->assertSee('Teach us your habits')
-        ->assertSee('File 5 movements to carry on')
-        ->wait(1);
+        ->assertSee('File 5 movements to carry on');
 
     // The rules hint opens over the category list after the first one, and
     // holds it disabled until it is acknowledged.
     $page->click('Food')
-        ->wait(2)
-        ->click('Got it')
-        ->wait(1);
+        ->click('Got it');
 
-    foreach (range(1, 4) as $ignored) {
-        $page->click('Food')->wait(2);
+    foreach (range(1, 4) as $filed) {
+        $page->click('Food');
+
+        // The counter is what proves the movement was filed before the next click.
+        if ($filed < 4) {
+            $page->assertSee(($filed + 1).'/5');
+        }
     }
 
     $page->assertSee('That’s enough to continue')
-        ->click('Continue')
-        ->wait(1);
+        ->click('Continue');
 
     // Step 10 has no month to build a target on for this user — five movements
     // never got revealed — so it says so rather than invent a number. It is
     // still a screen: step 5 promised them a target, and vanishing between the
     // step before and the step after would read as one that broke.
     $page->assertSee('Your target can wait')
-        ->click('Continue')
-        ->wait(2);
+        ->click('Continue');
 
     $page->assertSee('Your dashboard isn’t empty')
         ->assertDontSee('put aside')
-        ->click('Open my dashboard')
-        ->wait(5);
+        ->click('Open my dashboard');
 
     // Since SUBSCRIPTIONS_ENABLED is true, user should end on /subscribe
     $page->assertPathIs('/subscribe')
@@ -710,10 +635,9 @@ it('activates AI directly without a consent prompt when a bank is connected', fu
     // plan: the consent prompt is skipped and AI is turned on for them. With no
     // transactions yet the run stops at the "need more data" screen instead of
     // calling the AI.
-    $page->wait(3)
+    $page->assertSee('Not enough to learn from yet')
         ->assertDontSee('Let AI draft your rules?')
         ->assertDontSee('Turn it on')
-        ->assertSee('Not enough to learn from yet')
         ->assertNoJavascriptErrors();
 
     expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
@@ -733,8 +657,7 @@ it('asks for consent before activating AI when the plan was bought without a ban
 
     $page = visit('/onboarding?step=ai-suggestions');
 
-    $page->wait(2)
-        ->assertSee('Let AI draft your rules?')
+    $page->assertSee('Let AI draft your rules?')
         ->assertSee('Without this you sort')
         ->assertSee('Turn it on')
         ->assertNoJavascriptErrors();
@@ -743,7 +666,7 @@ it('asks for consent before activating AI when the plan was bought without a ban
     expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
 
     $page->click('Turn it on')
-        ->wait(3)
+        ->assertSee('Not enough to learn from yet')
         ->assertNoJavascriptErrors();
 
     expect($user->refresh()->hasActiveAiConsent())->toBeTrue();

@@ -112,7 +112,7 @@ it('captures the run counting merchants out loud', function () {
         ->assertSee('147')
         ->assertSee('Rules drafted')
         ->assertSee('Up to a couple of minutes. You can leave this screen — it keeps going without you.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-generating')
         ->assertNoJavascriptErrors();
 });
@@ -162,7 +162,7 @@ it('captures the rules the run came back with', function () {
         ->waitForText('ready when you are', 10)
         ->assertSee('Groceries')
         ->assertSee('Any of them can be undone from the transaction itself.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-review')
         ->assertNoJavascriptErrors();
 });
@@ -180,7 +180,7 @@ it('captures what a short file gets instead', function () {
         ->assertSee('You have 31 movements')
         ->assertSee('Bring more history')
         ->assertSee('Add more history first')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-not-eligible')
         ->assertNoJavascriptErrors();
 });
@@ -203,7 +203,7 @@ it('captures a run that died before it finished', function () {
         ->waitForText('That didn’t finish', 10)
         ->assertSee('903 movements, at your own pace, whenever')
         ->assertSee('Try again')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-failed')
         ->assertNoJavascriptErrors();
 });
@@ -228,7 +228,7 @@ it('captures a year with no merchant worth a rule', function () {
         // The claim the design made here — "847 of them got a category" — is
         // not true at this point in the flow, and is gone.
         ->assertSee('Nothing was changed')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-empty')
         ->assertNoJavascriptErrors();
 });
@@ -250,7 +250,7 @@ it('captures the consent screen a returning user gets', function () {
         ->assertSee('One line at a time, never the picture')
         ->assertSee('903 movements')
         ->assertSee('Leave it off')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-re-consent')
         ->assertNoJavascriptErrors();
 });
@@ -273,7 +273,7 @@ it('captures the movements the rules could not place', function () {
         ->waitForText('Teach us your habits', 10)
         ->assertSee('File 5 movements to carry on')
         ->assertSee('Not sure about one? Skip it and we’ll bring you another.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'teach-us')
         ->assertNoJavascriptErrors();
 });

@@ -48,7 +48,7 @@ it('captures the bank picker with the country beside the search', function () {
         // it out, and the beta pill is a reliability signal you get before you
         // choose rather than after you are stuck.
         ->assertSee('Beta')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-connect')
         ->assertNoJavascriptErrors();
 });
@@ -64,7 +64,7 @@ it('captures the full country list behind the country control', function () {
         ->click('button:has-text("España")')
         ->waitForText('Which country is the account in?', 5)
         ->assertSee('Guessed from your settings')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-country')
         ->assertNoJavascriptErrors();
 });
@@ -99,7 +99,7 @@ it('captures the handoff before leaving for the bank', function () {
         ->assertSee('Your password stays at your bank')
         ->assertSee('We can read, never touch')
         ->assertSee('About 40 seconds. We’ll hold your place.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-handoff')
         ->assertNoJavascriptErrors();
 });
@@ -128,7 +128,7 @@ it('captures the account chooser a bank comes back with', function () {
         // whole point of the screen.
         ->click('button:has-text("Cuenta Comunidad")')
         ->waitForText('Track these 3', 5)
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-which-accounts')
         ->assertNoJavascriptErrors();
 
@@ -169,7 +169,7 @@ it('captures the wait, counting what the bank has handed over', function () {
         ->assertSee('Transactions read')
         ->assertSee('Places you spent')
         ->assertSee('Still going. You can leave this screen.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-reading')
         ->assertNoJavascriptErrors();
 });
@@ -216,7 +216,7 @@ it('captures the stuck state, with a way out of it', function () {
         ->assertSee('12 movements')
         ->assertSee('Carry on with 3 months')
         ->assertSee('Wait for the full year')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-taking-its-time')
         ->assertNoJavascriptErrors();
 });
@@ -232,7 +232,7 @@ it('captures the return from a bank that refused', function () {
         ->assertSee('Try BBVA again')
         ->assertSee('Use a different bank')
         ->assertSee('Bring a file instead')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-connect-failed')
         ->assertNoJavascriptErrors();
 });
@@ -255,7 +255,7 @@ it('captures the return that landed in another browser', function () {
         ->assertSee('The connection worked')
         ->assertSee('This tab can be closed.')
         ->assertSee('Open Whisper')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'bank-other-device')
         ->assertNoJavascriptErrors();
 });

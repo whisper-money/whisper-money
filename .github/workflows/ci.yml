@@ -175,23 +175,24 @@ jobs:
       - name: Setup Bun & Node Deps
         uses: ./.github/actions/setup-bun-deps
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
+      # No cache: browser jobs only run on pull_request, and a PR cannot read a
+      # cache another PR saved, so the old one missed on every new PR. The
+      # headless shell is all Pest drives, and is a third of the full download.
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps --only-shell chromium
+
+      # Re-runs and pushes that leave the frontend alone skip the ~40s build.
+      # Wayfinder generates routes from the PHP side, so app/ and routes/ are
+      # build inputs too.
+      - name: Cache built assets
+        id: build-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: playwright-${{ runner.os }}-
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-
-      - name: Install Playwright system deps
-        run: npx playwright install-deps chromium
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+          path: public/build
+          key: build-${{ runner.os }}-${{ hashFiles('resources/**', 'app/**', 'routes/**', 'config/**', 'vite.config.*', 'package.json', 'bun.lock', 'tsconfig*.json', 'components.json') }}
 
       - name: Build Assets
+        if: steps.build-cache.outputs.cache-hit != 'true'
         run: bun run build
 
       - name: Copy Environment File

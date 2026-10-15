@@ -39,7 +39,6 @@ it('can open add transaction dialog', function () {
 
     $page->assertSee('Transactions')
         ->click('[data-testid="add-transaction-button"]')
-        ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
 });
@@ -87,7 +86,6 @@ it('shows newly created labels in the transaction label dropdown without refresh
         ->waitForText('Create Transaction', 5)
         // The account, category and label fields open behind the reveal.
         ->click('[data-testid="toggle-more-options"]')
-        ->wait(0.5)
         ->click('[data-testid="label-combobox-trigger"]')
         ->fill('input[placeholder="Search or create labels..."]', 'Padel')
         ->waitForText('Create "Padel"', 5)
@@ -117,34 +115,26 @@ it('can create a transaction', function () {
     createAccountViaUI($page, 'My Checking', 'Test Bank');
 
     // Verify account was created
-    $page->wait(2);
     $page->assertSee('My Checking');
 
     // Visit transactions page
     $page = visit('/transactions');
-    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('[data-testid="add-transaction-button"]')
-        ->wait(2)
         ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
-        ->wait(1)
         // The account, category and label fields open behind the reveal.
         ->click('[data-testid="toggle-more-options"]')
-        ->wait(0.5)
         ->click('[data-testid="account-select"]')
-        ->wait(2)
         ->waitForText('My Checking', 5)
         ->click('[role="option"]:has-text("My Checking")')
-        ->wait(0.5)
         ->click('[data-testid="category-select"]')
-        ->wait(2)
         ->waitForText('Groceries', 5)
         ->click('Groceries')
         ->fill('#amount', '50.00')
         ->click('[data-testid="submit-transaction"]')
-        ->wait(3)
+        ->assertDontSee('Create Transaction')
         ->assertNoJavascriptErrors();
 
     // The type toggle defaults to Expense, so a typed 50.00 stores negative.
@@ -207,7 +197,6 @@ it('can filter transactions by search text', function () {
         ->waitForText('Weekly groceries', 10)
         ->assertSee('Electric bill')
         ->fill('input[placeholder="Search description or notes..."]', 'groceries')
-        ->wait(1)
         ->assertSee('Weekly groceries')
         ->assertDontSee('Electric bill')
         ->assertNoJavascriptErrors();
@@ -249,15 +238,13 @@ it('can edit an existing transaction from the list', function () {
     $page->assertSee('Transactions')
         ->waitForText('Original transaction note', 10)
         ->click('Original transaction note')
-        ->wait(1)
         ->assertSee('Edit Transaction')
         ->fill('#description', 'Updated dinner transaction')
         ->click('[data-testid="category-select"]')
-        ->wait(1)
         ->click('Dining Out')
         ->fill('#notes', 'Updated note for browser test')
         ->click('[data-testid="submit-transaction"]')
-        ->wait(3)
+        ->assertDontSee('Edit Transaction')
         ->waitForText('Updated dinner transaction', 10)
         ->assertSee('Dining Out')
         ->assertNoJavascriptErrors();
@@ -300,7 +287,6 @@ it('opens the notes and saves an edit from the keyboard', function () {
 
     $page->waitForText('Keyboard lunch', 10)
         ->click('Keyboard lunch')
-        ->wait(1)
         ->assertSee('Edit Transaction')
         // N reveals the notes and puts the cursor in them, without typing the n.
         ->keys('[data-slot="dialog-content"]', 'n')
@@ -309,7 +295,6 @@ it('opens the notes and saves an edit from the keyboard', function () {
         ->fill('#notes', 'Paid with the team card')
         // ⌘⏎ on a Mac, Ctrl+Enter elsewhere: whichever the browser runs on.
         ->keys('#notes', 'ControlOrMeta+Enter')
-        ->wait(3)
         ->assertDontSee('Edit Transaction')
         ->assertNoJavascriptErrors();
 
@@ -346,12 +331,9 @@ it('can delete a transaction from the actions menu', function () {
     $page->assertSee('Transactions')
         ->waitForText('Disposable transaction', 10)
         ->click('button:has-text("Open menu")')
-        ->wait(0.5)
         ->click('Delete')
-        ->wait(0.5)
         ->assertSee('Delete Transaction')
         ->click('button:has-text("Delete")')
-        ->wait(3)
         ->assertDontSee('Disposable transaction')
         ->assertNoJavascriptErrors();
 });

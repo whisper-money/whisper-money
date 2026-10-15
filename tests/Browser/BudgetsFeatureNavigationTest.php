@@ -57,9 +57,7 @@ test('user can open create budget dialog', function () {
 
     $page->waitForText('Planning', 10)
         ->click('Create')
-        ->wait(1)
         ->click('[role="menuitem"]:has-text("Budget")')
-        ->wait(1)
         ->assertSee('Create Budget')
         ->assertNoJavascriptErrors();
 });
@@ -77,7 +75,6 @@ test('user can view a specific budget', function () {
 
     $page->waitForText('My Monthly Budget', 10)
         ->click('View Details')
-        ->wait(2)
         ->assertPathIs("/budgets/{$budget->id}")
         ->assertSee('My Monthly Budget')
         ->assertNoJavascriptErrors();
@@ -96,9 +93,7 @@ test('user can open edit budget dialog', function () {
 
     $page->assertSee('Original Name')
         ->click('//button[@aria-label="More options"]')
-        ->wait(0.5)
         ->click('Edit budget')
-        ->wait(1)
         ->assertSee('Edit Budget')
         ->assertNoJavascriptErrors();
 });
@@ -116,9 +111,7 @@ test('user can open delete budget dialog', function () {
 
     $page->assertSee('Budget to Delete')
         ->click('//button[@aria-label="More options"]')
-        ->wait(0.5)
         ->click('Delete budget')
-        ->wait(1)
         ->assertSee('Delete Budget')
         ->assertNoJavascriptErrors();
 });

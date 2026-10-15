@@ -13,40 +13,26 @@ test('user can create a budget with category', function () {
     ]);
 
     $page = $this->actingAs($user)->visit('/budgets');
-    $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Planning')
         ->waitForText('Create', 10)
-        ->wait(1) // Extra wait before clicking
         ->click('Create')
-        ->wait(1)
         ->click('[role="menuitem"]:has-text("Budget")')
-        ->wait(3) // Wait for dialog to open
         ->assertSee('Create Budget')
-        ->wait(1) // Wait for form to be ready
         ->fill('name', 'Monthly Groceries')
-        ->wait(1)
         ->click('#period-type')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("Monthly")')
-        ->wait(1)
         ->click('button:has-text("Select categories")')
-        ->wait(0.5)
         ->click('[role="option"]:has-text("'.$category->name.'")')
-        ->wait(0.5)
         ->click('#categories') // Close the categories combobox popover
-        ->wait(1)
-        ->click('button:has-text("Carry Over")')
         ->wait(0.5)
+        ->click('button:has-text("Carry Over")')
         ->click('[role="option"]:has-text("Reset/Pool")')
-        ->wait(1)
         ->fill('#allocated-amount', '500')
         ->click('label:has-text("Rollover Type")') // Click elsewhere to blur the amount input
-        ->wait(2) // Wait for state to update
+        ->wait(1)
         ->click('[role="dialog"] button[type="submit"]')
-        ->wait(4) // Wait for form submission
         ->assertPathBeginsWith('/budgets/')
-        ->wait(2) // Wait for page to update
         ->waitForText('Monthly Groceries', 15)
         ->assertSee('Budget Spending')
         ->assertNoJavascriptErrors();
@@ -66,22 +52,16 @@ test('user can update budget name', function () {
     ]);
 
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");
-    $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Old Name')
-        ->wait(4)
         ->click('[aria-label="More options"]')
-        ->wait(1) // Wait for dropdown to open
         ->click('Edit budget')
-        ->wait(3) // Wait for dialog to open
-        ->assertSee('Edit Budget')
-        ->wait(1) // Wait for form to be ready
-        ->fill('name', 'New Budget Name')
         ->wait(1)
+        ->assertSee('Edit Budget')
+        ->fill('name', 'New Budget Name')
         ->fill('#allocated-amount', '500')
-        ->wait(2)
         ->click('button:has-text("Save Changes")')
-        ->waitForText('Saving...', 5)
+        ->assertTitleContains('New Budget Name')
         ->waitForEvent('networkidle')
         ->assertScript("document.querySelector('[role=\"dialog\"]') === null")
         ->assertPathIs("/budgets/{$budget->id}")
@@ -106,21 +86,16 @@ test('user can delete a budget', function () {
     ]);
 
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");
-    $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Budget to Delete')
-        ->wait(4)
         ->click('[aria-label="More options"]')
-        ->wait(1) // Wait for dropdown to open
         ->click('Delete budget')
-        ->wait(3) // Wait for dialog to open
         ->assertSee('Delete Budget')
         ->assertSee('Are you sure')
-        ->wait(2)
         ->click('button:has-text("Delete")')
-        ->wait(4) // Wait for deletion
         ->assertPathIs('/budgets')
-        ->wait(2) // Wait for page to update
+        ->waitForText('Planning', 10)
+        ->wait(1)
         ->assertDontSee('Budget to Delete')
         ->assertNoJavascriptErrors();
 
@@ -133,17 +108,12 @@ test('budget creation validates required fields', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $page = $this->actingAs($user)->visit('/budgets');
-    $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Planning')
         ->waitForText('Create', 10)
-        ->wait(1) // Extra wait before clicking
         ->click('Create')
-        ->wait(1)
         ->click('[role="menuitem"]:has-text("Budget")')
-        ->wait(3) // Wait for dialog to open
         ->assertSee('Create Budget')
-        ->wait(2) // Wait for form to be ready
         ->assertAttribute('button[type="submit"]:has-text("Create Budget")', 'disabled', '')
         ->assertNoJavascriptErrors();
 });
@@ -172,14 +142,10 @@ test('user can navigate back to budgets list from budget detail', function () {
     ]);
 
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");
-    $page->wait(2); // Wait for page to fully load
 
     $page->assertSee($budget->name)
-        ->wait(2)
         ->waitForText('Planning', 10)
-        ->wait(1) // Extra wait before clicking
         ->click('nav[aria-label="breadcrumb"] a:has-text("Planning")')
-        ->wait(4) // Wait for navigation
         ->assertPathIs('/budgets')
         ->assertNoJavascriptErrors();
 });

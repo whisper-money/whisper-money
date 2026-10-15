@@ -70,7 +70,7 @@ it('captures the question the drawer never asked', function () {
         ->assertSee('Everyday account')
         ->assertSee('syncing from the bank')
         ->assertSee('you end up with everything twice')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-pick-account')
         ->assertNoJavascriptErrors();
 });
@@ -85,7 +85,7 @@ it('captures the file screen, and what it promises about the file', function () 
         ->assertSee('in your browser')
         // The way past the step for someone with no file to hand.
         ->assertSee("I don't have one yet")
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-upload')
         ->assertNoJavascriptErrors();
 });
@@ -101,7 +101,7 @@ it('captures the columns we guessed, for the user to disagree with', function ()
         ->assertSee('Fecha valor')
         ->assertSee('Concepto')
         ->assertSee('Importe')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-columns')
         ->assertNoJavascriptErrors();
 });
@@ -118,7 +118,7 @@ it('captures the movements before a single one is saved', function () use ($move
         ->waitForText('312 movements', 10)
         ->assertSee('Nothing is saved until you say the word')
         ->assertSee('Import 312 movements')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-preview')
         ->assertNoJavascriptErrors();
 });
@@ -147,7 +147,7 @@ it('captures the progress, and the results the file left behind', function () us
         ->assertSee('What went wrong')
         ->assertSee('2 rows')
         ->assertSee('Continue with 312')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-partial')
         ->assertNoJavascriptErrors();
 });
@@ -162,7 +162,7 @@ it('captures the PDF every bank offers first', function () {
         ->waitForText("We can't read that one", 10)
         ->assertSee('PDF is not supported')
         ->assertSee('Connect the bank instead')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-upload-error')
         ->assertNoJavascriptErrors();
 });

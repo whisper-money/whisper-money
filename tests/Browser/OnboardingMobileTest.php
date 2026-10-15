@@ -25,33 +25,25 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->resize(430, 932)
         ->assertSee('Find out where your money actually went')
         ->click('Start')
-        ->wait(1)
         // The four rows plus the copy push the content past the viewport: the
         // footer button has to stay clickable without scrolling.
         ->assertSee('What do you want to change?')
         ->assertSee('Save for something specific')
         ->click('Understand where it all goes')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         ->assertSee('How do you keep track today?')
         ->click('In my head')
-        ->wait(1)
         ->click('Continue')
-        ->wait(1)
         // The slider and the note below it are the tallest question of the four.
         ->assertSee('What did you spend last month?')
         ->click('Lock in my guess')
-        ->wait(1)
         ->assertSee("Here's what happens next")
         ->click("Let's go")
-        ->wait(1)
         ->assertSee("Let's build the picture")
         // The row names the price; the plan itself is bought at the gate behind
         // it, not chosen at the end of the flow.
         ->assertSee('Standard plan, from')
         ->click('Add one myself')
-        ->wait(1)
         ->assertSee('Add it yourself')
         ->assertNoJavascriptErrors();
 });
@@ -62,16 +54,13 @@ it('categorizes on a phone with both footer actions reachable', function () {
 
     visit('/onboarding?step=categorize-transactions')
         ->resize(430, 932)
-        ->wait(2)
         ->assertSee('Nothing left to teach us')
         ->click('Continue')
-        ->wait(2)
         // No month was read, so the target step has nothing to build on. It
         // says so on a screen of its own rather than vanishing between the two
         // around it.
         ->assertSee('Your target can wait')
         ->click('Continue')
-        ->wait(2)
         ->assertSee('Your dashboard isn’t empty')
         ->assertNoJavascriptErrors();
 });
@@ -83,14 +72,12 @@ it('offers the header back arrow only where going back is safe', function () {
     // 'goal' can be backed out of...
     visit('/onboarding?step=goal')
         ->resize(430, 932)
-        ->wait(1)
         ->assertPresent('[aria-label="Back"]')
         ->assertNoJavascriptErrors();
 
     // ...but the terminal step must not offer it.
     visit('/onboarding?step=complete')
         ->resize(430, 932)
-        ->wait(1)
         ->assertSee('Your dashboard isn’t empty')
         ->assertMissing('[aria-label="Back"]')
         ->assertNoJavascriptErrors();

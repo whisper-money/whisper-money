@@ -112,7 +112,7 @@ it('captures the first target, built on the month the reveal read', function () 
         ->assertSee('Warn me before I overspend')
         ->assertSee('Set my target')
         ->assertSee('Not yet')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'target-first')
         ->assertNoJavascriptErrors();
 });
@@ -141,7 +141,7 @@ it('captures the close for the user who did all of it', function () {
         ->assertSee('Everything new sorted from now on')
         ->assertSee('€200 a month put aside')
         ->assertSee('You came in guessing')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ready-full')
         ->assertNoJavascriptErrors();
 });
@@ -168,7 +168,7 @@ it('captures the close with no bank behind it and no target set', function () {
         ->assertSee('1 account')
         ->assertDontSee('syncing daily')
         ->assertDontSee('put aside')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ready-file-only')
         ->assertNoJavascriptErrors();
 });
@@ -196,7 +196,7 @@ it('captures the close for the user who brought one balance', function () {
         ->assertDontSee('sorted from now on')
         ->assertDontSee('You came in guessing')
         ->assertSee('the rest of this list fills itself in')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ready-minimal')
         ->assertNoJavascriptErrors();
 });

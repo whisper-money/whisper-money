@@ -90,7 +90,7 @@ it('captures the gate in front of the bank picker', function () {
         ->assertSee('Start Standard — €53.94 today')
         ->assertSee('Not now — I’ll add accounts by hand')
         ->assertSee('Charged today. Full refund from Settings within 3 days.')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'gate-bank')
         ->assertNoJavascriptErrors();
 });
@@ -113,7 +113,7 @@ it('captures the money-back row on a dark ground', function () {
         ->click('Connect a bank')
         ->waitForText('Connecting a bank needs Standard', 10)
         ->assertSee('3 days to change your mind')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'gate-bank-dark')
         ->assertNoJavascriptErrors();
 });
@@ -137,7 +137,7 @@ it('captures the gate in front of the AI', function () {
         ->assertSee('3 days to change your mind')
         ->assertSee('Or keep sorting by hand')
         ->assertSee('I’ll sort them myself')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'gate-ai')
         ->assertNoJavascriptErrors();
 });
@@ -160,7 +160,7 @@ it('captures the soft paywall that closes an unpaid onboarding', function () {
         ->assertSee('Free keeps working')
         ->assertSee('Standard adds the tedious part')
         ->assertSee('Carry on free')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'paywall-soft')
         ->assertNoJavascriptErrors();
 });
@@ -198,7 +198,7 @@ it('captures the paywall a former subscriber gets', function () {
         ->assertSee('Still here, still categorised')
         ->assertSee('5 rules')
         ->assertSee('Paused until you come back')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'paywall-former')
         ->assertNoJavascriptErrors();
 });
@@ -230,7 +230,7 @@ it('captures the free plan confirmation, with the banks named', function () {
         ->assertSee('Nothing is deleted.')
         ->assertSee('Disconnect and continue free')
         ->assertSee('Keep my banks')
-        ->wait(1)
+        ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'free-plan-confirm')
         ->assertNoJavascriptErrors();
 });
