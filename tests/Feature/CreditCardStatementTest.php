@@ -226,6 +226,73 @@ it('attributes a payment made after the due date to the last statement closed be
     );
 });
 
+describe('a weekly statement charged the day it closes', function () {
+    // Closes every Thursday and is charged that same Thursday: purchases from
+    // Friday through Thursday.
+    beforeEach(function () {
+        test()->detail->update([
+            'statement_frequency' => StatementFrequency::Weekly,
+            'statement_closing_date' => '2026-10-15',
+            'payment_due_date' => '2026-10-15',
+        ]);
+
+        cardTransaction(-4200, '2026-10-12');
+        test()->payment = cardTransaction(4200, '2026-10-15', ['category_id' => test()->transfer->id]);
+    });
+
+    it('attributes a payment on the closing day to the statement closing that day', function () {
+        expect(estimateOn('2026-10-15')['payments'])->toBe([
+            ['transaction_id' => test()->payment->id, 'date' => '2026-10-15', 'amount' => 4200, 'period_from' => '2026-10-09', 'closing_date' => '2026-10-15', 'due_date' => '2026-10-15'],
+        ]);
+    });
+
+    it('charges the statement closing that day as the next payment, already paid', function () {
+        expect(estimateOn('2026-10-15')['next_payment'])->toBe([
+            'period_from' => '2026-10-09',
+            'closing_date' => '2026-10-15',
+            'due_date' => '2026-10-15',
+            'amount' => 4200,
+            'is_final' => false,
+            'paid' => 4200,
+        ]);
+    });
+
+    it('moves on to the open cycle the day after, with the charged statement settled', function () {
+        $estimate = estimateOn('2026-10-16');
+
+        expect($estimate['next_payment'])->toMatchArray([
+            'period_from' => '2026-10-16',
+            'closing_date' => '2026-10-22',
+            'due_date' => '2026-10-22',
+            'amount' => 0,
+            'is_final' => false,
+            'paid' => 0,
+        ])->and($estimate['payments'])->sequence(
+            fn ($payment) => $payment->toMatchArray(['date' => '2026-10-15', 'closing_date' => '2026-10-15']),
+        )->and($estimate['previous_statement'])->toMatchArray([
+            'period_from' => '2026-10-09',
+            'closing_date' => '2026-10-15',
+            'purchases' => 4200,
+            'paid' => 4200,
+            'pending' => 0,
+        ]);
+    });
+});
+
+it('attributes a payment on the closing day of a monthly statement charged that day', function () {
+    test()->detail->update(['statement_closing_date' => '2026-03-05', 'payment_due_date' => '2026-03-05']);
+    cardTransaction(-3000, '2026-02-20');
+    cardTransaction(3000, '2026-03-05', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toMatchArray([
+        'period_from' => '2026-02-06',
+        'closing_date' => '2026-03-05',
+        'purchases' => 3000,
+        'paid' => 3000,
+        'pending' => 0,
+    ]);
+});
+
 it('reads a payment on the date the bank booked it', function () {
     cardTransaction(2500, '2026-03-08', ['category_id' => null, 'source_date' => '2026-03-04']);
 
@@ -589,9 +656,30 @@ it('rejects statement dates that do not make sense', function (array $payload, s
     'missing due date' => [['statement_closing_date' => '2026-04-25'], 'payment_due_date'],
     'not a date' => [['statement_closing_date' => 'soon', 'payment_due_date' => '2026-05-10'], 'statement_closing_date'],
     'due before closing' => [['statement_closing_date' => '2026-04-25', 'payment_due_date' => '2026-04-20'], 'payment_due_date'],
-    'due on the closing day' => [['statement_closing_date' => '2026-04-25', 'payment_due_date' => '2026-04-25'], 'payment_due_date'],
     'due too long after closing' => [['statement_closing_date' => '2026-04-01', 'payment_due_date' => '2026-05-17'], 'payment_due_date'],
 ]);
+
+it('accepts a statement charged the same day it closes', function (string $frequency) {
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-10-15',
+            'payment_due_date' => '2026-10-15',
+            'statement_frequency' => $frequency,
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(test()->detail->fresh()->payment_due_date->toDateString())->toBe('2026-10-15');
+})->with(['monthly', 'weekly']);
+
+it('rejects a statement charged the day before it closes', function (string $frequency) {
+    actingAs(test()->user)
+        ->patch(route('accounts.credit-card-detail.update', test()->card), [
+            'statement_closing_date' => '2026-10-15',
+            'payment_due_date' => '2026-10-14',
+            'statement_frequency' => $frequency,
+        ])
+        ->assertSessionHasErrors(['payment_due_date' => "The payment due date can't be before the statement closing date."]);
+})->with(['monthly', 'weekly']);
 
 it('accepts a due date exactly 45 days after closing', function () {
     actingAs(test()->user)

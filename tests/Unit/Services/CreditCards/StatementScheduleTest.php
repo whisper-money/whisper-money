@@ -114,3 +114,32 @@ it('moves weekly cycles a week at a time from the anchor', function (int $offset
     'across a month end' => [5, '2026-10-30', '2026-11-05', '2026-11-09'],
     'backwards' => [-1, '2026-09-18', '2026-09-24', '2026-09-28'],
 ]);
+
+// 2026-10-15 is a Thursday: the statement closes every Thursday and is charged
+// that same day.
+
+it('picks the statement charged the day it closes', function (string $frequency, string $today, string $expectedClosing, bool $isFinal) {
+    $next = schedule('2026-10-15', '2026-10-15', StatementFrequency::from($frequency))->nextPaymentOn(CarbonImmutable::parse($today));
+
+    expect($next['cycle']->closingDate->toDateString())->toBe($expectedClosing)
+        ->and($next['cycle']->dueDate->toDateString())->toBe($expectedClosing)
+        ->and($next['is_final'])->toBe($isFinal);
+})->with([
+    'weekly, before closing' => ['weekly', '2026-10-13', '2026-10-15', false],
+    'weekly, on the closing day: charged that day, purchases still landing' => ['weekly', '2026-10-15', '2026-10-15', false],
+    'weekly, the day after: the open cycle' => ['weekly', '2026-10-16', '2026-10-22', false],
+    'monthly, on the closing day' => ['monthly', '2026-10-15', '2026-10-15', false],
+    'monthly, the day after: the open cycle' => ['monthly', '2026-10-16', '2026-11-15', false],
+]);
+
+it('reports the statement a payment made on a day pays', function (string $closing, string $due, StatementFrequency $frequency, string $day, string $expectedClosing) {
+    expect(schedule($closing, $due, $frequency)->statementPaidOn(CarbonImmutable::parse($day))->closingDate->toDateString())->toBe($expectedClosing);
+})->with([
+    'charged the day it closes, paid on that day' => ['2026-10-15', '2026-10-15', StatementFrequency::Weekly, '2026-10-15', '2026-10-15'],
+    'charged the day it closes, paid the day before' => ['2026-10-15', '2026-10-15', StatementFrequency::Weekly, '2026-10-14', '2026-10-08'],
+    'charged the day it closes, paid the day after' => ['2026-10-15', '2026-10-15', StatementFrequency::Weekly, '2026-10-16', '2026-10-15'],
+    'monthly, charged the day it closes, paid on that day' => ['2026-10-15', '2026-10-15', StatementFrequency::Monthly, '2026-10-15', '2026-10-15'],
+    'charged later, paid on the closing day: the one before' => ['2026-10-01', '2026-10-05', StatementFrequency::Weekly, '2026-10-01', '2026-09-24'],
+    'charged later, paid between closing and due' => ['2026-10-01', '2026-10-05', StatementFrequency::Weekly, '2026-10-03', '2026-10-01'],
+    'monthly, paid on the closing day: the one before' => ['2026-03-05', '2026-03-20', StatementFrequency::Monthly, '2026-03-05', '2026-02-05'],
+]);

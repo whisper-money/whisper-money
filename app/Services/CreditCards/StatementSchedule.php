@@ -60,12 +60,23 @@ final readonly class StatementSchedule
     }
 
     /**
-     * The last cycle whose closing date is before $day: the statement a
-     * payment made on $day pays.
+     * The last cycle whose closing date is before $day.
      */
     public function closedCycleBefore(CarbonImmutable $day): StatementCycle
     {
         return $this->cycle($this->openOffsetOn($day) - 1);
+    }
+
+    /**
+     * The statement a payment made on $day pays: the last one closed before
+     * it, unless the cycle closing on $day is also charged that day, as
+     * banks that charge a statement the day it closes do.
+     */
+    public function statementPaidOn(CarbonImmutable $day): StatementCycle
+    {
+        $openCycle = $this->openCycleOn($day);
+
+        return $openCycle->dueDate->lessThanOrEqualTo($day) ? $openCycle : $this->closedCycleBefore($day);
     }
 
     /**
@@ -76,7 +87,9 @@ final readonly class StatementSchedule
      * moves. With a due date more than a cycle after its closing, two closed
      * statements can be pending at once, and the older one is charged first.
      * Once every closed statement is past due, the next charge is the open
-     * cycle, whose amount is still a running total.
+     * cycle, whose amount is still a running total. A statement charged the
+     * day it closes is that open cycle on its closing day too: purchases made
+     * that day still land on it.
      *
      * @return array{cycle: StatementCycle, is_final: bool}
      */

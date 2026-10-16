@@ -91,9 +91,10 @@ class CreditCardStatementService
      * the limit, and both are null while no limit is set.
      *
      * The estimate also lists the repayments booked in that window up to
-     * today, each with the statement it pays, says how much of the next
-     * payment is already paid, and sums up the statement before it, which is
-     * the one those repayments usually settle. Repayments never bring usage
+     * today (from the day the statement before is charged, when that is the
+     * day it closes), each with the statement it pays, says how much of the
+     * next payment is already paid, and sums up the statement before it,
+     * which is the one those repayments usually settle. Repayments never bring usage
      * down: they mostly pay purchases from before the window.
      *
      * @return array{
@@ -122,10 +123,11 @@ class CreditCardStatementService
 
         $from = $nextPayment['cycle']->periodFrom ?? $today->startOfMonth();
         $to = $currentCycle->closingDate ?? $today->endOfMonth()->startOfDay();
+        $paymentsFrom = $previousStatement === null ? $from : $from->min($previousStatement->dueDate);
 
         [$repayments, $transactions] = $this->ledgerRows($account, $previousStatement->periodFrom ?? $from, $to)
             ->partition(fn (Transaction $transaction): bool => self::isRepayment($transaction));
-        $payments = $schedule === null ? collect() : $this->paymentsBetween($repayments, $schedule, $from, $today, $account->currency_code);
+        $payments = $schedule === null ? collect() : $this->paymentsBetween($repayments, $schedule, $paymentsFrom, $today, $account->currency_code);
 
         return [
             'credit_card_statement' => $nextPayment === null || $currentCycle === null ? null : [
@@ -191,7 +193,7 @@ class CreditCardStatementService
 
     /**
      * The repayments booked from $from through $today, oldest first, each with
-     * the statement it pays: the last one closed before it was made.
+     * the statement it pays (see StatementSchedule::statementPaidOn).
      *
      * @param  Collection<int, Transaction>  $repayments
      * @return Collection<int, array{transaction_id: string, date: string, amount: int, period_from: string, closing_date: string, due_date: string}>
@@ -206,7 +208,7 @@ class CreditCardStatementService
                 'transaction_id' => $transaction->id,
                 'date' => self::bookedOn($transaction)->toDateString(),
                 'amount' => $this->convertFullTransactionAmount($transaction, $currency),
-                ...$schedule->closedCycleBefore(self::bookedOn($transaction))->toArray(),
+                ...$schedule->statementPaidOn(self::bookedOn($transaction))->toArray(),
             ])
             ->values();
     }
