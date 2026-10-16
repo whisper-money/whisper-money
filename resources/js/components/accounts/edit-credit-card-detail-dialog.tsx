@@ -144,7 +144,7 @@ export function EditCreditCardDetailDialog({
             name: 'payment_due_date',
             label: __('Payment due date'),
             hint: __(
-                'The day that statement is charged, at most :days days after it closes.',
+                'The day that statement is charged: the same day it closes or up to :days days later.',
                 { days: STATEMENT_FREQUENCIES[frequency].maxDaysToPay },
             ),
         },
