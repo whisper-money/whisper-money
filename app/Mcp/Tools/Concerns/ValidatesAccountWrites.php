@@ -115,7 +115,7 @@ trait ValidatesAccountWrites
             'original_amount' => $schema->integer()->description('loan only: amount originally borrowed, in minor units.'),
             'loan_start_date' => $schema->string()->description('loan only: when the loan started, YYYY-MM-DD. Defaults to today.'),
             'statement_closing_date' => $schema->string()->description('credit_card only: a statement closing date, YYYY-MM-DD. Later cycles repeat from it at statement_frequency. Send with payment_due_date; both null clears them.'),
-            'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. After the closing date, at most '.StatementFrequency::Monthly->maxDaysToPay().' days later on a monthly card and '.StatementFrequency::Weekly->maxDaysToPay().' on a weekly one.'),
+            'payment_due_date' => $schema->string()->description('credit_card only: when that statement is charged, YYYY-MM-DD. On or after the closing date, at most '.StatementFrequency::Monthly->maxDaysToPay().' days later on a monthly card and '.StatementFrequency::Weekly->maxDaysToPay().' on a weekly one.'),
             'statement_frequency' => $schema->string()->enum(array_column(StatementFrequency::cases(), 'value'))->description('credit_card only: how often a statement closes, monthly (the default) or weekly. Left out, the stored one stays. Kept only on a card with statement dates or a credit limit.'),
             'credit_limit' => $schema->integer()->description('credit_card only: the card\'s credit limit, in minor units. null clears it.'),
         ];

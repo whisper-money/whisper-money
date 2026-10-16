@@ -54,7 +54,7 @@ describe('EditCreditCardDetailDialog', () => {
             'true',
         );
         expect(
-            screen.getByText(/at most 7 days after it closes/),
+            screen.getByText(/same day it closes or up to 7 days later/),
         ).toBeInTheDocument();
         expect(screen.getByText(/same weekday every week/)).toBeInTheDocument();
     });
@@ -67,7 +67,7 @@ describe('EditCreditCardDetailDialog', () => {
             'true',
         );
         expect(
-            screen.getByText(/at most 45 days after it closes/),
+            screen.getByText(/same day it closes or up to 45 days later/),
         ).toBeInTheDocument();
     });
 
@@ -77,7 +77,7 @@ describe('EditCreditCardDetailDialog', () => {
         fireEvent.click(frequencyOption('Weekly'));
 
         expect(
-            screen.getByText(/at most 7 days after it closes/),
+            screen.getByText(/same day it closes or up to 7 days later/),
         ).toBeInTheDocument();
     });
 

@@ -1685,6 +1685,21 @@ it('rejects a weekly credit card charged more than a week after closing', functi
     expect($user->accounts()->exists())->toBeFalse();
 });
 
+it('accepts a credit card charged the same day its statement closes', function (string $frequency) {
+    $user = User::factory()->create();
+
+    callWriteTool($user, CreateAccount::class, [
+        'name' => 'Visa',
+        'type' => 'credit_card',
+        'currency_code' => 'EUR',
+        'statement_closing_date' => '2026-10-15',
+        'payment_due_date' => '2026-10-15',
+        'statement_frequency' => $frequency,
+    ])->assertOk();
+
+    expect($user->accounts()->sole()->creditCardDetail->payment_due_date->toDateString())->toBe('2026-10-15');
+})->with(['monthly', 'weekly']);
+
 it('creates a credit card with its credit limit', function () {
     $user = User::factory()->create();
 

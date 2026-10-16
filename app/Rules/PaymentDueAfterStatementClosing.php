@@ -12,9 +12,9 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 use Throwable;
 
 /**
- * A credit card statement is charged after it closes, and not long after:
- * banks give a few days to a few weeks on a monthly card, and a weekly one is
- * charged within the week. Anything past the limit is a typo, and projecting
+ * A credit card statement is charged once it closes, and not long after:
+ * some banks charge it the very day it closes, others give a few days to a
+ * few weeks on a monthly card, and a weekly one is charged within the week. Anything past the limit is a typo, and projecting
  * it would leave two statements unpaid at once.
  *
  * What gets checked is what the card ends up with: a field the payload leaves
@@ -57,8 +57,8 @@ class PaymentDueAfterStatementClosing implements DataAwareRule, ValidationRule
             return;
         }
 
-        if ($dueDate->lessThanOrEqualTo($closingDate)) {
-            $fail(__('The payment due date must be after the statement closing date.'));
+        if ($dueDate->lessThan($closingDate)) {
+            $fail(__("The payment due date can't be before the statement closing date."));
 
             return;
         }
