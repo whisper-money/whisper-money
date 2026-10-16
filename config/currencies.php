@@ -251,10 +251,19 @@ return [
      * Only currencies `options` offers appear here; anything unmapped — a
      * region we hold no currency for, or `es-419`, which is not a country —
      * keeps the USD the column already defaulted to.
+     *
+     * Signup also reads this off the country of the browser's timezone, which
+     * is why the eurozone and Liechtenstein appear in full even where no
+     * `format_locale` of theirs exists: someone in Vienna whose browser only
+     * says "en-US" should still start in euros.
      */
     'by_region' => [
+        'AD' => 'EUR',
         'AR' => 'ARS',
+        'AT' => 'EUR',
         'AU' => 'AUD',
+        'BE' => 'EUR',
+        'BG' => 'EUR',
         'BO' => 'BOB',
         'BR' => 'BRL',
         'CA' => 'CAD',
@@ -262,22 +271,34 @@ return [
         'CL' => 'CLP',
         'CN' => 'CNY',
         'CO' => 'COP',
+        'CY' => 'EUR',
         'CZ' => 'CZK',
         'DE' => 'EUR',
         'DK' => 'DKK',
         'DO' => 'DOP',
+        'EE' => 'EUR',
         'ES' => 'EUR',
+        'FI' => 'EUR',
         'FR' => 'EUR',
         'GB' => 'GBP',
         'GH' => 'GHS',
+        'GR' => 'EUR',
         'GT' => 'GTQ',
         'HK' => 'HKD',
         'HN' => 'HNL',
+        'HR' => 'EUR',
         'IE' => 'EUR',
         'IN' => 'INR',
         'IT' => 'EUR',
         'JP' => 'JPY',
         'KW' => 'KWD',
+        'LI' => 'CHF',
+        'LT' => 'EUR',
+        'LU' => 'EUR',
+        'LV' => 'EUR',
+        'MC' => 'EUR',
+        'ME' => 'EUR',
+        'MT' => 'EUR',
         'MX' => 'MXN',
         'NG' => 'NGN',
         'NL' => 'EUR',
@@ -290,9 +311,14 @@ return [
         'SA' => 'SAR',
         'SE' => 'SEK',
         'SG' => 'SGD',
+        'SI' => 'EUR',
+        'SK' => 'EUR',
+        'SM' => 'EUR',
         'TH' => 'THB',
         'US' => 'USD',
         'UY' => 'UYU',
+        'VA' => 'EUR',
         'VE' => 'VES',
+        'XK' => 'EUR',
     ],
 ];
