@@ -179,6 +179,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('onboarding/reveal', [OnboardingController::class, 'reveal'])->name('onboarding.reveal');
         Route::get('onboarding/summary', [OnboardingController::class, 'summary'])->name('onboarding.summary');
         Route::post('onboarding/answers', [OnboardingController::class, 'answers'])->name('onboarding.answers');
+        Route::patch('onboarding/currency', [OnboardingController::class, 'currency'])->name('onboarding.currency');
         Route::post('onboarding/categorize', [OnboardingController::class, 'categorize'])->name('onboarding.categorize');
         Route::post('onboarding/target', [OnboardingController::class, 'target'])->name('onboarding.target');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');

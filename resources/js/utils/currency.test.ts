@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
     currencyDecimals,
     formatCurrency,
+    getCurrencySymbol,
     setCurrencyDecimals,
     toMajorUnits,
     toMinorUnits,
@@ -173,5 +174,24 @@ describe('formatCurrency across regions', () => {
         // grouping at 10,000. Dropping the option is the regression to watch.
         expect(formatCurrency(123456, 'EUR', 'es-ES')).toContain('1.234');
         expect(formatCurrency(123456, 'EUR', 'fr-FR')).toContain('1\u202F234');
+    });
+});
+
+describe('getCurrencySymbol', () => {
+    it('keeps the symbols it spells out', () => {
+        expect(getCurrencySymbol('EUR')).toBe('€');
+        expect(getCurrencySymbol('NZD')).toBe('NZ$');
+    });
+
+    // The onboarding guess sits next to this symbol, so a rupee guess read
+    // "INR 60,000" until the browser was asked.
+    it('asks the browser for the ones it leaves out', () => {
+        expect(getCurrencySymbol('INR')).toBe('₹');
+        expect(getCurrencySymbol('CAD')).toBe('CA$');
+    });
+
+    it('falls back to the code when there is no symbol to give', () => {
+        expect(getCurrencySymbol('PYG')).toBe('PYG');
+        expect(getCurrencySymbol('not-a-code')).toBe('not-a-code');
     });
 });

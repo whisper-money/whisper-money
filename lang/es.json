@@ -3905,5 +3905,11 @@
     "Already paid": "Ya pagado",
     "Some purchases from that period may not be recorded here.": "Puede que algunas compras de ese periodo no estén registradas aquí.",
     "Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.": "Los puntos de la línea marcan los pagos a la tarjeta y el extracto que paga cada uno. No reducen el crédito dispuesto.",
-    "Statement payment :from – :to": "Pago extracto :from – :to"
+    "Statement payment :from – :to": "Pago extracto :from – :to",
+    "Change currency, currently :currency": "Cambiar moneda, actualmente :currency",
+    "Your currency": "Tu moneda",
+    "We'll show every amount in it. You can change it later in Settings.": "Te mostraremos todos los importes en ella. Puedes cambiarla más tarde en Configuración.",
+    "Search currency...": "Buscar moneda...",
+    "No currency found.": "No se encontró ninguna moneda.",
+    "We couldn't change your currency. Try again.": "No hemos podido cambiar tu moneda. Inténtalo de nuevo."
 }

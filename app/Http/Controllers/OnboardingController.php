@@ -8,6 +8,7 @@ use App\Enums\RolloverType;
 use App\Enums\SignupPlan;
 use App\Http\Requests\StoreOnboardingAnswersRequest;
 use App\Http\Requests\StoreOnboardingTargetRequest;
+use App\Http\Requests\UpdateOnboardingCurrencyRequest;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -199,6 +200,33 @@ class OnboardingController extends Controller
     public function answers(StoreOnboardingAnswersRequest $request): RedirectResponse
     {
         $this->remember($request->user(), $request->validated());
+
+        return back();
+    }
+
+    /**
+     * Set the currency the user is quoted in, from the guess step.
+     *
+     * The column Settings writes too, and like Settings nothing else is
+     * rewritten with it. The one exception is the spending guess, which is
+     * stored in the minor units of the currency it was made in and would
+     * otherwise be read back in the new one, so it is forgotten and the step
+     * asks again.
+     */
+    public function currency(UpdateOnboardingCurrencyRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+        $currencyCode = $request->validated('currency_code');
+
+        if ($user->currency_code !== $currencyCode) {
+            $answers = $user->onboarding_answers ?? [];
+            unset($answers['spending_guess']);
+
+            $user->update([
+                'currency_code' => $currencyCode,
+                'onboarding_answers' => $answers,
+            ]);
+        }
 
         return back();
     }
