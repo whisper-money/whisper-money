@@ -2,13 +2,14 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOnboardingState } from './use-onboarding-state';
 
-const { captureEvent, post } = vi.hoisted(() => ({
+const { captureEvent, post, patch } = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
-vi.mock('@inertiajs/react', () => ({ router: { post } }));
+vi.mock('@inertiajs/react', () => ({ router: { post, patch } }));
 
 describe('useOnboardingState', () => {
     describe('step URL sync', () => {
@@ -605,6 +606,54 @@ describe('useOnboardingState', () => {
                 question: 'today',
                 answer: 'head',
             });
+        });
+    });
+
+    describe('changeCurrency', () => {
+        beforeEach(() => {
+            patch.mockClear();
+        });
+
+        it('saves the currency and shows it before the server answers', () => {
+            const { result } = renderHook(() => useOnboardingState());
+
+            act(() => {
+                result.current.changeCurrency('INR');
+            });
+
+            expect(patch).toHaveBeenCalledWith(
+                '/onboarding/currency',
+                { currency_code: 'INR' },
+                expect.objectContaining({
+                    preserveState: true,
+                    preserveUrl: true,
+                    only: ['auth'],
+                }),
+            );
+
+            const { optimistic } = patch.mock.calls[0][2];
+            const auth = { user: { id: 'u1', currency_code: 'USD' } };
+
+            expect(optimistic({ auth })).toEqual({
+                auth: { user: { id: 'u1', currency_code: 'INR' } },
+            });
+        });
+
+        // The guess is in the old currency's minor units; read back in the new
+        // one it would be another amount altogether.
+        it('forgets the guess made in the previous currency', () => {
+            const { result } = renderHook(() =>
+                useOnboardingState({
+                    initialAnswers: { goal: 'debt', spending_guess: 120000 },
+                }),
+            );
+
+            act(() => {
+                result.current.changeCurrency('JPY');
+            });
+
+            expect(result.current.answers.spending_guess).toBeUndefined();
+            expect(result.current.answers.goal).toBe('debt');
         });
     });
 

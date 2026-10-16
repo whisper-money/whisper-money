@@ -1,10 +1,14 @@
-import { answers as storeAnswers } from '@/actions/App/Http/Controllers/OnboardingController';
+import {
+    answers as storeAnswers,
+    currency as updateCurrency,
+} from '@/actions/App/Http/Controllers/OnboardingController';
 import { captureEvent } from '@/lib/posthog';
 import {
     readStoredValue,
     removeStoredValue,
     writeStoredValue,
 } from '@/lib/safe-storage';
+import { type Auth } from '@/types';
 import { type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
 import { router } from '@inertiajs/react';
@@ -394,6 +398,46 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         [],
     );
 
+    /**
+     * Switch the currency the user is quoted in, from the guess step.
+     *
+     * A spending guess is stored in the minor units of the currency it was
+     * made in, so the server forgets it with the switch and so does the wizard
+     * here: going back to the step asks again rather than reading the old
+     * number in the new currency. The switch shows at once and rolls back on
+     * its own if the request fails.
+     */
+    const changeCurrency = useCallback((currencyCode: string) => {
+        setAnswers((previous) => ({ ...previous, spending_guess: undefined }));
+
+        captureEvent('onboarding_currency_changed', {
+            currency_code: currencyCode,
+        });
+
+        router.patch(
+            updateCurrency.url(),
+            { currency_code: currencyCode },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                // Same reason as the answers above: back() points at the step
+                // the request left from.
+                preserveUrl: true,
+                only: ['auth'],
+                optimistic: (props) => {
+                    const auth = props.auth as Auth;
+
+                    return {
+                        auth: {
+                            ...auth,
+                            user: { ...auth.user, currency_code: currencyCode },
+                        },
+                    };
+                },
+            },
+        );
+    }, []);
+
     const goNext = useCallback(() => {
         // Find the next primary step
         const primaryIndex = primarySteps.indexOf(currentStep);
@@ -430,6 +474,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         totalSteps,
         answers,
         saveAnswer,
+        changeCurrency,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,

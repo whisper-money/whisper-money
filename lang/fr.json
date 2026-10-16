@@ -2975,5 +2975,10 @@
     "Already paid": "Déjà payé",
     "Some purchases from that period may not be recorded here.": "Certains achats de cette période ne sont peut-être pas enregistrés ici.",
     "Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.": "Les points sur la courbe indiquent les paiements de la carte et le relevé que chacun règle. Ils ne réduisent pas le crédit utilisé.",
-    "Statement payment :from – :to": "Paiement relevé :from – :to"
+    "Statement payment :from – :to": "Paiement relevé :from – :to",
+    "Change currency, currently :currency": "Changer de devise, actuellement :currency",
+    "Your currency": "Votre devise",
+    "We'll show every amount in it. You can change it later in Settings.": "Nous afficherons tous les montants dans cette devise. Vous pourrez la changer plus tard dans la Configuration.",
+    "Search currency...": "Rechercher une devise...",
+    "No currency found.": "Aucune devise trouvée."
 }
