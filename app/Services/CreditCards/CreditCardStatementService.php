@@ -124,10 +124,11 @@ class CreditCardStatementService
 
         $from = $nextPayment['cycle']->periodFrom ?? $today->startOfMonth();
         $to = $currentCycle->closingDate ?? $today->endOfMonth()->startOfDay();
+        $paymentsFrom = $previousStatement === null ? $from : $from->min($previousStatement->dueDate);
 
         [$repayments, $transactions] = $this->ledgerRows($account, $previousStatement->periodFrom ?? $from, $to)
             ->partition(fn (Transaction $transaction): bool => self::isRepayment($transaction));
-        $payments = $schedule === null ? collect() : $this->paymentsBetween($repayments, $schedule, $from->min($previousStatement->dueDate), $today, $account->currency_code);
+        $payments = $schedule === null ? collect() : $this->paymentsBetween($repayments, $schedule, $paymentsFrom, $today, $account->currency_code);
 
         return [
             'credit_card_statement' => $nextPayment === null || $currentCycle === null ? null : [
