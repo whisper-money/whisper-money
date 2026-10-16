@@ -91,11 +91,10 @@ class CreditCardStatementService
      * the limit, and both are null while no limit is set.
      *
      * The estimate also lists the repayments booked in that window up to
-     * today, plus those on the statement before's due date when it falls
-     * before the window (a statement charged the day it closes), each with
-     * the statement it pays, says how much of the next
-     * payment is already paid, and sums up the statement before it, which is
-     * the one those repayments usually settle. Repayments never bring usage
+     * today (from the day the statement before is charged, when that is the
+     * day it closes), each with the statement it pays, says how much of the
+     * next payment is already paid, and sums up the statement before it,
+     * which is the one those repayments usually settle. Repayments never bring usage
      * down: they mostly pay purchases from before the window.
      *
      * @return array{

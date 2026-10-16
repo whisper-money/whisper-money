@@ -279,6 +279,20 @@ describe('a weekly statement charged the day it closes', function () {
     });
 });
 
+it('attributes a payment on the closing day of a monthly statement charged that day', function () {
+    test()->detail->update(['statement_closing_date' => '2026-03-05', 'payment_due_date' => '2026-03-05']);
+    cardTransaction(-3000, '2026-02-20');
+    cardTransaction(3000, '2026-03-05', ['category_id' => test()->transfer->id]);
+
+    expect(estimateOn('2026-03-10')['previous_statement'])->toMatchArray([
+        'period_from' => '2026-02-06',
+        'closing_date' => '2026-03-05',
+        'purchases' => 3000,
+        'paid' => 3000,
+        'pending' => 0,
+    ]);
+});
+
 it('reads a payment on the date the bank booked it', function () {
     cardTransaction(2500, '2026-03-08', ['category_id' => null, 'source_date' => '2026-03-04']);
 
