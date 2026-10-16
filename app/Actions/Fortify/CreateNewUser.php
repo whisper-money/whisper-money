@@ -15,6 +15,12 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
+    /**
+     * The format locale browsers send by default, which is too common to tell
+     * us where someone lives.
+     */
+    private const OS_DEFAULT_FORMAT_LOCALE = 'en-US';
+
     public function __construct(
         private FormatLocaleOptions $formatLocales,
         private CurrencyOptions $currencies,
@@ -89,9 +95,9 @@ class CreateNewUser implements CreatesNewUsers
      */
     protected function inferCurrency(?string $requestedFormatLocale, string $formatLocale, ?string $timezone): string
     {
-        $requestedCurrency = $requestedFormatLocale === 'en-US'
+        $requestedCurrency = $requestedFormatLocale === null || $requestedFormatLocale === self::OS_DEFAULT_FORMAT_LOCALE
             ? null
-            : $this->currencies->forRegion(substr((string) $requestedFormatLocale, -2));
+            : $this->currencies->forRegion(substr($requestedFormatLocale, -2));
 
         return $requestedCurrency
             ?? $this->currencies->forTimezone($timezone)

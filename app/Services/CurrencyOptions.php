@@ -96,6 +96,10 @@ class CurrencyOptions
             return $location['country_code'];
         }
 
+        if (! class_exists(\IntlTimeZone::class)) {
+            return null;
+        }
+
         return \IntlTimeZone::getRegion($timezone) ?: null;
     }
 

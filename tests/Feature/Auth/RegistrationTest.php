@@ -211,6 +211,7 @@ test('new users whose browser names no telling region are quoted in their timezo
     'an en-US browser in Pakistan' => ['en-US,en;q=0.9', 'Asia/Karachi', 'en-US', 'PKR'],
     'an en-US browser in Spain' => ['en-US,en;q=0.9', 'Europe/Madrid', 'en-US', 'EUR'],
     'an en-US browser in the US' => ['en-US,en;q=0.9', 'America/New_York', 'en-US', 'USD'],
+    'en-US first among several tags' => ['en-US,en;q=0.9,es-MX;q=0.8', 'Asia/Kolkata', 'en-US', 'INR'],
     'a legacy timezone alias' => ['en-US,en;q=0.9', 'Asia/Calcutta', 'en-US', 'INR'],
     'a eurozone country with no format locale' => ['en-US,en;q=0.9', 'Europe/Vienna', 'en-US', 'EUR'],
     'a language-only header' => ['es', 'America/Bogota', 'es-ES', 'COP'],
