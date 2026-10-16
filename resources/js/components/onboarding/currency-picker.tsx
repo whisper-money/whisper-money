@@ -153,7 +153,12 @@ function CurrencyList({
                             {option.name}
                         </span>
                         {option.code === value && (
-                            <Check className="size-4" aria-hidden />
+                            <>
+                                <Check className="size-4" aria-hidden />
+                                <span className="sr-only">
+                                    {__('Selected')}
+                                </span>
+                            </>
                         )}
                     </CommandItem>
                 ))}

@@ -3910,5 +3910,6 @@
     "Your currency": "Tu moneda",
     "We'll show every amount in it. You can change it later in Settings.": "Te mostraremos todos los importes en ella. Puedes cambiarla más tarde en Configuración.",
     "Search currency...": "Buscar moneda...",
-    "No currency found.": "No se encontró ninguna moneda."
+    "No currency found.": "No se encontró ninguna moneda.",
+    "We couldn't change your currency. Try again.": "No hemos podido cambiar tu moneda. Inténtalo de nuevo."
 }

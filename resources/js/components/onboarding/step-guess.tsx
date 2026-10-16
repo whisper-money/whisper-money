@@ -22,6 +22,9 @@ interface StepGuessProps {
     onContinue: (spendingGuess: number) => void;
 }
 
+/** Past this many characters a guess no longer fits a phone at full size. */
+const LONG_AMOUNT_LENGTH = 7;
+
 /**
  * The hinge of the whole flow: it costs one drag, and it opens a question only
  * the app can close. A later step answers it with what the user actually spent.
@@ -35,22 +38,28 @@ export function StepGuess({
 }: StepGuessProps) {
     const locale = useLocale();
     const range = guessRange(currencyCode);
-    const [amount, setAmount] = useState(
-        value === undefined ? range.initial : toMajorUnits(value, currencyCode),
-    );
-
-    // A guess made in one currency means nothing in another, so a new one
-    // starts the slider over at that currency's own starting point.
-    const changeCurrency = (nextCurrencyCode: string) => {
-        setAmount(guessRange(nextCurrencyCode).initial);
-        onCurrencyChange(nextCurrencyCode);
-    };
+    // The amount remembers the currency it was dragged in. A guess made in one
+    // currency means nothing in another, so whenever the prop moves — a pick,
+    // or the pick rolled back after a failed save — the slider starts over at
+    // that currency's own starting point.
+    const [guess, setGuess] = useState(() => ({
+        currencyCode,
+        amount:
+            value === undefined
+                ? range.initial
+                : toMajorUnits(value, currencyCode),
+    }));
+    const amount =
+        guess.currencyCode === currencyCode ? guess.amount : range.initial;
+    const setAmount = (major: number) =>
+        setGuess({ currencyCode, amount: major });
 
     const progress = ((amount - range.min) / (range.max - range.min)) * 100;
     const format = (major: number) =>
         new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
             major,
         );
+    const formattedAmount = format(amount);
 
     return (
         <StepScreen
@@ -75,7 +84,7 @@ export function StepGuess({
                     <CurrencyPicker
                         value={currencyCode}
                         options={currencies}
-                        onChange={changeCurrency}
+                        onChange={onCurrencyChange}
                     />
                     <div className="flex items-baseline justify-center gap-1.5">
                         <span className="text-[34px] leading-none font-medium text-muted-foreground">
@@ -84,14 +93,13 @@ export function StepGuess({
                         <span
                             className={cn(
                                 'leading-none font-semibold tracking-[-0.04em] tabular-nums',
-                                // Guaraní and peso guesses run to eight digits,
-                                // which at full size overflow a phone.
-                                format(amount).length > 7
+                                // Guaraní and peso guesses run to eight digits.
+                                formattedAmount.length > LONG_AMOUNT_LENGTH
                                     ? 'text-[44px] sm:text-[64px]'
                                     : 'text-[64px]',
                             )}
                         >
-                            {format(amount)}
+                            {formattedAmount}
                         </span>
                     </div>
                 </div>

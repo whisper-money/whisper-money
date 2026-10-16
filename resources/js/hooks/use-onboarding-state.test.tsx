@@ -628,6 +628,8 @@ describe('useOnboardingState', () => {
                     preserveState: true,
                     preserveUrl: true,
                     only: ['auth'],
+                    // A quick "Lock in my guess" must not cancel the switch.
+                    async: true,
                 }),
             );
 

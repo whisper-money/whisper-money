@@ -11,8 +11,10 @@ import {
 import { type Auth } from '@/types';
 import { type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export type OnboardingStep =
     | 'promise'
@@ -424,6 +426,15 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
                 // the request left from.
                 preserveUrl: true,
                 only: ['auth'],
+                // Not cancelled by the next visit: a quick "Lock in my guess"
+                // would otherwise abort the switch and file the guess under a
+                // currency the server never saved.
+                async: true,
+                onError: () => {
+                    toast.error(
+                        __("We couldn't change your currency. Try again."),
+                    );
+                },
                 optimistic: (props) => {
                     const auth = props.auth as Auth;
 

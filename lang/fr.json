@@ -2980,5 +2980,6 @@
     "Your currency": "Votre devise",
     "We'll show every amount in it. You can change it later in Settings.": "Nous afficherons tous les montants dans cette devise. Vous pourrez la changer plus tard dans la Configuration.",
     "Search currency...": "Rechercher une devise...",
-    "No currency found.": "Aucune devise trouvée."
+    "No currency found.": "Aucune devise trouvée.",
+    "We couldn't change your currency. Try again.": "Nous n'avons pas pu changer votre devise. Réessayez."
 }

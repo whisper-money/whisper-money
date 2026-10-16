@@ -132,6 +132,26 @@ describe('StepGuess', () => {
         expect(screen.getByText('60,000')).toBeInTheDocument();
     });
 
+    // The page rolls a failed switch back through the prop alone, and the
+    // slider has to follow it rather than keep the other currency's number.
+    it('starts over whenever the currency comes back changed', () => {
+        const props = {
+            currencies: CURRENCIES,
+            onCurrencyChange: vi.fn(),
+            onContinue: vi.fn(),
+        };
+        const { rerender } = render(
+            <StepGuess currencyCode="INR" {...props} />,
+        );
+        const slider = screen.getByRole('slider');
+
+        fireEvent.change(slider, { target: { value: '100000' } });
+        rerender(<StepGuess currencyCode="EUR" {...props} />);
+
+        expect(slider).toHaveAttribute('max', '5000');
+        expect(slider).toHaveValue('1200');
+    });
+
     it('does not save anything when the current currency is picked again', () => {
         const { onCurrencyChange } = renderStep();
 
