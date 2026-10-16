@@ -1,14 +1,20 @@
-import { answers as storeAnswers } from '@/actions/App/Http/Controllers/OnboardingController';
+import {
+    answers as storeAnswers,
+    currency as updateCurrency,
+} from '@/actions/App/Http/Controllers/OnboardingController';
 import { captureEvent } from '@/lib/posthog';
 import {
     readStoredValue,
     removeStoredValue,
     writeStoredValue,
 } from '@/lib/safe-storage';
+import { type Auth } from '@/types';
 import { type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export type OnboardingStep =
     | 'promise'
@@ -394,6 +400,55 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         [],
     );
 
+    /**
+     * Switch the currency the user is quoted in, from the guess step.
+     *
+     * A spending guess is stored in the minor units of the currency it was
+     * made in, so the server forgets it with the switch and so does the wizard
+     * here: going back to the step asks again rather than reading the old
+     * number in the new currency. The switch shows at once and rolls back on
+     * its own if the request fails.
+     */
+    const changeCurrency = useCallback((currencyCode: string) => {
+        setAnswers((previous) => ({ ...previous, spending_guess: undefined }));
+
+        captureEvent('onboarding_currency_changed', {
+            currency_code: currencyCode,
+        });
+
+        router.patch(
+            updateCurrency.url(),
+            { currency_code: currencyCode },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                // Same reason as the answers above: back() points at the step
+                // the request left from.
+                preserveUrl: true,
+                only: ['auth'],
+                // Not cancelled by the next visit: a quick "Lock in my guess"
+                // would otherwise abort the switch and file the guess under a
+                // currency the server never saved.
+                async: true,
+                onError: () => {
+                    toast.error(
+                        __("We couldn't change your currency. Try again."),
+                    );
+                },
+                optimistic: (props) => {
+                    const auth = props.auth as Auth;
+
+                    return {
+                        auth: {
+                            ...auth,
+                            user: { ...auth.user, currency_code: currencyCode },
+                        },
+                    };
+                },
+            },
+        );
+    }, []);
+
     const goNext = useCallback(() => {
         // Find the next primary step
         const primaryIndex = primarySteps.indexOf(currentStep);
@@ -430,6 +485,7 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         totalSteps,
         answers,
         saveAnswer,
+        changeCurrency,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,

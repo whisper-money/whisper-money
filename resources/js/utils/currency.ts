@@ -111,5 +111,26 @@ export function getCurrencySymbol(currencyCode: string): string {
         THB: '฿',
         SGD: 'S$',
     };
-    return symbols[currencyCode] || currencyCode;
+    return symbols[currencyCode] || intlCurrencySymbol(currencyCode);
+}
+
+/**
+ * The browser's own symbol for a currency the table above leaves out, so the
+ * rupee reads ₹ rather than INR. Read in `en-US`, whose symbols are the least
+ * ambiguous (CA$, MX$ rather than a bare $); a currency CLDR has no symbol for
+ * comes back as its code, which is also the answer for one it cannot identify.
+ */
+function intlCurrencySymbol(currencyCode: string): string {
+    try {
+        return (
+            new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currencyCode,
+            })
+                .formatToParts(0)
+                .find((part) => part.type === 'currency')?.value ?? currencyCode
+        );
+    } catch {
+        return currencyCode;
+    }
 }

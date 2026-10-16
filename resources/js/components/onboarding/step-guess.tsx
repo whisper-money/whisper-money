@@ -1,7 +1,12 @@
+import { CurrencyPicker } from '@/components/onboarding/currency-picker';
+import { guessRange } from '@/components/onboarding/guess-range';
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { useLocale } from '@/hooks/use-locale';
+import { cn } from '@/lib/utils';
+import { type CurrencyOption } from '@/types/account';
 import {
+    formatCurrency,
     getCurrencySymbol,
     toMajorUnits,
     toMinorUnits,
@@ -11,35 +16,60 @@ import { useState } from 'react';
 
 interface StepGuessProps {
     currencyCode: string;
+    currencies: CurrencyOption[];
     /** Minor units, from a run being resumed or a step gone back to. */
     value?: number;
+    onCurrencyChange: (currencyCode: string) => void;
     onContinue: (spendingGuess: number) => void;
 }
 
-/**
- * The slider's range, in major units of whatever the user's currency is. It is
- * a guess, so the steps are coarse on purpose: the point is the gap between
- * this number and the real one, not the number.
- */
-const MIN = 300;
-const MAX = 5000;
-const STEP = 50;
-const DEFAULT = 1200;
+/** Past this many characters a guess no longer fits a phone at full size. */
+const LONG_AMOUNT_LENGTH = 7;
 
 /**
  * The hinge of the whole flow: it costs one drag, and it opens a question only
  * the app can close. A later step answers it with what the user actually spent.
  */
-export function StepGuess({ currencyCode, value, onContinue }: StepGuessProps) {
+export function StepGuess({
+    currencyCode,
+    currencies,
+    value,
+    onCurrencyChange,
+    onContinue,
+}: StepGuessProps) {
     const locale = useLocale();
-    const [amount, setAmount] = useState(
-        value === undefined ? DEFAULT : toMajorUnits(value, currencyCode),
-    );
+    const range = guessRange(currencyCode);
+    // The amount remembers the currency it was dragged in. A guess made in one
+    // currency means nothing in another, so whenever the prop moves — a pick,
+    // or the pick rolled back after a failed save — the slider starts over at
+    // that currency's own starting point.
+    const [guess, setGuess] = useState(() => ({
+        currencyCode,
+        amount:
+            value === undefined
+                ? range.initial
+                : toMajorUnits(value, currencyCode),
+    }));
+    const amount =
+        guess.currencyCode === currencyCode ? guess.amount : range.initial;
+    const setAmount = (major: number) =>
+        setGuess({ currencyCode, amount: major });
 
-    const progress = ((amount - MIN) / (MAX - MIN)) * 100;
+    const progress = ((amount - range.min) / (range.max - range.min)) * 100;
     const format = (major: number) =>
         new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(
             major,
+        );
+    const formattedAmount = format(amount);
+    // The bounds are plain amounts, so the browser spaces a code-only symbol
+    // ("PYG 1,500,000") the way the big number's own layout does.
+    const formatBound = (major: number) =>
+        formatCurrency(
+            toMinorUnits(major, currencyCode),
+            currencyCode,
+            locale,
+            0,
+            0,
         );
 
     return (
@@ -61,13 +91,28 @@ export function StepGuess({ currencyCode, value, onContinue }: StepGuessProps) {
             }
         >
             <div className="flex flex-col gap-5.5">
-                <div className="flex items-baseline justify-center gap-1.5 pt-6 pb-1">
-                    <span className="text-[34px] leading-none font-medium text-muted-foreground">
-                        {getCurrencySymbol(currencyCode)}
-                    </span>
-                    <span className="text-[64px] leading-none font-semibold tracking-[-0.04em] tabular-nums">
-                        {format(amount)}
-                    </span>
+                <div className="flex flex-col items-center gap-4 pt-6 pb-1">
+                    <CurrencyPicker
+                        value={currencyCode}
+                        options={currencies}
+                        onChange={onCurrencyChange}
+                    />
+                    <div className="flex items-baseline justify-center gap-1.5">
+                        <span className="text-[34px] leading-none font-medium text-muted-foreground">
+                            {getCurrencySymbol(currencyCode)}
+                        </span>
+                        <span
+                            className={cn(
+                                'leading-none font-semibold tracking-[-0.04em] tabular-nums',
+                                // Guaraní and peso guesses run to eight digits.
+                                formattedAmount.length > LONG_AMOUNT_LENGTH
+                                    ? 'text-[44px] sm:text-[64px]'
+                                    : 'text-[64px]',
+                            )}
+                        >
+                            {formattedAmount}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -76,9 +121,9 @@ export function StepGuess({ currencyCode, value, onContinue }: StepGuessProps) {
                         cannot do on its own is paint the track behind the thumb. */}
                     <input
                         type="range"
-                        min={MIN}
-                        max={MAX}
-                        step={STEP}
+                        min={range.min}
+                        max={range.max}
+                        step={range.step}
                         value={amount}
                         onChange={(event) =>
                             setAmount(Number(event.target.value))
@@ -90,14 +135,8 @@ export function StepGuess({ currencyCode, value, onContinue }: StepGuessProps) {
                         className="h-1 w-full cursor-pointer appearance-none rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-moz-range-thumb]:size-6.5 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[1.5px] [&::-moz-range-thumb]:border-foreground [&::-moz-range-thumb]:bg-background [&::-webkit-slider-thumb]:size-6.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[1.5px] [&::-webkit-slider-thumb]:border-foreground [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm"
                     />
                     <div className="flex justify-between text-[13px] text-muted-foreground">
-                        <span>
-                            {getCurrencySymbol(currencyCode)}
-                            {format(MIN)}
-                        </span>
-                        <span>
-                            {getCurrencySymbol(currencyCode)}
-                            {format(MAX)}+
-                        </span>
+                        <span>{formatBound(range.min)}</span>
+                        <span>{formatBound(range.max)}+</span>
                     </div>
                 </div>
 

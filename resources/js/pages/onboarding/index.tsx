@@ -57,7 +57,7 @@ export default function Onboarding({
     pendingMapping = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
-    const { auth } = usePage<SharedData>().props;
+    const { auth, currencies } = usePage<SharedData>().props;
     const hasSyncedRef = useRef(false);
     const isFreePlan = signupPlan === 'free';
 
@@ -98,6 +98,7 @@ export default function Onboarding({
         totalSteps,
         answers,
         saveAnswer,
+        changeCurrency,
         createdAccounts,
         isFirstAccount,
         hasSelectedConnectedAccount,
@@ -206,7 +207,9 @@ export default function Onboarding({
                 return (
                     <StepGuess
                         currencyCode={auth.user.currency_code}
+                        currencies={currencies.profile}
                         value={answers.spending_guess}
+                        onCurrencyChange={changeCurrency}
                         onContinue={(spendingGuess) => {
                             saveAnswer('spending_guess', spendingGuess);
                             goNext();

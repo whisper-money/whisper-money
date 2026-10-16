@@ -366,6 +366,35 @@ it('stores the target the stepper landed on and closes with it', function () {
         ->and($budget->getCurrentPeriod()->allocated_amount)->toBe(85000);
 });
 
+/**
+ * Signup guesses the currency from the browser and falls back to dollars, so
+ * the guess step is where a user it guessed wrong for puts it right — and the
+ * guess they lock in has to be in the currency they picked, not the old one.
+ */
+it('switches the currency the guess is made in and keeps both', function () {
+    $user = onboardingStepUser(['goal' => 'understand', 'spending_guess' => 120000]);
+
+    actingAs($user);
+
+    $page = visit('/onboarding?step=guess');
+
+    $page->assertSee('What did you spend last month?')
+        ->click('[aria-label="Change currency, currently Euro"]')
+        ->assertSee('Your currency')
+        ->fill('[cmdk-input]', 'rupee')
+        ->click('Indian Rupee')
+        ->assertPresent('[aria-label="Change currency, currently Indian Rupee"]')
+        // The rupee range, started over at its own default.
+        ->assertSee('60,000')
+        ->assertSee('250,000+')
+        ->click('Lock in my guess')
+        ->assertSee('₹60,000')
+        ->assertNoJavascriptErrors();
+
+    expect($user->refresh()->currency_code)->toBe('INR')
+        ->and($user->onboarding_answers)->toMatchArray(['spending_guess' => 6000000]);
+});
+
 // =============================================================================
 // The wait on a bank, and picking the flow back up
 // =============================================================================
