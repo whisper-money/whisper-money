@@ -130,6 +130,8 @@ describe('StepGuess', () => {
         expect(slider).toHaveAttribute('max', '250000');
         expect(slider).toHaveValue('60000');
         expect(screen.getByText('60,000')).toBeInTheDocument();
+        expect(screen.getByText('₹')).toBeInTheDocument();
+        expect(screen.getByText('₹250,000+')).toBeInTheDocument();
     });
 
     // The page rolls a failed switch back through the prop alone, and the

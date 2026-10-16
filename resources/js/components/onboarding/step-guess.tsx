@@ -6,6 +6,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { type CurrencyOption } from '@/types/account';
 import {
+    formatCurrency,
     getCurrencySymbol,
     toMajorUnits,
     toMinorUnits,
@@ -60,6 +61,16 @@ export function StepGuess({
             major,
         );
     const formattedAmount = format(amount);
+    // The bounds are plain amounts, so the browser spaces a code-only symbol
+    // ("PYG 1,500,000") the way the big number's own layout does.
+    const formatBound = (major: number) =>
+        formatCurrency(
+            toMinorUnits(major, currencyCode),
+            currencyCode,
+            locale,
+            0,
+            0,
+        );
 
     return (
         <StepScreen
@@ -124,14 +135,8 @@ export function StepGuess({
                         className="h-1 w-full cursor-pointer appearance-none rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-moz-range-thumb]:size-6.5 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-[1.5px] [&::-moz-range-thumb]:border-foreground [&::-moz-range-thumb]:bg-background [&::-webkit-slider-thumb]:size-6.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-[1.5px] [&::-webkit-slider-thumb]:border-foreground [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm"
                     />
                     <div className="flex justify-between text-[13px] text-muted-foreground">
-                        <span>
-                            {getCurrencySymbol(currencyCode)}
-                            {format(range.min)}
-                        </span>
-                        <span>
-                            {getCurrencySymbol(currencyCode)}
-                            {format(range.max)}+
-                        </span>
+                        <span>{formatBound(range.min)}</span>
+                        <span>{formatBound(range.max)}+</span>
                     </div>
                 </div>
 
