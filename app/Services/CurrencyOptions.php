@@ -61,11 +61,53 @@ class CurrencyOptions
      */
     public function forFormatLocale(?string $formatLocale): string
     {
+        return $this->forRegion(substr((string) $formatLocale, -2)) ?? 'USD';
+    }
+
+    /**
+     * The currency of the country a timezone sits in — "Asia/Kolkata" is INR —
+     * or null for a zone with no country (UTC) or a country we map no currency
+     * for. A signup's browser timezone is a far better hint than a header
+     * that only ever said "en-US" because that is what the OS shipped with.
+     */
+    public function forTimezone(?string $timezone): ?string
+    {
+        if ($timezone === null || $timezone === '') {
+            return null;
+        }
+
+        return $this->forRegion($this->countryOfTimezone($timezone));
+    }
+
+    /**
+     * PHP's tzdata knows the country of every canonical zone but answers "??"
+     * for a legacy alias like "Asia/Calcutta", which older browsers still
+     * send, so those are asked of ICU instead.
+     */
+    private function countryOfTimezone(string $timezone): ?string
+    {
+        try {
+            $location = (new \DateTimeZone($timezone))->getLocation();
+        } catch (\Exception) {
+            return null;
+        }
+
+        if ($location !== false && $location['country_code'] !== '??') {
+            return $location['country_code'];
+        }
+
+        return \IntlTimeZone::getRegion($timezone) ?: null;
+    }
+
+    /**
+     * The currency `config/currencies.php` maps a two-letter region to.
+     */
+    public function forRegion(?string $region): ?string
+    {
         /** @var array<string, string> $byRegion */
         $byRegion = config('currencies.by_region', []);
-        $region = strtoupper((string) substr((string) $formatLocale, -2));
 
-        return $byRegion[$region] ?? 'USD';
+        return $byRegion[strtoupper((string) $region)] ?? null;
     }
 
     /**

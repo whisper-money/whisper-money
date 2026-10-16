@@ -37,6 +37,16 @@ class FormatLocaleOptions
      */
     public function detectFromHeader(?string $acceptLanguage, ?string $language): string
     {
+        return $this->requestedInHeader($acceptLanguage) ?? $this->fallbackFor($language);
+    }
+
+    /**
+     * The first tag in the header that the app offers, or null when the
+     * header names none, so a caller can tell a region the browser asked for
+     * apart from one {@see fallbackFor()} guessed off the language.
+     */
+    public function requestedInHeader(?string $acceptLanguage): ?string
+    {
         $supported = $this->byLowercaseCode();
 
         foreach (array_keys(AcceptHeader::fromString($acceptLanguage ?? '')->all()) as $tag) {
@@ -47,7 +57,7 @@ class FormatLocaleOptions
             }
         }
 
-        return $this->fallbackFor($language);
+        return null;
     }
 
     /**

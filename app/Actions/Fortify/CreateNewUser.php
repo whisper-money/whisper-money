@@ -46,7 +46,9 @@ class CreateNewUser implements CreatesNewUsers
         $signupPlan = SignupPlan::fromRequest($input['signup_plan'] ?? null);
         $acceptLanguage = request()->header('Accept-Language');
         $locale = Locale::detectFromHeader($acceptLanguage)->value;
-        $formatLocale = $this->formatLocales->detectFromHeader($acceptLanguage, $locale);
+        $requestedFormatLocale = $this->formatLocales->requestedInHeader($acceptLanguage);
+        $formatLocale = $requestedFormatLocale ?? $this->formatLocales->fallbackFor($locale);
+        $timezone = $this->normalizeTimezone($input['timezone'] ?? null);
 
         $user = User::create([
             'name' => $input['name'],
@@ -60,8 +62,8 @@ class CreateNewUser implements CreatesNewUsers
             // And the same region a third time, for the money. Steps 4 and 5
             // quote an amount back at the user before any account exists, and
             // the column's own default would have quoted a Spaniard in dollars.
-            'currency_code' => $this->currencies->forFormatLocale($formatLocale),
-            'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
+            'currency_code' => $this->inferCurrency($requestedFormatLocale, $formatLocale, $timezone),
+            'timezone' => $timezone,
             // Which pricing card they came from, so onboarding can hide the paid
             // options from someone who signed up for the free plan.
             'signup_plan' => $signupPlan?->value,
@@ -75,6 +77,25 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $user;
+    }
+
+    /**
+     * The currency to quote a new user in before they have told us one.
+     *
+     * A region the browser asked for wins, except "en-US": it is what macOS,
+     * Windows and Chrome ship with, so on its own it says nothing about where
+     * someone in Karachi or Madrid keeps their money. Then the timezone's
+     * country, and only then whatever the language fallback guessed.
+     */
+    protected function inferCurrency(?string $requestedFormatLocale, string $formatLocale, ?string $timezone): string
+    {
+        $requestedCurrency = $requestedFormatLocale === 'en-US'
+            ? null
+            : $this->currencies->forRegion(substr((string) $requestedFormatLocale, -2));
+
+        return $requestedCurrency
+            ?? $this->currencies->forTimezone($timezone)
+            ?? $this->currencies->forFormatLocale($formatLocale);
     }
 
     /**

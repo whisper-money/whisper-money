@@ -188,3 +188,54 @@ test('new users are quoted in the currency of the region their browser asks for'
     'a region that shares the euro' => ['de-DE,de;q=0.9', 'de-DE', 'EUR'],
     'nothing we recognize' => ['ko-KR,ko;q=0.9', 'en-US', 'USD'],
 ]);
+
+test('new users whose browser names no telling region are quoted in their timezone\'s currency', function (string $header, ?string $timezone, string $formatLocale, string $currency) {
+    Queue::fake();
+
+    $this->withHeader('Accept-Language', $header)->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => $timezone,
+    ]);
+
+    // Only the currency moves: how amounts are written stays whatever the
+    // header asked for.
+    expect(User::where('email', 'test@example.com')->first())
+        ->format_locale->toBe($formatLocale)
+        ->currency_code->toBe($currency);
+})->with([
+    // "en-US" is what the OS ships with, so it says nothing about where they live.
+    'an en-US browser in India' => ['en-US,en;q=0.9', 'Asia/Kolkata', 'en-US', 'INR'],
+    'an en-US browser in Pakistan' => ['en-US,en;q=0.9', 'Asia/Karachi', 'en-US', 'PKR'],
+    'an en-US browser in Spain' => ['en-US,en;q=0.9', 'Europe/Madrid', 'en-US', 'EUR'],
+    'an en-US browser in the US' => ['en-US,en;q=0.9', 'America/New_York', 'en-US', 'USD'],
+    'a legacy timezone alias' => ['en-US,en;q=0.9', 'Asia/Calcutta', 'en-US', 'INR'],
+    'a eurozone country with no format locale' => ['en-US,en;q=0.9', 'Europe/Vienna', 'en-US', 'EUR'],
+    'a language-only header' => ['es', 'America/Bogota', 'es-ES', 'COP'],
+    'Spanish (Latin America)' => ['es-419,es;q=0.9', 'America/Bogota', 'es-419', 'COP'],
+    'nothing we recognize' => ['ko-KR,ko;q=0.9', 'Europe/Berlin', 'en-US', 'EUR'],
+    // A timezone with no country, or one we hold no currency for, leaves the
+    // header's guess standing.
+    'a zone with no country' => ['es', 'UTC', 'es-ES', 'EUR'],
+    'a country we hold no currency for' => ['en-US,en;q=0.9', 'Asia/Dhaka', 'en-US', 'USD'],
+    'no timezone at all' => ['en-US,en;q=0.9', null, 'en-US', 'USD'],
+]);
+
+test('a region the browser asks for outranks the timezone', function (string $header, string $timezone, string $currency) {
+    Queue::fake();
+
+    $this->withHeader('Accept-Language', $header)->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => $timezone,
+    ]);
+
+    expect(User::where('email', 'test@example.com')->first()->currency_code)->toBe($currency);
+})->with([
+    'a British browser on holiday in Spain' => ['en-GB,en;q=0.9', 'Europe/Madrid', 'GBP'],
+    'a Mexican browser in the US' => ['es-MX,es;q=0.9', 'America/Los_Angeles', 'MXN'],
+]);
