@@ -316,7 +316,7 @@ class CreditCardStatementService
      * never hides the purchases that come after it.
      *
      * @param  Collection<int, Transaction>  $transactions
-     * @param  Collection<int, array{date: string, amount: int}>  $payments
+     * @param  Collection<int, array{date: string, amount: int, period_from: string}>  $payments
      * @return array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}
      */
     private function usage(Collection $transactions, Collection $payments, CarbonImmutable $from, CarbonImmutable $to, CarbonImmutable $today, Account $account): array
