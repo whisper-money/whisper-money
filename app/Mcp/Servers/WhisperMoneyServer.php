@@ -181,9 +181,10 @@ one cycle, and later cycles repeat monthly or weekly from them, as
 `statement_frequency` says.
 `credit_card_usage` is how much of the card is in use: `used` adds up what is
 still to be charged between `period_from` and today (the pending statement plus
-the open cycle, or the calendar month when the card has no statement dates), and
-`available` is `limit` minus it, negative when over the limit, null while
-`credit_limit` is not set. A credit card has no balance:
+the open cycle, or the calendar month when the card has no statement dates),
+less the payments made on those statements (none is subtracted without
+statement dates), never below 0. `available` is `limit` minus it, negative when
+over the limit, null while `credit_limit` is not set. A credit card has no balance:
 `create_account` refuses one for it and `create_balance` rejects the card.
 MARKDOWN)]
 class WhisperMoneyServer extends Server

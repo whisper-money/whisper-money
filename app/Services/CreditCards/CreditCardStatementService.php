@@ -88,14 +88,18 @@ class CreditCardStatementService
      * cycle. Without statement dates there is no cycle to go by, so it covers
      * the calendar month. Rows booked after today are left out of it, since
      * they have not drawn on the limit yet. `available` goes negative over
-     * the limit, and both are null while no limit is set.
+     * the limit, and both are null while no limit is set. Repayments made on
+     * a statement inside that window bring usage down from the day they were
+     * booked (or the window's first day, when booked before it), floored at
+     * zero. Those made on the statement before it pay purchases outside the
+     * window, so they are left out. Without statement dates nothing says what
+     * a repayment pays, so none is subtracted.
      *
      * The estimate also lists the repayments booked in that window up to
      * today (from the day the statement before is charged, when that is the
      * day it closes), each with the statement it pays, says how much of the
      * next payment is already paid, and sums up the statement before it,
-     * which is the one those repayments usually settle. Repayments never bring usage
-     * down: they mostly pay purchases from before the window.
+     * which is the one those repayments usually settle.
      *
      * @return array{
      *     credit_card_statement: array{
@@ -144,7 +148,7 @@ class CreditCardStatementService
                 'payments' => $payments->all(),
                 'previous_statement' => $this->previousStatementSummary($account, $previousStatement, $transactions, $payments),
             ],
-            'credit_card_usage' => $this->usage($transactions, $from, $to, $today, $account),
+            'credit_card_usage' => $this->usage($transactions, self::paymentsInWindow($payments, $from), $from, $to, $today, $account),
         ];
     }
 
@@ -222,6 +226,22 @@ class CreditCardStatementService
     }
 
     /**
+     * The payments made on a statement from $from on, which pay purchases
+     * inside the usage window, each dated no earlier than $from.
+     *
+     * @param  Collection<int, array{date: string, amount: int, period_from: string}>  $payments
+     * @return Collection<int, array{date: string, amount: int, period_from: string}>
+     */
+    private static function paymentsInWindow(Collection $payments, CarbonImmutable $from): Collection
+    {
+        $windowStart = $from->toDateString();
+
+        return $payments
+            ->filter(fn (array $payment): bool => $payment['period_from'] >= $windowStart)
+            ->map(fn (array $payment): array => [...$payment, 'date' => max($payment['date'], $windowStart)]);
+    }
+
+    /**
      * What the statement before the one paid next adds up to, has been paid
      * and is still pending.
      *
@@ -290,22 +310,30 @@ class CreditCardStatementService
 
     /**
      * Where the card stands against its limit, with the running total of
-     * what it has drawn day by day from $from through $today.
+     * what it has drawn day by day from $from through $today, less what
+     * $payments repaid. The total is floored at zero every day, so a payment
+     * larger than what the card recorded (purchases missing from it, fees)
+     * never hides the purchases that come after it.
      *
      * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, array{date: string, amount: int, period_from: string}>  $payments
      * @return array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}
      */
-    private function usage(Collection $transactions, CarbonImmutable $from, CarbonImmutable $to, CarbonImmutable $today, Account $account): array
+    private function usage(Collection $transactions, Collection $payments, CarbonImmutable $from, CarbonImmutable $to, CarbonImmutable $today, Account $account): array
     {
         $drawnByDay = $transactions
             ->groupBy(fn (Transaction $transaction): string => self::bookedOn($transaction)->toDateString())
             ->map(fn (Collection $day): int => -$day->sum(fn (Transaction $transaction): int => $this->convertFullTransactionAmount($transaction, $account->currency_code)));
 
+        $repaidByDay = $payments
+            ->groupBy('date')
+            ->map(fn (Collection $day): int => $day->sum('amount'));
+
         $used = 0;
         $daily = [];
 
         for ($day = $from; $day->lessThanOrEqualTo($today); $day = $day->addDay()) {
-            $used += $drawnByDay->get($day->toDateString(), 0);
+            $used = max(0, $used + $drawnByDay->get($day->toDateString(), 0) - $repaidByDay->get($day->toDateString(), 0));
             $daily[] = ['date' => $day->toDateString(), 'used' => $used];
         }
 
