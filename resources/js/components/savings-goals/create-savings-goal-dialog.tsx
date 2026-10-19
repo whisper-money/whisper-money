@@ -17,6 +17,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useControllableOpen } from '@/hooks/use-controllable-open';
 import { useLocale } from '@/hooks/use-locale';
 import { startsLate } from '@/lib/monthly-savings';
+import { type Features } from '@/types';
 import { AutoTagAccount, SavingsGoalKind } from '@/types/savings-goal';
 import { formatMonthYear, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -65,9 +66,13 @@ export function CreateSavingsGoalDialog({
     // Loaded on demand: only a monthly goal offers the auto-tag option, and
     // the server sends just the active space's savings accounts, the same set
     // it validates the choice against.
-    const { autoTagAccounts } = usePage<{
+    const { autoTagAccounts, features } = usePage<{
         autoTagAccounts?: AutoTagAccount[];
+        features?: Features;
     }>().props;
+    // Behind a flag for creation only: without it the dialog makes one-off
+    // goals, as it did before monthly ones existed.
+    const canCreateMonthly = features?.monthlySavingsGoals ?? false;
     const savingsAccounts = autoTagAccounts ?? [];
 
     const [kind, setKind] = useState<SavingsGoalKind>('one_off');
@@ -181,26 +186,29 @@ export function CreateSavingsGoalDialog({
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
-                        <div className="space-y-2">
-                            <UILabel>{__('Type')}</UILabel>
-                            <ToggleGroup
-                                type="single"
-                                variant="outline"
-                                value={kind}
-                                onValueChange={(value) =>
-                                    value && setKind(value as SavingsGoalKind)
-                                }
-                                aria-label={__('Type')}
-                                className="grid w-full grid-cols-2"
-                            >
-                                <ToggleGroupItem value="one_off">
-                                    {__('One-off (with a target)')}
-                                </ToggleGroupItem>
-                                <ToggleGroupItem value="monthly">
-                                    {__('Monthly (recurring)')}
-                                </ToggleGroupItem>
-                            </ToggleGroup>
-                        </div>
+                        {canCreateMonthly && (
+                            <div className="space-y-2">
+                                <UILabel>{__('Type')}</UILabel>
+                                <ToggleGroup
+                                    type="single"
+                                    variant="outline"
+                                    value={kind}
+                                    onValueChange={(value) =>
+                                        value &&
+                                        setKind(value as SavingsGoalKind)
+                                    }
+                                    aria-label={__('Type')}
+                                    className="grid w-full grid-cols-2"
+                                >
+                                    <ToggleGroupItem value="one_off">
+                                        {__('One-off (with a target)')}
+                                    </ToggleGroupItem>
+                                    <ToggleGroupItem value="monthly">
+                                        {__('Monthly (recurring)')}
+                                    </ToggleGroupItem>
+                                </ToggleGroup>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <UILabel htmlFor="goal-name">

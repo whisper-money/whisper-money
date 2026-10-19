@@ -21,6 +21,7 @@ vi.mock('@/actions/App/Http/Controllers/SavingsGoalController', () => ({
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
 
 function openMonthly() {
+    props = { features: { monthlySavingsGoals: true }, ...props };
     render(
         <CreateSavingsGoalDialog
             open={true}
@@ -36,6 +37,37 @@ describe('CreateSavingsGoalDialog', () => {
         reload.mockClear();
         vi.mocked(router.post).mockClear();
         props = {};
+    });
+
+    it('only creates one-off goals without the monthly goals flag', () => {
+        props = { features: { monthlySavingsGoals: false } };
+
+        render(
+            <CreateSavingsGoalDialog
+                open={true}
+                onOpenChange={() => {}}
+                currencyCode="EUR"
+            />,
+        );
+
+        expect(screen.queryByText('Monthly (recurring)')).toBeNull();
+        expect(screen.queryByRole('group', { name: 'Type' })).toBeNull();
+
+        fireEvent.change(screen.getByLabelText('Goal Name'), {
+            target: { value: 'New car' },
+        });
+        fireEvent.change(screen.getByLabelText('Target Amount'), {
+            target: { value: '5000' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Create Savings Goal' }),
+        );
+
+        expect(vi.mocked(router.post).mock.calls[0][1]).toMatchObject({
+            kind: 'one_off',
+            target_amount: 500000,
+        });
+        expect(reload).not.toHaveBeenCalled();
     });
 
     it('asks for the auto-tag accounts once a monthly goal is picked', () => {

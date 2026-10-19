@@ -7,6 +7,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
 use App\Features\FullImport;
+use App\Features\MonthlySavingsGoals;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
@@ -326,11 +327,12 @@ class HandleInertiaRequests extends Middleware
                 'calculateBalancesOnImport' => false,
                 'fullImport' => false,
                 'fullImportSettings' => false,
+                'monthlySavingsGoals' => false,
             ];
         }
 
         // One query for every flag, however many of them get read below.
-        Feature::for($user)->load([CalculateBalancesOnImport::class, FullImport::class]);
+        Feature::for($user)->load([CalculateBalancesOnImport::class, FullImport::class, MonthlySavingsGoals::class]);
 
         return [
             'cashflow' => true,
@@ -342,6 +344,8 @@ class HandleInertiaRequests extends Middleware
             // pages pay for it.
             'fullImport' => $user->canUseFullImport(),
             'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
+            // Creating a monthly goal only; existing ones show regardless.
+            'monthlySavingsGoals' => $user->canCreateMonthlySavingsGoals(),
         ];
     }
 

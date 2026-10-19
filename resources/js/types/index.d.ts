@@ -57,6 +57,8 @@ export interface Features {
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** May create a monthly savings goal; existing ones show regardless. */
+    monthlySavingsGoals: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

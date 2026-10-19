@@ -19,9 +19,13 @@ class StoreSavingsGoalRequest extends FormRequest
 {
     use NamesSavingsGoalAttributes, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesUserOwnedResources;
 
+    /**
+     * Monthly goals are behind a flag for creation only; a one-off goal is
+     * open to everyone.
+     */
     public function authorize(): bool
     {
-        return true;
+        return ! $this->isMonthly() || $this->user()->canCreateMonthlySavingsGoals();
     }
 
     /**
