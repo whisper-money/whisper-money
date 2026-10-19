@@ -231,7 +231,7 @@ describe('CreditCardUsageChart', () => {
 
     it('explains the payment dots only when there are payments', () => {
         const dotsNote =
-            'Dots on the line mark payments to the card and the statement each one pays. Payments on an earlier statement do not lower the credit used.';
+            'Dots on the line mark payments to the card and the statement each one pays. Only payments on the statements counted here lower the credit used.';
         const { unmount } = renderChart(usage());
 
         expect(screen.queryByText(dotsNote)).not.toBeInTheDocument();

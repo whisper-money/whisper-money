@@ -148,7 +148,7 @@ class CreditCardStatementService
                 'payments' => $payments->all(),
                 'previous_statement' => $this->previousStatementSummary($account, $previousStatement, $transactions, $payments),
             ],
-            'credit_card_usage' => $this->usage($transactions, self::paymentsFrom($payments, $from), $from, $to, $today, $account),
+            'credit_card_usage' => $this->usage($transactions, self::paymentsInWindow($payments, $from), $from, $to, $today, $account),
         ];
     }
 
@@ -227,14 +227,18 @@ class CreditCardStatementService
 
     /**
      * The payments made on a statement from $from on, which pay purchases
-     * inside the usage window.
+     * inside the usage window, each dated no earlier than $from.
      *
      * @param  Collection<int, array{date: string, amount: int, period_from: string}>  $payments
      * @return Collection<int, array{date: string, amount: int, period_from: string}>
      */
-    private static function paymentsFrom(Collection $payments, CarbonImmutable $from): Collection
+    private static function paymentsInWindow(Collection $payments, CarbonImmutable $from): Collection
     {
-        return $payments->filter(fn (array $payment): bool => $payment['period_from'] >= $from->toDateString());
+        $windowStart = $from->toDateString();
+
+        return $payments
+            ->filter(fn (array $payment): bool => $payment['period_from'] >= $windowStart)
+            ->map(fn (array $payment): array => [...$payment, 'date' => max($payment['date'], $windowStart)]);
     }
 
     /**
@@ -307,9 +311,9 @@ class CreditCardStatementService
     /**
      * Where the card stands against its limit, with the running total of
      * what it has drawn day by day from $from through $today, less what
-     * $payments repaid. The total itself can go below zero when a payment
-     * overpays, so a later purchase draws on that credit first, but what is
-     * shown is floored at zero.
+     * $payments repaid. The total is floored at zero every day, so a payment
+     * larger than what the card recorded (purchases missing from it, fees)
+     * never hides the purchases that come after it.
      *
      * @param  Collection<int, Transaction>  $transactions
      * @param  Collection<int, array{date: string, amount: int}>  $payments
@@ -322,18 +326,16 @@ class CreditCardStatementService
             ->map(fn (Collection $day): int => -$day->sum(fn (Transaction $transaction): int => $this->convertFullTransactionAmount($transaction, $account->currency_code)));
 
         $repaidByDay = $payments
-            ->groupBy(fn (array $payment): string => max($payment['date'], $from->toDateString()))
+            ->groupBy('date')
             ->map(fn (Collection $day): int => $day->sum('amount'));
 
-        $balance = 0;
+        $used = 0;
         $daily = [];
 
         for ($day = $from; $day->lessThanOrEqualTo($today); $day = $day->addDay()) {
-            $balance += $drawnByDay->get($day->toDateString(), 0) - $repaidByDay->get($day->toDateString(), 0);
-            $daily[] = ['date' => $day->toDateString(), 'used' => max(0, $balance)];
+            $used = max(0, $used + $drawnByDay->get($day->toDateString(), 0) - $repaidByDay->get($day->toDateString(), 0));
+            $daily[] = ['date' => $day->toDateString(), 'used' => $used];
         }
-
-        $used = max(0, $balance);
 
         $limit = $account->creditCardDetail?->credit_limit;
 

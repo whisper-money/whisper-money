@@ -423,7 +423,7 @@ it('does not subtract a payment booked after today', function () {
     expect(figuresOn('2026-03-10')['credit_card_usage']['used'])->toBe(5000);
 });
 
-it('floors the usage at zero when a payment overpays, letting later purchases draw on the credit first', function () {
+it('floors the usage at zero when a payment overpays, counting the purchases after it', function () {
     test()->detail->update(['credit_limit' => 10000]);
     cardTransaction(-1000, '2026-02-10');
     cardTransaction(4000, '2026-03-08', ['category_id' => test()->transfer->id]);
@@ -431,10 +431,10 @@ it('floors the usage at zero when a payment overpays, letting later purchases dr
 
     $usage = figuresOn('2026-03-10')['credit_card_usage'];
 
-    expect($usage)->toMatchArray(['used' => 0, 'available' => 10000])
+    expect($usage)->toMatchArray(['used' => 500, 'available' => 9500])
         ->and($usage['daily'][29])->toBe(['date' => '2026-03-07', 'used' => 1000])
         ->and($usage['daily'][30])->toBe(['date' => '2026-03-08', 'used' => 0])
-        ->and($usage['daily'][31])->toBe(['date' => '2026-03-09', 'used' => 0]);
+        ->and($usage['daily'][31])->toBe(['date' => '2026-03-09', 'used' => 500]);
 });
 
 it('subtracts a payment on a weekly statement still to be charged', function () {
