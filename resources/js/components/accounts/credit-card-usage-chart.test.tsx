@@ -210,7 +210,7 @@ describe('CreditCardUsageChart', () => {
         expect(screen.getByText('0% of the limit used')).toBeInTheDocument();
     });
 
-    it('explains that payments to the card are not subtracted', () => {
+    it('explains that payments are not subtracted without statement dates', () => {
         renderChart(usage());
 
         expect(
@@ -218,9 +218,20 @@ describe('CreditCardUsageChart', () => {
         ).toBeInTheDocument();
     });
 
+    it('explains that payments on the statements shown are subtracted', () => {
+        renderChart(usage(), withDates);
+
+        expect(
+            screen.getByText(/less what has been paid on them\./),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/Payments to the card are not subtracted\./),
+        ).not.toBeInTheDocument();
+    });
+
     it('explains the payment dots only when there are payments', () => {
         const dotsNote =
-            'Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.';
+            'Dots on the line mark payments to the card and the statement each one pays. Payments on an earlier statement do not lower the credit used.';
         const { unmount } = renderChart(usage());
 
         expect(screen.queryByText(dotsNote)).not.toBeInTheDocument();

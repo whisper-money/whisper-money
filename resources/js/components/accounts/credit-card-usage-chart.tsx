@@ -125,7 +125,7 @@ function usagePeriod(
                 to: formatDateMedium(usage.period_to, locale),
             }),
             explanation: __(
-                'Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle. Payments to the card are not subtracted.',
+                'Used counts the purchases on this card that are still to be charged: the statement not paid yet and the open cycle, less what has been paid on them.',
             ),
         };
     }
@@ -354,7 +354,7 @@ function LimitUsage({
                 {payments.length > 0 && (
                     <p className="text-xs text-muted-foreground">
                         {__(
-                            'Dots on the line mark payments to the card and the statement each one pays. They do not lower the credit used.',
+                            'Dots on the line mark payments to the card and the statement each one pays. Payments on an earlier statement do not lower the credit used.',
                         )}
                     </p>
                 )}
