@@ -17,11 +17,78 @@ export interface SavingsGoalStats {
     required_per_month: number | null;
 }
 
+export type SavingsGoalKind = 'one_off' | 'monthly';
+
+export type MonthlyTargetType = 'amount' | 'income_rate';
+
+/**
+ * Mirrors App\Enums\SavingsGoalMonthStatus. A `partial` month (the goal started
+ * in its last days) and an `archived` one (the goal was archived during it)
+ * show what was saved but get no verdict.
+ */
+export type MonthlySavingsStatus =
+    | 'met'
+    | 'missed'
+    | 'in_progress'
+    | 'partial'
+    | 'archived';
+
+/** One calendar month of a monthly goal, judged against its own target. */
+export interface MonthlySavingsMonth {
+    /** YYYY-MM */
+    month: string;
+    target_type: MonthlyTargetType;
+    target_amount: number | null;
+    target_rate: number | null;
+    /** The income a share-of-income target was worked out from. */
+    income_base: number | null;
+    /** True while the target follows this month's income instead of a frozen base. */
+    is_live_target: boolean;
+    target: number;
+    saved: number;
+    difference: number;
+    status: MonthlySavingsStatus;
+}
+
+/** A savings account the auto-tag option can point at. */
+export interface AutoTagAccount {
+    id: UUID;
+    name: string;
+    bank: { name: string } | null;
+    /** The running monthly goal this account already feeds, if any. */
+    used_by: string | null;
+}
+
+export interface MonthlySavingsCurrent extends MonthlySavingsMonth {
+    remaining: number;
+    days_left: number;
+}
+
+export interface MonthlySavingsStats {
+    current: MonthlySavingsCurrent | null;
+    /** Every month since the goal was created, oldest first. */
+    history: MonthlySavingsMonth[];
+    months_met: number;
+    months_closed: number;
+    cumulative_difference: number;
+    cumulative_saved: number;
+    cumulative_target: number;
+    streak: number;
+    best_streak: number;
+}
+
 export interface SavingsGoal {
     id: UUID;
     user_id: UUID;
     label_id: UUID | null;
     name: string;
+    kind: SavingsGoalKind;
+    monthly_target_type: MonthlyTargetType | null;
+    monthly_target_amount: number | null;
+    monthly_target_rate: number | null;
+    notify_on_month_end_reminder: boolean;
+    /** The savings account a monthly goal's auto-tag rule watches. */
+    auto_tag_account_id: UUID | null;
     target_amount: number;
     initial_amount: number;
     target_date: string | null;
@@ -36,6 +103,8 @@ export interface SavingsGoal {
     deleted_at: string | null;
     label?: Label;
     stats?: SavingsGoalStats;
+    /** Only on monthly goals. */
+    monthly?: MonthlySavingsStats;
     transactions?: Transaction[];
 }
 
