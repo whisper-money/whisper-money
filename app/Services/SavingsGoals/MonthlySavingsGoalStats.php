@@ -7,6 +7,7 @@ use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as SupportCollection;
 
 /**
@@ -35,7 +36,31 @@ class MonthlySavingsGoalStats
      */
     public function forGoal(SavingsGoal $goal): array
     {
-        return $this->forGoals($goal->newCollection([$goal]))[$goal->id];
+        // On a copy: the relations loaded for the stats stay off the caller's
+        // model, which pages hand to the browser as it is.
+        return $this->forGoals($goal->newCollection([$goal->withoutRelations()]))[$goal->id];
+    }
+
+    /**
+     * Monthly goals of one user, archived ones included, as the pages render
+     * them: the goal's own fields plus a `monthly` block with its stats, oldest
+     * first. Shaping the page payload here keeps the one batched stats query
+     * next to the goals it was run for. The goals come in already loaded with
+     * their labels, so a page that lists both kinds reads the goals once.
+     *
+     * @param  Collection<int, SavingsGoal>  $goals
+     * @return list<array<string, mixed>>
+     */
+    public function present(Collection $goals): array
+    {
+        $goals = $goals->sortBy('created_at')->values();
+        $stats = $this->forGoals($goals);
+
+        return $goals
+            // The user and the raw periods were loaded for the stats; the page
+            // gets the goal's own fields, its label and the `monthly` block.
+            ->map(fn (SavingsGoal $goal): array => [...Arr::except($goal->toArray(), ['user', 'periods']), 'monthly' => $stats[$goal->id]])
+            ->all();
     }
 
     /**
