@@ -5,6 +5,7 @@ namespace App\Services\SavingsGoals;
 use App\Enums\SavingsGoalMonthStatus;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -39,6 +40,17 @@ class MonthlySavingsGoalStats
         // On a copy: the relations loaded for the stats stay off the caller's
         // model, which pages hand to the browser as it is.
         return $this->forGoals($goal->newCollection([$goal->withoutRelations()]))[$goal->id];
+    }
+
+    /**
+     * Every monthly goal of a user, archived ones included, as the pages
+     * render them.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function presentForUser(User $user): array
+    {
+        return $this->present($user->savingsGoals()->monthly()->listed()->get());
     }
 
     /**

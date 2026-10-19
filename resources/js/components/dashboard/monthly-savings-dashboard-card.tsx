@@ -1,0 +1,184 @@
+import { index as planningIndex } from '@/actions/App/Http/Controllers/BudgetController';
+import { show } from '@/actions/App/Http/Controllers/SavingsGoalController';
+import {
+    MonthlyGoalProgress,
+    SavedOfTarget,
+} from '@/components/savings-goals/monthly/monthly-goal-figures';
+import { AmountDisplay } from '@/components/ui/amount-display';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLocale } from '@/hooks/use-locale';
+import {
+    aggregateMonthlyGoals,
+    currentMonthOf,
+    daysLeftLabel,
+    monthDate,
+} from '@/lib/monthly-savings';
+import { DashboardMonthlyGoal, MonthlyVerdicts } from '@/types/savings-goal';
+import { formatDate } from '@/utils/date';
+import { __ } from '@/utils/i18n';
+import { Link } from '@inertiajs/react';
+import { Repeat } from 'lucide-react';
+
+interface Props {
+    goals: DashboardMonthlyGoal[];
+    /** How every goal, archived ones included, did last month. */
+    lastMonth?: MonthlyVerdicts | null;
+    currencyCode: string;
+}
+
+/**
+ * This month across every running monthly goal, then one line per goal. No
+ * monthly goal, no card: the dashboard slot is only spent on it when there is
+ * something to follow.
+ */
+export function MonthlySavingsDashboardCard({
+    goals: allGoals,
+    lastMonth = null,
+    currencyCode,
+}: Props) {
+    const locale = useLocale();
+    // A goal with no period for this month yet (the daily run has not opened
+    // it) has nothing to show: drawn, it would read as a full bar of €0 of €0.
+    const goals = allGoals.filter((goal) => goal.monthly?.current);
+
+    if (goals.length === 0) {
+        return null;
+    }
+
+    const currentMonth = currentMonthOf(goals);
+    const aggregate = aggregateMonthlyGoals(goals);
+    const monthName = (key: string) =>
+        formatDate(monthDate(key), 'MMMM', locale);
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-baseline justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Repeat className="size-4" />
+                    {__('Monthly savings · :month', {
+                        month: monthName(currentMonth),
+                    })}
+                </CardTitle>
+                <Link
+                    href={planningIndex().url}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                    {__('See all')}
+                </Link>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                    {aggregate.allPartial ? (
+                        <span className="text-base font-semibold">
+                            {__('The first month is partial')}
+                        </span>
+                    ) : (
+                        <>
+                            <SavedOfTarget
+                                saved={aggregate.saved}
+                                target={aggregate.target}
+                                currencyCode={currencyCode}
+                            />
+                            {/* No target yet (only shares of an income still
+                                to come) is not a target met. */}
+                            <MonthlyGoalProgress
+                                saved={aggregate.saved}
+                                target={aggregate.target}
+                                empty={aggregate.target <= 0}
+                            />
+                        </>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                        {[
+                            aggregate.daysLeft !== null &&
+                                daysLeftLabel(aggregate.daysLeft),
+                            lastMonth &&
+                                __(':month: :met of :total met', {
+                                    month: monthName(lastMonth.month),
+                                    met: lastMonth.met,
+                                    total: lastMonth.total,
+                                }),
+                        ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </span>
+                </div>
+                <ul className="flex flex-col gap-2.5 text-sm">
+                    {goals.map((goal) => (
+                        <GoalLine
+                            key={goal.id}
+                            goal={goal}
+                            currencyCode={currencyCode}
+                        />
+                    ))}
+                </ul>
+            </CardContent>
+        </Card>
+    );
+}
+
+function GoalLine({
+    goal,
+    currencyCode,
+}: {
+    goal: DashboardMonthlyGoal;
+    currencyCode: string;
+}) {
+    const current = goal.monthly?.current;
+    const saved = current?.saved ?? 0;
+    const target = current?.target ?? 0;
+    // A partial month has no target to measure against, and a share of an
+    // income that has not arrived yet is 0: both say so rather than draw an
+    // empty or a full bar.
+    const partial = current?.status === 'partial';
+    const note = partial
+        ? __('Partial month')
+        : current?.is_live_target && target <= 0
+          ? __('the target grows as income comes in')
+          : null;
+
+    return (
+        <li className="grid grid-cols-[minmax(0,1fr)_5rem_auto] items-center gap-x-3 gap-y-0.5">
+            <Link
+                href={show({ savingsGoal: goal.id }).url}
+                className="truncate hover:underline"
+            >
+                {goal.name}
+            </Link>
+            {partial ? (
+                <span />
+            ) : (
+                <MonthlyGoalProgress
+                    saved={saved}
+                    target={target}
+                    empty={note !== null}
+                    className="h-1.5"
+                />
+            )}
+            <span className="text-right text-muted-foreground tabular-nums">
+                <AmountDisplay
+                    amountInCents={saved}
+                    currencyCode={currencyCode}
+                    minimumFractionDigits={0}
+                    maximumFractionDigits={0}
+                />
+                {!partial && (
+                    <>
+                        {' / '}
+                        <AmountDisplay
+                            amountInCents={target}
+                            currencyCode={currencyCode}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                        />
+                    </>
+                )}
+            </span>
+            {note && (
+                <span className="col-span-3 text-xs text-muted-foreground">
+                    {note}
+                </span>
+            )}
+        </li>
+    );
+}
