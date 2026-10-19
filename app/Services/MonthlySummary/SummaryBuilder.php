@@ -4,6 +4,7 @@ namespace App\Services\MonthlySummary;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\RuleSuggestionStatus;
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\Account;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
@@ -18,6 +19,7 @@ use App\Services\CategorySpendingService;
 use App\Services\ExchangeRateService;
 use App\Services\NetWorthCalculator;
 use App\Services\PeriodComparator;
+use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +55,7 @@ class SummaryBuilder
         private Readiness $readiness,
         private RuleSuggestionAvailability $ruleSuggestions,
         private ExchangeRateService $exchangeRates,
+        private MonthlySavingsGoalTotals $monthlyGoals,
     ) {}
 
     /**
@@ -89,6 +92,7 @@ class SummaryBuilder
             'invested' => $this->investedSection($accounts, $lookup, $month, $currency),
             'budgets' => $this->budgetsSection($user, $month),
             'goal' => $this->goalSection($user, $month),
+            'monthly_goals' => $this->monthlyGoalsSection($user, $month),
             'todos' => $this->todosSection($user, $month),
             'account_names' => $this->accountNames($accounts, $month),
         ];
@@ -476,6 +480,36 @@ class SummaryBuilder
             'percent' => round(min(100, $saved / $target * 100), 1),
             'monthly_pace' => $pace,
             'eta_month' => $this->goalEta($month, $target - $saved, $pace),
+        ];
+    }
+
+    /**
+     * Every monthly goal that ran in the month, each judged against that month's
+     * own target. Archived goals still count for the months they had.
+     *
+     * @return array{total: int, met: int, saved: int, target: int, goals: list<array{name: string, saved: int, target: int, difference: int, met: bool, streak: int}>}|null
+     */
+    private function monthlyGoalsSection(User $user, Carbon $month): ?array
+    {
+        $totals = $this->monthlyGoals->forMonth($user, $month, historyMonths: 1);
+
+        if ($totals === null || $totals['total'] === 0) {
+            return null;
+        }
+
+        return [
+            'total' => $totals['total'],
+            'met' => $totals['met'],
+            'saved' => $totals['saved'],
+            'target' => $totals['target'],
+            'goals' => array_map(fn (array $goal): array => [
+                'name' => $goal['name'],
+                'saved' => $goal['saved'],
+                'target' => $goal['target'],
+                'difference' => $goal['difference'],
+                'met' => $goal['status'] === SavingsGoalMonthStatus::Met,
+                'streak' => $goal['streak'],
+            ], $totals['goals']),
         ];
     }
 
