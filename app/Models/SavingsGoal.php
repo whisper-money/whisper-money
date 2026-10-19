@@ -3,40 +3,81 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use App\Enums\MonthlyTargetType;
+use App\Enums\SavingsGoalKind;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
+use Carbon\CarbonInterface;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 /**
  * @property Carbon $created_at
  * @property Carbon|null $target_date
  * @property Carbon|null $archived_at
  * @property int|null $archived_saved_amount
+ * @property SavingsGoalKind $kind
+ * @property MonthlyTargetType|null $monthly_target_type
+ * @property int|null $monthly_target_amount
+ * @property float|null $monthly_target_rate
+ * @property bool $notify_on_month_end_reminder
  */
 class SavingsGoal extends Model
 {
     /** @use HasFactory<SavingsGoalFactory> */
     use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * A monthly goal created in the last this-many days of a month gets that
+     * month as a partial one, with no verdict.
+     */
+    public const LATE_START_DAYS = 5;
+
+    /**
+     * The largest amount, in minor units, a goal's target or starting amount
+     * may be: 1,000,000,000.00. Well inside the integers a browser holds
+     * exactly, so figures never drift by a cent on the way to the screen.
+     */
+    public const MAX_AMOUNT = 100_000_000_000;
+
     protected $fillable = [
         'user_id',
         'space_id',
         'label_id',
         'name',
+        'kind',
         'position',
         'target_amount',
         'initial_amount',
         'target_date',
         'archived_at',
         'archived_saved_amount',
+        'monthly_target_type',
+        'monthly_target_amount',
+        'monthly_target_rate',
+        'notify_on_month_end_reminder',
+        'auto_tag_account_id',
+    ];
+
+    /**
+     * Mirrors the column defaults, so a goal that was just created reads the
+     * same before and after a refresh.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'kind' => 'one_off',
+        'notify_on_month_end_reminder' => true,
     ];
 
     /** @var list<string> */
@@ -53,6 +94,11 @@ class SavingsGoal extends Model
             'target_date' => 'date:Y-m-d',
             'archived_at' => 'datetime',
             'archived_saved_amount' => 'integer',
+            'kind' => SavingsGoalKind::class,
+            'monthly_target_type' => MonthlyTargetType::class,
+            'monthly_target_amount' => 'integer',
+            'monthly_target_rate' => 'float',
+            'notify_on_month_end_reminder' => 'boolean',
         ];
     }
 
@@ -66,6 +112,83 @@ class SavingsGoal extends Model
     public function label(): BelongsTo
     {
         return $this->belongsTo(Label::class);
+    }
+
+    /**
+     * The calendar months of a monthly goal, each with the target it was held to.
+     *
+     * @return HasMany<SavingsGoalPeriod, $this>
+     */
+    public function periods(): HasMany
+    {
+        return $this->hasMany(SavingsGoalPeriod::class);
+    }
+
+    public function isMonthly(): bool
+    {
+        return $this->kind === SavingsGoalKind::Monthly;
+    }
+
+    /**
+     * Whether the goal was created in the last LATE_START_DAYS days of $month,
+     * too late for that month to be held to a whole month's target.
+     */
+    public function startedLateIn(CarbonInterface $month): bool
+    {
+        $lateStart = $month->copy()->endOfMonth()->startOfDay()->subDays(self::LATE_START_DAYS - 1);
+
+        return $this->created_at->gte($lateStart) && $this->created_at->lte($month->copy()->endOfMonth());
+    }
+
+    /**
+     * Whether the goal was archived during $month.
+     */
+    public function wasArchivedIn(CarbonInterface $month): bool
+    {
+        return $this->archived_at !== null && $this->archived_at->isSameMonth($month);
+    }
+
+    /**
+     * Whether $month gets no verdict: the goal started late in it, or was
+     * archived during it.
+     */
+    public function isPartialMonth(CarbonInterface $month): bool
+    {
+        return $this->startedLateIn($month) || $this->wasArchivedIn($month);
+    }
+
+    /**
+     * The running monthly goal whose auto-tag rule already watches $accountId.
+     * Rules stop at the first match, so a second goal on the same account
+     * would never see a transfer.
+     */
+    public static function autoTaggingAccount(string $accountId): ?self
+    {
+        return self::query()->monthly()->notArchived()->where('auto_tag_account_id', $accountId)->first();
+    }
+
+    /** @return BelongsTo<Account, $this> */
+    public function autoTagAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'auto_tag_account_id');
+    }
+
+    /**
+     * @param  Builder<SavingsGoal>  $query
+     * @return Builder<SavingsGoal>
+     */
+    public function scopeMonthly(Builder $query): Builder
+    {
+        return $query->where('kind', SavingsGoalKind::Monthly->value);
+    }
+
+    /**
+     * @param  Builder<SavingsGoal>  $query
+     * @return Builder<SavingsGoal>
+     */
+    public function scopeOneOff(Builder $query): Builder
+    {
+        return $query->where('kind', SavingsGoalKind::OneOff->value);
     }
 
     /**
@@ -92,6 +215,24 @@ class SavingsGoal extends Model
             ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
             ->joinOwningAccount()
             ->whereIn('label_transaction.label_id', $labelIds);
+    }
+
+    /**
+     * What the transactions tagged with each label contributed per day since
+     * $since, one row per label and day — `label_id`, `day` and `total` in
+     * cents. Monthly goals fold these into months.
+     *
+     * @param  iterable<int, string>  $labelIds
+     * @return SupportCollection<int, stdClass>
+     */
+    public static function contributionsByDay(iterable $labelIds, Carbon $since): SupportCollection
+    {
+        return self::taggedContributions($labelIds)
+            ->where('transactions.transaction_date', '>=', $since->toDateString())
+            ->groupBy('label_transaction.label_id', 'transactions.transaction_date')
+            ->selectRaw('label_transaction.label_id as label_id, transactions.transaction_date as day, SUM('.self::CONTRIBUTION_AMOUNT_SQL.') as total')
+            ->toBase()
+            ->get();
     }
 
     /**
@@ -130,7 +271,8 @@ class SavingsGoal extends Model
     {
         // Archiving soft-deletes the label, so it has to be read through the
         // trashed scope or an archived goal loses the name it saved under.
-        $goals = $user->savingsGoals()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
+        // Monthly goals have no total to reach; they are listed on their own.
+        $goals = $user->savingsGoals()->oneOff()->orderBy('position')->orderBy('name')->with(['label' => fn ($query) => $query->withTrashed()])->get();
 
         // ponytail: one grouped sum+min for all goals' labels avoids N+1 across the list.
         $aggByLabel = self::taggedContributions($goals->pluck('label_id')->filter())
