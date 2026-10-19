@@ -2,6 +2,7 @@ import {
     index as notificationsIndex,
     update,
     updateBudget,
+    updateSavingsGoal,
 } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
 import HeadingSmall from '@/components/heading-small';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,6 +42,12 @@ interface BudgetRow {
     notify_on_over_limit: boolean;
 }
 
+interface MonthlyGoalRow {
+    id: UUID;
+    name: string;
+    notify_on_month_end_reminder: boolean;
+}
+
 interface Props {
     notifyAchievements: boolean;
     notifyMarketing: boolean;
@@ -49,6 +56,8 @@ interface Props {
     notifyMonthlySummary: boolean;
     budgetDefaults: Record<BudgetToggleKey, boolean>;
     budgets: BudgetRow[];
+    savingsGoalReminderDefault: boolean;
+    monthlySavingsGoals: MonthlyGoalRow[];
 }
 
 // `key` is the column on the budget/default; `defaultKey` is the wire key the
@@ -85,6 +94,8 @@ export default function Notifications({
     notifyMonthlySummary,
     budgetDefaults,
     budgets,
+    savingsGoalReminderDefault,
+    monthlySavingsGoals,
 }: Props) {
     const emailToggles = [
         {
@@ -145,6 +156,29 @@ export default function Notifications({
     const patchBudget = (id: UUID, key: BudgetToggleKey, checked: boolean) => {
         router.patch(updateBudget(id).url, { [key]: checked }, patchOptions);
     };
+
+    const reminderRows = [
+        {
+            id: 'savings-goal-reminder-default',
+            label: __('Default (new monthly goals)'),
+            checked: savingsGoalReminderDefault,
+            muted: true,
+            onChange: (checked: boolean) =>
+                patchPreference('savings_goal_month_end_reminder', checked),
+        },
+        ...monthlySavingsGoals.map((goal) => ({
+            id: `savings-goal-reminder-${goal.id}`,
+            label: goal.name,
+            checked: goal.notify_on_month_end_reminder,
+            muted: false,
+            onChange: (checked: boolean) =>
+                router.patch(
+                    updateSavingsGoal(goal.id).url,
+                    { notify_on_month_end_reminder: checked },
+                    patchOptions,
+                ),
+        })),
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -290,6 +324,46 @@ export default function Notifications({
                                     )}
                                 </TableBody>
                             </Table>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="text-sm font-medium">
+                                {__('Monthly savings goals')}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                                {__(
+                                    'An email 5 days before the month ends when a monthly goal is still short of its target. The default applies to newly created goals.',
+                                )}
+                            </p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {reminderRows.map((row) => (
+                                <div
+                                    key={row.id}
+                                    className="flex items-center gap-3"
+                                >
+                                    <Checkbox
+                                        id={row.id}
+                                        defaultChecked={row.checked}
+                                        onCheckedChange={(checked) =>
+                                            row.onChange(checked === true)
+                                        }
+                                    />
+                                    <Label
+                                        htmlFor={row.id}
+                                        className={
+                                            row.muted
+                                                ? 'text-muted-foreground'
+                                                : undefined
+                                        }
+                                    >
+                                        {row.label}
+                                    </Label>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

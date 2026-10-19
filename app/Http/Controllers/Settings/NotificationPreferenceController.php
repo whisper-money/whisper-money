@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBudgetNotificationPreferencesRequest;
 use App\Http\Requests\Settings\UpdateNotificationPreferencesRequest;
+use App\Http\Requests\Settings\UpdateSavingsGoalNotificationPreferencesRequest;
 use App\Models\Budget;
+use App\Models\SavingsGoal;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +34,7 @@ class NotificationPreferenceController extends Controller
         'budget_new_transaction' => 'budget_notify_on_new_transaction',
         'budget_close_to_limit' => 'budget_notify_on_close_to_limit',
         'budget_over_limit' => 'budget_notify_on_over_limit',
+        'savings_goal_month_end_reminder' => 'savings_goal_notify_on_month_end_reminder',
     ];
 
     public function index(Request $request): Response
@@ -62,6 +65,13 @@ class NotificationPreferenceController extends Controller
                     'notify_on_close_to_limit',
                     'notify_on_over_limit',
                 ]),
+            'savingsGoalReminderDefault' => $user->wantsSavingsGoalRemindersByDefault(),
+            // Only running monthly goals send the month-end reminder.
+            'monthlySavingsGoals' => $user->savingsGoals()
+                ->monthly()
+                ->notArchived()
+                ->orderBy('name')
+                ->get(['id', 'name', 'notify_on_month_end_reminder']),
         ]);
     }
 
@@ -86,6 +96,15 @@ class NotificationPreferenceController extends Controller
         $this->authorize('update', $budget);
 
         $budget->update($request->validated());
+
+        return back();
+    }
+
+    public function updateSavingsGoal(UpdateSavingsGoalNotificationPreferencesRequest $request, SavingsGoal $savingsGoal): RedirectResponse
+    {
+        $this->authorize('update', $savingsGoal);
+
+        $savingsGoal->update($request->validated());
 
         return back();
     }

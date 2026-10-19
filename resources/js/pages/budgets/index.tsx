@@ -60,6 +60,8 @@ interface Props {
     savingsGoals?: SavingsGoal[];
     /** Monthly goals, archived ones included; they live outside the reorderable list. */
     monthlySavingsGoals?: SavingsGoal[];
+    /** The user's default for a new monthly goal's month-end reminder. */
+    savingsGoalReminderDefault?: boolean;
     currencyCode: string;
 }
 
@@ -67,6 +69,7 @@ export default function BudgetsIndex({
     budgets,
     savingsGoals = [],
     monthlySavingsGoals = [],
+    savingsGoalReminderDefault = true,
     currencyCode,
 }: Props) {
     const [createType, setCreateType] = useState<'budget' | 'goal' | null>(
@@ -250,6 +253,7 @@ export default function BudgetsIndex({
                     <PlanningCards items={items} currencyCode={currencyCode} />
                     <CreateCard
                         currencyCode={currencyCode}
+                        reminderDefault={savingsGoalReminderDefault}
                         filter={filter}
                         isListEmpty={
                             items.length === 0 &&
@@ -299,6 +303,7 @@ export default function BudgetsIndex({
                 onOpenChange={(open) => !open && setCreateType(null)}
             />
             <CreateSavingsGoalDialog
+                reminderDefault={savingsGoalReminderDefault}
                 currencyCode={currencyCode}
                 open={createType === 'goal'}
                 onOpenChange={(open) => !open && setCreateType(null)}
@@ -343,6 +348,7 @@ function PlanningCards({
 
 interface CreateCardProps {
     currencyCode: string;
+    reminderDefault: boolean;
     filter: BudgetTypeFilter;
     isListEmpty: boolean;
     onCreate: (type: 'budget' | 'goal') => void;
@@ -355,6 +361,7 @@ interface CreateCardProps {
  */
 function CreateCard({
     currencyCode,
+    reminderDefault,
     filter,
     isListEmpty,
     onCreate,
@@ -373,6 +380,7 @@ function CreateCard({
     if (filter === 'goals') {
         return (
             <CreateSavingsGoalDialog
+                reminderDefault={reminderDefault}
                 currencyCode={currencyCode}
                 className={className}
             />

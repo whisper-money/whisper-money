@@ -54,6 +54,8 @@ Route::middleware('auth')->group(function () {
         ->name('notifications.update');
     Route::patch('settings/notifications/budgets/{budget}', [NotificationPreferenceController::class, 'updateBudget'])
         ->name('notifications.budgets.update');
+    Route::patch('settings/notifications/savings-goals/{savingsGoal}', [NotificationPreferenceController::class, 'updateSavingsGoal'])
+        ->name('notifications.savings-goals.update');
 
     Route::get('settings/banks', [BankController::class, 'index'])->name('banks.index');
     Route::post('settings/banks', [BankController::class, 'store'])->name('banks.store');
