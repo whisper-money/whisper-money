@@ -1897,7 +1897,7 @@
     "Two-Factor Authentication": "Authentification en deux passes",
     "Two-factor authentication settings cannot be changed on the demo account.": "Les paramètres d'authentification à deux facteurs ne peuvent pas être modifiés sur le compte démo.",
     "Two-factor authentication settings cannot be\\n                                changed on the demo account.": "Les paramètres d'authentification à deux facteurs ne peuvent pas être modifiés sur le compte démo.",
-    "Type": "Gars",
+    "Type": "Type",
     "Type \"delete all\" to confirm:": "Tapez \"supprimer tout\" pour confirmer :",
     "Type :word to confirm.": "Tapez :word pour confirmer.",
     "Type DELETE": "Tapez SUPPRIMER",
@@ -2981,5 +2981,11 @@
     "We'll show every amount in it. You can change it later in Settings.": "Nous afficherons tous les montants dans cette devise. Vous pourrez la changer plus tard dans la Configuration.",
     "Search currency...": "Rechercher une devise...",
     "No currency found.": "Aucune devise trouvée.",
-    "We couldn't change your currency. Try again.": "Nous n'avons pas pu changer votre devise. Réessayez."
+    "We couldn't change your currency. Try again.": "Nous n'avons pas pu changer votre devise. Réessayez.",
+    "Tick the values that mean money going out": "Cochez les valeurs qui indiquent une sortie d'argent",
+    ":count more values not shown": ":count autres valeurs non affichées",
+    "Currency, balance, creditor, debtor, type": "Devise, solde, créancier, débiteur, type",
+    "Currency, creditor, debtor, type": "Devise, créancier, débiteur, type",
+    "Select type column": "Sélectionnez la colonne de type",
+    "For files whose amounts are all positive: ticked rows import as expenses": "Pour les fichiers dont tous les montants sont positifs : les lignes cochées sont importées comme dépenses"
 }

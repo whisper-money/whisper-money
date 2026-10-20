@@ -371,6 +371,8 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         balance: null,
         creditor_name: null,
         debtor_name: null,
+        transaction_type: null,
+        expense_types: [],
     };
 
     if (!headers || headers.length === 0) {
@@ -449,6 +451,17 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'contraparte deudora',
         'deudor',
     ];
+    const transactionTypePatterns = [
+        'type',
+        'transaction type',
+        'movement type',
+        'tipo',
+        'tipo de transacción',
+        'tipo de movimiento',
+        'debit/credit',
+        'credit/debit',
+        'dr/cr',
+    ];
 
     // Each header is claimed by a single field: the one whose longest pattern
     // matches it, and on a tie the field listed first below. Amount is last
@@ -462,6 +475,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         ['balance', balancePatterns],
         ['creditor_name', creditorPatterns],
         ['debtor_name', debtorPatterns],
+        ['transaction_type', transactionTypePatterns],
         ['amount', amountPatterns],
     ] as const;
 
@@ -514,8 +528,105 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
     mapping.balance = claims.balance?.header ?? null;
     mapping.creditor_name = claims.creditor_name?.header ?? null;
     mapping.debtor_name = claims.debtor_name?.header ?? null;
+    mapping.transaction_type = claims.transaction_type?.header ?? null;
 
     return mapping;
+}
+
+/**
+ * Type values that plainly mean money going out, compared once trimmed and
+ * lowercased. A plural ("gastos", "debits") counts too.
+ */
+const EXPENSE_TYPE_VALUES = [
+    'gasto',
+    'expense',
+    'debit',
+    'débito',
+    'debito',
+    'cargo',
+    'withdrawal',
+    'dépense',
+    'out',
+    'dr',
+];
+
+function normalizeTypeValue(value: string): string {
+    return value.trim().toLowerCase();
+}
+
+/**
+ * The distinct values of the type column, most common first, each as first
+ * written in the file and with how many rows carry it. Blank cells are left out.
+ */
+export function collectTypeValues(
+    rows: ParsedRow[],
+    column: string | null | undefined,
+): { value: string; count: number }[] {
+    if (!column) {
+        return [];
+    }
+
+    const values = new Map<string, { value: string; count: number }>();
+
+    for (const row of rows) {
+        const value = rawCell(row, column);
+
+        if (value === '') {
+            continue;
+        }
+
+        const key = normalizeTypeValue(value);
+        const entry = values.get(key);
+
+        if (entry) {
+            entry.count++;
+        } else {
+            values.set(key, { value, count: 1 });
+        }
+    }
+
+    return [...values.values()].sort((a, b) => b.count - a.count);
+}
+
+/** The values of the type column worth ticking as expenses before the user looks. */
+export function detectExpenseTypes(
+    rows: ParsedRow[],
+    column: string | null | undefined,
+): string[] {
+    return collectTypeValues(rows, column)
+        .map(({ value }) => value)
+        .filter((value) => {
+            const normalized = normalizeTypeValue(value);
+
+            return EXPENSE_TYPE_VALUES.some(
+                (expense) =>
+                    normalized === expense || normalized === `${expense}s`,
+            );
+        });
+}
+
+/**
+ * The amount with the sign the type column gives it: an expense row is always
+ * negative, whatever sign the file wrote; any other row keeps its own. Without
+ * a type column, or with no value ticked as an expense, the amount is untouched.
+ */
+export function applyTypeSign(
+    amount: number,
+    row: ParsedRow,
+    mapping: ColumnMapping,
+): number {
+    const expenseTypes = mapping.expense_types ?? [];
+
+    if (!mapping.transaction_type || expenseTypes.length === 0) {
+        return amount;
+    }
+
+    const type = normalizeTypeValue(rawCell(row, mapping.transaction_type));
+    const isExpense = expenseTypes.some(
+        (expense) => normalizeTypeValue(expense) === type,
+    );
+
+    return isExpense ? -Math.abs(amount) : amount;
 }
 
 // A time of day trailing the date: "25/10/17, 1:47", "2026-10-01T12:30:00Z",
@@ -838,6 +949,7 @@ export function convertRowsToTransactions(
         }
 
         const formattedDate = formatLocalDate(date);
+        const signedAmount = applyTypeSign(amount, row, mapping);
         const creditorName = getOptionalTextFromRow(row, mapping.creditor_name);
         const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
@@ -865,7 +977,7 @@ export function convertRowsToTransactions(
         results.push({
             transaction_date: formattedDate,
             description,
-            amount: toMinorUnits(amount, rowCurrency ?? accountCurrency),
+            amount: toMinorUnits(signedAmount, rowCurrency ?? accountCurrency),
             currency_code: rowCurrency,
             balance,
             creditor_name: creditorName,
@@ -981,7 +1093,10 @@ export function buildMappingReport(
             });
         } else {
             fields.amount.ok++;
-            const minorUnits = toMinorUnits(amount, accountCurrency);
+            const minorUnits = toMinorUnits(
+                applyTypeSign(amount, row, mapping),
+                accountCurrency,
+            );
             if (min === null || minorUnits < min) {
                 min = minorUnits;
             }

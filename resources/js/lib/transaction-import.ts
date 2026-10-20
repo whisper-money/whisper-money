@@ -5,6 +5,7 @@ import {
     autoDetectColumns,
     collectBalancesToImport,
     detectDateFormat,
+    detectExpenseTypes,
     parseFile,
 } from '@/lib/file-parser';
 import { loadImportConfig } from '@/lib/import-config-storage';
@@ -141,6 +142,7 @@ export async function parseImportFile(
     const { headers, data, rowNumbers, columns, headerRowIndex } =
         await parseFile(file);
     const mapping = autoDetectColumns(headers);
+    mapping.expense_types = detectExpenseTypes(data, mapping.transaction_type);
 
     let dateFormat = DateFormat.YearMonthDay;
     let dateFormatDetected = false;
@@ -178,7 +180,10 @@ function mapsOnlyKnownColumns(
     mapping: ColumnMapping,
     headers: string[],
 ): boolean {
-    return Object.values(mapping)
+    // The expense types are values of a column, not columns.
+    return Object.entries(mapping)
+        .filter(([field]) => field !== 'expense_types')
+        .map(([, column]) => column)
         .filter((column) => column !== null)
         .every((column) =>
             Array.isArray(column)
