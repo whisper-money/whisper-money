@@ -18,7 +18,10 @@ import {
 import { useLocale } from '@/hooks/use-locale';
 import {
     buildMappingReport,
+    collectTypeValues,
+    detectExpenseTypes,
     getLatestTransactionDate,
+    isSameTypeValue,
 } from '@/lib/file-parser';
 import {
     DateFormat,
@@ -28,6 +31,7 @@ import {
     type MappingReport,
     type ParsedRow,
     type RowProblem,
+    type TypeValueCount,
 } from '@/types/import';
 import {
     currencyDecimals,
@@ -46,6 +50,9 @@ const NONE = '__none__';
 // proper from md up.
 const ROW_GRID =
     'grid grid-cols-1 gap-2 md:grid-cols-[7.5rem_minmax(0,1fr)_17rem] md:items-start md:gap-4';
+
+/** How many distinct type values are offered to tick, most common first. */
+const MAX_TYPE_VALUES = 20;
 
 const DATE_FORMAT_LABELS: Record<DateFormat, string> = {
     [DateFormat.YearMonthDay]: 'YYYY-MM-DD',
@@ -319,6 +326,66 @@ function ProblemRows({
     );
 }
 
+/** The type column's values, for the user to tick the ones that are expenses. */
+function ExpenseTypePicker({
+    values,
+    selected,
+    onChange,
+}: {
+    values: TypeValueCount[];
+    selected: string[];
+    onChange: (selected: string[]) => void;
+}) {
+    const isTicked = (value: string) =>
+        selected.some((one) => isSameTypeValue(one, value));
+    // A ticked value stays in sight past the cap: it still turns rows negative,
+    // so it must be there to untick.
+    const shown = values.filter(
+        ({ value }, index) => index < MAX_TYPE_VALUES || isTicked(value),
+    );
+    const hiddenCount = values.length - shown.length;
+
+    const toggle = (value: string, checked: boolean) => {
+        const rest = selected.filter((one) => !isSameTypeValue(one, value));
+        onChange(checked ? [...rest, value] : rest);
+    };
+
+    return (
+        <fieldset className="flex flex-col gap-1.5">
+            <legend className="pb-1.5 text-xs text-muted-foreground">
+                {__('Tick the values that mean money going out')}
+            </legend>
+            {shown.map(({ value, count }, index) => (
+                <div key={value} className="flex items-center gap-2">
+                    <Checkbox
+                        id={`expense-type-${index}`}
+                        checked={isTicked(value)}
+                        onCheckedChange={(checked) =>
+                            toggle(value, checked === true)
+                        }
+                    />
+                    <Label
+                        htmlFor={`expense-type-${index}`}
+                        className="cursor-pointer font-normal"
+                    >
+                        {value}{' '}
+                        <span className="text-xs text-muted-foreground">
+                            · {__(':count rows', { count })}
+                        </span>
+                    </Label>
+                </div>
+            ))}
+            {hiddenCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                    {__(':count more values not shown', {
+                        count: hiddenCount,
+                    })}
+                </span>
+            )}
+        </fieldset>
+    );
+}
+
 export function ImportStepMapping({
     columnOptions,
     columnMapping,
@@ -410,7 +477,23 @@ export function ImportStepMapping({
         columnMapping.balance && __('Balance'),
         columnMapping.creditor_name && __('Creditor'),
         columnMapping.debtor_name && __('Debtor'),
+        columnMapping.transaction_type && __('Type'),
     ].filter(Boolean) as string[];
+
+    const typeValues = useMemo(
+        () => collectTypeValues(parsedData, columnMapping.transaction_type),
+        [parsedData, columnMapping.transaction_type],
+    );
+
+    // A new type column brings its own values, so the ticks start over from
+    // the ones that plainly mean an expense.
+    const handleTypeColumnChange = (column: string) => {
+        onMappingChange('transaction_type', column);
+        onMappingChange(
+            'expense_types',
+            detectExpenseTypes(parsedData, column || null),
+        );
+    };
 
     const handleDescriptionChange = (columns: string[]) => {
         // Keep them in file order: the chips then read the same way round as
@@ -616,8 +699,8 @@ export function ImportStepMapping({
                 contentClassName="border-sidebar-border bg-background"
                 hint={
                     tracksBalance
-                        ? __('Currency, balance, creditor, debtor')
-                        : __('Currency, creditor, debtor')
+                        ? __('Currency, balance, creditor, debtor, type')
+                        : __('Currency, creditor, debtor, type')
                 }
                 title={
                     <>
@@ -784,6 +867,36 @@ export function ImportStepMapping({
                     />
                     <p className="text-xs text-muted-foreground md:pt-2.5">
                         {__('Who paid')}
+                    </p>
+                </div>
+
+                <div className={`${ROW_GRID} border-t px-4 py-3`}>
+                    <Label htmlFor="type-column" className="md:pt-2.5">
+                        {__('Type')}
+                    </Label>
+                    <div className="flex flex-col gap-3">
+                        <ColumnSelect
+                            id="type-column"
+                            value={columnMapping.transaction_type ?? null}
+                            placeholder={__('Select type column')}
+                            optional
+                            columnOptions={columnOptions}
+                            onChange={handleTypeColumnChange}
+                        />
+                        {typeValues.length > 0 && (
+                            <ExpenseTypePicker
+                                values={typeValues}
+                                selected={columnMapping.expense_types ?? []}
+                                onChange={(selected) =>
+                                    onMappingChange('expense_types', selected)
+                                }
+                            />
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground md:pt-2.5">
+                        {__(
+                            'For files whose amounts are all positive: ticked rows import as expenses',
+                        )}
                     </p>
                 </div>
             </CollapsibleSection>

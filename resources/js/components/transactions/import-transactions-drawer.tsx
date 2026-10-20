@@ -70,6 +70,8 @@ const EMPTY_STATE: ImportState = {
         balance: null,
         creditor_name: null,
         debtor_name: null,
+        transaction_type: null,
+        expense_types: [],
     },
     dateFormat: DateFormat.YearMonthDay,
     dateFormatDetected: false,
