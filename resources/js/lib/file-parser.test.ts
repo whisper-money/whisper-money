@@ -511,6 +511,85 @@ describe('autoDetectDateFormat', () => {
     });
 });
 
+describe('parseDate with a time part', () => {
+    // Expectations are calendar days, not Date objects: a Date built while the
+    // cases are collected would carry whatever TZ another test left behind.
+    const parsedDay = (value: string, format: DateFormat): string | null => {
+        const date = parseDate(value, format);
+
+        return date ? formatLocalDate(date) : null;
+    };
+
+    it.each([
+        ['25/10/17, 1:47', DateFormat.DayMonthYear, '2017-10-25'],
+        ['1/3/18, 14:47', DateFormat.DayMonthYear, '2018-03-01'],
+        ['2026-10-01 12:30', DateFormat.YearMonthDay, '2026-10-01'],
+        ['01/10/2026 12:30:00', DateFormat.DayMonthYear, '2026-10-01'],
+        ['10/01/2026 12:30:00', DateFormat.MonthDayYear, '2026-10-01'],
+        ['2026-10-01T12:30', DateFormat.YearMonthDay, '2026-10-01'],
+        ['2026-10-01T23:30:00.123Z', DateFormat.YearMonthDay, '2026-10-01'],
+        ['2026-10-01T00:30:00+02:00', DateFormat.YearMonthDay, '2026-10-01'],
+        ['2026-10-01 01:30-0500', DateFormat.YearMonthDay, '2026-10-01'],
+        ['10/1/2026 1:47 PM', DateFormat.MonthDayYear, '2026-10-01'],
+        ['10/1/2026, 11:05:09 am', DateFormat.MonthDayYear, '2026-10-01'],
+        ['1/10/2026, 1:47 p. m.', DateFormat.DayMonthYear, '2026-10-01'],
+        ['1/10/2026 9:15 a.m.', DateFormat.DayMonthYear, '2026-10-01'],
+        ['01.10.2026 12:30', DateFormat.DayMonthYear, '2026-10-01'],
+        ['20261001 12:30:00', DateFormat.YearMonthDayCompact, '2026-10-01'],
+    ])('reads %s as the day it states', (value, format, expected) => {
+        expect(parsedDay(value, format)).toBe(expected);
+    });
+
+    it('keeps the dates without a time part working', () => {
+        expect(parsedDay('20261001', DateFormat.YearMonthDayCompact)).toBe(
+            '2026-10-01',
+        );
+        expect(parsedDay('15-01', DateFormat.DayMonthYear)).toBe(
+            `${new Date().getFullYear()}-01-15`,
+        );
+        expect(
+            formatLocalDate(parseDate(45931, DateFormat.DayMonthYear)!),
+        ).toBe('2025-10-01');
+    });
+
+    it('does not mistake a time for a year', () => {
+        expect(parsedDay('25/10/17, 1:47', DateFormat.MonthDayYear)).toBeNull();
+        expect(parsedDay('13/10/17, 1:47', DateFormat.MonthDayYear)).toBeNull();
+    });
+
+    it('keeps the stated day in timezones ahead of UTC', () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Pacific/Auckland';
+
+        try {
+            const transactions = convertRowsToTransactions(
+                [
+                    {
+                        date: '2026-05-04T23:30:00Z',
+                        description: 'Late payment',
+                        amount: '10.00',
+                    },
+                ],
+                {
+                    transaction_date: 'date',
+                    description: 'description',
+                    amount: 'amount',
+                    currency: null,
+                    balance: null,
+                    creditor_name: null,
+                    debtor_name: null,
+                },
+                DateFormat.YearMonthDay,
+                'EUR',
+            );
+
+            expect(transactions[0].transaction_date).toBe('2026-05-04');
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
+    });
+});
+
 describe('detectDateFormat', () => {
     it('returns null for empty data', () => {
         expect(detectDateFormat([], 'date')).toBeNull();
@@ -538,6 +617,27 @@ describe('detectDateFormat', () => {
             format: DateFormat.MonthDayYear,
             ambiguous: true,
         });
+    });
+
+    it('detects day/month/year in exports whose dates carry a time (Money Pro)', () => {
+        const data = [
+            { date: '25/10/17, 1:47' },
+            { date: '1/3/18, 14:47' },
+            { date: '3/11/17, 9:05' },
+        ];
+        // "25/10/17" also reads as 2025-10-17, so the format stays open for
+        // the user to confirm, but a two-digit leading number is a day first.
+        expect(detectDateFormat(data, 'date', 'en-US')).toEqual({
+            format: DateFormat.DayMonthYear,
+            ambiguous: true,
+        });
+        // Not even where the locale writes the year first.
+        expect(detectDateFormat(data, 'date', 'sv')?.format).toBe(
+            DateFormat.DayMonthYear,
+        );
+        expect(
+            formatLocalDate(parseDate(data[1].date, DateFormat.DayMonthYear)!),
+        ).toBe('2018-03-01');
     });
 
     it('flags locale-resolved ties as ambiguous (es)', () => {

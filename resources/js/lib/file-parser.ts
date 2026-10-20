@@ -284,6 +284,10 @@ export interface DateFormatDetection {
     ambiguous: boolean;
 }
 
+function leadsWithFourDigitYear(dateValue: ParsedRow[string]): boolean {
+    return /^\d{4}\D/.test(String(dateValue).trim());
+}
+
 export function detectDateFormat(
     data: ParsedRow[],
     dateColumnName: string,
@@ -307,10 +311,12 @@ export function detectDateFormat(
         [DateFormat.YearMonthDayCompact]: 0,
     };
 
-    for (let i = 0; i < sampleSize; i++) {
-        const dateValue = data[i][dateColumnName];
-        if (!dateValue) continue;
+    const sampledValues = data
+        .slice(0, sampleSize)
+        .map((row) => row[dateColumnName])
+        .filter(Boolean);
 
+    for (const dateValue of sampledValues) {
         for (const format of formats) {
             const parsedDate = parseDate(dateValue as string | number, format);
             if (parsedDate) {
@@ -331,15 +337,21 @@ export function detectDateFormat(
         return { format: tiedFormats[0], ambiguous: false };
     }
 
+    // "25/10/17" reads as 2025-10-17 too, but a date that doesn't open with a
+    // four-digit year almost always starts with the day or the month.
+    const candidates = sampledValues.every(leadsWithFourDigitYear)
+        ? tiedFormats
+        : tiedFormats.filter((format) => format !== DateFormat.YearMonthDay);
+
     // Multiple formats parse the sample equally well (e.g. 02/06/2026 is valid
     // as both DD/MM and MM/DD). Pick the locale-preferred format as the default
     // but flag it as ambiguous so the caller can let the user confirm.
     const localePreferred = getLocaleDateFormat(locale);
-    if (localePreferred && tiedFormats.includes(localePreferred)) {
+    if (localePreferred && candidates.includes(localePreferred)) {
         return { format: localePreferred, ambiguous: true };
     }
 
-    return { format: tiedFormats[0], ambiguous: true };
+    return { format: candidates[0] ?? tiedFormats[0], ambiguous: true };
 }
 
 export function autoDetectDateFormat(
@@ -506,6 +518,16 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
     return mapping;
 }
 
+// A time of day trailing the date: "25/10/17, 1:47", "2026-10-01T12:30:00Z",
+// "01/10/2026 1:47:05.123 p. m. +02:00". Only the calendar day is imported,
+// so the time and any offset are dropped as written, without converting.
+const TRAILING_TIME_OF_DAY =
+    /(?:,\s*|\s+|T)\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:\s*[ap]\.?\s?m\.?)?(?:\s*(?:Z|[+-]\d{2}(?::?\d{2})?))?$/i;
+
+function stripTimeOfDay(dateStr: string): string {
+    return dateStr.replace(TRAILING_TIME_OF_DAY, '').trim();
+}
+
 export function parseDate(
     dateStr: string | number,
     format: DateFormat,
@@ -521,7 +543,7 @@ export function parseDate(
         }
     }
 
-    let str = String(dateStr).trim();
+    let str = stripTimeOfDay(String(dateStr).trim());
     str = str
         .replace(/\//g, '-')
         .replace(/\./g, '-')
