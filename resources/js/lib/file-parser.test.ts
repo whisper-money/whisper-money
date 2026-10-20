@@ -1,4 +1,8 @@
-import type { ColumnMapping, ParsedTransaction } from '@/types/import';
+import type {
+    ColumnMapping,
+    ParsedRow,
+    ParsedTransaction,
+} from '@/types/import';
 import { DateFormat } from '@/types/import';
 import { formatLocalDate } from '@/utils/date';
 import { readFileSync } from 'node:fs';
@@ -10,8 +14,10 @@ import {
     calculateBalancesFromTransactions,
     collectBalancesToImport,
     collectCurrencyCodes,
+    collectTypeValues,
     convertRowsToTransactions,
     detectDateFormat,
+    detectExpenseTypes,
     getLatestTransactionDate,
     getLocaleDateFormat,
     isInAccountCurrency,
@@ -1217,5 +1223,194 @@ describe('parseFile', () => {
         } finally {
             process.env.TZ = originalTimezone;
         }
+    });
+});
+
+describe('amount sign from a type column', () => {
+    const mapping: ColumnMapping = {
+        transaction_date: 'Fecha',
+        description: 'Descripción',
+        amount: 'Cantidad',
+        currency: null,
+        balance: null,
+        creditor_name: null,
+        debtor_name: null,
+        transaction_type: 'Tipo de transacción',
+        expense_types: ['Gasto'],
+    };
+
+    function row(type: string, amount: string): ParsedRow {
+        return {
+            Fecha: '25/10/17, 1:47',
+            Descripción: 'Compra',
+            Cantidad: amount,
+            'Tipo de transacción': type,
+        };
+    }
+
+    function amounts(rows: ParsedRow[], columnMapping = mapping): number[] {
+        return convertRowsToTransactions(
+            rows,
+            columnMapping,
+            DateFormat.YearMonthDay,
+            'USD',
+        ).map((transaction) => transaction.amount);
+    }
+
+    it('makes expense rows negative and leaves the rest as parsed', () => {
+        expect(
+            amounts([
+                row('Gasto', '8.400,00 $'),
+                row('Ingreso', '1.200,50 $'),
+                row('Ajuste de saldo', '-30,00 $'),
+            ]),
+        ).toEqual([-840000, 120050, -3000]);
+    });
+
+    it('keeps an expense negative when the file already wrote it so', () => {
+        expect(amounts([row('Gasto', '-12,00 $')])).toEqual([-1200]);
+    });
+
+    it('compares the type trimmed and case-insensitively', () => {
+        expect(
+            amounts([row('  GASTO ', '5,00 $')], {
+                ...mapping,
+                expense_types: [' gasto'],
+            }),
+        ).toEqual([-500]);
+    });
+
+    it('changes nothing without a type column', () => {
+        expect(
+            amounts([row('Gasto', '5,00 $')], {
+                ...mapping,
+                transaction_type: null,
+            }),
+        ).toEqual([500]);
+    });
+
+    it('changes nothing when no value is ticked as an expense', () => {
+        expect(
+            amounts([row('Gasto', '5,00 $')], {
+                ...mapping,
+                expense_types: [],
+            }),
+        ).toEqual([500]);
+    });
+
+    it('changes nothing for a layout saved before the type column existed', () => {
+        const legacy: ColumnMapping = { ...mapping };
+        delete legacy.transaction_type;
+        delete legacy.expense_types;
+
+        expect(amounts([row('Gasto', '5,00 $')], legacy)).toEqual([500]);
+    });
+
+    it('reports the signed amounts in the mapping report', () => {
+        const rows = [row('Gasto', '8.400,00 $'), row('Ingreso', '100,00 $')];
+        const report = buildMappingReport(
+            rows,
+            [2, 3],
+            mapping,
+            DateFormat.YearMonthDay,
+            'USD',
+        );
+
+        expect(report.amountRange).toEqual({ min: -840000, max: 10000 });
+    });
+});
+
+describe('type column detection', () => {
+    it.each([
+        'Type',
+        'Transaction Type',
+        'Tipo',
+        'Tipo de transacción',
+        'Debit/Credit',
+        'DR/CR',
+        'Movement type',
+    ])('detects "%s" as the type column', (header) => {
+        const mapping = autoDetectColumns(['Fecha', 'Concepto', header]);
+
+        expect(mapping.transaction_type).toBe(header);
+    });
+
+    it.each(['Card type', 'Account Type', 'Tipo de cambio', 'Subtype'])(
+        'does not take "%s" for the type column',
+        (header) => {
+            const mapping = autoDetectColumns(['Fecha', 'Concepto', header]);
+
+            expect(mapping.transaction_type).toBeNull();
+        },
+    );
+
+    it('leaves a Money Pro header set mapped as expected', () => {
+        const mapping = autoDetectColumns([
+            'Fecha',
+            'Cantidad',
+            'Cuenta',
+            'Categoría',
+            'Descripción',
+            'Tipo de transacción',
+        ]);
+
+        expect(mapping.amount).toBe('Cantidad');
+        expect(mapping.description).toBe('Descripción');
+        expect(mapping.transaction_type).toBe('Tipo de transacción');
+    });
+
+    it('maps no type column when the file has none', () => {
+        const mapping = autoDetectColumns(['Date', 'Description', 'Amount']);
+
+        expect(mapping.transaction_type).toBeNull();
+        expect(mapping.expense_types).toEqual([]);
+    });
+
+    it('collects the distinct values, most common first', () => {
+        const rows = [
+            { Tipo: 'Ingreso' },
+            { Tipo: 'Gasto' },
+            { Tipo: ' gasto ' },
+            { Tipo: '' },
+        ];
+
+        expect(collectTypeValues(rows, 'Tipo')).toEqual([
+            { value: 'Gasto', count: 2 },
+            { value: 'Ingreso', count: 1 },
+        ]);
+        expect(collectTypeValues(rows, null)).toEqual([]);
+    });
+
+    it('pre-ticks only the values that plainly mean an expense', () => {
+        const rows = [
+            'Gasto',
+            'Ingreso',
+            'Ajuste de saldo',
+            'Saldo de apertura',
+            'Expenses',
+            'DEBIT',
+            'Credit',
+            'Débito',
+            'Cargo',
+            'Withdrawal',
+            'Dépense',
+            'Out',
+            'Payout',
+            'DR',
+            'CR',
+        ].map((type) => ({ Type: type }));
+
+        expect(detectExpenseTypes(rows, 'Type')).toEqual([
+            'Gasto',
+            'Expenses',
+            'DEBIT',
+            'Débito',
+            'Cargo',
+            'Withdrawal',
+            'Dépense',
+            'Out',
+            'DR',
+        ]);
+        expect(detectExpenseTypes(rows, null)).toEqual([]);
     });
 });
