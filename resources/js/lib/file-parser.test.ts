@@ -631,6 +631,10 @@ describe('detectDateFormat', () => {
             format: DateFormat.DayMonthYear,
             ambiguous: true,
         });
+        // Not even where the locale writes the year first.
+        expect(detectDateFormat(data, 'date', 'sv')?.format).toBe(
+            DateFormat.DayMonthYear,
+        );
         expect(
             formatLocalDate(parseDate(data[1].date, DateFormat.DayMonthYear)!),
         ).toBe('2018-03-01');

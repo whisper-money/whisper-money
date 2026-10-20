@@ -284,16 +284,8 @@ export interface DateFormatDetection {
     ambiguous: boolean;
 }
 
-function sampleLeadsWithFourDigitYear(
-    data: ParsedRow[],
-    dateColumnName: string,
-    sampleSize: number,
-): boolean {
-    return data
-        .slice(0, sampleSize)
-        .map((row) => row[dateColumnName])
-        .filter((value) => typeof value === 'string' && value.trim() !== '')
-        .every((value) => /^\d{4}\D/.test(String(value).trim()));
+function leadsWithFourDigitYear(dateValue: ParsedRow[string]): boolean {
+    return /^\d{4}\D/.test(String(dateValue).trim());
 }
 
 export function detectDateFormat(
@@ -319,10 +311,12 @@ export function detectDateFormat(
         [DateFormat.YearMonthDayCompact]: 0,
     };
 
-    for (let i = 0; i < sampleSize; i++) {
-        const dateValue = data[i][dateColumnName];
-        if (!dateValue) continue;
+    const sampledValues = data
+        .slice(0, sampleSize)
+        .map((row) => row[dateColumnName])
+        .filter(Boolean);
 
+    for (const dateValue of sampledValues) {
         for (const format of formats) {
             const parsedDate = parseDate(dateValue as string | number, format);
             if (parsedDate) {
@@ -339,32 +333,25 @@ export function detectDateFormat(
 
     const tiedFormats = formats.filter((format) => scores[format] === maxScore);
 
-    // "25/10/17" reads as 2025-10-17 too, but a date that doesn't open with a
-    // four-digit year almost always starts with the day or the month.
-    if (
-        !sampleLeadsWithFourDigitYear(data, dateColumnName, sampleSize) &&
-        tiedFormats.length > 1
-    ) {
-        tiedFormats.sort(
-            (a, b) =>
-                Number(a === DateFormat.YearMonthDay) -
-                Number(b === DateFormat.YearMonthDay),
-        );
-    }
-
     if (tiedFormats.length === 1) {
         return { format: tiedFormats[0], ambiguous: false };
     }
+
+    // "25/10/17" reads as 2025-10-17 too, but a date that doesn't open with a
+    // four-digit year almost always starts with the day or the month.
+    const candidates = sampledValues.every(leadsWithFourDigitYear)
+        ? tiedFormats
+        : tiedFormats.filter((format) => format !== DateFormat.YearMonthDay);
 
     // Multiple formats parse the sample equally well (e.g. 02/06/2026 is valid
     // as both DD/MM and MM/DD). Pick the locale-preferred format as the default
     // but flag it as ambiguous so the caller can let the user confirm.
     const localePreferred = getLocaleDateFormat(locale);
-    if (localePreferred && tiedFormats.includes(localePreferred)) {
+    if (localePreferred && candidates.includes(localePreferred)) {
         return { format: localePreferred, ambiguous: true };
     }
 
-    return { format: tiedFormats[0], ambiguous: true };
+    return { format: candidates[0] ?? tiedFormats[0], ambiguous: true };
 }
 
 export function autoDetectDateFormat(
