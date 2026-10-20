@@ -21,6 +21,7 @@ import {
     collectTypeValues,
     detectExpenseTypes,
     getLatestTransactionDate,
+    isSameTypeValue,
 } from '@/lib/file-parser';
 import {
     DateFormat,
@@ -30,6 +31,7 @@ import {
     type MappingReport,
     type ParsedRow,
     type RowProblem,
+    type TypeValueCount,
 } from '@/types/import';
 import {
     currencyDecimals,
@@ -324,21 +326,23 @@ function ProblemRows({
     );
 }
 
-function isSameTypeValue(a: string, b: string): boolean {
-    return a.trim().toLowerCase() === b.trim().toLowerCase();
-}
-
 /** The type column's values, for the user to tick the ones that are expenses. */
 function ExpenseTypePicker({
     values,
     selected,
     onChange,
 }: {
-    values: { value: string; count: number }[];
+    values: TypeValueCount[];
     selected: string[];
     onChange: (selected: string[]) => void;
 }) {
-    const shown = values.slice(0, MAX_TYPE_VALUES);
+    const isTicked = (value: string) =>
+        selected.some((one) => isSameTypeValue(one, value));
+    // A ticked value stays in sight past the cap: it still turns rows negative,
+    // so it must be there to untick.
+    const shown = values.filter(
+        ({ value }, index) => index < MAX_TYPE_VALUES || isTicked(value),
+    );
     const hiddenCount = values.length - shown.length;
 
     const toggle = (value: string, checked: boolean) => {
@@ -355,9 +359,7 @@ function ExpenseTypePicker({
                 <div key={value} className="flex items-center gap-2">
                     <Checkbox
                         id={`expense-type-${index}`}
-                        checked={selected.some((one) =>
-                            isSameTypeValue(one, value),
-                        )}
+                        checked={isTicked(value)}
                         onCheckedChange={(checked) =>
                             toggle(value, checked === true)
                         }

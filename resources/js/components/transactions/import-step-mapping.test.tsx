@@ -140,4 +140,24 @@ describe('ImportStepMapping', () => {
         expect(document.getElementById('type-column')).not.toBeNull();
         expect(document.getElementById('expense-type-0')).toBeNull();
     });
+
+    it('keeps a ticked value in sight past the cap on listed values', () => {
+        const rare = 'Rare expense';
+        const parsedData: ParsedRow[] = [
+            ...Array.from({ length: 25 }, (_, index) => [
+                { Tipo: `Common ${index}` },
+                { Tipo: `Common ${index}` },
+            ]).flat(),
+            { Tipo: rare },
+        ];
+        renderStep(true, {
+            mapping: { transaction_type: 'Tipo', expense_types: [rare] },
+            parsedData,
+        });
+        openOptionalFields();
+
+        expect(screen.getByText(rare)).not.toBeNull();
+        expect(screen.queryByText('Common 24')).toBeNull();
+        expect(screen.getByText('5 more values not shown')).not.toBeNull();
+    });
 });

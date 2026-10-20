@@ -92,4 +92,21 @@ describe('applyStoredImportConfig with a type column', () => {
             await applyStoredImportConfig(parsedFile(), ACCOUNT_ID),
         ).toBeNull();
     });
+
+    it('applies a stored layout whose type column was set back to none', async () => {
+        vi.mocked(loadImportConfig).mockResolvedValue({
+            columnMapping: {
+                ...parsedFile().mapping,
+                creditor_name: '',
+                transaction_type: '',
+                expense_types: [],
+            },
+            dateFormat: DateFormat.DayMonthYear,
+        });
+
+        const applied = await applyStoredImportConfig(parsedFile(), ACCOUNT_ID);
+
+        expect(applied?.mapping.transaction_type).toBe('');
+        expect(applied?.mapping.expense_types).toEqual([]);
+    });
 });

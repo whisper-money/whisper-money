@@ -1335,6 +1335,15 @@ describe('type column detection', () => {
         expect(mapping.transaction_type).toBe(header);
     });
 
+    it.each(['Card type', 'Account Type', 'Tipo de cambio', 'Subtype'])(
+        'does not take "%s" for the type column',
+        (header) => {
+            const mapping = autoDetectColumns(['Fecha', 'Concepto', header]);
+
+            expect(mapping.transaction_type).toBeNull();
+        },
+    );
+
     it('leaves a Money Pro header set mapped as expected', () => {
         const mapping = autoDetectColumns([
             'Fecha',

@@ -7,6 +7,7 @@ import {
     type ParsedTransaction,
     type RowFault,
     type RowProblem,
+    type TypeValueCount,
 } from '@/types/import';
 import { toMinorUnits } from '@/utils/currency';
 import { formatLocalDate } from '@/utils/date';
@@ -458,6 +459,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'tipo',
         'tipo de transacción',
         'tipo de movimiento',
+        'tipo de operación',
         'debit/credit',
         'credit/debit',
         'dr/cr',
@@ -497,7 +499,15 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         let claimedField: { field: string; length: number } | null = null;
 
         for (const [field, patterns] of fieldPatterns) {
-            const length = longestMatch(patterns, header);
+            // A type column turns amounts negative, so it is only claimed by a
+            // header that is one of its patterns: "type" alone would also take
+            // "Card type", and "tipo" would take "Tipo de cambio".
+            const length =
+                field === 'transaction_type'
+                    ? patterns.includes(header.trim())
+                        ? header.trim().length
+                        : 0
+                    : longestMatch(patterns, header);
 
             if (
                 length > 0 &&
@@ -554,6 +564,11 @@ function normalizeTypeValue(value: string): string {
     return value.trim().toLowerCase();
 }
 
+/** Whether two type values are the same once trimmed and lowercased. */
+export function isSameTypeValue(a: string, b: string): boolean {
+    return normalizeTypeValue(a) === normalizeTypeValue(b);
+}
+
 /**
  * The distinct values of the type column, most common first, each as first
  * written in the file and with how many rows carry it. Blank cells are left out.
@@ -561,12 +576,12 @@ function normalizeTypeValue(value: string): string {
 export function collectTypeValues(
     rows: ParsedRow[],
     column: string | null | undefined,
-): { value: string; count: number }[] {
+): TypeValueCount[] {
     if (!column) {
         return [];
     }
 
-    const values = new Map<string, { value: string; count: number }>();
+    const values = new Map<string, TypeValueCount>();
 
     for (const row of rows) {
         const value = rawCell(row, column);
@@ -606,27 +621,27 @@ export function detectExpenseTypes(
 }
 
 /**
- * The amount with the sign the type column gives it: an expense row is always
- * negative, whatever sign the file wrote; any other row keeps its own. Without
- * a type column, or with no value ticked as an expense, the amount is untouched.
+ * What gives each row's amount the sign the type column says: an expense row
+ * is always negative, whatever sign the file wrote; any other row keeps its
+ * own. Without a type column, or with no value ticked as an expense, amounts
+ * are untouched.
  */
-export function applyTypeSign(
-    amount: number,
-    row: ParsedRow,
+function typeSigner(
     mapping: ColumnMapping,
-): number {
-    const expenseTypes = mapping.expense_types ?? [];
-
-    if (!mapping.transaction_type || expenseTypes.length === 0) {
-        return amount;
-    }
-
-    const type = normalizeTypeValue(rawCell(row, mapping.transaction_type));
-    const isExpense = expenseTypes.some(
-        (expense) => normalizeTypeValue(expense) === type,
+): (amount: number, row: ParsedRow) => number {
+    const column = mapping.transaction_type;
+    const expenseTypes = new Set(
+        (mapping.expense_types ?? []).map(normalizeTypeValue),
     );
 
-    return isExpense ? -Math.abs(amount) : amount;
+    if (!column || expenseTypes.size === 0) {
+        return (amount) => amount;
+    }
+
+    return (amount, row) =>
+        expenseTypes.has(normalizeTypeValue(rawCell(row, column)))
+            ? -Math.abs(amount)
+            : amount;
 }
 
 // A time of day trailing the date: "25/10/17, 1:47", "2026-10-01T12:30:00Z",
@@ -929,6 +944,7 @@ export function convertRowsToTransactions(
     supportedCurrencies?: readonly string[],
 ): ParsedTransaction[] {
     const results: ParsedTransaction[] = [];
+    const signAmount = typeSigner(mapping);
 
     for (const row of rows) {
         const validation = validateTransaction(row, mapping, dateFormat);
@@ -949,7 +965,7 @@ export function convertRowsToTransactions(
         }
 
         const formattedDate = formatLocalDate(date);
-        const signedAmount = applyTypeSign(amount, row, mapping);
+        const signedAmount = signAmount(amount, row);
         const creditorName = getOptionalTextFromRow(row, mapping.creditor_name);
         const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
@@ -1023,6 +1039,7 @@ export function buildMappingReport(
         currency: { ok: 0, skipped: 0, adjusted: 0 },
     };
     const problems: RowProblem[] = [];
+    const signAmount = typeSigner(mapping);
     const used = new Set<string>();
     const fallback = new Set<string>();
 
@@ -1094,7 +1111,7 @@ export function buildMappingReport(
         } else {
             fields.amount.ok++;
             const minorUnits = toMinorUnits(
-                applyTypeSign(amount, row, mapping),
+                signAmount(amount, row),
                 accountCurrency,
             );
             if (min === null || minorUnits < min) {

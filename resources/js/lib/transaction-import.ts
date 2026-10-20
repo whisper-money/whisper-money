@@ -180,11 +180,12 @@ function mapsOnlyKnownColumns(
     mapping: ColumnMapping,
     headers: string[],
 ): boolean {
-    // The expense types are values of a column, not columns.
+    // The expense types are values of a column, not columns; and a field set
+    // back to "None" is saved empty, which names no column at all.
     return Object.entries(mapping)
         .filter(([field]) => field !== 'expense_types')
         .map(([, column]) => column)
-        .filter((column) => column !== null)
+        .filter((column) => column !== null && column !== '')
         .every((column) =>
             Array.isArray(column)
                 ? column.every((one) => headers.includes(one as string))

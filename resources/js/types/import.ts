@@ -31,6 +31,12 @@ export interface ColumnMapping {
     expense_types?: string[];
 }
 
+/** One distinct value of the type column, as first written, and how many rows carry it. */
+export interface TypeValueCount {
+    value: string;
+    count: number;
+}
+
 /** The fields a file column can be mapped to and then reported on. */
 export type MappedField =
     | 'transaction_date'
