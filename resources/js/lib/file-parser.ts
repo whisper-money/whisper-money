@@ -284,6 +284,18 @@ export interface DateFormatDetection {
     ambiguous: boolean;
 }
 
+function sampleLeadsWithFourDigitYear(
+    data: ParsedRow[],
+    dateColumnName: string,
+    sampleSize: number,
+): boolean {
+    return data
+        .slice(0, sampleSize)
+        .map((row) => row[dateColumnName])
+        .filter((value) => typeof value === 'string' && value.trim() !== '')
+        .every((value) => /^\d{4}\D/.test(String(value).trim()));
+}
+
 export function detectDateFormat(
     data: ParsedRow[],
     dateColumnName: string,
@@ -326,6 +338,19 @@ export function detectDateFormat(
     }
 
     const tiedFormats = formats.filter((format) => scores[format] === maxScore);
+
+    // "25/10/17" reads as 2025-10-17 too, but a date that doesn't open with a
+    // four-digit year almost always starts with the day or the month.
+    if (
+        !sampleLeadsWithFourDigitYear(data, dateColumnName, sampleSize) &&
+        tiedFormats.length > 1
+    ) {
+        tiedFormats.sort(
+            (a, b) =>
+                Number(a === DateFormat.YearMonthDay) -
+                Number(b === DateFormat.YearMonthDay),
+        );
+    }
 
     if (tiedFormats.length === 1) {
         return { format: tiedFormats[0], ambiguous: false };
@@ -506,6 +531,16 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
     return mapping;
 }
 
+// A time of day trailing the date: "25/10/17, 1:47", "2026-10-01T12:30:00Z",
+// "01/10/2026 1:47:05.123 p. m. +02:00". Only the calendar day is imported,
+// so the time and any offset are dropped as written, without converting.
+const TRAILING_TIME_OF_DAY =
+    /(?:,\s*|\s+|T)\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:\s*[ap]\.?\s?m\.?)?(?:\s*(?:Z|[+-]\d{2}(?::?\d{2})?))?$/i;
+
+function stripTimeOfDay(dateStr: string): string {
+    return dateStr.replace(TRAILING_TIME_OF_DAY, '').trim();
+}
+
 export function parseDate(
     dateStr: string | number,
     format: DateFormat,
@@ -521,7 +556,7 @@ export function parseDate(
         }
     }
 
-    let str = String(dateStr).trim();
+    let str = stripTimeOfDay(String(dateStr).trim());
     str = str
         .replace(/\//g, '-')
         .replace(/\./g, '-')
