@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Features\CashflowAvailableFree;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -68,8 +70,22 @@ test('shared feature flags do not include coinbase flag', function () {
         'calculateBalancesOnImport' => false,
         'fullImport' => false,
         'fullImportSettings' => false,
+        'cashflowAvailableFree' => false,
     ]);
 });
+
+test('shared feature flags reflect the cashflow available flag per user', function (bool $active) {
+    $user = User::factory()->onboarded()->create();
+
+    if ($active) {
+        Feature::for($user)->activate(CashflowAvailableFree::class);
+    }
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.cashflowAvailableFree', $active)
+        );
+})->with(['active' => true, 'inactive' => false]);
 
 test('authenticated users receive subscription payment issue when subscription is past due', function () {
     config(['subscriptions.enabled' => true]);

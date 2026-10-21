@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\CashflowAvailableFree;
 use App\Features\FullImport;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -326,11 +327,12 @@ class HandleInertiaRequests extends Middleware
                 'calculateBalancesOnImport' => false,
                 'fullImport' => false,
                 'fullImportSettings' => false,
+                'cashflowAvailableFree' => false,
             ];
         }
 
         // One query for every flag, however many of them get read below.
-        Feature::for($user)->load([CalculateBalancesOnImport::class, FullImport::class]);
+        Feature::for($user)->load([CalculateBalancesOnImport::class, CashflowAvailableFree::class, FullImport::class]);
 
         return [
             'cashflow' => true,
@@ -342,6 +344,7 @@ class HandleInertiaRequests extends Middleware
             // pages pay for it.
             'fullImport' => $user->canUseFullImport(),
             'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
+            'cashflowAvailableFree' => Feature::for($user)->active(CashflowAvailableFree::class),
         ];
     }
 
