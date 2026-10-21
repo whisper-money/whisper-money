@@ -1,4 +1,5 @@
 import { fetchBankMatches } from '@/lib/full-import-api';
+import { importFileName } from '@/lib/full-import-files';
 import { sourceSuffix } from '@/lib/full-import-format';
 import {
     bankLookupName,
@@ -216,7 +217,7 @@ export function useFullImportPlan({
                       () =>
                           buildImport({
                               source,
-                              fileName: parsed?.file.name ?? null,
+                              fileName: parsed ? importFileName(parsed) : null,
                               mode,
                               mapping,
                               rows: normalized.rows,

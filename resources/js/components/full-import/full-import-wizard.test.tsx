@@ -470,6 +470,109 @@ describe('FullImportWizard', () => {
         expect(sent('full_import_opened')).toEqual([{ entry: 'onboarding' }]);
     });
 
+    it('reads an export split into several files as one', async () => {
+        const [header, ...rows] = readFileSync(
+            'resources/js/lib/__fixtures__/banktrack-sample.csv',
+            'utf8',
+        )
+            .trim()
+            .split('\n');
+        const part = (name: string, lines: string[]) =>
+            new File([[header, ...lines].join('\n')], name, {
+                type: 'text/csv',
+                lastModified: 1,
+            });
+
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: {
+                files: [
+                    part('banktrack-1.csv', rows.slice(0, 6)),
+                    part('banktrack-2.csv', rows.slice(6)),
+                ],
+            },
+        });
+        await screen.findByText('Banktrack format recognized.');
+        expect(screen.getByText(/^2 files · 12 transactions/)).toBeVisible();
+
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: {
+                files: [
+                    new File(
+                        ['Date,Amount,Memo\n2026-01-01,-5,Coffee\n'],
+                        'other.csv',
+                        {
+                            type: 'text/csv',
+                        },
+                    ),
+                ],
+            },
+        });
+        await screen.findByText(
+            "other.csv has different columns from banktrack-1.csv, so it can't be imported as part of the same export.",
+        );
+        expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+        expect(sent('full_import_file_failed')).toEqual([
+            { reason: 'different_headers', extension: 'csv' },
+        ]);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Remove other.csv' }),
+        );
+        await continueTo('Check the columns');
+        await continueTo('Your accounts');
+        await continueTo('Your categories');
+        await continueTo('Ready to import');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import 12 transactions' }),
+        );
+
+        await waitFor(() => expect(api.submitImport).toHaveBeenCalled());
+
+        const [payload, transactions] = api.submitImport.mock.calls[0];
+
+        expect(payload.file_name).toBe('banktrack-1.csv, banktrack-2.csv');
+        expect(payload.accounts).toHaveLength(4);
+        // Banktrack's own ids go up with every row, so importing the same
+        // files again is still a no-op.
+        expect(
+            transactions.map((row: { external_id: string }) => row.external_id),
+        ).toHaveLength(12);
+        expect(
+            new Set(
+                transactions.map(
+                    (row: { external_id: string }) => row.external_id,
+                ),
+            ).size,
+        ).toBe(12);
+    });
+
+    it('takes a new pick as the retry of a file it could not read', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        const input = screen.getByTestId('full-import-file-input');
+
+        fireEvent.change(input, {
+            target: { files: [new File(['Date,Amount\n'], 'empty.csv')] },
+        });
+        await screen.findByText('There are no rows in it');
+
+        fireEvent.change(input, { target: { files: [banktrackFile()] } });
+        await screen.findByText('Banktrack format recognized.');
+        expect(
+            screen.queryByText('There are no rows in it'),
+        ).not.toBeInTheDocument();
+
+        fireEvent.change(input, { target: { files: [banktrackFile()] } });
+        await screen.findByText('Already in the list: banktrack-export.csv');
+        await continueTo('Check the columns');
+    });
+
     it('counts a file turned away without reporting it as an error', async () => {
         api.fetchImportContext.mockResolvedValue(context());
         render(<FullImportWizard variant="page" onClose={vi.fn()} />);
