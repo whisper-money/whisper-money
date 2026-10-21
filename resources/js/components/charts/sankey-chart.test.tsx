@@ -316,6 +316,15 @@ describe('SankeyChart', () => {
         expect(screen.getByText('Rent')).toBeInTheDocument();
     });
 
+    it('names the center node after the label it is given', () => {
+        render(
+            <SankeyChart data={data} period={period} centerLabel="Available" />,
+        );
+
+        expect(screen.getByText('Available')).toBeInTheDocument();
+        expect(screen.queryByText('Net')).toBeNull();
+    });
+
     it('shows an empty state when there is no cashflow', () => {
         render(
             <SankeyChart

@@ -1,3 +1,4 @@
+import { AvailableCard } from '@/components/cashflow/available-card';
 import { BreakdownCard } from '@/components/cashflow/breakdown-card';
 import { MonthlySavingsCashflowCard } from '@/components/cashflow/monthly-savings-cashflow-card';
 import { NetCashflowCard } from '@/components/cashflow/net-cashflow-card';
@@ -12,7 +13,7 @@ import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
 import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
-import { BreadcrumbItem } from '@/types';
+import { BreadcrumbItem, Features } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
@@ -100,8 +101,10 @@ export default function CashflowPage() {
         auth,
         period: initialPeriod,
         periodType: initialPeriodType,
+        features,
     } = usePage<{
         auth: { user: { currency_code: string } };
+        features: Features;
         period: string | null;
         periodType: CashflowPeriodType;
     }>().props;
@@ -139,6 +142,7 @@ export default function CashflowPage() {
     // the banner explains why. Showing them would be answering a question about
     // someone's money with a number we do not have.
     const showPlaceholders = isLoading || hasError;
+    const showAvailable = features.cashflowAvailableFree;
 
     usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
@@ -184,7 +188,13 @@ export default function CashflowPage() {
                 )}
 
                 {/* Summary Cards */}
-                <div className="grid gap-6 md:grid-cols-2">
+                <div
+                    className={
+                        showAvailable
+                            ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
+                            : 'grid gap-6 md:grid-cols-2'
+                    }
+                >
                     <NetCashflowCard
                         current={summary.current}
                         previous={summary.previous}
@@ -197,7 +207,17 @@ export default function CashflowPage() {
                         previous={summary.previous}
                         loading={showPlaceholders}
                         currency={auth.user.currency_code}
+                        showContributionSplit={showAvailable}
                     />
+
+                    {showAvailable && (
+                        <AvailableCard
+                            current={summary.current}
+                            previous={summary.previous}
+                            loading={showPlaceholders}
+                            currency={auth.user.currency_code}
+                        />
+                    )}
                 </div>
 
                 {/* Only a month lines up with a monthly goal's target. */}
@@ -233,6 +253,9 @@ export default function CashflowPage() {
                                 height={400}
                                 currency={auth.user.currency_code}
                                 period={period}
+                                centerLabel={
+                                    showAvailable ? __('Available') : undefined
+                                }
                             />
                         )}
                     </CardContent>

@@ -57,6 +57,8 @@ export interface Features {
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** Cashflow shows the Available card and the savings/investments split. */
+    cashflowAvailableFree: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

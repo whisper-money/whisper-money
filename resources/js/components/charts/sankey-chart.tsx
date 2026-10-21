@@ -32,6 +32,8 @@ interface SankeyChartProps {
     currency?: string;
     groupingThreshold?: number;
     period?: { from: Date; to: Date };
+    /** Name of the hub node; "Net" unless the caller reads it differently. */
+    centerLabel?: string;
 }
 
 type FlowKind = 'income' | 'center' | 'expense';
@@ -103,6 +105,7 @@ export function SankeyChart({
     currency = 'USD',
     groupingThreshold = 0.03,
     period,
+    centerLabel,
 }: SankeyChartProps) {
     const [containerWidth, setContainerWidth] = useState(600);
     // A category id can appear on both sides (in- and outflows), so the open
@@ -301,8 +304,10 @@ export function SankeyChart({
         const centerIndex = nodes.length;
         nodes.push({
             // "Net" rather than "Cashflow": the card title already reads
-            // "Cashflow", so the hub only needs to carry the net amount.
-            name: __('Net'),
+            // "Cashflow", so the hub only needs to carry the net amount. The
+            // cashflow page names it "Available" behind its flag, since savings
+            // and investments already flow out to the right.
+            name: centerLabel ?? __('Net'),
             amount: total_income - total_expense,
             color: CENTER_COLOR,
             kind: 'center',
@@ -465,6 +470,7 @@ export function SankeyChart({
         expandedId,
         expandedKind,
         childrenById,
+        centerLabel,
     ]);
 
     if (isEmpty) {

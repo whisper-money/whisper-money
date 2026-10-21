@@ -1,3 +1,8 @@
 {
-    "Saved (cashflow)": "Saved"
+    "Saved (cashflow)": "Saved",
+    "Available": "Available",
+    "Allocated": "Allocated",
+    "Income minus what was allocated": "Income minus what was allocated",
+    "Expenses + contributed": "Expenses + contributed",
+    "Contributed split: :saved% saved, :invested% invested": "Contributed split: :saved% saved, :invested% invested"
 }
