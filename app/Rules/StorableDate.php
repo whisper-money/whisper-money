@@ -21,9 +21,9 @@ use Illuminate\Translation\PotentiallyTranslatedString;
  */
 class StorableDate implements ValidationRule
 {
-    public const MIN_YEAR = 1900;
+    private const MIN_YEAR = 1900;
 
-    public const MAX_YEAR = 9999;
+    private const MAX_YEAR = 9999;
 
     /**
      * @param  Closure(string): PotentiallyTranslatedString  $fail
