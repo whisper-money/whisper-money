@@ -6,6 +6,7 @@ use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Rules\StorableDate;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -42,7 +43,7 @@ class CreateTransaction extends WriteTool
             'account_id' => ['required', 'string'],
             'description' => ['required', 'string'],
             'amount' => ['required', 'integer'],
-            'transaction_date' => ['required', 'date'],
+            'transaction_date' => ['required', 'date', new StorableDate],
             'currency_code' => ['sometimes', 'string', 'size:3'],
             'notes' => ['sometimes', 'nullable', 'string'],
             'creditor_name' => ['sometimes', 'nullable', 'string', 'max:255'],

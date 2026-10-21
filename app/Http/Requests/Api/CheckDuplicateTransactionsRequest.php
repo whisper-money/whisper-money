@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Rules\StorableDate;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -20,7 +21,7 @@ class CheckDuplicateTransactionsRequest extends FormRequest
         return [
             'account_id' => ['required', 'uuid'],
             'transactions' => ['required', 'array', 'max:10000'],
-            'transactions.*.transaction_date' => ['required', 'date'],
+            'transactions.*.transaction_date' => ['required', 'date', new StorableDate],
             'transactions.*.amount' => ['required', 'integer'],
             'transactions.*.description' => ['required', 'string'],
         ];

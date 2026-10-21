@@ -6,6 +6,7 @@ use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Rules\StorableDate;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Carbon;
@@ -71,7 +72,7 @@ class UpdateTransaction extends WriteTool
         $request->validate([
             'description' => ['sometimes', 'string'],
             'amount' => ['sometimes', 'integer'],
-            'transaction_date' => ['sometimes', 'date'],
+            'transaction_date' => ['sometimes', 'date', new StorableDate],
             'currency_code' => ['sometimes', 'string', 'size:3'],
             'notes' => ['sometimes', 'nullable', 'string'],
             'creditor_name' => ['sometimes', 'nullable', 'string', 'max:255'],

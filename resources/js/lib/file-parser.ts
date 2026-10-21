@@ -703,6 +703,18 @@ function stripTimeOfDay(dateStr: string): string {
     return dateStr.replace(TRAILING_TIME_OF_DAY, '').trim();
 }
 
+// The years the server stores (App\Rules\StorableDate). A year outside them is
+// not one someone wrote: a time the strip above misses ("10/08/26 20:04h",
+// "... 20:04 CEST") loses its separators with everything else and glues onto
+// the year as 262004. Returning null leaves the row out like any unreadable
+// date instead of posting it for the server to refuse (PHP-LARAVEL-7D).
+const MIN_STORABLE_YEAR = 1900;
+const MAX_STORABLE_YEAR = 9999;
+
+function isStorableYear(year: number): boolean {
+    return year >= MIN_STORABLE_YEAR && year <= MAX_STORABLE_YEAR;
+}
+
 export function parseDate(
     dateStr: string | number,
     format: DateFormat,
@@ -781,6 +793,7 @@ export function parseDate(
 
     if (
         isNaN(date.getTime()) ||
+        !isStorableYear(year) ||
         date.getFullYear() !== year ||
         date.getMonth() !== month - 1 ||
         date.getDate() !== day
