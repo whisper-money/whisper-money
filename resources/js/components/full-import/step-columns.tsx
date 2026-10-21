@@ -401,6 +401,9 @@ function ColumnsPreview({
     fallbackCurrency: string;
     locale: string;
 }) {
+    // Row numbers start over in each file of an export split in several, so
+    // the preview tells its rows apart by position.
+    const preview = normalized.rows.slice(0, PREVIEW_ROWS);
     const summary = [
         transactionCount(normalized.rows.length, locale),
         normalized.blankRows > 0 &&
@@ -446,42 +449,33 @@ function ColumnsPreview({
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {normalized.rows
-                            .slice(0, PREVIEW_ROWS)
-                            .map((row, index) => {
-                                const currency =
-                                    row.currency ?? fallbackCurrency;
+                        {preview.map((row, index) => {
+                            const currency = row.currency ?? fallbackCurrency;
 
-                                return (
-                                    // Row numbers start over in each file, so
-                                    // they no longer tell two rows apart.
-                                    <tr key={index}>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                            {formatDateMedium(row.date, locale)}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {row.accountName}
-                                        </td>
-                                        <td className="max-w-56 truncate px-3 py-2">
-                                            {row.description}
-                                        </td>
-                                        <td className="px-3 py-2 text-muted-foreground">
-                                            {row.categoryPath.join(' › ') ||
-                                                '—'}
-                                        </td>
-                                        <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
-                                            {formatCurrency(
-                                                toMinorUnits(
-                                                    row.amount,
-                                                    currency,
-                                                ),
-                                                currency,
-                                                locale,
-                                            )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            return (
+                                <tr key={index}>
+                                    <td className="px-3 py-2 whitespace-nowrap">
+                                        {formatDateMedium(row.date, locale)}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {row.accountName}
+                                    </td>
+                                    <td className="max-w-56 truncate px-3 py-2">
+                                        {row.description}
+                                    </td>
+                                    <td className="px-3 py-2 text-muted-foreground">
+                                        {row.categoryPath.join(' › ') || '—'}
+                                    </td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
+                                        {formatCurrency(
+                                            toMinorUnits(row.amount, currency),
+                                            currency,
+                                            locale,
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

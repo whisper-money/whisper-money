@@ -3,7 +3,6 @@ import {
     importableReads,
     importFileName,
     mergeImportFiles,
-    sameFile,
     sameHeaders,
     type PickedFile,
 } from '@/lib/full-import-files';
@@ -189,16 +188,5 @@ describe('the files picked for an import', () => {
             'broken.csv: There are no rows in it',
         );
         expect(importableReads([broken])).toEqual([]);
-    });
-
-    it('tells the same file picked twice', () => {
-        const file = new File(['a'], 'a.csv', { lastModified: 1 });
-
-        expect(
-            sameFile(file, new File(['a'], 'a.csv', { lastModified: 1 })),
-        ).toBe(true);
-        expect(
-            sameFile(file, new File(['a'], 'b.csv', { lastModified: 1 })),
-        ).toBe(false);
     });
 });

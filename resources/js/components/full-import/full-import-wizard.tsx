@@ -43,7 +43,6 @@ import {
     fileProblem,
     importableReads,
     mergeImportFiles,
-    sameFile,
     sameHeaders,
     type PickedFile,
 } from '@/lib/full-import-files';
@@ -232,6 +231,7 @@ export function FullImportWizard({
     const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
     const [recognized, setRecognized] = useState(false);
     const [picked, setPicked] = useState<PickedFile[]>([]);
+    const [alreadyPicked, setAlreadyPicked] = useState<string[]>([]);
     const [parsing, setParsing] = useState(false);
     const [mapping, setMapping] = useState<FullImportMapping | null>(null);
     const [mode, setMode] = useState<FullImportMode>('add');
@@ -332,16 +332,20 @@ export function FullImportWizard({
         [context, locale],
     );
 
+    /** A file turned away is counted, never reported. */
+    const trackRejected = (file: File, reason: FileRejection) =>
+        trackImport('full_import_file_failed', {
+            reason,
+            extension: fileExtension(file.name),
+        });
+
     /** A file turned away: shown to the user, counted, never reported. */
     const rejectFile = (
         file: File,
         reason: FileRejection,
         message: string,
     ): PickedFile => {
-        trackImport('full_import_file_failed', {
-            reason,
-            extension: fileExtension(file.name),
-        });
+        trackRejected(file, reason);
 
         return { file, read: null, error: message };
     };
@@ -378,8 +382,10 @@ export function FullImportWizard({
                 );
             }
 
+            // Counted against the first file as it stands now; the message
+            // itself is worked out again whenever the list changes.
             if (reference && !sameHeaders(reference.headers, read.headers)) {
-                rejectFile(file, 'different_headers', '');
+                trackRejected(file, 'different_headers');
             } else {
                 trackFileParsed(file, read);
             }
@@ -423,9 +429,10 @@ export function FullImportWizard({
 
     /** Read the files that can be imported together as one. */
     const applyPicked = (next: PickedFile[]) => {
-        setPicked(next);
-
         const reads = importableReads(next);
+        const sameFirst = reads[0] === importableReads(picked)[0];
+
+        setPicked(next);
 
         if (reads.length === 0) {
             setParsed(null);
@@ -437,10 +444,20 @@ export function FullImportWizard({
         }
 
         const merged = mergeImportFiles(reads, locale);
+
+        setParsed(merged);
+
+        // The first file sets the headers, so while it stays the source and
+        // the columns the user may have picked still fit.
+        if (sameFirst && mapping) {
+            plan.reset();
+
+            return;
+        }
+
         const detected = detectSource(merged.headers);
         const nextSource = detected ?? 'generic';
 
-        setParsed(merged);
         setRecognized(detected === 'banktrack');
         setSource(nextSource);
         setMapping(mappingFor(nextSource, merged));
@@ -448,18 +465,35 @@ export function FullImportWizard({
     };
 
     const handleFiles = async (files: File[]) => {
+        // A second pick while the first is still being read would start
+        // from a list that is about to change.
+        if (parsing) {
+            return;
+        }
+
+        // A file that could not be read has been seen; a new pick is the
+        // retry, and the list goes on without it.
+        const kept = picked.filter((one) => one.error === null);
         const fresh = files.filter(
-            (file) => !picked.some((one) => sameFile(one.file, file)),
+            (file) => !kept.some((one) => one.file.name === file.name),
+        );
+
+        setAlreadyPicked(
+            files
+                .filter((file) => !fresh.includes(file))
+                .map((file) => file.name),
         );
 
         if (fresh.length === 0) {
+            applyPicked(kept);
+
             return;
         }
 
         setParsing(true);
 
         try {
-            const next = [...picked];
+            const next = [...kept];
 
             for (const file of fresh) {
                 next.push(await readPickedFile(file, importableReads(next)[0]));
@@ -471,8 +505,10 @@ export function FullImportWizard({
         }
     };
 
-    const handleFileRemove = (file: File) =>
+    const handleFileRemove = (file: File) => {
+        setAlreadyPicked([]);
         applyPicked(picked.filter((one) => one.file !== file));
+    };
 
     const handleSourceChange = (nextSource: FullImportSource) => {
         setSource(nextSource);
@@ -682,6 +718,7 @@ export function FullImportWizard({
                                 : null
                         }
                         recognized={recognized && source === 'banktrack'}
+                        alreadyPicked={alreadyPicked}
                         parsing={parsing}
                         locale={locale}
                         onFilesSelect={handleFiles}

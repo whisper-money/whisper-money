@@ -4027,5 +4027,7 @@
     "Add another file": "Añadir otro fichero",
     "Remove :file": "Quitar :file",
     "An export split into several files? Pick them all.": "¿Tu exportación viene en varios ficheros? Elígelos todos.",
-    ":file, row :number": ":file, fila :number"
+    ":file, row :number": ":file, fila :number",
+    "1 file": "1 fichero",
+    "Already in the list: :files": "Ya están en la lista: :files"
 }

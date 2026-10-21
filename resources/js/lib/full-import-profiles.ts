@@ -472,11 +472,15 @@ export function normalizeRows(
 
         if (!('reason' in result)) {
             rows.push(result);
-        } else if (parsed.rowFiles) {
-            unreadable.push({ ...result, fileName: parsed.rowFiles[index] });
-        } else {
-            unreadable.push(result);
+
+            return;
         }
+
+        unreadable.push(
+            parsed.rowFiles
+                ? { ...result, fileName: parsed.rowFiles[index] }
+                : result,
+        );
     });
 
     return {

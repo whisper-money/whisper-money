@@ -31,9 +31,9 @@ export interface PickedFile {
 
 /**
  * Why a picked file stays out of the import, or null when it goes in, naming
- * the file whenever there are several. The
- * first file read sets the headers; one whose headers differ belongs to
- * another export, and guessing how to line its columns up is not ours to do.
+ * the file whenever there are several. The first file that could be read
+ * sets the headers; one whose headers differ belongs to another export, and
+ * guessing how to line its columns up is not ours to do.
  */
 export function fileProblem(
     one: PickedFile,
@@ -65,15 +65,6 @@ export function fileProblem(
 export function importableReads(picked: PickedFile[]): ParsedImportFile[] {
     return picked.flatMap((one) =>
         one.read && fileProblem(one, picked) === null ? [one.read] : [],
-    );
-}
-
-/** The same file picked twice: same name, size and modification time. */
-export function sameFile(a: File, b: File): boolean {
-    return (
-        a.name === b.name &&
-        a.size === b.size &&
-        a.lastModified === b.lastModified
     );
 }
 
@@ -144,5 +135,6 @@ export function importFileName(
         return parsed.file.name;
     }
 
+    // The server keeps 255 characters; past that the list is cut short.
     return [...new Set(parsed.rowFiles)].join(', ').slice(0, 255);
 }

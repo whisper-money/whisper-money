@@ -2993,5 +2993,7 @@
     "Add another file": "Ajouter un autre fichier",
     "Remove :file": "Retirer :file",
     "An export split into several files? Pick them all.": "Votre export est découpé en plusieurs fichiers ? Choisissez-les tous.",
-    ":file, row :number": ":file, ligne :number"
+    ":file, row :number": ":file, ligne :number",
+    "1 file": "1 fichier",
+    "Already in the list: :files": "Déjà dans la liste : :files"
 }

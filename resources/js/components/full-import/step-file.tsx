@@ -63,6 +63,8 @@ interface StepFileProps {
     source: FullImportSource;
     onSourceChange: (source: FullImportSource) => void;
     files: FileEntry[];
+    /** Names in the last pick that were already in the list, left out. */
+    alreadyPicked: string[];
     summary: FileSummary | null;
     recognized: boolean;
     parsing: boolean;
@@ -77,6 +79,7 @@ export function StepFile({
     source,
     onSourceChange,
     files,
+    alreadyPicked,
     summary,
     recognized,
     parsing,
@@ -89,7 +92,7 @@ export function StepFile({
     const [isDragging, setIsDragging] = useState(false);
 
     const pick = (picked: FileList | null | undefined) => {
-        if (picked && picked.length > 0) {
+        if (picked && picked.length > 0 && !parsing) {
             onFilesSelect(Array.from(picked));
         }
     };
@@ -165,9 +168,11 @@ export function StepFile({
                                                   parsing,
                                                   locale,
                                               )
-                                            : entry.rows !== null &&
-                                              rowCount(entry.rows, locale)
+                                            : entry.rows !== null
+                                              ? rowCount(entry.rows, locale)
+                                              : null
                                     }
+                                    disabled={parsing}
                                     onRemove={() => onFileRemove(entry.file)}
                                 />
                             ))}
@@ -176,12 +181,10 @@ export function StepFile({
                             <span className="text-[13px] text-muted-foreground">
                                 {!single &&
                                     [
-                                        __(':count files', {
-                                            count: formatCount(
-                                                files.length - errors.length,
-                                                locale,
-                                            ),
-                                        }),
+                                        fileCount(
+                                            files.length - errors.length,
+                                            locale,
+                                        ),
                                         fileSummary(summary, parsing, locale),
                                     ]
                                         .filter(Boolean)
@@ -189,7 +192,8 @@ export function StepFile({
                             </span>
                             <button
                                 type="button"
-                                className="min-h-9 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent"
+                                className="min-h-9 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                                disabled={parsing}
                                 onClick={browse}
                             >
                                 {__('Add another file')}
@@ -218,6 +222,14 @@ export function StepFile({
                             </span>
                         </span>
                     </button>
+                )}
+
+                {alreadyPicked.length > 0 && (
+                    <Notice tone="muted">
+                        {__('Already in the list: :files', {
+                            files: alreadyPicked.join(', '),
+                        })}
+                    </Notice>
                 )}
 
                 {errors.map((entry) => (
@@ -280,9 +292,17 @@ export function StepFile({
     );
 }
 
-/** Unique in the list: the same file is never picked twice. */
+/** Unique in the list: a name already in it is never added again. */
 function fileKey(file: File): string {
-    return `${file.name}-${file.size}-${file.lastModified}`;
+    return file.name;
+}
+
+function fileCount(count: number, locale: string): string {
+    return countLabel(
+        count,
+        __('1 file'),
+        __(':count files', { count: formatCount(count, locale) }),
+    );
 }
 
 /** "412 KB · 36 transactions · Jan 2024 – Sep 2026", without the size. */
@@ -314,10 +334,12 @@ function rowCount(count: number, locale: string): string {
 function PickedFileRow({
     entry,
     details,
+    disabled,
     onRemove,
 }: {
     entry: FileEntry;
-    details: string | false;
+    details: string | null;
+    disabled: boolean;
     onRemove: () => void;
 }) {
     return (
@@ -340,7 +362,8 @@ function PickedFileRow({
             </div>
             <button
                 type="button"
-                className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background hover:bg-accent"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background hover:bg-accent disabled:opacity-50"
+                disabled={disabled}
                 aria-label={__('Remove :file', { file: entry.file.name })}
                 onClick={onRemove}
             >

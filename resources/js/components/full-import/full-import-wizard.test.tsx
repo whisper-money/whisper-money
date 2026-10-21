@@ -550,6 +550,29 @@ describe('FullImportWizard', () => {
         ).toBe(12);
     });
 
+    it('takes a new pick as the retry of a file it could not read', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        const input = screen.getByTestId('full-import-file-input');
+
+        fireEvent.change(input, {
+            target: { files: [new File(['Date,Amount\n'], 'empty.csv')] },
+        });
+        await screen.findByText('There are no rows in it');
+
+        fireEvent.change(input, { target: { files: [banktrackFile()] } });
+        await screen.findByText('Banktrack format recognized.');
+        expect(
+            screen.queryByText('There are no rows in it'),
+        ).not.toBeInTheDocument();
+
+        fireEvent.change(input, { target: { files: [banktrackFile()] } });
+        await screen.findByText('Already in the list: banktrack-export.csv');
+        await continueTo('Check the columns');
+    });
+
     it('counts a file turned away without reporting it as an error', async () => {
         api.fetchImportContext.mockResolvedValue(context());
         render(<FullImportWizard variant="page" onClose={vi.fn()} />);
