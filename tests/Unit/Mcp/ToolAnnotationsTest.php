@@ -37,6 +37,7 @@ $destructive = [
     'create_balance',
     'update_automation_rule',
     'apply_automation_rule',
+    'update_savings_goal',
 ];
 
 /**
