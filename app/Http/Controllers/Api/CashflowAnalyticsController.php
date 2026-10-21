@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\MonthlySavingsTotalsRequest;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\CashflowBudgetReserveService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
 use App\Services\Concerns\ConvertsTransactionCurrency;
@@ -32,6 +33,7 @@ class CashflowAnalyticsController extends Controller
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
         private CashflowSummaryService $summaries,
+        private CashflowBudgetReserveService $budgetReserve,
         private MonthlySavingsGoalTotals $monthlySavings,
     ) {}
 
@@ -46,9 +48,10 @@ class CashflowAnalyticsController extends Controller
         $previousPeriod = $period->previous();
         $user = $request->user();
 
-        return $this->cashflowJson(
-            $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod)
-        );
+        $summaries = $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod);
+        $summaries['current'] += $this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']);
+
+        return $this->cashflowJson($summaries);
     }
 
     public function sankey(Request $request): JsonResponse
