@@ -18,6 +18,24 @@ export interface CashflowSummary {
     savings_rate: number;
     savings: number;
     investments: number;
+    /** Positive margins of the open budget periods overlapping the range. */
+    reserved?: number;
+    budgets?: CashflowBudgetMargin[];
+    /** Expenses on what a budget tracks; with fixed_expense adds up to expense. */
+    variable_expense?: number;
+    fixed_expense?: number;
+}
+
+export interface CashflowBudgetMargin {
+    budget_id: string;
+    budget_period_id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    allocated: number;
+    spent: number;
+    /** allocated − spent; negative when over budget. */
+    margin: number;
 }
 
 export interface SankeyCategory {
