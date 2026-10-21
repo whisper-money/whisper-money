@@ -89,8 +89,7 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
                 key,
                 name: accountRows[0].accountName,
                 bankName: accountRows[0].accountBank ?? '',
-                count: accountRows.filter((row) => row.kind !== 'balance')
-                    .length,
+                count: movementRows(accountRows).length,
                 from: dates[0],
                 to: dates[dates.length - 1],
                 currency: mostCommon(accountRows.map((row) => row.currency)),
@@ -997,27 +996,26 @@ export function buildImport(input: BuildImportInput): BuiltImport {
             .map((node) => node.id),
     );
 
-    const transactions = movementRows(rows).map(
-        (row): TransactionPayloadRow => {
-            const currency =
-                targetCurrency(
-                    row.accountKey,
-                    input.accountPlan,
-                    input.contextAccounts,
-                ) ?? 'EUR';
+    const movements = movementRows(rows);
+    const transactions = movements.map((row): TransactionPayloadRow => {
+        const currency =
+            targetCurrency(
+                row.accountKey,
+                input.accountPlan,
+                input.contextAccounts,
+            ) ?? 'EUR';
 
-            return {
-                account_key: accounts.keys.get(row.accountKey) as string,
-                date: row.date,
-                amount: toMinorUnits(row.amount, row.currency ?? currency),
-                description: row.description.slice(0, 2000),
-                notes: row.notes ? row.notes.slice(0, 5000) : null,
-                category_key: categoryKeyFor(row, categories.keys, ownNodeIds),
-                external_id: row.externalId,
-                currency_code: row.currency,
-            };
-        },
-    );
+        return {
+            account_key: accounts.keys.get(row.accountKey) as string,
+            date: row.date,
+            amount: toMinorUnits(row.amount, row.currency ?? currency),
+            description: row.description.slice(0, 2000),
+            notes: row.notes ? row.notes.slice(0, 5000) : null,
+            category_key: categoryKeyFor(row, categories.keys, ownNodeIds),
+            external_id: row.externalId,
+            currency_code: row.currency,
+        };
+    });
 
     const used = new Set(transactions.map((row) => row.category_key));
     const transferEntries = [
