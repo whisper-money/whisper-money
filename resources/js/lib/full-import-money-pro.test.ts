@@ -116,6 +116,7 @@ describe('reading a Money Pro export', () => {
             currency: 'EUR',
             balance: 48850,
             description: 'Transferencia de dinero',
+            notes: 'To Safe box',
             categoryPath: [],
         });
         expect(legs[1]).toMatchObject({
@@ -124,6 +125,7 @@ describe('reading a Money Pro export', () => {
             amount: 750,
             currency: 'USD',
             balance: null,
+            notes: 'From Wallet',
         });
     });
 
@@ -141,6 +143,30 @@ describe('reading a Money Pro export', () => {
                 balance: 8000000,
                 date: '2018-01-30',
             },
+        ]);
+    });
+
+    it('keeps the balance of an adjustment that has no amount', async () => {
+        const parsed = await parseImportFile(
+            new File(
+                [
+                    'Fecha;Cantidad;Cuenta;Monto recibido;Cuenta de destino;Saldo;Categoría;Descripción;Tipo de transacción\n25/2/18, 4:57;;Wallet;;;120,00 €;;;Ajuste de saldo\n',
+                ],
+                'adjustment.csv',
+                { type: 'text/csv' },
+            ),
+            'es-ES',
+        );
+        const normalized = normalizeRows(
+            parsed,
+            defaultMapping('money_pro', parsed, 'es-ES'),
+            { fileName: 'adjustment.csv', supportedCurrencies: SUPPORTED },
+            moneyProReader(parsed.headers),
+        );
+
+        expect(normalized.unreadable).toEqual([]);
+        expect(normalized.rows).toMatchObject([
+            { kind: 'balance', balance: 120, currency: 'EUR' },
         ]);
     });
 
@@ -198,8 +224,8 @@ describe('currency symbols', () => {
                 options,
             ),
         ).toEqual([
-            { symbol: '€', count: 4, code: 'EUR' },
-            { symbol: '$', count: 3, code: 'COP' },
+            { symbol: '€', count: 4, code: 'EUR', ambiguous: false },
+            { symbol: '$', count: 3, code: 'COP', ambiguous: true },
         ]);
     });
 

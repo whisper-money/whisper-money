@@ -453,15 +453,27 @@ function CurrencySymbolRows({
             {uses.map((use) => (
                 <FieldRow
                     key={use.symbol}
-                    label={use.symbol}
+                    label={__('Amounts in :symbol', { symbol: use.symbol })}
                     sample={null}
-                    hint={countLabel(
-                        use.count,
-                        __('In 1 amount'),
-                        __('In :count amounts', {
-                            count: formatCount(use.count, locale),
-                        }),
-                    )}
+                    hint={
+                        <>
+                            {countLabel(
+                                use.count,
+                                __('In 1 amount'),
+                                __('In :count amounts', {
+                                    count: formatCount(use.count, locale),
+                                }),
+                            )}
+                            {use.ambiguous && (
+                                <span className="font-medium text-amber-700 dark:text-amber-300">
+                                    {' '}
+                                    {__(
+                                        'Several currencies write it this way: check it is the right one.',
+                                    )}
+                                </span>
+                            )}
+                        </>
+                    }
                     control={
                         <Select
                             value={use.code ?? ''}

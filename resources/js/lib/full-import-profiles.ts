@@ -377,7 +377,8 @@ export function countBlankRows(
     return blank;
 }
 
-function sameText(a: string, b: string): boolean {
+/** Whether two texts read the same, case and runs of spaces aside. */
+export function sameText(a: string, b: string): boolean {
     return (
         a.replace(/\s+/g, ' ').toLowerCase() ===
         b.replace(/\s+/g, ' ').toLowerCase()

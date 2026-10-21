@@ -4,6 +4,7 @@ import {
     cellText,
     headerLookup,
     normalizeText,
+    sameText,
     splitCategoryPath,
     unreadableReason,
     type NormalizeOptions,
@@ -70,6 +71,17 @@ function narrowSymbol(code: string): string | null {
     }
 }
 
+/** Every supported currency written with this symbol. */
+function symbolCandidates(
+    symbol: string,
+    supportedCurrencies: readonly string[],
+): string[] {
+    return supportedCurrencies.filter(
+        (one) =>
+            getCurrencySymbol(one) === symbol || narrowSymbol(one) === symbol,
+    );
+}
+
 /**
  * The ISO code a currency symbol most likely stands for. "$" is a dollar or
  * a peso: the user's own currency when it is one of them, the US dollar
@@ -87,10 +99,7 @@ export function defaultSymbolCurrency(
         return code;
     }
 
-    const candidates = supportedCurrencies.filter(
-        (one) =>
-            getCurrencySymbol(one) === symbol || narrowSymbol(one) === symbol,
-    );
+    const candidates = symbolCandidates(symbol, supportedCurrencies);
 
     if (userCurrency && candidates.includes(userCurrency)) {
         return userCurrency;
@@ -108,6 +117,8 @@ export interface CurrencySymbolUse {
     symbol: string;
     count: number;
     code: string | null;
+    /** Several currencies write it ("$"), so the default is a guess. */
+    ambiguous: boolean;
 }
 
 type CurrencyOptions = Pick<
@@ -165,6 +176,9 @@ export function collectCurrencySymbols(
             symbol,
             count,
             code: symbolCurrency(symbol, mapping, options),
+            ambiguous:
+                symbolCandidates(symbol, options.supportedCurrencies).length >
+                1,
         }));
 }
 
@@ -192,15 +206,15 @@ export function moneyProReader(headers: string[]): RowReader {
     const typeColumn = column(MONEY_PRO_EXTRA_COLUMNS.type);
     const receivedColumn = column(MONEY_PRO_EXTRA_COLUMNS.received);
     const destinationColumn = column(MONEY_PRO_EXTRA_COLUMNS.destination);
-    // Worked out once per symbol, and again whenever the user picks another
-    // currency for one, which is a new mapping.
+    // Worked out once per symbol, and again for a new mapping (the user
+    // picked another currency for one) or new options (another reading).
     const symbols = new Map<string, string | null>();
-    let symbolsMapping: FullImportMapping | null = null;
+    let symbolsFor: [FullImportMapping, NormalizeOptions] | null = null;
 
     return (row, rowNumber, mapping, options) => {
-        if (mapping !== symbolsMapping) {
+        if (symbolsFor?.[0] !== mapping || symbolsFor[1] !== options) {
             symbols.clear();
-            symbolsMapping = mapping;
+            symbolsFor = [mapping, options];
         }
 
         const currencyOf = (cell: string) => {
@@ -242,35 +256,33 @@ export function moneyProReader(headers: string[]): RowReader {
             cellText(row, mapping.description) ||
             categoryPath.at(-1) ||
             typeText;
+        // A balance-only row needs no amount: its balance is all it brings.
         const reason = unreadableReason(
             row,
             mapping,
             date,
-            amount,
+            type === 'balance' ? (amount ?? 0) : amount,
             description,
         );
 
-        if (reason !== null || !date || amount === null) {
+        if (reason !== null || !date) {
             return [{ rowNumber, reason: reason ?? __('No date') }];
         }
 
         const notes = cellText(row, mapping.notes);
-        const base = {
+        const source = {
             rowNumber,
             date: formatLocalDate(date),
             description,
-            notes: notes && notes !== description ? notes : null,
+            notes: notes && !sameText(notes, description) ? notes : null,
             iban: null,
             externalId: null,
             ignored: false,
-        };
-        const source = {
-            ...base,
             ...account(cellText(row, mapping.account)),
-            currency: currencyOf(amountCell),
+            currency: currencyOf(amountCell || cellText(row, mapping.balance)),
             balance: balanceOf(row, mapping),
         };
-        const size = Math.abs(amount);
+        const size = Math.abs(amount ?? 0);
 
         if (type === 'balance') {
             return source.balance === null
@@ -325,12 +337,20 @@ function transferLegs(
 
     const received = parseAmount(target.receivedCell);
 
+    // Both legs read the same, so each names the account on the other side.
     return [
-        { ...source, kind: 'transfer', amount: -size, categoryPath: [] },
+        {
+            ...source,
+            kind: 'transfer',
+            amount: -size,
+            categoryPath: [],
+            notes: __('To :account', { account: target.destination }),
+        },
         {
             ...source,
             ...account(target.destination),
             kind: 'transfer',
+            notes: __('From :account', { account: source.accountName }),
             amount: received === null ? size : Math.abs(received),
             categoryPath: [],
             currency:

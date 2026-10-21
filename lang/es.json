@@ -4040,5 +4040,9 @@
     "Choose a currency": "Elige una moneda",
     "Unknown type «:type»": "Tipo desconocido «:type»",
     "No type": "Sin tipo",
-    "No destination account": "Sin cuenta de destino"
+    "No destination account": "Sin cuenta de destino",
+    "Amounts in :symbol": "Importes en :symbol",
+    "Several currencies write it this way: check it is the right one.": "Varias monedas se escriben así: comprueba que es la correcta.",
+    "To :account": "A :account",
+    "From :account": "Desde :account"
 }

@@ -3008,5 +3008,9 @@
     "Choose a currency": "Choisissez une devise",
     "Unknown type «:type»": "Type inconnu « :type »",
     "No type": "Sans type",
-    "No destination account": "Sans compte de destination"
+    "No destination account": "Sans compte de destination",
+    "Amounts in :symbol": "Montants en :symbol",
+    "Several currencies write it this way: check it is the right one.": "Plusieurs devises s'écrivent ainsi : vérifiez que c'est la bonne.",
+    "To :account": "Vers :account",
+    "From :account": "Depuis :account"
 }
