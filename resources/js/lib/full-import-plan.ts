@@ -84,12 +84,13 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
             const dates = accountRows.map((row) => row.date).sort();
             const balances = latestBalances(accountRows);
             const lastDate = [...balances.keys()].sort().at(-1) ?? null;
+            const movements = movementRows(accountRows);
 
             return {
                 key,
                 name: accountRows[0].accountName,
                 bankName: accountRows[0].accountBank ?? '',
-                count: movementRows(accountRows).length,
+                count: movements.length,
                 from: dates[0],
                 to: dates[dates.length - 1],
                 currency: mostCommon(accountRows.map((row) => row.currency)),
@@ -101,6 +102,15 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
                               date: lastDate,
                               amount: balances.get(lastDate) as number,
                           },
+                movementTotal: movements.reduce(
+                    (total, row) => total + row.amount,
+                    0,
+                ),
+                lastMovement:
+                    movements
+                        .map((row) => row.date)
+                        .sort()
+                        .at(-1) ?? null,
                 iban: accountRows.find((row) => row.iban)?.iban ?? null,
             };
         })
@@ -153,8 +163,72 @@ export function namesakeAccount(
     );
 }
 
+/**
+ * The date one year before an ISO `YYYY-MM-DD` one. Only ever compared as a
+ * string, so a 29 February turning into a 29 February that does not exist
+ * still sorts where it should.
+ */
+function yearBefore(date: string): string {
+    return `${Number(date.slice(0, 4)) - 1}${date.slice(4)}`;
+}
+
+/** Below a hundredth of the currency's unit, a balance counts as zero. */
+const ZERO_BALANCE = 0.005;
+
+/**
+ * An account the user most likely no longer uses: the file leaves it at a
+ * balance of zero (its last balance, or what its movements add up to when
+ * the file has none), or it has had no movement for over a year. A guess
+ * from the file alone, which is why it is only ever suggested.
+ */
+export function isInactiveAccount(
+    account: FileAccount,
+    today: string,
+): boolean {
+    const finalBalance = account.lastBalance
+        ? account.lastBalance.amount
+        : account.movementTotal;
+    const lastActivity = account.lastMovement ?? account.to;
+
+    return (
+        Math.abs(finalBalance) < ZERO_BALANCE ||
+        lastActivity < yearBefore(today)
+    );
+}
+
+/**
+ * The new accounts of the plan that look inactive, the ones the import offers
+ * to archive. An account others from the file are merged into receives their
+ * movements too, so it only counts when every one of them looks inactive.
+ */
+export function inactiveNewAccountKeys(
+    accounts: FileAccount[],
+    plan: Record<string, AccountPlanEntry>,
+    today: string,
+): Set<string> {
+    return new Set(
+        accounts
+            .filter(
+                (account) =>
+                    plan[account.key]?.action === 'create' &&
+                    accounts
+                        .filter(
+                            (other) =>
+                                other.key === account.key ||
+                                (plan[other.key]?.action === 'merge' &&
+                                    plan[other.key].mergeIntoKey ===
+                                        account.key),
+                        )
+                        .every((one) => isInactiveAccount(one, today)),
+            )
+            .map((account) => account.key),
+    );
+}
+
 export interface AccountPlanContext {
     mode: FullImportMode;
+    /** ISO `YYYY-MM-DD`: what "over a year" is counted from. */
+    today: string;
     accounts: ContextAccount[];
     mappableAccountIds: string[];
     userCurrency: string;
@@ -214,6 +288,7 @@ export function defaultAccountPlan(
         ...defaultBank(account, type, context.banks),
         targetAccountId: mapTarget?.id ?? null,
         mergeIntoKey: null,
+        archive: isInactiveAccount(account, context.today),
     };
 }
 
@@ -730,6 +805,8 @@ export interface BuildImportInput {
     rows: NormalizedRow[];
     fileAccounts: FileAccount[];
     accountPlan: Record<string, AccountPlanEntry>;
+    /** The new accounts offered to be archived: {@link inactiveNewAccountKeys}. */
+    inactiveAccountKeys: Set<string>;
     contextAccounts: ContextAccount[];
     nodes: FileCategoryNode[];
     categoryPlan: Record<string, CategoryPlanEntry>;
@@ -786,6 +863,10 @@ function accountEntries(input: BuildImportInput): {
                     bank_id: entry.bank?.id ?? null,
                     ...newBankField(entry),
                     iban: account.iban,
+                    ...(entry.archive &&
+                    input.inactiveAccountKeys.has(account.key)
+                        ? { archive: true as const }
+                        : {}),
                 };
             case 'map':
                 return {

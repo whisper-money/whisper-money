@@ -769,6 +769,7 @@ export function FullImportWizard({
                         eyebrow={eyebrow}
                         fileAccounts={plan.fileAccounts}
                         plan={plan.accountPlan}
+                        inactiveAccountKeys={plan.inactiveAccountKeys}
                         onChange={plan.setAccount}
                         mode={mode}
                         accounts={context.accounts}

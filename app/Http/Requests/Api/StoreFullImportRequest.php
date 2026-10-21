@@ -84,6 +84,7 @@ class StoreFullImportRequest extends FormRequest
             'accounts.*.iban' => ['nullable', 'string', 'max:64'],
             'accounts.*.target_account_id' => ['required_if:accounts.*.action,map', 'nullable', 'uuid'],
             'accounts.*.merge_into_key' => ['required_if:accounts.*.action,merge', 'nullable', 'string', 'max:255'],
+            'accounts.*.archive' => ['nullable', 'boolean'],
         ];
     }
 

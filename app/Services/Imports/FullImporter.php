@@ -2,6 +2,7 @@
 
 namespace App\Services\Imports;
 
+use App\Actions\SetAccountArchived;
 use App\Enums\ImportAccountAction;
 use App\Enums\ImportCategoryAction;
 use App\Enums\ImportChunkKind;
@@ -14,8 +15,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * Runs a full import from another app once the browser has staged all of it,
  * in the only order that works: wipe (when asked), accounts, categories
- * parents first, movements, balances, and then a single AI pass over whatever
- * is still uncategorized, now that every category from the file exists.
+ * parents first, movements, balances, archiving the new accounts the user
+ * marked as no longer in use, and then a single AI pass over whatever is
+ * still uncategorized, now that every category from the file exists.
  *
  * The movements can take longer than one queued job may run, so they are
  * written for a while and then handed over: `run()` returns false when it
@@ -42,6 +44,7 @@ class FullImporter
         private ImportTransactionWriter $transactions,
         private ImportBalanceWriter $balances,
         private ImportAiScheduler $ai,
+        private SetAccountArchived $setAccountArchived,
     ) {}
 
     /**
@@ -72,6 +75,7 @@ class FullImporter
 
         $import->recordStage(ImportStage::Balances);
         $this->balances->write($import, $accounts);
+        $this->archiveMarkedAccounts($import, $accounts);
 
         $import->recordStage(ImportStage::Ai);
         $aiStatus = $this->ai->decide($import);
@@ -113,6 +117,27 @@ class FullImporter
             'ai_status' => $stats['ai']['status'] ?? null,
             'duration_seconds' => $import->started_at?->diffInSeconds($import->finished_at),
         ]));
+    }
+
+    /**
+     * The new accounts the user chose to archive, once their movements and
+     * balances are in: archiving keeps all of it, and the account stops
+     * counting from today on. Only an account the import created is ever
+     * archived; one it mapped or merged into is the user's own.
+     */
+    private function archiveMarkedAccounts(Import $import, ImportAccountMap $accounts): void
+    {
+        $marked = collect($import->plan['accounts'] ?? [])
+            ->where('action', ImportAccountAction::Create->value)
+            ->where('archive', true);
+
+        foreach ($marked as $entry) {
+            $account = $accounts->targetFor((string) $entry['key']);
+
+            if ($account !== null && ! $accounts->isPreexisting($account) && ! $account->isArchived()) {
+                $this->setAccountArchived->handle($account, true);
+            }
+        }
     }
 
     /**
