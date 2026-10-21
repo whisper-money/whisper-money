@@ -518,6 +518,41 @@ describe('autoDetectDateFormat', () => {
     });
 });
 
+describe('parseDate with an out-of-range year', () => {
+    // A time the strip missed glued onto the year as 262004, which the
+    // server refuses (PHP-LARAVEL-7D).
+    it('reads the day of a time with an h suffix or a time zone name', () => {
+        for (const value of ['10/08/26 20:04h', '10/08/26 20:04 CEST']) {
+            expect(
+                formatLocalDate(parseDate(value, DateFormat.DayMonthYear)!),
+            ).toBe('2026-08-10');
+        }
+    });
+
+    it('rejects a time still glued onto the year', () => {
+        expect(
+            parseDate('10/08/26 20:04 (CEST)', DateFormat.DayMonthYear),
+        ).toBeNull();
+    });
+
+    it('rejects a six-digit year written as text', () => {
+        expect(parseDate('262004-08-10', DateFormat.YearMonthDay)).toBeNull();
+    });
+
+    it('rejects an Excel serial past 9999-12-31', () => {
+        expect(parseDate(95_000_000, DateFormat.DayMonthYear)).toBeNull();
+    });
+
+    it('keeps the years the server stores', () => {
+        expect(
+            formatLocalDate(parseDate('1900-01-01', DateFormat.YearMonthDay)!),
+        ).toBe('1900-01-01');
+        expect(
+            formatLocalDate(parseDate('9999-12-31', DateFormat.YearMonthDay)!),
+        ).toBe('9999-12-31');
+    });
+});
+
 describe('parseDate with a time part', () => {
     // Expectations are calendar days, not Date objects: a Date built while the
     // cases are collected would carry whatever TZ another test left behind.

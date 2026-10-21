@@ -226,7 +226,7 @@ it('files ignored movements under a transfer category only', function () {
     ]))->assertCreated();
 });
 
-it('refuses more rows than the plan announced, amounts past a bigint and currencies an account cannot have', function () {
+it('refuses more rows than the plan announced, amounts past a bigint, dates before 1900 and currencies an account cannot have', function () {
     $user = Fixtures::user();
 
     $id = $this->actingAs($user)->postJson(route('api.full-imports.store'), [
@@ -241,6 +241,7 @@ it('refuses more rows than the plan announced, amounts past a bigint and currenc
     $post(['rows' => [$row, $row, $row]])->assertUnprocessable()->assertJsonValidationErrors('rows');
     $post(['rows' => [[...$row, 'amount' => '9223372036854775808']]])->assertUnprocessable()->assertJsonValidationErrors('rows.0.amount');
     $post(['rows' => [[...$row, 'currency_code' => 'XYZ']]])->assertUnprocessable()->assertJsonValidationErrors('rows.0.currency_code');
+    $post(['rows' => [[...$row, 'date' => '1899-12-31']]])->assertUnprocessable()->assertJsonValidationErrors('rows.0.date');
     $post(['rows' => [[...$row, 'currency_code' => 'usd']]])->assertOk();
 
     $this->postJson(route('api.full-imports.chunks.store', $id), ['kind' => 'balances', 'position' => 0, 'rows' => [

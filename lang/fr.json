@@ -104,6 +104,7 @@
     "That file has no format we recognise": "Ce fichier n'a pas de format que nous reconnaissons",
     "That file is over 10 MB": "Ce fichier dépasse 10 Mo",
     "That's right": "C'est bien ça",
+    "The :attribute must be a date between :min and :max.": "Le champ :attribute doit être une date comprise entre :min et :max.",
     "The key we ask for cannot trade or withdraw.": "La clé que nous demandons ne peut ni passer d’ordre ni retirer.",
     "The month isn’t over, so there’s nothing to set your guess against yet — this is everything that has left the account so far.": "Le mois n’est pas fini, il n’y a donc encore rien à opposer à votre estimation — voici tout ce qui est sorti du compte jusqu’ici.",
     "The ones that worked are already saved. We won't import them twice if you retry.": "Ceux qui ont fonctionné sont déjà enregistrés. Nous ne les importerons pas deux fois si vous réessayez.",
