@@ -8,6 +8,7 @@ import {
     formatCount,
     formatFileSize,
     formatMonthRange,
+    sourceLabel,
     transactionCount,
 } from '@/lib/full-import-format';
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
@@ -27,6 +28,12 @@ const SOURCES: {
         value: 'banktrack',
         title: 'Banktrack',
         description: 'Columns, accounts and categories set up for you',
+    },
+    {
+        value: 'money_pro',
+        title: 'Money Pro',
+        description:
+            'Upload every file of the export at once: transfers and balances come in too',
     },
     {
         value: 'generic',
@@ -130,7 +137,7 @@ export function StepFile({
                     description: __(option.description),
                 }))}
                 onChange={onSourceChange}
-                className="grid sm:grid-cols-2"
+                className="grid sm:grid-cols-3"
             />
 
             <div className="flex flex-col gap-2.5">
@@ -242,7 +249,9 @@ export function StepFile({
                     <Notice tone="success">
                         <span>
                             <strong className="font-semibold">
-                                {__('Banktrack format recognized.')}
+                                {__(':source format recognized.', {
+                                    source: sourceLabel(source),
+                                })}
                             </strong>{' '}
                             {__(
                                 'We filled in the columns for you; you check them in a moment.',

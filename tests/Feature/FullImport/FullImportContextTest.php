@@ -39,7 +39,7 @@ it('gives the wizard the space it imports into', function () {
         ->and($response->json('transferTargets.own.category_id'))->toBe(Fixtures::seeded($user, 'Own account')->id)
         ->and($response->json('transferTargets.ignored.category_id'))->toBe(Fixtures::seeded($user, 'Other transfers')->id)
         ->and($response->json('defaultCategoryNames'))->toContain(['en' => 'Insurance', 'es' => 'Seguros'])
-        ->and($response->json('profiles'))->toBe(['banktrack' => null, 'generic' => null]);
+        ->and($response->json('profiles'))->toBe(['banktrack' => null, 'money_pro' => null, 'generic' => null]);
 });
 
 it('offers what to create when the seeded transfer categories are gone', function () {

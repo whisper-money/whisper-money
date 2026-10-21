@@ -17,9 +17,13 @@ import {
 import {
     countLabel,
     formatCount,
+    sourceLabel,
     transactionCount,
 } from '@/lib/full-import-format';
+import { type CurrencySymbolUse } from '@/lib/full-import-money-pro';
+import { movementRows } from '@/lib/full-import-plan';
 import { splitCategoryPath, unmappedHeaders } from '@/lib/full-import-profiles';
+import { type CurrencyOption } from '@/types/account';
 import {
     SINGLE_ACCOUNT_COLUMN,
     type FullImportMapping,
@@ -80,6 +84,9 @@ interface StepColumnsProps {
     mapping: FullImportMapping;
     onMappingChange: (mapping: FullImportMapping) => void;
     normalized: NormalizedFile;
+    /** The currency symbols a Money Pro file writes, to confirm; empty otherwise. */
+    currencySymbols: CurrencySymbolUse[];
+    currencies: CurrencyOption[];
     fallbackCurrency: string;
     locale: string;
     footer: ReactNode;
@@ -142,6 +149,8 @@ export function StepColumns({
     mapping,
     onMappingChange,
     normalized,
+    currencySymbols,
+    currencies,
     fallbackCurrency,
     locale,
     footer,
@@ -178,9 +187,10 @@ export function StepColumns({
             eyebrow={eyebrow}
             title={__('Check the columns')}
             description={
-                source === 'banktrack'
+                source !== 'generic'
                     ? __(
-                          'Every piece of Whisper Money comes from a column of your file. It is already filled in for Banktrack: change only what does not fit.',
+                          'Every piece of Whisper Money comes from a column of your file. It is already filled in for :source: change only what does not fit.',
+                          { source: sourceLabel(source) },
                       )
                     : __(
                           'Every piece of Whisper Money comes from a column of your file. Tell us which one is which; we remember it next time.',
@@ -203,6 +213,7 @@ export function StepColumns({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="banktrack">Banktrack</SelectItem>
+                        <SelectItem value="money_pro">Money Pro</SelectItem>
                         <SelectItem value="generic">
                             {__('Another app or spreadsheet')}
                         </SelectItem>
@@ -220,7 +231,13 @@ export function StepColumns({
                         key={spec.field}
                         label={__(spec.label)}
                         sample={sampleOf(columnOptions, mapping[spec.field])}
-                        hint={spec.hint && __(spec.hint)}
+                        hint={
+                            spec.field === 'amount' && source === 'money_pro'
+                                ? __(
+                                      'Money Pro writes it without a sign: the transaction type gives it, and a transfer goes out of one account and into the other.',
+                                  )
+                                : spec.hint && __(spec.hint)
+                        }
                         control={select(spec.field, false)}
                     >
                         {spec.field === 'date' && (
@@ -364,6 +381,20 @@ export function StepColumns({
                     control={select('balance', true)}
                 />
 
+                <CurrencySymbolRows
+                    uses={currencySymbols}
+                    currencies={currencies}
+                    locale={locale}
+                    onChange={(symbol, code) =>
+                        set({
+                            currencySymbols: {
+                                ...mapping.currencySymbols,
+                                [symbol]: code,
+                            },
+                        })
+                    }
+                />
+
                 {OPTIONAL_FIELDS.map((spec) => (
                     <FieldRow
                         key={spec.field}
@@ -392,6 +423,77 @@ export function StepColumns({
     );
 }
 
+/**
+ * What each currency symbol of the file is read as. Money Pro writes "$" for
+ * US dollars and Colombian pesos alike, so the user confirms it.
+ */
+function CurrencySymbolRows({
+    uses,
+    currencies,
+    locale,
+    onChange,
+}: {
+    uses: CurrencySymbolUse[];
+    currencies: CurrencyOption[];
+    locale: string;
+    onChange: (symbol: string, code: string) => void;
+}) {
+    if (uses.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+            <GroupLabel>{__('Currencies')}</GroupLabel>
+            <div className="px-4 py-3.5 text-[13px] text-muted-foreground sm:px-5">
+                {__(
+                    'Your file writes each amount with its currency symbol, and one symbol can mean several currencies ($ is the dollar and also the peso). Check which one each is: every account takes the currency of its amounts.',
+                )}
+            </div>
+            {uses.map((use) => (
+                <FieldRow
+                    key={use.symbol}
+                    label={use.symbol}
+                    sample={null}
+                    hint={countLabel(
+                        use.count,
+                        __('In 1 amount'),
+                        __('In :count amounts', {
+                            count: formatCount(use.count, locale),
+                        }),
+                    )}
+                    control={
+                        <Select
+                            value={use.code ?? ''}
+                            onValueChange={(code) => onChange(use.symbol, code)}
+                        >
+                            <SelectTrigger
+                                aria-label={__('Currency of :symbol', {
+                                    symbol: use.symbol,
+                                })}
+                            >
+                                <SelectValue
+                                    placeholder={__('Choose a currency')}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencies.map((currency) => (
+                                    <SelectItem
+                                        key={currency.code}
+                                        value={currency.code}
+                                    >
+                                        {currency.code} · {currency.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    }
+                />
+            ))}
+        </>
+    );
+}
+
 function ColumnsPreview({
     normalized,
     fallbackCurrency,
@@ -403,9 +505,10 @@ function ColumnsPreview({
 }) {
     // Row numbers start over in each file of an export split in several, so
     // the preview tells its rows apart by position.
-    const preview = normalized.rows.slice(0, PREVIEW_ROWS);
+    const movements = movementRows(normalized.rows);
+    const preview = movements.slice(0, PREVIEW_ROWS);
     const summary = [
-        transactionCount(normalized.rows.length, locale),
+        transactionCount(movements.length, locale),
         normalized.blankRows > 0 &&
             countLabel(
                 normalized.blankRows,

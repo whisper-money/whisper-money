@@ -1,0 +1,7 @@
+Fecha;Cantidad;Cuenta;Monto recibido;Cuenta de destino;Saldo;Categoría;Descripción;Tipo de transacción;Agente;N.º de cheque;Clase;
+25/2/18, 4:57;0,00 €;Wallet;;;0,00 €;;;Saldo de apertura;;;;
+25/2/18, 4:57;58.000,00 €;Wallet;;;58.000,00 €;Otros;;Ingreso;;;;
+26/2/18, 19:36;8.400,00 €;Wallet;;;49.600,00 €;Vehículo: Peaje;Toll;Gasto;;;;
+24/3/18, 6:14;750,00 €;Wallet;750,00 $;Safe box;48.850,00 €;;;Transferencia de dinero;;;;
+30/1/18, 5:11;3.000.000,00 $;Savings;;;8.000.000,00 $;;;Ajuste de saldo;;;;
+2/2/18, 9:00;1.250.000,00 $;Savings;;;6.750.000,00 $;Comida: Restaurantes;;Gasto;;;;

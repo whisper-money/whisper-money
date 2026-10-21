@@ -143,7 +143,7 @@ export function StepDone({
             </span>
             <div className="flex flex-col gap-2.5">
                 <h1 className="text-3xl leading-[1.14] font-semibold tracking-tight">
-                    {status.source === 'banktrack'
+                    {status.source !== 'generic'
                         ? __('Your :source data is here', {
                               source: sourceLabel(status.source),
                           })
