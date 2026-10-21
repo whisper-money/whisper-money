@@ -4,6 +4,8 @@ import {
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
 import {
+    countLabel,
+    formatCount,
     formatFileSize,
     formatMonthRange,
     transactionCount,
@@ -13,8 +15,8 @@ import { cn } from '@/lib/utils';
 import documentation from '@/routes/documentation';
 import { type FullImportSource } from '@/types/full-import';
 import { __ } from '@/utils/i18n';
-import { ExternalLink, FileSpreadsheet, Lock, Upload } from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
+import { ExternalLink, FileSpreadsheet, Lock, Upload, X } from 'lucide-react';
+import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 
 const SOURCES: {
     value: FullImportSource;
@@ -47,17 +49,26 @@ export interface FileSummary {
     to: string | null;
 }
 
+/** A picked file as the list shows it. */
+export interface FileEntry {
+    file: File;
+    /** The rows read from it, or null when it could not be read. */
+    rows: number | null;
+    /** Why it stays out of the import, or null when it goes in. */
+    error: string | null;
+}
+
 interface StepFileProps {
     eyebrow: string;
     source: FullImportSource;
     onSourceChange: (source: FullImportSource) => void;
-    file: File | null;
+    files: FileEntry[];
     summary: FileSummary | null;
     recognized: boolean;
-    error: string | null;
     parsing: boolean;
     locale: string;
-    onFileSelect: (file: File) => void;
+    onFilesSelect: (files: File[]) => void;
+    onFileRemove: (file: File) => void;
     footer: ReactNode;
 }
 
@@ -65,23 +76,38 @@ export function StepFile({
     eyebrow,
     source,
     onSourceChange,
-    file,
+    files,
     summary,
     recognized,
-    error,
     parsing,
     locale,
-    onFileSelect,
+    onFilesSelect,
+    onFileRemove,
     footer,
 }: StepFileProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    const pick = (picked: File | undefined) => {
-        if (picked) {
-            onFileSelect(picked);
+    const pick = (picked: FileList | null | undefined) => {
+        if (picked && picked.length > 0) {
+            onFilesSelect(Array.from(picked));
         }
     };
+    const browse = () => inputRef.current?.click();
+    const dropTarget = {
+        onDragOver: (event: DragEvent) => {
+            event.preventDefault();
+            setIsDragging(true);
+        },
+        onDragLeave: () => setIsDragging(false),
+        onDrop: (event: DragEvent) => {
+            event.preventDefault();
+            setIsDragging(false);
+            pick(event.dataTransfer.files);
+        },
+    };
+    const errors = files.filter((entry) => entry.error !== null);
+    const single = files.length === 1 && errors.length === 0;
 
     return (
         <WizardScreen
@@ -109,68 +135,72 @@ export function StepFile({
                 <input
                     ref={inputRef}
                     type="file"
+                    multiple
                     className="hidden"
                     accept={SUPPORTED_IMPORT_EXTENSIONS.join(',')}
                     data-testid="full-import-file-input"
                     onChange={(event) => {
-                        pick(event.target.files?.[0]);
+                        pick(event.target.files);
                         // Cleared so picking the same file again still fires.
                         event.target.value = '';
                     }}
                 />
-                {file ? (
-                    <div className="flex flex-wrap items-center gap-3.5 rounded-xl border border-dashed bg-muted/40 p-4">
-                        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-background">
-                            <FileSpreadsheet className="size-5" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium">
-                                {file.name}
-                            </div>
-                            <div className="text-[13px] text-muted-foreground">
-                                {[
-                                    formatFileSize(file.size),
-                                    parsing
-                                        ? __('Reading…')
-                                        : summary &&
-                                          transactionCount(
-                                              summary.rows,
-                                              locale,
-                                          ),
-                                    summary?.from &&
-                                        summary.to &&
-                                        formatMonthRange(
-                                            summary.from,
-                                            summary.to,
-                                            locale,
-                                        ),
-                                ]
-                                    .filter(Boolean)
-                                    .join(' · ')}
-                            </div>
+                {files.length > 0 ? (
+                    <div
+                        {...dropTarget}
+                        className={cn(
+                            'flex flex-col gap-2 rounded-xl border border-dashed bg-muted/40 p-2 transition-colors',
+                            isDragging && 'border-primary bg-accent',
+                        )}
+                    >
+                        <ul className="flex flex-col gap-2">
+                            {files.map((entry) => (
+                                <PickedFileRow
+                                    key={fileKey(entry.file)}
+                                    entry={entry}
+                                    details={
+                                        single
+                                            ? fileSummary(
+                                                  summary,
+                                                  parsing,
+                                                  locale,
+                                              )
+                                            : entry.rows !== null &&
+                                              rowCount(entry.rows, locale)
+                                    }
+                                    onRemove={() => onFileRemove(entry.file)}
+                                />
+                            ))}
+                        </ul>
+                        <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-1">
+                            <span className="text-[13px] text-muted-foreground">
+                                {!single &&
+                                    [
+                                        __(':count files', {
+                                            count: formatCount(
+                                                files.length - errors.length,
+                                                locale,
+                                            ),
+                                        }),
+                                        fileSummary(summary, parsing, locale),
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                            </span>
+                            <button
+                                type="button"
+                                className="min-h-9 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent"
+                                onClick={browse}
+                            >
+                                {__('Add another file')}
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            className="min-h-9 rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent"
-                            onClick={() => inputRef.current?.click()}
-                        >
-                            {__('Change file')}
-                        </button>
                     </div>
                 ) : (
                     <button
                         type="button"
-                        onDragOver={(event) => {
-                            event.preventDefault();
-                            setIsDragging(true);
-                        }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={(event) => {
-                            event.preventDefault();
-                            setIsDragging(false);
-                            pick(event.dataTransfer.files[0]);
-                        }}
-                        onClick={() => inputRef.current?.click()}
+                        {...dropTarget}
+                        onClick={browse}
                         className={cn(
                             'flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-10 text-center transition-colors hover:border-foreground/30',
                             isDragging && 'border-primary bg-accent',
@@ -181,13 +211,22 @@ export function StepFile({
                             <span className="font-medium">
                                 {__('Drop the file here, or click to browse')}
                             </span>
+                            <span className="text-[13px] text-muted-foreground">
+                                {__(
+                                    'An export split into several files? Pick them all.',
+                                )}
+                            </span>
                         </span>
                     </button>
                 )}
 
-                {error && <Notice tone="danger">{error}</Notice>}
+                {errors.map((entry) => (
+                    <Notice key={fileKey(entry.file)} tone="danger">
+                        {entry.error}
+                    </Notice>
+                ))}
 
-                {recognized && !error && (
+                {recognized && errors.length === 0 && (
                     <Notice tone="success">
                         <span>
                             <strong className="font-semibold">
@@ -238,5 +277,75 @@ export function StepFile({
                 )}
             </p>
         </WizardScreen>
+    );
+}
+
+/** Unique in the list: the same file is never picked twice. */
+function fileKey(file: File): string {
+    return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+/** "412 KB · 36 transactions · Jan 2024 – Sep 2026", without the size. */
+function fileSummary(
+    summary: FileSummary | null,
+    parsing: boolean,
+    locale: string,
+): string {
+    return [
+        parsing
+            ? __('Reading…')
+            : summary && transactionCount(summary.rows, locale),
+        summary?.from &&
+            summary.to &&
+            formatMonthRange(summary.from, summary.to, locale),
+    ]
+        .filter(Boolean)
+        .join(' · ');
+}
+
+function rowCount(count: number, locale: string): string {
+    return countLabel(
+        count,
+        __('1 row'),
+        __(':count rows', { count: formatCount(count, locale) }),
+    );
+}
+
+function PickedFileRow({
+    entry,
+    details,
+    onRemove,
+}: {
+    entry: FileEntry;
+    details: string | false;
+    onRemove: () => void;
+}) {
+    return (
+        <li className="flex items-center gap-3.5 rounded-lg p-2">
+            <span
+                className={cn(
+                    'flex size-11 shrink-0 items-center justify-center rounded-lg border bg-background',
+                    entry.error !== null && 'text-destructive',
+                )}
+            >
+                <FileSpreadsheet className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{entry.file.name}</div>
+                <div className="text-[13px] text-muted-foreground">
+                    {[formatFileSize(entry.file.size), details]
+                        .filter(Boolean)
+                        .join(' · ')}
+                </div>
+            </div>
+            <button
+                type="button"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background hover:bg-accent"
+                aria-label={__('Remove :file', { file: entry.file.name })}
+                onClick={onRemove}
+            >
+                <X className="size-4" />
+            </button>
+        </li>
     );
 }

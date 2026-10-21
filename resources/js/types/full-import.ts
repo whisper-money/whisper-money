@@ -75,6 +75,8 @@ export interface NormalizedRow {
 
 export interface UnreadableRow {
     rowNumber: number;
+    /** The file the row is in, when the import reads several. */
+    fileName?: string;
     reason: string;
 }
 

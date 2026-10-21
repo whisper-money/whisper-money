@@ -446,33 +446,42 @@ function ColumnsPreview({
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {normalized.rows.slice(0, PREVIEW_ROWS).map((row) => {
-                            const currency = row.currency ?? fallbackCurrency;
+                        {normalized.rows
+                            .slice(0, PREVIEW_ROWS)
+                            .map((row, index) => {
+                                const currency =
+                                    row.currency ?? fallbackCurrency;
 
-                            return (
-                                <tr key={row.rowNumber}>
-                                    <td className="px-3 py-2 whitespace-nowrap">
-                                        {formatDateMedium(row.date, locale)}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {row.accountName}
-                                    </td>
-                                    <td className="max-w-56 truncate px-3 py-2">
-                                        {row.description}
-                                    </td>
-                                    <td className="px-3 py-2 text-muted-foreground">
-                                        {row.categoryPath.join(' › ') || '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
-                                        {formatCurrency(
-                                            toMinorUnits(row.amount, currency),
-                                            currency,
-                                            locale,
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
+                                return (
+                                    // Row numbers start over in each file, so
+                                    // they no longer tell two rows apart.
+                                    <tr key={index}>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                            {formatDateMedium(row.date, locale)}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.accountName}
+                                        </td>
+                                        <td className="max-w-56 truncate px-3 py-2">
+                                            {row.description}
+                                        </td>
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                            {row.categoryPath.join(' › ') ||
+                                                '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
+                                            {formatCurrency(
+                                                toMinorUnits(
+                                                    row.amount,
+                                                    currency,
+                                                ),
+                                                currency,
+                                                locale,
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                     </tbody>
                 </table>
             </div>

@@ -81,6 +81,11 @@ export interface ParsedImportFile {
     rows: ParsedRow[];
     /** Each row's own number in the file, so a problem can be found in a spreadsheet. */
     rowNumbers: number[];
+    /**
+     * The file each row came from, aligned with `rows`, when several files
+     * were read as one: a row number alone would not say which to open.
+     */
+    rowFiles?: string[];
     headers: string[];
     columnOptions: ColumnOption[];
     mapping: ColumnMapping;

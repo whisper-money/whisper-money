@@ -4021,5 +4021,11 @@
     "Currency, balance, creditor, debtor, type": "Moneda, saldo, acreedor, deudor, tipo",
     "Currency, creditor, debtor, type": "Moneda, acreedor, deudor, tipo",
     "Select type column": "Seleccionar columna de tipo",
-    "For files whose amounts are all positive: ticked rows import as expenses": "Para archivos con todos los importes en positivo: las filas marcadas se importan como gastos"
+    "For files whose amounts are all positive: ticked rows import as expenses": "Para archivos con todos los importes en positivo: las filas marcadas se importan como gastos",
+    ":file has different columns from :first, so it can't be imported as part of the same export.": ":file tiene columnas distintas a :first, así que no se puede importar como parte de la misma exportación.",
+    ":count files": ":count ficheros",
+    "Add another file": "Añadir otro fichero",
+    "Remove :file": "Quitar :file",
+    "An export split into several files? Pick them all.": "¿Tu exportación viene en varios ficheros? Elígelos todos.",
+    ":file, row :number": ":file, fila :number"
 }

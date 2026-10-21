@@ -40,6 +40,14 @@ import {
     submitImport,
 } from '@/lib/full-import-api';
 import {
+    fileProblem,
+    importableReads,
+    mergeImportFiles,
+    sameFile,
+    sameHeaders,
+    type PickedFile,
+} from '@/lib/full-import-files';
+import {
     countLabel,
     formatCount,
     sourceSuffix,
@@ -179,7 +187,8 @@ type FileRejection =
     | 'unsupported_type'
     | 'too_large'
     | 'unreadable'
-    | 'no_rows';
+    | 'no_rows'
+    | 'different_headers';
 
 /** What the reader throws for a file that is the user's problem, not ours. */
 const KNOWN_READ_FAILURES: Record<string, FileRejection> = {
@@ -222,7 +231,7 @@ export function FullImportWizard({
     const [source, setSource] = useState<FullImportSource>('banktrack');
     const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
     const [recognized, setRecognized] = useState(false);
-    const [fileError, setFileError] = useState<string | null>(null);
+    const [picked, setPicked] = useState<PickedFile[]>([]);
     const [parsing, setParsing] = useState(false);
     const [mapping, setMapping] = useState<FullImportMapping | null>(null);
     const [mode, setMode] = useState<FullImportMode>('add');
@@ -324,81 +333,146 @@ export function FullImportWizard({
     );
 
     /** A file turned away: shown to the user, counted, never reported. */
-    const rejectFile = (file: File, reason: FileRejection, message: string) => {
-        setFileError(message);
+    const rejectFile = (
+        file: File,
+        reason: FileRejection,
+        message: string,
+    ): PickedFile => {
         trackImport('full_import_file_failed', {
             reason,
             extension: fileExtension(file.name),
         });
+
+        return { file, read: null, error: message };
     };
 
-    const handleFile = async (file: File) => {
-        setFileError(null);
-
+    /**
+     * Read one picked file against the first one already in: a file whose
+     * headers differ is still read, so it can stand in as the first once
+     * that one is removed, but it is counted as turned away.
+     */
+    const readPickedFile = async (
+        file: File,
+        reference: ParsedImportFile | undefined,
+    ): Promise<PickedFile> => {
         if (!isSupportedImportFile(file)) {
-            rejectFile(
+            return rejectFile(
                 file,
                 'unsupported_type',
                 unsupportedFileReason(file.name),
             );
-            return;
         }
 
         if (file.size > MAX_IMPORT_FILE_BYTES) {
-            rejectFile(file, 'too_large', __('That file is over 10 MB'));
-            return;
+            return rejectFile(file, 'too_large', __('That file is over 10 MB'));
         }
-
-        setParsing(true);
 
         try {
             const read = await parseImportFile(file, locale);
 
             if (read.rows.length === 0) {
-                rejectFile(file, 'no_rows', __('There are no rows in it'));
-                return;
+                return rejectFile(
+                    file,
+                    'no_rows',
+                    __('There are no rows in it'),
+                );
             }
 
-            const detected = detectSource(read.headers);
-            const nextSource = detected ?? 'generic';
+            if (reference && !sameHeaders(reference.headers, read.headers)) {
+                rejectFile(file, 'different_headers', '');
+            } else {
+                trackFileParsed(file, read);
+            }
 
-            setParsed(read);
-            setRecognized(detected === 'banktrack');
-            setSource(nextSource);
-            setMapping(mappingFor(nextSource, read));
-            plan.reset();
-            trackImport(
-                'full_import_file_parsed',
-                fileParsedProperties(
-                    file,
-                    read.headers,
-                    {
-                        count: read.rows.length,
-                        blank: countBlankRows(read.rowNumbers),
-                    },
-                    nextSource,
-                    detected === 'banktrack',
-                ),
-            );
+            return { file, read, error: null };
         } catch (error) {
             const message = error instanceof Error ? error.message : '';
             const known = KNOWN_READ_FAILURES[message];
-
-            rejectFile(
-                file,
-                known ?? 'unreadable',
-                __(message || 'Failed to parse file'),
-            );
 
             // A file the browser cannot open or that holds nothing is the
             // user's; anything else the reader threw may be ours.
             if (!known) {
                 reportImportError(error, 'parse', { entry });
             }
+
+            return rejectFile(
+                file,
+                known ?? 'unreadable',
+                __(message || 'Failed to parse file'),
+            );
+        }
+    };
+
+    const trackFileParsed = (file: File, read: ParsedImportFile) => {
+        const detected = detectSource(read.headers);
+
+        trackImport(
+            'full_import_file_parsed',
+            fileParsedProperties(
+                file,
+                read.headers,
+                {
+                    count: read.rows.length,
+                    blank: countBlankRows(read.rowNumbers),
+                },
+                detected ?? 'generic',
+                detected === 'banktrack',
+            ),
+        );
+    };
+
+    /** Read the files that can be imported together as one. */
+    const applyPicked = (next: PickedFile[]) => {
+        setPicked(next);
+
+        const reads = importableReads(next);
+
+        if (reads.length === 0) {
+            setParsed(null);
+            setMapping(null);
+            setRecognized(false);
+            plan.reset();
+
+            return;
+        }
+
+        const merged = mergeImportFiles(reads, locale);
+        const detected = detectSource(merged.headers);
+        const nextSource = detected ?? 'generic';
+
+        setParsed(merged);
+        setRecognized(detected === 'banktrack');
+        setSource(nextSource);
+        setMapping(mappingFor(nextSource, merged));
+        plan.reset();
+    };
+
+    const handleFiles = async (files: File[]) => {
+        const fresh = files.filter(
+            (file) => !picked.some((one) => sameFile(one.file, file)),
+        );
+
+        if (fresh.length === 0) {
+            return;
+        }
+
+        setParsing(true);
+
+        try {
+            const next = [...picked];
+
+            for (const file of fresh) {
+                next.push(await readPickedFile(file, importableReads(next)[0]));
+            }
+
+            applyPicked(next);
         } finally {
             setParsing(false);
         }
     };
+
+    const handleFileRemove = (file: File) =>
+        applyPicked(picked.filter((one) => one.file !== file));
 
     const handleSourceChange = (nextSource: FullImportSource) => {
         setSource(nextSource);
@@ -489,7 +563,10 @@ export function FullImportWizard({
 
     const mapped = (column: string | null) => column !== null && column !== '';
     const canContinue: Record<PlanningStep, boolean> = {
-        file: parsed !== null && !parsing && fileError === null,
+        file:
+            parsed !== null &&
+            !parsing &&
+            picked.every((one) => fileProblem(one, picked) === null),
         existing: true,
         columns:
             mapping !== null &&
@@ -583,7 +660,11 @@ export function FullImportWizard({
                         eyebrow={eyebrow}
                         source={source}
                         onSourceChange={handleSourceChange}
-                        file={parsed?.file ?? null}
+                        files={picked.map((one) => ({
+                            file: one.file,
+                            rows: one.read?.rows.length ?? null,
+                            error: fileProblem(one, picked),
+                        }))}
                         summary={
                             parsed
                                 ? {
@@ -601,10 +682,10 @@ export function FullImportWizard({
                                 : null
                         }
                         recognized={recognized && source === 'banktrack'}
-                        error={fileError}
                         parsing={parsing}
                         locale={locale}
-                        onFileSelect={handleFile}
+                        onFilesSelect={handleFiles}
+                        onFileRemove={handleFileRemove}
                         footer={footer()}
                     />
                 );
