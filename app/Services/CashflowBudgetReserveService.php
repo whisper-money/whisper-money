@@ -72,17 +72,21 @@ class CashflowBudgetReserveService
             ->withSum('budgetTransactions as spent', 'amount')
             ->orderBy('start_date')
             ->get()
-            ->map(fn (BudgetPeriod $budgetPeriod): array => [
-                'budget_id' => $budgetPeriod->budget_id,
-                'budget_period_id' => $budgetPeriod->id,
-                'name' => $budgetPeriod->budget->name,
-                'start_date' => $budgetPeriod->start_date->toDateString(),
-                'end_date' => $budgetPeriod->end_date->toDateString(),
-                'allocated' => $budgetPeriod->allocated_amount,
-                'spent' => (int) $budgetPeriod->spent,
-                // Same as BudgetPeriod::remainingAmount(), without a query per row.
-                'margin' => $budgetPeriod->allocated_amount - (int) $budgetPeriod->spent,
-            ])
+            ->map(function (BudgetPeriod $budgetPeriod): array {
+                $spent = (int) $budgetPeriod->getAttribute('spent');
+
+                return [
+                    'budget_id' => $budgetPeriod->budget_id,
+                    'budget_period_id' => $budgetPeriod->id,
+                    'name' => $budgetPeriod->budget->name,
+                    'start_date' => $budgetPeriod->start_date->toDateString(),
+                    'end_date' => $budgetPeriod->end_date->toDateString(),
+                    'allocated' => $budgetPeriod->allocated_amount,
+                    'spent' => $spent,
+                    // Same as BudgetPeriod::remainingAmount(), without a query per row.
+                    'margin' => $budgetPeriod->allocated_amount - $spent,
+                ];
+            })
             ->values()
             ->all();
     }
@@ -131,7 +135,10 @@ class CashflowBudgetReserveService
         $budgets = Budget::query()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
-            ->whereHas('periods', fn (Builder $query) => $query->overlapping($period->from, $period->to))
+            ->whereHas('periods', fn (Builder $query) => $query->whereIn(
+                'budget_periods.id',
+                BudgetPeriod::query()->overlapping($period->from, $period->to)->select('id'),
+            ))
             ->with('categories:id', 'labels:id')
             ->get();
 
