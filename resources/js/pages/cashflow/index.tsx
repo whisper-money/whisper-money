@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
 import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem, Features } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -189,11 +190,10 @@ export default function CashflowPage() {
 
                 {/* Summary Cards */}
                 <div
-                    className={
-                        showAvailable
-                            ? 'grid gap-6 md:grid-cols-2 xl:grid-cols-3'
-                            : 'grid gap-6 md:grid-cols-2'
-                    }
+                    className={cn(
+                        'grid gap-6 md:grid-cols-2',
+                        showAvailable && 'xl:grid-cols-3',
+                    )}
                 >
                     <NetCashflowCard
                         current={summary.current}
@@ -212,6 +212,9 @@ export default function CashflowPage() {
 
                     {showAvailable && (
                         <AvailableCard
+                            // Two columns until xl leave it alone on a second
+                            // row, so it takes the whole row there.
+                            className="md:col-span-2 xl:col-span-1"
                             current={summary.current}
                             previous={summary.previous}
                             loading={showPlaceholders}

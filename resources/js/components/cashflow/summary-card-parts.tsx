@@ -111,9 +111,15 @@ export function PeriodTrend({
 }
 
 /** The card's placeholder while its figures load. */
-export function SummaryCardSkeleton({ title }: { title: string }) {
+export function SummaryCardSkeleton({
+    title,
+    className,
+}: {
+    title: string;
+    className?: string;
+}) {
     return (
-        <Card>
+        <Card className={className}>
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
             </CardHeader>
@@ -166,7 +172,9 @@ export function SummaryHeadline({
 }
 
 interface SummaryFigureProps {
-    label: ReactNode;
+    label: string;
+    /** Sits at the end of the label's row, such as a share pill. */
+    badge?: ReactNode;
     amount: number;
     currency: string;
     /** Omitted when there is no previous period to compare against. */
@@ -178,6 +186,7 @@ interface SummaryFigureProps {
 /** One of the figures in the grid at the bottom of a summary card. */
 export function SummaryFigure({
     label,
+    badge,
     amount,
     currency,
     comparison,
@@ -186,10 +195,13 @@ export function SummaryFigure({
 }: SummaryFigureProps) {
     return (
         <div>
-            {typeof label === 'string' ? (
-                <p className="text-xs text-muted-foreground">{label}</p>
+            {badge ? (
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    {badge}
+                </div>
             ) : (
-                label
+                <p className="text-xs text-muted-foreground">{label}</p>
             )}
             <AmountDisplay
                 amountInCents={amount}

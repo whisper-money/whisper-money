@@ -18,6 +18,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
+import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { HelpCircle } from 'lucide-react';
 
@@ -34,22 +35,23 @@ function allocationRate(summary: CashflowSummary): number {
     return shareOf(summary.savings + summary.investments, summary.net);
 }
 
-interface FigureLabelProps {
-    label: string;
-    /** Share of what was contributed; no pill when null. */
-    share: number | null;
+// One color per side, shared by its pill's dot and its segment of the bar so
+// the bar reads without a legend.
+const SAVINGS_TONE = 'bg-green-300';
+const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
+
+interface SharePillProps {
+    share: number;
+    tone: string;
 }
 
-function FigureLabel({ label, share }: FigureLabelProps) {
+/** A side's share of what was contributed. */
+function SharePill({ share, tone }: SharePillProps) {
     return (
-        <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            {share !== null && (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 tabular-nums dark:bg-green-950 dark:text-green-200">
-                    {share.toFixed(0)}%
-                </span>
-            )}
-        </div>
+        <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 tabular-nums dark:bg-green-950 dark:text-green-200">
+            <span aria-hidden className={cn('size-1.5 rounded-full', tone)} />
+            {share.toFixed(0)}%
+        </span>
     );
 }
 
@@ -75,11 +77,11 @@ function ContributionSplitBar({
             className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-muted"
         >
             <div
-                className="bg-green-300 dark:bg-green-300"
+                className={SAVINGS_TONE}
                 style={{ width: `${savingsShare}%` }}
             />
             <div
-                className="bg-green-700 dark:bg-green-600"
+                className={INVESTMENTS_TONE}
                 style={{ width: `${investmentsShare}%` }}
             />
         </div>
@@ -171,11 +173,14 @@ export function SavedInvestedCard({
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
                     <SummaryFigure
-                        label={
-                            <FigureLabel
-                                label={__('Saved (cashflow)')}
-                                share={savingsShare}
-                            />
+                        label={__('Saved (cashflow)')}
+                        badge={
+                            savingsShare !== null && (
+                                <SharePill
+                                    share={savingsShare}
+                                    tone={SAVINGS_TONE}
+                                />
+                            )
                         }
                         amount={current.savings}
                         currency={currency}
@@ -185,11 +190,14 @@ export function SavedInvestedCard({
                         }
                     />
                     <SummaryFigure
-                        label={
-                            <FigureLabel
-                                label={__('Invested')}
-                                share={investmentsShare}
-                            />
+                        label={__('Invested')}
+                        badge={
+                            investmentsShare !== null && (
+                                <SharePill
+                                    share={investmentsShare}
+                                    tone={INVESTMENTS_TONE}
+                                />
+                            )
                         }
                         amount={current.investments}
                         currency={currency}

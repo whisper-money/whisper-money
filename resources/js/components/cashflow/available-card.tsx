@@ -22,6 +22,7 @@ interface AvailableCardProps {
     previous: CashflowSummary;
     loading?: boolean;
     currency?: string;
+    className?: string;
 }
 
 /** Expenses plus what was saved or invested. */
@@ -39,9 +40,15 @@ export function AvailableCard({
     previous,
     loading,
     currency = 'USD',
+    className,
 }: AvailableCardProps) {
     if (loading) {
-        return <SummaryCardSkeleton title={__('Available')} />;
+        return (
+            <SummaryCardSkeleton
+                title={__('Available')}
+                className={className}
+            />
+        );
     }
 
     const available = availableOf(current);
@@ -52,7 +59,7 @@ export function AvailableCard({
     const hasPreviousData = previous.income > 0 || previous.expense > 0;
 
     return (
-        <Card>
+        <Card className={className}>
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
                     {__('Available')}
