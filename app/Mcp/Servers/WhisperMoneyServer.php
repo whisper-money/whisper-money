@@ -90,14 +90,11 @@ app is kept in their books.
   `archived` one (the goal was archived during it) show what was saved but
   have no verdict: they are left out of `months_met`, `months_closed`, the
   streaks and `cumulative_difference`, so never report them as met or missed.
-  Creating a monthly goal is not open to every account yet: `create_savings_goal`
-  refuses `kind: monthly` where it is off, so offer a one-off goal instead.
-  Monthly goals the user already has are listed and updated as usual.
   A savings account can feed only one running monthly goal's auto-tag rule. A goal's kind is fixed, and
   editing a monthly target only changes the month in progress and later ones.
   A transaction counts towards a goal once it carries the goal's `label_id`
-  (`label_transaction`). Creating a monthly goal can also add an automation
-  rule that tags incoming transfers to one of the user's savings accounts
+  (`label_transaction`). `create_savings_goal` can also add an automation rule
+  that tags incoming transfers to one of the user's savings accounts
   (`auto_tag_account_id`), including the ones already there since the start of
   the month; the response reports the rule and how many it tagged. Archiving
   and deleting a goal happen in the app only.
