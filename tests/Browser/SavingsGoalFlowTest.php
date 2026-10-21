@@ -3,10 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\AccountType;
-use App\Features\MonthlySavingsGoals;
 use App\Models\Label;
 use App\Models\SavingsGoal;
-use Laravel\Pennant\Feature;
 use Tests\Support\PlanningFixtures;
 
 use function Pest\Laravel\actingAs;
@@ -67,7 +65,6 @@ it('creates a savings goal from the planning page and opens it', function () {
 // and only a second one submits.
 it('creates a monthly goal with a single click right after typing the amount', function () {
     $user = PlanningFixtures::user();
-    Feature::for($user)->activate(MonthlySavingsGoals::class);
 
     actingAs($user);
 
@@ -91,21 +88,6 @@ it('creates a monthly goal with a single click right after typing the amount', f
 
     expect($goal->name)->toBe('Rainy day fund')
         ->and($goal->monthly_target_amount)->toBe(30000);
-});
-
-// Creating a monthly goal is behind a flag: without it the dialog only makes
-// one-off goals.
-it('offers only one-off goals without the monthly goals flag', function () {
-    actingAs(PlanningFixtures::user());
-
-    visit('/budgets')
-        ->assertSee('Planning')
-        ->click('Create')
-        ->click('[role="menuitem"]:has-text("Savings Goal")')
-        ->assertSee('Create Savings Goal')
-        ->assertSee('Target Amount')
-        ->assertDontSee('Monthly (recurring)')
-        ->assertNoJavascriptErrors();
 });
 
 // The typo behind #963. A five-digit year is a date the field accepts happily,

@@ -5,7 +5,6 @@ use App\Enums\CategoryType;
 use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Enums\SavingsGoalMonthStatus;
-use App\Features\MonthlySavingsGoals;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Bank;
@@ -21,7 +20,6 @@ use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Laravel\Pennant\Feature;
 
 function monthlyGoalUser(): User
 {
@@ -86,12 +84,7 @@ function createMonthlyGoal(User $user, array $attributes = []): SavingsGoal
     return SavingsGoal::query()->where('user_id', $user->id)->where('name', $attributes['name'] ?? 'Emergency fund')->firstOrFail();
 }
 
-beforeEach(function () {
-    $this->travelTo(Carbon::parse('2026-10-10 12:00:00'));
-    // Creating a monthly goal sits behind a flag; MonthlySavingsGoalFlagTest
-    // covers it off.
-    Feature::define(MonthlySavingsGoals::class, true);
-});
+beforeEach(fn () => $this->travelTo(Carbon::parse('2026-10-10 12:00:00')));
 
 test('creating a monthly goal stores its target and opens the current month', function () {
     $user = monthlyGoalUser();
