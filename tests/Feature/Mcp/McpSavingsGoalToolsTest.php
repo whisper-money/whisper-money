@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\AccountType;
-use App\Features\MonthlySavingsGoals;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\CreateSavingsGoal;
 use App\Mcp\Tools\ListSavingsGoals;
@@ -17,11 +16,6 @@ use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Support\Carbon;
 use Laravel\Mcp\Server\Testing\TestResponse;
-use Laravel\Pennant\Feature;
-
-// Creating a monthly goal sits behind a flag; MonthlySavingsGoalFlagTest covers
-// it off.
-beforeEach(fn () => Feature::define(MonthlySavingsGoals::class, true));
 
 /**
  * Call a savings goal write tool as $user with a read & write token.
