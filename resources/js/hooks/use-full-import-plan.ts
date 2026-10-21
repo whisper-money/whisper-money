@@ -13,6 +13,7 @@ import {
     detectCategories,
     existingTargets,
     importedRows,
+    inactiveNewAccountKeys,
     isOwnTransferNode,
     movementRows,
     resolveAccountPlan,
@@ -31,6 +32,7 @@ import {
     type FullImportSource,
     type NormalizedFile,
 } from '@/types/full-import';
+import { todayDateString } from '@/utils/date';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -90,6 +92,8 @@ export function useFullImportPlan({
     const [ignoredChoice, setIgnoredChoice] = useState<
         string | null | undefined
     >();
+    // Read once: an import left open past midnight keeps the date it planned with.
+    const [today] = useState(todayDateString);
 
     // Keyed on the codes rather than the prop object, so a props object
     // rebuilt with the same currencies does not re-read the whole file.
@@ -155,6 +159,7 @@ export function useFullImportPlan({
         () =>
             resolveAccountPlan(fileAccounts, accountOverrides, {
                 mode,
+                today,
                 accounts: context?.accounts ?? [],
                 mappableAccountIds: context?.mappableAccountIds ?? [],
                 userCurrency,
@@ -171,7 +176,13 @@ export function useFullImportPlan({
             supportedCurrencies,
             source,
             banks,
+            today,
         ],
+    );
+
+    const inactiveAccountKeys = useMemo(
+        () => inactiveNewAccountKeys(fileAccounts, accountPlan, today),
+        [fileAccounts, accountPlan, today],
     );
 
     const targets = useMemo(
@@ -264,6 +275,7 @@ export function useFullImportPlan({
                               rows: normalized.rows,
                               fileAccounts,
                               accountPlan,
+                              inactiveAccountKeys,
                               contextAccounts: context.accounts,
                               nodes,
                               categoryPlan,
@@ -284,6 +296,7 @@ export function useFullImportPlan({
             normalized,
             fileAccounts,
             accountPlan,
+            inactiveAccountKeys,
             nodes,
             categoryPlan,
         ],
@@ -356,6 +369,7 @@ export function useFullImportPlan({
         currencySymbols,
         fileAccounts,
         accountPlan,
+        inactiveAccountKeys,
         existingTargets: targets,
         nodes,
         categoryPlan,

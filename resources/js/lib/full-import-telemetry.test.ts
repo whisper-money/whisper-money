@@ -142,6 +142,7 @@ describe('submittedProperties', () => {
         newBankName: null,
         targetAccountId: null,
         mergeIntoKey: null,
+        archive: false,
         ...overrides,
     });
 

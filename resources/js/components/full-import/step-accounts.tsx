@@ -4,6 +4,7 @@ import {
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
 import { ImportBankField } from '@/components/full-import/import-bank-field';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -33,13 +34,15 @@ import {
 import { formatCurrency, toMinorUnits } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Lock } from 'lucide-react';
+import { Archive, Lock } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 interface StepAccountsProps {
     eyebrow: string;
     fileAccounts: FileAccount[];
     plan: Record<string, AccountPlanEntry>;
+    /** New accounts that look no longer in use: offered to be archived. */
+    inactiveAccountKeys: Set<string>;
     onChange: (key: string, entry: AccountPlanEntry) => void;
     mode: FullImportMode;
     accounts: ContextAccount[];
@@ -130,6 +133,7 @@ export function StepAccounts({
     eyebrow,
     fileAccounts,
     plan,
+    inactiveAccountKeys,
     onChange,
     mode,
     accounts,
@@ -210,11 +214,34 @@ export function StepAccounts({
                 )}
             </div>
 
+            {inactiveAccountKeys.size > 0 && (
+                <Notice icon={Archive}>
+                    <span className="font-medium">
+                        {countLabel(
+                            inactiveAccountKeys.size,
+                            __(
+                                '1 account looks inactive — archive it after import',
+                            ),
+                            __(
+                                ':count accounts look inactive — archive them after import',
+                                { count: inactiveAccountKeys.size },
+                            ),
+                        )}
+                    </span>
+                    <span>
+                        {__(
+                            'An account looks inactive when it ends at a zero balance or has had no movements for over a year. Archived accounts keep their history, and you can bring them back any time from the Bank accounts settings.',
+                        )}
+                    </span>
+                </Notice>
+            )}
+
             <div className="flex flex-col gap-3">
                 {fileAccounts.map((account) => (
                     <AccountCard
                         key={account.key}
                         account={account}
+                        inactive={inactiveAccountKeys.has(account.key)}
                         entry={plan[account.key]}
                         onChange={(entry) => onChange(account.key, entry)}
                         mode={mode}
@@ -235,6 +262,7 @@ export function StepAccounts({
 
 function AccountCard({
     account,
+    inactive,
     entry,
     onChange,
     mode,
@@ -248,6 +276,7 @@ function AccountCard({
     locale,
 }: {
     account: FileAccount;
+    inactive: boolean;
     entry: AccountPlanEntry;
     onChange: (entry: AccountPlanEntry) => void;
     mode: FullImportMode;
@@ -422,6 +451,18 @@ function AccountCard({
                         />
                     </Field>
                 </div>
+            )}
+
+            {inactive && (
+                <label className="flex items-center gap-2.5 text-sm">
+                    <Checkbox
+                        checked={entry.archive}
+                        onCheckedChange={(checked) =>
+                            onChange({ ...entry, archive: checked === true })
+                        }
+                    />
+                    {__('Archive after import')}
+                </label>
             )}
 
             {entry.action === 'map' && (

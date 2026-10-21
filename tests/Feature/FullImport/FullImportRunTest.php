@@ -267,6 +267,33 @@ it('refuses at run time a mapped account archived while the import waited', func
     expect(fn () => app(FullImporter::class)->run($import))->toThrow(RuntimeException::class);
 });
 
+it('archives the new accounts marked to, with their movements and balances', function () {
+    $user = Fixtures::user();
+    $own = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking, 'currency_code' => 'EUR']);
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([
+        Fixtures::newAccount('a0', 'Old savings', ['archive' => true]),
+        Fixtures::newAccount('a1', 'Wise'),
+        ['key' => 'a2', 'action' => 'map', 'target_account_id' => $own->id, 'archive' => true],
+    ]), [
+        Fixtures::row('a0', '2024-03-01', -100, 'Last one'),
+        Fixtures::row('a1', '2026-09-01', -200, 'Coffee'),
+        Fixtures::row('a2', '2026-09-02', -300, 'Into my own'),
+    ], [
+        ['account_key' => 'a0', 'date' => '2024-03-01', 'balance' => 0],
+    ]);
+
+    $old = Account::query()->where('import_id', $import->id)->where('name', 'Old savings')->sole();
+
+    expect($import->status)->toBe(ImportStatus::Completed)
+        ->and($old->isArchived())->toBeTrue()
+        ->and($old->transactions()->count())->toBe(1)
+        ->and($old->balances()->count())->toBe(1)
+        ->and(Account::query()->where('import_id', $import->id)->where('name', 'Wise')->sole()->isArchived())->toBeFalse()
+        // A mapped account is the user's own: the import never archives it.
+        ->and($own->fresh()->isArchived())->toBeFalse();
+});
+
 it('stores only real IBANs', function (string $given, ?string $stored) {
     $user = Fixtures::user();
 

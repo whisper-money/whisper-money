@@ -227,3 +227,20 @@ it('puts the import back when the undo cannot be queued', function () {
         // The unique lock the failed dispatch took is free again.
         ->and((new UniqueLock(app(Repository::class)))->acquire(new UndoImportJob($import)))->toBeTrue();
 });
+
+it('takes out a new account the import archived', function () {
+    $user = Fixtures::user();
+
+    $import = Fixtures::run($this, $user, Fixtures::plan([
+        Fixtures::newAccount('a0', 'Old savings', ['archive' => true]),
+    ]), [Fixtures::row('a0', '2024-03-01', -100, 'Last one')]);
+
+    $old = Account::query()->where('import_id', $import->id)->sole();
+
+    expect($old->isArchived())->toBeTrue();
+
+    $this->actingAs($user)->delete(route('full-import.destroy', $import))->assertRedirect(route('full-import.index'));
+
+    expect(Account::withTrashed()->whereKey($old->id)->exists())->toBeFalse()
+        ->and(Transaction::withTrashed()->where('import_id', $import->id)->exists())->toBeFalse();
+});

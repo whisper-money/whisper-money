@@ -3012,5 +3012,9 @@
     "Amounts in :symbol": "Montants en :symbol",
     "Several currencies write it this way: check it is the right one.": "Plusieurs devises s'écrivent ainsi : vérifiez que c'est la bonne.",
     "To :account": "Vers :account",
-    "From :account": "Depuis :account"
+    "From :account": "Depuis :account",
+    "1 account looks inactive — archive it after import": "1 compte semble inactif : archivez-le après l'import",
+    ":count accounts look inactive — archive them after import": ":count comptes semblent inactifs : archivez-les après l'import",
+    "An account looks inactive when it ends at a zero balance or has had no movements for over a year. Archived accounts keep their history, and you can bring them back any time from the Bank accounts settings.": "Un compte semble inactif lorsqu'il se termine avec un solde nul ou n'a eu aucun mouvement depuis plus d'un an. Les comptes archivés conservent leur historique, et vous pouvez les rétablir à tout moment depuis les paramètres des comptes bancaires.",
+    "Archive after import": "Archiver après l'import"
 }
