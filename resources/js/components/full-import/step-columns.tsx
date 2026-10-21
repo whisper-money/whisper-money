@@ -285,7 +285,9 @@ export function StepColumns({
                         />
                     }
                 >
-                    {mapping.account &&
+                    {/* Money Pro names every account itself: nothing to split by. */}
+                    {source !== 'money_pro' &&
+                        mapping.account &&
                         mapping.account !== SINGLE_ACCOUNT_COLUMN && (
                             <label className="flex items-start gap-2.5 text-sm">
                                 <Checkbox
