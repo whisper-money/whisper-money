@@ -22,8 +22,13 @@ RUN apt-get update && apt-get install -y \
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl
-RUN pecl install memcached redis \
-    && docker-php-ext-enable memcached redis
+# Build memcached and redis from their GitHub release sources so a PECL outage cannot block a deploy
+RUN docker-php-source extract \
+    && mkdir -p /usr/src/php/ext/memcached /usr/src/php/ext/redis \
+    && curl -fsSL https://github.com/php-memcached-dev/php-memcached/archive/refs/tags/v3.4.0.tar.gz | tar xz --strip-components=1 -C /usr/src/php/ext/memcached \
+    && curl -fsSL https://github.com/phpredis/phpredis/archive/refs/tags/6.3.0.tar.gz | tar xz --strip-components=1 -C /usr/src/php/ext/redis \
+    && docker-php-ext-install memcached redis \
+    && docker-php-source delete
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
