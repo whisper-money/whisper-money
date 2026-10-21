@@ -4,7 +4,28 @@ import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { TrendingDown, TrendingUp } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { type ComponentProps, type ReactNode } from 'react';
+
+// One color per side of what was contributed, shared by every place that draws
+// the split so savings and investments read the same across the page.
+export const SAVINGS_TONE = 'bg-green-300';
+export const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
+
+type WholeAmountProps = Omit<
+    ComponentProps<typeof AmountDisplay>,
+    'minimumFractionDigits' | 'maximumFractionDigits'
+>;
+
+/** An amount in whole units, as the cashflow summary shows every figure. */
+export function WholeAmount(props: WholeAmountProps) {
+    return (
+        <AmountDisplay
+            {...props}
+            minimumFractionDigits={0}
+            maximumFractionDigits={0}
+        />
+    );
+}
 
 function trendColor(isFavorable: boolean): string {
     return isFavorable
@@ -69,11 +90,9 @@ export function AmountComparison({
             />
             <span>
                 {isIncrease ? '+' : ''}
-                <AmountDisplay
+                <WholeAmount
                     amountInCents={diff}
                     currencyCode={currency}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
                     className="text-xs"
                     highlightPositive
                 />
@@ -149,13 +168,11 @@ export function SummaryHeadline({
 }: SummaryHeadlineProps) {
     return (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <AmountDisplay
+            <WholeAmount
                 amountInCents={amount}
                 currencyCode={currency}
                 size="4xl"
                 weight="bold"
-                minimumFractionDigits={0}
-                maximumFractionDigits={0}
                 className={amountClassName}
                 highlightPositive
             />
@@ -203,11 +220,9 @@ export function SummaryFigure({
             ) : (
                 <p className="text-xs text-muted-foreground">{label}</p>
             )}
-            <AmountDisplay
+            <WholeAmount
                 amountInCents={amount}
                 currencyCode={currency}
-                minimumFractionDigits={0}
-                maximumFractionDigits={0}
                 weight="medium"
                 highlightPositive={highlightPositive}
             />

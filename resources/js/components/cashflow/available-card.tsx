@@ -6,6 +6,7 @@ import {
     SummaryCardSkeleton,
     SummaryFigure,
     SummaryHeadline,
+    WholeAmount,
 } from '@/components/cashflow/summary-card-parts';
 import {
     Card,
@@ -15,6 +16,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
+import { allocatedOf, availableOf, freeOf } from '@/lib/income-distribution';
 import { __ } from '@/utils/i18n';
 
 interface AvailableCardProps {
@@ -25,14 +27,46 @@ interface AvailableCardProps {
     className?: string;
 }
 
-/** Expenses plus what was saved or invested. */
-function allocatedOf(summary: CashflowSummary): number {
-    return summary.expense + summary.savings + summary.investments;
-}
+/** Available minus what the open budgets still hold, with what it holds. */
+function FreeHighlight({
+    summary,
+    currency,
+}: {
+    summary: CashflowSummary;
+    currency: string;
+}) {
+    const reserved = summary.reserved ?? 0;
+    const free = freeOf(summary);
 
-/** Income minus what was allocated: the Sankey's center node. */
-function availableOf(summary: CashflowSummary): number {
-    return summary.net - summary.savings - summary.investments;
+    return (
+        <div className="mt-3 flex items-center justify-between gap-4 rounded-md bg-muted/60 px-3 py-2">
+            <div>
+                <p className="text-sm font-medium">{__('Free (cashflow)')}</p>
+                <p className="text-xs text-muted-foreground">
+                    {reserved > 0 ? (
+                        <>
+                            <WholeAmount
+                                amountInCents={reserved}
+                                currencyCode={currency}
+                                className="text-xs"
+                            />{' '}
+                            {__('reserved in budgets')}
+                        </>
+                    ) : (
+                        __('Nothing reserved in budgets')
+                    )}
+                </p>
+            </div>
+            <WholeAmount
+                amountInCents={free}
+                currencyCode={currency}
+                size="2xl"
+                weight="bold"
+                className={signTone(free)}
+                highlightPositive
+            />
+        </div>
+    );
 }
 
 export function AvailableCard({
@@ -104,6 +138,7 @@ export function AvailableCard({
                         }
                     />
                 </div>
+                <FreeHighlight summary={current} currency={currency} />
             </CardContent>
         </Card>
     );
