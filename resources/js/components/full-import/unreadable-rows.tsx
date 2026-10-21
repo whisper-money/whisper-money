@@ -7,7 +7,8 @@ const LISTED_ROWS = 20;
 
 /**
  * "3 rows can't be read", opening onto which ones and why, by their row
- * number in the file so they can be found in a spreadsheet.
+ * number in the file so they can be found in a spreadsheet, and by the
+ * file's name too when the import reads several.
  */
 export function UnreadableRows({
     rows,
@@ -35,9 +36,14 @@ export function UnreadableRows({
             </summary>
             <ul className="mt-2 flex flex-col gap-1 text-muted-foreground">
                 {rows.slice(0, LISTED_ROWS).map((row) => (
-                    <li key={row.rowNumber}>
+                    <li key={`${row.fileName ?? ''}:${row.rowNumber}`}>
                         <span className="font-medium text-foreground tabular-nums">
-                            {__('Row :number', { number: row.rowNumber })}
+                            {row.fileName
+                                ? __(':file, row :number', {
+                                      file: row.fileName,
+                                      number: row.rowNumber,
+                                  })
+                                : __('Row :number', { number: row.rowNumber })}
                         </span>
                         {' · '}
                         {row.reason}

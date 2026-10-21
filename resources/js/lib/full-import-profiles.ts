@@ -313,12 +313,21 @@ export function parseIgnoredFlag(value: string): boolean {
 
 /**
  * The fully blank rows the reader dropped, from the gaps they left in the row
- * numbers. Banktrack puts one between blocks of movements now and then.
+ * numbers. Banktrack puts one between blocks of movements now and then. With
+ * several files read as one, numbering starts over in each, so a gap only
+ * counts between two rows of the same file.
  */
-export function countBlankRows(rowNumbers: number[]): number {
+export function countBlankRows(
+    rowNumbers: number[],
+    rowFiles?: string[],
+): number {
     let blank = 0;
 
     for (let index = 1; index < rowNumbers.length; index++) {
+        if (rowFiles && rowFiles[index] !== rowFiles[index - 1]) {
+            continue;
+        }
+
         blank += Math.max(0, rowNumbers[index] - rowNumbers[index - 1] - 1);
     }
 
@@ -446,7 +455,7 @@ function normalizeRow(
  * the rows it cannot (and why), and how many blank separator rows it skipped.
  */
 export function normalizeRows(
-    parsed: Pick<ParsedImportFile, 'rows' | 'rowNumbers'>,
+    parsed: Pick<ParsedImportFile, 'rows' | 'rowNumbers' | 'rowFiles'>,
     mapping: FullImportMapping,
     options: NormalizeOptions,
 ): NormalizedFile {
@@ -461,12 +470,22 @@ export function normalizeRows(
             options,
         );
 
-        if ('reason' in result) {
-            unreadable.push(result);
-        } else {
+        if (!('reason' in result)) {
             rows.push(result);
+
+            return;
         }
+
+        unreadable.push(
+            parsed.rowFiles
+                ? { ...result, fileName: parsed.rowFiles[index] }
+                : result,
+        );
     });
 
-    return { rows, unreadable, blankRows: countBlankRows(parsed.rowNumbers) };
+    return {
+        rows,
+        unreadable,
+        blankRows: countBlankRows(parsed.rowNumbers, parsed.rowFiles),
+    };
 }
