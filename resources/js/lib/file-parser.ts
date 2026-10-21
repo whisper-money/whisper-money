@@ -125,12 +125,13 @@ export async function parseFile(file: File): Promise<{
     columns: unknown[][];
     headerRowIndex: number;
 }> {
-    let readable: File;
+    let fileToRead: File;
 
     try {
-        readable = await withUtf8ByteOrderMark(file);
+        fileToRead = await withUtf8ByteOrderMark(file);
     } catch {
-        // A folder named like a CSV fails here, before the reader below.
+        // Reading the bytes fails the same way the reader below would: a
+        // folder named like a CSV is the usual case.
         throw new Error(UNREADABLE_FILE_MESSAGE);
     }
 
@@ -291,7 +292,7 @@ export async function parseFile(file: File): Promise<{
             reject(new Error(UNREADABLE_FILE_MESSAGE));
         };
 
-        reader.readAsBinaryString(readable);
+        reader.readAsBinaryString(fileToRead);
     });
 }
 

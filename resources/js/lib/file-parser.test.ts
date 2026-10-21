@@ -6,7 +6,7 @@ import type {
 import { DateFormat } from '@/types/import';
 import { formatLocalDate } from '@/utils/date';
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     autoDetectColumns,
     autoDetectDateFormat,
@@ -25,6 +25,7 @@ import {
     parseCurrencyCode,
     parseDate,
     parseFile,
+    UNREADABLE_FILE_MESSAGE,
 } from './file-parser';
 
 /**
@@ -1282,6 +1283,35 @@ describe('parseFile text encodings', () => {
 
         expect(headers).toEqual(['Date', 'Description']);
         expect(data[0].Description).toBe('Rent');
+    });
+
+    it('leaves spreadsheet formats alone', async () => {
+        const readBytes = vi.spyOn(FileReader.prototype, 'readAsArrayBuffer');
+
+        const { headers } = await parseFile(
+            new File([numbersFixture()], 'budget.numbers'),
+        );
+
+        expect(headers).toContain('Category');
+        expect(readBytes).not.toHaveBeenCalled();
+    });
+
+    it('reports a CSV it cannot read as unreadable', async () => {
+        vi.spyOn(FileReader.prototype, 'readAsArrayBuffer').mockImplementation(
+            function (this: FileReader) {
+                this.onerror?.(
+                    new ProgressEvent('error') as ProgressEvent<FileReader>,
+                );
+            },
+        );
+
+        await expect(parseFile(csvFile('a,b\n'))).rejects.toThrow(
+            UNREADABLE_FILE_MESSAGE,
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 });
 
