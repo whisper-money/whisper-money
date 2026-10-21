@@ -91,4 +91,64 @@ describe('SavedInvestedCard', () => {
         expect(screen.queryByTestId('comparison-trend-up')).toBeNull();
         expect(screen.queryByTestId('comparison-trend-down')).toBeNull();
     });
+
+    it("shows each side's share of what was contributed when the split is on", () => {
+        render(
+            <SavedInvestedCard
+                current={summary(200000, 120000, 80000, 40, 30000, 10000)}
+                previous={summary(0, 0, 0, 0, 0, 0)}
+                currency="EUR"
+                showContributionSplit
+            />,
+        );
+
+        expect(screen.getByText('75%')).toBeTruthy();
+        expect(screen.getByText('25%')).toBeTruthy();
+        expect(
+            screen.getByRole('img', {
+                name: 'Contributed split: 75% saved, 25% invested',
+            }),
+        ).toBeTruthy();
+    });
+
+    it('leaves the split out when it is off', () => {
+        render(
+            <SavedInvestedCard
+                current={summary(200000, 120000, 80000, 40, 30000, 10000)}
+                previous={summary(0, 0, 0, 0, 0, 0)}
+                currency="EUR"
+            />,
+        );
+
+        expect(screen.queryByText('75%')).toBeNull();
+        expect(screen.queryByRole('img')).toBeNull();
+    });
+
+    it.each([
+        ['nothing was contributed', 0, 0],
+        ['more was withdrawn than contributed', -5000, 2000],
+        ['one side was withdrawn', -1000, 6000],
+    ])(
+        'hides the split when %s',
+        (_case, savings: number, investments: number) => {
+            render(
+                <SavedInvestedCard
+                    current={summary(
+                        200000,
+                        120000,
+                        80000,
+                        0,
+                        savings,
+                        investments,
+                    )}
+                    previous={summary(0, 0, 0, 0, 0, 0)}
+                    currency="EUR"
+                    showContributionSplit
+                />,
+            );
+
+            expect(screen.queryByText(/^\d+%$/)).toBeNull();
+            expect(screen.queryByRole('img')).toBeNull();
+        },
+    );
 });
