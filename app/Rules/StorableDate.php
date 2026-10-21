@@ -42,7 +42,7 @@ class StorableDate implements ValidationRule
 
     /**
      * The year the value means, or null when it is not a date (left to `date`).
-     * A leading run of four or more digits before a dash is the year as written,
+     * A leading run of four or more digits before a separator is the year as written,
      * which wins over the parsed one whenever PHP truncated it (d-m-Y keeps its
      * parsed year).
      */
@@ -56,7 +56,7 @@ class StorableDate implements ValidationRule
             return null;
         }
 
-        if (preg_match('/^\s*(\d{4,})-/', $value, $matches) === 1) {
+        if (preg_match('/^\s*(\d{4,})[-\/.]/', $value, $matches) === 1) {
             return (int) $matches[1];
         }
 

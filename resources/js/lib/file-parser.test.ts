@@ -519,14 +519,19 @@ describe('autoDetectDateFormat', () => {
 });
 
 describe('parseDate with an out-of-range year', () => {
-    // A time the strip misses glued onto the year as 262004, which the
+    // A time the strip missed glued onto the year as 262004, which the
     // server refuses (PHP-LARAVEL-7D).
-    it('rejects a time glued onto the year instead of returning year 262004', () => {
+    it('reads the day of a time with an h suffix or a time zone name', () => {
+        for (const value of ['10/08/26 20:04h', '10/08/26 20:04 CEST']) {
+            expect(
+                formatLocalDate(parseDate(value, DateFormat.DayMonthYear)!),
+            ).toBe('2026-08-10');
+        }
+    });
+
+    it('rejects a time still glued onto the year', () => {
         expect(
-            parseDate('10/08/26 20:04h', DateFormat.DayMonthYear),
-        ).toBeNull();
-        expect(
-            parseDate('10/08/26 20:04 CEST', DateFormat.DayMonthYear),
+            parseDate('10/08/26 20:04 (CEST)', DateFormat.DayMonthYear),
         ).toBeNull();
     });
 

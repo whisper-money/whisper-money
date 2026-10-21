@@ -694,20 +694,22 @@ function typeSigner(
 }
 
 // A time of day trailing the date: "25/10/17, 1:47", "2026-10-01T12:30:00Z",
-// "01/10/2026 1:47:05.123 p. m. +02:00". Only the calendar day is imported,
-// so the time and any offset are dropped as written, without converting.
+// "01/10/2026 1:47:05.123 p. m. +02:00", "10/08/26 20:04h", "10/08/26 20:04 CEST".
+// Only the calendar day is imported, so the time and any offset are dropped
+// as written, without converting.
 const TRAILING_TIME_OF_DAY =
-    /(?:,\s*|\s+|T)\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:\s*[ap]\.?\s?m\.?)?(?:\s*(?:Z|[+-]\d{2}(?::?\d{2})?))?$/i;
+    /(?:,\s*|\s+|T)\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:\s*[ap]\.?\s?m\.?)?(?:\s*h)?(?:\s*(?:Z|[+-]\d{2}(?::?\d{2})?|[a-z]{2,5}))?$/i;
 
 function stripTimeOfDay(dateStr: string): string {
     return dateStr.replace(TRAILING_TIME_OF_DAY, '').trim();
 }
 
 // The years the server stores (App\Rules\StorableDate). A year outside them is
-// not one someone wrote: a time the strip above misses ("10/08/26 20:04h",
-// "... 20:04 CEST") loses its separators with everything else and glues onto
-// the year as 262004. Returning null leaves the row out like any unreadable
-// date instead of posting it for the server to refuse (PHP-LARAVEL-7D).
+// not one someone wrote: a time the strip above misses loses its separators
+// with everything else and glues onto the year ("10/08/26 20:04h" read as year
+// 262004 before the strip knew the "h"). Returning null leaves the row out like
+// any unreadable date instead of posting it for the server to refuse
+// (PHP-LARAVEL-7D).
 const MIN_STORABLE_YEAR = 1900;
 const MAX_STORABLE_YEAR = 9999;
 

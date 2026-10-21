@@ -26,6 +26,7 @@ it('rejects years PHP would silently truncate or MySQL refuses', function (strin
 })->with([
     'six-digit year from an import' => '262004-08-10',
     'five-digit year typo' => '20026-11-10',
+    'six-digit year with slashes' => '262004/08/10',
     'dropped-digit year' => '0026-11-10',
     'before 1900' => '1899-12-31',
 ]);

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Api;
 
 use App\Enums\ImportChunkKind;
 use App\Models\Import;
+use App\Rules\StorableDate;
 use App\Services\CurrencyOptions;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -66,7 +67,7 @@ class StoreFullImportChunkRequest extends FormRequest
             'position' => ['required', 'integer', 'min:0'],
             'rows' => ['required', 'array', 'min:1', 'max:'.self::MAX_ROWS],
             'rows.*.account_key' => ['required', 'string', Rule::in($this->planKeys('accounts'))],
-            'rows.*.date' => ['required', 'date_format:Y-m-d'],
+            'rows.*.date' => ['required', 'date_format:Y-m-d', new StorableDate],
             ...$isTransactions ? $this->transactionRules() : $this->balanceRules(),
         ];
     }
