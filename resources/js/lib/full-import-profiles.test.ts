@@ -5,12 +5,11 @@ import {
     detectSource,
     normalizeRows,
     parseIgnoredFlag,
-    readFullImportFile,
     splitCategoryPath,
     toSavedProfile,
     unmappedHeaders,
-    withUtf8ByteOrderMark,
 } from '@/lib/full-import-profiles';
+import { parseImportFile } from '@/lib/transaction-import';
 import { DateFormat } from '@/types/import';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +30,7 @@ function banktrackFile(): File {
 }
 
 async function readBanktrack() {
-    const parsed = await readFullImportFile(banktrackFile(), 'es-ES');
+    const parsed = await parseImportFile(banktrackFile(), 'es-ES');
     const mapping = defaultMapping('banktrack', parsed, 'es-ES');
 
     return { parsed, mapping };
@@ -205,22 +204,6 @@ describe('countBlankRows', () => {
         expect(countBlankRows([2, 3, 4])).toBe(0);
         expect(countBlankRows([2, 3, 5, 8])).toBe(3);
         expect(countBlankRows([])).toBe(0);
-    });
-});
-
-describe('withUtf8ByteOrderMark', () => {
-    it('leaves ASCII files and other formats alone', async () => {
-        const ascii = new File(['a,b\n1,2\n'], 'plain.csv');
-        const xlsx = new File([new Uint8Array([0xc3, 0xad])], 'book.xlsx');
-
-        expect(await withUtf8ByteOrderMark(ascii)).toBe(ascii);
-        expect(await withUtf8ByteOrderMark(xlsx)).toBe(xlsx);
-    });
-
-    it('leaves a file that is not valid UTF-8 alone', async () => {
-        const latin1 = new File([new Uint8Array([0x61, 0xed, 0x2c])], 'l.csv');
-
-        expect(await withUtf8ByteOrderMark(latin1)).toBe(latin1);
     });
 });
 

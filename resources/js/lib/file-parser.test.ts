@@ -6,7 +6,7 @@ import type {
 import { DateFormat } from '@/types/import';
 import { formatLocalDate } from '@/utils/date';
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     autoDetectColumns,
     autoDetectDateFormat,
@@ -25,6 +25,7 @@ import {
     parseCurrencyCode,
     parseDate,
     parseFile,
+    UNREADABLE_FILE_MESSAGE,
 } from './file-parser';
 
 /**
@@ -1223,6 +1224,94 @@ describe('parseFile', () => {
         } finally {
             process.env.TZ = originalTimezone;
         }
+    });
+});
+
+describe('parseFile text encodings', () => {
+    function csvFile(bytes: number[] | string, name = 'export.csv'): File {
+        return new File(
+            [typeof bytes === 'string' ? bytes : new Uint8Array(bytes)],
+            name,
+            { type: 'text/csv' },
+        );
+    }
+
+    const utf8Csv = 'Tipo de transacción,Descripción\nGasto,Panadería\n';
+
+    it('reads a UTF-8 CSV without a byte order mark as UTF-8', async () => {
+        const file = csvFile([...new TextEncoder().encode(utf8Csv)]);
+
+        const { headers, data } = await parseFile(file);
+
+        expect(headers).toEqual(['Tipo de transacción', 'Descripción']);
+        expect(data[0]['Descripción']).toBe('Panadería');
+        expect(autoDetectColumns(headers).transaction_type).toBe(
+            'Tipo de transacción',
+        );
+    });
+
+    it('reads a UTF-8 CSV that already has a byte order mark', async () => {
+        const file = csvFile([
+            0xef,
+            0xbb,
+            0xbf,
+            ...new TextEncoder().encode(utf8Csv),
+        ]);
+
+        const { headers, data } = await parseFile(file);
+
+        expect(headers).toEqual(['Tipo de transacción', 'Descripción']);
+        expect(data[0]['Descripción']).toBe('Panadería');
+    });
+
+    it('keeps reading a Latin-1 CSV as Latin-1', async () => {
+        // "Descripción\nPanadería\n" in ISO-8859-1: í and ó are single bytes.
+        const latin1 = [...'Descripci\xf3n\nPanader\xeda\n'].map((char) =>
+            char.charCodeAt(0),
+        );
+
+        const { headers, data } = await parseFile(csvFile(latin1));
+
+        expect(headers).toEqual(['Descripción']);
+        expect(data[0]['Descripción']).toBe('Panadería');
+    });
+
+    it('reads a plain ASCII CSV unchanged', async () => {
+        const { headers, data } = await parseFile(
+            csvFile('Date,Description\n2026-01-02,Rent\n'),
+        );
+
+        expect(headers).toEqual(['Date', 'Description']);
+        expect(data[0].Description).toBe('Rent');
+    });
+
+    it('leaves spreadsheet formats alone', async () => {
+        const readBytes = vi.spyOn(FileReader.prototype, 'readAsArrayBuffer');
+
+        const { headers } = await parseFile(
+            new File([numbersFixture()], 'budget.numbers'),
+        );
+
+        expect(headers).toContain('Category');
+        expect(readBytes).not.toHaveBeenCalled();
+    });
+
+    it('reports a CSV it cannot read as unreadable', async () => {
+        vi.spyOn(FileReader.prototype, 'readAsArrayBuffer').mockImplementation(
+            function (this: FileReader) {
+                this.onerror?.(
+                    new ProgressEvent('error') as ProgressEvent<FileReader>,
+                );
+            },
+        );
+
+        await expect(parseFile(csvFile('a,b\n'))).rejects.toThrow(
+            UNREADABLE_FILE_MESSAGE,
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 });
 

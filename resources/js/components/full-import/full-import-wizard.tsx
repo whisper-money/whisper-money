@@ -49,7 +49,6 @@ import {
     countBlankRows,
     defaultMapping,
     detectSource,
-    readFullImportFile,
 } from '@/lib/full-import-profiles';
 import {
     fileExtension,
@@ -63,6 +62,7 @@ import {
 import {
     isSupportedImportFile,
     MAX_IMPORT_FILE_BYTES,
+    parseImportFile,
     unsupportedFileReason,
     type ParsedImportFile,
 } from '@/lib/transaction-import';
@@ -352,7 +352,7 @@ export function FullImportWizard({
         setParsing(true);
 
         try {
-            const read = await readFullImportFile(file, locale);
+            const read = await parseImportFile(file, locale);
 
             if (read.rows.length === 0) {
                 rejectFile(file, 'no_rows', __('There are no rows in it'));
