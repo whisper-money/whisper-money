@@ -8,7 +8,7 @@ import {
     existingTargets,
     guessAccountType,
     IGNORED_KEY,
-    inactiveNewAccounts,
+    inactiveNewAccountKeys,
     isInactiveAccount,
     isOwnTransferNode,
     latestBalances,
@@ -534,6 +534,18 @@ describe('inactive accounts', () => {
         ).toBe(false);
     });
 
+    it('looks at movements, not at rows only carrying a balance', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([
+                    { date: '2024-05-01', amount: -10, balance: 90 },
+                    { kind: 'balance', date: '2026-10-01', balance: 90 },
+                ]),
+                today,
+            ),
+        ).toBe(true);
+    });
+
     it('only suggests the accounts the import creates', () => {
         const accounts = detectAccounts([
             row({ accountKey: 'old', date: '2023-05-01', balance: 20 }),
@@ -555,8 +567,8 @@ describe('inactive accounts', () => {
             archive: true,
         });
 
-        expect(
-            inactiveNewAccounts(
+        expect([
+            ...inactiveNewAccountKeys(
                 accounts,
                 {
                     old: entry('create'),
@@ -565,8 +577,21 @@ describe('inactive accounts', () => {
                     live: entry('create'),
                 },
                 today,
-            ).map((one) => one.key),
-        ).toEqual(['old']);
+            ),
+        ]).toEqual(['old']);
+        // An active account merged into it keeps it in use.
+        expect(
+            inactiveNewAccountKeys(
+                accounts,
+                {
+                    old: entry('create'),
+                    mapped: entry('map'),
+                    skipped: entry('skip'),
+                    live: { ...entry('merge'), mergeIntoKey: 'old' },
+                },
+                today,
+            ).size,
+        ).toBe(0);
     });
 });
 
@@ -672,6 +697,7 @@ describe('buildImport', () => {
                     archive: false,
                 },
             },
+            inactiveAccountKeys: new Set(),
             contextAccounts: [],
             nodes,
             categoryPlan: resolveCategoryPlan(
@@ -710,17 +736,23 @@ describe('buildImport', () => {
 
     it('asks to archive a new account only', () => {
         const plan = input().accountPlan;
+        const ticked = {
+            wise: { ...plan.wise, archive: true },
+            cash: { ...plan.cash, archive: true },
+            old: { ...plan.old, archive: true },
+        };
         const built = buildImport(
             input({
-                accountPlan: {
-                    wise: { ...plan.wise, archive: true },
-                    cash: { ...plan.cash, archive: true },
-                    old: { ...plan.old, archive: true },
-                },
+                accountPlan: ticked,
+                inactiveAccountKeys: new Set(['wise', 'cash', 'old']),
             }),
         );
 
         expect(built.payload.accounts[0]).toMatchObject({ archive: true });
+        // Ticked, but no longer one the import offers to archive.
+        expect(
+            buildImport(input({ accountPlan: ticked })).payload.accounts[0],
+        ).not.toHaveProperty('archive');
         expect(built.payload.accounts.slice(1)).toEqual([
             { key: 'a1', action: 'merge', merge_into_key: 'a0' },
             { key: 'a2', action: 'skip' },

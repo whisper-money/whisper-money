@@ -63,9 +63,7 @@ function renderStep(inactiveKeys: string[], onChange = vi.fn()) {
                 live: entry({ name: 'Live' }),
                 old: entry({ name: 'Old savings', archive: true }),
             }}
-            inactiveAccounts={fileAccounts.filter((account) =>
-                inactiveKeys.includes(account.key),
-            )}
+            inactiveAccountKeys={new Set(inactiveKeys)}
             onChange={onChange}
             mode="add"
             accounts={[]}

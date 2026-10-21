@@ -269,6 +269,7 @@ describe('importing a Money Pro export', () => {
                 savings: plan('Savings', 'COP'),
                 'safe box': plan('Safe box', 'COP'),
             },
+            inactiveAccountKeys: new Set(),
             contextAccounts: [],
             nodes: [],
             categoryPlan: {},

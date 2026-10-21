@@ -42,7 +42,7 @@ interface StepAccountsProps {
     fileAccounts: FileAccount[];
     plan: Record<string, AccountPlanEntry>;
     /** New accounts that look no longer in use: offered to be archived. */
-    inactiveAccounts: FileAccount[];
+    inactiveAccountKeys: Set<string>;
     onChange: (key: string, entry: AccountPlanEntry) => void;
     mode: FullImportMode;
     accounts: ContextAccount[];
@@ -133,7 +133,7 @@ export function StepAccounts({
     eyebrow,
     fileAccounts,
     plan,
-    inactiveAccounts,
+    inactiveAccountKeys,
     onChange,
     mode,
     accounts,
@@ -214,17 +214,17 @@ export function StepAccounts({
                 )}
             </div>
 
-            {inactiveAccounts.length > 0 && (
+            {inactiveAccountKeys.size > 0 && (
                 <Notice icon={Archive}>
                     <span className="font-medium">
                         {countLabel(
-                            inactiveAccounts.length,
+                            inactiveAccountKeys.size,
                             __(
                                 '1 account looks inactive — archive it after import',
                             ),
                             __(
                                 ':count accounts look inactive — archive them after import',
-                                { count: inactiveAccounts.length },
+                                { count: inactiveAccountKeys.size },
                             ),
                         )}
                     </span>
@@ -241,7 +241,7 @@ export function StepAccounts({
                     <AccountCard
                         key={account.key}
                         account={account}
-                        inactive={inactiveAccounts.includes(account)}
+                        inactive={inactiveAccountKeys.has(account.key)}
                         entry={plan[account.key]}
                         onChange={(entry) => onChange(account.key, entry)}
                         mode={mode}

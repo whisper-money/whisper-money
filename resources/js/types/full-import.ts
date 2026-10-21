@@ -119,6 +119,8 @@ export interface FileAccount {
     lastBalance: { date: string; amount: number } | null;
     /** Major units: what its movements add up to. */
     movementTotal: number;
+    /** The date of its last movement, rows only carrying a balance aside. */
+    lastMovement: string | null;
     iban: string | null;
 }
 
@@ -155,7 +157,10 @@ export interface AccountPlanEntry {
     targetAccountId: string | null;
     /** The file account key this one is merged into. */
     mergeIntoKey: string | null;
-    /** Archive the account once the import has created it. */
+    /**
+     * Archive the account once the import has created it, when it looks
+     * inactive ({@link inactiveNewAccountKeys}); the user can untick it.
+     */
     archive: boolean;
 }
 

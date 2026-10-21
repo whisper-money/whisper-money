@@ -13,7 +13,7 @@ import {
     detectCategories,
     existingTargets,
     importedRows,
-    inactiveNewAccounts,
+    inactiveNewAccountKeys,
     isOwnTransferNode,
     movementRows,
     resolveAccountPlan,
@@ -180,8 +180,8 @@ export function useFullImportPlan({
         ],
     );
 
-    const inactiveAccounts = useMemo(
-        () => inactiveNewAccounts(fileAccounts, accountPlan, today),
+    const inactiveAccountKeys = useMemo(
+        () => inactiveNewAccountKeys(fileAccounts, accountPlan, today),
         [fileAccounts, accountPlan, today],
     );
 
@@ -275,6 +275,7 @@ export function useFullImportPlan({
                               rows: normalized.rows,
                               fileAccounts,
                               accountPlan,
+                              inactiveAccountKeys,
                               contextAccounts: context.accounts,
                               nodes,
                               categoryPlan,
@@ -295,6 +296,7 @@ export function useFullImportPlan({
             normalized,
             fileAccounts,
             accountPlan,
+            inactiveAccountKeys,
             nodes,
             categoryPlan,
         ],
@@ -367,7 +369,7 @@ export function useFullImportPlan({
         currencySymbols,
         fileAccounts,
         accountPlan,
-        inactiveAccounts,
+        inactiveAccountKeys,
         existingTargets: targets,
         nodes,
         categoryPlan,

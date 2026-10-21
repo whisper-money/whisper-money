@@ -106,6 +106,11 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
                     (total, row) => total + row.amount,
                     0,
                 ),
+                lastMovement:
+                    movements
+                        .map((row) => row.date)
+                        .sort()
+                        .at(-1) ?? null,
                 iban: accountRows.find((row) => row.iban)?.iban ?? null,
             };
         })
@@ -158,15 +163,23 @@ export function namesakeAccount(
     );
 }
 
-/** The date one year before an ISO `YYYY-MM-DD` one, as the same string. */
+/**
+ * The date one year before an ISO `YYYY-MM-DD` one. Only ever compared as a
+ * string, so a 29 February turning into a 29 February that does not exist
+ * still sorts where it should.
+ */
 function yearBefore(date: string): string {
     return `${Number(date.slice(0, 4)) - 1}${date.slice(4)}`;
 }
 
+/** Below a hundredth of the currency's unit, a balance counts as zero. */
+const ZERO_BALANCE = 0.005;
+
 /**
  * An account the user most likely no longer uses: the file leaves it at a
  * balance of zero (its last balance, or what its movements add up to when
- * the file has none), or nothing has happened in it for over a year.
+ * the file has none), or it has had no movement for over a year. A guess
+ * from the file alone, which is why it is only ever suggested.
  */
 export function isInactiveAccount(
     account: FileAccount,
@@ -175,20 +188,40 @@ export function isInactiveAccount(
     const finalBalance = account.lastBalance
         ? account.lastBalance.amount
         : account.movementTotal;
+    const lastActivity = account.lastMovement ?? account.to;
 
-    return Math.abs(finalBalance) < 0.005 || account.to < yearBefore(today);
+    return (
+        Math.abs(finalBalance) < ZERO_BALANCE ||
+        lastActivity < yearBefore(today)
+    );
 }
 
-/** The new accounts of the plan that look inactive, in file order. */
-export function inactiveNewAccounts(
+/**
+ * The new accounts of the plan that look inactive, the ones the import offers
+ * to archive. An account others from the file are merged into receives their
+ * movements too, so it only counts when every one of them looks inactive.
+ */
+export function inactiveNewAccountKeys(
     accounts: FileAccount[],
     plan: Record<string, AccountPlanEntry>,
     today: string,
-): FileAccount[] {
-    return accounts.filter(
-        (account) =>
-            plan[account.key]?.action === 'create' &&
-            isInactiveAccount(account, today),
+): Set<string> {
+    return new Set(
+        accounts
+            .filter(
+                (account) =>
+                    plan[account.key]?.action === 'create' &&
+                    accounts
+                        .filter(
+                            (other) =>
+                                other.key === account.key ||
+                                (plan[other.key]?.action === 'merge' &&
+                                    plan[other.key].mergeIntoKey ===
+                                        account.key),
+                        )
+                        .every((one) => isInactiveAccount(one, today)),
+            )
+            .map((account) => account.key),
     );
 }
 
@@ -772,6 +805,8 @@ export interface BuildImportInput {
     rows: NormalizedRow[];
     fileAccounts: FileAccount[];
     accountPlan: Record<string, AccountPlanEntry>;
+    /** The new accounts offered to be archived: {@link inactiveNewAccountKeys}. */
+    inactiveAccountKeys: Set<string>;
     contextAccounts: ContextAccount[];
     nodes: FileCategoryNode[];
     categoryPlan: Record<string, CategoryPlanEntry>;
@@ -828,7 +863,10 @@ function accountEntries(input: BuildImportInput): {
                     bank_id: entry.bank?.id ?? null,
                     ...newBankField(entry),
                     iban: account.iban,
-                    ...(entry.archive ? { archive: true as const } : {}),
+                    ...(entry.archive &&
+                    input.inactiveAccountKeys.has(account.key)
+                        ? { archive: true as const }
+                        : {}),
                 };
             case 'map':
                 return {
