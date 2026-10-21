@@ -79,6 +79,45 @@ function spreadsheetDateToIsoDate(value: Date): string {
         .slice(0, 10);
 }
 
+const UTF8_BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
+
+function readBytes(file: File): Promise<Uint8Array<ArrayBuffer>> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+            resolve(new Uint8Array(reader.result as ArrayBuffer));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+/**
+ * The spreadsheet reader takes a CSV without a byte order mark for Latin-1,
+ * so a UTF-8 export from a Spanish app arrives as "CategorÃ­as" and every
+ * accented description with it. A CSV that is valid UTF-8 and has anything
+ * past ASCII in it gets the mark it was missing; anything else is left alone.
+ */
+async function withUtf8ByteOrderMark(file: File): Promise<File> {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        return file;
+    }
+
+    const bytes = await readBytes(file);
+    const hasBom = UTF8_BOM.every((byte, index) => bytes[index] === byte);
+
+    if (hasBom || !bytes.some((byte) => byte > 0x7f)) {
+        return file;
+    }
+
+    try {
+        new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+        return file;
+    }
+
+    return new File([UTF8_BOM, bytes], file.name, { type: file.type });
+}
+
 export async function parseFile(file: File): Promise<{
     headers: string[];
     data: ParsedRow[];
@@ -86,6 +125,15 @@ export async function parseFile(file: File): Promise<{
     columns: unknown[][];
     headerRowIndex: number;
 }> {
+    let readable: File;
+
+    try {
+        readable = await withUtf8ByteOrderMark(file);
+    } catch {
+        // A folder named like a CSV fails here, before the reader below.
+        throw new Error(UNREADABLE_FILE_MESSAGE);
+    }
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
 
@@ -243,7 +291,7 @@ export async function parseFile(file: File): Promise<{
             reject(new Error(UNREADABLE_FILE_MESSAGE));
         };
 
-        reader.readAsBinaryString(file);
+        reader.readAsBinaryString(readable);
     });
 }
 
