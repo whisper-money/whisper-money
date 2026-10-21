@@ -37,8 +37,8 @@ function allocationRate(summary: CashflowSummary): number {
 
 // One color per side, shared by its pill's dot and its segment of the bar so
 // the bar reads without a legend.
-const SAVINGS_TONE = 'bg-green-300';
-const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
+export const SAVINGS_TONE = 'bg-green-300';
+export const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
 
 interface SharePillProps {
     share: number;

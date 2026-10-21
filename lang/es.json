@@ -4053,5 +4053,20 @@
     "Allocated": "Destinado",
     "Income minus what was allocated": "Ingresos menos lo destinado",
     "Expenses + contributed": "Gastos + aportado",
-    "Contributed split: :saved% saved, :invested% invested": "Reparto del aportado: :saved% ahorrado, :invested% invertido"
+    "Contributed split: :saved% saved, :invested% invested": "Reparto del aportado: :saved% ahorrado, :invested% invertido",
+    "Free (cashflow)": "Libre",
+    "reserved in budgets": "reservados en presupuestos",
+    "Nothing reserved in budgets": "Nada reservado en presupuestos",
+    "Income distribution": "Distribución de los ingresos",
+    "Where every unit of income went this period": "Adónde ha ido todo lo que ha entrado este periodo",
+    "Income distribution: :shares": "Distribución de los ingresos: :shares",
+    "nothing to show": "nada que mostrar",
+    "Fixed expenses": "Gastos fijos",
+    "Variable expenses": "Gastos variables",
+    "Reserved": "Reservado",
+    "From available to free": "Del disponible al libre",
+    "Variable budgets margin": "Margen de los presupuestos variables",
+    "An over-budget budget doesn't reduce the others' reserve: what it overspent already counts as an expense.": "Un presupuesto pasado de límite no resta de la reserva de los demás: su exceso ya cuenta como gasto.",
+    "No budget is running in this period, so nothing is reserved.": "Ningún presupuesto está en curso en este periodo, así que no hay nada reservado.",
+    "Go to budgets": "Ir a presupuestos"
 }

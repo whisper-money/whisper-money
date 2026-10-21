@@ -41,8 +41,9 @@ describe('AvailableCard', () => {
             />,
         );
 
-        // 200000 − (132000 + 25000 + 25000)
-        expect(screen.getByText('18000')).toBeTruthy();
+        // 200000 − (132000 + 25000 + 25000), in the headline and, with
+        // nothing reserved, in Free too
+        expect(screen.getAllByText('18000')).toHaveLength(2);
         expect(screen.getByText('9.0%')).toBeTruthy();
         // previous: 19000 over 190000 = 10%
         expect(screen.getByText('-1.0%')).toBeTruthy();
@@ -62,7 +63,7 @@ describe('AvailableCard', () => {
             />,
         );
 
-        expect(screen.getByText('-10000')).toBeTruthy();
+        expect(screen.getAllByText('-10000')).toHaveLength(2);
         expect(screen.getByText('-10.0%')).toBeTruthy();
         expect(screen.queryByText('vs last period')).toBeNull();
     });
@@ -77,6 +78,43 @@ describe('AvailableCard', () => {
         );
 
         expect(screen.getByText('0.0%')).toBeTruthy();
+    });
+
+    it('highlights what is free once the open budgets are reserved', () => {
+        render(
+            <AvailableCard
+                current={{
+                    ...summary(200000, 132000, 25000, 25000),
+                    reserved: 13000,
+                }}
+                previous={summary(0, 0, 0, 0)}
+                currency="EUR"
+            />,
+        );
+
+        expect(screen.getByText('Free (cashflow)')).toBeTruthy();
+        // 18000 available − 13000 reserved
+        expect(screen.getByText('5000')).toBeTruthy();
+        expect(screen.getByText('13000')).toBeTruthy();
+        expect(screen.getByText('reserved in budgets')).toBeTruthy();
+    });
+
+    it('reads everything available as free when nothing is reserved', () => {
+        render(
+            <AvailableCard
+                current={{
+                    ...summary(200000, 132000, 25000, 25000),
+                    reserved: 0,
+                }}
+                previous={summary(0, 0, 0, 0)}
+                currency="EUR"
+            />,
+        );
+
+        // the headline and Free both read 18000
+        expect(screen.getAllByText('18000')).toHaveLength(2);
+        expect(screen.getByText('Nothing reserved in budgets')).toBeTruthy();
+        expect(screen.queryByText('reserved in budgets')).toBeNull();
     });
 
     it('shows a placeholder while loading', () => {
