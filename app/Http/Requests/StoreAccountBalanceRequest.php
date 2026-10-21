@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\RefusesCreditCardBalance;
+use App\Rules\StorableDate;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAccountBalanceRequest extends FormRequest
@@ -17,7 +18,7 @@ class StoreAccountBalanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'balance_date' => ['required', 'date'],
+            'balance_date' => ['required', 'date', new StorableDate],
             'balance' => ['required', 'integer'],
             'invested_amount' => ['nullable', 'integer'],
         ];

@@ -148,6 +148,7 @@
     "That file is over 10 MB": "Ese fichero pasa de 10 MB",
     "That is 125% more. More than double.": "Es un 125 % más. Más del doble.",
     "That's right": "Así es",
+    "The :attribute must be a date between :min and :max.": "El campo :attribute debe ser una fecha entre :min y :max.",
     "The button opens Manage Plan. From there, Manage Subscription takes you to Stripe. Two clicks and it is back.": "El botón abre Gestionar Plan. Desde ahí, Gestionar Suscripción te lleva a Stripe. Dos clics y vuelve a estar activa.",
     "The day it ends, that price ends with it.": "El día que termine, ese precio termina con ella.",
     "The key we ask for cannot trade or withdraw.": "La clave que te pedimos no puede operar ni retirar.",

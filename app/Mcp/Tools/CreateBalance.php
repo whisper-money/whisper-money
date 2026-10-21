@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\AccountBalance;
 use App\Models\User;
+use App\Rules\StorableDate;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -32,7 +33,7 @@ class CreateBalance extends WriteTool
     {
         $request->validate([
             'balance' => ['required', 'integer'],
-            'balance_date' => ['sometimes', 'date'],
+            'balance_date' => ['sometimes', 'date', new StorableDate],
             'invested_amount' => ['sometimes', 'nullable', 'integer'],
         ]);
 
