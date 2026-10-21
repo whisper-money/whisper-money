@@ -89,7 +89,7 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
                 key,
                 name: accountRows[0].accountName,
                 bankName: accountRows[0].accountBank ?? '',
-                count: accountRows.length,
+                count: movementRows(accountRows).length,
                 from: dates[0],
                 to: dates[dates.length - 1],
                 currency: mostCommon(accountRows.map((row) => row.currency)),
@@ -118,7 +118,11 @@ export function isCashAccountName(name: string): boolean {
 export function guessAccountType(name: string): ImportAccountType {
     const normalized = normalizeText(name);
 
-    if (/\b(ahorro|ahorros|saving|savings)\b/.test(normalized)) {
+    if (
+        /\b(ahorro|ahorros|saving|savings|alcancia|hucha|piggy)\b/.test(
+            normalized,
+        )
+    ) {
         return 'savings';
     }
 
@@ -901,6 +905,10 @@ function categoryKeyFor(
         return IGNORED_KEY;
     }
 
+    if (row.kind === 'transfer') {
+        return OWN_TRANSFER_KEY;
+    }
+
     if (row.categoryPath.length === 0) {
         return null;
     }
@@ -918,6 +926,11 @@ export function importedRows(
     return rows.filter(
         (row) => plan[row.accountKey] && plan[row.accountKey].action !== 'skip',
     );
+}
+
+/** The rows that import a transaction: all but the ones only carrying a balance. */
+export function movementRows(rows: NormalizedRow[]): NormalizedRow[] {
+    return rows.filter((row) => row.kind !== 'balance');
 }
 
 function balanceRows(
@@ -983,7 +996,8 @@ export function buildImport(input: BuildImportInput): BuiltImport {
             .map((node) => node.id),
     );
 
-    const transactions = rows.map((row): TransactionPayloadRow => {
+    const movements = movementRows(rows);
+    const transactions = movements.map((row): TransactionPayloadRow => {
         const currency =
             targetCurrency(
                 row.accountKey,

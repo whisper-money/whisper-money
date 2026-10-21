@@ -7,7 +7,7 @@ import {
 import { type DateFormat } from '@/types/import';
 
 /** The app a full import comes from: it decides which layout is pre-filled. */
-export type FullImportSource = 'banktrack' | 'generic';
+export type FullImportSource = 'banktrack' | 'money_pro' | 'generic';
 
 /** Add to what the space holds, or delete its manual accounts first. */
 export type FullImportMode = 'add' | 'wipe';
@@ -32,6 +32,11 @@ export interface FullImportMapping {
     category: string | null;
     /** What separates a parent from its child in the category cell. */
     categorySeparator: string;
+    /**
+     * The ISO code the user picked for a currency symbol the file writes in
+     * its amounts ("$" → "COP"). Symbols left out take their default.
+     */
+    currencySymbols: Record<string, string>;
     currency: string | null;
     balance: string | null;
     iban: string | null;
@@ -43,12 +48,23 @@ export interface FullImportMapping {
 /** The fields of {@link FullImportMapping} that name a column. */
 export type MappedColumn = Exclude<
     keyof FullImportMapping,
-    'splitByAccountDetail' | 'categorySeparator' | 'dateFormat'
+    | 'splitByAccountDetail'
+    | 'categorySeparator'
+    | 'currencySymbols'
+    | 'dateFormat'
 >;
+
+/**
+ * What a row of the file is: a movement, one leg of a transfer between the
+ * user's own accounts, or only a balance the account had (an opening balance
+ * or an adjustment), which imports no transaction.
+ */
+export type NormalizedRowKind = 'movement' | 'transfer' | 'balance';
 
 /** One movement of the file, read with the mapping and ready to plan. */
 export interface NormalizedRow {
     rowNumber: number;
+    kind: NormalizedRowKind;
     /** ISO `YYYY-MM-DD`. */
     date: string;
     /** Major units, signed: negative is money out. */
@@ -93,6 +109,7 @@ export interface FileAccount {
     name: string;
     /** The raw account column value ("MyInvestor"), empty for a single-account file. */
     bankName: string;
+    /** The transactions its rows import: rows only carrying a balance aside. */
     count: number;
     from: string;
     to: string;

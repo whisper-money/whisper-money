@@ -91,7 +91,7 @@ function context(
                 color: 'stone',
             },
         },
-        profiles: { banktrack: null, generic: null },
+        profiles: { banktrack: null, money_pro: null, generic: null },
         ...overrides,
     };
 }
@@ -288,6 +288,73 @@ describe('FullImportWizard', () => {
         ).toMatchObject({ amount: -15868, category_key: 'ignored' });
 
         await screen.findByText('Importing your data');
+    });
+
+    it('recognises a Money Pro export and imports its transfers and balances', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            new Uint8Array(
+                                readFileSync(
+                                    'resources/js/lib/__fixtures__/money-pro-sample.csv',
+                                ),
+                            ),
+                        ],
+                        'money-pro.csv',
+                        { type: 'text/csv' },
+                    ),
+                ],
+            },
+        });
+        await screen.findByText('Money Pro format recognized.');
+
+        await continueTo('Check the columns');
+
+        expect(
+            screen.getByRole('combobox', { name: 'Currency of $' }),
+        ).toHaveTextContent('USD');
+
+        await continueTo('Your accounts');
+        await continueTo('Your categories');
+        await continueTo('Ready to import');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Import 5 transactions' }),
+        );
+
+        await waitFor(() => expect(api.submitImport).toHaveBeenCalled());
+
+        const [payload, transactions, balances] =
+            api.submitImport.mock.calls[0];
+
+        expect(payload).toMatchObject({
+            source: 'money_pro',
+            expected_transactions: 5,
+        });
+        expect(
+            payload.accounts.map(
+                (entry: { name: string; currency_code: string }) =>
+                    `${entry.name} ${entry.currency_code}`,
+            ),
+        ).toEqual(['Wallet EUR', 'Safe box USD', 'Savings USD']);
+        expect(
+            transactions
+                .filter(
+                    (row: { category_key: string }) =>
+                        row.category_key === 'own',
+                )
+                .map((row: { amount: number }) => row.amount),
+        ).toEqual([-75000, 75000]);
+        expect(balances).toContainEqual({
+            account_key: 'a2',
+            date: '2018-01-30',
+            balance: 800000000,
+        });
     });
 
     it('asks what to do with existing data and requires the wipe to be confirmed', async () => {

@@ -2995,5 +2995,22 @@
     "An export split into several files? Pick them all.": "Votre export est découpé en plusieurs fichiers ? Choisissez-les tous.",
     ":file, row :number": ":file, ligne :number",
     "1 file": "1 fichier",
-    "Already in the list: :files": "Déjà dans la liste : :files"
+    "Already in the list: :files": "Déjà dans la liste : :files",
+    ":source format recognized.": "Format :source reconnu.",
+    "Every piece of Whisper Money comes from a column of your file. It is already filled in for :source: change only what does not fit.": "Chaque donnée de Whisper Money vient d'une colonne de votre fichier. Tout est déjà rempli pour :source : modifiez seulement ce qui ne convient pas.",
+    "Upload every file of the export at once: transfers and balances come in too": "Importez tous les fichiers de l'export en une fois : les virements et les soldes sont repris aussi",
+    "Money Pro writes it without a sign: the transaction type gives it, and a transfer goes out of one account and into the other.": "Money Pro l'écrit sans signe : c'est le type de transaction qui le donne, et un virement sort d'un compte pour entrer dans l'autre.",
+    "Currencies": "Devises",
+    "Your file writes each amount with its currency symbol, and one symbol can mean several currencies ($ is the dollar and also the peso). Check which one each is: every account takes the currency of its amounts.": "Votre fichier écrit chaque montant avec le symbole de sa devise, et un symbole peut désigner plusieurs devises ($ est le dollar mais aussi le peso). Vérifiez laquelle c'est : chaque compte prend la devise de ses montants.",
+    "In 1 amount": "Dans 1 montant",
+    "In :count amounts": "Dans :count montants",
+    "Currency of :symbol": "Devise de :symbol",
+    "Choose a currency": "Choisissez une devise",
+    "Unknown type «:type»": "Type inconnu « :type »",
+    "No type": "Sans type",
+    "No destination account": "Sans compte de destination",
+    "Amounts in :symbol": "Montants en :symbol",
+    "Several currencies write it this way: check it is the right one.": "Plusieurs devises s'écrivent ainsi : vérifiez que c'est la bonne.",
+    "To :account": "Vers :account",
+    "From :account": "Depuis :account"
 }

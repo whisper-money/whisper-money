@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\CategorySource;
+use App\Enums\ImportSource;
 use App\Enums\ImportStatus;
 use App\Jobs\ProcessFullImportJob;
 use App\Jobs\ReassignTransactionsToBudgets;
@@ -203,6 +204,23 @@ it('never reuses a category from another space of the same user', function () {
         ->and($created->every(fn (Category $category): bool => $category->space_id === $user->current_space_id))->toBeTrue()
         ->and($created['Gastos']->parent_id)->toBe($created['Empresa (Banktrack)']->id)
         ->and($elsewhere->fresh()->transactions()->exists())->toBeFalse();
+});
+
+it('imports a Money Pro export and names a clashing category after it', function () {
+    $user = Fixtures::user();
+    $otherSpace = Space::factory()->create(['owner_id' => $user->id]);
+    Category::factory()->create(['user_id' => $user->id, 'space_id' => $otherSpace->id, 'name' => 'Vehículo', 'parent_id' => null]);
+
+    $import = Fixtures::run($this, $user, [
+        ...Fixtures::plan([Fixtures::newAccount('a0', 'Wallet')], [
+            ['key' => 'c0', 'action' => 'create', 'name' => 'Vehículo', 'type' => 'expense', 'icon' => 'Wallet', 'color' => 'blue'],
+        ]),
+        'source' => 'money_pro',
+        'file_name' => 'money-pro.csv',
+    ], [Fixtures::row('a0', '2018-02-26', -840000, 'Toll', ['category_key' => 'c0'])]);
+
+    expect($import->fresh()->source)->toBe(ImportSource::MoneyPro)
+        ->and(Category::query()->where('import_id', $import->id)->pluck('name')->all())->toBe(['Vehículo (Money Pro)']);
 });
 
 it('does nothing for an import that is no longer queued or processing', function () {

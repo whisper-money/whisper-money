@@ -31,6 +31,7 @@ import { describe, expect, it } from 'vitest';
 function row(overrides: Partial<NormalizedRow>): NormalizedRow {
     return {
         rowNumber: 2,
+        kind: 'movement',
         date: '2026-09-01',
         amount: -10,
         description: 'Movement',
@@ -446,6 +447,7 @@ describe('buildImport', () => {
         notes: null,
         category: 'Categorías',
         categorySeparator: ',',
+        currencySymbols: {},
         currency: 'Moneda',
         balance: 'Balance',
         iban: null,
