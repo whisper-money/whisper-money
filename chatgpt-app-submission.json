@@ -297,11 +297,11 @@
       }
     },
     "update_savings_goal": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it renames the user's own savings goal or changes its target or reminder setting.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: the name, target and reminder can be set straight back, past months keep the target they had, and no transaction is touched."
+        "destructive_justification": "Overwrites: the fields passed replace the goal's current values, so the model should confirm the change with the user first. A new name also renames the goal's label, and switching a monthly target between a fixed amount and a share of income clears the other value. Past months keep the target they had, and no transaction is touched."
       }
     }
   },
