@@ -49,7 +49,10 @@ class CashflowAnalyticsController extends Controller
         $user = $request->user();
 
         $summaries = $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod);
-        $summaries['current'] += $this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']);
+        $summaries['current'] = [
+            ...$summaries['current'],
+            ...$this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']),
+        ];
 
         return $this->cashflowJson($summaries);
     }

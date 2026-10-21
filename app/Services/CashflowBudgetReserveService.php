@@ -25,15 +25,18 @@ class CashflowBudgetReserveService
 
     /**
      * `reserved` adds up the positive margins of the budget periods that
-     * overlap the range and have not ended yet: money still earmarked for
+     * overlap the range and are in progress today: money still earmarked for
      * spending. An over-budget period adds nothing rather than eating into the
-     * rest, and a closed one adds nothing because whatever it left over is
-     * already back in the net. `budgets` lists the same periods, with margins
-     * that may be negative.
+     * rest, a closed one adds nothing because whatever it left over is already
+     * back in the net, and a future one adds nothing because none of this
+     * range's income is promised to it yet. `budgets` lists the same periods,
+     * with margins that may be negative. A margin, like the budget screens,
+     * ignores any carried-over amount.
      *
      * `variable_expense` is the part of `$expense` booked to categories (or
      * their children) and labels tracked by a budget during the range;
-     * `fixed_expense` is the rest, so the two always add up to `$expense`.
+     * `fixed_expense` is the rest, so the two always add up to `$expense`
+     * (either can be negative in a month of refunds, as `$expense` can).
      *
      * Budget amounts are read as stored, in the user's currency, the same way
      * the budget screens read them.
@@ -60,10 +63,10 @@ class CashflowBudgetReserveService
     {
         return BudgetPeriod::query()
             ->whereHas('budget', fn (Builder $query) => $query->where('user_id', $userId)->whereNull('archived_at'))
-            // Compared as plain dates, as in BudgetTransactionService: a Carbon
-            // binding carries a time and misses the period's last day on SQLite.
-            ->where('start_date', '<=', $period->to->toDateString())
-            ->where('end_date', '>=', $period->from->toDateString())
+            ->overlapping($period->from, $period->to)
+            // In progress today: a period that is over already gave back what it
+            // left, and one yet to start holds nothing back from this income.
+            ->where('start_date', '<=', today()->toDateString())
             ->where('end_date', '>=', today()->toDateString())
             ->with('budget:id,name')
             ->withSum('budgetTransactions as spent', 'amount')
@@ -116,20 +119,19 @@ class CashflowBudgetReserveService
     }
 
     /**
-     * Categories (children included) and labels tracked by the user's budgets
-     * with a period in the range.
+     * Categories (children included) and labels tracked by the user's
+     * non-catch-all budgets with a period in the range.
      *
      * @return array{categories: array<int, string>, labels: array<int, string>}
      */
     private function trackedIds(string $userId, PeriodComparator $period): array
     {
+        // Archived budgets included: they still tracked the periods they had,
+        // and archiving one must not turn its past spending into fixed costs.
         $budgets = Budget::query()
-            ->notArchived()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
-            ->whereHas('periods', fn (Builder $query) => $query
-                ->where('start_date', '<=', $period->to->toDateString())
-                ->where('end_date', '>=', $period->from->toDateString()))
+            ->whereHas('periods', fn (Builder $query) => $query->overlapping($period->from, $period->to))
             ->with('categories:id', 'labels:id')
             ->get();
 

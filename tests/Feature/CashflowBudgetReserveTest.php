@@ -203,12 +203,11 @@ test('without budgets every expense is fixed', function () {
         ->and($summary['reserved'])->toBe(0);
 });
 
-test('catch-all, archived and other users budgets do not make expenses variable', function () {
+test('catch-all and other users budgets do not make expenses variable', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
 
     foreach ([
         Budget::factory()->monthly()->catchAll()->create(['user_id' => $this->user->id]),
-        Budget::factory()->monthly()->archived()->forCategories($food)->create(['user_id' => $this->user->id]),
         Budget::factory()->monthly()->forCategories($food)->create(['user_id' => User::factory()]),
     ] as $budget) {
         BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
@@ -234,4 +233,38 @@ test('variable expenses are converted to the user currency like the expense tota
     expect($summary['variable_expense'])->toBe(5000)
         ->and($summary['expense'])->toBe(5000)
         ->and($summary['fixed_expense'])->toBe(0);
+});
+
+test('an archived budget keeps the spending it tracked variable', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $budget = Budget::factory()->monthly()->archived()->forCategories($food)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-09-01', 'end_date' => '2026-09-30', 'allocated_amount' => 50000]);
+
+    expenseOn($this, $food, -10000, date: '2026-09-10');
+
+    expect(cashflowSummary('2026-09-01', '2026-09-30')['variable_expense'])->toBe(10000);
+});
+
+test('a catch-all budget still reserves its margin', function () {
+    $budget = Budget::factory()->monthly()->catchAll()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($budget, '2026-10-01', '2026-10-31', 30000, 10000);
+
+    expect(cashflowSummary()['reserved'])->toBe(20000);
+});
+
+test('a year range reserves only the periods in progress, not future ones', function () {
+    $monthly = Budget::factory()->monthly()->create(['user_id' => $this->user->id]);
+    $weekly = Budget::factory()->weekly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($monthly, '2026-09-01', '2026-09-30', 50000, 10000);
+    budgetPeriodWithSpend($monthly, '2026-10-01', '2026-10-31', 50000, 20000);
+    budgetPeriodWithSpend($monthly, '2026-11-01', '2026-11-30', 50000, 0);
+    budgetPeriodWithSpend($weekly, '2026-10-09', '2026-10-15', 10000, 2500);
+    budgetPeriodWithSpend($weekly, '2026-10-16', '2026-10-22', 10000, 0);
+
+    $summary = cashflowSummary('2026-01-01', '2026-12-31');
+
+    expect($summary['reserved'])->toBe(30000 + 7500)
+        ->and($summary['budgets'])->toHaveCount(2);
 });
