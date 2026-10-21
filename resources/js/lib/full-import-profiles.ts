@@ -66,7 +66,7 @@ export const MAPPED_COLUMNS: readonly MappedColumn[] = [
  * is Banktrack's own id for the movement, which is what makes a second import
  * of the same file a no-op.
  */
-const BANKTRACK_HEADERS: Record<MappedColumn, string> = {
+const BANKTRACK_HEADERS: Partial<Record<MappedColumn, string>> = {
     date: 'fecha',
     amount: 'importe',
     description: 'concepto',
@@ -92,6 +92,31 @@ const BANKTRACK_SIGNATURE = [
     'id',
 ];
 
+/**
+ * Money Pro's export (in Spanish), by the normalised name of each header. The
+ * type, received amount and destination account columns have no field of
+ * their own: the Money Pro reader finds them by name.
+ */
+const MONEY_PRO_HEADERS: Partial<Record<MappedColumn, string>> = {
+    date: 'fecha',
+    amount: 'cantidad',
+    description: 'descripcion',
+    account: 'cuenta',
+    category: 'categoria',
+    balance: 'saldo',
+};
+
+/** The headers a file must carry to be read as a Money Pro export. */
+const MONEY_PRO_SIGNATURE = [
+    'fecha',
+    'cantidad',
+    'cuenta',
+    'monto recibido',
+    'cuenta de destino',
+    'saldo',
+    'tipo de transaccion',
+];
+
 /** What a generic file's account, category and notes columns tend to be called. */
 const GENERIC_GUESSES: Partial<Record<MappedColumn, string[]>> = {
     account: ['account', 'cuenta', 'bank', 'banco'],
@@ -99,7 +124,8 @@ const GENERIC_GUESSES: Partial<Record<MappedColumn, string[]>> = {
     notes: ['notes', 'note', 'notas', 'nota', 'memo'],
 };
 
-function headerLookup(headers: string[]): Map<string, string> {
+/** Each header of the file by its normalised name, the first one winning. */
+export function headerLookup(headers: string[]): Map<string, string> {
     const byName = new Map<string, string>();
 
     for (const header of headers) {
@@ -113,13 +139,17 @@ function headerLookup(headers: string[]): Map<string, string> {
     return byName;
 }
 
-/** Banktrack when the file carries its headers, otherwise nothing to say. */
+/** The app whose headers the file carries, or nothing to say. */
 export function detectSource(headers: string[]): FullImportSource | null {
     const byName = headerLookup(headers);
+    const carries = (signature: string[]) =>
+        signature.every((name) => byName.has(name));
 
-    return BANKTRACK_SIGNATURE.every((name) => byName.has(name))
-        ? 'banktrack'
-        : null;
+    if (carries(BANKTRACK_SIGNATURE)) {
+        return 'banktrack';
+    }
+
+    return carries(MONEY_PRO_SIGNATURE) ? 'money_pro' : null;
 }
 
 function emptyMapping(dateFormat: DateFormat): FullImportMapping {
@@ -133,6 +163,7 @@ function emptyMapping(dateFormat: DateFormat): FullImportMapping {
         notes: null,
         category: null,
         categorySeparator: ',',
+        currencySymbols: {},
         currency: null,
         balance: null,
         iban: null,
@@ -142,12 +173,18 @@ function emptyMapping(dateFormat: DateFormat): FullImportMapping {
     };
 }
 
-function banktrackMapping(parsed: ParsedImportFile): FullImportMapping {
+/** The mapping of an app whose headers are known, by their normalised names. */
+function knownMapping(
+    parsed: ParsedImportFile,
+    known: Partial<Record<MappedColumn, string>>,
+): FullImportMapping {
     const byName = headerLookup(parsed.headers);
     const mapping = emptyMapping(DateFormat.DayMonthYear);
 
     for (const field of MAPPED_COLUMNS) {
-        mapping[field] = byName.get(BANKTRACK_HEADERS[field]) ?? null;
+        const name = known[field];
+
+        mapping[field] = name ? (byName.get(name) ?? null) : null;
     }
 
     return mapping;
@@ -185,9 +222,9 @@ function genericMapping(parsed: ParsedImportFile): FullImportMapping {
 }
 
 /**
- * The mapping a source starts from. Banktrack's layout is known, so it is
- * filled in whole; anything else gets the shared column detection plus a
- * guess at the account, category and notes columns.
+ * The mapping a source starts from. Banktrack's and Money Pro's layouts are
+ * known, so they are filled in whole; anything else gets the shared column
+ * detection plus a guess at the account, category and notes columns.
  */
 export function defaultMapping(
     source: FullImportSource,
@@ -198,7 +235,13 @@ export function defaultMapping(
         return genericMapping(parsed);
     }
 
-    const mapping = banktrackMapping(parsed);
+    const mapping =
+        source === 'money_pro'
+            ? {
+                  ...knownMapping(parsed, MONEY_PRO_HEADERS),
+                  categorySeparator: ':',
+              }
+            : knownMapping(parsed, BANKTRACK_HEADERS);
 
     if (mapping.date) {
         const detected = detectDateFormat(parsed.rows, mapping.date, locale);
@@ -334,7 +377,8 @@ export function countBlankRows(
     return blank;
 }
 
-function sameText(a: string, b: string): boolean {
+/** Whether two texts read the same, case and runs of spaces aside. */
+export function sameText(a: string, b: string): boolean {
     return (
         a.replace(/\s+/g, ' ').toLowerCase() ===
         b.replace(/\s+/g, ' ').toLowerCase()
@@ -342,7 +386,7 @@ function sameText(a: string, b: string): boolean {
 }
 
 /** Why a row cannot be read, or null when it can. */
-function unreadableReason(
+export function unreadableReason(
     row: ParsedRow,
     mapping: FullImportMapping,
     date: Date | null,
@@ -364,11 +408,25 @@ function unreadableReason(
     return description === '' ? __('No description') : null;
 }
 
-interface NormalizeOptions {
+export interface NormalizeOptions {
     /** Names the one account of a file mapped as a single account. */
     fileName: string;
     supportedCurrencies: readonly string[];
+    /** What an ambiguous currency symbol ("$") is read as first. */
+    userCurrency?: string;
 }
+
+/**
+ * Reads one row of the file into what it imports: usually one movement, two
+ * for a transfer between the user's own accounts, none for a row that
+ * carries nothing.
+ */
+export type RowReader = (
+    row: ParsedRow,
+    rowNumber: number,
+    mapping: FullImportMapping,
+    options: NormalizeOptions,
+) => (NormalizedRow | UnreadableRow)[];
 
 function accountOf(
     row: ParsedRow,
@@ -395,7 +453,10 @@ function accountOf(
     return { key, name: detail ? `${base} · ${detail}` : base, bank: value };
 }
 
-function balanceOf(row: ParsedRow, mapping: FullImportMapping): number | null {
+export function balanceOf(
+    row: ParsedRow,
+    mapping: FullImportMapping,
+): number | null {
     const raw = cellText(row, mapping.balance);
 
     return raw === '' ? null : parseAmount(raw);
@@ -425,6 +486,7 @@ function normalizeRow(
 
     return {
         rowNumber,
+        kind: 'movement',
         date: formatLocalDate(date),
         amount,
         description,
@@ -458,29 +520,32 @@ export function normalizeRows(
     parsed: Pick<ParsedImportFile, 'rows' | 'rowNumbers' | 'rowFiles'>,
     mapping: FullImportMapping,
     options: NormalizeOptions,
+    readRow: RowReader = (...args) => [normalizeRow(...args)],
 ): NormalizedFile {
     const rows: NormalizedRow[] = [];
     const unreadable: UnreadableRow[] = [];
 
     parsed.rows.forEach((row, index) => {
-        const result = normalizeRow(
+        const results = readRow(
             row,
             parsed.rowNumbers[index] ?? index + 2,
             mapping,
             options,
         );
 
-        if (!('reason' in result)) {
-            rows.push(result);
+        for (const result of results) {
+            if (!('reason' in result)) {
+                rows.push(result);
 
-            return;
+                continue;
+            }
+
+            unreadable.push(
+                parsed.rowFiles
+                    ? { ...result, fileName: parsed.rowFiles[index] }
+                    : result,
+            );
         }
-
-        unreadable.push(
-            parsed.rowFiles
-                ? { ...result, fileName: parsed.rowFiles[index] }
-                : result,
-        );
     });
 
     return {

@@ -2,6 +2,10 @@ import { fetchBankMatches } from '@/lib/full-import-api';
 import { importFileName } from '@/lib/full-import-files';
 import { sourceSuffix } from '@/lib/full-import-format';
 import {
+    collectCurrencySymbols,
+    moneyProReader,
+} from '@/lib/full-import-money-pro';
+import {
     bankLookupName,
     buildImport,
     categoryNodeId,
@@ -10,6 +14,7 @@ import {
     existingTargets,
     importedRows,
     isOwnTransferNode,
+    movementRows,
     resolveAccountPlan,
     resolveCategoryPlan,
 } from '@/lib/full-import-plan';
@@ -96,21 +101,50 @@ export function useFullImportPlan({
         [currencyCodes],
     );
 
+    // Money Pro's rows carry their sign, transfers and balances in columns
+    // the mapping has no field for, so they get a reader of their own.
+    const readRow = useMemo(
+        () =>
+            source === 'money_pro' && parsed
+                ? moneyProReader(parsed.headers)
+                : undefined,
+        [source, parsed],
+    );
+
     const reading = useMemo(
         () =>
             attempt(
                 () =>
                     parsed && mapping
-                        ? normalizeRows(parsed, mapping, {
-                              fileName: parsed.file.name,
-                              supportedCurrencies,
-                          })
+                        ? normalizeRows(
+                              parsed,
+                              mapping,
+                              {
+                                  fileName: parsed.file.name,
+                                  supportedCurrencies,
+                                  userCurrency,
+                              },
+                              readRow,
+                          )
                         : EMPTY_FILE,
                 EMPTY_FILE,
             ),
-        [parsed, mapping, supportedCurrencies],
+        [parsed, mapping, supportedCurrencies, userCurrency, readRow],
     );
     const normalized = reading.value;
+
+    // What each currency symbol of a Money Pro file is read as, for the user
+    // to confirm: the file writes "$" for dollars and pesos alike.
+    const currencySymbols = useMemo(
+        () =>
+            source === 'money_pro' && parsed && mapping
+                ? collectCurrencySymbols(parsed.rows, parsed.headers, mapping, {
+                      supportedCurrencies,
+                      userCurrency,
+                  })
+                : [],
+        [source, parsed, mapping, supportedCurrencies, userCurrency],
+    );
 
     const fileAccounts = useMemo(
         () => detectAccounts(normalized.rows),
@@ -149,9 +183,11 @@ export function useFullImportPlan({
         () => importedRows(normalized.rows, accountPlan),
         [normalized, accountPlan],
     );
+    const movements = useMemo(() => movementRows(rowsToImport), [rowsToImport]);
     const categorizedRows = useMemo(
-        () => rowsToImport.filter((row) => !row.ignored),
-        [rowsToImport],
+        () =>
+            movements.filter((row) => !row.ignored && row.kind === 'movement'),
+        [movements],
     );
     const nodes = useMemo(
         () => detectCategories(categorizedRows),
@@ -174,18 +210,23 @@ export function useFullImportPlan({
         );
 
         return {
-            own: categorizedRows.filter(
-                (row) =>
-                    row.categoryPath.length > 0 &&
-                    ownIds.has(categoryNodeId(row.categoryPath)),
-            ).length,
-            ignored: rowsToImport.length - categorizedRows.length,
+            own:
+                categorizedRows.filter(
+                    (row) =>
+                        row.categoryPath.length > 0 &&
+                        ownIds.has(categoryNodeId(row.categoryPath)),
+                ).length +
+                movements.filter(
+                    (row) => !row.ignored && row.kind === 'transfer',
+                ).length,
+            ignored: movements.filter((row) => row.ignored).length,
             uncategorized: categorizedRows.filter(
                 (row) => row.categoryPath.length === 0,
             ).length,
-            skippedAccounts: normalized.rows.length - rowsToImport.length,
+            skippedAccounts:
+                movementRows(normalized.rows).length - movements.length,
         };
-    }, [nodes, categorizedRows, rowsToImport, normalized]);
+    }, [nodes, categorizedRows, movements, normalized]);
 
     const transfers = useMemo(() => {
         const targets = context?.transferTargets;
@@ -312,6 +353,7 @@ export function useFullImportPlan({
 
     return {
         normalized,
+        currencySymbols,
         fileAccounts,
         accountPlan,
         existingTargets: targets,

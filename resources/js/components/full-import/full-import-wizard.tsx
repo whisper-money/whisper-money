@@ -51,6 +51,7 @@ import {
     formatCount,
     sourceSuffix,
 } from '@/lib/full-import-format';
+import { movementRows } from '@/lib/full-import-plan';
 import {
     applySavedProfile,
     countBlankRows,
@@ -229,7 +230,8 @@ export function FullImportWizard({
 
     const [source, setSource] = useState<FullImportSource>('banktrack');
     const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
-    const [recognized, setRecognized] = useState(false);
+    /** The app the file's headers were recognized as, if any. */
+    const [recognized, setRecognized] = useState<FullImportSource | null>(null);
     const [picked, setPicked] = useState<PickedFile[]>([]);
     const [alreadyPicked, setAlreadyPicked] = useState<string[]>([]);
     const [parsing, setParsing] = useState(false);
@@ -422,7 +424,7 @@ export function FullImportWizard({
                     blank: countBlankRows(read.rowNumbers),
                 },
                 detected ?? 'generic',
-                detected === 'banktrack',
+                detected !== null,
             ),
         );
     };
@@ -437,7 +439,7 @@ export function FullImportWizard({
         if (reads.length === 0) {
             setParsed(null);
             setMapping(null);
-            setRecognized(false);
+            setRecognized(null);
             plan.reset();
 
             return;
@@ -458,7 +460,7 @@ export function FullImportWizard({
         const detected = detectSource(merged.headers);
         const nextSource = detected ?? 'generic';
 
-        setRecognized(detected === 'banktrack');
+        setRecognized(detected);
         setSource(nextSource);
         setMapping(mappingFor(nextSource, merged));
         plan.reset();
@@ -704,7 +706,8 @@ export function FullImportWizard({
                         summary={
                             parsed
                                 ? {
-                                      rows: normalized.rows.length,
+                                      rows: movementRows(normalized.rows)
+                                          .length,
                                       from:
                                           normalized.rows
                                               .map((row) => row.date)
@@ -717,7 +720,9 @@ export function FullImportWizard({
                                   }
                                 : null
                         }
-                        recognized={recognized && source === 'banktrack'}
+                        recognized={
+                            recognized !== null && recognized === source
+                        }
                         alreadyPicked={alreadyPicked}
                         parsing={parsing}
                         locale={locale}
@@ -751,6 +756,8 @@ export function FullImportWizard({
                         mapping={mapping}
                         onMappingChange={setMapping}
                         normalized={normalized}
+                        currencySymbols={plan.currencySymbols}
+                        currencies={currencies.accounts}
                         fallbackCurrency={auth.user.currency_code}
                         locale={locale}
                         footer={footer()}

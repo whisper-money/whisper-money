@@ -9,6 +9,7 @@ namespace App\Enums;
 enum ImportSource: string
 {
     case Banktrack = 'banktrack';
+    case MoneyPro = 'money_pro';
     case Generic = 'generic';
 
     /**
@@ -20,6 +21,7 @@ enum ImportSource: string
     {
         return match ($this) {
             self::Banktrack => 'Banktrack',
+            self::MoneyPro => 'Money Pro',
             self::Generic => 'import',
         };
     }

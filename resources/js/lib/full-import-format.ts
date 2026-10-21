@@ -64,14 +64,20 @@ export function formatMonthRange(
     return start === end ? start : `${start} – ${end}`;
 }
 
+/** The apps a full import knows by name: a brand, never translated. */
+const APP_NAMES: Partial<Record<FullImportSource, string>> = {
+    banktrack: 'Banktrack',
+    money_pro: 'Money Pro',
+};
+
 /** The app the file came from, as the user knows it. */
 export function sourceLabel(source: FullImportSource): string {
-    return source === 'banktrack' ? 'Banktrack' : __('spreadsheet');
+    return APP_NAMES[source] ?? __('spreadsheet');
 }
 
 /** What a new account clashing with a connected one is called after. */
 export function sourceSuffix(source: FullImportSource): string {
-    return source === 'banktrack' ? 'Banktrack' : __('import');
+    return APP_NAMES[source] ?? __('import');
 }
 
 /** A file size a person reads: 412 KB, 1.2 MB. */
