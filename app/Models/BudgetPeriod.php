@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -65,6 +66,21 @@ class BudgetPeriod extends Model
     public function remainingAmount(): int
     {
         return $this->allocated_amount - $this->spentAmount();
+    }
+
+    /**
+     * Periods sharing at least one day with the given range. Compared as plain
+     * dates: a Carbon binding carries a time, and on SQLite that string sorts
+     * after a stored date-only end_date, missing the period's last day.
+     *
+     * @param  Builder<BudgetPeriod>  $query
+     * @return Builder<BudgetPeriod>
+     */
+    public function scopeOverlapping(Builder $query, Carbon $from, Carbon $to): Builder
+    {
+        return $query
+            ->where('start_date', '<=', $to->toDateString())
+            ->where('end_date', '>=', $from->toDateString());
     }
 
     /** @return HasMany<BudgetTransaction, $this> */
