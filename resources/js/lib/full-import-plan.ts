@@ -84,12 +84,13 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
             const dates = accountRows.map((row) => row.date).sort();
             const balances = latestBalances(accountRows);
             const lastDate = [...balances.keys()].sort().at(-1) ?? null;
+            const movements = movementRows(accountRows);
 
             return {
                 key,
                 name: accountRows[0].accountName,
                 bankName: accountRows[0].accountBank ?? '',
-                count: movementRows(accountRows).length,
+                count: movements.length,
                 from: dates[0],
                 to: dates[dates.length - 1],
                 currency: mostCommon(accountRows.map((row) => row.currency)),
@@ -101,6 +102,10 @@ export function detectAccounts(rows: NormalizedRow[]): FileAccount[] {
                               date: lastDate,
                               amount: balances.get(lastDate) as number,
                           },
+                movementTotal: movements.reduce(
+                    (total, row) => total + row.amount,
+                    0,
+                ),
                 iban: accountRows.find((row) => row.iban)?.iban ?? null,
             };
         })
@@ -153,8 +158,44 @@ export function namesakeAccount(
     );
 }
 
+/** The date one year before an ISO `YYYY-MM-DD` one, as the same string. */
+function yearBefore(date: string): string {
+    return `${Number(date.slice(0, 4)) - 1}${date.slice(4)}`;
+}
+
+/**
+ * An account the user most likely no longer uses: the file leaves it at a
+ * balance of zero (its last balance, or what its movements add up to when
+ * the file has none), or nothing has happened in it for over a year.
+ */
+export function isInactiveAccount(
+    account: FileAccount,
+    today: string,
+): boolean {
+    const finalBalance = account.lastBalance
+        ? account.lastBalance.amount
+        : account.movementTotal;
+
+    return Math.abs(finalBalance) < 0.005 || account.to < yearBefore(today);
+}
+
+/** The new accounts of the plan that look inactive, in file order. */
+export function inactiveNewAccounts(
+    accounts: FileAccount[],
+    plan: Record<string, AccountPlanEntry>,
+    today: string,
+): FileAccount[] {
+    return accounts.filter(
+        (account) =>
+            plan[account.key]?.action === 'create' &&
+            isInactiveAccount(account, today),
+    );
+}
+
 export interface AccountPlanContext {
     mode: FullImportMode;
+    /** ISO `YYYY-MM-DD`: what "over a year" is counted from. */
+    today: string;
     accounts: ContextAccount[];
     mappableAccountIds: string[];
     userCurrency: string;
@@ -214,6 +255,7 @@ export function defaultAccountPlan(
         ...defaultBank(account, type, context.banks),
         targetAccountId: mapTarget?.id ?? null,
         mergeIntoKey: null,
+        archive: isInactiveAccount(account, context.today),
     };
 }
 
@@ -786,6 +828,7 @@ function accountEntries(input: BuildImportInput): {
                     bank_id: entry.bank?.id ?? null,
                     ...newBankField(entry),
                     iban: account.iban,
+                    ...(entry.archive ? { archive: true as const } : {}),
                 };
             case 'map':
                 return {

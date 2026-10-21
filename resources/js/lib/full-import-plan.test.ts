@@ -8,6 +8,8 @@ import {
     existingTargets,
     guessAccountType,
     IGNORED_KEY,
+    inactiveNewAccounts,
+    isInactiveAccount,
     isOwnTransferNode,
     latestBalances,
     matchCategory,
@@ -217,6 +219,7 @@ describe('existingTargets', () => {
             newBankName: null,
             targetAccountId: null,
             mergeIntoKey: null,
+            archive: false,
             ...overrides,
         });
 
@@ -262,6 +265,7 @@ describe('latestBalances', () => {
 describe('accounts', () => {
     const context: AccountPlanContext = {
         mode: 'add',
+        today: '2026-10-21',
         accounts: [
             account({ id: 'manual', name: 'BBVA Conjunta' }),
             account({ id: 'connected', name: 'Revolut', connected: true }),
@@ -436,6 +440,136 @@ describe('accounts', () => {
     });
 });
 
+describe('inactive accounts', () => {
+    const today = '2026-10-21';
+    const accountOf = (rows: Partial<NormalizedRow>[]) =>
+        detectAccounts(rows.map((one) => row(one)))[0];
+
+    it('flags an account the file leaves at a zero balance', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([
+                    { date: '2026-09-01', amount: 50, balance: 50 },
+                    { date: '2026-09-02', amount: -50, balance: 0 },
+                ]),
+                today,
+            ),
+        ).toBe(true);
+    });
+
+    it('adds the movements up when the file has no balances', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([
+                    { date: '2026-09-01', amount: 10.1 },
+                    { date: '2026-09-02', amount: -10.1 },
+                ]),
+                today,
+            ),
+        ).toBe(true);
+        expect(
+            isInactiveAccount(
+                accountOf([{ date: '2026-09-01', amount: -10 }]),
+                today,
+            ),
+        ).toBe(false);
+    });
+
+    it('flags an account with no movements for over a year', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([{ date: '2025-10-20', amount: -10, balance: 90 }]),
+                today,
+            ),
+        ).toBe(true);
+        expect(
+            isInactiveAccount(
+                accountOf([{ date: '2025-10-21', amount: -10, balance: 90 }]),
+                today,
+            ),
+        ).toBe(false);
+    });
+
+    it('flags an account that is both', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([{ date: '2024-01-05', amount: -10, balance: 0 }]),
+                today,
+            ),
+        ).toBe(true);
+    });
+
+    it('leaves a recent account with money in it alone', () => {
+        expect(
+            isInactiveAccount(
+                accountOf([{ date: '2026-10-01', amount: -10, balance: 90 }]),
+                today,
+            ),
+        ).toBe(false);
+    });
+
+    it('pre-ticks archiving for an inactive account only', () => {
+        const context: AccountPlanContext = {
+            mode: 'add',
+            today,
+            accounts: [],
+            mappableAccountIds: [],
+            userCurrency: 'EUR',
+            supportedCurrencies: ['EUR'],
+            sourceLabel: 'Banktrack',
+            banks: {},
+        };
+
+        expect(
+            defaultAccountPlan(
+                accountOf([{ date: '2023-05-01', balance: 20 }]),
+                context,
+            ).archive,
+        ).toBe(true);
+        expect(
+            defaultAccountPlan(
+                accountOf([{ date: '2026-10-01', balance: 20 }]),
+                context,
+            ).archive,
+        ).toBe(false);
+    });
+
+    it('only suggests the accounts the import creates', () => {
+        const accounts = detectAccounts([
+            row({ accountKey: 'old', date: '2023-05-01', balance: 20 }),
+            row({ accountKey: 'mapped', date: '2023-05-01', balance: 20 }),
+            row({ accountKey: 'skipped', date: '2023-05-01', balance: 0 }),
+            row({ accountKey: 'live', date: '2026-10-01', balance: 20 }),
+        ]);
+        const entry = (
+            action: AccountPlanEntry['action'],
+        ): AccountPlanEntry => ({
+            action,
+            name: 'Account',
+            type: 'checking',
+            currencyCode: 'EUR',
+            bank: null,
+            newBankName: null,
+            targetAccountId: action === 'map' ? 'own' : null,
+            mergeIntoKey: null,
+            archive: true,
+        });
+
+        expect(
+            inactiveNewAccounts(
+                accounts,
+                {
+                    old: entry('create'),
+                    mapped: entry('map'),
+                    skipped: entry('skip'),
+                    live: entry('create'),
+                },
+                today,
+            ).map((one) => one.key),
+        ).toEqual(['old']);
+    });
+});
+
 describe('buildImport', () => {
     const mapping: FullImportMapping = {
         date: 'Fecha',
@@ -513,6 +647,7 @@ describe('buildImport', () => {
                     newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: null,
+                    archive: false,
                 },
                 cash: {
                     action: 'merge',
@@ -523,6 +658,7 @@ describe('buildImport', () => {
                     newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: 'wise',
+                    archive: false,
                 },
                 old: {
                     action: 'skip',
@@ -533,6 +669,7 @@ describe('buildImport', () => {
                     newBankName: null,
                     targetAccountId: null,
                     mergeIntoKey: null,
+                    archive: false,
                 },
             },
             contextAccounts: [],
@@ -569,6 +706,28 @@ describe('buildImport', () => {
             { key: 'a1', action: 'merge', merge_into_key: 'a0' },
             { key: 'a2', action: 'skip' },
         ]);
+    });
+
+    it('asks to archive a new account only', () => {
+        const plan = input().accountPlan;
+        const built = buildImport(
+            input({
+                accountPlan: {
+                    wise: { ...plan.wise, archive: true },
+                    cash: { ...plan.cash, archive: true },
+                    old: { ...plan.old, archive: true },
+                },
+            }),
+        );
+
+        expect(built.payload.accounts[0]).toMatchObject({ archive: true });
+        expect(built.payload.accounts.slice(1)).toEqual([
+            { key: 'a1', action: 'merge', merge_into_key: 'a0' },
+            { key: 'a2', action: 'skip' },
+        ]);
+        expect(buildImport(input()).payload.accounts[0]).not.toHaveProperty(
+            'archive',
+        );
     });
 
     it('files own transfers and ignored rows under their transfer keys', () => {

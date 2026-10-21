@@ -255,6 +255,7 @@ describe('importing a Money Pro export', () => {
             newBankName: null,
             targetAccountId: null,
             mergeIntoKey: null,
+            archive: false,
         });
         const input: BuildImportInput = {
             source: 'money_pro',

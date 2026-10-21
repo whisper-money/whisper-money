@@ -117,6 +117,8 @@ export interface FileAccount {
     currency: string | null;
     balanceCount: number;
     lastBalance: { date: string; amount: number } | null;
+    /** Major units: what its movements add up to. */
+    movementTotal: number;
     iban: string | null;
 }
 
@@ -153,6 +155,8 @@ export interface AccountPlanEntry {
     targetAccountId: string | null;
     /** The file account key this one is merged into. */
     mergeIntoKey: string | null;
+    /** Archive the account once the import has created it. */
+    archive: boolean;
 }
 
 /** A node of the category tree the file's category column describes. */
@@ -346,6 +350,8 @@ export interface AccountPayloadEntry {
     iban?: string | null;
     target_account_id?: string;
     merge_into_key?: string;
+    /** Only on a new account: archive it once the import has written it. */
+    archive?: true;
 }
 
 export interface CategoryPayloadEntry {
