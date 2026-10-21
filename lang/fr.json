@@ -3037,5 +3037,7 @@
     "An over-budget budget doesn't reduce the others' reserve: what it overspent already counts as an expense.": "Un budget dépassé ne réduit pas la réserve des autres : son dépassement compte déjà comme une dépense.",
     "No budget is running in this period, so nothing is reserved.": "Aucun budget n'est en cours sur cette période, donc rien n'est réservé.",
     "Go to budgets": "Aller aux budgets",
-    "Budget": "Budget"
+    "Budget": "Budget",
+    "More was allocated than came in, so the bar is drawn over what was allocated and Free is negative.": "Plus a été affecté que ce qui est entré : la barre est tracée sur ce qui a été affecté et le libre est négatif.",
+    "Budgets still reserve more than is available, so Free is negative.": "Les budgets réservent encore plus que le disponible : le libre est négatif."
 }

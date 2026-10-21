@@ -4068,5 +4068,7 @@
     "Variable budgets margin": "Margen de los presupuestos variables",
     "An over-budget budget doesn't reduce the others' reserve: what it overspent already counts as an expense.": "Un presupuesto pasado de límite no resta de la reserva de los demás: su exceso ya cuenta como gasto.",
     "No budget is running in this period, so nothing is reserved.": "Ningún presupuesto está en curso en este periodo, así que no hay nada reservado.",
-    "Go to budgets": "Ir a presupuestos"
+    "Go to budgets": "Ir a presupuestos",
+    "More was allocated than came in, so the bar is drawn over what was allocated and Free is negative.": "Se ha destinado más de lo que ha entrado, así que la barra se dibuja sobre lo destinado y lo libre es negativo.",
+    "Budgets still reserve more than is available, so Free is negative.": "Los presupuestos aún reservan más de lo disponible, así que lo libre es negativo."
 }

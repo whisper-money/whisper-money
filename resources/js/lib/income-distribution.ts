@@ -43,8 +43,8 @@ export function freeOf(summary: CashflowSummary): number {
     return availableOf(summary) - (summary.reserved ?? 0);
 }
 
-function widthOf(amount: number, scale: number): number {
-    return scale > 0 ? (amount / scale) * 100 : 0;
+function widthOf(amount: number, barTotal: number): number {
+    return barTotal > 0 ? (amount / barTotal) * 100 : 0;
 }
 
 /**
@@ -63,26 +63,38 @@ export function incomeDistribution(
     const fixed = summary.fixed_expense ?? summary.expense - variable;
     const reserved = summary.reserved ?? 0;
     const available = availableOf(summary);
-    const free = available - reserved;
+    const free = freeOf(summary);
 
     const shownAvailable = Math.max(available, 0);
     const shownReserved = Math.min(Math.max(reserved, 0), shownAvailable);
-    const amounts: Array<[DistributionSegmentKey, number, number]> = [
-        ['fixed', fixed, Math.max(fixed, 0)],
-        ['variable', variable, Math.max(variable, 0)],
-        ['saved', summary.savings, Math.max(summary.savings, 0)],
-        ['invested', summary.investments, Math.max(summary.investments, 0)],
-        ['reserved', reserved, shownReserved],
-        ['free', free, shownAvailable - shownReserved],
+    const parts: Array<{
+        key: DistributionSegmentKey;
+        amount: number;
+        shown: number;
+    }> = [
+        { key: 'fixed', amount: fixed, shown: Math.max(fixed, 0) },
+        { key: 'variable', amount: variable, shown: Math.max(variable, 0) },
+        {
+            key: 'saved',
+            amount: summary.savings,
+            shown: Math.max(summary.savings, 0),
+        },
+        {
+            key: 'invested',
+            amount: summary.investments,
+            shown: Math.max(summary.investments, 0),
+        },
+        { key: 'reserved', amount: reserved, shown: shownReserved },
+        { key: 'free', amount: free, shown: shownAvailable - shownReserved },
     ];
 
-    const scale = amounts.reduce((total, [, , shown]) => total + shown, 0);
-    const segments = amounts.map(([key, amount, shown]) => ({
+    const barTotal = parts.reduce((total, part) => total + part.shown, 0);
+    const segments = parts.map(({ key, amount, shown }) => ({
         key,
         amount,
-        width: widthOf(shown, scale),
+        width: widthOf(shown, barTotal),
     }));
-    const availableWidth = widthOf(shownAvailable, scale);
+    const availableWidth = widthOf(shownAvailable, barTotal);
 
     return {
         income: summary.income,
@@ -91,7 +103,7 @@ export function incomeDistribution(
         reserved,
         free,
         segments,
-        allocatedWidth: scale > 0 ? 100 - availableWidth : 0,
+        allocatedWidth: barTotal > 0 ? 100 - availableWidth : 0,
         availableWidth,
     };
 }

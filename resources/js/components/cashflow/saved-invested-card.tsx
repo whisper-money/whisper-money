@@ -1,5 +1,7 @@
 import {
+    INVESTMENTS_TONE,
     PeriodTrend,
+    SAVINGS_TONE,
     shareOf,
     SummaryCardSkeleton,
     SummaryFigure,
@@ -34,11 +36,6 @@ interface SavedInvestedCardProps {
 function allocationRate(summary: CashflowSummary): number {
     return shareOf(summary.savings + summary.investments, summary.net);
 }
-
-// One color per side, shared by its pill's dot and its segment of the bar so
-// the bar reads without a legend.
-export const SAVINGS_TONE = 'bg-green-300';
-export const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
 
 interface SharePillProps {
     share: number;

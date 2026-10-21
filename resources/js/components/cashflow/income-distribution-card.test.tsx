@@ -92,6 +92,21 @@ describe('IncomeDistributionCard', () => {
         ).toBeTruthy();
     });
 
+    it('explains a negative free when budgets reserve more than is available', () => {
+        render(
+            <IncomeDistributionCard
+                summary={summary({ reserved: 20000 })}
+                currency="EUR"
+            />,
+        );
+
+        // 18000 available − 20000 reserved
+        expect(screen.getAllByText('-2000').length).toBeGreaterThan(0);
+        expect(
+            screen.getByText(/Budgets still reserve more than is available/),
+        ).toBeTruthy();
+    });
+
     it('points to budgets instead of an empty table', () => {
         render(
             <IncomeDistributionCard
@@ -132,7 +147,9 @@ describe('IncomeDistributionCard', () => {
         expect(screen.getByRole('img').getAttribute('aria-label')).not.toMatch(
             /Free/,
         );
-        expect(screen.queryByText(/^Available ·/)).toBeNull();
+        expect(
+            screen.getByText(/More was allocated than came in/),
+        ).toBeTruthy();
     });
 
     it('shows a placeholder while loading', () => {

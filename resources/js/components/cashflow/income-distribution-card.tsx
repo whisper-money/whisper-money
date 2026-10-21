@@ -2,9 +2,9 @@ import { index as budgetsIndex } from '@/actions/App/Http/Controllers/BudgetCont
 import {
     INVESTMENTS_TONE,
     SAVINGS_TONE,
-} from '@/components/cashflow/saved-invested-card';
-import { signTone } from '@/components/cashflow/summary-card-parts';
-import { AmountDisplay } from '@/components/ui/amount-display';
+    signTone,
+    WholeAmount,
+} from '@/components/cashflow/summary-card-parts';
 import {
     Card,
     CardContent,
@@ -71,41 +71,88 @@ interface AmountProps {
     className?: string;
 }
 
-/** A whole-unit amount, as every figure in this section is shown. */
 function Amount({ amount, currency, className }: AmountProps) {
     return (
-        <AmountDisplay
+        <WholeAmount
             amountInCents={amount}
             currencyCode={currency}
-            minimumFractionDigits={0}
-            maximumFractionDigits={0}
             className={className}
         />
     );
 }
 
-interface BracketProps {
-    label: string;
-    amount: number;
-    width: number;
-    currency: string;
+/** Below this share of the bar a slice reads as "<1%" rather than "0%". */
+const SMALLEST_LABELLED_SHARE = 1;
+
+function shareLabel(width: number): string {
+    return width < SMALLEST_LABELLED_SHARE ? '<1%' : `${width.toFixed(0)}%`;
 }
 
-/** A labelled span over the part of the bar it adds up. */
-function Bracket({ label, amount, width, currency }: BracketProps) {
+interface BracketLabelProps {
+    label: string;
+    amount: number;
+    currency: string;
+    amountClassName?: string;
+}
+
+function BracketLabel({
+    label,
+    amount,
+    currency,
+    amountClassName,
+}: BracketLabelProps) {
     return (
-        <div
-            className="min-w-0 border-b-2 border-muted-foreground/40 pb-1 text-xs text-muted-foreground"
-            style={{ width: `${width}%` }}
-        >
-            <span className="block truncate">
-                {label} ·{' '}
-                <Amount
-                    amount={amount}
+        <span className="whitespace-nowrap">
+            {label} ·{' '}
+            <Amount
+                amount={amount}
+                currency={currency}
+                className={cn('text-xs', amountClassName)}
+            />
+        </span>
+    );
+}
+
+/**
+ * "Allocated" and "Available" over the parts of the bar they add up. The
+ * labels sit at either end so a thin Available slice still gets its own.
+ */
+function Brackets({
+    distribution,
+    currency,
+}: {
+    distribution: IncomeDistribution;
+    currency: string;
+}) {
+    return (
+        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+            <div className="flex flex-wrap justify-between gap-x-4">
+                <BracketLabel
+                    label={__('Allocated')}
+                    amount={distribution.allocated}
                     currency={currency}
-                    className="text-xs"
                 />
-            </span>
+                <BracketLabel
+                    label={__('Available')}
+                    amount={distribution.available}
+                    currency={currency}
+                    amountClassName={signTone(distribution.available)}
+                />
+            </div>
+            <div aria-hidden className="flex gap-px">
+                {distribution.allocatedWidth > 0 && (
+                    <div
+                        className="h-1.5 rounded-t-sm border-x-2 border-t-2 border-muted-foreground/40"
+                        style={{ width: `${distribution.allocatedWidth}%` }}
+                    />
+                )}
+                {distribution.availableWidth > 0 && (
+                    <div
+                        className="h-1.5 rounded-t-sm border-x-2 border-t-2 border-muted-foreground/40"
+                        style={{ width: `${distribution.availableWidth}%` }}
+                    />
+                )}
+            </div>
         </div>
     );
 }
@@ -123,7 +170,7 @@ function DistributionBar({
     const description = visible
         .map(
             (segment) =>
-                `${segmentLabel(segment.key)} ${segment.width.toFixed(0)}%`,
+                `${segmentLabel(segment.key)} ${shareLabel(segment.width)}`,
         )
         .join(', ');
 
@@ -137,25 +184,7 @@ function DistributionBar({
                     className="font-medium text-foreground"
                 />
             </p>
-            <div className="flex gap-px">
-                {distribution.allocatedWidth > 0 && (
-                    <Bracket
-                        label={__('Allocated')}
-                        amount={distribution.allocated}
-                        width={distribution.allocatedWidth}
-                        currency={currency}
-                    />
-                )}
-                {/* Any narrower and the bracket can't hold its label. */}
-                {distribution.availableWidth >= 12 && (
-                    <Bracket
-                        label={__('Available')}
-                        amount={distribution.available}
-                        width={distribution.availableWidth}
-                        currency={currency}
-                    />
-                )}
-            </div>
+            <Brackets distribution={distribution} currency={currency} />
             <div
                 role="img"
                 aria-label={__('Income distribution: :shares', {
@@ -173,6 +202,35 @@ function DistributionBar({
             </div>
         </div>
     );
+}
+
+/** Why the bar can't show a negative Free, when it is one. */
+function NegativeFreeNote({
+    distribution,
+}: {
+    distribution: IncomeDistribution;
+}) {
+    if (distribution.available < 0) {
+        return (
+            <p className="text-xs text-muted-foreground">
+                {__(
+                    'More was allocated than came in, so the bar is drawn over what was allocated and Free is negative.',
+                )}
+            </p>
+        );
+    }
+
+    if (distribution.free < 0) {
+        return (
+            <p className="text-xs text-muted-foreground">
+                {__(
+                    'Budgets still reserve more than is available, so Free is negative.',
+                )}
+            </p>
+        );
+    }
+
+    return null;
 }
 
 function DistributionLegend({
@@ -427,10 +485,13 @@ export function IncomeDistributionCard({
                     distribution={distribution}
                     currency={currency}
                 />
-                <DistributionLegend
-                    segments={distribution.segments}
-                    currency={currency}
-                />
+                <div className="flex flex-col gap-3">
+                    <DistributionLegend
+                        segments={distribution.segments}
+                        currency={currency}
+                    />
+                    <NegativeFreeNote distribution={distribution} />
+                </div>
                 <AvailableToFree
                     distribution={distribution}
                     currency={currency}

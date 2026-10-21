@@ -6,8 +6,8 @@ import {
     SummaryCardSkeleton,
     SummaryFigure,
     SummaryHeadline,
+    WholeAmount,
 } from '@/components/cashflow/summary-card-parts';
-import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -45,11 +45,9 @@ function FreeHighlight({
                 <p className="text-xs text-muted-foreground">
                     {reserved > 0 ? (
                         <>
-                            <AmountDisplay
+                            <WholeAmount
                                 amountInCents={reserved}
                                 currencyCode={currency}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
                                 className="text-xs"
                             />{' '}
                             {__('reserved in budgets')}
@@ -59,13 +57,11 @@ function FreeHighlight({
                     )}
                 </p>
             </div>
-            <AmountDisplay
+            <WholeAmount
                 amountInCents={free}
                 currencyCode={currency}
                 size="2xl"
                 weight="bold"
-                minimumFractionDigits={0}
-                maximumFractionDigits={0}
                 className={signTone(free)}
                 highlightPositive
             />
