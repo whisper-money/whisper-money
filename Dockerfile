@@ -16,8 +16,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl sockets
-RUN pecl install redis \
-    && docker-php-ext-enable redis
+# Build redis from its GitHub release source so a PECL outage cannot block a build
+RUN docker-php-source extract \
+    && mkdir -p /usr/src/php/ext/redis \
+    && curl -fsSL https://github.com/phpredis/phpredis/archive/refs/tags/6.3.0.tar.gz | tar xz --strip-components=1 -C /usr/src/php/ext/redis \
+    && docker-php-ext-install redis \
+    && docker-php-source delete
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
