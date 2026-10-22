@@ -17,6 +17,7 @@ import { checkout } from '@/routes/subscribe';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -230,15 +231,78 @@ function RefundCard({
     );
 }
 
+interface SubscriptionInfo {
+    onTrial: boolean;
+    trialEndsAt: string | null;
+    onGracePeriod: boolean;
+    endsAt: string | null;
+    plan: Pick<Plan, 'price' | 'billing_period'> | null;
+}
+
+function PlanStatus({
+    subscription,
+    plan,
+    currency,
+    locale,
+}: {
+    subscription?: SubscriptionInfo | null;
+    plan: Pick<Plan, 'price' | 'billing_period'> | undefined;
+    currency: string;
+    locale: string;
+}) {
+    const price = plan
+        ? `${formatCurrency(plan.price * 100, currency, locale)}/${plan.billing_period}`
+        : null;
+
+    if (!subscription?.onTrial || !subscription.trialEndsAt) {
+        return (
+            <div className="flex items-center gap-2">
+                <CheckIcon className="size-5 text-emerald-500" />
+                <span className="font-medium">{__('Pro Plan Active')}</span>
+                {price && (
+                    <span className="text-muted-foreground">{`\u2014 ${price}`}</span>
+                )}
+            </div>
+        );
+    }
+
+    const date = formatDateMedium(subscription.trialEndsAt, locale);
+
+    return (
+        <div>
+            <div className="flex items-center gap-2">
+                <SparklesIcon className="size-5 text-emerald-500" />
+                <span className="font-medium">
+                    {__('Free trial — ends :date', { date })}
+                </span>
+            </div>
+            <p className="mt-2 text-sm">
+                {subscription.onGracePeriod
+                    ? __(
+                          "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.",
+                      )
+                    : price
+                      ? __('First charge of :price on :date.', {
+                            price,
+                            date,
+                        })
+                      : __('Your first charge will be on :date.', { date })}
+            </p>
+        </div>
+    );
+}
+
 function SubscribedSection({
     isSharedAccount,
-    defaultPlan,
+    plan,
+    subscription,
     currency,
     locale,
     refund,
 }: {
     isSharedAccount: boolean;
-    defaultPlan: Plan | undefined;
+    plan: Pick<Plan, 'price' | 'billing_period'> | undefined;
+    subscription?: SubscriptionInfo | null;
     currency: string;
     locale: string;
     refund?: RefundInfo;
@@ -266,15 +330,12 @@ function SubscribedSection({
             <BenefitsGrid />
 
             <div className="rounded-lg border bg-card p-5">
-                <div className="flex items-center gap-2">
-                    <CheckIcon className="size-5 text-emerald-500" />
-                    <span className="font-medium">{__('Pro Plan Active')}</span>
-                    {defaultPlan && (
-                        <span className="text-muted-foreground">
-                            {`\u2014 ${formatCurrency(defaultPlan.price * 100, currency, locale)}/${defaultPlan.billing_period}`}
-                        </span>
-                    )}
-                </div>
+                <PlanStatus
+                    subscription={subscription}
+                    plan={plan}
+                    currency={currency}
+                    locale={locale}
+                />
                 <p className="mt-2 text-sm text-muted-foreground">
                     {__(
                         'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
@@ -427,12 +488,19 @@ function AiConsentSection({
 }
 
 export default function Billing() {
-    const { auth, pricing, locale, hasAiConsent, refund } = usePage<
-        SharedData & { hasAiConsent: boolean; refund?: RefundInfo }
-    >().props;
+    const { auth, pricing, locale, hasAiConsent, refund, subscription } =
+        usePage<
+            SharedData & {
+                hasAiConsent: boolean;
+                refund?: RefundInfo;
+                subscription?: SubscriptionInfo | null;
+            }
+        >().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
-    const defaultPlan = pricing.plans[pricing.defaultPlan];
+    // The plan the subscriber actually pays for; the default plan only when it
+    // could not be matched (a seeded subscription, Stripe unreachable).
+    const plan = subscription?.plan ?? pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
     return (
@@ -454,7 +522,8 @@ export default function Billing() {
                     {hasProPlan ? (
                         <SubscribedSection
                             isSharedAccount={isSharedAccount}
-                            defaultPlan={defaultPlan}
+                            plan={plan}
+                            subscription={subscription}
                             currency={pricing.currency}
                             locale={locale}
                             refund={refund}
