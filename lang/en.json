@@ -7,19 +7,5 @@
     "Contributed split: :saved% saved, :invested% invested": "Contributed split: :saved% saved, :invested% invested",
     "Free (cashflow)": "Free",
     "reserved in budgets": "reserved in budgets",
-    "Nothing reserved in budgets": "Nothing reserved in budgets",
-    "Income distribution": "Income distribution",
-    "Where every unit of income went this period": "Where all of this period's income went",
-    "Income distribution: :shares": "Income distribution: :shares",
-    "nothing to show": "nothing to show",
-    "Fixed expenses": "Fixed expenses",
-    "Variable expenses": "Variable expenses",
-    "Reserved": "Reserved",
-    "From available to free": "From available to free",
-    "Variable budgets margin": "Variable budgets margin",
-    "An over-budget budget doesn't reduce the others' reserve: what it overspent already counts as an expense.": "An over-budget budget doesn't reduce the others' reserve: what it overspent already counts as an expense.",
-    "No budget is running in this period, so nothing is reserved.": "No budget is running in this period, so nothing is reserved.",
-    "Go to budgets": "Go to budgets",
-    "More was allocated than came in, so the bar is drawn over what was allocated and Free is negative.": "More was allocated than came in, so the bar is drawn over what was allocated and Free is negative.",
-    "Budgets still reserve more than is available, so Free is negative.": "Budgets still reserve more than is available, so Free is negative."
+    "Nothing reserved in budgets": "Nothing reserved in budgets"
 }

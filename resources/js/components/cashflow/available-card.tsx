@@ -16,7 +16,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
-import { allocatedOf, availableOf, freeOf } from '@/lib/income-distribution';
+import { allocatedOf, availableOf, freeOf } from '@/lib/cashflow-available';
 import { __ } from '@/utils/i18n';
 
 interface AvailableCardProps {
