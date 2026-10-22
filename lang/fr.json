@@ -3025,5 +3025,9 @@
     "Free (cashflow)": "Libre",
     "reserved in budgets": "réservés dans les budgets",
     "Nothing reserved in budgets": "Rien de réservé dans les budgets",
-    "Budget": "Budget"
+    "Budget": "Budget",
+    "Free trial — ends :date": "Essai gratuit — se termine le :date",
+    "First charge of :price on :date.": "Premier prélèvement de :price le :date.",
+    "Your first charge will be on :date.": "Votre premier prélèvement aura lieu le :date.",
+    "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.": "Vous avez annulé votre forfait, vous ne serez donc pas débité. Pro reste actif jusqu'à la fin de l'essai."
 }

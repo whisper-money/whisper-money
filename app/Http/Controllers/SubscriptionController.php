@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Subscriptions\RefundWindow;
+use App\Services\Subscriptions\SubscribedPlan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -26,6 +27,7 @@ class SubscriptionController extends Controller
 
     public function __construct(
         private RefundWindow $refundWindow,
+        private SubscribedPlan $subscribedPlan,
         private DiscordWebhook $discord,
     ) {}
 
@@ -299,9 +301,16 @@ class SubscriptionController extends Controller
 
         $user = $request->user();
         $canSelfRefund = $this->refundWindow->isOpenFor($user);
+        $subscription = $user->subscription('default');
 
         return Inertia::render('settings/billing', [
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            'subscription' => $subscription === null ? null : [
+                'onTrial' => $subscription->onTrial(),
+                'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
+                'onGracePeriod' => $subscription->onGracePeriod(),
+                'plan' => $this->subscribedPlan->for($user, $subscription),
+            ],
             'refund' => [
                 'canSelfRefund' => $canSelfRefund,
                 'deadline' => $canSelfRefund

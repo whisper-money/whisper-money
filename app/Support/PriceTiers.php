@@ -37,6 +37,16 @@ final class PriceTiers
     ];
 
     /**
+     * Every tier's name, for matching a subscription signed up at any of them.
+     *
+     * @return list<string>
+     */
+    public static function names(): array
+    {
+        return array_keys(self::TIERS);
+    }
+
+    /**
      * The per-plan prices for a tier. An unknown name falls back to the default
      * tier rather than throwing: a typo in `.env` must not take the app down or
      * charge an amount nobody chose, and the current price is the safe landing

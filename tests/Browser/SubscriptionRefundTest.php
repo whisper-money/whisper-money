@@ -100,12 +100,12 @@ it('hides the refund control once the window has passed', function () {
 });
 
 it('does not offer a refund to a subscriber who got a trial', function () {
-    $user = browserPayNowUser(['trial_ends_at' => now()->addDays(7)]);
+    $user = browserPayNowUser(['stripe_status' => 'trialing', 'trial_ends_at' => now()->addDays(7)]);
 
     actingAs($user);
 
     visit('/settings/billing')
-        ->assertSee('Pro Plan Active')
+        ->assertSee('Free trial — ends')
         ->assertDontSee('Money-back guarantee')
         ->assertNoJavascriptErrors();
 });

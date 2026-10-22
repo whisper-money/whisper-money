@@ -7,7 +7,12 @@ import Billing from './billing';
 const mocks = vi.hoisted(() => ({
     axiosPost: vi.fn(() => Promise.resolve({ data: {} })),
     axiosDelete: vi.fn(() => Promise.resolve({ data: {} })),
-    state: { hasProPlan: false, hasAiConsent: false, isSharedAccount: false },
+    state: {
+        hasProPlan: false,
+        hasAiConsent: false,
+        isSharedAccount: false,
+        subscription: null as Record<string, unknown> | null,
+    },
 }));
 
 vi.mock('axios', () => ({
@@ -32,6 +37,7 @@ vi.mock('@inertiajs/react', () => ({
             pricing,
             locale: 'en',
             hasAiConsent: mocks.state.hasAiConsent,
+            subscription: mocks.state.subscription,
         },
     }),
 }));
@@ -58,6 +64,7 @@ describe('Billing – AI categorization toggle', () => {
         mocks.state.hasProPlan = false;
         mocks.state.hasAiConsent = false;
         mocks.state.isSharedAccount = false;
+        mocks.state.subscription = null;
     });
 
     it('prompts a free user to subscribe instead of recording consent', async () => {
@@ -117,5 +124,90 @@ describe('Billing – AI categorization toggle', () => {
         expect(
             screen.queryByText('AI categorization is a paid feature'),
         ).not.toBeInTheDocument();
+    });
+});
+
+describe('Billing – plan status', () => {
+    const monthly = { price: 8.99, billing_period: 'month' };
+
+    beforeEach(() => {
+        mocks.state.hasProPlan = true;
+        mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
+        mocks.state.subscription = null;
+    });
+
+    it('tells a trialing subscriber when the trial ends and what the first charge is', () => {
+        mocks.state.subscription = {
+            onTrial: true,
+            trialEndsAt: '2026-11-05T12:00:00+00:00',
+            onGracePeriod: false,
+            plan: monthly,
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Free trial — ends Nov 5, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('First charge of €8.99/month on Nov 5, 2026.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Pro Plan Active')).not.toBeInTheDocument();
+    });
+
+    it('tells a subscriber who canceled the trial that they will not be charged', () => {
+        mocks.state.subscription = {
+            onTrial: true,
+            trialEndsAt: '2026-11-05T12:00:00+00:00',
+            onGracePeriod: true,
+            plan: monthly,
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Free trial — ends Nov 5, 2026'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/so you won't be charged/)).toBeInTheDocument();
+        expect(screen.queryByText(/First charge/)).not.toBeInTheDocument();
+    });
+
+    it('announces no amount when the trial plan could not be resolved', () => {
+        mocks.state.subscription = {
+            onTrial: true,
+            trialEndsAt: '2026-11-05T12:00:00+00:00',
+            onGracePeriod: false,
+            plan: null,
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Your first charge will be on Nov 5, 2026.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/€53.94/)).not.toBeInTheDocument();
+    });
+
+    it('shows the price of the plan the subscriber is on', () => {
+        mocks.state.subscription = {
+            onTrial: false,
+            trialEndsAt: null,
+            onGracePeriod: false,
+            plan: monthly,
+        };
+        render(<Billing />);
+
+        expect(screen.getByText('Pro Plan Active')).toBeInTheDocument();
+        expect(screen.getByText('— €8.99/month')).toBeInTheDocument();
+    });
+
+    it('falls back to the default plan when the plan could not be resolved', () => {
+        mocks.state.subscription = {
+            onTrial: false,
+            trialEndsAt: null,
+            onGracePeriod: false,
+            plan: null,
+        };
+        render(<Billing />);
+
+        expect(screen.getByText('— €53.94/year')).toBeInTheDocument();
     });
 });

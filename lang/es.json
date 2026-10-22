@@ -4056,5 +4056,9 @@
     "Contributed split: :saved% saved, :invested% invested": "Reparto del aportado: :saved% ahorrado, :invested% invertido",
     "Free (cashflow)": "Libre",
     "reserved in budgets": "reservados en presupuestos",
-    "Nothing reserved in budgets": "Nada reservado en presupuestos"
+    "Nothing reserved in budgets": "Nada reservado en presupuestos",
+    "Free trial — ends :date": "Prueba gratuita — termina el :date",
+    "First charge of :price on :date.": "Primer cobro de :price el :date.",
+    "Your first charge will be on :date.": "Tu primer cobro será el :date.",
+    "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.": "Has cancelado tu plan, así que no se te cobrará nada. Pro sigue activo hasta que termine la prueba."
 }
