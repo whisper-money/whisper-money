@@ -84,21 +84,21 @@ describe('CashflowPage', () => {
         pageProps.current = { features: { cashflowAvailableFree: false } };
     });
 
-    it('leaves the income distribution out while the flag is off', () => {
+    it('leaves the free highlight out while the flag is off', () => {
         render(<CashflowPage />);
 
         expect(screen.queryByText('Income distribution')).toBeNull();
         expect(screen.queryByText('Free (cashflow)')).toBeNull();
     });
 
-    it('shows the income distribution and the free highlight with the flag on', () => {
+    it('shows the free highlight but no income distribution with the flag on', () => {
         pageProps.current = { features: { cashflowAvailableFree: true } };
 
         render(<CashflowPage />);
 
-        expect(screen.getByText('Income distribution')).toBeTruthy();
         expect(screen.getAllByText('Free (cashflow)').length).toBeGreaterThan(
             0,
         );
+        expect(screen.queryByText('Income distribution')).toBeNull();
     });
 });
