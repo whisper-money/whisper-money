@@ -46,8 +46,8 @@ export function detectMobilePlatform(
  * navigator.standalone covers older iOS. Fullscreen also matches a desktop
  * browser window in fullscreen (F11, macOS fullscreen), so it only counts on
  * Android, for the installs made while the manifest asked for it (September
- * to October 2026) until Chrome updates their WebAPK. Drop that branch, and
- * its PwaTest, from 2027.
+ * to October 2026) until Chrome updates their WebAPK. Drop that branch, its
+ * pwa.test.ts cases and its PwaTest, from 2027.
  */
 export function isInstalledPwa(
     window: WindowLike | undefined = globalThis.window,
