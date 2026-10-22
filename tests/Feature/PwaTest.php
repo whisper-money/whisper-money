@@ -21,13 +21,17 @@ test('the landing page detects an installed app in the display mode the manifest
     // The landing page redirects installed users to the dashboard, and the
     // display-mode media feature only matches the mode that was actually applied.
     expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
+        ->toContain('isInstalledPwa()')
+        ->and(file_get_contents(resource_path('js/lib/pwa.ts')))
         ->toContain('(display-mode: '.$manifest['display'].')');
 });
 
 test('the landing page still detects the Android installs made under the fullscreen manifest', function () {
     // A WebAPK keeps the display mode it was minted with until Chrome updates it
-    // to the current manifest, so those installs still run in fullscreen.
-    expect(file_get_contents(resource_path('js/pages/welcome.tsx')))
+    // to the current manifest, so those installs still run in fullscreen. A
+    // desktop browser window in fullscreen matches it too, so it only counts on
+    // Android; resources/js/lib/pwa.test.ts covers both cases.
+    expect(file_get_contents(resource_path('js/lib/pwa.ts')))
         ->toContain('(display-mode: fullscreen)');
 });
 

@@ -12,6 +12,7 @@ import {
     useScrollTranslate,
 } from '@/hooks/use-scroll-progress';
 import { leavePage } from '@/lib/leave-page';
+import { isInstalledPwa } from '@/lib/pwa';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { cn } from '@/lib/utils';
 import { dashboard, roadmap } from '@/routes';
@@ -2772,24 +2773,7 @@ export default function Welcome({
         }
     }, [locale]);
 
-    const [isPwa] = useState(() => {
-        if (typeof window === 'undefined') {
-            return false;
-        }
-
-        // Standalone is the mode the manifest asks for, on Android and iOS
-        // alike; navigator.standalone covers older iOS. Fullscreen only matches
-        // the Android installs made while the manifest asked for it (September
-        // to October 2026), until Chrome updates their WebAPK. Drop it, and its
-        // PwaTest, from 2027.
-        return (
-            window.matchMedia(
-                '(display-mode: fullscreen), (display-mode: standalone)',
-            ).matches ||
-            ('standalone' in navigator &&
-                (navigator as Navigator & { standalone: boolean }).standalone)
-        );
-    });
+    const [isPwa] = useState(() => isInstalledPwa());
 
     useEffect(() => {
         if (isPwa) {
