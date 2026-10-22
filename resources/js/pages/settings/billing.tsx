@@ -231,30 +231,36 @@ function RefundCard({
     );
 }
 
+type PlanPrice = Pick<Plan, 'price' | 'billing_period'>;
+
 interface SubscriptionInfo {
     onTrial: boolean;
     trialEndsAt: string | null;
     onGracePeriod: boolean;
-    endsAt: string | null;
-    plan: Pick<Plan, 'price' | 'billing_period'> | null;
+    plan: PlanPrice | null;
 }
 
 function PlanStatus({
     subscription,
-    plan,
+    defaultPlan,
     currency,
     locale,
 }: {
     subscription?: SubscriptionInfo | null;
-    plan: Pick<Plan, 'price' | 'billing_period'> | undefined;
+    defaultPlan: PlanPrice | undefined;
     currency: string;
     locale: string;
 }) {
-    const price = plan
-        ? `${formatCurrency(plan.price * 100, currency, locale)}/${plan.billing_period}`
-        : null;
+    const formatPrice = (plan: PlanPrice | null | undefined) =>
+        plan
+            ? `${formatCurrency(plan.price * 100, currency, locale)}/${plan.billing_period}`
+            : null;
 
     if (!subscription?.onTrial || !subscription.trialEndsAt) {
+        // The default plan stands in when the subscriber's own could not be
+        // matched (a seeded subscription, Stripe unreachable), as it always has.
+        const price = formatPrice(subscription?.plan ?? defaultPlan);
+
         return (
             <div className="flex items-center gap-2">
                 <CheckIcon className="size-5 text-emerald-500" />
@@ -267,6 +273,8 @@ function PlanStatus({
     }
 
     const date = formatDateMedium(subscription.trialEndsAt, locale);
+    // Never the default plan here: a charge we announce has to be the real one.
+    const price = formatPrice(subscription.plan);
 
     return (
         <div>
@@ -294,14 +302,14 @@ function PlanStatus({
 
 function SubscribedSection({
     isSharedAccount,
-    plan,
+    defaultPlan,
     subscription,
     currency,
     locale,
     refund,
 }: {
     isSharedAccount: boolean;
-    plan: Pick<Plan, 'price' | 'billing_period'> | undefined;
+    defaultPlan: Plan | undefined;
     subscription?: SubscriptionInfo | null;
     currency: string;
     locale: string;
@@ -332,7 +340,7 @@ function SubscribedSection({
             <div className="rounded-lg border bg-card p-5">
                 <PlanStatus
                     subscription={subscription}
-                    plan={plan}
+                    defaultPlan={defaultPlan}
                     currency={currency}
                     locale={locale}
                 />
@@ -498,9 +506,7 @@ export default function Billing() {
         >().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
-    // The plan the subscriber actually pays for; the default plan only when it
-    // could not be matched (a seeded subscription, Stripe unreachable).
-    const plan = subscription?.plan ?? pricing.plans[pricing.defaultPlan];
+    const defaultPlan = pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
 
     return (
@@ -522,7 +528,7 @@ export default function Billing() {
                     {hasProPlan ? (
                         <SubscribedSection
                             isSharedAccount={isSharedAccount}
-                            plan={plan}
+                            defaultPlan={defaultPlan}
                             subscription={subscription}
                             currency={pricing.currency}
                             locale={locale}

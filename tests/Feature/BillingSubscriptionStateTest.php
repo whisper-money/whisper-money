@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
 use Stripe\Collection;
 use Stripe\Exception\ApiConnectionException;
@@ -82,8 +81,7 @@ test('a trialing subscriber gets the trial end and the plan they will be charged
             ->where('subscription.onTrial', true)
             ->where('subscription.trialEndsAt', $trialEndsAt->toIso8601String())
             ->where('subscription.onGracePeriod', false)
-            ->where('subscription.endsAt', null)
-            ->where('subscription.plan', ['key' => 'monthly', 'price' => 8.99, 'billing_period' => 'month'])
+            ->where('subscription.plan', ['price' => 8.99, 'billing_period' => 'month'])
         );
 });
 
@@ -100,7 +98,6 @@ test('a trial canceled before it ends is on its grace period', function () use (
         ->assertInertia(fn (Assert $page) => $page
             ->where('subscription.onTrial', true)
             ->where('subscription.onGracePeriod', true)
-            ->where('subscription.endsAt', $trialEndsAt->toIso8601String())
         );
 });
 
@@ -112,8 +109,7 @@ test('an active paid subscriber sees the price of their own plan, not the defaul
         ->assertInertia(fn (Assert $page) => $page
             ->where('subscription.onTrial', false)
             ->where('subscription.trialEndsAt', null)
-            ->where('subscription.plan.key', 'monthly')
-            ->where('subscription.plan.price', 8.99)
+            ->where('subscription.plan', ['price' => 8.99, 'billing_period' => 'month'])
         );
 });
 
@@ -123,7 +119,7 @@ test('a subscriber from an older price tier sees the price they signed up at', f
 
     actingAs($user)->withoutVite()->get(route('settings.billing'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('subscription.plan', ['key' => 'monthly', 'price' => 3.99, 'billing_period' => 'month'])
+            ->where('subscription.plan', ['price' => 3.99, 'billing_period' => 'month'])
         );
 });
 
@@ -145,16 +141,21 @@ test('the price lookup is cached across visits', function () use ($knownPrices) 
     expect($calls->count)->toBe(1);
 });
 
-test('a Stripe outage falls back to an unresolved plan and is not cached', function () {
+test('a Stripe outage falls back to an unresolved plan and is retried a few minutes later', function () {
     $calls = bindStripePrices([], new ApiConnectionException('down'));
     $user = subscriber([]);
 
     actingAs($user)->withoutVite()->get(route('settings.billing'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('subscription.plan', null));
+    actingAs($user)->withoutVite()->get(route('settings.billing'))->assertOk();
 
-    expect($calls->count)->toBe(1)
-        ->and(Cache::has('stripe_lookup_keys_by_price_id'))->toBeFalse();
+    expect($calls->count)->toBe(1);
+
+    $this->travel(6)->minutes();
+    actingAs($user)->withoutVite()->get(route('settings.billing'))->assertOk();
+
+    expect($calls->count)->toBe(2);
 });
 
 test('a seeded subscription never reaches Stripe', function () use ($knownPrices) {

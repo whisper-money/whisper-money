@@ -309,8 +309,7 @@ class SubscriptionController extends Controller
                 'onTrial' => $subscription->onTrial(),
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
                 'onGracePeriod' => $subscription->onGracePeriod(),
-                'endsAt' => $subscription->ends_at?->toIso8601String(),
-                'plan' => $this->subscribedPlan->for($user),
+                'plan' => $this->subscribedPlan->for($user, $subscription),
             ],
             'refund' => [
                 'canSelfRefund' => $canSelfRefund,

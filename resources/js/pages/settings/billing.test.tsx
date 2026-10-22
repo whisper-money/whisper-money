@@ -142,7 +142,6 @@ describe('Billing – plan status', () => {
             onTrial: true,
             trialEndsAt: '2026-11-05T12:00:00+00:00',
             onGracePeriod: false,
-            endsAt: null,
             plan: monthly,
         };
         render(<Billing />);
@@ -161,7 +160,6 @@ describe('Billing – plan status', () => {
             onTrial: true,
             trialEndsAt: '2026-11-05T12:00:00+00:00',
             onGracePeriod: true,
-            endsAt: '2026-11-05T12:00:00+00:00',
             plan: monthly,
         };
         render(<Billing />);
@@ -173,12 +171,26 @@ describe('Billing – plan status', () => {
         expect(screen.queryByText(/First charge/)).not.toBeInTheDocument();
     });
 
+    it('announces no amount when the trial plan could not be resolved', () => {
+        mocks.state.subscription = {
+            onTrial: true,
+            trialEndsAt: '2026-11-05T12:00:00+00:00',
+            onGracePeriod: false,
+            plan: null,
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Your first charge will be on Nov 5, 2026.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/€53.94/)).not.toBeInTheDocument();
+    });
+
     it('shows the price of the plan the subscriber is on', () => {
         mocks.state.subscription = {
             onTrial: false,
             trialEndsAt: null,
             onGracePeriod: false,
-            endsAt: null,
             plan: monthly,
         };
         render(<Billing />);
@@ -192,7 +204,6 @@ describe('Billing – plan status', () => {
             onTrial: false,
             trialEndsAt: null,
             onGracePeriod: false,
-            endsAt: null,
             plan: null,
         };
         render(<Billing />);

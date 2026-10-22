@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Support\PriceTiers;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Subscription;
 use Throwable;
 
 /**
@@ -22,32 +23,32 @@ class SubscribedPlan
 {
     private const CACHE_KEY = 'stripe_lookup_keys_by_price_id';
 
-    /**
-     * @return array{key: string, price: float, billing_period: string}|null
-     */
-    public function for(User $user): ?array
-    {
-        $priceId = $user->subscription('default')?->stripe_price;
+    /** How long a failed or empty lookup is kept before Stripe is asked again. */
+    private const RETRY_AFTER_MINUTES = 5;
 
+    /**
+     * @return array{price: float, billing_period: string}|null
+     */
+    public function for(User $user, Subscription $subscription): ?array
+    {
         // A seeded subscription carries a made-up price and must never reach Stripe.
-        if ($priceId === null || $user->cannotUseStripe()) {
+        if ($user->cannotUseStripe()) {
             return null;
         }
 
-        $lookupKey = $this->lookupKeysByPriceId()[$priceId] ?? null;
+        $lookupKey = $this->lookupKeysByPriceId()[$subscription->stripe_price] ?? null;
 
         return $lookupKey === null ? null : $this->planForLookupKey($lookupKey);
     }
 
     /**
-     * @return array{key: string, price: float, billing_period: string}|null
+     * @return array{price: float, billing_period: string}|null
      */
     private function planForLookupKey(string $lookupKey): ?array
     {
         foreach ($this->candidatePlans() as $key => $plan) {
             if ($plan['stripe_lookup_key'] === $lookupKey) {
                 return [
-                    'key' => $key,
                     'price' => (float) $plan['price'],
                     'billing_period' => (string) config("subscriptions.plans.{$key}.billing_period"),
                 ];
@@ -90,19 +91,19 @@ class SubscribedPlan
         try {
             $prices = Cashier::stripe()->prices->all(['lookup_keys' => $lookupKeys, 'limit' => 100]);
         } catch (Throwable $exception) {
-            // Not cached: the page falls back to the default plan and the next
-            // visit tries again.
             report($exception);
-
-            return [];
+            $prices = null;
         }
 
         $map = [];
-        foreach ($prices->data as $price) {
+        foreach ($prices->data ?? [] as $price) {
             $map[$price->id] = $price->lookup_key;
         }
 
-        Cache::put(self::CACHE_KEY, $map, now()->addDay());
+        // A failed or empty answer is only kept briefly: long enough that an
+        // outage doesn't make every visit wait on Stripe, short enough that a
+        // missing `stripe:sync-prices` run doesn't stick for a day.
+        Cache::put(self::CACHE_KEY, $map, $map === [] ? now()->addMinutes(self::RETRY_AFTER_MINUTES) : now()->addDay());
 
         return $map;
     }
