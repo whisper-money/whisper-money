@@ -44,7 +44,7 @@ class Budget extends Model
 
     /** @var list<string> */
     protected $attributes = [
-        'expense_type' => 'variable',
+        'expense_type' => BudgetExpenseType::Variable->value,
     ];
 
     /** @var list<string> */

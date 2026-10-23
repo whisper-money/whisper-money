@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
+use App\Enums\BudgetExpenseType;
 use App\Http\Requests\ReorderPlanningItemsRequest;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
@@ -232,7 +233,7 @@ class BudgetController extends Controller
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
-                'expense_type' => $request->expenseType(),
+                'expense_type' => $request->enum('expense_type', BudgetExpenseType::class) ?? BudgetExpenseType::Variable,
                 'is_catch_all' => $request->boolean('is_catch_all'),
             ],
             (int) $request->allocated_amount,
@@ -249,7 +250,7 @@ class BudgetController extends Controller
 
         $this->budgetService->update(
             $budget,
-            $request->budgetAttributes(),
+            $request->only(['name', 'period_type', 'period_start_day', 'rollover_type', 'expense_type']),
             $request->has('allocated_amount') ? (int) $request->allocated_amount : null,
         );
 

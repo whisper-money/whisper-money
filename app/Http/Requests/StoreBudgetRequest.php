@@ -35,19 +35,6 @@ class StoreBudgetRequest extends FormRequest
         ];
     }
 
-    /**
-     * A catch-all budget takes whatever no other budget covers, so it has no
-     * kind of spending of its own and always keeps the default.
-     */
-    public function expenseType(): BudgetExpenseType
-    {
-        if ($this->boolean('is_catch_all')) {
-            return BudgetExpenseType::Variable;
-        }
-
-        return $this->enum('expense_type', BudgetExpenseType::class) ?? BudgetExpenseType::Variable;
-    }
-
     private function periodType(): BudgetPeriodType
     {
         return BudgetPeriodType::tryFrom((string) $this->input('period_type')) ?? BudgetPeriodType::Monthly;

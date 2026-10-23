@@ -21,6 +21,9 @@ export const BUDGET_EXPENSE_TYPES = ['fixed', 'variable'] as const;
 
 export type BudgetExpenseType = (typeof BUDGET_EXPENSE_TYPES)[number];
 
+/** What a budget counts as until the user says otherwise; matches the column default. */
+export const DEFAULT_BUDGET_EXPENSE_TYPE: BudgetExpenseType = 'variable';
+
 export interface Budget {
     id: UUID;
     user_id: UUID;

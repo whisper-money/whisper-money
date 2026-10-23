@@ -32,6 +32,7 @@ import {
     BUDGET_PERIOD_TYPES,
     BudgetExpenseType,
     BudgetPeriodType,
+    DEFAULT_BUDGET_EXPENSE_TYPE,
     getBudgetPeriodTypeLabel,
     getRolloverTypeLabel,
     ROLLOVER_TYPES,
@@ -75,8 +76,9 @@ export function CreateBudgetDialog({
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] =
         useState<RolloverType>('carry_over');
-    const [expenseType, setExpenseType] =
-        useState<BudgetExpenseType>('variable');
+    const [expenseType, setExpenseType] = useState<BudgetExpenseType>(
+        DEFAULT_BUDGET_EXPENSE_TYPE,
+    );
     const [isCatchAll, setIsCatchAll] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -130,7 +132,7 @@ export function CreateBudgetDialog({
                     setSelectedLabelIds([]);
                     setAllocatedAmount(0);
                     setRolloverType('carry_over');
-                    setExpenseType('variable');
+                    setExpenseType(DEFAULT_BUDGET_EXPENSE_TYPE);
                     setIsCatchAll(false);
                     setErrors({});
                 },

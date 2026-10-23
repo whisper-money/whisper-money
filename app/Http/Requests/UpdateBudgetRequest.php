@@ -29,24 +29,6 @@ class UpdateBudgetRequest extends FormRequest
     }
 
     /**
-     * The fields the budget itself takes. A catch-all budget keeps the default
-     * expense type, since it has no kind of spending of its own.
-     *
-     * @return array<string, mixed>
-     */
-    public function budgetAttributes(): array
-    {
-        $budget = $this->route('budget');
-        $fields = ['name', 'period_type', 'period_start_day', 'rollover_type'];
-
-        if (! ($budget instanceof Budget && $budget->is_catch_all)) {
-            $fields[] = 'expense_type';
-        }
-
-        return $this->only($fields);
-    }
-
-    /**
      * A PATCH may change the period type, keep it, or not mention it, so the
      * range for the start day comes from whichever type the budget will end up
      * with.
