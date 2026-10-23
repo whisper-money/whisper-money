@@ -84,6 +84,7 @@ import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import {
     cashflowBlockFromParam,
     cashflowBlockParam,
+    withoutDatelessCashflowBlock,
 } from '@/lib/cashflow-block';
 import {
     isCursorPaginatedResponse,
@@ -629,7 +630,8 @@ export default function Transactions({
 
     // Handle filter changes from the filter component
     const handleFiltersChange = useCallback(
-        (newFilters: Filters) => {
+        (changedFilters: Filters) => {
+            const newFilters = withoutDatelessCashflowBlock(changedFilters);
             setFilters(newFilters);
 
             // Debounce search, immediate for other filters

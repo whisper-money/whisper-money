@@ -229,3 +229,25 @@ test('a bulk update rejects a block without dates', function () {
         'notes' => 'x',
     ])->assertUnprocessable()->assertJsonValidationErrors(['filters.date_from', 'filters.date_to']);
 });
+
+test('the analysis of a filtered block counts only that block', function () {
+    seedCashflowMonth();
+
+    $this->getJson('/api/transactions/analysis?'.http_build_query([
+        'cashflow_block' => 'invested',
+        'date_from' => '2026-10-01',
+        'date_to' => '2026-10-31',
+    ]))->assertOk()->assertJsonPath('summary.count', 1);
+});
+
+test('a saved filter keeps the block together with its dates', function () {
+    $filters = ['date_from' => '2026-10-01', 'date_to' => '2026-10-31', 'cashflow_block' => 'saved'];
+
+    $this->postJson('/api/saved-filters', ['name' => 'October savings', 'filters' => $filters])
+        ->assertCreated()
+        ->assertJsonPath('data.filters', $filters);
+
+    $this->postJson('/api/saved-filters', ['name' => 'Dateless', 'filters' => ['cashflow_block' => 'saved']])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['filters.date_from', 'filters.date_to']);
+});

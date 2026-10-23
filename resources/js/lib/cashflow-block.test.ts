@@ -7,6 +7,7 @@ import {
     cashflowBlockTransactionsUrl,
     matchingQuickPeriod,
     quickPeriodRange,
+    withoutDatelessCashflowBlock,
 } from './cashflow-block';
 
 const NO_FILTERS: TransactionFilters = {
@@ -130,5 +131,24 @@ describe('quick periods', () => {
             matchingQuickPeriod(day('2026-10-02'), day('2026-10-31')),
         ).toBeNull();
         expect(matchingQuickPeriod(null, day('2026-10-31'))).toBeNull();
+    });
+});
+
+describe('withoutDatelessCashflowBlock', () => {
+    const october = {
+        ...NO_FILTERS,
+        dateFrom: toLocalDate('2026-10-01'),
+        dateTo: toLocalDate('2026-10-31'),
+        cashflowBlock: 'fixed' as const,
+    };
+
+    it('keeps the block while both dates are set', () => {
+        expect(withoutDatelessCashflowBlock(october)).toBe(october);
+    });
+
+    it('drops the block, and its chip, once a date is cleared', () => {
+        expect(
+            withoutDatelessCashflowBlock({ ...october, dateFrom: null }),
+        ).toEqual({ ...october, dateFrom: null, cashflowBlock: null });
     });
 });

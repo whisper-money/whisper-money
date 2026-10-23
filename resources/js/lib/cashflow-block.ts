@@ -61,6 +61,18 @@ export function cashflowBlockParam(
 }
 
 /**
+ * The filters with the block dropped once either date is gone, so the chip
+ * never shows a block the list is no longer narrowed to.
+ */
+export function withoutDatelessCashflowBlock(
+    filters: TransactionFilters,
+): TransactionFilters {
+    return filters.cashflowBlock && !cashflowBlockParam(filters)
+        ? { ...filters, cashflowBlock: null }
+        : filters;
+}
+
+/**
  * The transactions list showing exactly the rows behind one cashflow block
  * over a range. Dates are `YYYY-MM-DD` strings or local dates.
  */

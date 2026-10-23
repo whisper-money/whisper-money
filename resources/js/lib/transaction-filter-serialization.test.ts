@@ -3,6 +3,7 @@ import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
     deserializeFilters,
+    filtersFingerprint,
     serializeFilters,
 } from './transaction-filter-serialization';
 
@@ -67,6 +68,30 @@ describe.each([
         expect(formatLocalDate(reloaded.dateFrom!)).toBe('2026-09-09');
         expect(serializeFilters({ ...NO_FILTERS, ...reloaded })).toMatchObject(
             stored,
+        );
+    });
+});
+
+describe('the cashflow block in saved and analysed filters', () => {
+    const october = {
+        ...NO_FILTERS,
+        dateFrom: toLocalDate('2026-10-01'),
+        dateTo: toLocalDate('2026-10-31'),
+        cashflowBlock: 'variable' as const,
+    };
+
+    it('round trips with its dates', () => {
+        const serialized = serializeFilters(october);
+
+        expect(serialized.cashflow_block).toBe('variable');
+        expect(deserializeFilters(serialized).cashflowBlock).toBe('variable');
+    });
+
+    it('tells apart two blocks over the same dates', () => {
+        expect(filtersFingerprint(serializeFilters(october))).not.toBe(
+            filtersFingerprint(
+                serializeFilters({ ...october, cashflowBlock: 'fixed' }),
+            ),
         );
     });
 });

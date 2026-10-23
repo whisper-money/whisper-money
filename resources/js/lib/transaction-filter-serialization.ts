@@ -1,4 +1,11 @@
-import { type TransactionFilters } from '@/types/transaction';
+import {
+    cashflowBlockFromParam,
+    cashflowBlockParam,
+} from '@/lib/cashflow-block';
+import {
+    type CashflowBlock,
+    type TransactionFilters,
+} from '@/types/transaction';
 import { formatLocalDate, toLocalDate } from '@/utils/date';
 
 /** Persisted, snake_case representation of a filter set (matches the backend query params). */
@@ -13,6 +20,7 @@ export interface SerializedFilters {
     creditor_name?: string;
     debtor_name?: string;
     search?: string;
+    cashflow_block?: CashflowBlock;
 }
 
 export function serializeFilters(
@@ -50,6 +58,10 @@ export function serializeFilters(
     if (filters.searchText) {
         result.search = filters.searchText;
     }
+    const cashflowBlock = cashflowBlockParam(filters);
+    if (cashflowBlock) {
+        result.cashflow_block = cashflowBlock;
+    }
 
     return result;
 }
@@ -68,6 +80,7 @@ export function deserializeFilters(
         creditorName: data.creditor_name ?? '',
         debtorName: data.debtor_name ?? '',
         searchText: data.search ?? '',
+        cashflowBlock: cashflowBlockFromParam(data.cashflow_block),
     };
 }
 
@@ -92,5 +105,10 @@ export function filtersFingerprint(filters: SerializedFilters): string {
         creditor_name: filters.creditor_name ?? '',
         debtor_name: filters.debtor_name ?? '',
         search: filters.search ?? '',
+        // Only when set, so fingerprints saved before blocks existed (they
+        // key browser overrides) stay the same.
+        ...(filters.cashflow_block
+            ? { cashflow_block: filters.cashflow_block }
+            : {}),
     });
 }
