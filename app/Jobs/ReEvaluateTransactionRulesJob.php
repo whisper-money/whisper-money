@@ -35,7 +35,7 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
         if ($this->transactionIds !== null) {
             $query->whereIn('id', $this->transactionIds);
         } elseif ($this->filters !== null) {
-            $query->applyFilters($this->filters);
+            $query->applyFilters([...$this->filters, 'user_id' => $this->user->id]);
         }
 
         $total = $query->count();

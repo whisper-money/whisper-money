@@ -1494,7 +1494,7 @@
     "Purchase Price": "Prix ​​d'achat",
     "Q": "T",
     "Quartely": "Tous les 4 mois",
-    "Quarter": "Quart",
+    "Quarter": "Trimestre",
     "Questions or feedback? Reply to this email. We read every message personally.": "Avez-vous des questions ou des commentaires? Répondez à cet e-mail. Nous lisons chaque message personnellement.",
     "Rate limit exceeded. Please wait a few minutes and try again.": "Limite de candidature dépassée. Attendez quelques minutes et réessayez.",
     "Re-evaluate rules": "Réévaluer les règles",
@@ -3058,5 +3058,9 @@
     "No variable budget in progress in this view.": "Aucun budget variable en cours dans cette vue.",
     "Yearly budgets are reserved in the Year view": "Les budgets annuels sont réservés dans la vue Année",
     "Weekly and monthly budgets are reserved in the Month view": "Les budgets hebdomadaires et mensuels sont réservés dans la vue Mois",
-    "No income in this period": "Aucun revenu sur cette période"
+    "No income in this period": "Aucun revenu sur cette période",
+    "General expense": "Dépense générale",
+    "Block: :name": "Bloc : :name",
+    "Remove the :name filter": "Retirer le filtre :name",
+    "Quick periods": "Périodes rapides"
 }

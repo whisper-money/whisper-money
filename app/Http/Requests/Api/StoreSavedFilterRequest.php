@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Enums\CashflowBlock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,8 +24,9 @@ class StoreSavedFilterRequest extends FormRequest
                 Rule::unique('saved_filters', 'name')->where('user_id', $this->user()->id),
             ],
             'filters' => ['required', 'array'],
-            'filters.date_from' => ['nullable', 'date_format:Y-m-d'],
-            'filters.date_to' => ['nullable', 'date_format:Y-m-d'],
+            'filters.date_from' => ['nullable', 'date_format:Y-m-d', 'required_with:filters.cashflow_block'],
+            'filters.date_to' => ['nullable', 'date_format:Y-m-d', 'required_with:filters.cashflow_block'],
+            'filters.cashflow_block' => ['nullable', Rule::enum(CashflowBlock::class)],
             'filters.amount_min' => ['nullable', 'numeric'],
             'filters.amount_max' => ['nullable', 'numeric'],
             'filters.category_ids' => ['nullable', 'array'],

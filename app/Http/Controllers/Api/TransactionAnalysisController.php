@@ -52,6 +52,8 @@ class TransactionAnalysisController extends Controller
             'creditor_name' => $validated['creditor_name'] ?? null,
             'debtor_name' => $validated['debtor_name'] ?? null,
             'search' => $validated['search'] ?? null,
+            'cashflow_block' => $validated['cashflow_block'] ?? null,
+            'user_id' => $user->id,
         ], fn ($value) => $value !== null);
 
         $transactions = Transaction::query()
