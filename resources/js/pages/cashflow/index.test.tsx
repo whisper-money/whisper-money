@@ -1,15 +1,43 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { CASHFLOW_BLOCKS } from '@/lib/cashflow-block';
+import { type CashflowBlock } from '@/types/transaction';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CashflowPage from './index';
 
+type PageProps = {
+    features: { cashflowAvailableFree: boolean };
+    period?: string;
+    periodType?: 'month' | 'quarter' | 'year';
+};
+
 const pageProps = vi.hoisted(() => ({
-    current: { features: { cashflowAvailableFree: false } },
+    current: { features: { cashflowAvailableFree: false } } as PageProps,
 }));
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
-    Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+    Link: ({
+        children,
+        href,
+        onClick,
+        ...props
+    }: {
+        children: ReactNode;
+        href: string;
+        onClick?: () => void;
+    }) => (
+        <a
+            href={href}
+            onClick={(event) => {
+                event.preventDefault();
+                onClick?.();
+            }}
+            {...props}
+        >
+            {children}
+        </a>
+    ),
     usePage: () => ({
         props: {
             auth: { user: { currency_code: 'EUR' } },
@@ -84,6 +112,35 @@ vi.mock('@/hooks/use-cashflow-data', () => {
     };
 });
 
+const BLOCK_LABELS: Record<CashflowBlock, string> = {
+    fixed: 'Fixed',
+    variable: 'Variable',
+    general: 'General',
+    saved: 'Saved (cashflow)',
+    invested: 'Invested',
+};
+
+function expectBlockLinks(
+    blocks: readonly CashflowBlock[],
+    from: string,
+    to: string,
+) {
+    for (const block of blocks) {
+        const link = screen.getByRole('link', {
+            name: `View ${BLOCK_LABELS[block]} transactions`,
+        });
+        const url = new URL(
+            link.getAttribute('href') ?? '',
+            'http://localhost',
+        );
+
+        expect(url.pathname).toBe('/transactions');
+        expect(url.searchParams.get('cashflow_block')).toBe(block);
+        expect(url.searchParams.get('date_from')).toBe(from);
+        expect(url.searchParams.get('date_to')).toBe(to);
+    }
+}
+
 describe('CashflowPage', () => {
     beforeEach(() => {
         pageProps.current = { features: { cashflowAvailableFree: false } };
@@ -126,5 +183,51 @@ describe('CashflowPage', () => {
         expect(
             screen.getByText('Where your money goes · October 2026'),
         ).toBeTruthy();
+    });
+
+    it.each([
+        ['month', '2026-10', '2026-10-01', '2026-10-31'],
+        ['quarter', '2026-Q3', '2026-07-01', '2026-09-30'],
+        ['year', '2026', '2026-01-01', '2026-12-31'],
+    ] as const)(
+        'links every block to its transactions over the %s in view',
+        (periodType, period, from, to) => {
+            pageProps.current = {
+                features: { cashflowAvailableFree: true },
+                period,
+                periodType,
+            };
+
+            render(<CashflowPage />);
+            expectBlockLinks(['fixed', 'variable', 'general'], from, to);
+
+            // The drawer hides the page behind it from the accessibility tree.
+            fireEvent.click(
+                screen.getByRole('button', { name: 'View details' }),
+            );
+            expectBlockLinks(CASHFLOW_BLOCKS, from, to);
+        },
+    );
+
+    it('closes the drawer when one of its links is followed', async () => {
+        pageProps.current = { features: { cashflowAvailableFree: true } };
+
+        render(<CashflowPage />);
+        fireEvent.click(screen.getByRole('button', { name: 'View details' }));
+        fireEvent.click(
+            screen.getByRole('link', {
+                name: 'View Saved (cashflow) transactions',
+            }),
+        );
+
+        // vaul keeps the content mounted through its exit animation.
+        await waitFor(() =>
+            expect(
+                screen
+                    .getByText('Where your money goes · October 2026')
+                    .closest('[data-slot="drawer-content"]')
+                    ?.getAttribute('data-state'),
+            ).toBe('closed'),
+        );
     });
 });

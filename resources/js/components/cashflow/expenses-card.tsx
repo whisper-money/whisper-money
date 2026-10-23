@@ -4,7 +4,6 @@ import {
     BlockLink,
     BlockSwatch,
     type CashflowBlockHrefs,
-    EXPENSE_BLOCKS,
     expenseBlockHint,
     StackedBar,
 } from '@/components/cashflow/cashflow-blocks';
@@ -25,6 +24,7 @@ import {
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { expenseSplitOf } from '@/lib/cashflow-available';
+import { EXPENSE_BLOCKS } from '@/lib/cashflow-block';
 import { __ } from '@/utils/i18n';
 
 interface ExpensesCardProps {

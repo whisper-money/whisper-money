@@ -4,10 +4,7 @@ import {
     blockLabel,
     BlockLink,
     BlockSwatch,
-    CASHFLOW_BLOCKS,
-    type CashflowBlock,
     type CashflowBlockHrefs,
-    isExpenseBlock,
     StackedBar,
     type StackedBarSegment,
 } from '@/components/cashflow/cashflow-blocks';
@@ -36,7 +33,9 @@ import {
     freeOf,
     hasPeriodData,
 } from '@/lib/cashflow-available';
+import { CASHFLOW_BLOCKS, isExpenseBlock } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
+import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Minus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { type ReactNode } from 'react';
@@ -213,11 +212,13 @@ function BlocksTable({
     previous,
     currency,
     hrefs,
+    onNavigate,
 }: {
     current: CashflowSummary;
     previous: CashflowSummary;
     currency: string;
     hrefs: CashflowBlockHrefs;
+    onNavigate: () => void;
 }) {
     const amounts = blockAmountsOf(current);
     const previousAmounts = blockAmountsOf(previous);
@@ -287,7 +288,11 @@ function BlocksTable({
                                 )}
                             </td>
                             <td className="py-2 pl-2 text-right">
-                                <BlockLink href={hrefs[block]} block={block} />
+                                <BlockLink
+                                    href={hrefs[block]}
+                                    block={block}
+                                    onNavigate={onNavigate}
+                                />
                             </td>
                         </tr>
                     ))}
@@ -463,6 +468,9 @@ export function CashflowDetailsDrawer({
                         previous={previous}
                         currency={currency}
                         hrefs={hrefs}
+                        // Closed before the visit, so coming back finds the
+                        // page as it was, not a drawer left open over it.
+                        onNavigate={() => onOpenChange(false)}
                     />
 
                     <div className="grid gap-3 md:grid-cols-2">

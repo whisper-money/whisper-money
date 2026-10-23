@@ -14,27 +14,48 @@ import {
     startOfYear,
 } from 'date-fns';
 
-export const CASHFLOW_BLOCKS: readonly CashflowBlock[] = [
+export type ExpenseBlock = Extract<
+    CashflowBlock,
+    'fixed' | 'variable' | 'general'
+>;
+
+/** The expense blocks first, then what was contributed. */
+export const EXPENSE_BLOCKS: readonly ExpenseBlock[] = [
     'fixed',
     'variable',
     'general',
+];
+
+export const CASHFLOW_BLOCKS: readonly CashflowBlock[] = [
+    ...EXPENSE_BLOCKS,
     'saved',
     'invested',
 ];
 
+export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
+    return (EXPENSE_BLOCKS as readonly CashflowBlock[]).includes(block);
+}
+
+// Each block reads apart from its neighbours by lightness, not only by hue, so
+// the bars still split for anyone who cannot tell rose from emerald.
+export const CASHFLOW_BLOCK_TONES: Record<CashflowBlock, string> = {
+    fixed: 'bg-rose-900 dark:bg-rose-700',
+    variable: 'bg-rose-500 dark:bg-rose-400',
+    general: 'bg-neutral-400 dark:bg-neutral-500',
+    saved: 'bg-emerald-700 dark:bg-emerald-600',
+    invested: 'bg-blue-700 dark:bg-blue-500',
+};
+
 /**
- * Untranslated labels (run them through `__()`) and the swatch colour each
- * block has on the cashflow screen.
+ * Untranslated labels (run them through `__()`) the transactions list names
+ * each block with.
  */
-export const CASHFLOW_BLOCK_META: Record<
-    CashflowBlock,
-    { label: string; swatchClassName: string }
-> = {
-    fixed: { label: 'Fixed expense', swatchClassName: 'bg-rose-900' },
-    variable: { label: 'Variable expense', swatchClassName: 'bg-rose-500' },
-    general: { label: 'General expense', swatchClassName: 'bg-neutral-400' },
-    saved: { label: 'Saved (cashflow)', swatchClassName: 'bg-emerald-700' },
-    invested: { label: 'Invested', swatchClassName: 'bg-blue-700' },
+export const CASHFLOW_BLOCK_LABELS: Record<CashflowBlock, string> = {
+    fixed: 'Fixed expense',
+    variable: 'Variable expense',
+    general: 'General expense',
+    saved: 'Saved (cashflow)',
+    invested: 'Invested',
 };
 
 /**
