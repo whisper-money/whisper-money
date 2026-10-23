@@ -1,26 +1,16 @@
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { expenseSplitOf } from '@/lib/cashflow-available';
-import { CASHFLOW_BLOCK_TONES } from '@/lib/cashflow-block';
+import { CASHFLOW_BLOCK_TONES, type ExpenseBlock } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 
-/** The expense blocks first, then what was contributed. */
-export type ExpenseBlock = Extract<
-    CashflowBlock,
-    'fixed' | 'variable' | 'general'
->;
-
 /** A "view transactions" link per block, for the rows that have one. */
 export type CashflowBlockHrefs = Partial<Record<CashflowBlock, string>>;
 
-export const EXPENSE_BLOCKS: ExpenseBlock[] = ['fixed', 'variable', 'general'];
-export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
-    return (EXPENSE_BLOCKS as CashflowBlock[]).includes(block);
-}
-
+/** Every block's tone plus those of the bar's non-block segments. */
 export const BLOCK_TONES: Record<CashflowBlock | 'reserved' | 'free', string> =
     {
         ...CASHFLOW_BLOCK_TONES,

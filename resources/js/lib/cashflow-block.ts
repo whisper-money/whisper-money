@@ -14,13 +14,27 @@ import {
     startOfYear,
 } from 'date-fns';
 
-export const CASHFLOW_BLOCKS: readonly CashflowBlock[] = [
+export type ExpenseBlock = Extract<
+    CashflowBlock,
+    'fixed' | 'variable' | 'general'
+>;
+
+/** The expense blocks first, then what was contributed. */
+export const EXPENSE_BLOCKS: readonly ExpenseBlock[] = [
     'fixed',
     'variable',
     'general',
+];
+
+export const CASHFLOW_BLOCKS: readonly CashflowBlock[] = [
+    ...EXPENSE_BLOCKS,
     'saved',
     'invested',
 ];
+
+export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
+    return (EXPENSE_BLOCKS as readonly CashflowBlock[]).includes(block);
+}
 
 // Each block reads apart from its neighbours by lightness, not only by hue, so
 // the bars still split for anyone who cannot tell rose from emerald.
@@ -33,33 +47,15 @@ export const CASHFLOW_BLOCK_TONES: Record<CashflowBlock, string> = {
 };
 
 /**
- * Untranslated labels (run them through `__()`) and the swatch colour each
- * block has on the cashflow screen.
+ * Untranslated labels (run them through `__()`) the transactions list names
+ * each block with.
  */
-export const CASHFLOW_BLOCK_META: Record<
-    CashflowBlock,
-    { label: string; swatchClassName: string }
-> = {
-    fixed: {
-        label: 'Fixed expense',
-        swatchClassName: CASHFLOW_BLOCK_TONES.fixed,
-    },
-    variable: {
-        label: 'Variable expense',
-        swatchClassName: CASHFLOW_BLOCK_TONES.variable,
-    },
-    general: {
-        label: 'General expense',
-        swatchClassName: CASHFLOW_BLOCK_TONES.general,
-    },
-    saved: {
-        label: 'Saved (cashflow)',
-        swatchClassName: CASHFLOW_BLOCK_TONES.saved,
-    },
-    invested: {
-        label: 'Invested',
-        swatchClassName: CASHFLOW_BLOCK_TONES.invested,
-    },
+export const CASHFLOW_BLOCK_LABELS: Record<CashflowBlock, string> = {
+    fixed: 'Fixed expense',
+    variable: 'Variable expense',
+    general: 'General expense',
+    saved: 'Saved (cashflow)',
+    invested: 'Invested',
 };
 
 /**

@@ -5,7 +5,6 @@ import {
     BlockLink,
     BlockSwatch,
     type CashflowBlockHrefs,
-    isExpenseBlock,
     StackedBar,
     type StackedBarSegment,
 } from '@/components/cashflow/cashflow-blocks';
@@ -34,7 +33,7 @@ import {
     freeOf,
     hasPeriodData,
 } from '@/lib/cashflow-available';
-import { CASHFLOW_BLOCKS } from '@/lib/cashflow-block';
+import { CASHFLOW_BLOCKS, isExpenseBlock } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';

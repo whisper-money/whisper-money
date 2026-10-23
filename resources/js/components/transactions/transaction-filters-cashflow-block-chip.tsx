@@ -1,4 +1,7 @@
-import { CASHFLOW_BLOCK_META } from '@/lib/cashflow-block';
+import {
+    CASHFLOW_BLOCK_LABELS,
+    CASHFLOW_BLOCK_TONES,
+} from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
@@ -15,8 +18,7 @@ interface CashflowBlockChipProps {
  * to see and drop it.
  */
 export function CashflowBlockChip({ block, onRemove }: CashflowBlockChipProps) {
-    const { label, swatchClassName } = CASHFLOW_BLOCK_META[block];
-    const blockName = __(label);
+    const blockName = __(CASHFLOW_BLOCK_LABELS[block]);
 
     return (
         <span
@@ -27,7 +29,7 @@ export function CashflowBlockChip({ block, onRemove }: CashflowBlockChipProps) {
                 aria-hidden="true"
                 className={cn(
                     'size-2.5 shrink-0 rounded-full',
-                    swatchClassName,
+                    CASHFLOW_BLOCK_TONES[block],
                 )}
             />
             {__('Block: :name', { name: blockName })}
