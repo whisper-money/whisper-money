@@ -54,7 +54,7 @@ class CashflowBudgetReserveService
      * transaction tracked by both a fixed and a variable budget counts once,
      * as fixed. The three always add up to `$expense` (any can be negative in
      * a month of refunds, as `$expense` can).
-
+     *
      * Budget amounts are read as stored, in the user's currency, the same way
      * the budget screens read them.
      *
@@ -138,8 +138,10 @@ class CashflowBudgetReserveService
     private function budgetedExpense(string $userId, string $userCurrency, PeriodComparator $period): array
     {
         $tracked = $this->trackedIds($userId, $period);
-        $categories = [...$tracked[BudgetExpenseType::Fixed->value]['categories'], ...$tracked[BudgetExpenseType::Variable->value]['categories']];
-        $labels = [...$tracked[BudgetExpenseType::Fixed->value]['labels'], ...$tracked[BudgetExpenseType::Variable->value]['labels']];
+        $trackedByFixed = $tracked[BudgetExpenseType::Fixed->value];
+        $trackedByVariable = $tracked[BudgetExpenseType::Variable->value];
+        $categories = [...$trackedByFixed['categories'], ...$trackedByVariable['categories']];
+        $labels = [...$trackedByFixed['labels'], ...$trackedByVariable['labels']];
 
         if ($categories === [] && $labels === []) {
             return ['fixed' => 0, 'variable' => 0];
@@ -160,7 +162,7 @@ class CashflowBudgetReserveService
 
         // Fixed wins an overlap, so a transaction is only ever counted once.
         [$fixed, $variable] = $transactions->partition(
-            fn (Transaction $transaction): bool => $this->isTrackedBy($transaction, $tracked[BudgetExpenseType::Fixed->value]),
+            fn (Transaction $transaction): bool => $this->isTrackedBy($transaction, $trackedByFixed),
         );
 
         return [
