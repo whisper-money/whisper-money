@@ -64,14 +64,14 @@ it('maps each transaction field to the header jev picked', function () {
         'kind' => 'transaction',
         'columns' => bankExportColumns(),
     ])->assertOk()->assertExactJson(['data' => [
-        'transaction_date' => ['column' => 'Fecha operación', 'confidence' => 0.97],
-        'description' => ['column' => 'Concepto', 'confidence' => 0.9],
-        'amount' => ['column' => 'Importe', 'confidence' => 0.95],
-        'currency' => ['column' => null, 'confidence' => 0.92],
-        'balance' => ['column' => 'Saldo', 'confidence' => 0.88],
-        'creditor_name' => ['column' => null, 'confidence' => 0.8],
-        'debtor_name' => ['column' => null, 'confidence' => 0.3],
-        'transaction_type' => ['column' => null, 'confidence' => 0.9],
+        'transaction_date' => ['column' => 'Fecha operación', 'index' => 0, 'confidence' => 0.97],
+        'description' => ['column' => 'Concepto', 'index' => 1, 'confidence' => 0.9],
+        'amount' => ['column' => 'Importe', 'index' => 2, 'confidence' => 0.95],
+        'currency' => ['column' => null, 'index' => null, 'confidence' => 0.92],
+        'balance' => ['column' => 'Saldo', 'index' => 3, 'confidence' => 0.88],
+        'creditor_name' => ['column' => null, 'index' => null, 'confidence' => 0.8],
+        'debtor_name' => ['column' => null, 'index' => null, 'confidence' => 0.3],
+        'transaction_type' => ['column' => null, 'index' => null, 'confidence' => 0.9],
     ]]);
 
     Http::assertSentCount(1);
@@ -107,9 +107,9 @@ it('asks for the balance fields on a balance import', function () {
             ['header' => 'Value', 'shape' => 'number, 2 decimals, all positive'],
         ],
     ])->assertOk()->assertExactJson(['data' => [
-        'balance_date' => ['column' => 'Date', 'confidence' => 0.9],
-        'balance' => ['column' => 'Value', 'confidence' => 0.9],
-        'invested_amount' => ['column' => null, 'confidence' => 0.9],
+        'balance_date' => ['column' => 'Date', 'index' => 0, 'confidence' => 0.9],
+        'balance' => ['column' => 'Value', 'index' => 1, 'confidence' => 0.9],
+        'invested_amount' => ['column' => null, 'index' => null, 'confidence' => 0.9],
     ]]);
 
     Http::assertSent(fn (Request $request): bool => array_keys($request['questions']) === ['balance_date', 'balance', 'invested_amount']);
@@ -124,9 +124,9 @@ it('leaves a field unmapped when jev skips it or picks a column that does not ex
         'kind' => 'balance',
         'columns' => [['header' => 'Date', 'shape' => 'date (yyyy-mm-dd)']],
     ])->assertOk()->assertExactJson(['data' => [
-        'balance_date' => ['column' => null, 'confidence' => 0.99],
-        'balance' => ['column' => null, 'confidence' => 0],
-        'invested_amount' => ['column' => null, 'confidence' => 0],
+        'balance_date' => ['column' => null, 'index' => null, 'confidence' => 0.99],
+        'balance' => ['column' => null, 'index' => null, 'confidence' => 0],
+        'invested_amount' => ['column' => null, 'index' => null, 'confidence' => 0],
     ]]);
 });
 
@@ -150,6 +150,20 @@ it('falls back silently when jev keeps failing transiently', function (Closure $
     'server error' => fn () => fn () => Http::response([], 503),
     'unreachable' => fn () => fn () => Http::failedConnection(),
 ]);
+
+it('tells repeated headers apart by position', function () {
+    Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers(['transaction_date' => ['1', 0.9]]))]);
+
+    $this->postJson(route('api.import.column-suggestions'), [
+        'kind' => 'transaction',
+        'columns' => [
+            ['header' => 'Fecha', 'shape' => 'date (dd/mm/yyyy), value date'],
+            ['header' => 'Fecha', 'shape' => 'date (dd/mm/yyyy)'],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('data.transaction_date.column', 'Fecha')
+        ->assertJsonPath('data.transaction_date.index', 1);
+});
 
 it('retries a transient failure in place before answering', function () {
     Http::fakeSequence('api.typesafe.ai/*')
@@ -198,13 +212,15 @@ it('refuses anything beyond headers and shapes', function (array $payload, strin
     'an extra top-level field' => [['kind' => 'transaction', 'columns' => [['header' => 'A', 'shape' => 'text']], 'rows' => [['Mercadona', '-12.40']]], 'rows'],
 ]);
 
-it('labels an unnamed column by its shape and never suggests it', function () {
+it('labels an unnamed column by its shape and suggests it by position only', function () {
     Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers(['balance_date' => ['0', 0.9]]))]);
 
     $this->postJson(route('api.import.column-suggestions'), [
         'kind' => 'balance',
         'columns' => [['header' => '', 'shape' => 'date (yyyy-mm-dd)']],
-    ])->assertOk()->assertJsonPath('data.balance_date.column', null);
+    ])->assertOk()
+        ->assertJsonPath('data.balance_date.column', null)
+        ->assertJsonPath('data.balance_date.index', 0);
 
     Http::assertSent(fn (Request $request): bool => $request['questions']['balance_date']['criteria']['0'] === '(unnamed column, date (yyyy-mm-dd))');
 });

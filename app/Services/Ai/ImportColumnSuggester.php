@@ -15,38 +15,45 @@ class ImportColumnSuggester
 {
     private const string NO_COLUMN = 'none';
 
-    /**
-     * Instructions per field, keyed by import kind.
-     *
-     * @var array<string, array<string, string>>
-     */
-    private const array FIELDS = [
-        'transaction' => [
-            'transaction_date' => 'Pick the column holding the date each bank transaction happened. When the file has both a booking/operation date and a value date, prefer the booking/operation date.',
-            'description' => 'Pick the column holding the free-text description, concept or reference of each transaction. Not the counterparty name column when a separate description exists.',
-            'amount' => 'Pick the column holding the amount of money each transaction moved (signed or unsigned). Not the running balance, a fee or a tax column.',
-            'currency' => 'Pick the column holding the currency code or symbol of each transaction amount (e.g. EUR, USD, €).',
-            'balance' => 'Pick the column holding the account balance after each transaction (the running balance). Not the transaction amount.',
-            'creditor_name' => 'Pick the column holding the name of who received the money (payee, beneficiary, merchant).',
-            'debtor_name' => 'Pick the column holding the name of who sent the money (payer, ordering party).',
-            'transaction_type' => 'Pick the column saying only whether each transaction is money in or money out (e.g. debit/credit, Af/Bij, in/out, D/C). Not a column describing the kind of operation (card payment, transfer).',
-        ],
-        'balance' => [
-            'balance_date' => 'Pick the column holding the date each balance was recorded.',
-            'balance' => 'Pick the column holding the account balance or market value on that date. Not a contribution or invested amount.',
-            'invested_amount' => 'Pick the column holding the amount of money invested or contributed so far (cost basis). Not the current balance or market value.',
-        ],
-    ];
+    private const int TIMEOUT_SECONDS = 10;
 
     public function __construct(private JevClient $jev) {}
 
     /**
+     * The fields to place, each with its instructions to Jev. Their names are
+     * the keys of the client's `ColumnMapping` (resources/js/types/import.ts)
+     * and `BalanceColumnMapping` (resources/js/types/balance-import.ts).
+     *
+     * @return array<string, string>
+     */
+    private function fields(ImportConfigType $kind): array
+    {
+        return match ($kind) {
+            ImportConfigType::Transaction => [
+                'transaction_date' => 'Pick the column holding the date each bank transaction happened. When the file has both a booking/operation date and a value date, prefer the booking/operation date.',
+                'description' => 'Pick the column holding the free-text description, concept or reference of each transaction. Not the counterparty name column when a separate description exists.',
+                'amount' => 'Pick the column holding the amount of money each transaction moved (signed or unsigned). Not the running balance, a fee or a tax column.',
+                'currency' => 'Pick the column holding the currency code or symbol of each transaction amount (e.g. EUR, USD, €).',
+                'balance' => 'Pick the column holding the account balance after each transaction (the running balance). Not the transaction amount.',
+                'creditor_name' => 'Pick the column holding the name of who received the money (payee, beneficiary, merchant).',
+                'debtor_name' => 'Pick the column holding the name of who sent the money (payer, ordering party).',
+                'transaction_type' => 'Pick the column saying only whether each transaction is money in or money out (e.g. debit/credit, Af/Bij, in/out, D/C). Not a column describing the kind of operation (card payment, transfer).',
+            ],
+            ImportConfigType::Balance => [
+                'balance_date' => 'Pick the column holding the date each balance was recorded.',
+                'balance' => 'Pick the column holding the account balance or market value on that date. Not a contribution or invested amount.',
+                'invested_amount' => 'Pick the column holding the amount of money invested or contributed so far (cost basis). Not the current balance or market value.',
+            ],
+        };
+    }
+
+    /**
      * @param  list<array{header: ?string, shape: string}>  $columns
-     * @return array<string, array{column: ?string, confidence: float}>|null the header suggested per field, or null when Jev could not answer
+     * @return array<string, array{column: ?string, index: ?int, confidence: float}>|null the header (and position, which tells apart repeated headers) suggested per field, or null when Jev could not answer
      */
     public function suggest(ImportConfigType $kind, array $columns): ?array
     {
-        $response = $this->jev->send($this->body($kind, $columns));
+        $response = $this->jev->send($this->body($kind, $columns), self::TIMEOUT_SECONDS);
 
         if ($response === null) {
             return null;
@@ -79,7 +86,7 @@ class ImportColumnSuggester
 
         $questions = [];
 
-        foreach (self::FIELDS[$kind->value] as $field => $instructions) {
+        foreach ($this->fields($kind) as $field => $instructions) {
             $questions[$field] = [
                 'type' => 'choice',
                 'instructions' => "These are the columns of a bank export file a personal-finance app user is importing, each with its header and the shape of its values. {$instructions} Choose \"none\" if no column fits; do not guess.",
@@ -104,20 +111,23 @@ class ImportColumnSuggester
 
     /**
      * @param  list<array{header: ?string, shape: string}>  $columns
-     * @return array<string, array{column: ?string, confidence: float}>
+     * @return array<string, array{column: ?string, index: ?int, confidence: float}>
      */
     private function suggestions(ImportConfigType $kind, array $columns, Response $response): array
     {
         $minConfidence = (float) config('ai_import_mapping.min_confidence');
         $suggestions = [];
 
-        foreach (array_keys(self::FIELDS[$kind->value]) as $field) {
+        foreach (array_keys($this->fields($kind)) as $field) {
             $choice = $response->json("answers.{$field}.choice");
             $confidence = (float) $response->json("answers.{$field}.confidence", 0.0);
-            $column = is_numeric($choice) ? ($columns[(int) $choice]['header'] ?? null) : null;
+            $index = is_numeric($choice) && isset($columns[(int) $choice]) && $confidence >= $minConfidence
+                ? (int) $choice
+                : null;
 
             $suggestions[$field] = [
-                'column' => $confidence >= $minConfidence ? $column : null,
+                'column' => $index === null ? null : $columns[$index]['header'],
+                'index' => $index,
                 'confidence' => $confidence,
             ];
         }

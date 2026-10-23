@@ -21,10 +21,9 @@ use Throwable;
  *
  * A transient failure (see {@see JevClient}) is retried in place a couple of
  * times with a short backoff, so a burst over the rate limit does not wait for
- * the deferred retry. What still
- * fails drops only its own transaction and surfaces as a
- * {@see TransientCategorizationException} carrying the rest; any other failed
- * request (401, 422) is reported and dropped.
+ * the deferred retry. What still fails drops only its own transaction and
+ * surfaces as a {@see TransientCategorizationException} carrying the rest; any
+ * other failed request (401, 422) is reported and dropped.
  */
 class JevCategorizationBackend implements CategorizationBackend
 {
