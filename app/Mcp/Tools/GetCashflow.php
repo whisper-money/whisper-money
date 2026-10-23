@@ -11,7 +11,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Full cashflow for a date range: income/expense/savings/investment summary (current vs previous; expense split fixed/variable/general in both, budgets with their expense type in current), category sankey and monthly trend. Whole account.')]
+#[Description('Full cashflow for a date range: income/expense/savings/investment summary (current vs previous, both with expense split fixed/variable/general), category sankey and monthly trend. Whole account.')]
 class GetCashflow extends McpTool
 {
     /**
