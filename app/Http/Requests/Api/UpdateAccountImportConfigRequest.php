@@ -27,6 +27,8 @@ class UpdateAccountImportConfigRequest extends FormRequest
             'config' => ['required', 'array'],
             'config.columnMapping' => ['required', 'array'],
             'config.dateFormat' => ['required', 'string', 'max:20'],
+            // True while the saved mapping is the AI's suggestion, unchanged.
+            'config.aiSuggested' => ['sometimes', 'boolean'],
         ];
     }
 }
