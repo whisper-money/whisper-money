@@ -1,3 +1,4 @@
+import { StackedBar } from '@/components/cashflow/cashflow-blocks';
 import {
     INVESTMENTS_TONE,
     PeriodTrend,
@@ -62,26 +63,30 @@ function ContributionSplitBar({
     investmentsShare,
 }: ContributionSplitBarProps) {
     return (
-        <div
-            role="img"
-            aria-label={__(
+        <StackedBar
+            ariaLabel={__(
                 'Contributed split: :saved% saved, :invested% invested',
                 {
                     saved: savingsShare.toFixed(0),
                     invested: investmentsShare.toFixed(0),
                 },
             )}
-            className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-muted"
-        >
-            <div
-                className={SAVINGS_TONE}
-                style={{ width: `${savingsShare}%` }}
-            />
-            <div
-                className={INVESTMENTS_TONE}
-                style={{ width: `${investmentsShare}%` }}
-            />
-        </div>
+            className="mt-3"
+            segments={[
+                {
+                    key: 'saved',
+                    label: __('Saved (cashflow)'),
+                    amount: savingsShare,
+                    tone: SAVINGS_TONE,
+                },
+                {
+                    key: 'invested',
+                    label: __('Invested'),
+                    amount: investmentsShare,
+                    tone: INVESTMENTS_TONE,
+                },
+            ]}
+        />
     );
 }
 

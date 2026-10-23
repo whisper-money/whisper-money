@@ -14,6 +14,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
+import { hasPeriodData } from '@/lib/cashflow-available';
 import { __ } from '@/utils/i18n';
 
 interface NetCashflowCardProps {
@@ -36,7 +37,7 @@ export function NetCashflowCard({
     const diff = current.net - previous.net;
     const rateDiff = current.savings_rate - previous.savings_rate;
     const expenseDiff = current.expense - previous.expense;
-    const hasPreviousData = previous.income > 0 || previous.expense > 0;
+    const hasPreviousData = hasPeriodData(previous);
 
     return (
         <Card>

@@ -16,7 +16,13 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
-import { allocatedOf, availableOf, freeOf } from '@/lib/cashflow-available';
+import {
+    allocatedOf,
+    availableOf,
+    freeOf,
+    hasPeriodData,
+} from '@/lib/cashflow-available';
+import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 
 interface AvailableCardProps {
@@ -24,7 +30,6 @@ interface AvailableCardProps {
     previous: CashflowSummary;
     loading?: boolean;
     currency?: string;
-    className?: string;
 }
 
 /** Available minus what the open budgets still hold, with what it holds. */
@@ -62,7 +67,7 @@ function FreeHighlight({
                 currencyCode={currency}
                 size="2xl"
                 weight="bold"
-                className={signTone(free)}
+                className={cn('whitespace-nowrap', signTone(free))}
                 highlightPositive
             />
         </div>
@@ -74,15 +79,9 @@ export function AvailableCard({
     previous,
     loading,
     currency = 'USD',
-    className,
 }: AvailableCardProps) {
     if (loading) {
-        return (
-            <SummaryCardSkeleton
-                title={__('Available')}
-                className={className}
-            />
-        );
+        return <SummaryCardSkeleton title={__('Available')} />;
     }
 
     const available = availableOf(current);
@@ -90,10 +89,10 @@ export function AvailableCard({
     const rateDiff = rate - shareOf(availableOf(previous), previous.income);
     const availableDiff = available - availableOf(previous);
     const allocatedDiff = allocatedOf(current) - allocatedOf(previous);
-    const hasPreviousData = previous.income > 0 || previous.expense > 0;
+    const hasPreviousData = hasPeriodData(previous);
 
     return (
-        <Card className={className}>
+        <Card>
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
                     {__('Available')}

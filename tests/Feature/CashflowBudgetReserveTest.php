@@ -372,3 +372,43 @@ test('a range reads as a year once it is longer than a quarter', function (strin
     '92 days with a time on the end date' => ['2026-08-01', '2026-10-31 23:59:59', false],
     '93 days' => ['2026-07-31', '2026-10-31', true],
 ]);
+
+test('each budget row carries its expense type', function () {
+    $rent = Budget::factory()->monthly()->fixed()->create(['user_id' => $this->user->id, 'name' => 'Rent']);
+    $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+
+    budgetPeriodWithSpend($rent, '2026-10-01', '2026-10-31', 90000, 90000);
+    budgetPeriodWithSpend($groceries, '2026-10-01', '2026-10-31', 40000, 15000);
+
+    $budgets = collect(cashflowSummary()['budgets']);
+
+    expect($budgets->firstWhere('budget_id', $rent->id)['expense_type'])->toBe('fixed')
+        ->and($budgets->firstWhere('budget_id', $groceries->id)['expense_type'])->toBe('variable');
+});
+
+test('the previous period carries the expense split but nothing reserved', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $other = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+
+    foreach ([
+        Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]),
+        Budget::factory()->monthly()->fixed()->forCategories($rent)->create(['user_id' => $this->user->id]),
+    ] as $budget) {
+        BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-09-01', 'end_date' => '2026-09-30', 'allocated_amount' => 50000]);
+    }
+
+    expenseOn($this, $food, -10000, date: '2026-09-10');
+    expenseOn($this, $rent, -70000, date: '2026-09-10');
+    expenseOn($this, $other, -3000, date: '2026-09-12');
+
+    $previous = $this->getJson('/api/cashflow/summary?'.http_build_query(['from' => '2026-10-01', 'to' => '2026-10-31']))
+        ->assertOk()
+        ->json('previous');
+
+    expect($previous['fixed_expense'])->toBe(70000)
+        ->and($previous['variable_expense'])->toBe(10000)
+        ->and($previous['general_expense'])->toBe(3000)
+        ->and($previous['expense'])->toBe(83000)
+        ->and($previous)->not->toHaveKeys(['reserved', 'budgets']);
+});

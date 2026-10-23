@@ -84,11 +84,11 @@ export function AmountComparison({
     const Icon = isIncrease ? TrendingUp : TrendingDown;
 
     return (
-        <div className="mt-1 flex items-center gap-1 text-xs">
+        <div className="mt-1 flex flex-wrap items-center gap-x-1 text-xs">
             <Icon
                 className={cn('size-3', trendColor(isFavorable ?? isIncrease))}
             />
-            <span>
+            <span className="whitespace-nowrap">
                 {isIncrease ? '+' : ''}
                 <WholeAmount
                     amountInCents={diff}
@@ -97,7 +97,7 @@ export function AmountComparison({
                     highlightPositive
                 />
             </span>
-            <span className="text-muted-foreground">
+            <span className="whitespace-nowrap text-muted-foreground">
                 {__('vs last period')}
             </span>
         </div>

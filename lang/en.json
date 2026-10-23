@@ -7,5 +7,7 @@
     "Contributed split: :saved% saved, :invested% invested": "Contributed split: :saved% saved, :invested% invested",
     "Free (cashflow)": "Free",
     "reserved in budgets": "reserved in budgets",
-    "Nothing reserved in budgets": "Nothing reserved in budgets"
+    "Nothing reserved in budgets": "Nothing reserved in budgets",
+    "Expenses (cashflow)": "Expenses",
+    "Amount (cashflow)": "Amount"
 }

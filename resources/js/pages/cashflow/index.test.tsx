@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CashflowPage from './index';
@@ -45,6 +45,11 @@ vi.mock('@/components/cashflow/breakdown-card', () => ({
 
 vi.mock('@/components/cashflow/period-navigation', () => ({
     PeriodNavigation: () => null,
+    formatPeriodLabel: () => 'October 2026',
+}));
+
+vi.mock('@/hooks/use-locale', () => ({
+    useLocale: () => 'en',
 }));
 
 vi.mock('@/hooks/use-period-url-sync', () => ({
@@ -89,6 +94,10 @@ describe('CashflowPage', () => {
 
         expect(screen.queryByText('Income distribution')).toBeNull();
         expect(screen.queryByText('Free (cashflow)')).toBeNull();
+        expect(screen.queryByText('Expenses (cashflow)')).toBeNull();
+        expect(
+            screen.queryByRole('button', { name: 'View details' }),
+        ).toBeNull();
     });
 
     it('shows the free highlight but no income distribution with the flag on', () => {
@@ -100,5 +109,22 @@ describe('CashflowPage', () => {
             0,
         );
         expect(screen.queryByText('Income distribution')).toBeNull();
+    });
+
+    it('shows the expenses card and opens its details with the flag on', () => {
+        pageProps.current = { features: { cashflowAvailableFree: true } };
+
+        render(<CashflowPage />);
+
+        expect(screen.getByText('Expenses (cashflow)')).toBeTruthy();
+        expect(
+            screen.queryByText('Where your money goes · October 2026'),
+        ).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: 'View details' }));
+
+        expect(
+            screen.getByText('Where your money goes · October 2026'),
+        ).toBeTruthy();
     });
 });
