@@ -196,7 +196,7 @@ export default function Privacy() {
                                 </li>
                                 <li>
                                     <strong>
-                                        {__('No Third-Party Data Sharing:')}
+                                        {__('No Sharing with Advertisers:')}
                                     </strong>
                                     {__(
                                         ' Your financial data is never shared with advertisers or data brokers. It is only processed by the providers listed in section 5, and only to provide the service',
@@ -249,7 +249,7 @@ export default function Privacy() {
                                 <li>
                                     <strong>{__('AI Providers:')}</strong>{' '}
                                     {__(
-                                        'Google (Gemini) and TypeSafe AI. Only with your AI consent do they receive the details needed to categorize your transactions (description, amount, direction, and payer or payee names) and your category names; Google (Gemini) also writes your monthly summary and rule suggestions from your figures and transaction descriptions. To detect the columns of a file you import, TypeSafe AI receives only the header of each column and the shape of its values, such as "date (dd/mm/yyyy)", never the values themselves',
+                                        'Google (Gemini) and TypeSafe AI. Only with your AI consent: to categorize a transaction, one of them receives its description, amount, whether it is income or an expense, and the payer or payee names, along with your category names; Google (Gemini) also receives your monthly figures and the names of your categories, budgets, goals, and accounts to write your monthly summary, and groups of similar transactions (payer or payee names, sample descriptions, and average amount) to suggest rules. Without needing your AI consent, TypeSafe AI helps detect the columns of a file you import: it receives only the header of each column and the shape of its values, such as "date (dd/mm/yyyy)", never the values themselves',
                                     )}
                                 </li>
                             </ul>
