@@ -28,7 +28,7 @@ export function AiColumnDetection({
             <span
                 role="status"
                 className={cn(
-                    'inline-flex w-fit items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-900 dark:border-violet-900 dark:bg-violet-950/50 dark:text-violet-100',
+                    'inline-flex h-8 w-fit items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-3 text-xs font-medium text-violet-900 dark:border-violet-900 dark:bg-violet-950/50 dark:text-violet-100',
                     className,
                 )}
             >
