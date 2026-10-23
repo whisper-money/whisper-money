@@ -3,10 +3,12 @@
 namespace App\Services\Ai;
 
 use App\Enums\ImportConfigType;
+use App\Exceptions\Ai\ImportMappingUnavailableException;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Asks TypeSafe AI's Jev which column of an imported file holds each field.
@@ -20,8 +22,6 @@ use Illuminate\Support\Facades\Cache;
 class ImportColumnSuggester
 {
     private const string NO_COLUMN = 'none';
-
-    private const int TIMEOUT_SECONDS = 10;
 
     public function __construct(private JevClient $jev) {}
 
@@ -100,19 +100,71 @@ class ImportColumnSuggester
      */
     private function suggest(ImportConfigType $kind, array $columns): ?array
     {
-        $response = $this->jev->send($this->body($kind, $columns), self::TIMEOUT_SECONDS);
+        $attempts = (int) config('ai_import_mapping.attempts');
+        $response = $this->jev->send(
+            $this->body($kind, $columns),
+            (int) config('ai_import_mapping.timeout_seconds'),
+            $attempts,
+        );
 
         if ($response === null) {
+            $this->reportThrottled('exhausted', ImportMappingUnavailableException::exhausted($attempts));
+
             return null;
         }
 
         if ($response->failed()) {
-            report($response->toException());
+            $this->reportThrottled('rejected', $response->toException());
+
+            return null;
+        }
+
+        if (! $this->answersAnyField($kind, $columns, $response)) {
+            $this->reportThrottled('malformed', ImportMappingUnavailableException::malformed($response->status()));
 
             return null;
         }
 
         return $this->suggestions($kind, $columns, $response);
+    }
+
+    /**
+     * Report a failure at most once every few minutes per kind of failure, so
+     * a Jev outage shows up without one report per file every user imports.
+     */
+    private function reportThrottled(string $reason, Throwable $exception): void
+    {
+        $window = now()->addMinutes((int) config('ai_import_mapping.report_every_minutes'));
+
+        if (Cache::add("ai-import-mapping:reported:{$reason}", true, $window)) {
+            report($exception);
+        }
+    }
+
+    /**
+     * Whether at least one field came back readable: a choice that is "none"
+     * or one of the file's columns, with a numeric confidence. A 200 without
+     * any is not an answer, and must not be cached as one.
+     *
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     */
+    private function answersAnyField(ImportConfigType $kind, array $columns, Response $response): bool
+    {
+        foreach (array_keys($this->fields($kind)) as $field) {
+            $answer = $response->json("answers.{$field}");
+
+            if (! is_array($answer) || ! is_numeric($answer['confidence'] ?? null)) {
+                continue;
+            }
+
+            $choice = $answer['choice'] ?? null;
+
+            if ($choice === self::NO_COLUMN || (is_numeric($choice) && isset($columns[(int) $choice]))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

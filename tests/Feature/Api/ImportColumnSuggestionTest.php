@@ -1,7 +1,9 @@
 <?php
 
+use App\Exceptions\Ai\ImportMappingUnavailableException;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\Ai\JevClient;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Exceptions;
@@ -120,6 +122,7 @@ it('asks for the balance fields on a balance import', function () {
 it('leaves a field unmapped when jev skips it or picks a column that does not exist', function () {
     Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers([
         'balance_date' => ['7', 0.99],
+        'balance' => ['none', 0.8],
     ]))]);
 
     $this->postJson(route('api.import.column-suggestions'), [
@@ -127,15 +130,14 @@ it('leaves a field unmapped when jev skips it or picks a column that does not ex
         'columns' => [['header' => 'Date', 'shape' => 'date (yyyy-mm-dd)']],
     ])->assertOk()->assertExactJson(['data' => [
         'balance_date' => ['column' => null, 'index' => null, 'confidence' => 0.99],
-        'balance' => ['column' => null, 'index' => null, 'confidence' => 0],
+        'balance' => ['column' => null, 'index' => null, 'confidence' => 0.8],
         'invested_amount' => ['column' => null, 'index' => null, 'confidence' => 0],
     ], 'cached' => false]);
 });
 
-it('falls back silently when jev keeps failing transiently', function (Closure $failure) {
+it('falls back once jev keeps failing transiently, and reports it', function (Closure $failure) {
     Exceptions::fake();
     Http::fakeSequence('api.typesafe.ai/*')
-        ->pushResponse($failure())
         ->pushResponse($failure())
         ->pushResponse($failure());
 
@@ -144,9 +146,9 @@ it('falls back silently when jev keeps failing transiently', function (Closure $
         'columns' => bankExportColumns(),
     ])->assertOk()->assertExactJson(['data' => null, 'cached' => false]);
 
-    Http::assertSentCount(3);
-    Sleep::assertSleptTimes(2);
-    Exceptions::assertNothingReported();
+    Http::assertSentCount(2);
+    Sleep::assertSleptTimes(1);
+    Exceptions::assertReported(ImportMappingUnavailableException::class);
 })->with([
     'rate limited' => fn () => fn () => Http::response([], 429),
     'server error' => fn () => fn () => Http::response([], 503),
@@ -363,4 +365,112 @@ describe('account', function () {
             'account_id' => $accountId,
         ])->assertUnprocessable()->assertJsonValidationErrors('account_id');
     })->with(['not-a-uuid', '01999999-9999-7999-8999-999999999999']);
+});
+
+describe('attempts and timeout', function () {
+    it('gives the user-facing request two short attempts by default', function () {
+        $this->mock(JevClient::class, function ($mock): void {
+            $mock->shouldReceive('model')->andReturn('jev-latest');
+            $mock->shouldReceive('send')->once()->withArgs(fn (array $body, int $timeout, int $attempts): bool => $timeout === 5 && $attempts === 2)->andReturnNull();
+        });
+
+        $this->postJson(route('api.import.column-suggestions'), [
+            'kind' => 'transaction',
+            'columns' => bankExportColumns(),
+        ])->assertOk()->assertJsonPath('data', null);
+    });
+
+    it('takes its attempts from the config', function () {
+        config()->set('ai_import_mapping.attempts', 3);
+        Exceptions::fake();
+        Http::fake(['api.typesafe.ai/*' => Http::response([], 503)]);
+
+        $this->postJson(route('api.import.column-suggestions'), [
+            'kind' => 'transaction',
+            'columns' => bankExportColumns(),
+        ])->assertOk();
+
+        Http::assertSentCount(3);
+    });
+
+    it('sets the configured timeout on each attempt', function () {
+        $options = app(JevClient::class)->request(Http::getFacadeRoot(), 5)->getOptions();
+
+        expect($options['timeout'])->toBe(5)
+            ->and($options['connect_timeout'])->toBe(5);
+    });
+});
+
+describe('failure reports', function () {
+    it('reports a run of exhausted attempts once per window, not once per file', function () {
+        config()->set('ai_import_mapping.report_every_minutes', 15);
+        Exceptions::fake();
+        Http::fake(['api.typesafe.ai/*' => Http::response([], 503)]);
+        $payload = ['kind' => 'transaction', 'columns' => bankExportColumns()];
+
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
+
+        Exceptions::assertReportedCount(1);
+
+        $this->travel(16)->minutes();
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
+
+        Exceptions::assertReportedCount(2);
+    });
+
+    it('throttles a rejected request the same way', function () {
+        Exceptions::fake();
+        Http::fake(['api.typesafe.ai/*' => Http::response(['error' => 'invalid key'], 401)]);
+        $payload = ['kind' => 'transaction', 'columns' => bankExportColumns()];
+
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
+
+        Exceptions::assertReportedCount(1);
+    });
+});
+
+describe('an unreadable answer', function () {
+    it('is neither returned nor cached, and is reported once', function (array $body) {
+        Exceptions::fake();
+        Http::fake(['api.typesafe.ai/*' => Http::response($body)]);
+        $payload = ['kind' => 'balance', 'columns' => [['header' => 'Date', 'shape' => 'date (yyyy-mm-dd)']]];
+
+        $this->postJson(route('api.import.column-suggestions'), $payload)
+            ->assertOk()
+            ->assertExactJson(['data' => null, 'cached' => false]);
+        $this->postJson(route('api.import.column-suggestions'), $payload)
+            ->assertExactJson(['data' => null, 'cached' => false]);
+
+        Http::assertSentCount(2);
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(ImportMappingUnavailableException::class);
+    })->with([
+        'no answers' => [['model' => 'jev-latest']],
+        'answers not an object' => [['answers' => 'oops']],
+        'no readable field' => [['answers' => [
+            'balance_date' => ['choice' => '9', 'confidence' => 0.9],
+            'balance' => ['choice' => 'banana', 'confidence' => 0.9],
+            'invested_amount' => ['choice' => 'none'],
+        ]]],
+    ]);
+
+    it('is not an all-none answer, which is well-formed and cached', function () {
+        Exceptions::fake();
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers([
+            'balance_date' => ['none', 0.9],
+            'balance' => ['none', 0.9],
+            'invested_amount' => ['none', 0.9],
+        ]))]);
+        $payload = ['kind' => 'balance', 'columns' => [['header' => 'Notes', 'shape' => 'text, avg 12 chars, mostly distinct values']]];
+
+        $this->postJson(route('api.import.column-suggestions'), $payload)->assertJsonPath('cached', false);
+        $this->postJson(route('api.import.column-suggestions'), $payload)
+            ->assertJsonPath('cached', true)
+            ->assertJsonPath('data.balance_date.column', null);
+
+        Http::assertSentCount(1);
+        Exceptions::assertNothingReported();
+    });
 });

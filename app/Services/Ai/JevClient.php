@@ -46,9 +46,10 @@ class JevClient
      *
      * @param  array<string, mixed>  $body
      * @param  int  $timeout  seconds per attempt; keep it short when a user is waiting on the answer
+     * @param  int  $attempts  how many tries before giving up, the first included
      * @return Response|null the response, failed or not, or null when every attempt failed transiently
      */
-    public function send(array $body, int $timeout = 30): ?Response
+    public function send(array $body, int $timeout = 30, int $attempts = self::MAX_ATTEMPTS): ?Response
     {
         for ($attempt = 1; ; $attempt++) {
             try {
@@ -61,7 +62,7 @@ class JevClient
                 return $response;
             }
 
-            if ($attempt === self::MAX_ATTEMPTS) {
+            if ($attempt >= $attempts) {
                 return null;
             }
 

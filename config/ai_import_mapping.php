@@ -42,6 +42,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Attempts & timeout
+    |--------------------------------------------------------------------------
+    |
+    | A user is waiting on the suggestion with the mapping on screen, so it
+    | gives up much sooner than the background categorization: by default two
+    | attempts of five seconds each (about eleven seconds at worst, backoff
+    | included) before the header guess simply stays.
+    |
+    */
+
+    'attempts' => (int) env('AI_IMPORT_MAPPING_ATTEMPTS', 2),
+
+    'timeout_seconds' => (int) env('AI_IMPORT_MAPPING_TIMEOUT_SECONDS', 5),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Failure reports
+    |--------------------------------------------------------------------------
+    |
+    | Minutes between two reports of the same kind of failure (Jev out of
+    | attempts, a rejected request, an unreadable answer), so an outage is
+    | reported once instead of once per imported file.
+    |
+    */
+
+    'report_every_minutes' => (int) env('AI_IMPORT_MAPPING_REPORT_EVERY_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache lifetime
     |--------------------------------------------------------------------------
     |
