@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CashflowBlock;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class BulkUpdateTransactionsRequest extends FormRequest
 {
@@ -20,8 +22,9 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'transaction_ids' => ['array', 'min:1'],
             'transaction_ids.*' => ['required', 'string', 'uuid'],
             'filters' => ['array'],
-            'filters.date_from' => ['nullable', 'date_format:Y-m-d'],
-            'filters.date_to' => ['nullable', 'date_format:Y-m-d'],
+            'filters.date_from' => ['nullable', 'date_format:Y-m-d', 'required_with:filters.cashflow_block'],
+            'filters.date_to' => ['nullable', 'date_format:Y-m-d', 'required_with:filters.cashflow_block'],
+            'filters.cashflow_block' => ['nullable', Rule::enum(CashflowBlock::class)],
             'filters.amount_min' => ['nullable', 'numeric'],
             'filters.amount_max' => ['nullable', 'numeric'],
             'filters.category_ids' => ['nullable', 'array'],

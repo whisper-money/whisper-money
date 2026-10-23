@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\CashflowBlock;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class IndexTransactionRequest extends FormRequest
 {
@@ -25,12 +27,17 @@ class IndexTransactionRequest extends FormRequest
         }
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * A cashflow block is only defined over a period, so it needs both dates.
+     *
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
-            'date_from' => ['nullable', 'date_format:Y-m-d'],
-            'date_to' => ['nullable', 'date_format:Y-m-d'],
+            'date_from' => ['nullable', 'date_format:Y-m-d', 'required_with:cashflow_block'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'required_with:cashflow_block'],
+            'cashflow_block' => ['nullable', Rule::enum(CashflowBlock::class)],
             'amount_min' => ['nullable', 'numeric'],
             'amount_max' => ['nullable', 'numeric'],
             'category_ids' => ['nullable', 'array'],

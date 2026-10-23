@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\AccountType;
+use App\Enums\CashflowBlock;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
 use App\Enums\RuleOrigin;
@@ -10,8 +12,10 @@ use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
 use App\Models\Concerns\BelongsToSpace;
+use App\Services\CashflowBlockQuery;
 use App\Services\CategoryTree;
 use App\Services\CurrencyOptions;
+use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
 use Illuminate\Contracts\Database\Query\Expression;
@@ -27,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * @property Carbon $transaction_date
@@ -306,6 +311,50 @@ class Transaction extends Model
             && $this->account?->type?->isSetAside() === true;
     }
 
+    /**
+     * The SQL twin of {@see self::isExpenseSide()}, for queries that filter or
+     * paginate rather than classify loaded rows. Both must keep agreeing: the
+     * cashflow summary adds up with one and the transactions list filters with
+     * the other.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeExpenseSide(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $side) => $side
+            ->whereHas('category', fn (Builder $category) => $category->where('type', CategoryType::Expense))
+            ->orWhere(fn (Builder $uncategorized) => $uncategorized
+                ->whereNull('transactions.category_id')
+                ->where('transactions.amount', '<', 0)));
+    }
+
+    /**
+     * Rows booked to a $type category, minus the legs
+     * {@see self::isSetAsideAccountLeg()} skips: the SQL twin of what the
+     * cashflow summary adds up as savings or investments.
+     *
+     * Only valid on queries that ran {@see self::scopeJoinOwningAccount()}. The
+     * join ignores the account's soft-delete scope while the `account` relation
+     * does not, so a trashed account's row is not skipped here either.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeSetAsideInto(Builder $query, CategoryType $type): Builder
+    {
+        $setAsideAccountTypes = array_values(array_filter(
+            AccountType::cases(),
+            fn (AccountType $accountType): bool => $accountType->isSetAside(),
+        ));
+
+        return $query
+            ->whereHas('category', fn (Builder $category) => $category->where('type', $type))
+            ->whereNot(fn (Builder $leg) => $leg
+                ->whereNull('accounts.deleted_at')
+                ->whereIn('accounts.type', $setAsideAccountTypes));
+    }
+
     /** @return BelongsTo<AutomationRule, $this> */
     public function categorizedByRule(): BelongsTo
     {
@@ -490,8 +539,35 @@ class Transaction extends Model
             ));
 
         $this->applyCategoryAndLabelFilters($query, $filters);
+        $this->applyCashflowBlockFilter($query, $filters);
 
         return $query;
+    }
+
+    /**
+     * A cashflow block is only defined over a period, so the filter needs both
+     * dates (the requests require them alongside it) and the owner whose
+     * budgets decide the expense blocks.
+     *
+     * @param  Builder<Transaction>  $query
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyCashflowBlockFilter(Builder $query, array $filters): void
+    {
+        if (empty($filters['cashflow_block'])) {
+            return;
+        }
+
+        if (! isset($filters['user_id'], $filters['date_from'], $filters['date_to'])) {
+            throw new LogicException('The cashflow block filter needs user_id, date_from and date_to.');
+        }
+
+        app(CashflowBlockQuery::class)->apply(
+            $query,
+            CashflowBlock::from($filters['cashflow_block']),
+            $filters['user_id'],
+            PeriodComparator::fromRequest(['from' => $filters['date_from'], 'to' => $filters['date_to']]),
+        );
     }
 
     /**

@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Enums\BudgetExpenseType;
 use App\Enums\BudgetPeriodType;
-use App\Models\Budget;
+use App\Enums\CashflowBlock;
 use App\Models\BudgetPeriod;
 use App\Models\Transaction;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -29,7 +29,7 @@ class CashflowBudgetReserveService
 
     public function __construct(
         private ExchangeRateService $exchangeRateService,
-        private CategoryTree $tree,
+        private CashflowBlockQuery $blocks,
     ) {}
 
     /**
@@ -148,91 +148,26 @@ class CashflowBudgetReserveService
      * Expense-side spending in the range on what fixed and variable budgets
      * track, in the user's currency and converted transaction by transaction
      * exactly as {@see CashflowSummaryService} converts `expense`, so both are
-     * exact parts of it. Catch-all budgets are left out: they track whatever
-     * nothing else does, which would leave no general expenses at all.
+     * exact parts of it. The rows are the ones {@see CashflowBlockQuery} lists
+     * for each block, so the transactions list adds up to the same figures.
      *
      * @return array{fixed: int, variable: int}
      */
     private function budgetedExpense(string $userId, string $userCurrency, PeriodComparator $period): array
     {
-        $tracked = $this->trackedIds($userId, $period);
-        $trackedByFixed = $tracked[BudgetExpenseType::Fixed->value];
-        $trackedByVariable = $tracked[BudgetExpenseType::Variable->value];
-        $categories = [...$trackedByFixed['categories'], ...$trackedByVariable['categories']];
-        $labels = [...$trackedByFixed['labels'], ...$trackedByVariable['labels']];
-
-        if ($categories === [] && $labels === []) {
-            return ['fixed' => 0, 'variable' => 0];
-        }
-
-        $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$period->from, $period->to])
-            ->countingTowardsTotals()
-            ->where(fn (Builder $query) => $query
-                ->whereIn('transactions.category_id', $categories)
-                ->orWhereHas('labels', fn (Builder $labelQuery) => $labelQuery->whereIn('labels.id', $labels)))
-            ->with(['account', 'category', 'labels:id'])
-            ->get()
-            ->filter(fn (Transaction $transaction): bool => $transaction->isExpenseSide());
-
-        $this->preloadExchangeRates($transactions, $userCurrency);
-
-        // Fixed wins an overlap, so a transaction is only ever counted once.
-        [$fixed, $variable] = $transactions->partition(
-            fn (Transaction $transaction): bool => $this->isTrackedBy($transaction, $trackedByFixed),
+        $transactions = collect([CashflowBlock::Fixed, CashflowBlock::Variable])->mapWithKeys(
+            fn (CashflowBlock $block): array => [$block->value => $this->blocks->isTriviallyEmpty($block, $userId, $period)
+                ? new EloquentCollection
+                : $this->blocks
+                    ->apply(Transaction::query(), $block, $userId, $period)
+                    ->with(['account', 'category'])
+                    ->get()],
         );
 
-        return [
-            'fixed' => -$this->sumConvertedAmounts($fixed, $userCurrency),
-            'variable' => -$this->sumConvertedAmounts($variable, $userCurrency),
-        ];
-    }
+        $this->preloadExchangeRates($transactions->flatten(1), $userCurrency);
 
-    /**
-     * @param  array{categories: array<int, string>, labels: array<int, string>}  $tracked
-     */
-    private function isTrackedBy(Transaction $transaction, array $tracked): bool
-    {
-        return in_array($transaction->category_id, $tracked['categories'], true)
-            || $transaction->labels->pluck('id')->intersect($tracked['labels'])->isNotEmpty();
-    }
-
-    /**
-     * Categories (children included) and labels tracked by the user's
-     * non-catch-all budgets with a period in the range, by expense type.
-     *
-     * @return array<string, array{categories: array<int, string>, labels: array<int, string>}>
-     */
-    private function trackedIds(string $userId, PeriodComparator $period): array
-    {
-        // Archived budgets included: they still tracked the periods they had,
-        // and archiving one must not turn its past spending into general costs.
-        $budgets = Budget::query()
-            ->where('user_id', $userId)
-            ->where('is_catch_all', false)
-            ->whereHas('periods', fn (Builder $query) => $query->whereIn(
-                'budget_periods.id',
-                BudgetPeriod::query()->overlapping($period->from, $period->to)->select('id'),
-            ))
-            ->with('categories:id', 'labels:id')
-            ->get()
-            ->groupBy(fn (Budget $budget): string => $budget->expense_type->value);
-
-        return collect(BudgetExpenseType::cases())
-            ->mapWithKeys(fn (BudgetExpenseType $type): array => [$type->value => $this->trackedBy($userId, $budgets->get($type->value, collect()))])
+        return $transactions
+            ->map(fn (Collection $blockTransactions): int => -$this->sumConvertedAmounts($blockTransactions, $userCurrency))
             ->all();
-    }
-
-    /**
-     * @param  Collection<int, Budget>  $budgets
-     * @return array{categories: array<int, string>, labels: array<int, string>}
-     */
-    private function trackedBy(string $userId, Collection $budgets): array
-    {
-        return [
-            'categories' => $this->tree->expand($userId, $budgets->flatMap(fn (Budget $budget) => $budget->categories->pluck('id'))->all()),
-            'labels' => $budgets->flatMap(fn (Budget $budget) => $budget->labels->pluck('id'))->unique()->values()->all(),
-        ];
     }
 }

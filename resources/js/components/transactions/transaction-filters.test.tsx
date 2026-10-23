@@ -5,6 +5,7 @@ import {
 import { type Account } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
+import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionFilters } from './transaction-filters';
@@ -130,5 +131,92 @@ describe('TransactionFilters categories dropdown', () => {
         });
 
         await expectFoodListedWithSubcategories();
+    });
+});
+
+describe('TransactionFilters cashflow block chip', () => {
+    const blockFilters: FiltersType = {
+        ...emptyFilters,
+        dateFrom: toLocalDate('2026-10-01'),
+        dateTo: toLocalDate('2026-10-31'),
+        cashflowBlock: 'variable',
+    };
+
+    it('shows the block the list is narrowed to', () => {
+        renderFilters(blockFilters);
+
+        expect(screen.getByTestId('cashflow-block-chip').textContent).toBe(
+            'Block: Variable expense',
+        );
+    });
+
+    it('drops only the block when the chip is removed', () => {
+        const onFiltersChange = renderFilters(blockFilters);
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Remove the Variable expense filter',
+            }),
+        );
+
+        expect(onFiltersChange).toHaveBeenCalledWith({
+            ...blockFilters,
+            cashflowBlock: null,
+        });
+    });
+
+    it('shows no chip without a block', () => {
+        renderFilters(emptyFilters);
+
+        expect(screen.queryByTestId('cashflow-block-chip')).toBeNull();
+    });
+});
+
+describe('TransactionFilters quick periods', () => {
+    beforeEach(() => {
+        globalThis.ResizeObserver = class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+    });
+
+    function openPanel() {
+        fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
+    }
+
+    it('widens the range to the quarter containing the start date', () => {
+        const onFiltersChange = renderFilters({
+            ...emptyFilters,
+            dateFrom: toLocalDate('2026-05-20'),
+            dateTo: toLocalDate('2026-05-31'),
+        });
+        openPanel();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Quarter' }));
+
+        const next = onFiltersChange.mock.calls[0][0] as FiltersType;
+        expect(formatLocalDate(next.dateFrom!)).toBe('2026-04-01');
+        expect(formatLocalDate(next.dateTo!)).toBe('2026-06-30');
+    });
+
+    it('marks the period the range matches as pressed', () => {
+        renderFilters({
+            ...emptyFilters,
+            dateFrom: toLocalDate('2026-10-01'),
+            dateTo: toLocalDate('2026-10-31'),
+        });
+        openPanel();
+
+        expect(
+            screen
+                .getByRole('button', { name: 'Month' })
+                .getAttribute('aria-pressed'),
+        ).toBe('true');
+        expect(
+            screen
+                .getByRole('button', { name: 'Year' })
+                .getAttribute('aria-pressed'),
+        ).toBe('false');
     });
 });

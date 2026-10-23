@@ -82,6 +82,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import {
+    cashflowBlockFromParam,
+    cashflowBlockParam,
+    withoutDatelessCashflowBlock,
+} from '@/lib/cashflow-block';
+import {
     isCursorPaginatedResponse,
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
@@ -141,6 +146,7 @@ interface AppliedFilters {
     debtor_name: string;
     category_source: string | null;
     search: string;
+    cashflow_block: string | null;
     sort: string;
 }
 
@@ -172,6 +178,7 @@ function serverToClientFilters(applied: AppliedFilters): Filters {
         debtorName: applied.debtor_name,
         searchText: applied.search,
         aiCategorizedOnly: applied.category_source === 'ai',
+        cashflowBlock: cashflowBlockFromParam(applied.cashflow_block),
     };
 }
 
@@ -213,6 +220,10 @@ function clientFiltersToQueryParams(
     }
     if (filters.aiCategorizedOnly) {
         params.category_source = 'ai';
+    }
+    const cashflowBlock = cashflowBlockParam(filters);
+    if (cashflowBlock) {
+        params.cashflow_block = cashflowBlock;
     }
     if (sort !== '-transaction_date') {
         params.sort = sort;
@@ -258,6 +269,10 @@ function clientFiltersToBackendFilters(
     }
     if (filters.aiCategorizedOnly) {
         result.category_source = 'ai';
+    }
+    const cashflowBlock = cashflowBlockParam(filters);
+    if (cashflowBlock) {
+        result.cashflow_block = cashflowBlock;
     }
 
     return result;
@@ -615,7 +630,8 @@ export default function Transactions({
 
     // Handle filter changes from the filter component
     const handleFiltersChange = useCallback(
-        (newFilters: Filters) => {
+        (changedFilters: Filters) => {
+            const newFilters = withoutDatelessCashflowBlock(changedFilters);
             setFilters(newFilters);
 
             // Debounce search, immediate for other filters
