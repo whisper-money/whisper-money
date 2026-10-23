@@ -9,7 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategoryCatalog;
 use App\Services\Ai\Contracts\CategorizationBackend;
-use App\Services\Ai\JevCategorizationBackend;
+use App\Services\Ai\JevClient;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\Events\ResponseReceived;
@@ -245,7 +245,7 @@ class CategorizationEvaluator
         });
 
         $this->events->listen(ResponseReceived::class, function (ResponseReceived $event): void {
-            if ($event->request->url() !== JevCategorizationBackend::ENDPOINT) {
+            if ($event->request->url() !== JevClient::ENDPOINT) {
                 return;
             }
 

@@ -184,3 +184,18 @@ test('shared currency options split profile and account currencies', function ()
     expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('CZK');
     expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('CZK');
 });
+
+test('shares whether AI import mapping is enabled for the user', function (bool $enabled) {
+    config()->set('ai_import_mapping.enabled', $enabled);
+    config()->set('services.typesafe.enabled', true);
+
+    $response = actingAs(User::factory()->onboarded()->create())->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('aiImportMappingEnabled', $enabled));
+})->with([true, false]);
+
+test('guests never get AI import mapping', function () {
+    $response = $this->withoutVite()->get(route('home'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('aiImportMappingEnabled', false));
+});

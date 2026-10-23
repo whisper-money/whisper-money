@@ -85,6 +85,14 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) $user->getAuthIdentifier());
         });
 
+        // AI column-mapping suggestions are asked once per imported file, so 20
+        // a minute per user is plenty. A named limiter keeps its own bucket: a
+        // plain `throttle:20,1` would share (and double-count) the key of the
+        // `throttle:300,1` around every API route.
+        RateLimiter::for('import-column-suggestions', function (Request $request): Limit {
+            return Limit::perMinute(20)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
         // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
         // to the MCP server) with our own on-brand Blade view.
         Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));

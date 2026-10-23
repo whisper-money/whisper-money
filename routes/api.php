@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\FullImportController;
+use App\Http\Controllers\Api\ImportColumnSuggestionController;
 use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionAnalysisController;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     // Import Data (for import drawers)
     Route::get('import/data', [ImportDataController::class, 'index']);
+
+    // AI column-mapping suggestions for a file being imported (headers and shapes only)
+    Route::post('import/column-suggestions', ImportColumnSuggestionController::class)
+        ->middleware('throttle:import-column-suggestions')
+        ->name('api.import.column-suggestions');
 
     // Transaction Sync (read-only, for IndexedDB client-side sync)
     Route::prefix('sync')->group(function () {
