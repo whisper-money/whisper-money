@@ -20,7 +20,7 @@ class BudgetService
      * Create a budget with its current and previous period, then backfill both
      * with the transactions already in range.
      *
-     * @param  array<string, mixed>  $attributes  name, period_type, period_start_day, rollover_type, is_catch_all
+     * @param  array<string, mixed>  $attributes  name, period_type, period_start_day, rollover_type, expense_type, is_catch_all
      * @param  array<int, string>  $categoryIds
      * @param  array<int, string>  $labelIds
      */

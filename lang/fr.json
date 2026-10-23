@@ -3029,5 +3029,10 @@
     "Free trial — ends :date": "Essai gratuit — se termine le :date",
     "First charge of :price on :date.": "Premier prélèvement de :price le :date.",
     "Your first charge will be on :date.": "Votre premier prélèvement aura lieu le :date.",
-    "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.": "Vous avez annulé votre forfait, vous ne serez donc pas débité. Pro reste actif jusqu'à la fin de l'essai."
+    "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.": "Vous avez annulé votre forfait, vous ne serez donc pas débité. Pro reste actif jusqu'à la fin de l'essai.",
+    "Expense Type": "Type de dépense",
+    "Fixed expense": "Dépense fixe",
+    "Variable expense": "Dépense variable",
+    "Same amount every period, like rent or subscriptions": "Le même montant à chaque période, comme le loyer ou les abonnements",
+    "Spending you can adjust, like groceries or restaurants": "Des dépenses que vous pouvez ajuster, comme les courses ou les restaurants"
 }

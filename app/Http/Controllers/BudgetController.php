@@ -232,6 +232,7 @@ class BudgetController extends Controller
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
+                'expense_type' => $request->expenseType(),
                 'is_catch_all' => $request->boolean('is_catch_all'),
             ],
             (int) $request->allocated_amount,
@@ -248,7 +249,7 @@ class BudgetController extends Controller
 
         $this->budgetService->update(
             $budget,
-            $request->only(['name', 'period_type', 'period_start_day', 'rollover_type']),
+            $request->budgetAttributes(),
             $request->has('allocated_amount') ? (int) $request->allocated_amount : null,
         );
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CreateBudgetDialog } from './create-budget-dialog';
 
 beforeAll(() => {
@@ -12,11 +12,19 @@ beforeAll(() => {
 
 const post = vi.fn();
 
+const pageProps = vi.hoisted(() => ({
+    current: {
+        categories: [],
+        labels: [],
+        features: { cashflowAvailableFree: false },
+    },
+}));
+
 vi.mock('@inertiajs/react', () => ({
     router: {
         post: (...args: unknown[]) => post(...args),
     },
-    usePage: () => ({ props: { categories: [], labels: [] } }),
+    usePage: () => ({ props: pageProps.current }),
 }));
 
 vi.mock('@/actions/App/Http/Controllers/BudgetController', () => ({
@@ -38,7 +46,22 @@ function openDialog() {
     fireEvent.click(screen.getByText('Create Budget'));
 }
 
+function enableCashflow() {
+    pageProps.current = {
+        ...pageProps.current,
+        features: { cashflowAvailableFree: true },
+    };
+}
+
 describe('CreateBudgetDialog', () => {
+    beforeEach(() => {
+        pageProps.current = {
+            categories: [],
+            labels: [],
+            features: { cashflowAvailableFree: false },
+        };
+    });
+
     it('shows category and label selectors by default', () => {
         openDialog();
 
@@ -53,5 +76,29 @@ describe('CreateBudgetDialog', () => {
 
         expect(screen.queryByText('Select categories')).not.toBeInTheDocument();
         expect(screen.queryByText('Select labels')).not.toBeInTheDocument();
+    });
+
+    it('hides the expense type while cashflow is not available', () => {
+        openDialog();
+
+        expect(screen.queryByLabelText('Expense Type')).not.toBeInTheDocument();
+    });
+
+    it('offers the expense type, variable by default, when cashflow is available', () => {
+        enableCashflow();
+        openDialog();
+
+        expect(screen.getByLabelText('Expense Type')).toHaveTextContent(
+            'Variable expense',
+        );
+    });
+
+    it('does not offer an expense type for a catch-all budget', () => {
+        enableCashflow();
+        openDialog();
+
+        fireEvent.click(screen.getByLabelText('Catch-all budget'));
+
+        expect(screen.queryByLabelText('Expense Type')).not.toBeInTheDocument();
     });
 });

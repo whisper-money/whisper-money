@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BudgetExpenseType;
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
 use App\Models\Concerns\Archivable;
@@ -18,6 +19,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property RolloverType $rollover_type
  * @property BudgetPeriodType $period_type
+ * @property BudgetExpenseType $expense_type
  * @property Carbon|null $archived_at
  */
 class Budget extends Model
@@ -32,11 +34,17 @@ class Budget extends Model
         'period_type',
         'period_start_day',
         'rollover_type',
+        'expense_type',
         'is_catch_all',
         'archived_at',
         'notify_on_new_transaction',
         'notify_on_close_to_limit',
         'notify_on_over_limit',
+    ];
+
+    /** @var list<string> */
+    protected $attributes = [
+        'expense_type' => 'variable',
     ];
 
     /** @var list<string> */
@@ -51,6 +59,7 @@ class Budget extends Model
             'archived_at' => 'datetime',
             'period_type' => BudgetPeriodType::class,
             'rollover_type' => RolloverType::class,
+            'expense_type' => BudgetExpenseType::class,
             'position' => 'integer',
             'period_start_day' => 'integer',
             'is_catch_all' => 'boolean',

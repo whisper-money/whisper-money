@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/BudgetController';
+import { BudgetExpenseTypeField } from '@/components/budgets/budget-expense-type-field';
 import { CreatePlaceholderCard } from '@/components/shared/create-placeholder-card';
 import { LabelIcon } from '@/components/shared/label-icon';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
     BUDGET_PERIOD_TYPES,
+    BudgetExpenseType,
     BudgetPeriodType,
     getBudgetPeriodTypeLabel,
     getRolloverTypeLabel,
@@ -73,6 +75,8 @@ export function CreateBudgetDialog({
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] =
         useState<RolloverType>('carry_over');
+    const [expenseType, setExpenseType] =
+        useState<BudgetExpenseType>('variable');
     const [isCatchAll, setIsCatchAll] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -112,6 +116,7 @@ export function CreateBudgetDialog({
                 category_ids: isCatchAll ? [] : selectedCategoryIds,
                 label_ids: isCatchAll ? [] : selectedLabelIds,
                 rollover_type: rolloverType,
+                expense_type: expenseType,
                 allocated_amount: allocatedAmount,
                 is_catch_all: isCatchAll,
             },
@@ -125,6 +130,7 @@ export function CreateBudgetDialog({
                     setSelectedLabelIds([]);
                     setAllocatedAmount(0);
                     setRolloverType('carry_over');
+                    setExpenseType('variable');
                     setIsCatchAll(false);
                     setErrors({});
                 },
@@ -358,6 +364,11 @@ export function CreateBudgetDialog({
                                             )}
                                         </p>
                                     </div>
+
+                                    <BudgetExpenseTypeField
+                                        value={expenseType}
+                                        onChange={setExpenseType}
+                                    />
                                 </>
                             )}
 
