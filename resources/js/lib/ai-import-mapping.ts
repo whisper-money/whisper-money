@@ -158,6 +158,7 @@ export function suggestedTransactionMapping(
         TRANSACTION_FIELDS,
         'transaction',
     );
+
     for (const field of counterpartiesInDescription(
         mapping,
         mapping.description ?? currentDescription,
