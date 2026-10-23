@@ -112,15 +112,29 @@ function suggestedColumns(
 /** The counterparty fields, which must not repeat the description's text. */
 const COUNTERPARTY_FIELDS = ['creditor_name', 'debtor_name'] as const;
 
+type CounterpartyField = (typeof COUNTERPARTY_FIELDS)[number];
+
 /** The columns a mapped field reads, whether one, several or none. */
-function columnList(value: unknown): string[] {
+function columnList(value: ColumnMapping['description'] | undefined): string[] {
     if (Array.isArray(value)) {
-        return value.filter(
-            (column): column is string => typeof column === 'string',
-        );
+        return value.filter(Boolean);
     }
 
-    return typeof value === 'string' && value !== '' ? [value] : [];
+    return value ? [value] : [];
+}
+
+/** The counterparty fields of the mapping that read a column of the description. */
+export function counterpartiesInDescription(
+    mapping: Partial<ColumnMapping>,
+    description: ColumnMapping['description'] | undefined,
+): CounterpartyField[] {
+    const descriptionColumns = columnList(description);
+
+    return COUNTERPARTY_FIELDS.filter((field) => {
+        const column = mapping[field];
+
+        return !!column && descriptionColumns.includes(column);
+    });
 }
 
 /**
@@ -144,16 +158,11 @@ export function suggestedTransactionMapping(
         TRANSACTION_FIELDS,
         'transaction',
     );
-    const descriptionColumns = columnList(
-        'description' in mapping ? mapping.description : currentDescription,
-    );
-
-    for (const field of COUNTERPARTY_FIELDS) {
-        const column = mapping[field];
-
-        if (column && descriptionColumns.includes(column)) {
-            delete mapping[field];
-        }
+    for (const field of counterpartiesInDescription(
+        mapping,
+        mapping.description ?? currentDescription,
+    )) {
+        delete mapping[field];
     }
 
     const amountIndex = suggestions.fields.amount?.index;
