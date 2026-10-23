@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BudgetPeriodType;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\Transaction;
@@ -33,6 +34,12 @@ class CashflowBudgetReserveService
      * with margins that may be negative. A margin, like the budget screens,
      * ignores any carried-over amount.
      *
+     * Both only count the budgets whose period fits the range: weekly,
+     * bi-weekly and monthly budgets for a range of up to a quarter (the month
+     * and quarter views), yearly ones for anything longer (the year view). A
+     * yearly budget's margin is not money held back from one month's income,
+     * and a monthly one's says little about a whole year.
+     *
      * `variable_expense` is the part of `$expense` booked to categories (or
      * their children) and labels tracked by a budget during the range;
      * `fixed_expense` is the rest, so the two always add up to `$expense`
@@ -62,7 +69,10 @@ class CashflowBudgetReserveService
     private function openBudgetMargins(string $userId, PeriodComparator $period): array
     {
         return BudgetPeriod::query()
-            ->whereHas('budget', fn (Builder $query) => $query->where('user_id', $userId)->whereNull('archived_at'))
+            ->whereHas('budget', fn (Builder $query) => $query
+                ->where('user_id', $userId)
+                ->whereNull('archived_at')
+                ->whereIn('period_type', $this->periodTypesFor($period)))
             ->overlapping($period->from, $period->to)
             // In progress today: a period that is over already gave back what it
             // left, and one yet to start holds nothing back from this income.
@@ -89,6 +99,21 @@ class CashflowBudgetReserveService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * The budget period types whose margins a range of this length reserves.
+     * A quarter is at most 92 days, so anything longer is read as a year.
+     *
+     * @return list<BudgetPeriodType>
+     */
+    private function periodTypesFor(PeriodComparator $period): array
+    {
+        if ($period->from->diffInDays($period->to) + 1 > 92) {
+            return [BudgetPeriodType::Yearly];
+        }
+
+        return [BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly, BudgetPeriodType::Monthly];
     }
 
     /**
