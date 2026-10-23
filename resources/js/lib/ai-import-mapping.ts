@@ -109,20 +109,53 @@ function suggestedColumns(
     return mapping;
 }
 
+/** The counterparty fields, which must not repeat the description's text. */
+const COUNTERPARTY_FIELDS = ['creditor_name', 'debtor_name'] as const;
+
+/** The columns a mapped field reads, whether one, several or none. */
+function columnList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value.filter(
+            (column): column is string => typeof column === 'string',
+        );
+    }
+
+    return typeof value === 'string' && value !== '' ? [value] : [];
+}
+
 /**
  * The transaction mapping the AI suggests. A direction column only matters
  * when the amounts carry no sign, so `transaction_type` is kept only when the
  * suggested amount column is all positive.
+ *
+ * A counterparty column that is also the description's would copy the
+ * description into the payee or payer, so that suggestion is dropped and the
+ * field keeps its header guess. The description is the AI's, or
+ * `currentDescription` when it placed none. Creditor and debtor may share a
+ * column: a combined payer/payee one fills both.
  */
 export function suggestedTransactionMapping(
     suggestions: ColumnSuggestions,
     columns: ColumnDescription[],
+    currentDescription: ColumnMapping['description'] = null,
 ): Partial<ColumnMapping> {
     const mapping = suggestedColumns(
         suggestions,
         TRANSACTION_FIELDS,
         'transaction',
     );
+    const descriptionColumns = columnList(
+        'description' in mapping ? mapping.description : currentDescription,
+    );
+
+    for (const field of COUNTERPARTY_FIELDS) {
+        const column = mapping[field];
+
+        if (column && descriptionColumns.includes(column)) {
+            delete mapping[field];
+        }
+    }
+
     const amountIndex = suggestions.fields.amount?.index;
     const amountShape =
         amountIndex === null || amountIndex === undefined

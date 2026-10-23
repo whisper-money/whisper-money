@@ -162,11 +162,13 @@ export function ImportTransactionsDrawer({
      * lands after the mapping is shown, so it is dropped if another file was
      * picked meanwhile, and leaves alone the fields picked by hand — unless
      * the user pressed the button, which asks for every field.
+     * `description` is the mapping's own, kept when the AI places none.
      */
     const requestSuggestion = (
         file: File,
         headers: string[],
         rows: ParsedRow[],
+        description: ColumnMapping['description'],
         everything: boolean,
         token?: number,
     ) => {
@@ -179,7 +181,7 @@ export function ImportTransactionsDrawer({
             everything,
             token,
             toMapping: (suggestions) =>
-                suggestedTransactionMapping(suggestions, columns),
+                suggestedTransactionMapping(suggestions, columns, description),
             apply: (suggested, keep) =>
                 setState((prev) => {
                     if (prev.file !== file) {
@@ -253,6 +255,7 @@ export function ImportTransactionsDrawer({
                     file,
                     parsed.headers,
                     parsed.rows,
+                    parsed.mapping.description,
                     false,
                     token,
                 ),
@@ -740,6 +743,7 @@ export function ImportTransactionsDrawer({
                                         state.file,
                                         state.columnHeaders,
                                         state.parsedData,
+                                        state.columnMapping.description,
                                         true,
                                     )
                                 }

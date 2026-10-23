@@ -160,6 +160,105 @@ describe('suggestedTransactionMapping', () => {
     });
 });
 
+describe('suggestedTransactionMapping counterparties', () => {
+    const ingColumns = [
+        ...columns,
+        { header: 'Tegenrekening', shape: 'text, avg 18 chars' },
+        { header: 'Mededelingen', shape: 'text, avg 40 chars' },
+    ];
+
+    it('drops a creditor or debtor that repeats the description column', () => {
+        const mapping = suggestedTransactionMapping(
+            suggestion({
+                description: ['Naam / Omschrijving', 1],
+                creditor_name: ['Naam / Omschrijving', 1],
+                debtor_name: ['Naam / Omschrijving', 1],
+            }),
+            ingColumns,
+        );
+
+        expect(mapping.description).toBe('Naam / Omschrijving');
+        expect(mapping).not.toHaveProperty('creditor_name');
+        expect(mapping).not.toHaveProperty('debtor_name');
+    });
+
+    it('keeps a creditor and debtor that share a payer/payee column of their own', () => {
+        expect(
+            suggestedTransactionMapping(
+                suggestion({
+                    description: ['Mededelingen', 5],
+                    creditor_name: ['Naam / Omschrijving', 1],
+                    debtor_name: ['Naam / Omschrijving', 1],
+                }),
+                ingColumns,
+            ),
+        ).toMatchObject({
+            description: 'Mededelingen',
+            creditor_name: 'Naam / Omschrijving',
+            debtor_name: 'Naam / Omschrijving',
+        });
+    });
+
+    it('checks against the current description when the AI places none, several columns included', () => {
+        const mapping = suggestedTransactionMapping(
+            suggestion({
+                description: [null, null],
+                creditor_name: ['Mededelingen', 5],
+                debtor_name: ['Tegenrekening', 4],
+            }),
+            ingColumns,
+            ['Naam / Omschrijving', 'Mededelingen'],
+        );
+
+        expect(mapping).not.toHaveProperty('description');
+        expect(mapping).not.toHaveProperty('creditor_name');
+        expect(mapping.debtor_name).toBe('Tegenrekening');
+    });
+
+    it('ignores the current description once the AI places its own', () => {
+        expect(
+            suggestedTransactionMapping(
+                suggestion({
+                    description: ['Naam / Omschrijving', 1],
+                    creditor_name: ['Mededelingen', 5],
+                }),
+                ingColumns,
+                'Mededelingen',
+            ).creditor_name,
+        ).toBe('Mededelingen');
+    });
+
+    it('still reads as the AI suggestion once laid over the mapping', () => {
+        const suggested = suggestedTransactionMapping(
+            suggestion({
+                transaction_date: ['Datum', 0],
+                description: ['Naam / Omschrijving', 1],
+                amount: ['Bedrag (EUR)', 3],
+                creditor_name: ['Naam / Omschrijving', 1],
+                debtor_name: [null, null],
+            }),
+            ingColumns,
+        );
+        const merged = mergeSuggestion(
+            {
+                transaction_date: null,
+                description: null,
+                amount: null,
+                currency: null,
+                balance: null,
+                creditor_name: 'Tegenrekening',
+                debtor_name: 'Tegenrekening',
+            },
+            suggested,
+            new Set(),
+        );
+
+        expect(merged.creditor_name).toBe('Tegenrekening');
+        expect(merged.debtor_name).toBeNull();
+        expect(changedSuggestedFields(merged, suggested)).toBe(0);
+    });
+});
+
 describe('suggestedBalanceMapping', () => {
     it('keeps the required balance fields it could not place out of the suggestion', () => {
         expect(
