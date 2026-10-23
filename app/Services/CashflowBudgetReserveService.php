@@ -19,6 +19,11 @@ class CashflowBudgetReserveService
 {
     use ConvertsTransactionCurrency;
 
+    /**
+     * The longest a quarter gets; any longer range is read as a year.
+     */
+    private const MAX_QUARTER_DAYS = 92;
+
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
@@ -103,13 +108,12 @@ class CashflowBudgetReserveService
 
     /**
      * The budget period types whose margins a range of this length reserves.
-     * A quarter is at most 92 days, so anything longer is read as a year.
      *
      * @return list<BudgetPeriodType>
      */
     private function periodTypesFor(PeriodComparator $period): array
     {
-        if ($period->from->diffInDays($period->to) + 1 > 92) {
+        if ($period->days() > self::MAX_QUARTER_DAYS) {
             return [BudgetPeriodType::Yearly];
         }
 
