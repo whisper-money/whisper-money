@@ -17,6 +17,13 @@ export const ROLLOVER_TYPES = ['carry_over', 'reset'] as const;
 
 export type RolloverType = (typeof ROLLOVER_TYPES)[number];
 
+export const BUDGET_EXPENSE_TYPES = ['fixed', 'variable'] as const;
+
+export type BudgetExpenseType = (typeof BUDGET_EXPENSE_TYPES)[number];
+
+/** What a budget counts as until the user says otherwise; matches the column default. */
+export const DEFAULT_BUDGET_EXPENSE_TYPE: BudgetExpenseType = 'variable';
+
 export interface Budget {
     id: UUID;
     user_id: UUID;
@@ -24,6 +31,8 @@ export interface Budget {
     period_type: BudgetPeriodType;
     period_start_day: number | null;
     rollover_type: RolloverType;
+    /** Whether the budget covers spending that repeats every period or spending the user can adjust. */
+    expense_type: BudgetExpenseType;
     is_catch_all: boolean;
     /** Manual order on the Planning list; null until the user drags something. */
     position: number | null;
@@ -106,6 +115,24 @@ export function getRolloverTypeDescription(type: RolloverType): string {
     const descriptions: Record<RolloverType, string> = {
         carry_over: __('Remaining balance carries over to next period'),
         reset: __('Remaining balance returns to available money pool'),
+    };
+    return descriptions[type];
+}
+
+export function getBudgetExpenseTypeLabel(type: BudgetExpenseType): string {
+    const labels: Record<BudgetExpenseType, string> = {
+        fixed: __('Fixed expense'),
+        variable: __('Variable expense'),
+    };
+    return labels[type];
+}
+
+export function getBudgetExpenseTypeDescription(
+    type: BudgetExpenseType,
+): string {
+    const descriptions: Record<BudgetExpenseType, string> = {
+        fixed: __('Same amount every period, like rent or subscriptions'),
+        variable: __('Spending you can adjust, like groceries or restaurants'),
     };
     return descriptions[type];
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BudgetExpenseType;
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
@@ -28,6 +29,7 @@ class StoreBudgetRequest extends FormRequest
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => [$this->userOwned('labels')],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
+            'expense_type' => ['sometimes', Rule::enum(BudgetExpenseType::class)],
             'allocated_amount' => ['required', 'integer', 'min:0'],
             'is_catch_all' => ['sometimes', 'boolean'],
         ];

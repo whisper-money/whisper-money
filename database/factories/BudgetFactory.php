@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\BudgetExpenseType;
 use App\Enums\BudgetPeriodType;
 use App\Models\Budget;
 use App\Models\Category;
@@ -62,6 +63,13 @@ class BudgetFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'archived_at' => now(),
+        ]);
+    }
+
+    public function fixed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'expense_type' => BudgetExpenseType::Fixed,
         ]);
     }
 

@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
+import { BudgetExpenseTypeField } from '@/components/budgets/budget-expense-type-field';
 import { CategoryBadge } from '@/components/shared/category-combobox';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +26,7 @@ import {
 import {
     Budget,
     BUDGET_PERIOD_TYPES,
+    BudgetExpenseType,
     BudgetPeriodType,
     getBudgetPeriodTypeLabel,
     getRolloverTypeLabel,
@@ -64,6 +66,9 @@ export function EditBudgetDialog({
     const [rolloverType, setRolloverType] = useState<RolloverType>(
         budget.rollover_type as RolloverType,
     );
+    const [expenseType, setExpenseType] = useState<BudgetExpenseType>(
+        budget.expense_type,
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -73,6 +78,7 @@ export function EditBudgetDialog({
             setPeriodStartDay(budget.period_start_day || 1);
             setAllocatedAmount(currentPeriod.allocated_amount);
             setRolloverType(budget.rollover_type as RolloverType);
+            setExpenseType(budget.expense_type);
         }
     }, [open, budget, currentPeriod]);
 
@@ -88,6 +94,7 @@ export function EditBudgetDialog({
                 period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
                 allocated_amount: allocatedAmount,
                 rollover_type: rolloverType,
+                ...(budget.is_catch_all ? {} : { expense_type: expenseType }),
             },
             {
                 onSuccess: () => {
@@ -172,6 +179,13 @@ export function EditBudgetDialog({
                                 </>
                             )}
                         </div>
+
+                        {!budget.is_catch_all && (
+                            <BudgetExpenseTypeField
+                                value={expenseType}
+                                onChange={setExpenseType}
+                            />
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="period-type">

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BudgetExpenseType;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Models\Budget;
 use App\Models\User;
@@ -20,7 +21,7 @@ class BudgetService
      * Create a budget with its current and previous period, then backfill both
      * with the transactions already in range.
      *
-     * @param  array<string, mixed>  $attributes  name, period_type, period_start_day, rollover_type, is_catch_all
+     * @param  array<string, mixed>  $attributes  name, period_type, period_start_day, rollover_type, expense_type, is_catch_all
      * @param  array<int, string>  $categoryIds
      * @param  array<int, string>  $labelIds
      */
@@ -30,7 +31,7 @@ class BudgetService
             $setting = $user->setting;
 
             $budget = $user->budgets()->create([
-                ...$attributes,
+                ...$this->keepCatchAllVariable($attributes, (bool) ($attributes['is_catch_all'] ?? false)),
                 'notify_on_new_transaction' => $setting->budget_notify_on_new_transaction ?? false,
                 'notify_on_close_to_limit' => $setting->budget_notify_on_close_to_limit ?? true,
                 'notify_on_over_limit' => $setting->budget_notify_on_over_limit ?? true,
@@ -60,7 +61,7 @@ class BudgetService
     public function update(Budget $budget, array $attributes, ?int $allocatedAmount = null): Budget
     {
         DB::transaction(function () use ($budget, $attributes, $allocatedAmount): void {
-            $budget->update($attributes);
+            $budget->update($this->keepCatchAllVariable($attributes, $budget->is_catch_all));
 
             if ($allocatedAmount !== null) {
                 $budget->periods()
@@ -70,5 +71,22 @@ class BudgetService
         });
 
         return $budget;
+    }
+
+    /**
+     * A catch-all budget takes whatever no other budget covers, so it has no
+     * kind of spending of its own and keeps the default expense type whatever
+     * the caller sends.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function keepCatchAllVariable(array $attributes, bool $isCatchAll): array
+    {
+        if ($isCatchAll && array_key_exists('expense_type', $attributes)) {
+            $attributes['expense_type'] = BudgetExpenseType::Variable;
+        }
+
+        return $attributes;
     }
 }
