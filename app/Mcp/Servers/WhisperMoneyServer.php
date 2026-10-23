@@ -81,7 +81,9 @@ app is kept in their books.
   `variable_expense` by budgets marked variable (groceries, leisure), and
   `general_expense` the rest, which no budget tracks. Catch-all budgets do not
   count; a transaction tracked by both kinds counts once, as fixed. The three
-  add up to `expense`, and any can be negative in a month of refunds.
+  add up to `expense`, and any can be negative in a month of refunds. Both
+  `current` and `previous` carry the split; only `current` carries `reserved`
+  and `budgets` (each with its `expense_type`).
   Budgets are variable unless the user marked them fixed, so `fixed_expense: 0`
   may only mean none has been marked yet, not that there are no fixed costs.
 - A savings goal is tracked through a label: its contributions are the

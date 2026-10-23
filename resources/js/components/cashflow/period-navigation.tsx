@@ -154,7 +154,7 @@ function samePeriod(
     return isSameMonth(left, right);
 }
 
-function formatPeriodLabel(
+export function formatPeriodLabel(
     date: Date,
     periodType: CashflowPeriodType,
     locale: string,

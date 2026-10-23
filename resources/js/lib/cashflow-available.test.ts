@@ -1,6 +1,11 @@
 import { type CashflowSummary } from '@/hooks/use-cashflow-data';
 import { describe, expect, it } from 'vitest';
-import { allocatedOf, availableOf, freeOf } from './cashflow-available';
+import {
+    allocatedOf,
+    availableOf,
+    expenseSplitOf,
+    freeOf,
+} from './cashflow-available';
 
 function summary(overrides: Partial<CashflowSummary>): CashflowSummary {
     const income = overrides.income ?? 0;
@@ -46,5 +51,24 @@ describe('cashflow available', () => {
 
     it('frees the whole available when nothing is reserved', () => {
         expect(freeOf({ ...october, reserved: undefined })).toBe(18000);
+    });
+
+    it('splits the expense by budget expense type', () => {
+        expect(
+            expenseSplitOf({
+                ...october,
+                fixed_expense: 90000,
+                variable_expense: 30000,
+                general_expense: 12000,
+            }),
+        ).toEqual({ fixed: 90000, variable: 30000, general: 12000 });
+    });
+
+    it('reads the whole expense as general when the split is missing', () => {
+        expect(expenseSplitOf(october)).toEqual({
+            fixed: 0,
+            variable: 0,
+            general: 132000,
+        });
     });
 });

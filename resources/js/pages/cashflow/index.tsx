@@ -1,8 +1,13 @@
 import { AvailableCard } from '@/components/cashflow/available-card';
 import { BreakdownCard } from '@/components/cashflow/breakdown-card';
+import { CashflowDetailsDrawer } from '@/components/cashflow/cashflow-details-drawer';
+import { ExpensesCard } from '@/components/cashflow/expenses-card';
 import { MonthlySavingsCashflowCard } from '@/components/cashflow/monthly-savings-cashflow-card';
 import { NetCashflowCard } from '@/components/cashflow/net-cashflow-card';
-import { PeriodNavigation } from '@/components/cashflow/period-navigation';
+import {
+    formatPeriodLabel,
+    PeriodNavigation,
+} from '@/components/cashflow/period-navigation';
 import { SavedInvestedCard } from '@/components/cashflow/saved-invested-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
@@ -10,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cn } from '@/lib/utils';
@@ -144,6 +150,8 @@ export default function CashflowPage() {
     // someone's money with a number we do not have.
     const showPlaceholders = isLoading || hasError;
     const showAvailable = features.cashflowAvailableFree;
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const locale = useLocale();
 
     usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
@@ -192,7 +200,7 @@ export default function CashflowPage() {
                 <div
                     className={cn(
                         'grid gap-6 md:grid-cols-2',
-                        showAvailable && 'xl:grid-cols-3',
+                        showAvailable && 'xl:grid-cols-4',
                     )}
                 >
                     <NetCashflowCard
@@ -211,17 +219,40 @@ export default function CashflowPage() {
                     />
 
                     {showAvailable && (
-                        <AvailableCard
-                            // Two columns until xl leave it alone on a second
-                            // row, so it takes the whole row there.
-                            className="md:col-span-2 xl:col-span-1"
-                            current={summary.current}
-                            previous={summary.previous}
-                            loading={showPlaceholders}
-                            currency={auth.user.currency_code}
-                        />
+                        <>
+                            <AvailableCard
+                                current={summary.current}
+                                previous={summary.previous}
+                                loading={showPlaceholders}
+                                currency={auth.user.currency_code}
+                            />
+                            <ExpensesCard
+                                current={summary.current}
+                                loading={showPlaceholders}
+                                currency={auth.user.currency_code}
+                                onViewDetails={() => setDetailsOpen(true)}
+                            />
+                        </>
                     )}
                 </div>
+
+                {showAvailable && (
+                    <CashflowDetailsDrawer
+                        // Closed while the figures load or fail: it would
+                        // otherwise answer with the zeros in their place.
+                        open={detailsOpen && !showPlaceholders}
+                        onOpenChange={setDetailsOpen}
+                        current={summary.current}
+                        previous={summary.previous}
+                        currency={auth.user.currency_code}
+                        periodType={periodType}
+                        periodLabel={formatPeriodLabel(
+                            currentDate,
+                            periodType,
+                            locale,
+                        )}
+                    />
+                )}
 
                 {/* Only a month lines up with a monthly goal's target. */}
                 {periodType === 'month' && (

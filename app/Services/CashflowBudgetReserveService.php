@@ -15,7 +15,8 @@ use Illuminate\Support\Collection;
  * What the user's budgets still hold back from a cashflow period, and how much
  * of its spending they cover.
  *
- * @phpstan-type BudgetMarginRow array{budget_id: string, budget_period_id: string, name: string, start_date: string, end_date: string, allocated: int, spent: int, margin: int}
+ * @phpstan-type BudgetMarginRow array{budget_id: string, budget_period_id: string, name: string, start_date: string, end_date: string, expense_type: string, allocated: int, spent: int, margin: int}
+ * @phpstan-type ExpenseSplit array{fixed_expense: int, variable_expense: int, general_expense: int}
  */
 class CashflowBudgetReserveService
 {
@@ -52,8 +53,7 @@ class CashflowBudgetReserveService
      * period in the range, `variable_expense` the part tracked by one marked
      * variable, and `general_expense` the rest: spending no budget tracks. A
      * transaction tracked by both a fixed and a variable budget counts once,
-     * as fixed. The three always add up to `$expense` (any can be negative in
-     * a month of refunds, as `$expense` can).
+     * as fixed. See {@see self::expenseSplit()}.
      *
      * Budget amounts are read as stored, in the user's currency, the same way
      * the budget screens read them.
@@ -63,11 +63,28 @@ class CashflowBudgetReserveService
     public function forPeriod(string $userId, string $userCurrency, PeriodComparator $period, int $expense): array
     {
         $budgets = $this->openBudgetMargins($userId, $period);
-        $budgeted = $this->budgetedExpense($userId, $userCurrency, $period);
 
         return [
             'reserved' => array_sum(array_map(fn (array $row): int => max(0, $row['margin']), $budgets)),
             'budgets' => $budgets,
+            ...$this->expenseSplit($userId, $userCurrency, $period, $expense),
+        ];
+    }
+
+    /**
+     * `$expense` split by the expense type of the budgets tracking it: fixed,
+     * variable, and general for what no budget tracks. The three always add up
+     * to `$expense` (any can be negative in a month of refunds, as `$expense`
+     * can). Unlike `reserved`, it reads as well for a past period as for the
+     * current one.
+     *
+     * @return ExpenseSplit
+     */
+    public function expenseSplit(string $userId, string $userCurrency, PeriodComparator $period, int $expense): array
+    {
+        $budgeted = $this->budgetedExpense($userId, $userCurrency, $period);
+
+        return [
             'fixed_expense' => $budgeted['fixed'],
             'variable_expense' => $budgeted['variable'],
             'general_expense' => $expense - $budgeted['fixed'] - $budgeted['variable'],
@@ -89,7 +106,7 @@ class CashflowBudgetReserveService
             // left, and one yet to start holds nothing back from this income.
             ->where('start_date', '<=', today()->toDateString())
             ->where('end_date', '>=', today()->toDateString())
-            ->with('budget:id,name')
+            ->with('budget:id,name,expense_type')
             ->withSum('budgetTransactions as spent', 'amount')
             ->orderBy('start_date')
             ->get()
@@ -102,6 +119,7 @@ class CashflowBudgetReserveService
                     'name' => $budgetPeriod->budget->name,
                     'start_date' => $budgetPeriod->start_date->toDateString(),
                     'end_date' => $budgetPeriod->end_date->toDateString(),
+                    'expense_type' => $budgetPeriod->budget->expense_type->value,
                     'allocated' => $budgetPeriod->allocated_amount,
                     'spent' => $spent,
                     // Same as BudgetPeriod::remainingAmount(), without a query per row.

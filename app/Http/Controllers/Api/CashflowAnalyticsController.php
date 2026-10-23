@@ -53,6 +53,12 @@ class CashflowAnalyticsController extends Controller
             ...$summaries['current'],
             ...$this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']),
         ];
+        // Only the split: what budgets still reserve is about today, which a
+        // past period has nothing to say about.
+        $summaries['previous'] = [
+            ...$summaries['previous'],
+            ...$this->budgetReserve->expenseSplit($user->id, $user->currency_code, $previousPeriod, $summaries['previous']['expense']),
+        ];
 
         return $this->cashflowJson($summaries);
     }
