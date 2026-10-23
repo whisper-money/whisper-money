@@ -1,3 +1,4 @@
+import { saveImportConfig } from '@/lib/import-config-storage';
 import { type Account } from '@/types/account';
 import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -366,5 +367,48 @@ describe('StepImportTransactions importing', () => {
 
         expect(screen.getByText('Import 1 movement')).toBeTruthy();
         expect(screen.getByText(/look like duplicates/)).toBeTruthy();
+    });
+});
+
+describe('StepImportTransactions remembering the layout', () => {
+    it('saves the layout only once the import brought rows in', async () => {
+        const { container } = renderStep();
+
+        await screen.findByText('Bring in your history');
+        await chooseFile(container);
+        await confirmColumns();
+
+        expect(saveImportConfig).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByText('Import 2 movements'));
+
+        await waitFor(() =>
+            expect(saveImportConfig).toHaveBeenCalledWith('account-1', {
+                columnMapping: expect.objectContaining({ amount: 'Amount' }),
+                dateFormat: 'YYYY-MM-DD',
+                aiSuggested: false,
+            }),
+        );
+    });
+
+    it('leaves no layout behind when nothing made it in', async () => {
+        importTransactions.mockResolvedValue({
+            imported: [false, false],
+            errors: [
+                { rowNumber: 2, transaction: {}, error: 'No' },
+                { rowNumber: 3, transaction: {}, error: 'No' },
+            ],
+            successCount: 0,
+            uncategorizedCount: 0,
+        });
+        const { container } = renderStep();
+
+        await screen.findByText('Bring in your history');
+        await chooseFile(container);
+        await confirmColumns();
+        fireEvent.click(screen.getByText('Import 2 movements'));
+
+        await waitFor(() => expect(importTransactions).toHaveBeenCalled());
+        expect(saveImportConfig).not.toHaveBeenCalled();
     });
 });

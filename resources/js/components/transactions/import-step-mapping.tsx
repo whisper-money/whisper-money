@@ -41,7 +41,7 @@ import {
 import { formatDateMedium, formatRelativeDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, Check, XCircle } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 const NONE = '__none__';
 
@@ -86,6 +86,8 @@ interface ImportStepMappingProps {
     onLatestDateChange: (date: string | null) => void;
     onNext: () => void;
     onBack: () => void;
+    /** The AI badge or button, shown above the fields. */
+    aiDetection?: ReactNode;
 }
 
 /**
@@ -407,6 +409,7 @@ export function ImportStepMapping({
     onLatestDateChange,
     onNext,
     onBack,
+    aiDetection,
 }: ImportStepMappingProps) {
     const locale = useLocale();
     const [optionalOpen, setOptionalOpen] = useState(false);
@@ -535,6 +538,8 @@ export function ImportStepMapping({
 
     return (
         <div className="flex flex-col gap-4">
+            {aiDetection}
+
             {/* What the import needs */}
             <div className="overflow-hidden rounded-lg border">
                 <div

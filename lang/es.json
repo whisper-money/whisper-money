@@ -4092,5 +4092,8 @@
     "General expense": "Gasto general",
     "Block: :name": "Bloque: :name",
     "Remove the :name filter": "Quitar el filtro :name",
-    "Quick periods": "Periodos rápidos"
+    "Quick periods": "Periodos rápidos",
+    "Suggested by AI": "Sugerencia hecha con IA",
+    "Detect columns with AI": "Detectar columnas con IA",
+    "The AI could not read the columns. Try again later.": "La IA no ha podido leer las columnas. Inténtalo más tarde."
 }

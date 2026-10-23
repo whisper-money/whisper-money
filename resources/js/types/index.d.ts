@@ -226,6 +226,8 @@ export interface SharedData {
     /** False when the install carries no EnableBanking credentials. */
     openBankingEnabled: boolean;
     aiCategorizationUpsellRate: number;
+    /** Whether the import wizards may ask the AI which column holds each field. */
+    aiImportMappingEnabled: boolean;
     subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
     pricing: PricingConfig;
     sidebarOpen: boolean;

@@ -20,6 +20,7 @@ import {
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ChevronRight } from 'lucide-react';
+import { type ReactNode } from 'react';
 
 /** The fields worth a row on a phone. Everything else keeps what was guessed. */
 const SHOWN_FIELDS = [
@@ -70,6 +71,8 @@ interface StepImportColumnsProps {
     onMappingChange: (field: ShownField, column: string | null) => void;
     onConfirm: () => void;
     onDifferentFile: () => void;
+    /** The AI badge or button, shown above the fields. */
+    aiDetection?: ReactNode;
 }
 
 /**
@@ -121,6 +124,7 @@ export function StepImportColumns({
     onMappingChange,
     onConfirm,
     onDifferentFile,
+    aiDetection,
 }: StepImportColumnsProps) {
     const missing = REQUIRED_FIELDS.filter(
         (field) => columnLabel(mapping[field]) === null,
@@ -153,6 +157,7 @@ export function StepImportColumns({
             }
         >
             <div className="flex flex-col gap-6">
+                {aiDetection}
                 <StepList>
                     {SHOWN_FIELDS.map((field) => {
                         const column = columnLabel(mapping[field]);

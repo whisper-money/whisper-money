@@ -607,6 +607,9 @@ const EXPENSE_TYPE_VALUES = [
     'dépense',
     'out',
     'dr',
+    // Dutch (ING's "Af Bij") and German direction columns.
+    'af',
+    'soll',
 ];
 
 function normalizeTypeValue(value: string): string {

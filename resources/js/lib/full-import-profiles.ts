@@ -1,4 +1,10 @@
 import {
+    applySuggestion,
+    suggestedTransactionMapping,
+    type ColumnSuggestions,
+} from '@/lib/ai-import-mapping';
+import { type ColumnDescription } from '@/lib/column-shape';
+import {
     detectDateFormat,
     parseAmount,
     parseCurrencyCode,
@@ -266,23 +272,11 @@ export function applySavedProfile(
     profile: SavedProfile | null,
     headers: string[],
 ): FullImportMapping {
-    if (!profile?.columns) {
+    if (!profile || !savedProfileFits(profile, headers)) {
         return mapping;
     }
 
-    const columns = Object.entries(profile.columns).filter(
-        ([field, column]) =>
-            column !== null && MAPPED_COLUMNS.includes(field as MappedColumn),
-    );
-    const fits = columns.every(
-        ([, column]) =>
-            column === SINGLE_ACCOUNT_COLUMN ||
-            headers.includes(column as string),
-    );
-
-    if (!fits) {
-        return mapping;
-    }
+    const columns = profileColumns(profile);
 
     return {
         ...mapping,
@@ -296,6 +290,81 @@ export function applySavedProfile(
         splitByAccountDetail:
             profile.split_accounts ?? mapping.splitByAccountDetail,
     };
+}
+
+/** The columns a stored layout names, leaving out the fields it left empty. */
+function profileColumns(profile: SavedProfile): [string, string | null][] {
+    return Object.entries(profile.columns ?? {}).filter(
+        ([field, column]) =>
+            column !== null && MAPPED_COLUMNS.includes(field as MappedColumn),
+    );
+}
+
+/** Every column the stored layout names is one this file has. */
+export function savedProfileFits(
+    profile: SavedProfile | null,
+    headers: string[],
+): boolean {
+    return (
+        !!profile?.columns &&
+        profileColumns(profile).every(
+            ([, column]) =>
+                column === SINGLE_ACCOUNT_COLUMN ||
+                headers.includes(column as string),
+        )
+    );
+}
+
+/** The full import's fields the AI places, by the transaction field it answers for. */
+const SUGGESTED_FIELDS = {
+    date: 'transaction_date',
+    amount: 'amount',
+    description: 'description',
+    currency: 'currency',
+    balance: 'balance',
+} as const;
+
+/**
+ * The AI's answer as the full import's mapping: the fields every bank export
+ * shares. Account, category and notes stay with the header guesses.
+ */
+export function suggestedFullImportMapping(
+    suggestions: ColumnSuggestions,
+    columns: ColumnDescription[],
+): Partial<FullImportMapping> {
+    const suggested = suggestedTransactionMapping(suggestions, columns);
+    const mapping: Partial<Record<MappedColumn, string | null>> = {};
+
+    for (const [field, from] of Object.entries(SUGGESTED_FIELDS)) {
+        if (from in suggested) {
+            mapping[field as MappedColumn] = suggested[from] as string | null;
+        }
+    }
+
+    return mapping;
+}
+
+/**
+ * Lay the AI's suggestion over the mapping, leaving the fields in `keep` as
+ * the user picked them. A new date column reads with its own format.
+ */
+export function applyFullImportSuggestion(
+    mapping: FullImportMapping,
+    rows: ParsedRow[],
+    suggested: Partial<FullImportMapping>,
+    keep: ReadonlySet<string>,
+    locale?: string,
+): FullImportMapping {
+    const { mapping: merged, format } = applySuggestion(
+        mapping,
+        suggested,
+        keep,
+        'date',
+        rows,
+        locale,
+    );
+
+    return format ? { ...merged, dateFormat: format.dateFormat } : merged;
 }
 
 /** The mapping in the shape the server stores for next time. */

@@ -12,6 +12,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
 use App\Services\Achievements\Challenges;
+use App\Services\Ai\AiImportMappingGate;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
@@ -30,6 +31,7 @@ class HandleInertiaRequests extends Middleware
         private NotificationFeed $notifications,
         private Catalog $catalog,
         private Challenges $challenges,
+        private AiImportMappingGate $aiImportMappingGate,
     ) {}
 
     /**
@@ -92,6 +94,7 @@ class HandleInertiaRequests extends Middleware
             'demoCredentials' => $this->demoCredentials($request, $user),
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
+            'aiImportMappingEnabled' => $user !== null && $this->aiImportMappingGate->allows($user),
             'pricing' => [
                 'plans' => config('subscriptions.plans', []),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),

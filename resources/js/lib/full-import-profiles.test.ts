@@ -1,11 +1,14 @@
 import {
+    applyFullImportSuggestion,
     applySavedProfile,
     countBlankRows,
     defaultMapping,
     detectSource,
     normalizeRows,
     parseIgnoredFlag,
+    savedProfileFits,
     splitCategoryPath,
+    suggestedFullImportMapping,
     toSavedProfile,
     unmappedHeaders,
 } from '@/lib/full-import-profiles';
@@ -227,3 +230,119 @@ describe('saved profiles', () => {
         );
     });
 });
+
+describe('savedProfileFits', () => {
+    const profile = {
+        columns: { date: 'Buchungstag', amount: 'Betrag', notes: null },
+        date_format: null,
+        category_separator: null,
+        split_accounts: null,
+    };
+
+    it('fits a file carrying every column the profile names', () => {
+        expect(savedProfileFits(profile, ['Buchungstag', 'Betrag'])).toBe(true);
+    });
+
+    it('does not fit another export, or no profile at all', () => {
+        expect(savedProfileFits(profile, ['Datum', 'Betrag'])).toBe(false);
+        expect(savedProfileFits(null, ['Buchungstag'])).toBe(false);
+    });
+});
+
+describe('the AI suggestion on a full import', () => {
+    const columns = [
+        { header: 'Buchungstag', shape: 'date (dd.mm.yyyy)' },
+        { header: 'Valutadatum', shape: 'date (dd.mm.yyyy)' },
+        {
+            header: 'Verwendungszweck',
+            shape: 'text, avg 30 chars, mostly distinct values',
+        },
+        { header: 'Betrag', shape: 'number, 2 decimals with ",", mixed signs' },
+        { header: 'Waehrung', shape: 'three-letter uppercase code' },
+    ];
+    const suggestions = {
+        cached: false,
+        fields: {
+            transaction_date: {
+                column: 'Buchungstag',
+                index: 0,
+                confidence: 0.9,
+            },
+            description: {
+                column: 'Verwendungszweck',
+                index: 2,
+                confidence: 0.9,
+            },
+            amount: { column: 'Betrag', index: 3, confidence: 0.9 },
+            currency: { column: 'Waehrung', index: 4, confidence: 0.9 },
+            balance: { column: null, index: null, confidence: 0.9 },
+            transaction_type: { column: null, index: null, confidence: 0.9 },
+        },
+    };
+
+    it('places only the fields every bank export shares', () => {
+        expect(suggestedFullImportMapping(suggestions, columns)).toEqual({
+            date: 'Buchungstag',
+            description: 'Verwendungszweck',
+            amount: 'Betrag',
+            currency: 'Waehrung',
+            balance: null,
+        });
+    });
+
+    it('reads a newly suggested date column with its own format, keeping what the user picked', () => {
+        const rows = [
+            {
+                Buchungstag: '15.03.2025',
+                Valutadatum: '2025-03-16',
+                Betrag: '-1,00',
+            },
+            {
+                Buchungstag: '16.03.2025',
+                Valutadatum: '2025-03-17',
+                Betrag: '2,00',
+            },
+        ];
+        const current = {
+            ...emptyGenericMapping(),
+            date: 'Valutadatum',
+            amount: 'Betrag',
+            dateFormat: DateFormat.YearMonthDay,
+        };
+
+        const next = applyFullImportSuggestion(
+            current,
+            rows,
+            suggestedFullImportMapping(suggestions, columns),
+            new Set(['amount']),
+        );
+
+        expect(next).toMatchObject({
+            date: 'Buchungstag',
+            dateFormat: DateFormat.DayMonthYear,
+            amount: 'Betrag',
+            description: 'Verwendungszweck',
+        });
+    });
+});
+
+function emptyGenericMapping() {
+    return {
+        date: null,
+        amount: null,
+        description: null,
+        account: null,
+        accountDetail: null,
+        splitByAccountDetail: false,
+        notes: null,
+        category: null,
+        categorySeparator: ',',
+        currencySymbols: {},
+        currency: null,
+        balance: null,
+        iban: null,
+        externalId: null,
+        ignored: null,
+        dateFormat: DateFormat.YearMonthDay,
+    };
+}

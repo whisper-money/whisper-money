@@ -1,0 +1,236 @@
+<?php
+
+namespace App\Services\Ai;
+
+use App\Enums\ImportConfigType;
+use App\Exceptions\Ai\ImportMappingUnavailableException;
+use App\Models\Account;
+use App\Models\User;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
+use Throwable;
+
+/**
+ * Asks TypeSafe AI's Jev which column of an imported file holds each field.
+ * One request per file, one `choice` question per field, whose options are the
+ * file's columns plus "none". Jev only ever sees each column's header and its
+ * computed shape, never a cell value.
+ *
+ * Answers are cached per user, account, kind and column layout, so asking
+ * again for the same file never reaches Jev. A failed answer is not cached.
+ */
+class ImportColumnSuggester
+{
+    private const string NO_COLUMN = 'none';
+
+    public function __construct(private JevClient $jev) {}
+
+    /**
+     * The fields to place, each with its instructions to Jev. Their names are
+     * the keys of the client's `ColumnMapping` (resources/js/types/import.ts)
+     * and `BalanceColumnMapping` (resources/js/types/balance-import.ts).
+     *
+     * @return array<string, string>
+     */
+    private function fields(ImportConfigType $kind): array
+    {
+        return match ($kind) {
+            ImportConfigType::Transaction => [
+                'transaction_date' => 'Pick the column holding the date each bank transaction happened. When the file has both a booking/operation date and a value date, prefer the booking/operation date.',
+                'description' => 'Pick the column holding the free-text description, concept or reference of each transaction. Not the counterparty name column when a separate description exists.',
+                'amount' => 'Pick the column holding the amount of money each transaction moved (signed or unsigned). Not the running balance, a fee or a tax column.',
+                'currency' => 'Pick the column holding the currency code or symbol of each transaction amount (e.g. EUR, USD, €).',
+                'balance' => 'Pick the column holding the account balance after each transaction (the running balance). Not the transaction amount.',
+                'creditor_name' => 'Pick the column holding the name of who received the money (payee, beneficiary, merchant).',
+                'debtor_name' => 'Pick the column holding the name of who sent the money (payer, ordering party).',
+                'transaction_type' => 'Pick the column saying only whether each transaction is money in or money out (e.g. debit/credit, Af/Bij, in/out, D/C). Not a column describing the kind of operation (card payment, transfer).',
+            ],
+            ImportConfigType::Balance => [
+                'balance_date' => 'Pick the column holding the date each balance was recorded.',
+                'balance' => 'Pick the column holding the account balance or market value on that date. Not a contribution or invested amount.',
+                'invested_amount' => 'Pick the column holding the amount of money invested or contributed so far (cost basis). Not the current balance or market value.',
+            ],
+        };
+    }
+
+    /**
+     * The suggestion for this layout, from the cache when the same user asked
+     * for it before on the same account and kind.
+     *
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     * @return array{data: array<string, array{column: ?string, index: ?int, confidence: float}>|null, cached: bool}
+     */
+    public function suggestCached(User $user, ?Account $account, ImportConfigType $kind, array $columns): array
+    {
+        $key = $this->cacheKey($user, $account, $kind, $columns);
+        $cached = Cache::get($key);
+
+        if (is_array($cached)) {
+            return ['data' => $cached, 'cached' => true];
+        }
+
+        $suggestions = $this->suggest($kind, $columns);
+
+        if ($suggestions !== null) {
+            Cache::put($key, $suggestions, now()->addDays((int) config('ai_import_mapping.cache_ttl_days')));
+        }
+
+        return ['data' => $suggestions, 'cached' => false];
+    }
+
+    /**
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     */
+    private function cacheKey(User $user, ?Account $account, ImportConfigType $kind, array $columns): string
+    {
+        $layout = array_map(fn (array $column): array => [$column['header'], $column['shape']], $columns);
+
+        return implode(':', [
+            'ai-import-mapping',
+            $user->id,
+            $account->id ?? 'none',
+            $kind->value,
+            hash('sha256', (string) json_encode($layout)),
+        ]);
+    }
+
+    /**
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     * @return array<string, array{column: ?string, index: ?int, confidence: float}>|null the header (and position, which tells apart repeated headers) suggested per field, or null when Jev could not answer
+     */
+    private function suggest(ImportConfigType $kind, array $columns): ?array
+    {
+        $attempts = (int) config('ai_import_mapping.attempts');
+        $response = $this->jev->send(
+            $this->body($kind, $columns),
+            (int) config('ai_import_mapping.timeout_seconds'),
+            $attempts,
+        );
+
+        if ($response === null) {
+            $this->reportThrottled('exhausted', ImportMappingUnavailableException::exhausted($attempts));
+
+            return null;
+        }
+
+        if ($response->failed()) {
+            $this->reportThrottled('rejected', $response->toException());
+
+            return null;
+        }
+
+        if (! $this->answersAnyField($kind, $columns, $response)) {
+            $this->reportThrottled('malformed', ImportMappingUnavailableException::malformed($response->status()));
+
+            return null;
+        }
+
+        return $this->suggestions($kind, $columns, $response);
+    }
+
+    /**
+     * Report a failure at most once every few minutes per kind of failure, so
+     * a Jev outage shows up without one report per file every user imports.
+     */
+    private function reportThrottled(string $reason, Throwable $exception): void
+    {
+        $window = now()->addMinutes((int) config('ai_import_mapping.report_every_minutes'));
+
+        if (Cache::add("ai-import-mapping:reported:{$reason}", true, $window)) {
+            report($exception);
+        }
+    }
+
+    /**
+     * Whether at least one field came back readable: a choice that is "none"
+     * or one of the file's columns, with a numeric confidence. A 200 without
+     * any is not an answer, and must not be cached as one.
+     *
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     */
+    private function answersAnyField(ImportConfigType $kind, array $columns, Response $response): bool
+    {
+        foreach (array_keys($this->fields($kind)) as $field) {
+            $answer = $response->json("answers.{$field}");
+
+            if (! is_array($answer) || ! is_numeric($answer['confidence'] ?? null)) {
+                continue;
+            }
+
+            $choice = $answer['choice'] ?? null;
+
+            if ($choice === self::NO_COLUMN || (is_numeric($choice) && isset($columns[(int) $choice]))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     * @return array<string, mixed>
+     */
+    private function body(ImportConfigType $kind, array $columns): array
+    {
+        $criteria = [];
+        $state = [];
+
+        foreach ($columns as $index => $column) {
+            $criteria[(string) $index] = $this->label($column);
+            $state[] = ['index' => $index, 'header' => $column['header'], 'shape' => $column['shape']];
+        }
+
+        $criteria[self::NO_COLUMN] = 'No column holds this';
+
+        $questions = [];
+
+        foreach ($this->fields($kind) as $field => $instructions) {
+            $questions[$field] = [
+                'type' => 'choice',
+                'instructions' => "These are the columns of a bank export file a personal-finance app user is importing, each with its header and the shape of its values. {$instructions} Choose \"none\" if no column fits; do not guess.",
+                'criteria' => $criteria,
+            ];
+        }
+
+        return [
+            'model' => $this->jev->model(),
+            'state' => ['columns' => $state],
+            'questions' => $questions,
+        ];
+    }
+
+    /**
+     * @param  array{header: ?string, shape: string}  $column
+     */
+    private function label(array $column): string
+    {
+        return filled($column['header']) ? (string) $column['header'] : "(unnamed column, {$column['shape']})";
+    }
+
+    /**
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     * @return array<string, array{column: ?string, index: ?int, confidence: float}>
+     */
+    private function suggestions(ImportConfigType $kind, array $columns, Response $response): array
+    {
+        $minConfidence = (float) config('ai_import_mapping.min_confidence');
+        $suggestions = [];
+
+        foreach (array_keys($this->fields($kind)) as $field) {
+            $choice = $response->json("answers.{$field}.choice");
+            $confidence = (float) $response->json("answers.{$field}.confidence", 0.0);
+            $index = is_numeric($choice) && isset($columns[(int) $choice]) && $confidence >= $minConfidence
+                ? (int) $choice
+                : null;
+
+            $suggestions[$field] = [
+                'column' => $index === null ? null : $columns[$index]['header'],
+                'index' => $index,
+                'confidence' => $confidence,
+            ];
+        }
+
+        return $suggestions;
+    }
+}

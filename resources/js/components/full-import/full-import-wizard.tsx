@@ -1,4 +1,5 @@
 import { index as importIndex } from '@/actions/App/Http/Controllers/Settings/FullImportController';
+import { AiColumnDetection } from '@/components/ai-column-detection';
 import {
     Notice,
     WizardFooter,
@@ -19,6 +20,7 @@ import {
 import { StepReview } from '@/components/full-import/step-review';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import { useDuplicateEstimate } from '@/hooks/use-duplicate-estimate';
 import { useFullImportPlan } from '@/hooks/use-full-import-plan';
 import {
@@ -31,6 +33,7 @@ import {
     type PollingProblem,
 } from '@/hooks/use-import-polling';
 import { useLocale } from '@/hooks/use-locale';
+import { describeColumns } from '@/lib/column-shape';
 import { UNREADABLE_FILE_MESSAGE } from '@/lib/file-parser';
 import {
     fetchImport,
@@ -53,10 +56,14 @@ import {
 } from '@/lib/full-import-format';
 import { movementRows } from '@/lib/full-import-plan';
 import {
+    applyFullImportSuggestion,
     applySavedProfile,
     countBlankRows,
     defaultMapping,
     detectSource,
+    MAPPED_COLUMNS,
+    savedProfileFits,
+    suggestedFullImportMapping,
 } from '@/lib/full-import-profiles';
 import {
     fileExtension,
@@ -238,6 +245,7 @@ export function FullImportWizard({
     const [mapping, setMapping] = useState<FullImportMapping | null>(null);
     const [mode, setMode] = useState<FullImportMode>('add');
     const [confirmWipe, setConfirmWipe] = useState(false);
+    const ai = useAiColumnSuggestion();
 
     const [upload, setUpload] = useState<UploadProgress | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -333,6 +341,69 @@ export function FullImportWizard({
             ),
         [context, locale],
     );
+
+    /**
+     * Ask the AI which column is which. Only a file of no known app gets
+     * asked, and only when no layout saved for it fits; its answer leaves
+     * alone the fields picked by hand unless the user pressed the button.
+     */
+    const suggestColumns = (
+        file: ParsedImportFile,
+        everything: boolean,
+        token?: number,
+    ) => {
+        const columns = describeColumns(file.headers, file.rows);
+
+        void ai.request<FullImportMapping>({
+            kind: 'transaction',
+            columns,
+            everything,
+            token,
+            toMapping: (suggestions) =>
+                suggestedFullImportMapping(suggestions, columns),
+            apply: (suggested, keep) =>
+                setMapping((current) =>
+                    current
+                        ? applyFullImportSuggestion(
+                              current,
+                              file.rows,
+                              suggested,
+                              keep,
+                              locale,
+                          )
+                        : current,
+                ),
+        });
+    };
+
+    /** The mapping a source starts from, and the AI asked when nothing else fits. */
+    const startMapping = (
+        nextSource: FullImportSource,
+        file: ParsedImportFile,
+    ) => {
+        setMapping(mappingFor(nextSource, file));
+        const token = ai.begin();
+
+        if (
+            nextSource === 'generic' &&
+            !savedProfileFits(context?.profiles.generic ?? null, file.headers)
+        ) {
+            suggestColumns(file, false, token);
+        }
+    };
+
+    /** A field picked by hand: a late suggestion leaves it be. */
+    const handleMappingChange = (next: FullImportMapping) => {
+        if (mapping) {
+            ai.touch(
+                ...MAPPED_COLUMNS.filter(
+                    (field) => next[field] !== mapping[field],
+                ),
+            );
+        }
+
+        setMapping(next);
+    };
 
     /** A file turned away is counted, never reported. */
     const trackRejected = (file: File, reason: FileRejection) =>
@@ -441,6 +512,7 @@ export function FullImportWizard({
             setMapping(null);
             setRecognized(null);
             plan.reset();
+            ai.begin();
 
             return;
         }
@@ -462,7 +534,7 @@ export function FullImportWizard({
 
         setRecognized(detected);
         setSource(nextSource);
-        setMapping(mappingFor(nextSource, merged));
+        startMapping(nextSource, merged);
         plan.reset();
     };
 
@@ -516,7 +588,7 @@ export function FullImportWizard({
         setSource(nextSource);
 
         if (parsed) {
-            setMapping(mappingFor(nextSource, parsed));
+            startMapping(nextSource, parsed);
             plan.reset();
         }
     };
@@ -529,6 +601,7 @@ export function FullImportWizard({
         setSubmitError(null);
         setUpload({ sent: 0, total: built.transactions.length });
         setStep('progress');
+
         trackImport(
             'full_import_submitted',
             submittedProperties({
@@ -551,6 +624,10 @@ export function FullImportWizard({
                     (sent, total) => setUpload({ sent, total }),
                 ),
             );
+
+            if (mapping && source === 'generic') {
+                ai.importedWith(mapping, `full_import_${entry}`, 'transaction');
+            }
         } catch (error) {
             const stage =
                 error instanceof ImportUploadError ? error.stage : 'create';
@@ -754,7 +831,17 @@ export function FullImportWizard({
                         headers={parsed.headers}
                         columnOptions={parsed.columnOptions}
                         mapping={mapping}
-                        onMappingChange={setMapping}
+                        onMappingChange={handleMappingChange}
+                        aiDetection={
+                            <AiColumnDetection
+                                status={
+                                    source === 'generic'
+                                        ? ai.status(mapping)
+                                        : 'hidden'
+                                }
+                                onDetect={() => suggestColumns(parsed, true)}
+                            />
+                        }
                         normalized={normalized}
                         currencySymbols={plan.currencySymbols}
                         currencies={currencies.accounts}

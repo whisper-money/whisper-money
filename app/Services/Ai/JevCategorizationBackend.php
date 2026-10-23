@@ -7,12 +7,10 @@ use App\Exceptions\Ai\TransientCategorizationException;
 use App\Models\Transaction;
 use App\Services\Ai\Contracts\CategorizationBackend;
 use App\Support\Money;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Sleep;
 use Throwable;
 
 /**
@@ -21,20 +19,17 @@ use Throwable;
  * limited to the categories of the transaction's direction, which both keeps
  * the model from crossing spending and income and trims the billed criteria.
  *
- * A rate-limited (429), overloaded (529 or any other 5xx) or unreachable
- * request is retried in place a couple of times with a short backoff, so a
- * burst over the rate limit does not wait for the deferred retry. What still
- * fails drops only its own transaction and surfaces as a
- * {@see TransientCategorizationException} carrying the rest; any other failed
- * request (401, 422) is reported and dropped.
+ * A transient failure (see {@see JevClient}) is retried in place a couple of
+ * times with a short backoff, so a burst over the rate limit does not wait for
+ * the deferred retry. What still fails drops only its own transaction and
+ * surfaces as a {@see TransientCategorizationException} carrying the rest; any
+ * other failed request (401, 422) is reported and dropped.
  */
 class JevCategorizationBackend implements CategorizationBackend
 {
-    public const string ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
-
     private const string NO_CATEGORY = 'none';
 
-    private const int MAX_ATTEMPTS = 3;
+    public function __construct(private JevClient $jev) {}
 
     public function categorize(Collection $chunk, CategoryCatalog $catalog): array
     {
@@ -49,14 +44,14 @@ class JevCategorizationBackend implements CategorizationBackend
                 return $results;
             }
 
-            if ($attempt === self::MAX_ATTEMPTS) {
+            if ($attempt === JevClient::MAX_ATTEMPTS) {
                 throw new TransientCategorizationException(
                     "Jev dropped {$pending->count()} of {$chunk->count()} requests.",
                     $results,
                 );
             }
 
-            Sleep::for($attempt)->seconds();
+            $this->jev->backOff($attempt);
         }
     }
 
@@ -70,11 +65,8 @@ class JevCategorizationBackend implements CategorizationBackend
     private function send(Collection $transactions, CategoryCatalog $catalog): array
     {
         $responses = Http::pool(fn (Pool $pool): array => $transactions
-            ->map(fn (Transaction $transaction) => $pool->withToken((string) config('services.typesafe.key'))
-                ->acceptJson()
-                ->connectTimeout(5)
-                ->timeout(30)
-                ->post(self::ENDPOINT, $this->body($transaction, $catalog)))
+            ->map(fn (Transaction $transaction) => $this->jev->request($pool)
+                ->post(JevClient::ENDPOINT, $this->body($transaction, $catalog)))
             ->all(), max(1, (int) config('services.typesafe.concurrency')));
 
         $results = [];
@@ -83,7 +75,7 @@ class JevCategorizationBackend implements CategorizationBackend
         foreach ($transactions as $position => $transaction) {
             $response = $responses[$position];
 
-            if ($this->isTransient($response)) {
+            if ($this->jev->isTransient($response)) {
                 $transient[] = $transaction;
 
                 continue;
@@ -103,7 +95,7 @@ class JevCategorizationBackend implements CategorizationBackend
 
     public function model(): string
     {
-        return (string) config('services.typesafe.model');
+        return $this->jev->model();
     }
 
     /**
@@ -178,11 +170,5 @@ class JevCategorizationBackend implements CategorizationBackend
         }
 
         return $result;
-    }
-
-    private function isTransient(mixed $response): bool
-    {
-        return $response instanceof ConnectionException
-            || ($response instanceof Response && ($response->tooManyRequests() || $response->serverError()));
     }
 }
