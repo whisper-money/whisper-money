@@ -294,7 +294,7 @@ export function StepFile({
             <p className="flex items-start gap-2.5 text-[13px] text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                 {__(
-                    'The file is read in your browser. We only save what you confirm in the last step, and it never leaves Whisper Money.',
+                    'The file is read in your browser. To detect its columns, our AI provider only sees the headers and the shape of the data, never your rows. We only save what you confirm in the last step.',
                 )}
             </p>
         </WizardScreen>

@@ -45,7 +45,7 @@ export function StepPromise({ onContinue }: StepPromiseProps) {
                     icon={Lock}
                     title={__('Yours, and only yours')}
                     description={__(
-                        "We don't sell your data, share it, or advertise against it. That's the business model.",
+                        "We don't sell your data, share it with advertisers, or advertise against it. That's the business model.",
                     )}
                 />
             </StepList>

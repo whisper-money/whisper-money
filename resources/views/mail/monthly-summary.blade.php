@@ -95,7 +95,7 @@
                 <a href="{{ $unsubscribeUrl }}" style="color:{{ $muted }};text-decoration:underline;">{{ __('Turn the summary off') }}</a> ·
                 <a href="{{ $historyUrl }}" style="color:{{ $muted }};text-decoration:underline;">{{ __('Open in the app') }}</a>
             </p>
-            <p style="margin:0;font-size:11px;line-height:1.6;color:{{ $muted }};">{{ __('Whisper Money · Your data never leaves your account.') }}</p>
+            <p style="margin:0;font-size:11px;line-height:1.6;color:{{ $muted }};">{{ __('Whisper Money · Your data is never sold or shared with advertisers.') }}</p>
         </td></tr>
     </table>
 

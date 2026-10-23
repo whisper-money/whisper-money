@@ -744,7 +744,7 @@ function PrivacyRedactedPreview() {
             ref={containerRef}
             role="img"
             aria-label={__(
-                'Your financial data stays private and is never shared',
+                'Your financial data stays private and is never sold',
             )}
             className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
         >
@@ -2388,7 +2388,7 @@ function HeroBenefits({ className }: { className?: string }) {
     const benefits = [
         __('Bank sync and automatic categories'),
         __('Budgets that warn you before you overspend'),
-        __('Never shared, never sold, open source'),
+        __('Never sold or shared with advertisers, open source'),
     ];
 
     return (
@@ -3082,7 +3082,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Our own AI categorizes for you, never training on your data or sharing it with third parties. Your finances belong to you and only you.',
+                                            'AI categorization is opt-in. Your data never trains models and is never sold or shared with advertisers. Your finances belong to you and only you.',
                                         )}
                                     </p>
                                 </div>
@@ -3553,7 +3553,7 @@ export default function Welcome({
                                         'How is my financial data kept private?',
                                     )}
                                     answer={__(
-                                        "Your data is stored securely and never shared with third parties. We don't use your financial data for AI training, advertising, or any purpose other than providing you the service.",
+                                        "Your data is stored securely and never sold or shared with advertisers. We don't use your financial data for AI training, advertising, or any purpose other than providing you the service.",
                                     )}
                                 />
                                 <FaqItem
@@ -3561,7 +3561,7 @@ export default function Welcome({
                                         'Do you use AI, and is my data safe?',
                                     )}
                                     answer={__(
-                                        'Yes. Whisper Money uses AI to automatically categorize transactions and suggest budgets, so you spend less time on data entry. It works only to serve you: your data is never used to train models, sold, or shared with third parties.',
+                                        'Yes. If you turn it on, Whisper Money uses AI to automatically categorize transactions and suggest budgets, so you spend less time on data entry. It works only to serve you: your data is never used to train models, sold, or shared with advertisers.',
                                     )}
                                 />
                                 <FaqItem
