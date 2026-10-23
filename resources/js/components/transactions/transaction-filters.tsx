@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelIcon } from '@/components/shared/label-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
+import { AmountFilterFields } from '@/components/transactions/transaction-filters-amount';
 import { CashflowBlockChip } from '@/components/transactions/transaction-filters-cashflow-block-chip';
 import { QuickPeriodButtons } from '@/components/transactions/transaction-filters-quick-periods';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -212,8 +213,8 @@ export function TransactionFilters({
     const activeFilterCount =
         (filters.dateFrom ? 1 : 0) +
         (filters.dateTo ? 1 : 0) +
-        (filters.amountMin !== null ? 1 : 0) +
-        (filters.amountMax !== null ? 1 : 0) +
+        // One amount filter, though a single typed bound can set both ends.
+        (filters.amountMin !== null || filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
         filters.labelIds.length +
         (filters.creditorName ? 1 : 0) +
@@ -332,41 +333,16 @@ export function TransactionFilters({
 
                                 <div className="space-y-2">
                                     <FormLabel>{__('Amount')}</FormLabel>
-                                    <div className="grid grid-cols-2 gap-2 pt-2">
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={filters.amountMin ?? ''}
-                                            onChange={(e) =>
-                                                onFiltersChange({
-                                                    ...filters,
-                                                    amountMin: e.target.value
-                                                        ? parseFloat(
-                                                              e.target.value,
-                                                          )
-                                                        : null,
-                                                })
-                                            }
-                                            placeholder={__('Min')}
-                                        />
-
-                                        <Input
-                                            type="number"
-                                            step="0.01"
-                                            value={filters.amountMax ?? ''}
-                                            onChange={(e) =>
-                                                onFiltersChange({
-                                                    ...filters,
-                                                    amountMax: e.target.value
-                                                        ? parseFloat(
-                                                              e.target.value,
-                                                          )
-                                                        : null,
-                                                })
-                                            }
-                                            placeholder={__('Max')}
-                                        />
-                                    </div>
+                                    <AmountFilterFields
+                                        amountMin={filters.amountMin}
+                                        amountMax={filters.amountMax}
+                                        onChange={(range) =>
+                                            onFiltersChange({
+                                                ...filters,
+                                                ...range,
+                                            })
+                                        }
+                                    />
                                 </div>
 
                                 <div className="space-y-2">

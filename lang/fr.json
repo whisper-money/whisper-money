@@ -3065,5 +3065,9 @@
     "Quick periods": "Périodes rapides",
     "Suggested by AI": "Suggestion faite par l’IA",
     "Detect columns with AI": "Détecter les colonnes avec l’IA",
-    "The AI could not read the columns. Try again later.": "L’IA n’a pas pu lire les colonnes. Réessayez plus tard."
+    "The AI could not read the columns. Try again later.": "L’IA n’a pas pu lire les colonnes. Réessayez plus tard.",
+    "Amount type": "Type de montant",
+    "Minimum amount": "Montant minimum",
+    "Maximum amount": "Montant maximum",
+    "This range covers both expenses and income. Picking a side turns its bounds into sizes.": "Cette plage couvre les dépenses et les revenus. Choisir un côté transforme ses bornes en montants."
 }

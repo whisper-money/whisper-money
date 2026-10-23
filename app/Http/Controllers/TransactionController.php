@@ -96,8 +96,9 @@ class TransactionController extends Controller
         $appliedFilters = [
             'date_from' => $validated['date_from'] ?? null,
             'date_to' => $validated['date_to'] ?? null,
-            'amount_min' => $validated['amount_min'] ?? null,
-            'amount_max' => $validated['amount_max'] ?? null,
+            // The query string hands these over as strings; the page types them as numbers.
+            'amount_min' => isset($validated['amount_min']) ? (float) $validated['amount_min'] : null,
+            'amount_max' => isset($validated['amount_max']) ? (float) $validated['amount_max'] : null,
             'category_ids' => $validated['category_ids'] ?? [],
             'account_ids' => $validated['account_ids'] ?? [],
             'label_ids' => $validated['label_ids'] ?? [],

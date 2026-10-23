@@ -4095,5 +4095,9 @@
     "Quick periods": "Periodos rápidos",
     "Suggested by AI": "Sugerencia hecha con IA",
     "Detect columns with AI": "Detectar columnas con IA",
-    "The AI could not read the columns. Try again later.": "La IA no ha podido leer las columnas. Inténtalo más tarde."
+    "The AI could not read the columns. Try again later.": "La IA no ha podido leer las columnas. Inténtalo más tarde.",
+    "Amount type": "Tipo de importe",
+    "Minimum amount": "Importe mínimo",
+    "Maximum amount": "Importe máximo",
+    "This range covers both expenses and income. Picking a side turns its bounds into sizes.": "Este rango incluye gastos e ingresos. Al elegir uno, sus límites pasan a ser importes."
 }
