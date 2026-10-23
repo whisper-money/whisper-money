@@ -58,6 +58,17 @@ export interface ServerTransaction extends Transaction {
     labels?: Label[];
 }
 
+/**
+ * A block of the cashflow screen whose transactions the list can show.
+ * Mirrors `App\Enums\CashflowBlock`.
+ */
+export type CashflowBlock =
+    | 'fixed'
+    | 'variable'
+    | 'general'
+    | 'saved'
+    | 'invested';
+
 export interface TransactionFilters {
     dateFrom: Date | null;
     dateTo: Date | null;
@@ -70,4 +81,6 @@ export interface TransactionFilters {
     debtorName: string;
     searchText: string;
     aiCategorizedOnly: boolean;
+    /** Only arrives from a cashflow link; never picked from the filter menu. */
+    cashflowBlock?: CashflowBlock | null;
 }

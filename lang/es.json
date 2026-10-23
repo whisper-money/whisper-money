@@ -4088,5 +4088,9 @@
     "No variable budget in progress in this view.": "Ningún presupuesto variable en curso en esta vista.",
     "Yearly budgets are reserved in the Year view": "Los presupuestos anuales se reservan en la vista Año",
     "Weekly and monthly budgets are reserved in the Month view": "Los presupuestos semanales y mensuales se reservan en la vista Mes",
-    "No income in this period": "Sin ingresos en este período"
+    "No income in this period": "Sin ingresos en este período",
+    "General expense": "Gasto general",
+    "Block: :name": "Bloque: :name",
+    "Remove the :name filter": "Quitar el filtro :name",
+    "Quick periods": "Periodos rápidos"
 }

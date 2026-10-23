@@ -56,6 +56,8 @@ class TransactionController extends Controller
             'debtor_name' => $validated['debtor_name'] ?? null,
             'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? null,
+            'cashflow_block' => $validated['cashflow_block'] ?? null,
+            'user_id' => $user->id,
         ], fn ($value) => $value !== null);
 
         $query = Transaction::query()
@@ -103,6 +105,7 @@ class TransactionController extends Controller
             'debtor_name' => $validated['debtor_name'] ?? '',
             'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? '',
+            'cashflow_block' => $validated['cashflow_block'] ?? null,
             'sort' => $sortParam,
         ];
 
@@ -435,7 +438,7 @@ class TransactionController extends Controller
             return $query->whereIn('id', $transactionIds);
         }
 
-        return $filters === null ? $query : $query->applyFilters($filters);
+        return $filters === null ? $query : $query->applyFilters([...$filters, 'user_id' => $userId]);
     }
 
     /**
