@@ -18,9 +18,9 @@ use Illuminate\Validation\Validator;
  */
 class SuggestImportColumnsRequest extends FormRequest
 {
-    public const int MAX_COLUMNS = 60;
+    private const int MAX_COLUMNS = 60;
 
-    public const int MAX_LENGTH = 120;
+    private const int MAX_LENGTH = 120;
 
     private const array ALLOWED_KEYS = ['kind', 'columns'];
 
