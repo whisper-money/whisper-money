@@ -40,4 +40,18 @@ return [
 
     'min_confidence' => (float) env('AI_IMPORT_MAPPING_MIN_CONFIDENCE', 0.5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cache lifetime
+    |--------------------------------------------------------------------------
+    |
+    | Days a suggestion is kept, keyed by user, account, import kind and the
+    | file's column layout. Asking again for the same layout (e.g. the
+    | "detect columns" button on a file already mapped) is served from the
+    | cache instead of calling Jev. Failed answers are never cached.
+    |
+    */
+
+    'cache_ttl_days' => (int) env('AI_IMPORT_MAPPING_CACHE_TTL_DAYS', 30),
+
 ];

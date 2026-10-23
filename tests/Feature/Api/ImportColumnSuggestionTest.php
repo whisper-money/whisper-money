@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\RequestException;
@@ -45,7 +46,8 @@ beforeEach(function () {
     config()->set('services.typesafe.key', 'test-key');
     config()->set('services.typesafe.enabled', true);
 
-    actingAs(User::factory()->create());
+    $this->user = User::factory()->create();
+    actingAs($this->user);
 });
 
 it('maps each transaction field to the header jev picked', function () {
@@ -72,7 +74,7 @@ it('maps each transaction field to the header jev picked', function () {
         'creditor_name' => ['column' => null, 'index' => null, 'confidence' => 0.8],
         'debtor_name' => ['column' => null, 'index' => null, 'confidence' => 0.3],
         'transaction_type' => ['column' => null, 'index' => null, 'confidence' => 0.9],
-    ]]);
+    ], 'cached' => false]);
 
     Http::assertSentCount(1);
     Http::assertSent(function (Request $request): bool {
@@ -110,7 +112,7 @@ it('asks for the balance fields on a balance import', function () {
         'balance_date' => ['column' => 'Date', 'index' => 0, 'confidence' => 0.9],
         'balance' => ['column' => 'Value', 'index' => 1, 'confidence' => 0.9],
         'invested_amount' => ['column' => null, 'index' => null, 'confidence' => 0.9],
-    ]]);
+    ], 'cached' => false]);
 
     Http::assertSent(fn (Request $request): bool => array_keys($request['questions']) === ['balance_date', 'balance', 'invested_amount']);
 });
@@ -127,7 +129,7 @@ it('leaves a field unmapped when jev skips it or picks a column that does not ex
         'balance_date' => ['column' => null, 'index' => null, 'confidence' => 0.99],
         'balance' => ['column' => null, 'index' => null, 'confidence' => 0],
         'invested_amount' => ['column' => null, 'index' => null, 'confidence' => 0],
-    ]]);
+    ], 'cached' => false]);
 });
 
 it('falls back silently when jev keeps failing transiently', function (Closure $failure) {
@@ -140,7 +142,7 @@ it('falls back silently when jev keeps failing transiently', function (Closure $
     $this->postJson(route('api.import.column-suggestions'), [
         'kind' => 'transaction',
         'columns' => bankExportColumns(),
-    ])->assertOk()->assertExactJson(['data' => null]);
+    ])->assertOk()->assertExactJson(['data' => null, 'cached' => false]);
 
     Http::assertSentCount(3);
     Sleep::assertSleptTimes(2);
@@ -185,7 +187,7 @@ it('reports a rejected request and falls back', function () {
     $this->postJson(route('api.import.column-suggestions'), [
         'kind' => 'transaction',
         'columns' => bankExportColumns(),
-    ])->assertOk()->assertExactJson(['data' => null]);
+    ])->assertOk()->assertExactJson(['data' => null, 'cached' => false]);
 
     Http::assertSentCount(1);
     Exceptions::assertReported(fn (RequestException $e): bool => $e->response->status() === 401);
@@ -255,4 +257,110 @@ it('throttles at twenty requests a minute', function () {
     }
 
     $this->postJson(route('api.import.column-suggestions'), $payload)->assertTooManyRequests();
+});
+
+describe('cache', function () {
+    beforeEach(function () {
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers(['transaction_date' => ['0', 0.9]]))]);
+        $this->payload = ['kind' => 'transaction', 'columns' => bankExportColumns()];
+    });
+
+    it('serves a repeated layout from the cache without calling jev', function () {
+        $this->postJson(route('api.import.column-suggestions'), $this->payload)
+            ->assertOk()
+            ->assertJsonPath('cached', false)
+            ->assertJsonPath('data.transaction_date.column', 'Fecha operación');
+
+        $this->postJson(route('api.import.column-suggestions'), $this->payload)
+            ->assertOk()
+            ->assertJsonPath('cached', true)
+            ->assertJsonPath('data.transaction_date.column', 'Fecha operación');
+
+        Http::assertSentCount(1);
+    });
+
+    it('asks again once the cache expires', function () {
+        config()->set('ai_import_mapping.cache_ttl_days', 30);
+
+        $this->postJson(route('api.import.column-suggestions'), $this->payload)->assertOk();
+        $this->travel(31)->days();
+        $this->postJson(route('api.import.column-suggestions'), $this->payload)->assertJsonPath('cached', false);
+
+        Http::assertSentCount(2);
+    });
+
+    it('keys the cache by layout, kind, account and user', function (Closure $vary) {
+        $this->postJson(route('api.import.column-suggestions'), $this->payload)->assertOk();
+
+        $this->postJson(route('api.import.column-suggestions'), $vary->call($this, $this->payload))
+            ->assertOk()
+            ->assertJsonPath('cached', false);
+
+        Http::assertSentCount(2);
+    })->with([
+        'reordered columns' => fn (array $payload): array => [...$payload, 'columns' => array_reverse($payload['columns'])],
+        'a different shape' => function (array $payload): array {
+            $payload['columns'][2]['shape'] = 'number, 2 decimals, all positive';
+
+            return $payload;
+        },
+        'another kind' => fn (array $payload): array => [...$payload, 'kind' => 'balance'],
+        'an account' => function (array $payload): array {
+            return [...$payload, 'account_id' => Account::factory()->create(['user_id' => $this->user->id])->id];
+        },
+        'another user' => function (array $payload): array {
+            actingAs(User::factory()->create());
+
+            return $payload;
+        },
+    ]);
+});
+
+it('never caches a failed answer', function () {
+    Http::fakeSequence('api.typesafe.ai/*')
+        ->push([], 503)->push([], 503)->push([], 503)
+        ->push(jevColumnAnswers(['transaction_date' => ['0', 0.9]]));
+
+    $this->postJson(route('api.import.column-suggestions'), ['kind' => 'transaction', 'columns' => bankExportColumns()])->assertExactJson(['data' => null, 'cached' => false]);
+    $this->postJson(route('api.import.column-suggestions'), ['kind' => 'transaction', 'columns' => bankExportColumns()])
+        ->assertJsonPath('cached', false)
+        ->assertJsonPath('data.transaction_date.column', 'Fecha operación');
+
+    Http::assertSentCount(4);
+});
+
+describe('account', function () {
+    beforeEach(function () {
+        Http::fake(['api.typesafe.ai/*' => Http::response(jevColumnAnswers([]))]);
+    });
+
+    it('accepts an account of the user', function () {
+        $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+        $this->postJson(route('api.import.column-suggestions'), [
+            'kind' => 'transaction',
+            'columns' => bankExportColumns(),
+            'account_id' => $account->id,
+        ])->assertOk();
+    });
+
+    it('forbids an account of another user', function () {
+        $account = Account::factory()->create();
+
+        $this->postJson(route('api.import.column-suggestions'), [
+            'kind' => 'transaction',
+            'columns' => bankExportColumns(),
+            'account_id' => $account->id,
+        ])->assertForbidden();
+
+        Http::assertNothingSent();
+    });
+
+    it('rejects an unknown or malformed account', function (string $accountId) {
+        $this->postJson(route('api.import.column-suggestions'), [
+            'kind' => 'transaction',
+            'columns' => bankExportColumns(),
+            'account_id' => $accountId,
+        ])->assertUnprocessable()->assertJsonValidationErrors('account_id');
+    })->with(['not-a-uuid', '01999999-9999-7999-8999-999999999999']);
 });

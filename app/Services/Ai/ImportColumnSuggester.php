@@ -3,13 +3,19 @@
 namespace App\Services\Ai;
 
 use App\Enums\ImportConfigType;
+use App\Models\Account;
+use App\Models\User;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Asks TypeSafe AI's Jev which column of an imported file holds each field.
  * One request per file, one `choice` question per field, whose options are the
  * file's columns plus "none". Jev only ever sees each column's header and its
  * computed shape, never a cell value.
+ *
+ * Answers are cached per user, account, kind and column layout, so asking
+ * again for the same file never reaches Jev. A failed answer is not cached.
  */
 class ImportColumnSuggester
 {
@@ -48,10 +54,51 @@ class ImportColumnSuggester
     }
 
     /**
+     * The suggestion for this layout, from the cache when the same user asked
+     * for it before on the same account and kind.
+     *
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     * @return array{data: array<string, array{column: ?string, index: ?int, confidence: float}>|null, cached: bool}
+     */
+    public function suggestCached(User $user, ?Account $account, ImportConfigType $kind, array $columns): array
+    {
+        $key = $this->cacheKey($user, $account, $kind, $columns);
+        $cached = Cache::get($key);
+
+        if (is_array($cached)) {
+            return ['data' => $cached, 'cached' => true];
+        }
+
+        $suggestions = $this->suggest($kind, $columns);
+
+        if ($suggestions !== null) {
+            Cache::put($key, $suggestions, now()->addDays((int) config('ai_import_mapping.cache_ttl_days')));
+        }
+
+        return ['data' => $suggestions, 'cached' => false];
+    }
+
+    /**
+     * @param  list<array{header: ?string, shape: string}>  $columns
+     */
+    private function cacheKey(User $user, ?Account $account, ImportConfigType $kind, array $columns): string
+    {
+        $layout = array_map(fn (array $column): array => [$column['header'], $column['shape']], $columns);
+
+        return implode(':', [
+            'ai-import-mapping',
+            $user->id,
+            $account->id ?? 'none',
+            $kind->value,
+            hash('sha256', (string) json_encode($layout)),
+        ]);
+    }
+
+    /**
      * @param  list<array{header: ?string, shape: string}>  $columns
      * @return array<string, array{column: ?string, index: ?int, confidence: float}>|null the header (and position, which tells apart repeated headers) suggested per field, or null when Jev could not answer
      */
-    public function suggest(ImportConfigType $kind, array $columns): ?array
+    private function suggest(ImportConfigType $kind, array $columns): ?array
     {
         $response = $this->jev->send($this->body($kind, $columns), self::TIMEOUT_SECONDS);
 
