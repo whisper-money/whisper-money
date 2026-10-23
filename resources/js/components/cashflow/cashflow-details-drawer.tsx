@@ -196,12 +196,14 @@ function PreviousChange({
                         : 'text-red-600 dark:text-red-400',
                 )}
             />
-            {isIncrease ? '+' : ''}
-            <WholeAmount
-                amountInCents={diff}
-                currencyCode={currency}
-                className="text-sm"
-            />
+            <span className="whitespace-nowrap">
+                {isIncrease ? '+' : ''}
+                <WholeAmount
+                    amountInCents={diff}
+                    currencyCode={currency}
+                    className="text-sm"
+                />
+            </span>
         </span>
     );
 }

@@ -4068,7 +4068,7 @@
     "Spending you can adjust, like groceries or restaurants": "Gastos que puedes ajustar, como el supermercado o los restaurantes",
     "Expenses (cashflow)": "Gastos",
     "Amount (cashflow)": "Importe",
-    "Share of income spent, by budget type": "Parte de los ingresos gastada, por tipo de presupuesto",
+    "Spending by budget type": "Gasto por tipo de presupuesto",
     "Expense split: :fixed% fixed, :variable% variable, :general% general": "Reparto del gasto: :fixed% fijo, :variable% variable, :general% general",
     "Fixed": "Fijo",
     "Variable": "Variable",

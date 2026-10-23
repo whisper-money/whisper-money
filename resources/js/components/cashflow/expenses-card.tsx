@@ -61,7 +61,7 @@ export function ExpensesCard({
                     {__('Expenses (cashflow)')}
                 </CardTitle>
                 <CardDescription>
-                    {__('Share of income spent, by budget type')}
+                    {__('Spending by budget type')}
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-1">

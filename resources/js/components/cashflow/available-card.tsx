@@ -22,6 +22,7 @@ import {
     freeOf,
     hasPeriodData,
 } from '@/lib/cashflow-available';
+import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 
 interface AvailableCardProps {
@@ -66,7 +67,7 @@ function FreeHighlight({
                 currencyCode={currency}
                 size="2xl"
                 weight="bold"
-                className={signTone(free)}
+                className={cn('whitespace-nowrap', signTone(free))}
                 highlightPositive
             />
         </div>
