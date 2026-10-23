@@ -21,9 +21,12 @@ export interface CashflowSummary {
     /** Positive margins of the open budget periods overlapping the range: yearly budgets when it is longer than a quarter, shorter-period ones otherwise. */
     reserved?: number;
     budgets?: CashflowBudgetMargin[];
-    /** Expenses on what a budget tracks; with fixed_expense adds up to expense. */
-    variable_expense?: number;
+    /** Expenses on what budgets marked fixed track; counts a transaction also tracked by a variable budget. */
     fixed_expense?: number;
+    /** Expenses on what budgets marked variable track (and no fixed one does). */
+    variable_expense?: number;
+    /** Expenses no budget tracks; fixed + variable + general adds up to expense. */
+    general_expense?: number;
 }
 
 export interface CashflowBudgetMargin {

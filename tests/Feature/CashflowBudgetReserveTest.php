@@ -149,101 +149,158 @@ test('archived budgets and other users budgets are left out', function () {
         ->and($summary['budgets'])->toBe([]);
 });
 
-test('expenses on a tracked parent category, its children and tracked labels are variable', function () {
+function budgetFor(Budget $budget): Budget
+{
+    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
+
+    return $budget;
+}
+
+test('expenses on a tracked parent category, its children and tracked labels split by budget expense type', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     $restaurants = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'parent_id' => $food->id]);
-    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $housing = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'parent_id' => $housing->id]);
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     $holidays = Label::factory()->create(['user_id' => $this->user->id]);
+    $subscriptions = Label::factory()->create(['user_id' => $this->user->id]);
 
-    $foodBudget = Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]);
-    $holidayBudget = Budget::factory()->monthly()->forLabels($holidays)->create(['user_id' => $this->user->id]);
-    BudgetPeriod::factory()->create(['budget_id' => $foodBudget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
-    BudgetPeriod::factory()->create(['budget_id' => $holidayBudget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
+    budgetFor(Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->forLabels($holidays)->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->fixed()->forCategories($housing)->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->fixed()->forLabels($subscriptions)->create(['user_id' => $this->user->id]));
 
     expenseOn($this, $food, -10000);
     expenseOn($this, $restaurants, -5000);
+    expenseOn($this, $shopping, -3000, $holidays);
     expenseOn($this, $rent, -80000);
-    expenseOn($this, $rent, -3000, $holidays);
+    expenseOn($this, $shopping, -1500, $subscriptions);
+    expenseOn($this, $shopping, -4000);
+    expenseOn($this, null, -600);
 
     $summary = cashflowSummary();
 
-    expect($summary['expense'])->toBe(98000)
+    expect($summary['expense'])->toBe(104100)
         ->and($summary['variable_expense'])->toBe(18000)
-        ->and($summary['fixed_expense'])->toBe(80000);
+        ->and($summary['fixed_expense'])->toBe(81500)
+        ->and($summary['general_expense'])->toBe(4600);
 });
 
-test('variable and fixed expenses add up to the expense figure, refunds included', function () {
+test('a transaction tracked by a fixed and a variable budget counts once, as fixed', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $mealPlan = Label::factory()->create(['user_id' => $this->user->id]);
+
+    budgetFor(Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->fixed()->forLabels($mealPlan)->create(['user_id' => $this->user->id]));
+
+    expenseOn($this, $food, -6000, $mealPlan);
+    expenseOn($this, $food, -2000);
+
+    $summary = cashflowSummary();
+
+    expect($summary['fixed_expense'])->toBe(6000)
+        ->and($summary['variable_expense'])->toBe(2000)
+        ->and($summary['general_expense'])->toBe(0)
+        ->and($summary['expense'])->toBe(8000);
+});
+
+test('fixed, variable and general expenses add up to the expense figure, refunds included', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     $income = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income]);
 
-    $budget = Budget::factory()->monthly()->forCategories([$food, $income])->create(['user_id' => $this->user->id]);
-    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
+    budgetFor(Budget::factory()->monthly()->forCategories([$food, $income])->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->fixed()->forCategories($rent)->create(['user_id' => $this->user->id]));
 
     expenseOn($this, $food, -10000);
     expenseOn($this, $food, 2500);
     expenseOn($this, $rent, -80000);
+    expenseOn($this, $rent, 90000);
+    expenseOn($this, $shopping, -4000);
     expenseOn($this, $income, 300000);
     expenseOn($this, $food, -7000, date: '2026-09-20');
 
     $summary = cashflowSummary();
 
     expect($summary['variable_expense'])->toBe(7500)
-        ->and($summary['fixed_expense'])->toBe(80000)
-        ->and($summary['variable_expense'] + $summary['fixed_expense'])->toBe($summary['expense']);
+        ->and($summary['fixed_expense'])->toBe(-10000)
+        ->and($summary['general_expense'])->toBe(4000)
+        ->and($summary['fixed_expense'] + $summary['variable_expense'] + $summary['general_expense'])->toBe($summary['expense']);
 });
 
-test('without budgets every expense is fixed', function () {
+test('without budgets every expense is general', function () {
     $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
     expenseOn($this, $rent, -80000);
 
     $summary = cashflowSummary();
 
     expect($summary['variable_expense'])->toBe(0)
-        ->and($summary['fixed_expense'])->toBe(80000)
+        ->and($summary['fixed_expense'])->toBe(0)
+        ->and($summary['general_expense'])->toBe(80000)
         ->and($summary['reserved'])->toBe(0);
 });
 
-test('catch-all and other users budgets do not make expenses variable', function () {
+test('catch-all and other users budgets leave expenses general', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
 
     foreach ([
         Budget::factory()->monthly()->catchAll()->create(['user_id' => $this->user->id]),
+        Budget::factory()->monthly()->fixed()->catchAll()->create(['user_id' => $this->user->id]),
         Budget::factory()->monthly()->forCategories($food)->create(['user_id' => User::factory()]),
+        Budget::factory()->monthly()->fixed()->forCategories($food)->create(['user_id' => User::factory()]),
     ] as $budget) {
-        BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
+        budgetFor($budget);
     }
 
     expenseOn($this, $food, -10000);
 
-    expect(cashflowSummary()['variable_expense'])->toBe(0);
+    $summary = cashflowSummary();
+
+    expect($summary['variable_expense'])->toBe(0)
+        ->and($summary['fixed_expense'])->toBe(0)
+        ->and($summary['general_expense'])->toBe(10000);
 });
 
-test('variable expenses are converted to the user currency like the expense total', function () {
+test('budgeted expenses are converted to the user currency like the expense total', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
-    $budget = Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]);
-    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-10-31', 'allocated_amount' => 50000]);
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    budgetFor(Budget::factory()->monthly()->forCategories($food)->create(['user_id' => $this->user->id]));
+    budgetFor(Budget::factory()->monthly()->fixed()->forCategories($rent)->create(['user_id' => $this->user->id]));
 
     ExchangeRate::factory()->create(['base_currency' => 'eur', 'date' => '2026-10-10', 'rates' => ['usd' => 2.0]]);
 
     $usdAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'USD']);
     expenseOn($this, $food, -10000, attributes: ['account_id' => $usdAccount->id, 'currency_code' => 'USD']);
+    expenseOn($this, $rent, -30000, attributes: ['account_id' => $usdAccount->id, 'currency_code' => 'USD']);
 
     $summary = cashflowSummary();
 
     expect($summary['variable_expense'])->toBe(5000)
-        ->and($summary['expense'])->toBe(5000)
-        ->and($summary['fixed_expense'])->toBe(0);
+        ->and($summary['fixed_expense'])->toBe(15000)
+        ->and($summary['expense'])->toBe(20000)
+        ->and($summary['general_expense'])->toBe(0);
 });
 
-test('an archived budget keeps the spending it tracked variable', function () {
+test('an archived budget keeps the spending it tracked under its expense type', function () {
     $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
-    $budget = Budget::factory()->monthly()->archived()->forCategories($food)->create(['user_id' => $this->user->id]);
-    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-09-01', 'end_date' => '2026-09-30', 'allocated_amount' => 50000]);
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+
+    foreach ([
+        Budget::factory()->monthly()->archived()->forCategories($food)->create(['user_id' => $this->user->id]),
+        Budget::factory()->monthly()->archived()->fixed()->forCategories($rent)->create(['user_id' => $this->user->id]),
+    ] as $budget) {
+        BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-09-01', 'end_date' => '2026-09-30', 'allocated_amount' => 50000]);
+    }
 
     expenseOn($this, $food, -10000, date: '2026-09-10');
+    expenseOn($this, $rent, -70000, date: '2026-09-10');
 
-    expect(cashflowSummary('2026-09-01', '2026-09-30')['variable_expense'])->toBe(10000);
+    $summary = cashflowSummary('2026-09-01', '2026-09-30');
+
+    expect($summary['variable_expense'])->toBe(10000)
+        ->and($summary['fixed_expense'])->toBe(70000)
+        ->and($summary['general_expense'])->toBe(0);
 });
 
 test('a catch-all budget still reserves its margin', function () {

@@ -76,6 +76,14 @@ app is kept in their books.
   so treat `spent_amount` as provisional while `processing_historical` is true.
   A budget's period length, start day, rollover and tracked categories are fixed
   once created: to change those, delete the budget and create it again.
+- `get_cashflow`'s summary splits `expense` three ways by budget: `fixed_expense`
+  is spending tracked by budgets marked fixed (rent, subscriptions),
+  `variable_expense` by budgets marked variable (groceries, leisure), and
+  `general_expense` the rest, which no budget tracks. Catch-all budgets do not
+  count; a transaction tracked by both kinds counts once, as fixed. The three
+  add up to `expense`, and any can be negative in a month of refunds.
+  Budgets are variable unless the user marked them fixed, so `fixed_expense: 0`
+  may only mean none has been marked yet, not that there are no fixed costs.
 - A savings goal is tracked through a label: its contributions are the
   transactions tagged with it. A `one_off` goal saves towards a total, optionally
   by a date, and `list_savings_goals` reports its `progress`. A `monthly` goal
