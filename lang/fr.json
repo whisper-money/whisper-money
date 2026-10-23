@@ -3069,5 +3069,5 @@
     "Amount type": "Type de montant",
     "Minimum amount": "Montant minimum",
     "Maximum amount": "Montant maximum",
-    "This range covers both expenses and income. Pick a side to filter by size.": "Cette plage couvre les dépenses et les revenus. Choisissez-en un pour filtrer par montant."
+    "This range covers both expenses and income. Picking a side turns its bounds into sizes.": "Cette plage couvre les dépenses et les revenus. Choisir un côté transforme ses bornes en montants."
 }

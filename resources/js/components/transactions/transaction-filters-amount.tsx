@@ -6,6 +6,8 @@ import {
     fromSignedAmountRange,
     type SignedAmountRange,
     toSignedAmountRange,
+    withAmountBound,
+    withAmountDirection,
 } from '@/lib/amount-filter';
 import { __ } from '@/utils/i18n';
 
@@ -14,6 +16,19 @@ import { useState } from 'react';
 interface AmountFilterFieldsProps extends SignedAmountRange {
     onChange: (range: SignedAmountRange) => void;
 }
+
+const BOUNDS = [
+    {
+        bound: 'min',
+        placeholder: () => __('Min'),
+        label: () => __('Minimum amount'),
+    },
+    {
+        bound: 'max',
+        placeholder: () => __('Max'),
+        label: () => __('Maximum amount'),
+    },
+] as const;
 
 function parseBound(value: string): number | null {
     return value === '' ? null : parseFloat(value);
@@ -38,6 +53,8 @@ export function AmountFilterFields({
     const [input, setInput] = useState<AmountFilterInput>(() =>
         fromSignedAmountRange({ amountMin, amountMax }, 'expense'),
     );
+    // The range last seen from the parent, to tell its echo of our own change
+    // apart from a range replaced from outside.
     const [lastRange, setLastRange] = useState<SignedAmountRange>({
         amountMin,
         amountMax,
@@ -64,23 +81,6 @@ export function AmountFilterFields({
         onChange(range);
     }
 
-    function changeDirection(direction: AmountDirection) {
-        // Leaving a signed range that spans both sides: its bounds become
-        // sizes, smallest first.
-        const sizes = [input.min, input.max].map((bound) =>
-            bound === null ? null : Math.abs(bound),
-        );
-        const [min, max] =
-            input.direction === null &&
-            sizes[0] !== null &&
-            sizes[1] !== null &&
-            sizes[0] > sizes[1]
-                ? [sizes[1], sizes[0]]
-                : sizes;
-
-        update({ direction, min, max });
-    }
-
     const isSigned = input.direction === null;
 
     return (
@@ -92,7 +92,12 @@ export function AmountFilterFields({
                 value={input.direction ?? ''}
                 onValueChange={(value) => {
                     if (value) {
-                        changeDirection(value as AmountDirection);
+                        update(
+                            withAmountDirection(
+                                input,
+                                value as AmountDirection,
+                            ),
+                        );
                     }
                 }}
                 aria-label={__('Amount type')}
@@ -114,39 +119,34 @@ export function AmountFilterFields({
             </ToggleGroup>
 
             <div className="grid grid-cols-2 gap-2">
-                <Input
-                    type="number"
-                    step="0.01"
-                    min={isSigned ? undefined : 0}
-                    inputMode="decimal"
-                    data-testid="filter-amount-min"
-                    value={input.min ?? ''}
-                    onChange={(e) =>
-                        update({ ...input, min: parseBound(e.target.value) })
-                    }
-                    placeholder={__('Min')}
-                    aria-label={__('Minimum amount')}
-                />
-
-                <Input
-                    type="number"
-                    step="0.01"
-                    min={isSigned ? undefined : 0}
-                    inputMode="decimal"
-                    data-testid="filter-amount-max"
-                    value={input.max ?? ''}
-                    onChange={(e) =>
-                        update({ ...input, max: parseBound(e.target.value) })
-                    }
-                    placeholder={__('Max')}
-                    aria-label={__('Maximum amount')}
-                />
+                {BOUNDS.map(({ bound, placeholder, label }) => (
+                    <Input
+                        key={bound}
+                        type="number"
+                        step="0.01"
+                        min={isSigned ? undefined : 0}
+                        inputMode="decimal"
+                        data-testid={`filter-amount-${bound}`}
+                        value={input[bound] ?? ''}
+                        onChange={(e) =>
+                            update(
+                                withAmountBound(
+                                    input,
+                                    bound,
+                                    parseBound(e.target.value),
+                                ),
+                            )
+                        }
+                        placeholder={placeholder()}
+                        aria-label={label()}
+                    />
+                ))}
             </div>
 
             {isSigned && (
                 <p className="text-xs text-muted-foreground">
                     {__(
-                        'This range covers both expenses and income. Pick a side to filter by size.',
+                        'This range covers both expenses and income. Picking a side turns its bounds into sizes.',
                     )}
                 </p>
             )}

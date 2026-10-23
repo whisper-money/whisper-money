@@ -213,8 +213,8 @@ export function TransactionFilters({
     const activeFilterCount =
         (filters.dateFrom ? 1 : 0) +
         (filters.dateTo ? 1 : 0) +
-        (filters.amountMin !== null ? 1 : 0) +
-        (filters.amountMax !== null ? 1 : 0) +
+        // One amount filter, though a single typed bound can set both ends.
+        (filters.amountMin !== null || filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
         filters.labelIds.length +
         (filters.creditorName ? 1 : 0) +

@@ -83,3 +83,49 @@ export function fromSignedAmountRange(
 
     return { direction: null, min: amountMin, max: amountMax };
 }
+
+/**
+ * Picks a side. Leaving a signed range that spans both sides turns its bounds
+ * into sizes, smallest first: `-50..30` as Expense is `30..50`.
+ */
+export function withAmountDirection(
+    input: AmountFilterInput,
+    direction: AmountDirection,
+): AmountFilterInput {
+    if (input.direction !== null) {
+        return { ...input, direction };
+    }
+
+    const sizes = [input.min, input.max].map((bound) =>
+        bound === null ? null : Math.abs(bound),
+    );
+    const [min, max] =
+        sizes[0] !== null && sizes[1] !== null && sizes[0] > sizes[1]
+            ? [sizes[1], sizes[0]]
+            : sizes;
+
+    return { direction, min, max };
+}
+
+/**
+ * Applies a typed bound. With a side picked a typed minus sign is dropped,
+ * since the side owns the sign; a signed range that an edit leaves on one
+ * side gets that side.
+ */
+export function withAmountBound(
+    input: AmountFilterInput,
+    bound: 'min' | 'max',
+    value: number | null,
+): AmountFilterInput {
+    if (input.direction !== null) {
+        return {
+            ...input,
+            [bound]: value === null ? null : Math.abs(value),
+        };
+    }
+
+    const next = { ...input, [bound]: value };
+    const derived = fromSignedAmountRange(toSignedAmountRange(next), 'expense');
+
+    return derived.direction === null ? next : derived;
+}

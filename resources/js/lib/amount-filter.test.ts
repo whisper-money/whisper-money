@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { fromSignedAmountRange, toSignedAmountRange } from './amount-filter';
+import {
+    fromSignedAmountRange,
+    toSignedAmountRange,
+    withAmountBound,
+    withAmountDirection,
+} from './amount-filter';
 
 describe('toSignedAmountRange', () => {
     it('turns an Expense 0 to 30 into the negative range', () => {
@@ -110,5 +115,58 @@ describe('fromSignedAmountRange', () => {
                 fromSignedAmountRange(toSignedAmountRange(input), 'expense'),
             ).toEqual(input);
         }
+    });
+});
+
+describe('withAmountDirection', () => {
+    it('only switches the side of a range that already has one', () => {
+        expect(
+            withAmountDirection(
+                { direction: 'expense', min: 30, max: 10 },
+                'income',
+            ),
+        ).toEqual({ direction: 'income', min: 30, max: 10 });
+    });
+
+    it('turns a signed range into sizes, smallest first', () => {
+        expect(
+            withAmountDirection(
+                { direction: null, min: -50, max: 30 },
+                'expense',
+            ),
+        ).toEqual({ direction: 'expense', min: 30, max: 50 });
+        expect(
+            withAmountDirection(
+                { direction: null, min: null, max: 30 },
+                'income',
+            ),
+        ).toEqual({ direction: 'income', min: null, max: 30 });
+    });
+});
+
+describe('withAmountBound', () => {
+    it('drops a typed minus sign once a side is picked', () => {
+        expect(
+            withAmountBound(
+                { direction: 'expense', min: null, max: null },
+                'max',
+                -30,
+            ),
+        ).toEqual({ direction: 'expense', min: null, max: 30 });
+    });
+
+    it('keeps a signed range signed while it still spans both sides', () => {
+        expect(
+            withAmountBound({ direction: null, min: -50, max: 30 }, 'max', 40),
+        ).toEqual({ direction: null, min: -50, max: 40 });
+    });
+
+    it('gives a signed range its side once an edit leaves it on one', () => {
+        expect(
+            withAmountBound({ direction: null, min: -50, max: 30 }, 'max', -10),
+        ).toEqual({ direction: 'expense', min: 10, max: 50 });
+        expect(
+            withAmountBound({ direction: null, min: -50, max: 30 }, 'min', 10),
+        ).toEqual({ direction: 'income', min: 10, max: 30 });
     });
 });

@@ -4099,5 +4099,5 @@
     "Amount type": "Tipo de importe",
     "Minimum amount": "Importe mínimo",
     "Maximum amount": "Importe máximo",
-    "This range covers both expenses and income. Pick a side to filter by size.": "Este rango incluye gastos e ingresos. Elige uno para filtrar por importe."
+    "This range covers both expenses and income. Picking a side turns its bounds into sizes.": "Este rango incluye gastos e ingresos. Al elegir uno, sus límites pasan a ser importes."
 }

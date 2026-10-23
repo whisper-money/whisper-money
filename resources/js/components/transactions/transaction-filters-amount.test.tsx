@@ -132,4 +132,16 @@ describe('AmountFilterFields', () => {
             amountMax: -30,
         });
     });
+
+    it('treats a typed minus sign as a size once a side is picked', () => {
+        const onChange = renderHarness();
+
+        fireEvent.change(max(), { target: { value: '-30' } });
+
+        expect(onChange).toHaveBeenLastCalledWith({
+            amountMin: -30,
+            amountMax: 0,
+        });
+        expect(max().value).toBe('30');
+    });
 });
