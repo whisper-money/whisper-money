@@ -42,7 +42,7 @@ class Budget extends Model
         'notify_on_over_limit',
     ];
 
-    /** @var list<string> */
+    /** @var array<string, mixed> */
     protected $attributes = [
         'expense_type' => BudgetExpenseType::Variable->value,
     ];
