@@ -8,6 +8,7 @@ use App\Models\BudgetPeriod;
 use App\Models\Transaction;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
 /**
@@ -155,10 +156,12 @@ class CashflowBudgetReserveService
     private function budgetedExpense(string $userId, string $userCurrency, PeriodComparator $period): array
     {
         $transactions = collect([CashflowBlock::Fixed, CashflowBlock::Variable])->mapWithKeys(
-            fn (CashflowBlock $block): array => [$block->value => $this->blocks
-                ->apply(Transaction::query(), $block, $userId, $period)
-                ->with(['account', 'category'])
-                ->get()],
+            fn (CashflowBlock $block): array => [$block->value => $this->blocks->isTriviallyEmpty($block, $userId, $period)
+                ? new EloquentCollection
+                : $this->blocks
+                    ->apply(Transaction::query(), $block, $userId, $period)
+                    ->with(['account', 'category'])
+                    ->get()],
         );
 
         $this->preloadExchangeRates($transactions->flatten(1), $userCurrency);

@@ -78,6 +78,28 @@ class CashflowBlockQuery
     }
 
     /**
+     * Whether $block is empty by construction over $period: a fixed or
+     * variable block when no budget of that type tracks anything in it. Lets
+     * a caller skip the query altogether.
+     */
+    public function isTriviallyEmpty(CashflowBlock $block, string $userId, PeriodComparator $period): bool
+    {
+        $type = match ($block) {
+            CashflowBlock::Fixed => BudgetExpenseType::Fixed,
+            CashflowBlock::Variable => BudgetExpenseType::Variable,
+            default => null,
+        };
+
+        if ($type === null) {
+            return false;
+        }
+
+        $tracked = $this->trackedIds($userId, $period)[$type->value];
+
+        return $tracked['categories'] === [] && $tracked['labels'] === [];
+    }
+
+    /**
      * @param  Builder<Transaction>  $rows
      * @param  TrackedIds  $tracked
      * @return Builder<Transaction>
