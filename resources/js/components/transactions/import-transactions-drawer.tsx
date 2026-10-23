@@ -1,5 +1,6 @@
 import { index as indexBalances } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
+import { AiColumnDetection } from '@/components/ai-column-detection';
 import AlertError from '@/components/alert-error';
 import { ImportStepUpload } from '@/components/import-step-upload';
 import {
@@ -10,7 +11,14 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
+import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
+import {
+    pickFields,
+    suggestedTransactionMapping,
+    TRANSACTION_FIELDS,
+} from '@/lib/ai-import-mapping';
+import { describeColumns } from '@/lib/column-shape';
 import {
     calculateBalancesFromTransactions,
     convertRowsToTransactions,
@@ -19,6 +27,7 @@ import {
 import { saveImportConfig } from '@/lib/import-config-storage';
 import {
     applyStoredImportConfig,
+    applyTransactionSuggestion,
     importTransactions,
     parseImportFile,
 } from '@/lib/transaction-import';
@@ -32,6 +41,7 @@ import {
     ImportStep,
     type ColumnMapping,
     type ImportState,
+    type ParsedRow,
     type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
@@ -115,6 +125,8 @@ export function ImportTransactionsDrawer({
         null,
     );
     const [state, setState] = useState<ImportState>(EMPTY_STATE);
+    const ai = useAiColumnSuggestion();
+    const { reset: resetAi } = ai;
     // A credit card has no balance, so the import neither asks for one nor
     // carries one over from the file.
     const tracksBalance = selectedAccount
@@ -138,16 +150,67 @@ export function ImportTransactionsDrawer({
             setIsImporting(false);
             setError(null);
             setSelectedAccount(null);
+            resetAi();
         }
-    }, [open]);
+    }, [open, resetAi]);
 
     const handleAccountSelect = (accountId: UUID) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
     };
 
+    /**
+     * Ask the AI which column is which for the file on screen. Its answer
+     * lands after the mapping is shown, so it is dropped if another file was
+     * picked meanwhile, and leaves alone the fields picked by hand — unless
+     * the user pressed the button, which asks for every field.
+     */
+    const requestSuggestion = (
+        file: File,
+        headers: string[],
+        rows: ParsedRow[],
+        everything: boolean,
+    ) => {
+        const columns = describeColumns(headers, rows);
+
+        void ai.request<ColumnMapping>({
+            kind: 'transaction',
+            columns,
+            accountId: state.selectedAccountId,
+            everything,
+            toMapping: (suggestions) =>
+                suggestedTransactionMapping(suggestions, columns),
+            apply: (suggested, keep) =>
+                setState((prev) => {
+                    if (prev.file !== file) {
+                        return prev;
+                    }
+
+                    const next = applyTransactionSuggestion(
+                        {
+                            mapping: prev.columnMapping,
+                            dateFormat: prev.dateFormat,
+                            dateFormatDetected: prev.dateFormatDetected,
+                        },
+                        prev.parsedData,
+                        suggested,
+                        keep,
+                        locale,
+                    );
+
+                    return {
+                        ...prev,
+                        columnMapping: next.mapping,
+                        dateFormat: next.dateFormat,
+                        dateFormatDetected: next.dateFormatDetected,
+                    };
+                }),
+        });
+    };
+
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
+        ai.reset();
 
         if (!file) {
             setState((prev) => ({
@@ -180,15 +243,19 @@ export function ImportTransactionsDrawer({
             }));
 
             const accountId = state.selectedAccountId;
+            const stored = accountId
+                ? await applyStoredImportConfig(parsed, accountId)
+                : null;
 
-            if (!accountId) {
+            // No layout of this account fits the file: the AI is asked instead.
+            if (!stored) {
+                requestSuggestion(file, parsed.headers, parsed.rows, false);
+
                 return;
             }
 
-            const stored = await applyStoredImportConfig(parsed, accountId);
-
-            if (!stored) {
-                return;
+            if (stored.aiSuggested) {
+                ai.adopt(pickFields(stored.mapping, TRANSACTION_FIELDS));
             }
 
             // Only apply if this file is still the selected one, so a slow load
@@ -214,6 +281,7 @@ export function ImportTransactionsDrawer({
         field: keyof ColumnMapping,
         value: string | string[],
     ) => {
+        ai.touch(field);
         setState((prev) => {
             const next = {
                 ...prev,
@@ -410,13 +478,6 @@ export function ImportTransactionsDrawer({
                     }));
             }
 
-            if (state.selectedAccountId) {
-                void saveImportConfig(state.selectedAccountId, {
-                    columnMapping: state.columnMapping,
-                    dateFormat: state.dateFormat,
-                });
-            }
-
             setState((prev) => ({
                 ...prev,
                 transactions: transactionsWithDuplicateCheck,
@@ -483,6 +544,21 @@ export function ImportTransactionsDrawer({
 
         setImportErrors(errors);
         setIsImporting(false);
+
+        // Only a mapping that actually brought rows in is worth remembering:
+        // an abandoned or failed import would leave a bad layout behind.
+        if (successCount > 0) {
+            void saveImportConfig(selectedAccount.id, {
+                columnMapping: state.columnMapping,
+                dateFormat: state.dateFormat,
+                aiSuggested: ai.status(state.columnMapping) === 'suggested',
+            });
+            ai.trackImported(
+                state.columnMapping,
+                'account_drawer',
+                'transaction',
+            );
+        }
 
         const errorCount = errors.length;
 
@@ -652,6 +728,20 @@ export function ImportTransactionsDrawer({
                         onLatestDateChange={handleLatestDateChange}
                         onNext={handlePreviewTransactions}
                         onBack={() => moveToStep(ImportStep.UploadFile)}
+                        aiDetection={
+                            <AiColumnDetection
+                                status={ai.status(state.columnMapping)}
+                                onDetect={() =>
+                                    state.file &&
+                                    requestSuggestion(
+                                        state.file,
+                                        state.columnHeaders,
+                                        state.parsedData,
+                                        true,
+                                    )
+                                }
+                            />
+                        }
                     />
                 );
 

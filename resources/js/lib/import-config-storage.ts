@@ -10,11 +10,15 @@ import axios from 'axios';
 interface ImportConfig {
     columnMapping: ColumnMapping;
     dateFormat: DateFormat;
+    /** The mapping is the AI's suggestion, unchanged. */
+    aiSuggested?: boolean;
 }
 
 interface BalanceImportConfig {
     columnMapping: BalanceColumnMapping;
     dateFormat: DateFormat;
+    /** The mapping is the AI's suggestion, unchanged. */
+    aiSuggested?: boolean;
 }
 
 type ImportConfigType = 'transaction' | 'balance';

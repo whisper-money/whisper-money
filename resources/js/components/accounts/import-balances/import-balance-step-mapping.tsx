@@ -18,6 +18,7 @@ import type {
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
 import { __ } from '@/utils/i18n';
+import { type ReactNode } from 'react';
 
 interface ImportBalanceStepMappingProps {
     columnOptions: ColumnOption[];
@@ -32,6 +33,8 @@ interface ImportBalanceStepMappingProps {
     onDateFormatChange: (format: DateFormat) => void;
     onNext: () => void;
     onBack: () => void;
+    /** The AI badge or button, shown above the fields. */
+    aiDetection?: ReactNode;
 }
 
 export function ImportBalanceStepMapping({
@@ -47,6 +50,7 @@ export function ImportBalanceStepMapping({
     onDateFormatChange,
     onNext,
     onBack,
+    aiDetection,
 }: ImportBalanceStepMappingProps) {
     const isValid = columnMapping.balance_date && columnMapping.balance;
     const locale = useLocale();
@@ -97,6 +101,7 @@ export function ImportBalanceStepMapping({
 
     return (
         <div className="flex flex-col gap-6">
+            {aiDetection}
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="date-column">

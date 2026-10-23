@@ -1,5 +1,6 @@
 import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
+import { mergeSuggestion, redetectDateFormat } from '@/lib/ai-import-mapping';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
@@ -99,6 +100,8 @@ export interface ParsedImportFile {
      * exactly what the user needs the chance to correct.
      */
     dateFormatAmbiguous: boolean;
+    /** The mapping came from a stored layout saved as the AI's suggestion, unchanged. */
+    aiSuggested?: boolean;
 }
 
 /** How many example cells a column offers as evidence of what it holds. */
@@ -224,7 +227,47 @@ export async function applyStoredImportConfig(
         mapping: { ...parsed.mapping, ...stored.columnMapping },
         dateFormat: stored.dateFormat,
         dateFormatDetected: !parsed.dateFormatAmbiguous,
+        aiSuggested: stored.aiSuggested === true,
     };
+}
+
+/** A transaction mapping on screen, with the date format it reads with. */
+export interface TransactionMappingDraft {
+    mapping: ColumnMapping;
+    dateFormat: DateFormat;
+    dateFormatDetected: boolean;
+}
+
+/**
+ * Lay the AI's suggestion over the mapping, leaving the fields in `keep` as
+ * the user picked them. A new date column reads its own format, and a new
+ * type column brings its own expense values to tick.
+ */
+export function applyTransactionSuggestion(
+    draft: TransactionMappingDraft,
+    rows: ParsedRow[],
+    suggested: Partial<ColumnMapping>,
+    keep: ReadonlySet<string>,
+    locale?: string,
+): TransactionMappingDraft {
+    const mapping = mergeSuggestion(draft.mapping, suggested, keep);
+    const next = { ...draft, mapping };
+
+    if (mapping.transaction_date !== draft.mapping.transaction_date) {
+        Object.assign(
+            next,
+            redetectDateFormat(rows, mapping.transaction_date, locale),
+        );
+    }
+
+    if (mapping.transaction_type !== draft.mapping.transaction_type) {
+        mapping.expense_types = detectExpenseTypes(
+            rows,
+            mapping.transaction_type,
+        );
+    }
+
+    return next;
 }
 
 /** One row that could not be created, with enough of it to be recognised. */

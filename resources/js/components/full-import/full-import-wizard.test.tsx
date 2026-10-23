@@ -21,6 +21,13 @@ const api = vi.hoisted(() => ({
 }));
 
 const captureEvent = vi.hoisted(() => vi.fn());
+const fetchColumnSuggestions = vi.hoisted(() => vi.fn());
+const ai = vi.hoisted(() => ({ enabled: false }));
+
+vi.mock('@/lib/ai-import-mapping', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/lib/ai-import-mapping')>()),
+    fetchColumnSuggestions,
+}));
 const captureException = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
@@ -51,6 +58,7 @@ vi.mock('@inertiajs/react', () => ({
                 decimals: { EUR: 2, USD: 2 },
             },
             locale: 'en-US',
+            aiImportMappingEnabled: ai.enabled,
         },
     }),
     Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
@@ -147,6 +155,7 @@ async function continueTo(title: string) {
 describe('FullImportWizard', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        ai.enabled = false;
         api.fetchBankMatches.mockResolvedValue({});
         api.submitImport.mockResolvedValue(QUEUED);
         api.fetchImport.mockResolvedValue(QUEUED);
@@ -708,5 +717,76 @@ describe('FullImportWizard', () => {
 
         await screen.findByText('Importing your data');
         expect(api.fetchImport).toHaveBeenCalledWith('import-1');
+    });
+});
+
+describe('FullImportWizard with AI column mapping', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        ai.enabled = true;
+        fetchColumnSuggestions.mockResolvedValue({
+            cached: false,
+            fields: {
+                transaction_date: {
+                    column: 'Buchungstag',
+                    index: 0,
+                    confidence: 0.9,
+                },
+                description: {
+                    column: 'Verwendungszweck',
+                    index: 2,
+                    confidence: 0.9,
+                },
+                amount: { column: 'Betrag', index: 3, confidence: 0.9 },
+                currency: { column: 'Waehrung', index: 4, confidence: 0.9 },
+                balance: { column: null, index: null, confidence: 0.9 },
+            },
+        });
+    });
+
+    it('asks the AI about a file of no known app and marks the columns it placed', async () => {
+        api.fetchImportContext.mockResolvedValue(context());
+        render(<FullImportWizard variant="page" onClose={vi.fn()} />);
+
+        await screen.findByText('Where are you coming from?');
+        fireEvent.change(screen.getByTestId('full-import-file-input'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            'Valutadatum;Buchungstag;Verwendungszweck;Betrag;Waehrung\n02.03.2026;01.03.2026;REWE Markt;-12,40;EUR\n16.03.2026;15.03.2026;Gehalt;2.400,00;EUR\n',
+                        ],
+                        'sparkasse.csv',
+                        { type: 'text/csv' },
+                    ),
+                ],
+            },
+        });
+
+        await waitFor(() => expect(fetchColumnSuggestions).toHaveBeenCalled());
+        const [kind, columns, accountId] = fetchColumnSuggestions.mock.calls[0];
+
+        expect(kind).toBe('transaction');
+        expect(accountId).toBeUndefined();
+        expect(JSON.stringify(columns)).not.toMatch(/REWE|Gehalt|12,40/);
+
+        await continueTo('Check the columns');
+
+        expect(await screen.findByText('Suggested by AI')).toBeInTheDocument();
+        // The AI picks the booking date over the value date.
+        expect(document.getElementById('full-import-date')?.textContent).toBe(
+            'Buchungstag',
+        );
+    });
+
+    it('leaves a known app alone', async () => {
+        await openWithBanktrackFile(context());
+        await continueTo('Check the columns');
+
+        expect(fetchColumnSuggestions).not.toHaveBeenCalled();
+        expect(screen.queryByText('Suggested by AI')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Detect columns with AI' }),
+        ).not.toBeInTheDocument();
     });
 });

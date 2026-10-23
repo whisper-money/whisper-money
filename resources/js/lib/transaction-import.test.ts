@@ -3,6 +3,7 @@ import { DateFormat } from '@/types/import';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     applyStoredImportConfig,
+    applyTransactionSuggestion,
     type ParsedImportFile,
 } from './transaction-import';
 
@@ -108,5 +109,95 @@ describe('applyStoredImportConfig with a type column', () => {
 
         expect(applied?.mapping.transaction_type).toBe('');
         expect(applied?.mapping.expense_types).toEqual([]);
+    });
+});
+
+describe('applyStoredImportConfig with the AI flag', () => {
+    it('says the stored layout was the AI suggestion, unchanged', async () => {
+        vi.mocked(loadImportConfig).mockResolvedValue({
+            columnMapping: parsedFile().mapping,
+            dateFormat: DateFormat.DayMonthYear,
+            aiSuggested: true,
+        });
+
+        expect(
+            (await applyStoredImportConfig(parsedFile(), ACCOUNT_ID))
+                ?.aiSuggested,
+        ).toBe(true);
+    });
+
+    it('reads a layout saved before the flag existed as not suggested', async () => {
+        vi.mocked(loadImportConfig).mockResolvedValue({
+            columnMapping: parsedFile().mapping,
+            dateFormat: DateFormat.DayMonthYear,
+        });
+
+        expect(
+            (await applyStoredImportConfig(parsedFile(), ACCOUNT_ID))
+                ?.aiSuggested,
+        ).toBe(false);
+    });
+});
+
+describe('applyTransactionSuggestion', () => {
+    const rows = [
+        {
+            Fecha: '2025-03-01',
+            Valor: '15/03/2025',
+            Tipo: 'Gasto',
+            Clase: 'Af',
+        },
+        {
+            Fecha: '2025-03-02',
+            Valor: '16/03/2025',
+            Tipo: 'Ingreso',
+            Clase: 'Bij',
+        },
+    ];
+
+    it('reads a newly suggested date column with its own format', () => {
+        const next = applyTransactionSuggestion(
+            parsedFile(),
+            rows,
+            { transaction_date: 'Valor' },
+            new Set(),
+        );
+
+        expect(next.mapping.transaction_date).toBe('Valor');
+        expect(next.dateFormat).toBe(DateFormat.DayMonthYear);
+        expect(next.dateFormatDetected).toBe(true);
+    });
+
+    it('starts the expense values over for a newly suggested type column', () => {
+        const next = applyTransactionSuggestion(
+            parsedFile(),
+            rows,
+            { transaction_type: 'Clase' },
+            new Set(),
+        );
+
+        expect(next.mapping.transaction_type).toBe('Clase');
+        expect(next.mapping.expense_types).toEqual(['Af']);
+    });
+
+    it('leaves the fields the user picked, and what follows from them, alone', () => {
+        const next = applyTransactionSuggestion(
+            parsedFile(),
+            rows,
+            {
+                transaction_date: 'Valor',
+                transaction_type: 'Clase',
+                amount: 'Importe',
+            },
+            new Set(['transaction_date', 'transaction_type']),
+        );
+
+        expect(next.mapping).toMatchObject({
+            transaction_date: 'Fecha',
+            transaction_type: 'Tipo',
+            expense_types: ['Gasto'],
+            amount: 'Importe',
+        });
+        expect(next.dateFormat).toBe(DateFormat.DayMonthYear);
     });
 });

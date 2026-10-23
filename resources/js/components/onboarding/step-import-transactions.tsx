@@ -1,3 +1,4 @@
+import { AiColumnDetection } from '@/components/ai-column-detection';
 import { StepImportColumns } from '@/components/onboarding/step-import-columns';
 import { StepImportFailed } from '@/components/onboarding/step-import-failed';
 import {
@@ -13,7 +14,14 @@ import { StepImportProgress } from '@/components/onboarding/step-import-progress
 import { StepImportUpload } from '@/components/onboarding/step-import-upload';
 import { StepScreen } from '@/components/onboarding/step-screen';
 import { Spinner } from '@/components/ui/spinner';
+import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import {
+    pickFields,
+    suggestedTransactionMapping,
+    TRANSACTION_FIELDS,
+} from '@/lib/ai-import-mapping';
+import { describeColumns } from '@/lib/column-shape';
 import {
     buildMappingReport,
     convertRowsToTransactions,
@@ -22,6 +30,7 @@ import { saveImportConfig } from '@/lib/import-config-storage';
 import { captureEvent } from '@/lib/posthog';
 import {
     applyStoredImportConfig,
+    applyTransactionSuggestion,
     importTransactions,
     isSupportedImportFile,
     MAX_IMPORT_FILE_BYTES,
@@ -96,6 +105,15 @@ export function StepImportTransactions({
     const [failures, setFailures] = useState<ImportFailure[]>([]);
     const [importedCount, setImportedCount] = useState(0);
     const [progress, setProgress] = useState(0);
+    const ai = useAiColumnSuggestion();
+    const {
+        request: requestAi,
+        reset: resetAi,
+        touch: touchAi,
+        adopt: adoptAi,
+        status: aiStatus,
+        trackImported: trackAiImported,
+    } = ai;
 
     const supportedCurrencies = useMemo(
         () => currencies.accounts.map((currency) => currency.code),
@@ -163,6 +181,42 @@ export function StepImportTransactions({
         onComplete,
     ]);
 
+    /**
+     * Ask the AI which column is which for this file. The answer is dropped
+     * when another file was picked meanwhile, and leaves alone the fields
+     * picked by hand unless the user pressed the button.
+     */
+    const requestSuggestion = useCallback(
+        (read: ParsedImportFile, everything: boolean) => {
+            const columns = describeColumns(read.headers, read.rows);
+
+            void requestAi<ColumnMapping>({
+                kind: 'transaction',
+                columns,
+                accountId,
+                everything,
+                toMapping: (suggestions) =>
+                    suggestedTransactionMapping(suggestions, columns),
+                apply: (suggested, keep) =>
+                    setParsed((previous) =>
+                        previous?.file === read.file
+                            ? {
+                                  ...previous,
+                                  ...applyTransactionSuggestion(
+                                      previous,
+                                      previous.rows,
+                                      suggested,
+                                      keep,
+                                      locale,
+                                  ),
+                              }
+                            : previous,
+                    ),
+            });
+        },
+        [accountId, locale, requestAi],
+    );
+
     const reject = useCallback((fileName: string, reason: string) => {
         setRejection({ fileName, reason });
         setScreen('failed');
@@ -188,13 +242,23 @@ export function StepImportTransactions({
                     return;
                 }
 
-                setParsed(
-                    accountId
-                        ? ((await applyStoredImportConfig(read, accountId)) ??
-                              read)
-                        : read,
-                );
+                resetAi();
+
+                const stored = accountId
+                    ? await applyStoredImportConfig(read, accountId)
+                    : null;
+
+                setParsed(stored ?? read);
                 setScreen('columns');
+
+                if (stored?.aiSuggested) {
+                    adoptAi(pickFields(stored.mapping, TRANSACTION_FIELDS));
+                }
+
+                // No layout of this account fits the file: the AI is asked.
+                if (!stored) {
+                    requestSuggestion(read, false);
+                }
             } catch (error) {
                 reject(
                     file.name,
@@ -206,11 +270,12 @@ export function StepImportTransactions({
                 );
             }
         },
-        [accountId, locale, reject],
+        [accountId, locale, reject, resetAi, requestSuggestion, adoptAi],
     );
 
     const handleMappingChange = useCallback(
         (field: keyof ColumnMapping, column: string | null) => {
+            touchAi(field);
             setParsed((previous) =>
                 previous
                     ? {
@@ -220,7 +285,7 @@ export function StepImportTransactions({
                     : previous,
             );
         },
-        [],
+        [touchAi],
     );
 
     const handleColumnsConfirmed = useCallback(async () => {
@@ -274,11 +339,6 @@ export function StepImportTransactions({
             })),
         );
 
-        void saveImportConfig(selectedAccount.id, {
-            columnMapping: parsed.mapping,
-            dateFormat: parsed.dateFormat,
-        });
-
         setScreen('preview');
     }, [parsed, selectedAccount, supportedCurrencies, reject]);
 
@@ -301,6 +361,17 @@ export function StepImportTransactions({
             automationRules,
             onProgress: setProgress,
         });
+
+        // Only a mapping that actually brought rows in is worth remembering:
+        // an abandoned or failed import would leave a bad layout behind.
+        if (successCount > 0 && parsed) {
+            void saveImportConfig(selectedAccount.id, {
+                columnMapping: parsed.mapping,
+                dateFormat: parsed.dateFormat,
+                aiSuggested: aiStatus(parsed.mapping) === 'suggested',
+            });
+            trackAiImported(parsed.mapping, 'onboarding', 'transaction');
+        }
 
         captureEvent('onboarding_import_completed', {
             transactions_imported: successCount,
@@ -333,6 +404,9 @@ export function StepImportTransactions({
         automationRules,
         unreadable,
         onComplete,
+        parsed,
+        aiStatus,
+        trackAiImported,
     ]);
 
     /**
@@ -388,6 +462,12 @@ export function StepImportTransactions({
                 onMappingChange={handleMappingChange}
                 onConfirm={handleColumnsConfirmed}
                 onDifferentFile={startOver}
+                aiDetection={
+                    <AiColumnDetection
+                        status={ai.status(parsed.mapping)}
+                        onDetect={() => requestSuggestion(parsed, true)}
+                    />
+                }
             />
         );
     }

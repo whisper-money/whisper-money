@@ -3034,5 +3034,7 @@
     "Fixed expense": "Dépense fixe",
     "Variable expense": "Dépense variable",
     "Same amount every period, like rent or subscriptions": "Le même montant à chaque période, comme le loyer ou les abonnements",
-    "Spending you can adjust, like groceries or restaurants": "Des dépenses que vous pouvez ajuster, comme les courses ou les restaurants"
+    "Spending you can adjust, like groceries or restaurants": "Des dépenses que vous pouvez ajuster, comme les courses ou les restaurants",
+    "Suggested by AI": "Suggestion faite par l’IA",
+    "Detect columns with AI": "Détecter les colonnes avec l’IA"
 }

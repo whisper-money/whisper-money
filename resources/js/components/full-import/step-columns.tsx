@@ -90,6 +90,8 @@ interface StepColumnsProps {
     fallbackCurrency: string;
     locale: string;
     footer: ReactNode;
+    /** The AI badge or button, shown beside the format. */
+    aiDetection?: ReactNode;
 }
 
 function sampleOf(columnOptions: ColumnOption[], column: string | null) {
@@ -154,6 +156,7 @@ export function StepColumns({
     fallbackCurrency,
     locale,
     footer,
+    aiDetection,
 }: StepColumnsProps) {
     const set = (patch: Partial<FullImportMapping>) =>
         onMappingChange({ ...mapping, ...patch });
@@ -222,6 +225,7 @@ export function StepColumns({
                 <span className="text-[13px] text-muted-foreground">
                     {__('If you change something, we remember it next time.')}
                 </span>
+                {aiDetection}
             </div>
 
             <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
