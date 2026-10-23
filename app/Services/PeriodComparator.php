@@ -11,6 +11,14 @@ class PeriodComparator
         public readonly Carbon $to
     ) {}
 
+    /**
+     * Calendar days in the range, both ends included.
+     */
+    public function days(): int
+    {
+        return (int) $this->from->copy()->startOfDay()->diffInDays($this->to->copy()->startOfDay()) + 1;
+    }
+
     public function previous(): self
     {
         $days = $this->from->diffInDays($this->to) + 1;

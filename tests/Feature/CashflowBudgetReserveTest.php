@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BudgetPeriodType;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Budget;
@@ -253,18 +254,64 @@ test('a catch-all budget still reserves its margin', function () {
     expect(cashflowSummary()['reserved'])->toBe(20000);
 });
 
-test('a year range reserves only the periods in progress, not future ones', function () {
-    $monthly = Budget::factory()->monthly()->create(['user_id' => $this->user->id]);
-    $weekly = Budget::factory()->weekly()->create(['user_id' => $this->user->id]);
+test('a year range reserves only the yearly periods in progress, not future ones', function () {
+    $current = Budget::factory()->yearly()->create(['user_id' => $this->user->id]);
+    $future = Budget::factory()->yearly()->create(['user_id' => $this->user->id]);
 
-    budgetPeriodWithSpend($monthly, '2026-09-01', '2026-09-30', 50000, 10000);
-    budgetPeriodWithSpend($monthly, '2026-10-01', '2026-10-31', 50000, 20000);
-    budgetPeriodWithSpend($monthly, '2026-11-01', '2026-11-30', 50000, 0);
-    budgetPeriodWithSpend($weekly, '2026-10-09', '2026-10-15', 10000, 2500);
-    budgetPeriodWithSpend($weekly, '2026-10-16', '2026-10-22', 10000, 0);
+    budgetPeriodWithSpend($current, '2026-01-01', '2026-12-31', 120000, 40000);
+    budgetPeriodWithSpend($future, '2026-11-01', '2027-10-31', 50000, 0);
 
     $summary = cashflowSummary('2026-01-01', '2026-12-31');
 
-    expect($summary['reserved'])->toBe(30000 + 7500)
-        ->and($summary['budgets'])->toHaveCount(2);
+    expect($summary['reserved'])->toBe(80000)
+        ->and($summary['budgets'])->toHaveCount(1)
+        ->and($summary['budgets'][0]['budget_id'])->toBe($current->id);
 });
+
+test('a yearly budget is left out of the month and quarter ranges', function (string $from, string $to) {
+    $subscriptions = Budget::factory()->yearly()->create(['user_id' => $this->user->id]);
+    $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($subscriptions, '2026-01-01', '2026-12-31', 60000, 22500);
+    budgetPeriodWithSpend($groceries, '2026-10-01', '2026-10-31', 40000, 15000);
+
+    $summary = cashflowSummary($from, $to);
+
+    expect($summary['reserved'])->toBe(25000)
+        ->and(collect($summary['budgets'])->pluck('budget_id')->all())->toBe([$groceries->id]);
+})->with([
+    'month' => ['2026-10-01', '2026-10-31'],
+    'quarter' => ['2026-10-01', '2026-12-31'],
+]);
+
+test('weekly, bi-weekly and monthly budgets are left out of the year range', function () {
+    $subscriptions = Budget::factory()->yearly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($subscriptions, '2026-01-01', '2026-12-31', 60000, 22500);
+
+    foreach ([BudgetPeriodType::Monthly, BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly] as $periodType) {
+        $budget = Budget::factory()->create(['user_id' => $this->user->id, 'period_type' => $periodType]);
+        budgetPeriodWithSpend($budget, '2026-10-09', '2026-10-15', 10000, 0);
+    }
+
+    $summary = cashflowSummary('2026-01-01', '2026-12-31');
+
+    expect($summary['reserved'])->toBe(37500)
+        ->and(collect($summary['budgets'])->pluck('budget_id')->all())->toBe([$subscriptions->id]);
+});
+
+test('a range reads as a year once it is longer than a quarter', function (string $from, string $to, bool $readsAsYear) {
+    $subscriptions = Budget::factory()->yearly()->create(['user_id' => $this->user->id]);
+    $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($subscriptions, '2026-01-01', '2026-12-31', 60000, 0);
+    budgetPeriodWithSpend($groceries, '2026-10-01', '2026-10-31', 40000, 0);
+
+    $expected = $readsAsYear ? $subscriptions->id : $groceries->id;
+
+    expect(collect(cashflowSummary($from, $to)['budgets'])->pluck('budget_id')->all())->toBe([$expected]);
+})->with([
+    '92 days' => ['2026-08-01', '2026-10-31', false],
+    '92 days with a time on the end date' => ['2026-08-01', '2026-10-31 23:59:59', false],
+    '93 days' => ['2026-07-31', '2026-10-31', true],
+]);
