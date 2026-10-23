@@ -16,7 +16,12 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
-import { allocatedOf, availableOf, freeOf } from '@/lib/cashflow-available';
+import {
+    allocatedOf,
+    availableOf,
+    freeOf,
+    hasPeriodData,
+} from '@/lib/cashflow-available';
 import { __ } from '@/utils/i18n';
 
 interface AvailableCardProps {
@@ -83,7 +88,7 @@ export function AvailableCard({
     const rateDiff = rate - shareOf(availableOf(previous), previous.income);
     const availableDiff = available - availableOf(previous);
     const allocatedDiff = allocatedOf(current) - allocatedOf(previous);
-    const hasPreviousData = previous.income > 0 || previous.expense > 0;
+    const hasPreviousData = hasPeriodData(previous);
 
     return (
         <Card>

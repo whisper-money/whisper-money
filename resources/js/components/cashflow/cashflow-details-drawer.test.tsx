@@ -173,6 +173,26 @@ describe('CashflowDetailsDrawer', () => {
         expect(screen.getAllByText('0.0%')).toHaveLength(5);
     });
 
+    it('keeps the bar empty when expenses came out of no income', () => {
+        renderDrawer({ current: summary({ income: 0 }) });
+
+        expect(
+            screen.getByRole('img').querySelector('[data-segment]'),
+        ).toBeNull();
+        expect(screen.getByText('No income in this period')).toBeTruthy();
+        expect(
+            screen.queryByText('You allocated more than you earned:'),
+        ).toBeNull();
+    });
+
+    it('reads a block that did not change as neither good nor bad', () => {
+        renderDrawer({ previous: { ...summary(), budgets: undefined } });
+
+        const fixed = within(row('Fixed'));
+        expect(fixed.getByText('0')).toBeTruthy();
+        expect(fixed.queryByText('+')).toBeNull();
+    });
+
     it('lists every block with its share, amount and change', () => {
         renderDrawer();
 

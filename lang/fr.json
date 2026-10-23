@@ -1559,7 +1559,7 @@
     "Save money for goals": "Économisez de l'argent pour vos objectifs",
     "Save password": "Enregistrer le mot de passe",
     "Saved": "Enregistré",
-    "Saved (cashflow)": "enregistré",
+    "Saved (cashflow)": "Épargné",
     "Saved & Invested": "Épargné et investi",
     "Share of net cashflow set aside": "Pourcentage du flux net alloué",
     "Where do these numbers come from?": "D'où viennent ces chiffres ?",
@@ -3057,5 +3057,6 @@
     "No fixed budget in progress in this view.": "Aucun budget fixe en cours dans cette vue.",
     "No variable budget in progress in this view.": "Aucun budget variable en cours dans cette vue.",
     "Yearly budgets are reserved in the Year view": "Les budgets annuels sont réservés dans la vue Année",
-    "Weekly and monthly budgets are reserved in the Month view": "Les budgets hebdomadaires et mensuels sont réservés dans la vue Mois"
+    "Weekly and monthly budgets are reserved in the Month view": "Les budgets hebdomadaires et mensuels sont réservés dans la vue Mois",
+    "No income in this period": "Aucun revenu sur cette période"
 }

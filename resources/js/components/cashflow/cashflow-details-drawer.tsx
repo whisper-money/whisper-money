@@ -7,7 +7,7 @@ import {
     CASHFLOW_BLOCKS,
     type CashflowBlock,
     type CashflowBlockHrefs,
-    type ExpenseBlock,
+    isExpenseBlock,
     StackedBar,
     type StackedBarSegment,
 } from '@/components/cashflow/cashflow-blocks';
@@ -30,10 +30,15 @@ import {
     CashflowPeriodType,
     CashflowSummary,
 } from '@/hooks/use-cashflow-data';
-import { allocatedOf, availableOf, freeOf } from '@/lib/cashflow-available';
+import {
+    allocatedOf,
+    availableOf,
+    freeOf,
+    hasPeriodData,
+} from '@/lib/cashflow-available';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
-import { TrendingDown, TrendingUp, X } from 'lucide-react';
+import { Minus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 
 interface CashflowDetailsDrawerProps {
@@ -108,6 +113,9 @@ function IncomeBar({
     summary: CashflowSummary;
     currency: string;
 }) {
+    // With nothing coming in there is no income to split, so the bar stays
+    // empty rather than filling up with what went out.
+    const hasIncome = summary.income > 0;
     const segments = incomeSegments(summary);
     const available = availableOf(summary);
 
@@ -115,7 +123,7 @@ function IncomeBar({
         <section className="flex flex-col gap-3">
             <StackedBar
                 className="h-3"
-                segments={segments}
+                segments={hasIncome ? segments : []}
                 total={summary.income}
                 ariaLabel={segments
                     .map(
@@ -132,7 +140,12 @@ function IncomeBar({
                     </li>
                 ))}
             </ul>
-            {available < 0 && (
+            {!hasIncome && (
+                <p className="text-xs text-muted-foreground">
+                    {__('No income in this period')}
+                </p>
+            )}
+            {hasIncome && available < 0 && (
                 <p className="text-xs text-red-600 dark:text-red-400">
                     {__('You allocated more than you earned:')}{' '}
                     <WholeAmount
@@ -146,10 +159,6 @@ function IncomeBar({
     );
 }
 
-function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
-    return block !== 'saved' && block !== 'invested';
-}
-
 function PreviousChange({
     block,
     diff,
@@ -159,7 +168,20 @@ function PreviousChange({
     diff: number;
     currency: string;
 }) {
-    const isIncrease = diff >= 0;
+    if (diff === 0) {
+        return (
+            <span className="inline-flex items-center justify-end gap-1 text-muted-foreground">
+                <Minus className="size-3" />
+                <WholeAmount
+                    amountInCents={0}
+                    currencyCode={currency}
+                    className="text-sm"
+                />
+            </span>
+        );
+    }
+
+    const isIncrease = diff > 0;
     // Spending less is the good news; contributing less is not.
     const isFavorable = isExpenseBlock(block) ? diff <= 0 : diff >= 0;
     const Icon = isIncrease ? TrendingUp : TrendingDown;
@@ -197,26 +219,30 @@ function BlocksTable({
 }) {
     const amounts = blockAmountsOf(current);
     const previousAmounts = blockAmountsOf(previous);
-    const hasPreviousData = previous.income > 0 || previous.expense > 0;
+    const hasPreviousData = hasPeriodData(previous);
 
     return (
         <div className="overflow-x-auto">
             <table className="w-full text-sm">
                 <thead className="text-xs text-muted-foreground">
                     <tr className="border-b">
-                        <th className="py-2 text-left font-normal">
+                        <th scope="col" className="py-2 text-left font-normal">
                             {__('Block')}
                         </th>
-                        <th className="py-2 text-right font-normal">
+                        <th scope="col" className="py-2 text-right font-normal">
                             {__('% of income')}
                         </th>
-                        <th className="py-2 text-right font-normal">
+                        <th scope="col" className="py-2 text-right font-normal">
                             {__('Amount (cashflow)')}
                         </th>
-                        <th className="py-2 text-right font-normal">
+                        <th scope="col" className="py-2 text-right font-normal">
                             {__('vs previous')}
                         </th>
-                        <th className="w-6" />
+                        <th scope="col" className="w-6">
+                            <span className="sr-only">
+                                {__('Transactions')}
+                            </span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>

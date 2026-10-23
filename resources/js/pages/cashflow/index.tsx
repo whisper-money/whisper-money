@@ -236,9 +236,11 @@ export default function CashflowPage() {
                     )}
                 </div>
 
-                {showAvailable && !showPlaceholders && (
+                {showAvailable && (
                     <CashflowDetailsDrawer
-                        open={detailsOpen}
+                        // Closed while the figures load or fail: it would
+                        // otherwise answer with the zeros in their place.
+                        open={detailsOpen && !showPlaceholders}
                         onOpenChange={setDetailsOpen}
                         current={summary.current}
                         previous={summary.previous}

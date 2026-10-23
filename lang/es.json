@@ -4087,5 +4087,6 @@
     "No fixed budget in progress in this view.": "Ningún presupuesto fijo en curso en esta vista.",
     "No variable budget in progress in this view.": "Ningún presupuesto variable en curso en esta vista.",
     "Yearly budgets are reserved in the Year view": "Los presupuestos anuales se reservan en la vista Año",
-    "Weekly and monthly budgets are reserved in the Month view": "Los presupuestos semanales y mensuales se reservan en la vista Mes"
+    "Weekly and monthly budgets are reserved in the Month view": "Los presupuestos semanales y mensuales se reservan en la vista Mes",
+    "No income in this period": "Sin ingresos en este período"
 }

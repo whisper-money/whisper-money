@@ -13,6 +13,10 @@ export type CashflowBlock = ExpenseBlock | 'saved' | 'invested';
 export type CashflowBlockHrefs = Partial<Record<CashflowBlock, string>>;
 
 export const EXPENSE_BLOCKS: ExpenseBlock[] = ['fixed', 'variable', 'general'];
+export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
+    return (EXPENSE_BLOCKS as CashflowBlock[]).includes(block);
+}
+
 export const CASHFLOW_BLOCKS: CashflowBlock[] = [
     ...EXPENSE_BLOCKS,
     'saved',

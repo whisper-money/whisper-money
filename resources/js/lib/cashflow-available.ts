@@ -15,6 +15,11 @@ export function freeOf(summary: CashflowSummary): number {
     return availableOf(summary) - (summary.reserved ?? 0);
 }
 
+/** Whether the period had any money moving, so comparing against it means something. */
+export function hasPeriodData(summary: CashflowSummary): boolean {
+    return summary.income > 0 || summary.expense > 0;
+}
+
 export interface ExpenseSplit {
     fixed: number;
     variable: number;
