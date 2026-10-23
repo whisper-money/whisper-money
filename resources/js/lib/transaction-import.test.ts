@@ -200,4 +200,30 @@ describe('applyTransactionSuggestion', () => {
         });
         expect(next.dateFormat).toBe(DateFormat.DayMonthYear);
     });
+
+    it('keeps a counterparty off the description the user picked by hand', () => {
+        const draft = parsedFile();
+        draft.mapping = {
+            ...draft.mapping,
+            description: ['Concepto', 'Beneficiario'],
+            debtor_name: 'Ordenante',
+        };
+
+        const next = applyTransactionSuggestion(
+            draft,
+            rows,
+            {
+                description: 'Concepto',
+                creditor_name: 'Beneficiario',
+                debtor_name: 'Beneficiario',
+            },
+            new Set(['description']),
+        );
+
+        expect(next.mapping).toMatchObject({
+            description: ['Concepto', 'Beneficiario'],
+            creditor_name: null,
+            debtor_name: 'Ordenante',
+        });
+    });
 });

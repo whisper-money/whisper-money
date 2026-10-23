@@ -195,7 +195,11 @@ export function StepImportTransactions({
                 everything,
                 token,
                 toMapping: (suggestions) =>
-                    suggestedTransactionMapping(suggestions, columns),
+                    suggestedTransactionMapping(
+                        suggestions,
+                        columns,
+                        read.mapping.description,
+                    ),
                 apply: (suggested, keep) =>
                     setParsed((previous) =>
                         previous?.file === read.file
