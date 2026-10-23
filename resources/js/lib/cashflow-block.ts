@@ -22,6 +22,16 @@ export const CASHFLOW_BLOCKS: readonly CashflowBlock[] = [
     'invested',
 ];
 
+// Each block reads apart from its neighbours by lightness, not only by hue, so
+// the bars still split for anyone who cannot tell rose from emerald.
+export const CASHFLOW_BLOCK_TONES: Record<CashflowBlock, string> = {
+    fixed: 'bg-rose-900 dark:bg-rose-700',
+    variable: 'bg-rose-500 dark:bg-rose-400',
+    general: 'bg-neutral-400 dark:bg-neutral-500',
+    saved: 'bg-emerald-700 dark:bg-emerald-600',
+    invested: 'bg-blue-700 dark:bg-blue-500',
+};
+
 /**
  * Untranslated labels (run them through `__()`) and the swatch colour each
  * block has on the cashflow screen.
@@ -30,11 +40,26 @@ export const CASHFLOW_BLOCK_META: Record<
     CashflowBlock,
     { label: string; swatchClassName: string }
 > = {
-    fixed: { label: 'Fixed expense', swatchClassName: 'bg-rose-900' },
-    variable: { label: 'Variable expense', swatchClassName: 'bg-rose-500' },
-    general: { label: 'General expense', swatchClassName: 'bg-neutral-400' },
-    saved: { label: 'Saved (cashflow)', swatchClassName: 'bg-emerald-700' },
-    invested: { label: 'Invested', swatchClassName: 'bg-blue-700' },
+    fixed: {
+        label: 'Fixed expense',
+        swatchClassName: CASHFLOW_BLOCK_TONES.fixed,
+    },
+    variable: {
+        label: 'Variable expense',
+        swatchClassName: CASHFLOW_BLOCK_TONES.variable,
+    },
+    general: {
+        label: 'General expense',
+        swatchClassName: CASHFLOW_BLOCK_TONES.general,
+    },
+    saved: {
+        label: 'Saved (cashflow)',
+        swatchClassName: CASHFLOW_BLOCK_TONES.saved,
+    },
+    invested: {
+        label: 'Invested',
+        swatchClassName: CASHFLOW_BLOCK_TONES.invested,
+    },
 };
 
 /**

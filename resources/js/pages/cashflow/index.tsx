@@ -1,5 +1,6 @@
 import { AvailableCard } from '@/components/cashflow/available-card';
 import { BreakdownCard } from '@/components/cashflow/breakdown-card';
+import { type CashflowBlockHrefs } from '@/components/cashflow/cashflow-blocks';
 import { CashflowDetailsDrawer } from '@/components/cashflow/cashflow-details-drawer';
 import { ExpensesCard } from '@/components/cashflow/expenses-card';
 import { MonthlySavingsCashflowCard } from '@/components/cashflow/monthly-savings-cashflow-card';
@@ -18,6 +19,10 @@ import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
 import { useLocale } from '@/hooks/use-locale';
 import { usePeriodUrlSync } from '@/hooks/use-period-url-sync';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import {
+    CASHFLOW_BLOCKS,
+    cashflowBlockTransactionsUrl,
+} from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem, Features } from '@/types';
@@ -103,6 +108,22 @@ function getPeriodRange(
     };
 }
 
+/**
+ * Each block's transactions over the range the summary covers, so the list a
+ * link opens adds up to the figure next to it.
+ */
+function blockTransactionsHrefs(period: {
+    from: Date;
+    to: Date;
+}): CashflowBlockHrefs {
+    return Object.fromEntries(
+        CASHFLOW_BLOCKS.map((block) => [
+            block,
+            cashflowBlockTransactionsUrl(block, period.from, period.to),
+        ]),
+    );
+}
+
 export default function CashflowPage() {
     const {
         auth,
@@ -152,6 +173,7 @@ export default function CashflowPage() {
     const showAvailable = features.cashflowAvailableFree;
     const [detailsOpen, setDetailsOpen] = useState(false);
     const locale = useLocale();
+    const blockHrefs = useMemo(() => blockTransactionsHrefs(period), [period]);
 
     usePeriodUrlSync(currentDate, periodType, initialPeriod, initialPeriodType);
 
@@ -230,6 +252,7 @@ export default function CashflowPage() {
                                 current={summary.current}
                                 loading={showPlaceholders}
                                 currency={auth.user.currency_code}
+                                hrefs={blockHrefs}
                                 onViewDetails={() => setDetailsOpen(true)}
                             />
                         </>
@@ -246,6 +269,7 @@ export default function CashflowPage() {
                         previous={summary.previous}
                         currency={auth.user.currency_code}
                         periodType={periodType}
+                        hrefs={blockHrefs}
                         periodLabel={formatPeriodLabel(
                             currentDate,
                             periodType,

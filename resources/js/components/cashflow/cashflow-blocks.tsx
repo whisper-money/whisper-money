@@ -1,13 +1,17 @@
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { expenseSplitOf } from '@/lib/cashflow-available';
+import { CASHFLOW_BLOCK_TONES } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
+import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { ArrowRight } from 'lucide-react';
 
 /** The expense blocks first, then what was contributed. */
-export type ExpenseBlock = 'fixed' | 'variable' | 'general';
-export type CashflowBlock = ExpenseBlock | 'saved' | 'invested';
+export type ExpenseBlock = Extract<
+    CashflowBlock,
+    'fixed' | 'variable' | 'general'
+>;
 
 /** A "view transactions" link per block, for the rows that have one. */
 export type CashflowBlockHrefs = Partial<Record<CashflowBlock, string>>;
@@ -17,21 +21,9 @@ export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
     return (EXPENSE_BLOCKS as CashflowBlock[]).includes(block);
 }
 
-export const CASHFLOW_BLOCKS: CashflowBlock[] = [
-    ...EXPENSE_BLOCKS,
-    'saved',
-    'invested',
-];
-
-// Each block reads apart from its neighbours by lightness, not only by hue, so
-// the bars still split for anyone who cannot tell rose from emerald.
 export const BLOCK_TONES: Record<CashflowBlock | 'reserved' | 'free', string> =
     {
-        fixed: 'bg-rose-900 dark:bg-rose-700',
-        variable: 'bg-rose-500 dark:bg-rose-400',
-        general: 'bg-neutral-400 dark:bg-neutral-500',
-        saved: 'bg-emerald-700 dark:bg-emerald-600',
-        invested: 'bg-blue-700 dark:bg-blue-500',
+        ...CASHFLOW_BLOCK_TONES,
         reserved: 'bg-neutral-300 dark:bg-neutral-600',
         free: 'bg-emerald-300 dark:bg-emerald-300',
     };
@@ -149,9 +141,12 @@ export function StackedBar({
 export function BlockLink({
     href,
     block,
+    onNavigate,
 }: {
     href?: string;
     block: CashflowBlock;
+    /** Runs on click, before the visit: e.g. to close the drawer it sits in. */
+    onNavigate?: () => void;
 }) {
     if (!href) {
         return null;
@@ -160,6 +155,7 @@ export function BlockLink({
     return (
         <Link
             href={href}
+            onClick={onNavigate}
             aria-label={__('View :block transactions', {
                 block: blockLabel(block),
             })}
