@@ -199,7 +199,7 @@ export default function Privacy() {
                                         {__('No Third-Party Data Sharing:')}
                                     </strong>
                                     {__(
-                                        ' Your financial data is never shared with advertisers, data brokers, or any third party',
+                                        ' Your financial data is never shared with advertisers or data brokers. It is only processed by the providers listed in section 5, and only to provide the service',
                                     )}
                                 </li>
                                 <li>
@@ -244,6 +244,12 @@ export default function Privacy() {
                                     <strong>Email Service Providers:</strong>
                                     {__(
                                         'To\n                                    send transactional emails, password resets,\n                                    and service notifications',
+                                    )}
+                                </li>
+                                <li>
+                                    <strong>{__('AI Providers:')}</strong>{' '}
+                                    {__(
+                                        'Google (Gemini) and TypeSafe AI. Only with your AI consent do they receive the details needed to categorize your transactions (description, amount, direction, and payer or payee names) and your category names; Google (Gemini) also writes your monthly summary and rule suggestions from your figures and transaction descriptions. To detect the columns of a file you import, TypeSafe AI receives only the header of each column and the shape of its values, such as "date (dd/mm/yyyy)", never the values themselves',
                                     )}
                                 </li>
                             </ul>
