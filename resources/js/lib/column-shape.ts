@@ -26,22 +26,23 @@ const TIME = /^\d{1,2}:\d{2}(?::\d{2})?$/;
 const CURRENCY_CODE = /^[A-Z]{3}$/;
 const IBAN = /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/;
 
-/** The non-empty cells of a column, as trimmed text, at most {@link SAMPLE_ROWS} of them. */
-function sampleValues(rows: ParsedRow[], header: string): string[] {
-    const step = Math.max(1, Math.ceil(rows.length / SAMPLE_ROWS));
-    const values: string[] = [];
+const ALL_POSITIVE = 'all positive';
 
-    for (let index = 0; index < rows.length; index += step) {
-        const cell = rows[index]?.[header];
-        const text =
-            cell === null || cell === undefined ? '' : String(cell).trim();
+/** The non-empty cells of a column, as trimmed text. */
+function cellTexts(rows: ParsedRow[], header: string): string[] {
+    return rows
+        .map((row) => row[header])
+        .map((cell) =>
+            cell === null || cell === undefined ? '' : String(cell).trim(),
+        )
+        .filter((text) => text !== '');
+}
 
-        if (text !== '') {
-            values.push(text);
-        }
-    }
+/** At most {@link SAMPLE_ROWS} values, spread across the whole column. */
+function sample(values: string[]): string[] {
+    const step = Math.max(1, Math.ceil(values.length / SAMPLE_ROWS));
 
-    return values;
+    return values.filter((_, index) => index % step === 0);
 }
 
 /** "dd/mm/yyyy", "mm/dd/yyyy" or "yyyy-mm-dd", from the order the parts allow. */
@@ -133,7 +134,23 @@ function isSpreadsheetDate(value: string): boolean {
     return Number.isInteger(serial) && serial >= 25569 && serial <= 73051;
 }
 
-function numberShape(values: string[]): string | null {
+/**
+ * Which way the amounts go, read over every value rather than the sample: a
+ * column that is all positive but for a refund or two is not all positive.
+ */
+function signOf(values: string[]): string {
+    const negatives = values.filter(
+        (value) => readNumber(value)?.negative,
+    ).length;
+
+    if (negatives === 0) {
+        return ALL_POSITIVE;
+    }
+
+    return negatives === values.length ? 'all negative' : 'mixed signs';
+}
+
+function numberShape(values: string[], everyValue: string[]): string | null {
     const numbers = values.map(readNumber);
 
     if (numbers.some((number) => number === null)) {
@@ -142,12 +159,7 @@ function numberShape(values: string[]): string | null {
 
     const read = numbers as ReadNumber[];
     const negatives = read.filter((number) => number.negative).length;
-    const sign =
-        negatives === 0
-            ? 'all positive'
-            : negatives === read.length
-              ? 'all negative'
-              : 'mixed signs';
+    const sign = signOf(everyValue);
     const maxDecimals = Math.max(...read.map((number) => number.decimals));
 
     if (maxDecimals === 0 && values.every(isSpreadsheetDate)) {
@@ -191,12 +203,21 @@ function textShape(values: string[]): string {
     return `text, avg ${averageLength} chars, ${variety}`;
 }
 
+/** Every amount of a column with this shape is positive: no sign says which way it went. */
+export function isAllPositive(shape: string): boolean {
+    return shape.endsWith(`, ${ALL_POSITIVE}`);
+}
+
 /**
  * What a column's values look like, in a few words: "date (dd/mm/yyyy)",
  * "number, 2 decimals with ",", mixed signs", "text, avg 24 chars, mostly
- * distinct values". Built from the values but never quoting one.
+ * distinct values". Built from a sample of the values (the sign from all of
+ * them) but never quoting one.
  */
-export function columnShape(values: string[]): string {
+export function columnShape(
+    values: string[],
+    everyValue: string[] = values,
+): string {
     if (values.length === 0) {
         return 'empty';
     }
@@ -215,7 +236,7 @@ export function columnShape(values: string[]): string {
 
     return (
         dateShape(values) ??
-        numberShape(values) ??
+        numberShape(values, everyValue) ??
         textShape(values)
     ).slice(0, 120);
 }
@@ -225,8 +246,12 @@ export function describeColumns(
     headers: string[],
     rows: ParsedRow[],
 ): ColumnDescription[] {
-    return headers.map((header) => ({
-        header: header.slice(0, 120),
-        shape: columnShape(sampleValues(rows, header)),
-    }));
+    return headers.map((header) => {
+        const values = cellTexts(rows, header);
+
+        return {
+            header: header.slice(0, 120),
+            shape: columnShape(sample(values), values),
+        };
+    });
 }

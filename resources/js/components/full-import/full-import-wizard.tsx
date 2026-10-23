@@ -347,13 +347,18 @@ export function FullImportWizard({
      * asked, and only when no layout saved for it fits; its answer leaves
      * alone the fields picked by hand unless the user pressed the button.
      */
-    const suggestColumns = (file: ParsedImportFile, everything: boolean) => {
+    const suggestColumns = (
+        file: ParsedImportFile,
+        everything: boolean,
+        token?: number,
+    ) => {
         const columns = describeColumns(file.headers, file.rows);
 
         void ai.request<FullImportMapping>({
             kind: 'transaction',
             columns,
             everything,
+            token,
             toMapping: (suggestions) =>
                 suggestedFullImportMapping(suggestions, columns),
             apply: (suggested, keep) =>
@@ -377,13 +382,13 @@ export function FullImportWizard({
         file: ParsedImportFile,
     ) => {
         setMapping(mappingFor(nextSource, file));
-        ai.reset();
+        const token = ai.begin();
 
         if (
             nextSource === 'generic' &&
             !savedProfileFits(context?.profiles.generic ?? null, file.headers)
         ) {
-            suggestColumns(file, false);
+            suggestColumns(file, false, token);
         }
     };
 
@@ -507,7 +512,7 @@ export function FullImportWizard({
             setMapping(null);
             setRecognized(null);
             plan.reset();
-            ai.reset();
+            ai.begin();
 
             return;
         }
@@ -597,10 +602,6 @@ export function FullImportWizard({
         setUpload({ sent: 0, total: built.transactions.length });
         setStep('progress');
 
-        if (mapping && source === 'generic') {
-            ai.trackImported(mapping, `full_import_${entry}`, 'transaction');
-        }
-
         trackImport(
             'full_import_submitted',
             submittedProperties({
@@ -623,6 +624,10 @@ export function FullImportWizard({
                     (sent, total) => setUpload({ sent, total }),
                 ),
             );
+
+            if (mapping && source === 'generic') {
+                ai.importedWith(mapping, `full_import_${entry}`, 'transaction');
+            }
         } catch (error) {
             const stage =
                 error instanceof ImportUploadError ? error.stage : 'create';

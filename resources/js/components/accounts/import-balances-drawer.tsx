@@ -13,10 +13,8 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import {
+    applySuggestion,
     BALANCE_FIELDS,
-    mergeSuggestion,
-    pickFields,
-    redetectDateFormat,
     suggestedBalanceMapping,
 } from '@/lib/ai-import-mapping';
 import { describeColumns } from '@/lib/column-shape';
@@ -31,6 +29,7 @@ import {
     loadBalanceImportConfig,
     saveBalanceImportConfig,
 } from '@/lib/import-config-storage';
+import { mapsOnlyKnownColumns } from '@/lib/transaction-import';
 import { type SharedData } from '@/types';
 import { supportsInvestedAmount, type Account } from '@/types/account';
 import {
@@ -110,7 +109,7 @@ export function ImportBalancesDrawer({
         balances: [],
     });
     const ai = useAiColumnSuggestion();
-    const { reset: resetAi } = ai;
+    const { begin: resetAi } = ai;
 
     useEffect(() => {
         if (open && state.selectedAccountId) {
@@ -248,12 +247,14 @@ export function ImportBalancesDrawer({
         headers: string[],
         rows: ParsedRow[],
         everything: boolean,
+        token?: number,
     ) => {
         void ai.request<BalanceColumnMapping>({
             kind: 'balance',
             columns: describeColumns(headers, rows),
             accountId: state.selectedAccountId,
             everything,
+            token,
             toMapping: suggestedBalanceMapping,
             apply: (suggested, keep) =>
                 setState((prev) => {
@@ -261,22 +262,16 @@ export function ImportBalancesDrawer({
                         return prev;
                     }
 
-                    const columnMapping = mergeSuggestion(
+                    const { mapping, format } = applySuggestion(
                         prev.columnMapping,
                         suggested,
                         keep,
+                        'balance_date',
+                        prev.parsedData,
+                        locale,
                     );
-                    const format =
-                        columnMapping.balance_date !==
-                        prev.columnMapping.balance_date
-                            ? redetectDateFormat(
-                                  prev.parsedData,
-                                  columnMapping.balance_date,
-                                  locale,
-                              )
-                            : null;
 
-                    return { ...prev, columnMapping, ...format };
+                    return { ...prev, columnMapping: mapping, ...format };
                 }),
         });
     };
@@ -284,7 +279,7 @@ export function ImportBalancesDrawer({
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
-        ai.reset();
+        const token = ai.begin();
 
         if (!file) {
             setState((prev) => ({
@@ -362,22 +357,21 @@ export function ImportBalancesDrawer({
                 : null;
             const fits =
                 savedConfig !== null &&
-                Object.values(savedConfig.columnMapping)
-                    .filter((value) => value !== null)
-                    .every((value) => headers.includes(value as string));
+                mapsOnlyKnownColumns(savedConfig.columnMapping, headers);
 
-            // No layout of this account fits the file: the AI is asked instead.
-            if (!fits) {
-                requestSuggestion(file, headers, data, false);
-            }
+            ai.afterStoredLayout(
+                token,
+                savedConfig && fits
+                    ? {
+                          mapping: savedConfig.columnMapping,
+                          aiSuggested: savedConfig.aiSuggested,
+                      }
+                    : null,
+                BALANCE_FIELDS,
+                () => requestSuggestion(file, headers, data, false, token),
+            );
 
             if (savedConfig && fits) {
-                if (savedConfig.aiSuggested) {
-                    ai.adopt(
-                        pickFields(savedConfig.columnMapping, BALANCE_FIELDS),
-                    );
-                }
-
                 // Only apply if this file is still the selected one, so a slow
                 // load can't clobber a file picked afterwards. Keep the saved
                 // format as the default, but still show the selector when the
@@ -593,9 +587,12 @@ export function ImportBalancesDrawer({
             void saveBalanceImportConfig(selectedAccount.id, {
                 columnMapping: state.columnMapping,
                 dateFormat: state.dateFormat,
-                aiSuggested: ai.status(state.columnMapping) === 'suggested',
+                aiSuggested: ai.importedWith(
+                    state.columnMapping,
+                    'balances_drawer',
+                    'balance',
+                ),
             });
-            ai.trackImported(state.columnMapping, 'balances_drawer', 'balance');
         }
         const errorCount = errors.length;
         const isLoan = selectedAccount?.type === 'loan';

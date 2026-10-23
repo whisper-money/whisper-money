@@ -1,6 +1,6 @@
 import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
-import { mergeSuggestion, redetectDateFormat } from '@/lib/ai-import-mapping';
+import { applySuggestion } from '@/lib/ai-import-mapping';
 import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
@@ -14,6 +14,7 @@ import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
+import { type BalanceColumnMapping } from '@/types/balance-import';
 import { type Category } from '@/types/category';
 import {
     DateFormat,
@@ -184,8 +185,8 @@ export async function parseImportFile(
 }
 
 /** Every mapped column is one the file actually has. */
-function mapsOnlyKnownColumns(
-    mapping: ColumnMapping,
+export function mapsOnlyKnownColumns(
+    mapping: ColumnMapping | BalanceColumnMapping,
     headers: string[],
 ): boolean {
     // The expense types are values of a column, not columns; and a field set
@@ -250,24 +251,24 @@ export function applyTransactionSuggestion(
     keep: ReadonlySet<string>,
     locale?: string,
 ): TransactionMappingDraft {
-    const mapping = mergeSuggestion(draft.mapping, suggested, keep);
-    const next = { ...draft, mapping };
+    const { mapping, format } = applySuggestion(
+        draft.mapping,
+        suggested,
+        keep,
+        'transaction_date',
+        rows,
+        locale,
+    );
+    const expenseTypes =
+        mapping.transaction_type !== draft.mapping.transaction_type
+            ? detectExpenseTypes(rows, mapping.transaction_type)
+            : mapping.expense_types;
 
-    if (mapping.transaction_date !== draft.mapping.transaction_date) {
-        Object.assign(
-            next,
-            redetectDateFormat(rows, mapping.transaction_date, locale),
-        );
-    }
-
-    if (mapping.transaction_type !== draft.mapping.transaction_type) {
-        mapping.expense_types = detectExpenseTypes(
-            rows,
-            mapping.transaction_type,
-        );
-    }
-
-    return next;
+    return {
+        ...draft,
+        ...format,
+        mapping: { ...mapping, expense_types: expenseTypes },
+    };
 }
 
 /** One row that could not be created, with enough of it to be recognised. */

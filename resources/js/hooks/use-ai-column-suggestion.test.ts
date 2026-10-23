@@ -20,6 +20,10 @@ vi.mock('@/lib/ai-import-mapping', async (importOriginal) => ({
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
+const toastError = vi.hoisted(() => vi.fn());
+
+vi.mock('sonner', () => ({ toast: { error: toastError } }));
+
 type Mapping = { amount: string | null; description: string | null };
 
 const answer = {
@@ -45,6 +49,7 @@ describe('useAiColumnSuggestion', () => {
         props.aiImportMappingEnabled = true;
         fetchColumnSuggestions.mockReset();
         captureEvent.mockReset();
+        toastError.mockReset();
     });
 
     it('stays hidden and never asks when AI column mapping is off', async () => {
@@ -160,7 +165,9 @@ describe('useAiColumnSuggestion', () => {
                 apply,
             });
         });
-        act(() => result.current.reset());
+        act(() => {
+            result.current.begin();
+        });
 
         await act(async () => {
             pending.resolve(answer);
@@ -191,10 +198,101 @@ describe('useAiColumnSuggestion', () => {
 
     it('shows the badge for a stored layout saved as the suggestion', () => {
         const { result } = renderHook(() => useAiColumnSuggestion());
+        const ask = vi.fn();
 
-        act(() => result.current.adopt(toMapping()));
+        act(() => {
+            const token = result.current.begin();
+            result.current.afterStoredLayout(
+                token,
+                {
+                    mapping: { ...toMapping(), expense_types: ['x'] },
+                    aiSuggested: true,
+                },
+                ['amount', 'description'],
+                ask,
+            );
+        });
 
+        expect(ask).not.toHaveBeenCalled();
         expect(result.current.status(toMapping())).toBe('suggested');
+    });
+
+    it('asks the AI only when no stored layout fits', () => {
+        const { result } = renderHook(() => useAiColumnSuggestion());
+        const ask = vi.fn();
+
+        act(() => {
+            const token = result.current.begin();
+            result.current.afterStoredLayout(
+                token,
+                { mapping: toMapping() },
+                ['amount'],
+                ask,
+            );
+        });
+
+        expect(ask).not.toHaveBeenCalled();
+        expect(result.current.status(toMapping())).toBe('idle');
+
+        act(() => {
+            const token = result.current.begin();
+            result.current.afterStoredLayout(token, null, ['amount'], ask);
+        });
+
+        expect(ask).toHaveBeenCalledOnce();
+    });
+
+    it('drops what an earlier file started once another one is picked', async () => {
+        fetchColumnSuggestions.mockResolvedValue(answer);
+        const apply = vi.fn();
+        const ask = vi.fn();
+        const { result } = renderHook(() => useAiColumnSuggestion());
+
+        let first = 0;
+        act(() => {
+            first = result.current.begin();
+            result.current.begin();
+        });
+
+        // The first file's stored layout and request land after the second was picked.
+        act(() =>
+            result.current.afterStoredLayout(
+                first,
+                { mapping: toMapping(), aiSuggested: true },
+                ['amount', 'description'],
+                ask,
+            ),
+        );
+        await act(() =>
+            result.current.request<Mapping>({
+                kind: 'transaction',
+                columns: [],
+                toMapping,
+                apply,
+                token: first,
+            }),
+        );
+
+        expect(fetchColumnSuggestions).not.toHaveBeenCalled();
+        expect(apply).not.toHaveBeenCalled();
+        expect(result.current.status(toMapping())).toBe('idle');
+    });
+
+    it('says so when the button could not get an answer', async () => {
+        fetchColumnSuggestions.mockResolvedValue(null);
+        const { result } = renderHook(() => useAiColumnSuggestion());
+
+        await act(() =>
+            result.current.request<Mapping>({
+                kind: 'transaction',
+                columns: [],
+                toMapping,
+                apply: vi.fn(),
+                everything: true,
+            }),
+        );
+
+        expect(toastError).toHaveBeenCalledOnce();
     });
 
     it('counts how many suggested fields were changed before importing', async () => {
@@ -209,11 +307,20 @@ describe('useAiColumnSuggestion', () => {
                 apply: vi.fn(),
             }),
         );
-        result.current.trackImported(
-            { amount: 'Balance', description: 'Narrative' },
-            'account_drawer',
-            'transaction',
-        );
+        expect(
+            result.current.importedWith(
+                { amount: 'Balance', description: 'Narrative' },
+                'account_drawer',
+                'transaction',
+            ),
+        ).toBe(false);
+        expect(
+            result.current.importedWith(
+                toMapping(),
+                'account_drawer',
+                'transaction',
+            ),
+        ).toBe(true);
 
         expect(captureEvent).toHaveBeenCalledWith(
             'import_ai_mapping_imported',
@@ -230,12 +337,13 @@ describe('useAiColumnSuggestion', () => {
     it('tracks nothing without a suggestion', () => {
         const { result } = renderHook(() => useAiColumnSuggestion());
 
-        result.current.trackImported(
-            toMapping(),
-            'account_drawer',
-            'transaction',
-        );
-
+        expect(
+            result.current.importedWith(
+                toMapping(),
+                'account_drawer',
+                'transaction',
+            ),
+        ).toBe(false);
         expect(captureEvent).not.toHaveBeenCalled();
     });
 });

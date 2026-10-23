@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { columnShape, describeColumns } from './column-shape';
+import { columnShape, describeColumns, isAllPositive } from './column-shape';
 
 describe('columnShape', () => {
     it.each([
@@ -116,5 +116,30 @@ describe('describeColumns', () => {
         expect(describeColumns(['Amount'], long)[0].shape).toBe(
             'integer, mixed signs',
         );
+    });
+});
+
+describe('the sign of a long column', () => {
+    it('is read over every value, not only the sample', () => {
+        const amounts = Array.from({ length: 1000 }, (_, index) => ({
+            Amount: index === 501 ? '-5.00' : '12.00',
+        }));
+        const [column] = describeColumns(['Amount'], amounts);
+
+        expect(column.shape).toBe('number, 2 decimals with ".", mixed signs');
+        expect(isAllPositive(column.shape)).toBe(false);
+    });
+
+    it('tells an all-positive amount column apart', () => {
+        expect(isAllPositive('number, 2 decimals with ",", all positive')).toBe(
+            true,
+        );
+        expect(isAllPositive('integer, all positive')).toBe(true);
+        expect(isAllPositive('number, 2 decimals with ",", mixed signs')).toBe(
+            false,
+        );
+        expect(
+            isAllPositive('text, avg 12 chars, mostly distinct values'),
+        ).toBe(false);
     });
 });

@@ -1,5 +1,5 @@
 import ImportColumnSuggestionController from '@/actions/App/Http/Controllers/Api/ImportColumnSuggestionController';
-import { type ColumnDescription } from '@/lib/column-shape';
+import { isAllPositive, type ColumnDescription } from '@/lib/column-shape';
 import { detectDateFormat } from '@/lib/file-parser';
 import { type BalanceColumnMapping } from '@/types/balance-import';
 import {
@@ -63,42 +63,6 @@ export async function fetchColumnSuggestions(
     }
 }
 
-/** Fields an import cannot do without: an AI with no answer leaves them as they were. */
-const REQUIRED_FIELDS = new Set([
-    'transaction_date',
-    'description',
-    'amount',
-    'balance_date',
-    'balance',
-]);
-
-/**
- * The AI's answer as a mapping to lay over the current one. A required field
- * it could not place is left out, so the header guess still stands; an
- * optional one it found no column for is cleared.
- */
-function suggestedColumns(
-    suggestions: ColumnSuggestions,
-    fields: readonly string[],
-    kind: SuggestionKind,
-): Record<string, string | null> {
-    const mapping: Record<string, string | null> = {};
-
-    for (const field of fields) {
-        const column = suggestions.fields[field]?.column ?? null;
-        // A balance import's `balance` is required; a transaction's is not.
-        const required =
-            REQUIRED_FIELDS.has(field) &&
-            !(kind === 'transaction' && field === 'balance');
-
-        if (column !== null || !required) {
-            mapping[field] = column;
-        }
-    }
-
-    return mapping;
-}
-
 export const TRANSACTION_FIELDS = [
     'transaction_date',
     'description',
@@ -116,11 +80,39 @@ export const BALANCE_FIELDS = [
     'invested_amount',
 ] as const;
 
+/** The fields an import cannot do without: an AI with no answer leaves them as they were. */
+const REQUIRED_FIELDS: Record<SuggestionKind, readonly string[]> = {
+    transaction: ['transaction_date', 'description', 'amount'],
+    balance: ['balance_date', 'balance'],
+};
+
+/**
+ * The AI's answer as a mapping to lay over the current one. A required field
+ * it could not place is left out, so the header guess still stands; an
+ * optional one it found no column for is cleared.
+ */
+function suggestedColumns(
+    suggestions: ColumnSuggestions,
+    fields: readonly string[],
+    kind: SuggestionKind,
+): Record<string, string | null> {
+    const mapping: Record<string, string | null> = {};
+
+    for (const field of fields) {
+        const column = suggestions.fields[field]?.column ?? null;
+
+        if (column !== null || !REQUIRED_FIELDS[kind].includes(field)) {
+            mapping[field] = column;
+        }
+    }
+
+    return mapping;
+}
+
 /**
  * The transaction mapping the AI suggests. A direction column only matters
  * when the amounts carry no sign, so `transaction_type` is kept only when the
- * suggested amount column is all positive (the rule that took the eval from
- * 93% to 99%).
+ * suggested amount column is all positive.
  */
 export function suggestedTransactionMapping(
     suggestions: ColumnSuggestions,
@@ -137,7 +129,7 @@ export function suggestedTransactionMapping(
             ? ''
             : (columns[amountIndex]?.shape ?? '');
 
-    if (!amountShape.includes('all positive')) {
+    if (!isAllPositive(amountShape)) {
         mapping.transaction_type = null;
     }
 
@@ -202,18 +194,39 @@ export function mergeSuggestion<M extends FieldMapping>(
     return merged;
 }
 
-/** The date format a newly picked date column reads with, when it can tell. */
-export function redetectDateFormat(
-    rows: ParsedRow[],
-    column: string | null,
-    locale?: string,
-): { dateFormat: DateFormat; dateFormatDetected: boolean } | null {
-    const detected = column ? detectDateFormat(rows, column, locale) : null;
+/** The date format a column reads with, as far as its values tell. */
+export interface DateFormatGuess {
+    dateFormat: DateFormat;
+    dateFormatDetected: boolean;
+}
 
-    return detected
-        ? {
-              dateFormat: detected.format,
-              dateFormatDetected: !detected.ambiguous,
-          }
-        : null;
+/**
+ * The suggestion laid over the mapping (see {@link mergeSuggestion}), and the
+ * format its date column reads with when the suggestion moved it to another
+ * one; null when it did not, or the new column's dates tell nothing.
+ */
+export function applySuggestion<M extends FieldMapping>(
+    mapping: M,
+    suggested: Partial<M>,
+    keep: ReadonlySet<string>,
+    dateField: keyof M & string,
+    rows: ParsedRow[],
+    locale?: string,
+): { mapping: M; format: DateFormatGuess | null } {
+    const merged = mergeSuggestion(mapping, suggested, keep);
+    const column = merged[dateField] as string | null;
+    const detected =
+        column && column !== mapping[dateField]
+            ? detectDateFormat(rows, column, locale)
+            : null;
+
+    return {
+        mapping: merged,
+        format: detected
+            ? {
+                  dateFormat: detected.format,
+                  dateFormatDetected: !detected.ambiguous,
+              }
+            : null,
+    };
 }

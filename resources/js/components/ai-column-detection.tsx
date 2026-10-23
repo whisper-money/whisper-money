@@ -26,6 +26,7 @@ export function AiColumnDetection({
     if (status === 'suggested') {
         return (
             <span
+                role="status"
                 className={cn(
                     'inline-flex w-fit items-center gap-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-900 dark:border-violet-900 dark:bg-violet-950/50 dark:text-violet-100',
                     className,
@@ -44,6 +45,7 @@ export function AiColumnDetection({
             size="sm"
             className={cn('w-fit', className)}
             disabled={status === 'loading'}
+            aria-busy={status === 'loading'}
             onClick={onDetect}
         >
             {status === 'loading' ? (

@@ -17,7 +17,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import {
-    pickFields,
     suggestedTransactionMapping,
     TRANSACTION_FIELDS,
 } from '@/lib/ai-import-mapping';
@@ -108,11 +107,10 @@ export function StepImportTransactions({
     const ai = useAiColumnSuggestion();
     const {
         request: requestAi,
-        reset: resetAi,
+        begin: beginAi,
         touch: touchAi,
-        adopt: adoptAi,
-        status: aiStatus,
-        trackImported: trackAiImported,
+        afterStoredLayout,
+        importedWith,
     } = ai;
 
     const supportedCurrencies = useMemo(
@@ -187,7 +185,7 @@ export function StepImportTransactions({
      * picked by hand unless the user pressed the button.
      */
     const requestSuggestion = useCallback(
-        (read: ParsedImportFile, everything: boolean) => {
+        (read: ParsedImportFile, everything: boolean, token?: number) => {
             const columns = describeColumns(read.headers, read.rows);
 
             void requestAi<ColumnMapping>({
@@ -195,6 +193,7 @@ export function StepImportTransactions({
                 columns,
                 accountId,
                 everything,
+                token,
                 toMapping: (suggestions) =>
                     suggestedTransactionMapping(suggestions, columns),
                 apply: (suggested, keep) =>
@@ -234,6 +233,8 @@ export function StepImportTransactions({
                 return;
             }
 
+            const token = beginAi();
+
             try {
                 const read = await parseImportFile(file, locale);
 
@@ -242,8 +243,6 @@ export function StepImportTransactions({
                     return;
                 }
 
-                resetAi();
-
                 const stored = accountId
                     ? await applyStoredImportConfig(read, accountId)
                     : null;
@@ -251,14 +250,9 @@ export function StepImportTransactions({
                 setParsed(stored ?? read);
                 setScreen('columns');
 
-                if (stored?.aiSuggested) {
-                    adoptAi(pickFields(stored.mapping, TRANSACTION_FIELDS));
-                }
-
-                // No layout of this account fits the file: the AI is asked.
-                if (!stored) {
-                    requestSuggestion(read, false);
-                }
+                afterStoredLayout(token, stored, TRANSACTION_FIELDS, () =>
+                    requestSuggestion(read, false, token),
+                );
             } catch (error) {
                 reject(
                     file.name,
@@ -270,7 +264,14 @@ export function StepImportTransactions({
                 );
             }
         },
-        [accountId, locale, reject, resetAi, requestSuggestion, adoptAi],
+        [
+            accountId,
+            locale,
+            reject,
+            beginAi,
+            requestSuggestion,
+            afterStoredLayout,
+        ],
     );
 
     const handleMappingChange = useCallback(
@@ -368,9 +369,12 @@ export function StepImportTransactions({
             void saveImportConfig(selectedAccount.id, {
                 columnMapping: parsed.mapping,
                 dateFormat: parsed.dateFormat,
-                aiSuggested: aiStatus(parsed.mapping) === 'suggested',
+                aiSuggested: importedWith(
+                    parsed.mapping,
+                    'onboarding',
+                    'transaction',
+                ),
             });
-            trackAiImported(parsed.mapping, 'onboarding', 'transaction');
         }
 
         captureEvent('onboarding_import_completed', {
@@ -405,8 +409,7 @@ export function StepImportTransactions({
         unreadable,
         onComplete,
         parsed,
-        aiStatus,
-        trackAiImported,
+        importedWith,
     ]);
 
     /**

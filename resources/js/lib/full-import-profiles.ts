@@ -1,6 +1,5 @@
 import {
-    mergeSuggestion,
-    redetectDateFormat,
+    applySuggestion,
     suggestedTransactionMapping,
     type ColumnSuggestions,
 } from '@/lib/ai-import-mapping';
@@ -356,15 +355,16 @@ export function applyFullImportSuggestion(
     keep: ReadonlySet<string>,
     locale?: string,
 ): FullImportMapping {
-    const merged = mergeSuggestion(mapping, suggested, keep);
-    const format =
-        merged.date !== mapping.date
-            ? redetectDateFormat(rows, merged.date, locale)
-            : null;
+    const { mapping: merged, format } = applySuggestion(
+        mapping,
+        suggested,
+        keep,
+        'date',
+        rows,
+        locale,
+    );
 
-    return format?.dateFormatDetected
-        ? { ...merged, dateFormat: format.dateFormat }
-        : merged;
+    return format ? { ...merged, dateFormat: format.dateFormat } : merged;
 }
 
 /** The mapping in the shape the server stores for next time. */

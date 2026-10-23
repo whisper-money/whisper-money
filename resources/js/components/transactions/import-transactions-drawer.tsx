@@ -14,7 +14,6 @@ import { Progress } from '@/components/ui/progress';
 import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
 import {
-    pickFields,
     suggestedTransactionMapping,
     TRANSACTION_FIELDS,
 } from '@/lib/ai-import-mapping';
@@ -126,7 +125,7 @@ export function ImportTransactionsDrawer({
     );
     const [state, setState] = useState<ImportState>(EMPTY_STATE);
     const ai = useAiColumnSuggestion();
-    const { reset: resetAi } = ai;
+    const { begin: resetAi } = ai;
     // A credit card has no balance, so the import neither asks for one nor
     // carries one over from the file.
     const tracksBalance = selectedAccount
@@ -169,6 +168,7 @@ export function ImportTransactionsDrawer({
         headers: string[],
         rows: ParsedRow[],
         everything: boolean,
+        token?: number,
     ) => {
         const columns = describeColumns(headers, rows);
 
@@ -177,6 +177,7 @@ export function ImportTransactionsDrawer({
             columns,
             accountId: state.selectedAccountId,
             everything,
+            token,
             toMapping: (suggestions) =>
                 suggestedTransactionMapping(suggestions, columns),
             apply: (suggested, keep) =>
@@ -210,7 +211,7 @@ export function ImportTransactionsDrawer({
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
-        ai.reset();
+        const token = ai.begin();
 
         if (!file) {
             setState((prev) => ({
@@ -247,15 +248,18 @@ export function ImportTransactionsDrawer({
                 ? await applyStoredImportConfig(parsed, accountId)
                 : null;
 
-            // No layout of this account fits the file: the AI is asked instead.
+            ai.afterStoredLayout(token, stored, TRANSACTION_FIELDS, () =>
+                requestSuggestion(
+                    file,
+                    parsed.headers,
+                    parsed.rows,
+                    false,
+                    token,
+                ),
+            );
+
             if (!stored) {
-                requestSuggestion(file, parsed.headers, parsed.rows, false);
-
                 return;
-            }
-
-            if (stored.aiSuggested) {
-                ai.adopt(pickFields(stored.mapping, TRANSACTION_FIELDS));
             }
 
             // Only apply if this file is still the selected one, so a slow load
@@ -551,13 +555,12 @@ export function ImportTransactionsDrawer({
             void saveImportConfig(selectedAccount.id, {
                 columnMapping: state.columnMapping,
                 dateFormat: state.dateFormat,
-                aiSuggested: ai.status(state.columnMapping) === 'suggested',
+                aiSuggested: ai.importedWith(
+                    state.columnMapping,
+                    'account_drawer',
+                    'transaction',
+                ),
             });
-            ai.trackImported(
-                state.columnMapping,
-                'account_drawer',
-                'transaction',
-            );
         }
 
         const errorCount = errors.length;
