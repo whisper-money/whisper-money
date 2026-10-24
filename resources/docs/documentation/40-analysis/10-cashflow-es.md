@@ -251,8 +251,8 @@ La mayoría de transferencias entre tus propias cuentas no deberían contar como
 Opciones:
 
 - No mostrar.
-- Mostrar como entrada de efectivo.
-- Mostrar como salida de efectivo.
+- Mostrar como entrada de dinero.
+- Mostrar como salida de dinero.
 
 ## El dinero que apartas
 
