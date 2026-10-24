@@ -40,10 +40,9 @@ class ImportBalanceWriter
 
                 $chunk->delete();
                 $import->recordStats(['balances' => $totals]);
+                DataVersion::bumpOwnerOf($import);
             });
         }
-
-        DataVersion::bumpOwnerOf($import);
     }
 
     /**

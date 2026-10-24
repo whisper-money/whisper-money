@@ -4,6 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Services\Cache\DataVersion;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Bumps the owning user's data version whenever a row is created, updated or
@@ -20,8 +21,15 @@ trait BumpsDataVersion
         $bump = static fn (Model $model) => DataVersion::bumpOwnerOf($model->dataVersionOwner());
 
         static::created($bump);
-        static::updated($bump);
         static::deleted($bump);
+        static::updated(static function (Model $model) use ($bump): void {
+            $bump($model);
+
+            // A row moved to another user or space leaves the old one's view too.
+            if ($model->isDirty(['user_id', 'space_id'])) {
+                DataVersion::bumpOwner($model->getOriginal('user_id'), $model->getOriginal('space_id'));
+            }
+        });
     }
 
     /**
@@ -34,8 +42,9 @@ trait BumpsDataVersion
     }
 
     /**
-     * The parent behind a belongs-to relation, trashed or not: a soft-deleted
-     * account still owns the balances being removed with it.
+     * The parent behind a belongs-to relation, trashed or not (a soft-deleted
+     * account still owns the balances being removed with it), looked up once
+     * per parent for the request or job.
      */
     protected function dataVersionOwnerVia(string $relation): ?Model
     {
@@ -43,6 +52,10 @@ trait BumpsDataVersion
             return $this->getRelation($relation);
         }
 
-        return $this->{$relation}()->withoutGlobalScopes()->first();
+        /** @var BelongsTo<Model, $this> $parent */
+        $parent = $this->{$relation}();
+        $key = $parent->getRelated()->getTable().':'.$this->getAttribute($parent->getForeignKeyName());
+
+        return DataVersion::ownerFor($key, fn (): ?Model => $parent->withoutGlobalScopes()->first());
     }
 }

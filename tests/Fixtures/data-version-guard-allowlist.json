@@ -63,7 +63,7 @@
         "$model::query() ->whereKey($item['id']) ->where('user_id', $request->user()->id) ->update(": "DataVersion::bumpUser() after the reorder loop"
     },
     "app/Http/Controllers/OnboardingController.php": {
-        "$request->user()->update(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$request->user()->update(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Http/Controllers/SavingsGoalController.php": {
         "$changes = $label->transactions()->sync(": "custom LabelTransaction pivot: attach/detach fire its model events (BumpsDataVersion)"
@@ -80,23 +80,23 @@
         "Import::query()->whereKey($import->id)->where('status', ImportStatus::Undoing->value)->update(": "not watched: imports (status only)"
     },
     "app/Http/Controllers/Settings/PasswordController.php": {
-        "$request->user()->update(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$request->user()->update(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Http/Controllers/TransactionController.php": {
         "$transaction->labels()->sync(": "custom LabelTransaction pivot: attach/detach fire its model events (BumpsDataVersion)",
         "$this->bulkSelection($request->user()->id, $transactionIds, $filters)->update(": "DataVersion::bumpOwnersOf($transactions) at the end of bulkUpdate()"
     },
     "app/Http/Middleware/SetLocale.php": {
-        "$request->user()->update(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$request->user()->update(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Http/Middleware/TrackLastActiveAt.php": {
-        "$user->saveQuietly(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$user->saveQuietly(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Listeners/PersistUpsellSourceFromStripe.php": {
         "Subscription::query() ->where('stripe_id', $stripeId) ->whereNull('upsell_source') ->update(": "not watched: subscriptions"
     },
     "app/Listeners/UpdateLastLoggedInAt.php": {
-        "$user->forceFill([ 'last_logged_in_at' => $user->freshTimestamp(), ])->saveQuietly(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$user->forceFill([ 'last_logged_in_at' => $user->freshTimestamp(), ])->saveQuietly(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Mcp/Tools/CreateAutomationRule.php": {
         "$rule->labels()->sync(": "not watched: automation rule labels"
@@ -126,12 +126,12 @@
         "static::query()->whereKey($this->id)->update(": "not watched: imports (stats only)"
     },
     "app/Models/User.php": {
-        "$this->forceFill(['current_space_id' => $space->id])->saveQuietly(": "not watched: a users row (currency and locale go into the cache key instead)",
+        "$this->forceFill(['current_space_id' => $space->id])->saveQuietly(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token",
         "$this->aiConsents()->active($scope)->update(": "not watched: ai_consents",
-        "$this->forceFill([ 'email' => $this->deletedEmail(), ])->saveQuietly(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$this->forceFill([ 'email' => $this->deletedEmail(), ])->saveQuietly(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Services/Achievements/Awarder.php": {
-        "$user->forceFill(['achievements_count' => $user->achievements()->count()])->saveQuietly(": "not watched: a users row (currency and locale go into the cache key instead)"
+        "$user->forceFill(['achievements_count' => $user->achievements()->count()])->saveQuietly(": "not watched: a users row. The user columns a cached figure reads (currency_code, locale, timezone, current_space_id) belong in the PR2 cache key, not in the token"
     },
     "app/Services/Ai/AiRuleLearner.php": {
         "$outcome->transaction->saveQuietly(": "DataVersion::bumpOwnerOf() right after"
@@ -175,21 +175,21 @@
         "ExchangeRate::query()->upsert(": "DataVersion::bumpRates() right after"
     },
     "app/Services/Imports/AccountPurger.php": {
-        "Account::withTrashed()->whereIn('id', $accountIds)->forceDelete(": "DataVersion::bumpOwnersOf($owners) right after",
-        "$deleted += $model->newQueryWithoutScopes()->whereKey($ids->all())->toBase()->delete(": "callers bump: purge() and ImportUndoer::undo()"
+        "Account::withTrashed()->whereIn('id', $accountIds)->forceDelete(": "DataVersion::bumpOwnersOf($owners) in the finally right after",
+        "$deleted += $model->newQueryWithoutScopes()->whereKey($ids->all())->toBase()->delete(": "callers bump in a finally: purge() and ImportUndoer::undo()"
     },
     "app/Services/Imports/FullImporter.php": {
         "$import->chunks()->delete(": "not watched: import_chunks"
     },
     "app/Services/Imports/ImportBalanceWriter.php": {
-        "AccountBalance::query()->upsert(": "DataVersion::bumpOwnerOf($import) at the end of write()",
-        "$totals['imported'] += count($created) + ($preexisting === [] ? 0 : AccountBalance::query()->insertOrIgnore(": "DataVersion::bumpOwnerOf($import) at the end of write()"
+        "AccountBalance::query()->upsert(": "DataVersion::bumpOwnerOf($import) inside each chunk's transaction",
+        "$totals['imported'] += count($created) + ($preexisting === [] ? 0 : AccountBalance::query()->insertOrIgnore(": "DataVersion::bumpOwnerOf($import) inside each chunk's transaction"
     },
     "app/Services/Imports/ImportUndoer.php": {
-        "Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(": "DataVersion::bumpOwnerOf($import) at the end of undo()",
-        "Transaction::query() ->where('user_id', $root->user_id) ->whereIn('category_id', [$root->id, ...$this->tree->descendantIds($root)]) ->update(": "DataVersion::bumpOwnerOf($import) at the end of undo()",
-        "$deleted = Bank::withTrashed() ->where('import_id', $import->id) ->whereNotExists(fn (QueryBuilder $accounts) => $accounts ->selectRaw('1') ->from('accounts') ->whereColumn('accounts.bank_id', 'banks.id')) ->forceDelete(": "DataVersion::bumpOwnerOf($import) at the end of undo() (covers the accounts the bank cascade takes)",
-        "Bank::withTrashed()->where('import_id', $import->id)->update(": "DataVersion::bumpOwnerOf($import) at the end of undo()"
+        "Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(": "DataVersion::bumpOwnerOf($import) in the finally of undo(), so a failure halfway still bumps",
+        "Transaction::query() ->where('user_id', $root->user_id) ->whereIn('category_id', [$root->id, ...$this->tree->descendantIds($root)]) ->update(": "DataVersion::bumpOwnerOf($import) in the finally of undo(), so a failure halfway still bumps",
+        "$deleted = Bank::withTrashed() ->where('import_id', $import->id) ->whereNotExists(fn (QueryBuilder $accounts) => $accounts ->selectRaw('1') ->from('accounts') ->whereColumn('accounts.bank_id', 'banks.id')) ->forceDelete(": "DataVersion::bumpOwnerOf($import) in the finally of undo(), so a failure halfway still bumps (covers the accounts the bank cascade takes)",
+        "Bank::withTrashed()->where('import_id', $import->id)->update(": "DataVersion::bumpOwnerOf($import) in the finally of undo(), so a failure halfway still bumps"
     },
     "app/Services/LoanBalanceGeneratorService.php": {
         "AccountBalance::upsert(": "DataVersion::bumpOwnerOf($account) at the end of generateHistoricalBalances()"

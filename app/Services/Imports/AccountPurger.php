@@ -35,10 +35,14 @@ class AccountPurger
         }
 
         $owners = Account::withTrashed()->whereIn('id', $accountIds)->get(['user_id', 'space_id']);
-        $transactions = $this->deleteInChunks(Transaction::withTrashed()->whereIn('account_id', $accountIds));
-        $this->deleteInChunks(AccountBalance::query()->whereIn('account_id', $accountIds));
-        Account::withTrashed()->whereIn('id', $accountIds)->forceDelete();
-        DataVersion::bumpOwnersOf($owners);
+
+        try {
+            $transactions = $this->deleteInChunks(Transaction::withTrashed()->whereIn('account_id', $accountIds));
+            $this->deleteInChunks(AccountBalance::query()->whereIn('account_id', $accountIds));
+            Account::withTrashed()->whereIn('id', $accountIds)->forceDelete();
+        } finally {
+            DataVersion::bumpOwnersOf($owners);
+        }
 
         return $transactions;
     }

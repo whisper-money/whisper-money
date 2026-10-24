@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Services\Cache\DataVersion;
 use App\Services\LoanAmortizationService;
 use Illuminate\Console\Command;
 
@@ -20,6 +21,13 @@ class GenerateMonthlyLoanBalances extends Command
     }
 
     public function handle(): int
+    {
+        // A sweep over every user: one data-version bump per user at the end,
+        // not one per row it writes.
+        return DataVersion::deferBumps(fn (): int => $this->generateBalances());
+    }
+
+    private function generateBalances(): int
     {
         $this->info('Generating monthly loan balances...');
 

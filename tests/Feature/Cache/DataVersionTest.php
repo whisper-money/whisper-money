@@ -277,3 +277,17 @@ it('writes the token once for a batch job that touches many rows', function () {
     expect(BudgetTransaction::query()->count())->toBe(4)
         ->and($writes)->toBe(1);
 });
+
+it('bumps the previous owner too when a row moves to another space', function () {
+    $partner = User::factory()->create();
+    $household = Space::factory()->create(['owner_id' => $partner->id]);
+    $account = Account::factory()->create(['user_id' => $partner->id, 'space_id' => $household->id]);
+
+    expectBump($partner, fn () => $account->update(['space_id' => $partner->activeSpace()->id]));
+});
+
+it('writes the token once for a scheduled sweep', function () {
+    Budget::factory()->count(3)->create(['user_id' => $this->user->id]);
+
+    expect(tokenWrites($this->user, fn () => $this->artisan('budgets:generate-periods')->assertSuccessful()))->toBe(1);
+});

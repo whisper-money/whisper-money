@@ -53,6 +53,8 @@ it('flags a new builder write on a watched table and ignores unwatched ones', fu
 
         DB::table('jobs')->delete();
         $transaction->save();
+        Transaction::insert($rows);
+        Transaction::onlyTrashed()->where('user_id', $userId)->restore();
         PHP);
 
     try {
@@ -62,12 +64,14 @@ it('flags a new builder write on a watched table and ignores unwatched ones', fu
         rmdir($directory);
     }
 
-    expect(array_column($hits, 'line'))->toBe([6, 8])
-        ->and(DataVersionWriteScanner::unlisted($hits, []))->toHaveCount(2)
+    expect(array_column($hits, 'line'))->toBe([6, 8, 12, 13])
+        ->and(DataVersionWriteScanner::unlisted($hits, []))->toHaveCount(4)
         ->and(DataVersionWriteScanner::unlisted($hits, [
             'Fixture.php' => [
                 "DB::table('transactions')" => 'bumped right after',
                 "DB::table('transactions') ->where('user_id', \$userId) ->update(" => 'bumped right after',
+                'Transaction::insert(' => 'bumped right after',
+                "Transaction::onlyTrashed()->where('user_id', \$userId)->restore(" => 'bumped right after',
             ],
         ]))->toBeEmpty();
 });

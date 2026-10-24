@@ -45,7 +45,8 @@ final class DataVersionWriteScanner
 
     private const string PATTERN = '/'
         .'\b(?:insertOrIgnore|upsert|insertGetId|insertUsing|updateOrInsert|saveQuietly|updateQuietly|deleteQuietly|forceDeleteQuietly|restoreQuietly|withoutEvents)\s*\('
-        .'|\)\s*\??->\s*(?:update|delete|forceDelete|increment|decrement|incrementEach|decrementEach|insert|sync|syncWithoutDetaching|attach|detach|toggle|updateExistingPivot)\s*\('
+        .'|\)\s*\??->\s*(?:update|delete|forceDelete|restore|increment|decrement|incrementEach|decrementEach|insert|sync|syncWithoutDetaching|attach|detach|toggle|updateExistingPivot)\s*\('
+        .'|\b[A-Z]\w*::(?:insert|truncate)\s*\('
         .'|\bDB::(?:update|delete|insert|statement|unprepared|affectingStatement)\s*\('
         .'|\bDB::table\(\s*(?<table>[^)]*)\)'
         .'/';

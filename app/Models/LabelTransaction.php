@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BumpsDataVersion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class LabelTransaction extends Pivot
@@ -17,8 +18,14 @@ class LabelTransaction extends Pivot
 
     protected $keyType = 'string';
 
+    /** @return BelongsTo<Transaction, $this> */
+    public function transaction(): BelongsTo
+    {
+        return $this->belongsTo(Transaction::class);
+    }
+
     public function dataVersionOwner(): ?Model
     {
-        return Transaction::withTrashed()->find($this->getAttribute('transaction_id'), ['id', 'user_id', 'space_id']);
+        return $this->dataVersionOwnerVia('transaction');
     }
 }

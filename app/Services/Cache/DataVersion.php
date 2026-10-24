@@ -24,7 +24,7 @@ use Throwable;
  *
  * Bumps run after the surrounding transaction commits, so a reader can never
  * pick up the new token and then read data that is not committed yet; a rolled
- * back transaction bumps nothing. Bumps queued while committing or while
+ * back transaction does not bump by itself. Bumps queued while committing or while
  * {@see deferBumps()} runs are deduplicated and flushed in one pass.
  */
 #[Scoped]
@@ -42,6 +42,11 @@ final class DataVersion
 
     /** @var array<string, list<string>> */
     private array $spaceMembers = [];
+
+    /** @var array<string, ?Model> */
+    private array $owners = [];
+
+    private bool $storeDown = false;
 
     public static function bumpUser(User|string $user): void
     {
@@ -78,6 +83,23 @@ final class DataVersion
         }
 
         self::bumpOwner($row->getAttribute('user_id'), $row->getAttribute('space_id'));
+    }
+
+    /**
+     * The parent row that owns a child row, looked up once per request or job:
+     * a sync writing hundreds of balances for one account asks for it once.
+     *
+     * @param  Closure(): ?Model  $resolve
+     */
+    public static function ownerFor(string $key, Closure $resolve): ?Model
+    {
+        $instance = app(self::class);
+
+        if (! array_key_exists($key, $instance->owners)) {
+            $instance->owners[$key] = $resolve();
+        }
+
+        return $instance->owners[$key];
     }
 
     /**
@@ -142,10 +164,19 @@ final class DataVersion
     {
         $store = self::store();
         $key = self::KEY_PREFIX.$id;
+        $token = $store->get($key);
 
-        $store->add($key, (string) Str::ulid(), null);
+        if ($token !== null) {
+            return $token;
+        }
 
-        return (string) $store->get($key);
+        // With a TTL the store's own atomic add (SET NX) is used, so two
+        // readers racing after an eviction agree on one token. Ten years is
+        // "no expiry" in practice; bumps write it with no TTL at all.
+        $minted = (string) Str::ulid();
+        $store->add($key, $minted, now()->addYears(10));
+
+        return $store->get($key) ?? $minted;
     }
 
     /**
@@ -177,6 +208,10 @@ final class DataVersion
         $ids = array_keys($this->pending);
         $this->pending = [];
 
+        if ($this->storeDown) {
+            return;
+        }
+
         try {
             $store = self::store();
 
@@ -184,8 +219,11 @@ final class DataVersion
                 $store->forever(self::KEY_PREFIX.$id, (string) Str::ulid());
             }
         } catch (Throwable $exception) {
-            // A cache outage must never fail the write that triggered it;
-            // the entries' TTL bounds how long they can stay stale.
+            // A cache outage must never fail the write that triggered it, and
+            // must not cost every later write in this request or job another
+            // connection timeout either: the entries' TTL bounds how long
+            // they can stay stale.
+            $this->storeDown = true;
             report($exception);
         }
     }
