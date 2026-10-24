@@ -114,6 +114,16 @@ test('date range scope keeps the whole boundary day when a bound carries a time'
     expect($dates)->toBe(['2025-06-01', '2025-06-30']);
 });
 
+test('date range scope matches nothing for an unparseable bound instead of throwing or dropping it', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2025-06-15',
+    ]);
+
+    expect(Transaction::query()->applyFilters(['date_from' => 'not-a-date'])->count())->toBe(0);
+});
+
 test('rejects a date filter that is not a plain Y-m-d date', function (string $date) {
     // `date` accepts every one of these - it only asks strtotime() to parse the
     // string and checkdate() to like the pieces, so "275752-07-04" is a date in

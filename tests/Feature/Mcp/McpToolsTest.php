@@ -470,4 +470,5 @@ it('searches transactions within an inclusive date range', function (string $fro
     'plain dates' => ['2026-03-01', '2026-03-31'],
     'datetimes' => ['2026-03-01 18:30:00', '2026-03-31 09:15:00'],
     'ISO 8601' => ['2026-03-01T18:30:00Z', '2026-03-31T09:15:00Z'],
+    'ISO 8601 with an offset' => ['2026-03-01T23:30:00-05:00', '2026-03-31T23:30:00-05:00'],
 ]);

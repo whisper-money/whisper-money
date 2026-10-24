@@ -17,6 +17,7 @@ use App\Services\CategoryTree;
 use App\Services\CurrencyOptions;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use Database\Factories\TransactionFactory;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
@@ -526,11 +527,25 @@ class Transaction extends Model
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
      */
-    public function scopeTransactionDateWithin(Builder $query, mixed $from, mixed $to): Builder
+    public function scopeTransactionDateWithin(Builder $query, ?string $from, ?string $to): Builder
     {
         return $query
-            ->when(filled($from), fn (Builder $q) => $q->where('transaction_date', '>=', Carbon::parse($from)->toDateString()))
-            ->when(filled($to), fn (Builder $q) => $q->where('transaction_date', '<=', Carbon::parse($to)->toDateString()));
+            ->when(filled($from), fn (Builder $q) => $q->where('transaction_date', '>=', self::dateBound($from)))
+            ->when(filled($to), fn (Builder $q) => $q->where('transaction_date', '<=', self::dateBound($to)));
+    }
+
+    /**
+     * An unparseable bound goes through untouched rather than throwing or being
+     * dropped: dropping it would widen what a bulk update or rule re-evaluation
+     * writes to, and MySQL matches nothing against it, as `whereDate()` did.
+     */
+    private static function dateBound(string $value): string
+    {
+        try {
+            return Carbon::parse($value)->toDateString();
+        } catch (InvalidFormatException) {
+            return $value;
+        }
     }
 
     /**
