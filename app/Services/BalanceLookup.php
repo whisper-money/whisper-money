@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use LogicException;
 
 class BalanceLookup
 {
@@ -18,6 +19,19 @@ class BalanceLookup
      * @var array<string, array<string, int>>
      */
     private array $dailyNetByAccount = [];
+
+    /**
+     * The walked-back accounts (see `walkBackAccountIds()`) that moved at least
+     * once on or before the range end, keyed by account ID.
+     *
+     * @var array<string, true>
+     */
+    private array $accountsWithMovements = [];
+
+    /**
+     * The first day the lookup was loaded for; no movement before it is read.
+     */
+    private string $rangeStart = '';
 
     /**
      * Sorted balance records grouped by account ID.
@@ -38,13 +52,19 @@ class BalanceLookup
     /**
      * Preload all balance data for a set of accounts covering the given date range.
      *
-     * Executes exactly 5 efficient queries (no correlated subqueries):
+     * Executes at most 6 queries, none of them reading an account's whole history:
      * 1. A derived-table join to find the latest balance record before the range start per account.
      * 2. A derived-table join to find the latest non-null invested_amount before the range start per account.
      * 3. All balance records within the range.
      * 4. The accounts that only count as a share of their balance.
-     * 5. The net movement per account per day, which carries a balance from the
-     *    day it was recorded to the day being asked about.
+     * 5. The net movement per account per day inside the range, for the accounts
+     *    whose balance may have to be walked back (see `dailyNetFor()`).
+     * 6. Whether those that moved nothing inside the range moved anything before
+     *    it (see `walkBackAccountsThatMoved()`).
+     *
+     * Every date asked about must fall on or after the range start: movements
+     * before it are never read, so a balance cannot be walked back past it, and
+     * `getBalanceAt()` refuses to rather than answer from half the movements.
      *
      * Those accounts get every figure scaled down to the owner's share here,
      * so every reader (net worth, evolution charts, account metrics) stays
@@ -56,6 +76,7 @@ class BalanceLookup
     public static function forAccounts(Collection|array $accountIds, Carbon $rangeStart, Carbon $rangeEnd): self
     {
         $instance = new self;
+        $instance->rangeStart = $rangeStart->toDateString();
 
         if (empty($accountIds)) {
             return $instance;
@@ -101,7 +122,7 @@ class BalanceLookup
             )
             ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.invested_amount']);
 
-        // Query 2: All balance records within the range.
+        // Query 3: All balance records within the range.
         $rangeRecords = AccountBalance::query()
             ->whereIn('account_id', $accountIdList)
             ->whereBetween('balance_date', [$startDate, $endDate])
@@ -116,20 +137,9 @@ class BalanceLookup
             ->get()
             ->keyBy('id');
 
-        // Query 5: what moved through each account on each day, so a balance
-        // recorded on one date can be carried to another. Grouped in the
-        // database rather than read row by row: a year of movements is a few
-        // hundred days, and the alternative is every transaction the user owns.
-        //
-        // The sum lands in `amount`, the column it is a sum of, so each row is
-        // still a transaction-shaped thing with its casts intact rather than a
-        // raw one carrying an attribute the model has never heard of.
-        $dailyNet = Transaction::query()
-            ->whereIn('account_id', $accountIdList)
-            ->where('transaction_date', '<=', $endDate)
-            ->selectRaw('account_id, transaction_date, SUM(amount) as amount')
-            ->groupBy('account_id', 'transaction_date')
-            ->get();
+        $walkBackAccountIds = self::walkBackAccountIds($accountIdList, $carryForwardRecords, $rangeRecords);
+        $dailyNet = self::dailyNetFor($walkBackAccountIds, $startDate, $endDate);
+        $instance->accountsWithMovements = self::walkBackAccountsThatMoved($walkBackAccountIds, $dailyNet, $startDate);
 
         // Build the per-account sorted arrays
         foreach ($accountIdList as $accountId) {
@@ -185,6 +195,85 @@ class BalanceLookup
         }
 
         return $instance;
+    }
+
+    /**
+     * The accounts whose balance may have to be walked back through their
+     * movements: no balance before the range, and at least one inside it. One
+     * seeded before the range always has a balance on or before any day in it,
+     * and one with no balance at all has nothing to walk back from.
+     *
+     * @param  list<string>  $accountIds
+     * @param  EloquentCollection<int, AccountBalance>  $carryForwardRecords
+     * @param  EloquentCollection<int, AccountBalance>  $rangeRecords
+     * @return list<string>
+     */
+    private static function walkBackAccountIds(array $accountIds, EloquentCollection $carryForwardRecords, EloquentCollection $rangeRecords): array
+    {
+        $seeded = $carryForwardRecords->pluck('account_id')->flip();
+        $recordedInRange = $rangeRecords->pluck('account_id')->flip();
+
+        return array_values(array_filter(
+            $accountIds,
+            fn (string $accountId): bool => ! $seeded->has($accountId) && $recordedInRange->has($accountId),
+        ));
+    }
+
+    /**
+     * What moved through each account on each day of the range, so a balance
+     * recorded on one date can be carried to another. Grouped in the database
+     * rather than read row by row: a year of movements is a few hundred days,
+     * and the alternative is every transaction the user owns.
+     *
+     * Bounded to the range on both ends. A walk back starts at a balance inside
+     * the range and stops at a day on or after its start, so neither the
+     * account's older history nor anything past the range end is ever summed.
+     *
+     * The sum lands in `amount`, the column it is a sum of, so each row is
+     * still a transaction-shaped thing with its casts intact rather than a raw
+     * one carrying an attribute the model has never heard of.
+     *
+     * @param  list<string>  $accountIds
+     * @return EloquentCollection<int, Transaction>
+     */
+    private static function dailyNetFor(array $accountIds, string $startDate, string $endDate): EloquentCollection
+    {
+        if ($accountIds === []) {
+            return new EloquentCollection;
+        }
+
+        return Transaction::query()
+            ->whereIn('account_id', $accountIds)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->selectRaw('account_id, transaction_date, SUM(amount) as amount')
+            ->groupBy('account_id', 'transaction_date')
+            ->get();
+    }
+
+    /**
+     * The walked-back accounts with any movement on or before the range end. One
+     * that moved inside the range is already known from its grouped rows; one
+     * that did not is asked whether it moved before the range. That is an
+     * EXISTS correlated on the account, which stops at the first row it finds —
+     * going through `Account` is what makes it one, where a DISTINCT over
+     * `transactions` would read every row the account has.
+     *
+     * @param  list<string>  $accountIds
+     * @param  EloquentCollection<int, Transaction>  $dailyNet
+     * @return array<string, true>
+     */
+    private static function walkBackAccountsThatMoved(array $accountIds, EloquentCollection $dailyNet, string $startDate): array
+    {
+        $movedInRange = $dailyNet->pluck('account_id')->unique()->all();
+        $quietInRange = array_values(array_diff($accountIds, $movedInRange));
+
+        $movedBeforeRange = $quietInRange === [] ? [] : Account::withTrashed()
+            ->whereIn('id', $quietInRange)
+            ->whereHas('transactions', fn ($query) => $query->where('transaction_date', '<', $startDate))
+            ->pluck('id')
+            ->all();
+
+        return array_fill_keys([...$movedInRange, ...$movedBeforeRange], true);
     }
 
     /**
@@ -263,13 +352,17 @@ class BalanceLookup
             return 0;
         }
 
+        if ($dateStr < $this->rangeStart) {
+            throw new LogicException("Balances were loaded from {$this->rangeStart}, so none can be walked back to {$dateStr}.");
+        }
+
         // Nothing recorded yet on that day, but the account was photographed
         // afterwards — the shape of every account on the day it is connected —
         // so the movements since are what say where it stood. An account with
         // no movements at all is the one case with nothing to work from: there
         // the later balance would simply be repeated across months nobody has
         // any record of, which is the flat line this is here to stop drawing.
-        if (($this->dailyNetByAccount[$accountId] ?? []) === []) {
+        if (! isset($this->accountsWithMovements[$accountId])) {
             return 0;
         }
 
