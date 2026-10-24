@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
-use App\Support\SortedDates;
+use App\Support\DatedSeries;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -13,19 +13,12 @@ use LogicException;
 class BalanceLookup
 {
     /**
-     * The days each walked-back account moved on, sorted, keyed by account ID.
-     * Read with `SortedDates`, next to the running totals below.
+     * Each walked-back account's net movement summed from the range start
+     * through each day it moved, keyed by account ID, so the movement between
+     * any two dates is one subtraction rather than a walk over the days in
+     * between.
      *
-     * @var array<string, list<string>>
-     */
-    private array $movementDatesByAccount = [];
-
-    /**
-     * Each account's net movement summed from the range start through each of
-     * its movement days, so the movement between any two dates is one
-     * subtraction rather than a walk over every day in between.
-     *
-     * @var array<string, list<int>>
+     * @var array<string, DatedSeries>
      */
     private array $runningNetByAccount = [];
 
@@ -43,29 +36,18 @@ class BalanceLookup
     private string $rangeStart = '';
 
     /**
-     * Each account's balance record dates, sorted, with the balances recorded
-     * on them at the same positions in `$balancesByAccount`.
+     * Each account's recorded balances by day, keyed by account ID.
      *
-     * @var array<string, list<string>>
-     */
-    private array $balanceDatesByAccount = [];
-
-    /**
-     * @var array<string, list<int>>
+     * @var array<string, DatedSeries>
      */
     private array $balancesByAccount = [];
 
     /**
-     * Each account's dates with a non-null invested amount, sorted, with the
-     * amounts at the same positions in `$investedByAccount`. The null ones are
-     * left out so the newest known amount carries forward over them.
+     * Each account's non-null invested amounts by day, keyed by account ID.
+     * The null ones are left out so the newest known amount carries forward
+     * over them.
      *
-     * @var array<string, list<string>>
-     */
-    private array $investedDatesByAccount = [];
-
-    /**
-     * @var array<string, list<int>>
+     * @var array<string, DatedSeries>
      */
     private array $investedByAccount = [];
 
@@ -108,7 +90,7 @@ class BalanceLookup
 
         // Query 1: Get the latest balance record before the range start for each account.
         // Uses a derived table with GROUP BY + MAX() joined back, avoiding correlated subquery.
-        $carryForwardRecords = self::rowsByAccount(AccountBalance::query()
+        $carryForwardRecords = AccountBalance::query()
             ->whereIn('account_balances.account_id', $accountIdList)
             ->joinSub(
                 AccountBalance::query()
@@ -123,10 +105,10 @@ class BalanceLookup
                 }
             )
             ->toBase()
-            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.balance', 'account_balances.invested_amount']));
+            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.balance', 'account_balances.invested_amount']);
 
         // Query 2: Get the latest non-null invested_amount before the range start for each account.
-        $investedCarryForwardRecords = self::rowsByAccount(AccountBalance::query()
+        $investedCarryForwardRecords = AccountBalance::query()
             ->whereIn('account_balances.account_id', $accountIdList)
             ->joinSub(
                 AccountBalance::query()
@@ -142,15 +124,20 @@ class BalanceLookup
                 }
             )
             ->toBase()
-            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.invested_amount']));
+            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.invested_amount']);
 
         // Query 3: All balance records within the range.
-        $rangeRecords = self::rowsByAccount(AccountBalance::query()
+        $rangeRecords = AccountBalance::query()
             ->whereIn('account_id', $accountIdList)
             ->whereBetween('balance_date', [$startDate, $endDate])
             ->orderBy('balance_date')
             ->toBase()
-            ->get(['account_id', 'balance_date', 'balance', 'invested_amount']));
+            ->get(['account_id', 'balance_date', 'balance', 'invested_amount']);
+
+        // Grouped once, so building an account never scans another's rows.
+        $carryForwardRecords = self::rowsByAccount($carryForwardRecords);
+        $investedCarryForwardRecords = self::rowsByAccount($investedCarryForwardRecords);
+        $rangeRecords = self::rowsByAccount($rangeRecords);
 
         // The accounts that only count towards the user's figures as a share of
         // their balance; everything else is read at face value.
@@ -182,15 +169,9 @@ class BalanceLookup
                 static fn (object $row): bool => $row->invested_amount !== null,
             ));
 
-            $instance->balanceDatesByAccount[$accountId] = self::datesOf($balanceRows, 'balance_date');
-            $instance->balancesByAccount[$accountId] = array_map(static fn (object $row): int => $share((int) $row->balance), $balanceRows);
-            $instance->investedDatesByAccount[$accountId] = self::datesOf($investedRows, 'balance_date');
-            $instance->investedByAccount[$accountId] = array_map(static fn (object $row): int => $share((int) $row->invested_amount), $investedRows);
-
-            [$instance->movementDatesByAccount[$accountId], $instance->runningNetByAccount[$accountId]] = self::runningNet(
-                $dailyNet[$accountId] ?? [],
-                $share,
-            );
+            $instance->balancesByAccount[$accountId] = self::seriesOf($balanceRows, 'balance', $share);
+            $instance->investedByAccount[$accountId] = self::seriesOf($investedRows, 'invested_amount', $share);
+            $instance->runningNetByAccount[$accountId] = self::runningNet($dailyNet[$accountId] ?? [], $share);
         }
 
         return $instance;
@@ -198,8 +179,7 @@ class BalanceLookup
 
     /**
      * Plain query rows grouped by account ID, each group in the order the
-     * query returned it. Grouped once so building an account never scans the
-     * rows of every other one.
+     * query returned it.
      *
      * @param  Collection<int, object>  $rows
      * @return array<string, list<object>>
@@ -216,16 +196,29 @@ class BalanceLookup
     }
 
     /**
-     * The `Y-m-d` day of each row's date column. The columns are DATE, so the
-     * first ten characters are the day whatever the driver appends to them,
-     * which is what the model's `date` cast used to hand back.
+     * One account's balance rows as a series of one of their columns, scaled
+     * to the owner's share. The columns are NOT NULL, or filtered to non-null
+     * rows by the caller, so the cast never turns a missing figure into 0.
      *
      * @param  list<object>  $rows
-     * @return list<string>
+     * @param  callable(?int): ?int  $share
      */
-    private static function datesOf(array $rows, string $column): array
+    private static function seriesOf(array $rows, string $column, callable $share): DatedSeries
     {
-        return array_map(static fn (object $row): string => substr((string) $row->{$column}, 0, 10), $rows);
+        return new DatedSeries(
+            array_map(static fn (object $row): string => self::dayOf($row->balance_date), $rows),
+            array_map(static fn (object $row): int => (int) $share((int) $row->{$column}), $rows),
+        );
+    }
+
+    /**
+     * The `Y-m-d` day of a raw DATE column. Its first ten characters are the
+     * day whatever the driver appends to them, which is what the models'
+     * `date` cast used to hand back.
+     */
+    private static function dayOf(mixed $value): string
+    {
+        return substr((string) $value, 0, 10);
     }
 
     /**
@@ -280,7 +273,7 @@ class BalanceLookup
         $dailyNet = [];
 
         foreach ($rows as $row) {
-            $dailyNet[$row->account_id][substr((string) $row->transaction_date, 0, 10)] = (int) $row->amount;
+            $dailyNet[$row->account_id][self::dayOf($row->transaction_date)] = (int) $row->amount;
         }
 
         return $dailyNet;
@@ -313,16 +306,15 @@ class BalanceLookup
     }
 
     /**
-     * One account's daily movements as its sorted days and the running total
-     * through each of them, scaled to the owner's share the same way its
-     * balances are. Each day is scaled before it is summed, so the total
-     * between two days is exactly the sum of the scaled days in between.
+     * One account's daily movements as the running total through each day it
+     * moved, scaled to the owner's share the same way its balances are. Each
+     * day is scaled before it is summed, so the total between two days is
+     * exactly the sum of the scaled days in between.
      *
      * @param  array<string, int>  $movements
      * @param  callable(?int): ?int  $share
-     * @return array{0: list<string>, 1: list<int>}
      */
-    private static function runningNet(array $movements, callable $share): array
+    private static function runningNet(array $movements, callable $share): DatedSeries
     {
         ksort($movements, SORT_STRING);
 
@@ -334,7 +326,7 @@ class BalanceLookup
             $runningNet[] = $total;
         }
 
-        return [array_map('strval', array_keys($movements)), $runningNet];
+        return new DatedSeries(array_map('strval', array_keys($movements)), $runningNet);
     }
 
     /**
@@ -367,17 +359,18 @@ class BalanceLookup
     public function getBalanceAt(string $accountId, Carbon $date): int
     {
         $dateStr = $date->toDateString();
-        $dates = $this->balanceDatesByAccount[$accountId] ?? [];
-        $earlier = SortedDates::lastIndexOnOrBefore($dates, $dateStr);
+        $balances = $this->balancesByAccount[$accountId] ?? new DatedSeries;
 
         // A balance already recorded on or before that day is the answer, the
         // way it always was. Anything after it the bank has since settled into
         // its own later figure, so nothing is added on top.
-        if ($earlier >= 0) {
-            return $this->balancesByAccount[$accountId][$earlier];
+        $earlier = $balances->valueOnOrBefore($dateStr);
+
+        if ($earlier !== null) {
+            return $earlier;
         }
 
-        if ($dates === []) {
+        if ($balances->isEmpty()) {
             return 0;
         }
 
@@ -395,7 +388,7 @@ class BalanceLookup
             return 0;
         }
 
-        return $this->balancesByAccount[$accountId][0] - $this->netAfter($accountId, $dateStr, $dates[0]);
+        return $balances->firstValue() - $this->netAfter($accountId, $dateStr, $balances->firstDate());
     }
 
     /**
@@ -408,17 +401,9 @@ class BalanceLookup
      */
     private function netAfter(string $accountId, string $from, string $to): int
     {
-        return $this->runningNetOn($accountId, $to) - $this->runningNetOn($accountId, $from);
-    }
+        $runningNet = $this->runningNetByAccount[$accountId] ?? new DatedSeries;
 
-    /**
-     * The account's movements summed from the range start through that date.
-     */
-    private function runningNetOn(string $accountId, string $date): int
-    {
-        $index = SortedDates::lastIndexOnOrBefore($this->movementDatesByAccount[$accountId] ?? [], $date);
-
-        return $index < 0 ? 0 : $this->runningNetByAccount[$accountId][$index];
+        return ($runningNet->valueOnOrBefore($to) ?? 0) - ($runningNet->valueOnOrBefore($from) ?? 0);
     }
 
     /**
@@ -427,8 +412,6 @@ class BalanceLookup
      */
     public function getInvestedAmountAt(string $accountId, Carbon $date): ?int
     {
-        $index = SortedDates::lastIndexOnOrBefore($this->investedDatesByAccount[$accountId] ?? [], $date->toDateString());
-
-        return $index < 0 ? null : $this->investedByAccount[$accountId][$index];
+        return ($this->investedByAccount[$accountId] ?? new DatedSeries)->valueOnOrBefore($date->toDateString());
     }
 }
