@@ -19,7 +19,12 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * whichever path made it — a dialog, an import, a bank sync, an MCP tool or
  * another device. A rule's labels live on a pivot, which touches the rule.
  *
- * All of it is one query of scalar subselects, each on the `user_id` index.
+ * All of it is one query of scalar subselects, keyed off the user's rows.
+ *
+ * Keep {@see sources()} in step with what `HandleInertiaRequests` serializes:
+ * a relation eager-loaded there is a table whose writes must move a fingerprint
+ * here. SharedCollectionPropsTest writes to each one and checks which lists are
+ * sent again.
  */
 class UserCollectionVersions
 {
@@ -42,7 +47,7 @@ class UserCollectionVersions
         $row = (array) $query->first();
 
         $fingerprint = fn (string ...$names): string => hash('xxh3', implode('|', array_map(
-            fn (string $name): string => $row["{$name}_rows"].'@'.$row["{$name}_updated"],
+            fn (string $name): string => ($row["{$name}_rows"] ?? 0).'@'.($row["{$name}_updated"] ?? ''),
             $names,
         )));
 

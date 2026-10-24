@@ -124,7 +124,7 @@ class HandleInertiaRequests extends Middleware
                 ->as('showHeaderAddTransaction:'.($user->id ?? 'guest'))
                 ->until(now()->addHour()),
             'locale' => $this->formatLocaleFor($request, $user),
-            'translations' => $this->translationsProp(),
+            'translations' => fn (): OnceProp => $this->translationsProp(),
             'currencies' => [
                 'profile' => $this->currencyOptions->primaryOptions(),
                 'accounts' => $this->currencyOptions->accountOptions(),
@@ -419,7 +419,9 @@ class HandleInertiaRequests extends Middleware
      * to hundreds of kilobytes, and the client keeps it between visits instead
      * of being sent it again on each one. Keyed by the locale and the file's
      * modification time, so switching language or deploying new copy sends it
-     * down again; the file is only read and decoded when it is.
+     * down again; the file is only read and decoded when it is. Shared behind
+     * a closure, so the JSON endpoints this middleware also runs on never stat
+     * the file.
      */
     private function translationsProp(): OnceProp
     {

@@ -216,3 +216,13 @@ test('the version comes from package.json', function () {
 
     inertiaVisit($this->user)->assertJsonPath('props.version', $version);
 });
+
+test('a page that renders its own list leaves the shared key out, so the client drops it', function () {
+    // Settings > Labels lists only the labels a user manages, under the same
+    // prop name. Without a once key for it in the response, the client keeps
+    // no key for `labels` and the next page asks for the shared list afresh.
+    $response = inertiaVisit($this->user, array_values($this->keys), 'labels.index');
+
+    expect(collectionKeys($response))->not->toHaveKey('labels')
+        ->and($response->json('props.labels'))->toBeArray();
+});
