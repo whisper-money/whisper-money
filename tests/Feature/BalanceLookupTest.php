@@ -669,3 +669,63 @@ test('getBalanceAt mixes seeded and walked-back accounts in one lookup', functio
         ->and($lookup->getBalanceAt($connected->id, Carbon::parse('2026-02-28')))->toBe(50000)
         ->and($lookup->getBalanceAt($connected->id, Carbon::parse('2026-03-31')))->toBe(80000);
 });
+
+/**
+ * A shared account's movements are scaled to the owner's share day by day, the
+ * same way its balances are, so a walk back subtracts the rounded days rather
+ * than rounding their sum — and the day of a movement keeps it out of the walk.
+ */
+test('getBalanceAt walks a shared account back through its scaled daily movements', function () {
+    $this->account->forceFill(['ownership_applies_to_balance' => true, 'ownership_percentage' => 33])->save();
+
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-03-31',
+        'balance' => 1000,
+    ]);
+
+    foreach (['2026-02-10' => 10, '2026-02-20' => 10, '2026-03-10' => -1] as $day => $amount) {
+        Transaction::factory()->for($this->user)->create([
+            'account_id' => $this->account->id,
+            'transaction_date' => $day,
+            'amount' => $amount,
+        ]);
+    }
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    // 330 is the owner's share; the days scale to 3, 3 and 0, not 33% of 19.
+    expect($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-01-31')))->toBe(324)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-10')))->toBe(327)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-15')))->toBe(327)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-20')))->toBe(330)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-03-31')))->toBe(330);
+});
+
+test('getInvestedAmountAt scales a shared account and carries it over null days', function () {
+    $this->account->forceFill(['ownership_applies_to_balance' => true, 'ownership_percentage' => 50])->save();
+
+    foreach (['2026-01-05' => 1001, '2026-01-10' => null, '2026-01-20' => 3000] as $day => $invested) {
+        AccountBalance::factory()->create([
+            'account_id' => $this->account->id,
+            'balance_date' => $day,
+            'balance' => 5000,
+            'invested_amount' => $invested,
+        ]);
+    }
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-01-31'),
+    );
+
+    expect($lookup->getInvestedAmountAt($this->account->id, Carbon::parse('2026-01-04')))->toBeNull()
+        ->and($lookup->getInvestedAmountAt($this->account->id, Carbon::parse('2026-01-12')))->toBe(501)
+        ->and($lookup->getInvestedAmountAt($this->account->id, Carbon::parse('2026-01-25')))->toBe(1500)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-01-12')))->toBe(2500);
+});
