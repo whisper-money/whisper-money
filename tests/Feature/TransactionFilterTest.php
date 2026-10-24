@@ -74,6 +74,56 @@ test('filter by date range', function () {
     );
 });
 
+test('date range includes its first and last day', function () {
+    foreach (['2025-05-31', '2025-06-01', '2025-06-30', '2025-07-01'] as $date) {
+        Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'transaction_date' => $date,
+        ]);
+    }
+
+    actingAs($this->user)->get(route('transactions.index', [
+        'date_from' => '2025-06-01',
+        'date_to' => '2025-06-30',
+    ]))->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 2)
+        ->where('transactions.data.0.transaction_date', '2025-06-30')
+        ->where('transactions.data.1.transaction_date', '2025-06-01')
+    );
+});
+
+test('date range scope keeps the whole boundary day when a bound carries a time', function () {
+    foreach (['2025-05-31', '2025-06-01', '2025-06-30', '2025-07-01'] as $date) {
+        Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'transaction_date' => $date,
+        ]);
+    }
+
+    // Saved filters and queued re-evaluations carry whatever was stored when
+    // they were written, so the scope cannot rely on the request validator.
+    $dates = Transaction::query()
+        ->applyFilters(['date_from' => '2025-06-01 18:30:00', 'date_to' => '2025-06-30T09:15:00'])
+        ->orderBy('transaction_date')
+        ->pluck('transaction_date')
+        ->map->toDateString()
+        ->all();
+
+    expect($dates)->toBe(['2025-06-01', '2025-06-30']);
+});
+
+test('date range scope matches nothing for an unparseable bound instead of throwing or dropping it', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2025-06-15',
+    ]);
+
+    expect(Transaction::query()->applyFilters(['date_from' => 'not-a-date'])->count())->toBe(0);
+});
+
 test('rejects a date filter that is not a plain Y-m-d date', function (string $date) {
     // `date` accepts every one of these - it only asks strtotime() to parse the
     // string and checkdate() to like the pieces, so "275752-07-04" is a date in

@@ -446,3 +446,29 @@ it('never exposes another user\'s medals', function () {
         ->assertSee('"unlocked":0')
         ->assertDontSee('"state":"earned"');
 });
+
+it('searches transactions within an inclusive date range', function (string $from, string $to) {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    foreach (['2026-02-28' => 'Day Before', '2026-03-01' => 'First Day', '2026-03-31' => 'Last Day', '2026-04-01' => 'Day After'] as $date => $description) {
+        Transaction::factory()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'transaction_date' => $date,
+            'description' => $description,
+        ]);
+    }
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(SearchTransactions::class, ['from' => $from, 'to' => $to])
+        ->assertOk()
+        ->assertSee('First Day')
+        ->assertSee('Last Day')
+        ->assertDontSee('Day Before')
+        ->assertDontSee('Day After');
+})->with([
+    'plain dates' => ['2026-03-01', '2026-03-31'],
+    'datetimes' => ['2026-03-01 18:30:00', '2026-03-31 09:15:00'],
+    'ISO 8601' => ['2026-03-01T18:30:00Z', '2026-03-31T09:15:00Z'],
+    'ISO 8601 with an offset' => ['2026-03-01T23:30:00-05:00', '2026-03-31T23:30:00-05:00'],
+]);
