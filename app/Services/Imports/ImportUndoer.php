@@ -9,6 +9,7 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Import;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -37,24 +38,30 @@ class ImportUndoer
 
     public function undo(Import $import): void
     {
-        $transactions = $this->purger->deleteInChunks(Transaction::withTrashed()->where('import_id', $import->id));
-        $balances = $this->purger->deleteInChunks(AccountBalance::query()->where('import_id', $import->id));
+        // Chunked deletes commit as they go, so a failure halfway still has to
+        // invalidate what it already removed.
+        try {
+            $transactions = $this->purger->deleteInChunks(Transaction::withTrashed()->where('import_id', $import->id));
+            $balances = $this->purger->deleteInChunks(AccountBalance::query()->where('import_id', $import->id));
 
-        $created = Account::withTrashed()->where('import_id', $import->id)->get(['id', 'banking_connection_id']);
-        [$connected, $manual] = $created->partition(fn (Account $account): bool => $account->isConnected());
+            $created = Account::withTrashed()->where('import_id', $import->id)->get(['id', 'banking_connection_id']);
+            [$connected, $manual] = $created->partition(fn (Account $account): bool => $account->isConnected());
 
-        $transactions += $this->purger->purge($manual->pluck('id'));
+            $transactions += $this->purger->purge($manual->pluck('id'));
 
-        // Kept, and no longer counted as the import's.
-        Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(['import_id' => null]);
+            // Kept, and no longer counted as the import's.
+            Account::withTrashed()->whereIn('id', $connected->pluck('id'))->update(['import_id' => null]);
 
-        $categories = $this->deleteCreatedCategories($import);
-        $banks = $this->deleteCreatedBanks($import);
+            $categories = $this->deleteCreatedCategories($import);
+            $banks = $this->deleteCreatedBanks($import);
 
-        $import->forceFill([
-            'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
-            'undone_at' => now(),
-        ])->save();
+            $import->forceFill([
+                'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
+                'undone_at' => now(),
+            ])->save();
+        } finally {
+            DataVersion::bumpOwnerOf($import);
+        }
 
         $requestedAt = $import->stats['undo']['requested_at'] ?? null;
 

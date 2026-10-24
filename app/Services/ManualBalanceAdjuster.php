@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use Illuminate\Support\Facades\Log;
 
 class ManualBalanceAdjuster
@@ -150,6 +151,7 @@ class ManualBalanceAdjuster
         $account->balances()
             ->where('balance_date', '>=', $fromDate)
             ->increment('balance', $delta);
+        DataVersion::bumpOwnerOf($account);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\ImportStatus;
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Import;
 use App\Services\Imports\ImportFailure;
 use App\Services\Imports\ImportUndoer;
@@ -22,7 +23,7 @@ use function Sentry\configureScope;
  */
 class UndoImportJob implements ShouldBeUnique, ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * Deletes go in chunks, so even a large import fits comfortably. Kept

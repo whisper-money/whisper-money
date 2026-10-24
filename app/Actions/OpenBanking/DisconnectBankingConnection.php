@@ -5,6 +5,7 @@ namespace App\Actions\OpenBanking;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Models\BankingConnection;
+use App\Services\Cache\DataVersion;
 use Illuminate\Support\Facades\Log;
 
 class DisconnectBankingConnection
@@ -36,6 +37,7 @@ class DisconnectBankingConnection
                 'banking_connection_id' => null,
                 'external_account_id' => null,
             ]);
+            DataVersion::bumpOwnerOf($connection);
         }
 
         $connection->update(['status' => BankingConnectionStatus::Revoked]);

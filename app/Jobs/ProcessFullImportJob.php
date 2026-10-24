@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\ImportStatus;
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Import;
 use App\Services\Imports\FullImporter;
 use App\Services\Imports\ImportFailure;
@@ -25,7 +26,7 @@ use function Sentry\configureScope;
  */
 class ProcessFullImportJob implements ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * One run writes movements for four minutes (FullImporter) plus whatever

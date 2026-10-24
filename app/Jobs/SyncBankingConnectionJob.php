@@ -9,6 +9,7 @@ use App\Enums\BankingSyncTrigger;
 use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankingConnectionExpiredEmail;
 use App\Models\BankingConnection;
@@ -32,7 +33,7 @@ use function Sentry\configureScope;
 
 class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use DefersDataVersionBumps, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Two attempts, not three.

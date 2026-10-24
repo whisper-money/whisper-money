@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\RealEstateDetail;
+use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 
 class ApplyRealEstateRevaluationCommand extends Command
@@ -25,6 +26,13 @@ class ApplyRealEstateRevaluationCommand extends Command
      * Execute the console command.
      */
     public function handle(): int
+    {
+        // A sweep over every user: one data-version bump per user at the end,
+        // not one per row it writes.
+        return DataVersion::deferBumps(fn (): int => $this->applyRevaluations());
+    }
+
+    private function applyRevaluations(): int
     {
         $details = RealEstateDetail::query()
             ->whereNotNull('revaluation_percentage')

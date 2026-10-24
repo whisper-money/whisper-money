@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AccountType;
 use App\Enums\TransactionSource;
 use App\Models\Concerns\BelongsToSpace;
+use App\Models\Concerns\BumpsDataVersion;
 use App\Services\BudgetTransactionService;
 use Carbon\Carbon;
 use Database\Factories\AccountFactory;
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',

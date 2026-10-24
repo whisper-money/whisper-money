@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
@@ -20,7 +21,7 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class CategorizeOnboardingTransactionsJob implements ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * A fresh import can span many model calls, so give the batch plenty of room.

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Services\Cache\DataVersion;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -89,6 +90,7 @@ class RealEstateBalanceGeneratorService
         }
 
         $this->upsertBalances($rows);
+        DataVersion::bumpOwnerOf($account);
     }
 
     /**

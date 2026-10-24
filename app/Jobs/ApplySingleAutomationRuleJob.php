@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\AutomationRule;
 use App\Models\Transaction;
 use App\Services\AutomationRuleService;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Cache;
 
 class ApplySingleAutomationRuleJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use DefersDataVersionBumps, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
 

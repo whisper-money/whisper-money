@@ -7,6 +7,7 @@ use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\Space;
 use App\Models\User;
+use App\Services\Cache\DataVersion;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -65,6 +66,8 @@ class CreateDefaultCategories
                     ->all()
             );
         }
+
+        DataVersion::bumpOwner($user->id, $space->id);
     }
 
     /**

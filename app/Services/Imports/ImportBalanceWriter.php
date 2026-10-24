@@ -5,6 +5,7 @@ namespace App\Services\Imports;
 use App\Enums\ImportChunkKind;
 use App\Models\AccountBalance;
 use App\Models\Import;
+use App\Services\Cache\DataVersion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,7 @@ class ImportBalanceWriter
 
                 $chunk->delete();
                 $import->recordStats(['balances' => $totals]);
+                DataVersion::bumpOwnerOf($import);
             });
         }
     }

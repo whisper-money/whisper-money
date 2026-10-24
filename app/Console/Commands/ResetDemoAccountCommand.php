@@ -15,6 +15,7 @@ use App\Models\Label;
 use App\Models\User;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetTransactionService;
+use App\Services\Cache\DataVersion;
 use App\Services\Demo\DemoAutomationRulesProvider;
 use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
@@ -347,6 +348,7 @@ class ResetDemoAccountCommand extends Command
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
         $user->budgets()->forceDelete();
+        DataVersion::bumpUser($user);
 
         $this->info('  Deleted existing data');
     }
@@ -818,6 +820,7 @@ class ResetDemoAccountCommand extends Command
     {
         foreach ($accounts as $account) {
             $count = $account->transactions()->update(['source' => TransactionSource::EnableBanking]);
+            DataVersion::bumpOwnerOf($account);
 
             $this->info("  Marked {$count} transactions on '{$account->name}' as bank-imported");
         }

@@ -7,6 +7,7 @@ use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
+use App\Models\Concerns\BumpsDataVersion;
 use Carbon\CarbonInterface;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,7 +37,7 @@ use stdClass;
 class SavingsGoal extends Model
 {
     /** @use HasFactory<SavingsGoalFactory> */
-    use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
+    use Archivable, BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
 
     /**
      * A monthly goal created in the last this-many days of a month gets that

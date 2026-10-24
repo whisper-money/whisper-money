@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MonthlyTargetType;
+use App\Models\Concerns\BumpsDataVersion;
 use Carbon\Carbon;
 use Database\Factories\SavingsGoalPeriodFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -32,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SavingsGoalPeriod extends Model
 {
     /** @use HasFactory<SavingsGoalPeriodFactory> */
-    use HasFactory, HasUuids;
+    use BumpsDataVersion, HasFactory, HasUuids;
 
     protected $fillable = [
         'savings_goal_id',
@@ -71,5 +72,10 @@ class SavingsGoalPeriod extends Model
     public function monthKey(): string
     {
         return $this->month->format('Y-m');
+    }
+
+    public function dataVersionOwner(): ?Model
+    {
+        return $this->dataVersionOwnerVia('savingsGoal');
     }
 }

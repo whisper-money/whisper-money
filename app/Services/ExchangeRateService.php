@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ExchangeRate;
+use App\Services\Cache\DataVersion;
 use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -122,6 +123,7 @@ class ExchangeRateService
                     'rates' => json_encode($rates, JSON_THROW_ON_ERROR),
                 ],
             ], uniqueBy: ['base_currency', 'date'], update: ['rates']);
+            DataVersion::bumpRates();
         }
 
         return $this->ratesCache[$cacheKey] = $rates;
