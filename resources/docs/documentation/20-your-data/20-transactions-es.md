@@ -118,18 +118,18 @@ Puedes filtrar por:
 Una buena búsqueda suele empezar con el nombre del comercio o una palabra de la
 descripción bancaria.
 
-Junto al filtro de fecha, los botones **Mes**, **Trimestre** y **Año** ajustan el
-rango al mes, trimestre o año natural completo que contiene la fecha de inicio,
-o el día de hoy si no hay ninguna. El botón que coincide con el rango actual
-aparece pulsado.
+En el menú de filtros, junto a la fecha, los botones **Mes**, **Trimestre** y
+**Año** ajustan el rango al mes, trimestre o año natural completo que contiene
+la fecha de inicio, o el día de hoy si no hay ninguna. El botón que coincide con
+el rango actual aparece pulsado.
 
 ### Bloque de flujo de caja
 
 La página de [Flujo de caja](/documentation/cashflow) reparte tu dinero en
 bloques: gasto fijo, variable y general, y lo que has ahorrado e invertido. Cada
-bloque tiene allí un enlace **Ver transacciones** que abre esta lista con
-exactamente las transacciones que hay detrás de esa cifra, para las mismas
-fechas.
+bloque, en la tarjeta de Gastos y en el panel «A dónde va tu dinero», tiene una
+flecha que abre esta lista con exactamente las
+transacciones que hay detrás de esa cifra, para las mismas fechas.
 
 La lista muestra el bloque como una etiqueta sobre las transacciones, por
 ejemplo **Bloque: Gasto fijo**. Los bloques son:

@@ -9,7 +9,7 @@ Los presupuestos te ayudan a planificar gastos y ver cuánto margen queda en un 
 1. Crea un presupuesto para un área que quieres controlar.
 2. Elige la categoría o etiqueta que debe seguir.
 3. Define el importe del periodo.
-4. Márcalo como **Fijo** o **Variable**.
+4. Márcalo como gasto fijo o variable.
 5. Revisa el progreso durante el mes.
 6. Ajusta el presupuesto cuando tu gasto real cambie.
 
@@ -107,9 +107,11 @@ Cada presupuesto decide qué hacer con lo que sobra:
 
 ## Tipo de gasto
 
-Cada presupuesto tiene un **Tipo de gasto**: **Fijo** o **Variable**. Lo eliges
-al crear el presupuesto y puedes cambiarlo siempre que lo edites. Los
-presupuestos nuevos empiezan como Variable.
+Cada presupuesto tiene un **Tipo de gasto**: **Gasto fijo** o **Gasto
+variable**. Lo eliges al crear el presupuesto y puedes cambiarlo siempre que lo
+edites. Los presupuestos nuevos empiezan como variables. El presupuesto general
+no tiene tipo de gasto: lo que recoge cuenta siempre como gasto general (lo ves
+más abajo).
 
 - **Fijo**: la misma cantidad cada periodo, como el alquiler o las
   suscripciones. Marca como fijo lo que no puedes recortar de un mes para otro:
@@ -162,9 +164,10 @@ eso es lo **Reservado**, y lo que queda es lo **Libre**.
 Lo reservado suma lo que queda en cada periodo de presupuesto que está en curso
 hoy y se solapa con la vista:
 
-- Un presupuesto que ya se ha pasado no suma nada. Nunca resta de los demás.
+- Un presupuesto que ya está superado no suma nada. Nunca resta de los demás.
 - Un periodo que ya terminó no suma nada, y uno que aún no ha empezado tampoco.
-  Si miras un mes pasado, no hay nada reservado.
+  Por eso un mes anterior no suele tener nada reservado.
+- Los presupuestos archivados no suman nada.
 - Solo cuenta el importe del presupuesto. Lo arrastrado de periodos anteriores
   se deja fuera.
 
@@ -203,14 +206,14 @@ No. Presupuesta solo lo que quieras controlar activamente.
 
 ### ¿Tengo que marcar cada presupuesto como fijo o variable?
 
-No. Deja como Variable los que no tengas claros. Cambia a Fijo los pocos que
+No. Deja como variables los que no tengas claros. Cambia a fijos los pocos que
 cubren facturas que no puedes recortar, como el alquiler o las suscripciones.
 
 ### ¿Por qué no hay nada reservado en el flujo de caja?
 
-O no hay ningún periodo de presupuesto en curso hoy, o todos están ya gastados o
-pasados. Un presupuesto anual solo cuenta en la vista Año, y uno mensual solo en
-las vistas Mes y Trimestre.
+O no hay ningún periodo de presupuesto en curso hoy, o todos están ya agotados o
+superados. Los presupuestos archivados nunca reservan nada. Un presupuesto anual
+solo cuenta en la vista Año, y uno mensual solo en las vistas Mes y Trimestre.
 
 ### ¿Por qué un presupuesto aparece vacío?
 

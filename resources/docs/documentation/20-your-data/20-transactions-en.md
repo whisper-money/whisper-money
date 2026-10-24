@@ -117,17 +117,18 @@ You can filter by:
 A good search often starts with the merchant name or a word from the bank
 description.
 
-Next to the date filter, the **Month**, **Quarter** and **Year** buttons set the
-range to the whole calendar month, quarter or year that contains the start date,
-or today if there is none. The button that matches the current range shows as
-pressed.
+In the Filters menu, next to the date, the **Month**, **Quarter** and **Year**
+buttons set the range to the whole calendar month, quarter or year that contains
+the start date, or today if there is none. The button that matches the current
+range shows as pressed.
 
 ### Cashflow block
 
 The [Cashflow](/documentation/cashflow) page splits your money into blocks:
 fixed, variable and general expenses, and what you saved and invested. Every
-block there has a **View transactions** link that opens this list showing
-exactly the transactions behind that figure, for the same dates.
+block there, in the Expenses card and in the "Where your money goes" panel, has
+an arrow that opens this list showing exactly the
+transactions behind that figure, for the same dates.
 
 The list shows the block as a chip above the transactions, such as **Block:
 Fixed expense**. The blocks are:

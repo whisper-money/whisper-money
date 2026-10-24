@@ -9,7 +9,7 @@ Budgets help you plan spending and see how much room is left in a period.
 1. Create a budget for an area you want to control.
 2. Pick the category or label it should track.
 3. Set the amount for the period.
-4. Mark it **Fixed** or **Variable**.
+4. Mark it as a fixed or variable expense.
 5. Review progress during the month.
 6. Adjust the budget when your real spending changes.
 
@@ -106,9 +106,10 @@ Each budget decides what to do with what is left over:
 
 ## Expense type
 
-Every budget has an **Expense Type**: **Fixed** or **Variable**. You pick it
-when you create the budget, and you can change it whenever you edit it. New
-budgets start as Variable.
+Every budget has an **Expense Type**: **Fixed expense** or **Variable
+expense**. You pick it when you create the budget, and you can change it
+whenever you edit it. New budgets start as Variable. The catch-all budget has
+no expense type: its spending always counts as general (see below).
 
 - **Fixed**: the same amount every period, like rent or subscriptions. Mark as
   fixed what you cannot cut from one month to the next: rent or mortgage,
@@ -148,17 +149,18 @@ spending into general.
 
 ### Reserved
 
-The [Available card](/documentation/cashflow#available-and-free) shows what is left of your income after expenses, savings
-and investments. Part of that money is still promised to budgets you have not
-finished spending: that is the **Reserved** amount, and what remains is
-**Free**.
+The [Available card](/documentation/cashflow#available-and-free) shows what is
+left of your income after expenses, savings and investments. Part of that money
+is still promised to budgets you have not finished spending: that is the
+**Reserved** amount, and what remains is **Free**.
 
 Reserved adds up what is left in each budget period that is in progress today
 and overlaps the view:
 
 - A budget that is already over adds nothing. It never eats into the others.
 - A period that has ended adds nothing, and neither does one that has not
-  started yet. Looking at a past month, nothing is reserved.
+  started yet. So a past month usually shows nothing reserved.
+- Archived budgets add nothing.
 - Only the budget amount counts. Anything carried over from earlier periods is
   left out.
 
@@ -203,8 +205,8 @@ bills you cannot cut, like rent or subscriptions, to Fixed.
 ### Why is nothing reserved on the Cashflow page?
 
 Either no budget period is in progress today, or every one of them is already
-spent or over. A yearly budget only counts in the Year view, and a monthly one
-only in the Month and Quarter views.
+spent or over. Archived budgets never reserve anything. A yearly budget only
+counts in the Year view, and a monthly one only in the Month and Quarter views.
 
 ### Why does a budget look empty?
 
