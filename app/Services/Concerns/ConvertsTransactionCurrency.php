@@ -2,6 +2,7 @@
 
 namespace App\Services\Concerns;
 
+use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\ExchangeRateService;
 use Illuminate\Support\Collection;
@@ -29,11 +30,20 @@ trait ConvertsTransactionCurrency
     protected function convertFullTransactionAmount(Transaction $transaction, string $currency): int
     {
         return $this->exchangeRateService->convert(
-            $transaction->currency_code ?: $transaction->account?->currency_code ?: $currency,
+            $this->sourceCurrency($transaction->currency_code, $transaction->account, $currency),
             $currency,
             $transaction->amount,
             $transaction->transaction_date->toDateString(),
         );
+    }
+
+    /**
+     * The currency an amount is booked in: the transaction's own, else its
+     * account's, else the user's.
+     */
+    protected function sourceCurrency(?string $transactionCurrency, ?Account $account, string $currency): string
+    {
+        return $transactionCurrency ?: $account?->currency_code ?: $currency;
     }
 
     /**
@@ -52,7 +62,7 @@ trait ConvertsTransactionCurrency
     protected function preloadExchangeRates(Collection $transactions, string $currency): void
     {
         $dates = $transactions
-            ->filter(fn (Transaction $transaction): bool => strcasecmp($transaction->currency_code ?: $transaction->account?->currency_code ?: $currency, $currency) !== 0)
+            ->filter(fn (Transaction $transaction): bool => strcasecmp($this->sourceCurrency($transaction->currency_code, $transaction->account, $currency), $currency) !== 0)
             ->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString())
             ->unique()
             ->values();

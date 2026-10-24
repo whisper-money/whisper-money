@@ -8,14 +8,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\MonthlySavingsTotalsRequest;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\CashflowAggregate;
+use App\Services\CashflowAggregateQuery;
 use App\Services\CashflowBudgetReserveService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategoryTree;
-use App\Services\Concerns\ConvertsTransactionCurrency;
-use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -25,12 +26,10 @@ use Illuminate\Support\Collection;
  */
 class CashflowAnalyticsController extends Controller
 {
-    use ConvertsTransactionCurrency;
-
     private const MAX_TREND_MONTHS = 24;
 
     public function __construct(
-        private ExchangeRateService $exchangeRateService,
+        private CashflowAggregateQuery $aggregates,
         private CategoryTree $tree,
         private CashflowSummaryService $summaries,
         private CashflowBudgetReserveService $budgetReserve,
@@ -216,11 +215,10 @@ class CashflowAnalyticsController extends Controller
      */
     private function sankeyColumns(string $userId, string $userCurrency, Carbon $from, Carbon $to, ?string $drillParentId): array
     {
-        $transactions = $this->transactionsForPeriod($userId, $userCurrency, $from, $to);
+        $aggregates = $this->aggregatesForPeriod($userId, $userCurrency, $from, $to);
 
         $netted = $this->netAmountsByCategory(
-            $transactions,
-            $userCurrency,
+            $aggregates,
             fn (Transaction $transaction): bool => $this->cashflowSideOf($transaction->category) !== null,
         );
 
@@ -229,8 +227,8 @@ class CashflowAnalyticsController extends Controller
         $rolledUp = $this->tree->rollUp($netted->values()->all(), $userId, $drillParentId);
 
         return [
-            $this->sankeyColumn($rolledUp, CategoryType::Income, $transactions, $userCurrency, $drillParentId),
-            $this->sankeyColumn($rolledUp, CategoryType::Expense, $transactions, $userCurrency, $drillParentId),
+            $this->sankeyColumn($rolledUp, CategoryType::Income, $aggregates, $drillParentId),
+            $this->sankeyColumn($rolledUp, CategoryType::Expense, $aggregates, $drillParentId),
         ];
     }
 
@@ -244,10 +242,10 @@ class CashflowAnalyticsController extends Controller
      * side, and the money coming back is not necessarily a refund.
      *
      * @param  array<int, BreakdownRow>  $rolledUp
-     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, CashflowAggregate>  $aggregates
      * @return array<int, BreakdownRow>
      */
-    private function sankeyColumn(array $rolledUp, CategoryType $side, Collection $transactions, string $userCurrency, ?string $drillParentId): array
+    private function sankeyColumn(array $rolledUp, CategoryType $side, Collection $aggregates, ?string $drillParentId): array
     {
         $rows = array_values(array_map(
             fn (array $row): array => [
@@ -258,68 +256,58 @@ class CashflowAnalyticsController extends Controller
             array_filter($rolledUp, fn (array $row): bool => $this->amountMatchesSide($row['amount'], $side)),
         ));
 
-        return $this->appendUncategorized($rows, $transactions, $userCurrency, $side, $drillParentId);
+        return $this->appendUncategorized($rows, $aggregates, $side, $drillParentId);
     }
 
+    /**
+     * Income and expense per month, keyed by YYYY-MM. Signed, so a refund
+     * lowers the month's expense bar instead of being dropped from it; an
+     * uncategorized row counts on the side its own sign points at.
+     *
+     * @return Collection<string, array{income: int, expense: int}>
+     */
     private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
     {
-        $transactions = $this->transactionsForPeriod($userId, $userCurrency, $from, $to);
+        return $this->aggregates
+            ->aggregateByMonth($this->ownedWithin($userId, $from, $to), $userCurrency)
+            ->map(function (Collection $aggregates): array {
+                $totals = ['income' => 0, 'expense' => 0];
 
-        return $transactions
-            ->groupBy(fn (Transaction $transaction): string => $transaction->transaction_date->format('Y-m'))
-            ->map(function (Collection $transactions) use ($userCurrency): array {
-                $income = 0;
-                $expense = 0;
+                // Set-aside legs need no skipping here: neither side counts
+                // a savings or investment row.
+                foreach ($aggregates as $aggregate) {
+                    $side = $this->trendSideOf($aggregate->transaction);
 
-                $categorized = $transactions
-                    ->filter(fn (Transaction $transaction): bool => $transaction->category_id !== null)
-                    ->groupBy('category_id');
-
-                foreach ($categorized as $categoryTransactions) {
-                    $firstTransaction = $categoryTransactions->first();
-                    $type = $firstTransaction->categoryType();
-
-                    if (! in_array($type, [CategoryType::Income, CategoryType::Expense], true)) {
-                        continue;
-                    }
-
-                    // Signed, so a refund lowers the month's expense bar instead
-                    // of being dropped from it.
-                    $amount = $this->orientToSide($this->sumConvertedAmounts($categoryTransactions, $userCurrency), $type);
-
-                    if ($type === CategoryType::Income) {
-                        $income += $amount;
-                    } else {
-                        $expense += $amount;
+                    if ($side !== null) {
+                        $totals[$side->value] += $aggregate->transaction->category_id === null
+                            ? abs($aggregate->amount)
+                            : $this->orientToSide($aggregate->amount, $side);
                     }
                 }
 
-                foreach ($transactions->whereNull('category_id') as $transaction) {
-                    $amount = $this->convertTransactionAmount($transaction, $userCurrency);
-
-                    if ($transaction->amount > 0) {
-                        $income += $amount;
-                    }
-
-                    if ($transaction->amount < 0) {
-                        $expense += abs($amount);
-                    }
-                }
-
-                return [
-                    'income' => $income,
-                    'expense' => $expense,
-                ];
+                return $totals;
             });
+    }
+
+    /**
+     * The trend bar a row adds to: the cashflow side the transaction sits on,
+     * if any.
+     */
+    private function trendSideOf(Transaction $transaction): ?CategoryType
+    {
+        return match (true) {
+            $transaction->isIncomeSide() => CategoryType::Income,
+            $transaction->isExpenseSide() => CategoryType::Expense,
+            default => null,
+        };
     }
 
     private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type, ?string $drillParentId = null): Collection
     {
-        $transactions = $this->transactionsForPeriod($userId, $userCurrency, $from, $to);
+        $aggregates = $this->aggregatesForPeriod($userId, $userCurrency, $from, $to);
 
         $categorized = $this->netAmountsByCategory(
-            $transactions,
-            $userCurrency,
+            $aggregates,
             fn (Transaction $transaction): bool => $transaction->categoryType() === $type,
         );
 
@@ -330,52 +318,54 @@ class CashflowAnalyticsController extends Controller
             $this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId),
         );
 
-        return collect($this->appendUncategorized($rolledUp, $transactions, $userCurrency, $type, $drillParentId));
+        return collect($this->appendUncategorized($rolledUp, $aggregates, $type, $drillParentId));
     }
 
     /**
-     * Every transaction in the window, with the exchange rates its conversion
-     * needs already primed so the callers never hit the rate service per row.
-     * Savings and investment rows on a savings, investment or retirement
-     * account are left out: the leg on the other account already counts that
-     * money.
+     * Every transaction in the window, added up in SQL into groups the callers
+     * classify like single rows. Savings and investment rows on a savings,
+     * investment or retirement account are left out: the leg on the other
+     * account already counts that money.
      *
-     * @return Collection<int, Transaction>
+     * @return Collection<int, CashflowAggregate>
      */
-    private function transactionsForPeriod(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
+    private function aggregatesForPeriod(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
     {
-        $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->countingTowardsTotals()
-            ->with(['account', 'category'])
-            ->get()
-            ->reject(fn (Transaction $transaction): bool => $transaction->isSetAsideAccountLeg())
+        return $this->aggregates
+            ->aggregate($this->ownedWithin($userId, $from, $to), $userCurrency)
+            ->reject(fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->isSetAsideAccountLeg())
             ->values();
-
-        $this->preloadExchangeRates($transactions, $userCurrency);
-
-        return $transactions;
     }
 
     /**
-     * Nets the transactions $belongsToSide selects into one row per category,
-     * keeping the sign of the net: a category is worth what it nets to, and it
-     * is the caller that decides what a net on the "wrong" side means.
+     * @return Builder<Transaction>
+     */
+    private function ownedWithin(string $userId, Carbon $from, Carbon $to): Builder
+    {
+        return Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to]);
+    }
+
+    /**
+     * Nets the groups whose transaction $belongsToSide selects into one row per
+     * category, keeping the sign of the net: a category is worth what it nets
+     * to, and it is the caller that decides what a net on the "wrong" side
+     * means.
      *
-     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, CashflowAggregate>  $aggregates
      * @param  callable(Transaction): bool  $belongsToSide
      * @return Collection<string, array{category_id: string, category: Category, amount: int}>
      */
-    private function netAmountsByCategory(Collection $transactions, string $userCurrency, callable $belongsToSide): Collection
+    private function netAmountsByCategory(Collection $aggregates, callable $belongsToSide): Collection
     {
-        return $transactions
-            ->filter($belongsToSide)
-            ->groupBy('category_id')
-            ->map(fn (Collection $categoryTransactions): array => [
-                'category_id' => $categoryTransactions->first()->category_id,
-                'category' => $categoryTransactions->first()->category,
-                'amount' => $this->sumConvertedAmounts($categoryTransactions, $userCurrency),
+        return $aggregates
+            ->filter(fn (CashflowAggregate $aggregate): bool => $belongsToSide($aggregate->transaction))
+            ->groupBy(fn (CashflowAggregate $aggregate): string => (string) $aggregate->transaction->category_id)
+            ->map(fn (Collection $categoryAggregates): array => [
+                'category_id' => $categoryAggregates->first()->transaction->category_id,
+                'category' => $categoryAggregates->first()->transaction->category,
+                'amount' => CashflowAggregate::total($categoryAggregates),
             ]);
     }
 
@@ -432,16 +422,15 @@ class CashflowAnalyticsController extends Controller
      * its own "Unknown Income".
      *
      * @param  array<int, BreakdownRow>  $rolledUp
-     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, CashflowAggregate>  $aggregates
      * @return array<int, BreakdownRow>
      */
-    private function appendUncategorized(array $rolledUp, Collection $transactions, string $userCurrency, CategoryType $type, ?string $drillParentId): array
+    private function appendUncategorized(array $rolledUp, Collection $aggregates, CategoryType $type, ?string $drillParentId): array
     {
-        $uncategorized = $transactions
-            ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null
-                && $this->amountMatchesSide($transaction->amount, $type));
-
-        $total = $this->sumConvertedAmounts($uncategorized, $userCurrency);
+        $total = CashflowAggregate::total($aggregates->filter(
+            fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->category_id === null
+                && $this->amountMatchesSide($aggregate->transaction->amount, $type),
+        ));
 
         if ($drillParentId === null && $total != 0) {
             $rolledUp[] = [
