@@ -22,7 +22,7 @@
 {{ __('Your financial data belongs to you — not us, not advertisers, not anyone else:') }}
 
 - {{ __('**Connect your banks** via Open Banking or import from CSV — your choice') }}
-- {{ __('**Your data stays yours** — never shared with third parties') }}
+- {{ __('**Your data stays yours** — never sold or shared with advertisers') }}
 - {{ __('**No middlemen** — we don\'t sell insights about your habits') }}
 - {{ __('**You\'re always in control** — export or delete your data anytime') }}
 

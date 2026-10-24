@@ -148,8 +148,8 @@ export function StepGate({
  * The bank gate switches the sorting on as part of the plan, so it says so
  * outright; the AI gate was asked for the sorting, so it goes straight to what
  * leaves the account. Both name the three things that never do, because the
- * promise on the website is that the data is never shared, and this is the one
- * place it partly is.
+ * promise on the website is that the data is never sold or shared with
+ * advertisers, and this is where part of it does reach an AI provider.
  */
 function AiDisclosure({ kind }: { kind: GateKind }) {
     return (

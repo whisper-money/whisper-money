@@ -120,7 +120,7 @@ export default function Terms() {
                                 </li>
                                 <li>
                                     {__(
-                                        'Access your data securely—your information is never shared with third parties',
+                                        'Access your data securely—your information is never shared with advertisers or data brokers, only with the providers listed in our Privacy Policy',
                                     )}
                                 </li>
                             </ul>

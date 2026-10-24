@@ -59,7 +59,7 @@ const benefits = [
         icon: ShieldCheckIcon,
         title: __('Privacy First'),
         description: __(
-            'Your data is never shared with third parties. You are always the owner.',
+            'Your data is never sold or shared with advertisers. You are always the owner.',
         ),
     },
     {

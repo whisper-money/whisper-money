@@ -159,7 +159,7 @@ final class MarketingContent
     {
         return $locale === 'es' ? [
             'title' => 'Whisper Money — finanzas personales privadas',
-            'summary' => 'Whisper Money reúne todas tus cuentas bancarias, brokers, cripto, inmuebles y préstamos en un solo sitio, calcula tu patrimonio neto y te deja presupuestar por categoría. Es una aplicación web instalable en el móvil, el código es público y no vendemos ni compartimos tus datos con terceros.',
+            'summary' => 'Whisper Money reúne todas tus cuentas bancarias, brokers, cripto, inmuebles y préstamos en un solo sitio, calcula tu patrimonio neto y te deja presupuestar por categoría. Es una aplicación web instalable en el móvil, el código es público y no vendemos tus datos ni los compartimos con anunciantes.',
             'sections' => [
                 'Qué hace' => [
                     'Agrega cuentas de bancos españoles y europeos por PSD2, la normativa europea de banca abierta. La autorización se firma en la web de tu propio banco: no vemos ni almacenamos tus credenciales.',
@@ -173,7 +173,7 @@ final class MarketingContent
                 ],
                 'Qué no hace' => [
                     'No intermedia préstamos, seguros ni ningún producto financiero, y no muestra publicidad.',
-                    'No vende ni comparte tus datos con terceros.',
+                    'No vende tus datos ni los comparte con anunciantes.',
                     'No cifra los datos en reposo: el modelo es almacenamiento en claro en base de datos propia. Lo que se puede comprobar es el código, que es público.',
                     'No tiene un botón de exportación en la interfaz. La vía para sacar los datos de forma programática es el acceso por MCP, en el plan de pago.',
                 ],
@@ -186,7 +186,7 @@ final class MarketingContent
             ],
         ] : [
             'title' => 'Whisper Money — private personal finance',
-            'summary' => 'Whisper Money brings your bank accounts, brokers, crypto, property and loans together in one place, works out your net worth and lets you budget by category. It is a web app you can install on your phone, the code is public, and we do not sell or share your data with third parties.',
+            'summary' => 'Whisper Money brings your bank accounts, brokers, crypto, property and loans together in one place, works out your net worth and lets you budget by category. It is a web app you can install on your phone, the code is public, and we do not sell your data or share it with advertisers.',
             'sections' => [
                 'What it does' => [
                     'Aggregates Spanish and European bank accounts over PSD2, the European open banking regulation. You sign the authorisation on your own bank\'s website: we never see or store your credentials.',
@@ -200,7 +200,7 @@ final class MarketingContent
                 ],
                 'What it does not do' => [
                     'It does not intermediate loans, insurance or any financial product, and it shows no ads.',
-                    'It does not sell or share your data with third parties.',
+                    'It does not sell your data or share it with advertisers.',
                     'It does not encrypt data at rest: the model is plaintext storage in our own database. What you can verify instead is the code, which is public.',
                     'It has no export button in the interface. The way to pull your data out programmatically is MCP access, on the paid plan.',
                 ],
@@ -354,7 +354,7 @@ final class MarketingContent
                     'Your own automation rules: define once how a merchant gets categorised and it applies to everything that arrives.',
                     'Optional AI categorisation, which only runs if you give explicit consent.',
                     'Statement import in CSV, XLS and XLSX with column mapping, for the accounts that do not connect.',
-                    'A web app installable on your phone, in English, Spanish or French, with public code and no data shared with third parties.',
+                    'A web app installable on your phone, in English, Spanish or French, with public code and no data shared with advertisers.',
                 ],
                 'migration_intro' => "Fintonic shows the transactions your bank hands it, so the reliable source for your history is the bank, not the app. Our importer is built for exactly that: you take the bank's file and it works out the columns.",
                 'migration_steps' => [
@@ -425,7 +425,7 @@ final class MarketingContent
                     'Reglas de automatización propias: defines una vez cómo se categoriza un comercio y se aplica a todo lo que entra.',
                     'Categorización con IA opcional, que solo funciona si das tu consentimiento explícito.',
                     'Importación de extractos en CSV, XLS y XLSX con mapeo de columnas, para las cuentas que no conectan.',
-                    'Aplicación web instalable en el móvil, en español, inglés o francés, con el código público y sin compartir tus datos con terceros.',
+                    'Aplicación web instalable en el móvil, en español, inglés o francés, con el código público y sin compartir tus datos con anunciantes.',
                 ],
                 'migration_intro' => 'Fintonic muestra los movimientos que le entrega tu banco, así que el origen fiable de tu histórico es el banco, no la app. El importador de Whisper Money está pensado justo para eso: coges el fichero del banco y él se encarga de entender las columnas.',
                 'migration_steps' => [
@@ -698,7 +698,7 @@ final class MarketingContent
                     'Category budgets with alerts, and no conditional formatting.',
                     'Multi-currency across 33 currencies with conversion, and no exchange rate tab to maintain.',
                     'Runs in the browser and installs on your phone, so logging cash no longer waits until you reach a computer.',
-                    'Interface in English, Spanish and French, public code, and no data shared with third parties.',
+                    'Interface in English, Spanish and French, public code, and no data shared with advertisers.',
                 ],
                 'migration_intro' => 'This is the cleanest move of them all, because your history is already in the shape the importer expects: a sheet with one row per transaction. If it also has a column saying which account each row belongs to, the full importer brings every account in at once during your first 15 days.',
                 'migration_steps' => [
@@ -771,7 +771,7 @@ final class MarketingContent
                     'Presupuestos por categoría con avisos, sin formatos condicionales.',
                     'Multidivisa con 33 monedas y conversión, sin mantener una pestaña de tipos de cambio.',
                     'Funciona en el navegador y se instala en el móvil, así que apuntar el efectivo deja de esperar a que llegues al ordenador.',
-                    'Interfaz en español, inglés y francés, código público y ningún dato compartido con terceros.',
+                    'Interfaz en español, inglés y francés, código público y ningún dato compartido con anunciantes.',
                 ],
                 'migration_intro' => 'Esta es la mudanza más limpia de todas, porque tu histórico ya está en el formato que el importador espera: una hoja con una fila por movimiento. Si además tiene una columna que diga a qué cuenta pertenece cada fila, el importador completo se trae todas las cuentas de una vez durante tus primeros 15 días.',
                 'migration_steps' => [
@@ -1215,7 +1215,7 @@ final class MarketingContent
                     'Net worth with brokers, crypto, property and loans.',
                     'Automation rules and optional AI categorisation, if you consent to it.',
                     'Web and mobile on the same account, with no syncing through Drive or Dropbox.',
-                    'Interface in English, Spanish and French, public code, and no data shared with third parties.',
+                    'Interface in English, Spanish and French, public code, and no data shared with advertisers.',
                 ],
                 'migration_intro' => 'Monefy exports your data to CSV or Excel according to its own guide, and that is all it takes. During your first 15 days, the full importer brings the whole file in one go, categories included, and if the file names the Monefy account of each record, each one arrives as its own account. Otherwise, since Monefy\'s accounts are pockets rather than bank accounts, the usual approach is to import everything into a single cash account and carry on from there.',
                 'migration_steps' => [
@@ -1288,7 +1288,7 @@ final class MarketingContent
                     'Patrimonio neto con brokers, cripto, inmuebles y préstamos.',
                     'Reglas de automatización y categorización con IA opcional, si das tu consentimiento.',
                     'Aplicación web y móvil con la misma cuenta, sin sincronizar a través de Drive ni Dropbox.',
-                    'Interfaz en español, inglés y francés, código público y ningún dato compartido con terceros.',
+                    'Interfaz en español, inglés y francés, código público y ningún dato compartido con anunciantes.',
                 ],
                 'migration_intro' => 'Monefy exporta tus datos a CSV o Excel, según su propia guía, y eso es todo lo que hace falta. Durante tus primeros 15 días, el importador completo se trae el archivo entero de una vez, categorías incluidas, y si el archivo indica la cuenta de Monefy de cada registro, cada una llega como una cuenta propia. Si no, como las cuentas de Monefy son bolsillos y no cuentas bancarias, lo habitual es importarlo todo a una única cuenta de efectivo y seguir desde ahí.',
                 'migration_steps' => [
@@ -1560,7 +1560,7 @@ final class MarketingContent
                     'Category budgets, cash flow and net worth in the same application.',
                     'Automation rules and optional AI categorisation that learns from your corrections.',
                     'Interface in English, Spanish and French, across 33 currencies.',
-                    'Public code on GitHub and no data shared with third parties.',
+                    'Public code on GitHub and no data shared with advertisers.',
                 ],
                 'migration_intro' => 'Dinerio lets you download all your data as an Excel file "with a professional layout", in the words of its site, but it does not say how that file is laid out. If it turns out to be one row per transaction with a date, an amount and a description, the full importer can read it during your first 15 days. Otherwise, the reliable route is the same one you used to feed Dinerio: your bank statement. The difference is that here you upload it instead of typing it.',
                 'migration_steps' => [
@@ -1633,7 +1633,7 @@ final class MarketingContent
                     'Presupuestos por categoría, flujo de caja y patrimonio neto en la misma aplicación.',
                     'Reglas de automatización y categorización con IA opcional que aprende de tus correcciones.',
                     'Interfaz en español, inglés y francés, con 33 divisas.',
-                    'Código público en GitHub y ningún dato compartido con terceros.',
+                    'Código público en GitHub y ningún dato compartido con anunciantes.',
                 ],
                 'migration_intro' => 'Dinerio te deja descargar todos tus datos en un archivo Excel «con diseño profesional», en palabras de su web, pero no explica cómo está organizado. Si resulta ser una fila por movimiento con fecha, importe y descripción, el importador completo puede leerlo durante tus primeros 15 días. Si no, la vía fiable es la misma con la que alimentabas Dinerio: el extracto de tu banco. La diferencia es que aquí lo subes en lugar de teclearlo.',
                 'migration_steps' => [
@@ -1716,7 +1716,7 @@ final class MarketingContent
                     [
                         'dimension' => 'What you can verify',
                         'rival' => 'Its help centre says data is kept on Amazon Web Services servers in Europe and is not sold or passed on to third parties for commercial purposes (docs.banktrack.com, 6 October 2026).',
-                        'whisper' => 'We do not sell or share your data with third parties either, and the code is public on GitHub, so the promise can be read and not just believed.',
+                        'whisper' => 'We do not sell your data or share it with advertisers either, and the code is public on GitHub, so the promise can be read and not just believed.',
                     ],
                 ],
                 'narrative_title' => 'A business tool now, with your history inside it',
@@ -1735,7 +1735,7 @@ final class MarketingContent
                     'Open while you set up your account and for 15 days after. Past that, write to us.',
                     'PSD2 bank connections, plus Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken and Coinbase in the same net worth.',
                     'Category budgets, cash flow and net worth, with a permanent free plan.',
-                    'Public code on GitHub, and no data shared with third parties.',
+                    'Public code on GitHub, and no data shared with advertisers.',
                 ],
                 'migration_intro' => 'Banktrack puts everything in one file, and that file is all you need. Whisper Money already knows its columns, so the move takes minutes rather than an afternoon of spreadsheets.',
                 'migration_steps' => [
@@ -1788,7 +1788,7 @@ final class MarketingContent
                     [
                         'dimension' => 'Qué puedes comprobar',
                         'rival' => 'Su centro de ayuda dice que guarda los datos en servidores de Amazon Web Services en Europa y que no los vende ni los cede a terceros con fines comerciales (docs.banktrack.com, 6 de octubre de 2026).',
-                        'whisper' => 'Nosotros tampoco vendemos ni compartimos tus datos con terceros, y además el código es público en GitHub: la promesa se puede leer, no solo creer.',
+                        'whisper' => 'Nosotros tampoco vendemos tus datos ni los compartimos con anunciantes, y además el código es público en GitHub: la promesa se puede leer, no solo creer.',
                     ],
                 ],
                 'narrative_title' => 'Ahora es una herramienta de empresa, con tu histórico dentro',
@@ -1807,7 +1807,7 @@ final class MarketingContent
                     'Disponible mientras configuras tu cuenta y durante los 15 días siguientes. Después, escríbenos.',
                     'Conexión bancaria por PSD2, más Indexa Capital, Interactive Brokers, Wise, Binance, Bitpanda, Kraken y Coinbase en el mismo patrimonio neto.',
                     'Presupuestos por categoría, flujo de caja y patrimonio neto, con plan gratuito permanente.',
-                    'Código público en GitHub y ningún dato compartido con terceros.',
+                    'Código público en GitHub y ningún dato compartido con anunciantes.',
                 ],
                 'migration_intro' => 'Banktrack lo mete todo en un archivo, y ese archivo es todo lo que necesitas. Whisper Money ya conoce sus columnas, así que la mudanza son minutos y no una tarde peleándote con hojas de cálculo.',
                 'migration_steps' => [

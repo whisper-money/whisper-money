@@ -12,7 +12,7 @@
 {{ __('Go to your dashboard and click "Import Transactions". Select your CSV file and we\'ll map the columns automatically.') }}
 
 **{{ __('Step 3: Review and confirm') }}**
-{{ __('Check that everything looks correct and click "Import". Your transactions are stored securely and never shared with anyone.') }}
+{{ __('Check that everything looks correct and click "Import". Your transactions are stored securely and never sold or shared with advertisers.') }}
 
 ## {{ __('Prefer to Connect Your Bank?') }}
 
