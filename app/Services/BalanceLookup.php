@@ -9,6 +9,7 @@ use App\Support\DatedSeries;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
+use stdClass;
 
 class BalanceLookup
 {
@@ -166,7 +167,7 @@ class BalanceLookup
             $balanceRows = $seed === null ? $inRange : [$seed, ...$inRange];
             $investedRows = array_values(array_filter(
                 $investedSeed === null ? $inRange : [$investedSeed, ...$inRange],
-                static fn (object $row): bool => $row->invested_amount !== null,
+                static fn (stdClass $row): bool => $row->invested_amount !== null,
             ));
 
             $instance->balancesByAccount[$accountId] = self::seriesOf($balanceRows, 'balance', $share);
@@ -181,8 +182,8 @@ class BalanceLookup
      * Plain query rows grouped by account ID, each group in the order the
      * query returned it.
      *
-     * @param  Collection<int, object>  $rows
-     * @return array<string, list<object>>
+     * @param  Collection<int, stdClass>  $rows
+     * @return array<string, list<stdClass>>
      */
     private static function rowsByAccount(Collection $rows): array
     {
@@ -200,14 +201,14 @@ class BalanceLookup
      * to the owner's share. The columns are NOT NULL, or filtered to non-null
      * rows by the caller, so the cast never turns a missing figure into 0.
      *
-     * @param  list<object>  $rows
+     * @param  list<stdClass>  $rows
      * @param  callable(?int): ?int  $share
      */
     private static function seriesOf(array $rows, string $column, callable $share): DatedSeries
     {
         return new DatedSeries(
-            array_map(static fn (object $row): string => self::dayOf($row->balance_date), $rows),
-            array_map(static fn (object $row): int => (int) $share((int) $row->{$column}), $rows),
+            array_map(static fn (stdClass $row): string => self::dayOf($row->balance_date), $rows),
+            array_map(static fn (stdClass $row): int => (int) $share((int) $row->{$column}), $rows),
         );
     }
 
@@ -228,8 +229,8 @@ class BalanceLookup
      * and one with no balance at all has nothing to walk back from.
      *
      * @param  list<string>  $accountIds
-     * @param  array<string, list<object>>  $carryForwardRecords
-     * @param  array<string, list<object>>  $rangeRecords
+     * @param  array<string, list<stdClass>>  $carryForwardRecords
+     * @param  array<string, list<stdClass>>  $rangeRecords
      * @return list<string>
      */
     private static function walkBackAccountIds(array $accountIds, array $carryForwardRecords, array $rangeRecords): array
