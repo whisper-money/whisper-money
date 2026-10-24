@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * Adds a window of transactions up in SQL for the cashflow figures, instead of
@@ -91,7 +92,7 @@ class CashflowAggregateQuery
         $categories = Category::query()->whereIn('id', $groups->pluck('category_id')->filter()->unique()->values())->get()->keyBy('id');
 
         $this->exchangeRateService->preloadRates($userCurrency, $groups
-            ->filter(fn (object $group): bool => $group->row_amount !== null
+            ->filter(fn (stdClass $group): bool => $group->row_amount !== null
                 && strcasecmp($this->sourceCurrency($group->currency_code, $accounts->get($group->account_id), $userCurrency), $userCurrency) !== 0)
             ->pluck('row_date')
             ->unique()
@@ -101,7 +102,7 @@ class CashflowAggregateQuery
         // the same to the cashflow rules share one stand-in.
         $standIns = [];
 
-        return $groups->map(function (object $group) use ($accounts, $categories, $userCurrency, &$standIns): CashflowAggregate {
+        return $groups->map(function (stdClass $group) use ($accounts, $categories, $userCurrency, &$standIns): CashflowAggregate {
             $account = $accounts->get($group->account_id);
 
             return new CashflowAggregate(
@@ -125,7 +126,7 @@ class CashflowAggregateQuery
      * One row of a group that could not be summed in SQL, the way
      * {@see ConvertsTransactionCurrency::convertTransactionAmount()} reads it.
      */
-    private function ownedAmount(?Account $account, object $group, string $userCurrency): int
+    private function ownedAmount(?Account $account, stdClass $group, string $userCurrency): int
     {
         $converted = $this->exchangeRateService->convert(
             $this->sourceCurrency($group->currency_code, $account, $userCurrency),
@@ -140,7 +141,7 @@ class CashflowAggregateQuery
     /**
      * @param  Builder<Transaction>  $transactions
      * @param  array<int, mixed>  $bucketBindings
-     * @return Collection<int, object>
+     * @return Collection<int, stdClass>
      */
     private function groupedRows(Builder $transactions, string $userCurrency, ?string $bucket, array $bucketBindings): Collection
     {

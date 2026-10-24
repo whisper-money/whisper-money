@@ -270,23 +270,25 @@ class CashflowAnalyticsController extends Controller
     {
         return $this->aggregates
             ->aggregateByMonth($this->ownedWithin($userId, $from, $to), $userCurrency)
-            ->map(function (Collection $aggregates): array {
-                $totals = ['income' => 0, 'expense' => 0];
+            ->map(fn (Collection $aggregates): array => [
+                'income' => $this->trendTotal($aggregates, CategoryType::Income),
+                'expense' => $this->trendTotal($aggregates, CategoryType::Expense),
+            ]);
+    }
 
-                // Set-aside legs need no skipping here: neither side counts
-                // a savings or investment row.
-                foreach ($aggregates as $aggregate) {
-                    $side = $this->trendSideOf($aggregate->transaction);
-
-                    if ($side !== null) {
-                        $totals[$side->value] += $aggregate->transaction->category_id === null
-                            ? abs($aggregate->amount)
-                            : $this->orientToSide($aggregate->amount, $side);
-                    }
-                }
-
-                return $totals;
-            });
+    /**
+     * One side of a trend month. Set-aside legs need no skipping here: neither
+     * side counts a savings or investment row.
+     *
+     * @param  Collection<int, CashflowAggregate>  $aggregates
+     */
+    private function trendTotal(Collection $aggregates, CategoryType $side): int
+    {
+        return $aggregates
+            ->filter(fn (CashflowAggregate $aggregate): bool => $this->trendSideOf($aggregate->transaction) === $side)
+            ->sum(fn (CashflowAggregate $aggregate): int => $aggregate->transaction->category_id === null
+                ? abs($aggregate->amount)
+                : $this->orientToSide($aggregate->amount, $side));
     }
 
     /**
