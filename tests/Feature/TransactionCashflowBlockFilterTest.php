@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\CashflowBlock;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Budget;
@@ -9,6 +10,9 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\CashflowBlockQuery;
+use App\Services\PeriodComparator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -250,4 +254,23 @@ test('a saved filter keeps the block together with its dates', function () {
     $this->postJson('/api/saved-filters', ['name' => 'Dateless', 'filters' => ['cashflow_block' => 'saved']])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['filters.date_from', 'filters.date_to']);
+});
+
+test('a block lets the outer transactions be read by index instead of scanning the table', function () {
+    // A handful of rows makes any plan a full scan, so this checks the
+    // index is on offer to the outer query rather than which one MySQL picks.
+    seedCashflowMonth();
+
+    $query = app(CashflowBlockQuery::class)->apply(
+        Transaction::query(),
+        CashflowBlock::General,
+        $this->user->id,
+        PeriodComparator::fromRequest(['from' => '2026-10-01', 'to' => '2026-10-31']),
+    );
+
+    $outer = collect(DB::select('explain '.$query->toSql(), $query->getBindings()))
+        ->firstWhere('select_type', 'PRIMARY');
+
+    expect($outer->table)->toBe('transactions')
+        ->and(explode(',', (string) $outer->possible_keys))->toContain('idx_transactions_budget_lookup');
 });
