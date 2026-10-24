@@ -101,8 +101,8 @@ class CashflowBlockQuery
     }
 
     /**
-     * The user's rows dated in the period: the leading columns of
-     * `idx_transactions_budget_lookup`.
+     * The user's rows dated in the period: with the soft-delete scope's
+     * `deleted_at is null`, the leading columns of `idx_transactions_budget_lookup`.
      *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
