@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | The release in package.json, shown in the support dialog. Read here so
+    | `config:cache` bakes it in once at boot instead of every request opening
+    | and decoding package.json.
+    |
+    */
+
+    'version' => json_decode((string) file_get_contents(base_path('package.json')))->version ?? '0.0.0',
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |
