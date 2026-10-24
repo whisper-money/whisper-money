@@ -114,11 +114,13 @@ Try:
 ### Cashflow, net worth and spending
 
 The same figures the Cashflow and dashboard screens show, for any period you
-ask about.
+ask about: income, expenses split into fixed, variable and general, what you
+saved and invested, and how much your budgets still have reserved.
 
 Try:
 
 - "Where is my money going this year?"
+- "How much of my spending this month was fixed?"
 - "Has my net worth grown since January?"
 
 </div>
@@ -314,6 +316,9 @@ These are the rules the app itself follows:
 - **A budget's period, start day, rollover and tracked categories are fixed
   once it is created.** To change any of those, the budget has to be deleted
   and created again.
+- **A budget's [expense type](/documentation/budgets#expense-type) is set in
+  the app.** A budget the assistant creates starts as Variable. To make it
+  Fixed, edit it in Whisper Money.
 - **Applying an automation rule to past transactions asks first.** The
   assistant reports how many transactions match and changes nothing until you
   tell it to go ahead.

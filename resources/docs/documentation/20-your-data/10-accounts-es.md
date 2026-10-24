@@ -24,7 +24,7 @@ flowchart TD
     account[Cuenta] --> balances[Historial de saldos]
     account --> transactions[Transacciones]
     balances --> networth[Patrimonio neto]
-    transactions --> cashflow[Flujo de efectivo]
+    transactions --> cashflow[Flujo de caja]
 ```
 
 ## Tipos de cuenta
@@ -203,7 +203,7 @@ A partir de ahí, los ingresos y gastos solo cuentan en tus propias cifras en es
 porcentaje. En una cuenta al 50/50, una compra del súper compartida cuenta como
 la mitad de lo que cobró el banco en:
 
-- Flujo de efectivo
+- Flujo de caja
 - Presupuestos
 - Gasto por etiqueta
 
@@ -221,7 +221,7 @@ mitad del valor es realmente tuya.
 Cambiar la parte más adelante también reescribe lo que la cuenta ya ha gastado
 en tus presupuestos, incluidos los periodos pasados. Los presupuestos guardan lo
 que aportó cada transacción en el momento en que se asignó, así que se
-recalculan con la parte nueva. El flujo de efectivo y el patrimonio neto se
+recalculan con la parte nueva. El flujo de caja y el patrimonio neto se
 calculan al leerlos, así que recogen la parte nueva por su cuenta.
 
 ## Preguntas frecuentes

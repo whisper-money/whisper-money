@@ -105,7 +105,7 @@ Use filters when the list is too large.
 
 You can filter by:
 
-- Date range
+- Date range, or a whole month, quarter or year in one click
 - Amount range
 - Category
 - Account
@@ -116,6 +116,39 @@ You can filter by:
 
 A good search often starts with the merchant name or a word from the bank
 description.
+
+In the Filters menu, next to the date, the **Month**, **Quarter** and **Year**
+buttons set the range to the whole calendar month, quarter or year that contains
+the start date, or today if there is none. The button that matches the current
+range shows as pressed.
+
+### Cashflow block
+
+The [Cashflow](/documentation/cashflow) page splits your money into blocks:
+fixed, variable and general expenses, and what you saved and invested. Every
+block there, in the Expenses card and in the "Where your money goes" panel, has
+an arrow that opens this list showing exactly the
+transactions behind that figure, for the same dates.
+
+The list shows the block as a chip above the transactions, such as **Block:
+Fixed expense**. The blocks are:
+
+- **Fixed expense**: what your fixed budgets track.
+- **Variable expense**: what your variable budgets track, and no fixed one does.
+- **General expense**: spending no budget tracks.
+- **Saved**: money set aside with a savings category.
+- **Invested**: money set aside with an investment category.
+
+How expenses fall into each block is explained in
+[Budgets](/documentation/budgets#expense-type).
+
+A block only makes sense over a period, so it needs both a start and an end
+date. Change the dates, or use the Month, Quarter and Year buttons, to see the
+same block over another period. Clearing either date drops the block. To go back
+to the full list, remove the chip with its cross. You can combine the block with
+any other filter.
+
+The block filter is not in the filter menu. You reach it from the Cashflow page.
 
 ### Saved filters
 

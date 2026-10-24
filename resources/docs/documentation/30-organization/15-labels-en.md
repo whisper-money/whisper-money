@@ -8,7 +8,7 @@ A transaction has exactly one [category](/documentation/categories) and any numb
 
 Reach for a label when a group of transactions cuts across categories: a holiday that was flights, restaurants and taxis; a flat renovation that was tools, furniture and a plumber; the expenses you will bill to a client.
 
-Reach for a category when you want the transaction to land somewhere in your reports. Labels do not appear in the cashflow report — they are for filtering and for budgets.
+Reach for a category when you want the transaction to land somewhere in your reports. Labels do not appear in the cashflow report — they are for filtering and for budgets. The one way a label reaches the cashflow page is through a budget: spending on a label a fixed or variable budget tracks counts as [fixed or variable](/documentation/budgets#expense-type).
 
 ## Managing them
 

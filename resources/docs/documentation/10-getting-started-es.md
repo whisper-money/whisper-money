@@ -12,7 +12,7 @@ Sigue este orden si estás configurando todo por primera vez.
 2. Añade transacciones, impórtalas desde un archivo del banco o conecta tu banco.
 3. Revisa las transacciones sin categoría.
 4. Crea reglas de automatización para transacciones repetidas.
-5. Revisa Flujo de efectivo para ver ingresos, gastos y movimiento neto.
+5. Revisa Flujo de caja para ver ingresos, gastos, lo que has ahorrado e invertido y lo que queda disponible.
 6. Añade presupuestos cuando quieras límites de gasto.
 
 ¿Vienes de otra app de finanzas? [Importar desde otra app](/documentation/import-from-another-app)
@@ -27,7 +27,7 @@ flowchart TD
     accounts[Cuentas] --> transactions[Transacciones]
     transactions --> categories[Categorías]
     transactions --> labels[Etiquetas]
-    categories --> cashflow[Flujo de efectivo]
+    categories --> cashflow[Flujo de caja]
     categories --> budgets[Presupuestos]
     labels --> budgets
     automation[Reglas de automatización] --> transactions
@@ -99,7 +99,7 @@ Una rutina simple es suficiente para la mayoría de personas.
 1. Importa o sincroniza nuevas transacciones.
 2. Categoriza lo que esté sin categoría y revisa lo que se ha categorizado por ti.
 3. Corrige transferencias entre tus propias cuentas.
-4. Revisa Flujo de efectivo del mes.
+4. Revisa el Flujo de caja del mes, el trimestre o el año.
 5. Revisa presupuestos si los usas.
 
 ## Qué hacer si los informes parecen incorrectos

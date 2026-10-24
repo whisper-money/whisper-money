@@ -115,14 +115,16 @@ Prueba:
 </div>
 
 <div class="card">
-### Flujo de efectivo, patrimonio y gasto
+### Flujo de caja, patrimonio y gasto
 
-Las mismas cifras que muestran la pantalla de Flujo de efectivo y el panel, para
-el periodo que le pidas.
+Las mismas cifras que muestran la pantalla de Flujo de caja y el panel, para el
+periodo que le pidas: ingresos, gastos repartidos en fijo, variable y general,
+lo que has ahorrado e invertido, y cuánto siguen reservando tus presupuestos.
 
 Prueba:
 
 - «¿En qué se me está yendo el dinero este año?»
+- «¿Cuánto de lo que he gastado este mes era fijo?»
 - «¿Ha crecido mi patrimonio desde enero?»
 
 </div>
@@ -331,6 +333,9 @@ de confianza. Son las reglas que sigue la propia app:
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
   que eliminar el presupuesto y crearlo de nuevo.
+- **El [tipo de gasto](/documentation/budgets#tipo-de-gasto) de un presupuesto
+  se elige en la app.** Un presupuesto que crea el asistente empieza como
+  Variable. Para hacerlo Fijo, edítalo en Whisper Money.
 - **Aplicar una regla de automatización a transacciones pasadas se avisa
   antes.** El asistente informa de cuántas transacciones encajan y no cambia
   nada hasta que le dices que siga.

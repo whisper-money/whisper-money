@@ -8,7 +8,7 @@ Una transacción tiene exactamente una [categoría](/documentation/categories) y
 
 Tira de una etiqueta cuando un grupo de transacciones cruza categorías: un viaje que fueron vuelos, restaurantes y taxis; una reforma que fueron herramientas, muebles y un fontanero; los gastos que vas a facturar a un cliente.
 
-Tira de una categoría cuando quieras que la transacción aterrice en algún sitio de tus informes. Las etiquetas no aparecen en el informe de flujo de caja: son para filtrar y para presupuestos.
+Tira de una categoría cuando quieras que la transacción aterrice en algún sitio de tus informes. Las etiquetas no aparecen en el informe de flujo de caja: son para filtrar y para presupuestos. La única forma en que una etiqueta llega al flujo de caja es a través de un presupuesto: lo gastado en una etiqueta que sigue un presupuesto fijo o variable cuenta como [fijo o variable](/documentation/budgets#tipo-de-gasto).
 
 ## Cómo se gestionan
 

@@ -1,6 +1,6 @@
 # Transacciones
 
-Las transacciones son los movimientos individuales de dinero en tus cuentas. Alimentan categorías, flujo de efectivo, presupuestos y reglas de automatización.
+Las transacciones son los movimientos individuales de dinero en tus cuentas. Alimentan categorías, flujo de caja, presupuestos y reglas de automatización.
 
 {{TOC}}
 
@@ -106,7 +106,7 @@ Usa filtros cuando la lista sea demasiado grande.
 
 Puedes filtrar por:
 
-- Rango de fechas
+- Rango de fechas, o un mes, trimestre o año entero con un clic
 - Rango de importes
 - Categoría
 - Cuenta
@@ -117,6 +117,40 @@ Puedes filtrar por:
 
 Una buena búsqueda suele empezar con el nombre del comercio o una palabra de la
 descripción bancaria.
+
+En el menú de filtros, junto a la fecha, los botones **Mes**, **Trimestre** y
+**Año** ajustan el rango al mes, trimestre o año natural completo que contiene
+la fecha de inicio, o el día de hoy si no hay ninguna. El botón que coincide con
+el rango actual aparece pulsado.
+
+### Bloque de flujo de caja
+
+La página de [Flujo de caja](/documentation/cashflow) reparte tu dinero en
+bloques: gasto fijo, variable y general, y lo que has ahorrado e invertido. Cada
+bloque, en la tarjeta de Gastos y en el panel «A dónde va tu dinero», tiene una
+flecha que abre esta lista con exactamente las
+transacciones que hay detrás de esa cifra, para las mismas fechas.
+
+La lista muestra el bloque como una etiqueta sobre las transacciones, por
+ejemplo **Bloque: Gasto fijo**. Los bloques son:
+
+- **Gasto fijo**: lo que siguen tus presupuestos fijos.
+- **Gasto variable**: lo que siguen tus presupuestos variables y ninguno fijo.
+- **Gasto general**: lo que no sigue ningún presupuesto.
+- **Ahorrado**: el dinero apartado con una categoría de ahorro.
+- **Invertido**: el dinero apartado con una categoría de inversión.
+
+Cómo cae cada gasto en un bloque se explica en
+[Presupuestos](/documentation/budgets#tipo-de-gasto).
+
+Un bloque solo tiene sentido dentro de un periodo, así que necesita fecha de
+inicio y de fin. Cambia las fechas, o usa los botones Mes, Trimestre y Año, para
+ver el mismo bloque en otro periodo. Si borras cualquiera de las dos fechas, el
+bloque desaparece. Para volver a la lista completa, quita la etiqueta con su
+aspa. Puedes combinar el bloque con cualquier otro filtro.
+
+El filtro de bloque no está en el menú de filtros. Llegas a él desde la página
+de Flujo de caja.
 
 ### Filtros guardados
 

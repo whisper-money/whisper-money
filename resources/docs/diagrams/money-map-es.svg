@@ -1,6 +1,6 @@
 <svg viewBox="0 0 720 280" role="img" aria-labelledby="money-map-es-title money-map-es-desc" xmlns="http://www.w3.org/2000/svg">
     <title id="money-map-es-title">Cómo encajan las piezas de Whisper Money</title>
-    <desc id="money-map-es-desc">Las cuentas alimentan las transacciones; las transacciones se organizan en categorías y etiquetas, y de ahí salen el flujo de efectivo y los presupuestos. Las reglas de automatización actúan sobre la transacción al llegar.</desc>
+    <desc id="money-map-es-desc">Las cuentas alimentan las transacciones; las transacciones se organizan en categorías y etiquetas, y de ahí salen el flujo de caja y los presupuestos. Las reglas de automatización actúan sobre la transacción al llegar.</desc>
     <defs>
         <marker id="money-map-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
@@ -36,7 +36,7 @@
     <rect class="dg-mask" x="564" y="48" width="132" height="56" rx="6"/>
     <rect class="dg-node" x="564" y="48" width="132" height="56" rx="6"/>
     <text class="dg-name" x="630" y="72" text-anchor="middle">Flujo de</text>
-    <text class="dg-name" x="630" y="88" text-anchor="middle">efectivo</text>
+    <text class="dg-name" x="630" y="88" text-anchor="middle">caja</text>
     <rect class="dg-mask" x="564" y="120" width="132" height="56" rx="6"/>
     <rect class="dg-node" x="564" y="120" width="132" height="56" rx="6"/>
     <text class="dg-name" x="630" y="152" text-anchor="middle">Presupuestos</text>
