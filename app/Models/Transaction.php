@@ -515,6 +515,25 @@ class Transaction extends Model
     }
 
     /**
+     * Inclusive `transaction_date` range, either end optional.
+     *
+     * Plain comparisons rather than `whereDate()`: the column is already a
+     * DATE, and MySQL wraps a `whereDate()` column in `cast(... as date)`,
+     * which keeps the range off `idx_transactions_budget_lookup` and reads
+     * every row the user has. Bounds are cut to `Y-m-d` first so a value with
+     * a time of day (`2026-01-31 15:00`) still includes its own day.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeTransactionDateWithin(Builder $query, mixed $from, mixed $to): Builder
+    {
+        return $query
+            ->when(filled($from), fn (Builder $q) => $q->where('transaction_date', '>=', Carbon::parse($from)->toDateString()))
+            ->when(filled($to), fn (Builder $q) => $q->where('transaction_date', '<=', Carbon::parse($to)->toDateString()));
+    }
+
+    /**
      * @param  Builder<Transaction>  $query
      * @param  array<string, mixed>  $filters
      * @return Builder<Transaction>
@@ -522,8 +541,7 @@ class Transaction extends Model
     public function scopeApplyFilters(Builder $query, array $filters): Builder
     {
         $query
-            ->when(isset($filters['date_from']), fn (Builder $q) => $q->whereDate('transaction_date', '>=', $filters['date_from']))
-            ->when(isset($filters['date_to']), fn (Builder $q) => $q->whereDate('transaction_date', '<=', $filters['date_to']))
+            ->transactionDateWithin($filters['date_from'] ?? null, $filters['date_to'] ?? null)
             ->when(isset($filters['amount_min']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_min'], '>='))
             ->when(isset($filters['amount_max']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_max'], '<='))
             ->when(! empty($filters['account_ids']), fn (Builder $q) => $q->whereIn('account_id', $filters['account_ids']))
