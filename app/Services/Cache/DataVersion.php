@@ -30,7 +30,11 @@ use Throwable;
 #[Scoped]
 final class DataVersion
 {
-    /** The token every key also carries, bumped when exchange rates change. */
+    /**
+     * The token every key also carries, bumped when exchange rates change.
+     *
+     * @api Read by the user-data cache (PR2) and the test suite, which static analysis does not scan.
+     */
     public const string RATES = 'rates';
 
     private const string KEY_PREFIX = 'wm:dv:';
@@ -50,21 +54,7 @@ final class DataVersion
 
     public static function bumpUser(User|string $user): void
     {
-        self::bumpUsers([$user]);
-    }
-
-    /**
-     * @param  iterable<User|string>  $users
-     */
-    public static function bumpUsers(iterable $users): void
-    {
-        $ids = [];
-
-        foreach ($users as $user) {
-            $ids[] = $user instanceof User ? $user->id : $user;
-        }
-
-        app(self::class)->queue($ids);
+        app(self::class)->queue([$user instanceof User ? $user->id : $user]);
     }
 
     public static function bumpRates(): void
@@ -159,6 +149,8 @@ final class DataVersion
     /**
      * The current token for a user id (or {@see RATES}), minting one when the
      * key is missing or was evicted.
+     *
+     * @api Read by the user-data cache (PR2) and the test suite, which static analysis does not scan.
      */
     public static function current(string $id): string
     {

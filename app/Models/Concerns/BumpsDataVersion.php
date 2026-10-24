@@ -18,11 +18,11 @@ trait BumpsDataVersion
 {
     public static function bootBumpsDataVersion(): void
     {
-        $bump = static fn (Model $model) => DataVersion::bumpOwnerOf($model->dataVersionOwner());
+        $bump = static fn (self $model) => DataVersion::bumpOwnerOf($model->dataVersionOwner());
 
         static::created($bump);
         static::deleted($bump);
-        static::updated(static function (Model $model) use ($bump): void {
+        static::updated(static function (self $model) use ($bump): void {
             $bump($model);
 
             // A row moved to another user or space leaves the old one's view too.
