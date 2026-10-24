@@ -47,8 +47,10 @@ return new class extends Migration
             return;
         }
 
-        if ($this->columnsOf(self::STAGING_INDEX) !== $columns) {
-            if ($this->columnsOf(self::STAGING_INDEX) !== null) {
+        $staged = $this->columnsOf(self::STAGING_INDEX);
+
+        if ($staged !== $columns) {
+            if ($staged !== null) {
                 DB::statement('ALTER TABLE transactions DROP INDEX '.self::STAGING_INDEX);
             }
 

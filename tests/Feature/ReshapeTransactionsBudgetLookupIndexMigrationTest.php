@@ -29,17 +29,23 @@ function budgetLookupIndexes(): array
 function alterStatementsWhile(Closure $callback): array
 {
     $statements = [];
+    $listening = true;
 
-    DB::listen(function ($query) use (&$statements) {
-        if (str_starts_with(strtolower($query->sql), 'alter table')) {
+    DB::listen(function ($query) use (&$statements, &$listening) {
+        if ($listening && str_starts_with(strtolower($query->sql), 'alter table')) {
             $statements[] = $query->sql;
         }
     });
 
     $callback();
+    $listening = false;
 
     return $statements;
 }
+
+// DDL commits implicitly in MySQL, outside RefreshDatabase's transaction, so
+// put the final shape back even when a test fails halfway through a swap.
+afterEach(fn () => reshapeBudgetLookupIndexMigration()->up());
 
 it('does nothing when the index already has its final shape', function () {
     expect(budgetLookupIndexes())->toBe(['idx_transactions_budget_lookup' => BUDGET_LOOKUP_COLUMNS]);
@@ -59,7 +65,8 @@ it('swaps the old index for the new shape online and back', function () {
 
     $statements = alterStatementsWhile(fn () => $migration->up());
 
-    expect($statements)->each->toContain('ALGORITHM=INPLACE, LOCK=NONE')
+    expect($statements)->toHaveCount(2)
+        ->each->toContain('ALGORITHM=INPLACE, LOCK=NONE')
         ->and(budgetLookupIndexes())->toBe(['idx_transactions_budget_lookup' => BUDGET_LOOKUP_COLUMNS]);
 });
 
@@ -79,6 +86,9 @@ it('serves the transactions list order from the index without a filesort', funct
     $user = User::factory()->create();
     Transaction::factory()->count(3)->create(['user_id' => $user->id]);
 
+    // A handful of rows makes any plan a full scan, so the index is forced and
+    // this checks its shape serves the order; the soft-delete scope supplies
+    // the `deleted_at is null` that makes it a `ref` lookup.
     $query = Transaction::query()
         ->from(DB::raw('transactions force index (idx_transactions_budget_lookup)'))
         ->where('user_id', $user->id)
