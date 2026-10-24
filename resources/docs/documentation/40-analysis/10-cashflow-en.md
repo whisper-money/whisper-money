@@ -66,8 +66,8 @@ with the previous period. Negative means you spent more than you earned.
 
 How much of the net cashflow you set aside, and what share of it that was.
 
-**Saved** and **Invested** are shown apart. When you put money into both, a
-pill next to each shows its share and a bar draws the split.
+**Saved** and **Invested** are shown apart. When you set money aside, a pill
+next to each shows its share and a bar draws the split.
 
 The figures come from transactions in savings and investment categories, so
 they only fill in once you use those category types.
@@ -114,6 +114,8 @@ is the **reserved** amount, and what remains is **Free**:
 Free = Available - Reserved
 ```
 
+For example, a groceries budget of 200 with 120 spent so far reserves 80.
+
 The Available card shows Free at the bottom, with the amount reserved in
 budgets, or "Nothing reserved in budgets" when there is none.
 
@@ -140,8 +142,10 @@ monthly budget says little about a whole year, so each is kept to the view it
 fits. See [budget periods](/documentation/budgets#budget-periods) and
 [budgets on the Cashflow page](/documentation/budgets#budgets-on-the-cashflow-page).
 
-When you look at a past period, no budget period is in progress any more, so
-nothing is reserved and Free equals Available.
+When you look at a past or future period, there is usually nothing in progress
+in it, so nothing is reserved and Free equals Available. The exception is a
+weekly or bi-weekly budget period that crosses into today, such as one running
+from the last days of last month into this one.
 
 ## Expenses: fixed, variable and general
 
@@ -185,8 +189,9 @@ just as well for a past period as for the current one.
   this view, each with what you spent of what you allocated and what is left,
   and how much each group reserves.
 
-A note at the bottom reminds you which budgets the view reserves: yearly
-budgets in the Year view, weekly and monthly ones in the Month view.
+A note at the bottom points you to the other view: in Month and Quarter it
+reminds you that yearly budgets are reserved in the Year view, and in Year that
+weekly and monthly budgets are reserved in the Month view.
 
 ## View a block's transactions
 
@@ -201,7 +206,7 @@ The filter shows as a chip you can remove. See
 ## Trend chart
 
 **Cashflow Trend** shows income, expenses and net cashflow month by month. In
-the Month view it covers the last 12 months; in the Quarter and Year views, the
+the Month view it covers the 12 months up to the selected month; in the Quarter and Year views, the
 months of the selected period.
 
 Use it to spot patterns: a month with an unusual bill, income that changes with
@@ -286,8 +291,8 @@ or variable. Spending tracked by the catch-all budget always stays in General.
 
 ### Why is reserved 0?
 
-Reserved only counts budget periods in progress today. In a past period none is
-in progress, so nothing is reserved and Free equals Available. In the current
+Reserved only counts budget periods in progress today. A past period usually
+has none, so nothing is reserved and Free equals Available. In the current
 period, it is 0 when your budgets for this view have nothing left or you have no
 budgets of that periodicity.
 
@@ -296,7 +301,7 @@ budgets of that periodicity.
 The Month and Quarter views only reserve weekly, bi-weekly and monthly budgets.
 Switch to the Year view to see what your yearly budgets reserve.
 
-### Why does a yearly budget count in a month's fixed or variable expenses, then?
+### Why does a yearly budget still count in a month's fixed or variable expenses?
 
 The expense split follows every budget with a period in the view, whatever its
 periodicity: a transaction tracked by a yearly fixed budget is a fixed expense

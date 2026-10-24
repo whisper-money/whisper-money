@@ -68,8 +68,8 @@ ganaste.
 
 Cuánto del flujo neto apartaste y qué porcentaje supone.
 
-**Ahorrado** e **Invertido** se muestran por separado. Cuando aportas a los dos,
-una etiqueta junto a cada uno indica su parte y una barra dibuja el reparto.
+**Ahorrado** e **Invertido** se muestran por separado. Cuando apartas dinero,
+un indicador junto a cada uno muestra su parte y una barra dibuja el reparto.
 
 Las cifras salen de las transacciones con categorías de ahorro e inversión, así
 que solo se rellenan cuando usas esos tipos de categoría.
@@ -116,6 +116,9 @@ periodo. Eso es lo **reservado**, y lo que queda es **Libre**:
 Libre = Disponible - Reservado
 ```
 
+Por ejemplo, un presupuesto de supermercado de 200 con 120 gastados hasta ahora
+reserva 80.
+
 La tarjeta Disponible muestra Libre en la parte de abajo, junto a lo reservado
 en presupuestos, o «Nada reservado en presupuestos» si no hay nada.
 
@@ -142,8 +145,10 @@ queda en la vista que le corresponde. Consulta
 [periodos de presupuesto](/documentation/budgets#periodos-de-presupuesto) y
 [presupuestos en el flujo de caja](/documentation/budgets#presupuestos-en-el-flujo-de-caja).
 
-Cuando miras un periodo pasado, ya no hay ningún periodo de presupuesto en
-curso, así que no hay nada reservado y Libre es igual a Disponible.
+Cuando miras un periodo pasado o futuro, normalmente no hay nada en curso en
+él, así que no hay nada reservado y Libre es igual a Disponible. La excepción es
+un periodo de presupuesto semanal o quincenal que llega hasta hoy, como uno que
+va de los últimos días del mes pasado a este.
 
 ## Gastos: fijos, variables y generales
 
@@ -187,8 +192,9 @@ funciona igual de bien en un periodo pasado que en el actual.
   presupuesto en curso en esta vista, cada uno con lo que gastaste de lo
   asignado y lo que le queda, y cuánto reserva cada grupo.
 
-Una nota al final te recuerda qué presupuestos reserva la vista: los anuales en
-la vista Año, los semanales y mensuales en la vista Mes.
+Una nota al final te remite a la otra vista: en Mes y Trimestre te recuerda que
+los presupuestos anuales se reservan en la vista Año, y en Año, que los
+semanales y mensuales se reservan en la vista Mes.
 
 ## Ver las transacciones de un bloque
 
@@ -197,13 +203,13 @@ la lista de transacciones filtrada por ese bloque (fijo, variable, general,
 ahorrado o invertido) y por las fechas del periodo que estabas viendo, así que
 la lista suma la cifra en la que hiciste clic.
 
-El filtro aparece como una etiqueta que puedes quitar. Consulta
+El filtro aparece como un chip que puedes quitar. Consulta
 [el filtro por bloque de flujo de caja](/documentation/transactions#bloque-de-flujo-de-caja).
 
 ## Gráfico de tendencia
 
 **Tendencia del Flujo de Caja** muestra ingresos, gastos y flujo neto mes a mes.
-En la vista Mes cubre los últimos 12 meses; en las vistas Trimestre y Año, los
+En la vista Mes cubre los 12 meses hasta el mes elegido; en las vistas Trimestre y Año, los
 meses del periodo elegido.
 
 Úsalo para detectar patrones: un mes con una factura fuera de lo normal,
@@ -290,9 +296,9 @@ que sigue el presupuesto para todo lo demás siempre se queda en General.
 
 ### ¿Por qué lo reservado es 0?
 
-Lo reservado solo cuenta los periodos de presupuesto en curso hoy. En un periodo
-pasado no hay ninguno en curso, así que no hay nada reservado y Libre es igual a
-Disponible. En el periodo actual, es 0 cuando a tus presupuestos de esta vista
+Lo reservado solo cuenta los periodos de presupuesto en curso hoy. Un periodo
+pasado normalmente no tiene ninguno, así que no hay nada reservado y Libre es
+igual a Disponible. En el periodo actual, es 0 cuando a tus presupuestos de esta vista
 no les queda nada o no tienes presupuestos de esa periodicidad.
 
 ### ¿Por qué mi presupuesto anual no aparece en lo reservado del mes?
@@ -301,7 +307,7 @@ Las vistas Mes y Trimestre solo reservan presupuestos semanales, quincenales y
 mensuales. Cambia a la vista Año para ver lo que reservan tus presupuestos
 anuales.
 
-### Entonces, ¿por qué un presupuesto anual sí cuenta en los gastos fijos o variables del mes?
+### ¿Por qué un presupuesto anual sí cuenta en los gastos fijos o variables del mes?
 
 El reparto del gasto sigue todos los presupuestos con un periodo dentro de la
 vista, sea cual sea su periodicidad: una transacción que sigue un presupuesto
