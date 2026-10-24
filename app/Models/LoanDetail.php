@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BumpsDataVersion;
 use Database\Factories\LoanDetailFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +19,7 @@ use Illuminate\Support\Carbon;
 class LoanDetail extends Model
 {
     /** @use HasFactory<LoanDetailFactory> */
-    use HasFactory, HasUuids;
+    use BumpsDataVersion, HasFactory, HasUuids;
 
     protected $fillable = [
         'account_id',
@@ -49,5 +50,10 @@ class LoanDetail extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
+    }
+
+    public function dataVersionOwner(): ?Model
+    {
+        return $this->dataVersionOwnerVia('account');
     }
 }

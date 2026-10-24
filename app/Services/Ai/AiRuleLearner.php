@@ -7,6 +7,7 @@ use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\Ai\Contracts\TransactionMatcher;
+use App\Services\Cache\DataVersion;
 use Illuminate\Support\Str;
 
 /**
@@ -94,6 +95,7 @@ class AiRuleLearner
 
         $outcome->transaction->categorized_by_rule_id = $rule->id;
         $outcome->transaction->saveQuietly();
+        DataVersion::bumpOwnerOf($outcome->transaction);
 
         return $rule;
     }

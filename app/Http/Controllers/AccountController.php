@@ -12,6 +12,7 @@ use App\Models\AccountBalance;
 use App\Models\LoanDetail;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
+use App\Services\Cache\DataVersion;
 use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -64,6 +65,8 @@ class AccountController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->update(['position' => $position]);
         }
+
+        DataVersion::bumpUser($request->user());
 
         return back();
     }

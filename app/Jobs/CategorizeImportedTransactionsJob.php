@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\ImportAiStatus;
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Import;
 use App\Models\Transaction;
 use App\Services\Ai\AiCategorizationGate;
@@ -26,7 +27,7 @@ use function Sentry\configureScope;
  */
 class CategorizeImportedTransactionsJob implements ShouldBeUnique, ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * A large import can span many model calls, so give the batch plenty of

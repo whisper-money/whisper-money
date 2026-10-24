@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
@@ -28,7 +29,7 @@ use Throwable;
  */
 class CategorizeUncategorizedTransactionsJob implements ShouldBeUnique, ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * A backfill can span many model calls, so give the batch plenty of room.

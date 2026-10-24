@@ -5,6 +5,7 @@ namespace App\Services\Imports;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -33,9 +34,11 @@ class AccountPurger
             return 0;
         }
 
+        $owners = Account::withTrashed()->whereIn('id', $accountIds)->get(['user_id', 'space_id']);
         $transactions = $this->deleteInChunks(Transaction::withTrashed()->whereIn('account_id', $accountIds));
         $this->deleteInChunks(AccountBalance::query()->whereIn('account_id', $accountIds));
         Account::withTrashed()->whereIn('id', $accountIds)->forceDelete();
+        DataVersion::bumpOwnersOf($owners);
 
         return $transactions;
     }

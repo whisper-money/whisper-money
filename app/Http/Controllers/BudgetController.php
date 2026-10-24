@@ -18,6 +18,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetService;
+use App\Services\Cache\DataVersion;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -126,6 +127,8 @@ class BudgetController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->update(['position' => $position]);
         }
+
+        DataVersion::bumpUser($request->user());
 
         return back();
     }

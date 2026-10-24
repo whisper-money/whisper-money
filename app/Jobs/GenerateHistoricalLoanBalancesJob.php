@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Account;
 use App\Services\LoanBalanceGeneratorService;
 use Carbon\Carbon;
@@ -10,7 +11,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class GenerateHistoricalLoanBalancesJob implements ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     public int $tries = 3;
 

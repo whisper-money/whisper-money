@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Account;
 use App\Services\RealEstateBalanceGeneratorService;
 use Carbon\Carbon;
@@ -10,7 +11,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 class GenerateHistoricalRealEstateBalancesJob implements ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     /**
      * The number of times the job may be attempted.

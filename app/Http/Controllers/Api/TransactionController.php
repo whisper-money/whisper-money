@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
 use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use App\Services\TransactionDuplicateMatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -76,6 +77,8 @@ class TransactionController extends Controller
                 ->toBase()
                 ->update($updateData);
         }
+
+        DataVersion::bumpUser($request->user());
 
         return response()->json(['message' => 'Transactions updated successfully.']);
     }

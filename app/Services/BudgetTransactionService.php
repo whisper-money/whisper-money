@@ -8,6 +8,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +103,7 @@ class BudgetTransactionService
                     fn ($q) => $q->whereNotIn('budget_period_id', $matchingPeriodIds),
                 )
                 ->delete();
+            DataVersion::bumpOwnerOf($transaction);
 
             foreach ($matchingPeriodIds as $periodId) {
                 $budgetTransaction = $this->recordSnapshot($transaction, $periodId);
@@ -120,6 +122,7 @@ class BudgetTransactionService
     public function unassignTransaction(Transaction $transaction): void
     {
         BudgetTransaction::where('transaction_id', $transaction->id)->delete();
+        DataVersion::bumpOwnerOf($transaction);
     }
 
     public function assignHistoricalTransactionsToPeriod(BudgetPeriod $period): int
@@ -240,6 +243,7 @@ class BudgetTransactionService
         }
 
         BudgetTransaction::upsert($rows, ['transaction_id', 'budget_period_id'], ['amount']);
+        DataVersion::bumpOwnerOf($transactions->first());
 
         return $transactions->count() - $existingAmounts->count();
     }
@@ -281,6 +285,8 @@ class BudgetTransactionService
                 )
                 ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
         }
+
+        DataVersion::bumpOwnerOf($account);
 
         return $reweighed;
     }

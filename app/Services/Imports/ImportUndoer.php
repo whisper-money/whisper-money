@@ -9,6 +9,7 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Import;
 use App\Models\Transaction;
+use App\Services\Cache\DataVersion;
 use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -55,6 +56,7 @@ class ImportUndoer
             'status' => ImportStatus::tryFrom((string) ($import->stats['undo']['previous_status'] ?? '')) ?? ImportStatus::Completed,
             'undone_at' => now(),
         ])->save();
+        DataVersion::bumpOwnerOf($import);
 
         $requestedAt = $import->stats['undo']['requested_at'] ?? null;
 

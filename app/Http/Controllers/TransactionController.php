@@ -17,6 +17,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Cache\DataVersion;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -415,6 +416,7 @@ class TransactionController extends Controller
         // else would re-derive which budgets now track these transactions.
         // Silently: editing existing rows is not new spending.
         ReassignTransactionsToBudgets::dispatch($transactions->pluck('id')->all(), notify: false);
+        DataVersion::bumpOwnersOf($transactions);
 
         return response()->json([
             'message' => 'Transactions updated successfully',

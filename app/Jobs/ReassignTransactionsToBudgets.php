@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Transaction;
 use App\Services\BudgetTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,7 +21,7 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class ReassignTransactionsToBudgets implements ShouldQueue
 {
-    use Queueable;
+    use DefersDataVersionBumps, Queueable;
 
     public int $tries = 3;
 
