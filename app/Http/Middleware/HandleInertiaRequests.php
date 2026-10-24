@@ -16,11 +16,13 @@ use App\Services\Ai\AiImportMappingGate;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
+use App\Services\UserCollectionVersions;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
+use Inertia\OnceProp;
 use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
@@ -32,6 +34,7 @@ class HandleInertiaRequests extends Middleware
         private Catalog $catalog,
         private Challenges $challenges,
         private AiImportMappingGate $aiImportMappingGate,
+        private UserCollectionVersions $collectionVersions,
     ) {}
 
     /**
@@ -62,8 +65,6 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
-
         $user = $request->user();
 
         return [
@@ -76,8 +77,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'name' => config('app.name'),
             'appUrl' => config('app.url'),
-            'version' => json_decode(file_get_contents(base_path('package.json')))->version ?? '0.0.0',
-            'quote' => ['message' => trim($message), 'author' => trim($author)],
+            'version' => config('app.version'),
+            'quote' => fn (): array => $this->inspiringQuote(),
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
@@ -123,7 +124,7 @@ class HandleInertiaRequests extends Middleware
                 ->as('showHeaderAddTransaction:'.($user->id ?? 'guest'))
                 ->until(now()->addHour()),
             'locale' => $this->formatLocaleFor($request, $user),
-            'translations' => $this->getTranslations(),
+            'translations' => $this->translationsProp(),
             'currencies' => [
                 'profile' => $this->currencyOptions->primaryOptions(),
                 'accounts' => $this->currencyOptions->accountOptions(),
@@ -227,8 +228,11 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * The deferred props that list the user's own records. Guests get empty lists
-     * so the frontend can read them unconditionally.
+     * The props that list the user's own records. Guests get empty lists so the
+     * frontend can read them unconditionally.
+     *
+     * The banking connections stay plain closures: they are small, and which
+     * of them have expired moves with the clock rather than with a write.
      *
      * @return array<string, Closure>
      */
@@ -276,25 +280,61 @@ class HandleInertiaRequests extends Middleware
                     'status' => $connection->status->value,
                 ])
                 ->all(),
-            'accounts' => fn () => $user->accounts()
-                ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
-                ->orderBy('name')
-                ->get()
-                ->makeHidden('realEstateDetail'),
-            'categories' => fn () => $user->categories()
-                ->forDisplay()
-                ->get(),
-            'banks' => fn () => $user->banks()
-                ->orderBy('name')
-                ->get(),
-            'automationRules' => fn () => $user->automationRules()
-                ->with(['category', 'labels'])
-                ->orderBy('priority')
-                ->get(),
-            'labels' => fn () => $user->labels()
-                ->orderBy('name')
-                ->get(),
+            ...$this->versionedCollectionProps($user, [
+                'accounts' => fn () => $user->accounts()
+                    ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
+                    ->orderBy('name')
+                    ->get()
+                    ->makeHidden('realEstateDetail'),
+                'categories' => fn () => $user->categories()
+                    ->forDisplay()
+                    ->get(),
+                'banks' => fn () => $user->banks()
+                    ->orderBy('name')
+                    ->get(),
+                'automationRules' => fn () => $user->automationRules()
+                    ->with(['category', 'labels'])
+                    ->orderBy('priority')
+                    ->get(),
+                'labels' => fn () => $user->labels()
+                    ->orderBy('name')
+                    ->get(),
+            ]),
         ];
+    }
+
+    /**
+     * Wrap each list as a once prop the client keeps between visits, keyed by
+     * the user and a fingerprint of the rows behind it. Any write moves the
+     * fingerprint, so the next response carries a key the client does not hold
+     * and the list comes down again — after a redirect, a reload or a plain
+     * navigation alike — while a visit that changed nothing skips the queries
+     * and the payload. A partial reload that names the prop always resolves it.
+     *
+     * The key is worked out only when a response is built (one query for all
+     * five), not on the JSON endpoints that run this middleware too. The hour
+     * is a backstop for a write the fingerprint cannot see, such as a second
+     * edit within the same second as the read before it.
+     *
+     * @param  array<string, Closure>  $collections
+     * @return array<string, Closure>
+     */
+    private function versionedCollectionProps(User $user, array $collections): array
+    {
+        $versions = null;
+        $props = [];
+
+        foreach ($collections as $prop => $resolve) {
+            $props[$prop] = function () use ($user, $prop, $resolve, &$versions): OnceProp {
+                $versions ??= $this->collectionVersions->for($user);
+
+                return Inertia::once($resolve)
+                    ->as("{$prop}:{$user->id}:{$versions[$prop]}")
+                    ->until(now()->addHour());
+            };
+        }
+
+        return $props;
     }
 
     /**
@@ -375,19 +415,45 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Get all translations for the current locale as a flat key-value array.
-     *
-     * @return array<string, string>
+     * Every translation for the current locale, as a once prop: the file runs
+     * to hundreds of kilobytes, and the client keeps it between visits instead
+     * of being sent it again on each one. Keyed by the locale and the file's
+     * modification time, so switching language or deploying new copy sends it
+     * down again; the file is only read and decoded when it is.
      */
-    protected function getTranslations(): array
+    private function translationsProp(): OnceProp
     {
         $locale = app()->getLocale();
         $translationFile = lang_path("{$locale}.json");
+        $modifiedAt = file_exists($translationFile) ? filemtime($translationFile) : 0;
 
+        return Inertia::once(fn (): array => $this->getTranslations($translationFile))
+            ->as("translations:{$locale}:{$modifiedAt}");
+    }
+
+    /**
+     * Get all translations in a locale file as a flat key-value array.
+     *
+     * @return array<string, string>
+     */
+    protected function getTranslations(string $translationFile): array
+    {
         if (! file_exists($translationFile)) {
             return [];
         }
 
         return json_decode(file_get_contents($translationFile), true) ?? [];
+    }
+
+    /**
+     * A random inspiring quote for the split auth layout.
+     *
+     * @return array{message: string, author: string}
+     */
+    private function inspiringQuote(): array
+    {
+        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+
+        return ['message' => trim($message), 'author' => trim($author)];
     }
 }
