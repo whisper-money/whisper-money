@@ -1,6 +1,6 @@
 <svg viewBox="0 0 720 272" role="img" aria-labelledby="category-fanout-es-title category-fanout-es-desc" xmlns="http://www.w3.org/2000/svg">
     <title id="category-fanout-es-title">Para qué sirve una categoría</title>
-    <desc id="category-fanout-es-desc">La categoría de una transacción es lo que alimenta el flujo de efectivo, los presupuestos y los informes.</desc>
+    <desc id="category-fanout-es-desc">La categoría de una transacción es lo que alimenta el flujo de caja, los presupuestos y los informes.</desc>
     <defs>
         <marker id="category-fanout-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
@@ -20,7 +20,7 @@
     <text class="dg-name" x="360" y="156" text-anchor="middle">Categoría</text>
     <rect class="dg-mask" x="504" y="56" width="176" height="48" rx="6"/>
     <rect class="dg-node" x="504" y="56" width="176" height="48" rx="6"/>
-    <text class="dg-name" x="592" y="84" text-anchor="middle">Flujo de efectivo</text>
+    <text class="dg-name" x="592" y="84" text-anchor="middle">Flujo de caja</text>
     <rect class="dg-mask" x="504" y="128" width="176" height="48" rx="6"/>
     <rect class="dg-node" x="504" y="128" width="176" height="48" rx="6"/>
     <text class="dg-name" x="592" y="156" text-anchor="middle">Presupuestos</text>

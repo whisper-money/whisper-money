@@ -19,7 +19,7 @@ Las categorías explican qué significa cada transacción. Elige bien la categor
 flowchart TD
     %% diagram: category-fanout-es
     transaction[Transacción] --> category[Categoría]
-    category --> cashflow[Flujo de efectivo]
+    category --> cashflow[Flujo de caja]
     category --> budgets[Presupuestos]
     category --> reports[Informes]
 ```
@@ -27,7 +27,7 @@ flowchart TD
 Ejemplos:
 
 - Supermercado → Gasto → informes de gasto y presupuestos.
-- Salario → Ingreso → informes de ingresos y flujo de efectivo.
+- Salario → Ingreso → informes de ingresos y flujo de caja.
 - Cuenta corriente a ahorro → Transferencia → evita contar dos veces.
 
 ## Tipos de categoría
@@ -90,7 +90,8 @@ Ejemplos:
 - Dinero apartado para un objetivo
 
 Las categorías de ahorro no son gasto. Alimentan la tarjeta «Ahorrado e
-invertido» de la página de Flujo de efectivo.
+invertido» de la página de [Flujo de caja](/documentation/cashflow), y se restan
+de lo que queda Disponible allí.
 
 </div>
 
@@ -107,18 +108,19 @@ Ejemplos:
 - Compra de un fondo indexado
 
 Igual que el ahorro, las inversiones cuentan como dinero apartado y no como
-gasto.
+gasto. La tarjeta «Ahorrado e invertido» muestra cómo se reparte entre los dos
+lo que has apartado.
 
 </div>
 </div>
 
-## Transferencias y dirección de flujo de efectivo
+## Transferencias y dirección de flujo de caja
 
-Las categorías de transferencia pueden mostrarse u ocultarse en flujo de efectivo.
+Las categorías de transferencia pueden mostrarse u ocultarse en flujo de caja.
 
 Opciones:
 
-- **No mostrar**: oculta la transferencia del flujo de efectivo.
+- **No mostrar**: oculta la transferencia del flujo de caja.
 - **Mostrar como entrada de efectivo**: muestra la transferencia como dinero que entra.
 - **Mostrar como salida de efectivo**: muestra la transferencia como dinero que sale.
 
@@ -176,7 +178,7 @@ Esto puede afectar:
 - Totales de gasto
 - Progreso de presupuestos
 - Totales de ingresos
-- Flujo de efectivo
+- Flujo de caja
 
 Cambiar la categoría en sí, como su nombre o tipo, afecta a todas las transacciones que usan esa categoría.
 

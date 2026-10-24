@@ -90,7 +90,8 @@ Examples:
 - Money set aside for a goal
 
 Savings categories are not spending. They feed the Saved & Invested card on the
-Cashflow page.
+[Cashflow](/documentation/cashflow) page, and they come out of what is left
+Available there.
 
 </div>
 
@@ -106,7 +107,8 @@ Examples:
 - Index fund purchase
 
 Like savings, investments are counted as money set aside rather than as
-spending.
+spending. The Saved & Invested card shows how your set-aside money splits
+between the two.
 
 </div>
 </div>

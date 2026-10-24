@@ -12,7 +12,7 @@ Follow this order if you are setting things up for the first time.
 2. Add transactions, import them from a bank file, or connect your bank.
 3. Review uncategorized transactions.
 4. Create automation rules for repeated transactions.
-5. Check Cashflow to see income, expenses, and net movement.
+5. Check Cashflow to see income, expenses, what you saved and invested, and what is left available.
 6. Add budgets when you want spending limits.
 
 Coming from another finance app? [Import from another app](/documentation/import-from-another-app)
@@ -99,7 +99,7 @@ A simple routine is enough for most people.
 1. Import or sync new transactions.
 2. Categorize anything uncategorized, and check what was categorized for you.
 3. Fix transfers between your own accounts.
-4. Check Cashflow for the month.
+4. Check Cashflow for the month, quarter or year.
 5. Review budgets if you use them.
 
 ## What to do when reports look wrong

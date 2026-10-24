@@ -27,8 +27,8 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Categories | `categories` |
 | Labels | `labels` |
 | Automation rules | `automation-rules` |
-| Cashflow | `cashflow` |
-| Budgets | `budgets` |
+| Cashflow, available and free money, fixed and variable expenses | `cashflow` |
+| Budgets, fixed or variable expense type, reserved money | `budgets` |
 | Savings goals | `savings-goals` |
 | Achievements, medals | `achievements` |
 | Monthly summary | `monthly-summary` |

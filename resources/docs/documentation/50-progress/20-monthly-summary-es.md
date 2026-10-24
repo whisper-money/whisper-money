@@ -38,7 +38,7 @@ lleva meses quedándose corto—.
 
 Todas las cifras salen de los mismos servicios que lee el resto de la
 aplicación, así que el informe no puede citar un número que no puedas encontrar
-en la pantalla de [flujo de efectivo](/documentation/cashflow).
+en la pantalla de [flujo de caja](/documentation/cashflow).
 
 ## Cuándo llega
 
@@ -66,7 +66,7 @@ se escribió, y no cambia porque vuelvas atrás y recategorices algo de ese mes.
 Es deliberado. Un informe sobre un mes cerrado que se reescribiera solo por
 detrás sería peor que no tener informe: nunca podrías señalarlo y decir qué
 pasó. La foto actual de cualquier mes está siempre a un clic en la pantalla de
-flujo de efectivo; esto es la versión que se envió.
+flujo de caja; esto es la versión que se envió.
 
 La única excepción es un informe congelado cuando el mes aún estaba incompleto y
 que todavía no se ha enviado: ese sí se reescribe antes de salir, porque para
@@ -174,4 +174,4 @@ todos los meses cerrados y enviados desde que empezaste.
 ### ¿Puedo pedir el informe del mes en curso?
 
 No. Un informe describe un mes terminado. Para el mes que está pasando, usa la
-pantalla de [flujo de efectivo](/documentation/cashflow).
+pantalla de [flujo de caja](/documentation/cashflow).

@@ -1,6 +1,6 @@
 <svg viewBox="0 0 720 200" role="img" aria-labelledby="account-map-es-title account-map-es-desc" xmlns="http://www.w3.org/2000/svg">
     <title id="account-map-es-title">Qué registra una cuenta</title>
-    <desc id="account-map-es-desc">Una cuenta guarda un historial de saldos y sus transacciones. El historial de saldos explica el patrimonio neto y las transacciones explican el flujo de efectivo.</desc>
+    <desc id="account-map-es-desc">Una cuenta guarda un historial de saldos y sus transacciones. El historial de saldos explica el patrimonio neto y las transacciones explican el flujo de caja.</desc>
     <defs>
         <marker id="account-map-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
             <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
@@ -31,5 +31,5 @@
     <text class="dg-name" x="592" y="80" text-anchor="middle">Patrimonio neto</text>
     <rect class="dg-mask" x="504" y="120" width="176" height="56" rx="6"/>
     <rect class="dg-node" x="504" y="120" width="176" height="56" rx="6"/>
-    <text class="dg-name" x="592" y="152" text-anchor="middle">Flujo de efectivo</text>
+    <text class="dg-name" x="592" y="152" text-anchor="middle">Flujo de caja</text>
 </svg>
