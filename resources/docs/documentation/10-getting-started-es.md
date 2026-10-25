@@ -41,10 +41,13 @@ que ya tiene tu dinero dentro.
    Conectar un banco requiere un plan de pago, y se te pregunta en ese momento.
    Consulta [Cuentas](/documentation/accounts) y
    [Conexiones bancarias](/documentation/accounts/bank-connections).
-4. **La cifra real.** Lo que de verdad gastaste el mes pasado junto a tu
-   estimación, y a quién pagaste más.
-5. **Tus comercios, ordenados.** En un plan de pago con la IA activada, Whisper
-   Money lee los comercios que se repiten y te propone
+4. **La cifra real.** Lo que de verdad gastaste en el mes que cubren tus
+   transacciones (el mes pasado, o lo que va de este) junto a tu estimación, y a
+   quién pagaste más. Si solo añadiste cuentas sin transacciones, como un plan
+   de pensiones o una hipoteca, ves tu patrimonio neto en su lugar.
+5. **Tus comercios, ordenados.** El paso te pregunta si dejas que la IA prepare
+   tus reglas, lo que requiere un plan de pago. Si dices que sí, Whisper Money
+   lee los comercios que se repiten y te propone
    [reglas de automatización](/documentation/automation-rules) para ellos. Al
    salir de este paso, la IA categoriza en segundo plano lo que las reglas no
    cubrieron, mientras terminas los pasos siguientes.
@@ -87,12 +90,14 @@ flowchart LR
     header --> add[Añadir e importar transacciones]
     menu[Menú de tu cuenta] --> progress[Progreso]
     menu --> summaries[Resúmenes mensuales]
+    menu --> privacy[Modo privado]
     menu --> settings[Configuración]
     menu --> docs[Documentación]
 ```
 
-La barra lateral, que en el móvil es una barra en la parte de abajo, reúne las
-cinco pantallas principales:
+La barra lateral reúne las cinco pantallas principales. En el móvil están en una
+barra en la parte de abajo, con nombres más cortos: Inicio, Cashflow, Cuentas,
+Movim. y Plan.
 
 - **Panel**: tu patrimonio neto a lo largo del tiempo, los saldos de tus
   cuentas, el flujo de caja del mes y tus categorías y etiquetas principales.
@@ -118,14 +123,15 @@ móvil), lleva a:
 - **Resúmenes mensuales**: todos los
   [resúmenes mensuales](/documentation/monthly-summary) que te hemos enviado.
 - **Activar modo privado**: oculta los importes en pantalla.
+- **Apariencia**: tema claro, oscuro o el de tu sistema.
 - **Configuración**: cuentas bancarias y
   [conexiones](/documentation/accounts/bank-connections),
   [reglas de automatización](/documentation/automation-rules),
   [categorías](/documentation/categories), [etiquetas](/documentation/labels),
-  el [Conector de IA](/documentation/ai-connector), tu perfil, notificaciones,
-  plan y apariencia, e
-  [Importar desde otra app](/documentation/import-from-another-app).
+  el [Conector de IA](/documentation/ai-connector), y tu perfil, notificaciones
+  y plan.
 - **Documentación**: estas páginas.
+- **Soporte**, junto a los enlaces a la comunidad, sugerencias y hoja de ruta.
 
 La campana junto al menú de tu cuenta reúne las notificaciones: un resumen
 mensual nuevo, una medalla o el cierre de un mes en un objetivo de ahorro

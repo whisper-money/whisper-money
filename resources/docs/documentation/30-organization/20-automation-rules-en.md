@@ -136,10 +136,12 @@ Priority controls which rule wins when multiple rules could match.
   rules start at 0.
 - Rules with a lower number are checked first. A rule at 1 runs before a rule
   at 10.
-- Rules with the same number are checked in order of their title.
+- Rules with the same number have no guaranteed order between them. When two
+  rules could match the same transaction, give them different numbers.
 
 The rules table shows the priority in its first column and opens sorted by it,
-so the list reads in the order rules are checked. Click the column header to
+so the list reads in the order rules are checked; rules with the same number are
+listed by title. Click the column header to
 reverse it. Long titles are cut short in the table; hover one to read it whole.
 
 Put specific rules before broad rules: give the specific one the lower number.

@@ -232,8 +232,10 @@ your food spending was the supermarket.
 
 ### Other
 
-Categories below 3% of their side are grouped under **Other**, so the diagram
-stays readable. Other opens like any parent: click it, or focus it and press
+When a side has more than five categories, the ones below 3% of that side are
+grouped under **Other**, so the diagram stays readable. The three largest are
+always shown on their own, and Other only appears when it would hold at least
+two categories. Other opens like any parent: click it, or focus it and press
 Enter, and it splits into the categories it was holding. The income side and the
 expense side each have their own Other, and they open separately.
 

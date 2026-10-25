@@ -42,10 +42,13 @@ dashboard that already has your money in it.
    needs a paid plan, and you are asked at that point. See
    [Accounts](/documentation/accounts) and
    [Bank connections](/documentation/accounts/bank-connections).
-4. **The real number.** What you actually spent last month next to your guess,
-   and who you paid most.
-5. **Your merchants, sorted.** On a paid plan with AI turned on, Whisper Money
-   reads the merchants that repeat and proposes
+4. **The real number.** What you actually spent in the month your transactions
+   cover (last month, or this month so far) next to your guess, and who you paid
+   most. If you only added accounts without transactions, such as a pension or a
+   mortgage, you see your net worth instead.
+5. **Your merchants, sorted.** The step asks whether to let AI draft your rules,
+   which needs a paid plan. If you say yes, Whisper Money reads the merchants
+   that repeat and proposes
    [automation rules](/documentation/automation-rules) for them. When you leave
    this step, AI categorizes whatever the rules did not cover, in the background,
    while you finish the next steps.
@@ -88,11 +91,13 @@ flowchart LR
     header --> add[Add and import transactions]
     menu[Account menu] --> progress[Progress]
     menu --> summaries[Monthly summaries]
+    menu --> privacy[Privacy mode]
     menu --> settings[Settings]
     menu --> docs[Documentation]
 ```
 
-The sidebar, a bar along the bottom on a phone, holds the five main screens:
+The sidebar holds the five main screens. On a phone they sit in a bar along the
+bottom, with shorter names: Home, Cashflow, Accounts, Movements and Plan.
 
 - **Dashboard**: your net worth over time, your account balances, the month's
   cashflow, and your top categories and labels.
@@ -117,14 +122,15 @@ Your account menu, at the bottom of the sidebar (top right on a phone), leads to
 - **Monthly summaries**: every [monthly summary](/documentation/monthly-summary)
   you have been sent.
 - **Enable privacy mode**: hide amounts on screen.
+- **Appearance**: light, dark or your system's theme.
 - **Settings**: bank accounts and
   [connections](/documentation/accounts/bank-connections),
   [automation rules](/documentation/automation-rules),
   [categories](/documentation/categories), [labels](/documentation/labels), the
-  [AI Connector](/documentation/ai-connector), your profile, notifications,
-  plan and appearance, and
-  [Import from another app](/documentation/import-from-another-app).
+  [AI Connector](/documentation/ai-connector), and your profile, notifications
+  and plan.
 - **Documentation**: these pages.
+- **Support**, along with the community, feedback and roadmap links.
 
 The bell next to the account menu collects notifications: a new monthly summary,
 a medal, or a month closed on a monthly savings goal.

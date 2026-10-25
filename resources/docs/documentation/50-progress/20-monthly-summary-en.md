@@ -31,7 +31,8 @@ that can include:
 - How many [budgets](/documentation/budgets) you met, and which you went over.
 - How your [savings goal](/documentation/savings-goals) moved.
 - How many of your [monthly savings goals](/documentation/savings-goals#monthly-goals)
-  met their target, each with how far over or under it ended the month.
+  met their target. Up to three are named, furthest from their target first,
+  each with how far over or under it ended the month.
 
 When [achievements](/documentation/achievements) came out of the month, a
 section names them: **What you unlocked in** the month, and **What you can
@@ -50,7 +51,7 @@ report cannot quote a number you are unable to find on the
 ## What the email says
 
 An email sits in an inbox for years, shows on a lock screen and gets forwarded,
-so the email carries no amounts at all. It is percentages and counts, and a
+so the summary email carries no amounts at all. It is percentages and counts, and a
 button into the report:
 
 - **The headline** in percentages: "You saved 18% of what you earned in
@@ -171,7 +172,7 @@ in the new month by the 10th, or the email is switched off under **Settings →
 Notifications**. Whatever the email did, anything that was written is under
 **Monthly summaries**.
 
-### Why does the email not show any amounts?
+### Why does the summary email not show any amounts?
 
 On purpose. An email is copied to every device you read mail on, is kept by
 your mail provider, and is easy to forward. It says how the month went in

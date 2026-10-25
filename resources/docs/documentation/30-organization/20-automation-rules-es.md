@@ -139,11 +139,13 @@ La prioridad controla qué regla gana cuando varias podrían coincidir.
   crear y editar. Las reglas nuevas empiezan en 0.
 - Las reglas con un número más bajo se revisan primero. Una regla con 1 se
   ejecuta antes que una con 10.
-- Las reglas con el mismo número se revisan por orden de título.
+- Las reglas con el mismo número no tienen un orden garantizado entre ellas.
+  Cuando dos reglas puedan coincidir con la misma transacción, dales números
+  distintos.
 
 La tabla de reglas muestra la prioridad en su primera columna y se abre
 ordenada por ella, así que la lista se lee en el orden en que se revisan las
-reglas. Pulsa la cabecera de la columna para invertirlo. Los títulos largos se
+reglas; las que tienen el mismo número aparecen por título. Pulsa la cabecera de la columna para invertirlo. Los títulos largos se
 recortan en la tabla; pasa el ratón por encima para leerlos enteros.
 
 Pon reglas específicas antes que reglas amplias: dale el número más bajo a la

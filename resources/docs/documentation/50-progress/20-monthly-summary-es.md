@@ -32,7 +32,8 @@ con los números destacados. Según lo que haya pasado en el mes, puede incluir:
   pasado.
 - Cómo se ha movido tu [objetivo de ahorro](/documentation/savings-goals).
 - Cuántos de tus [objetivos de ahorro mensual](/documentation/savings-goals#objetivos-mensuales)
-  han llegado a su objetivo, cada uno con cuánto se ha pasado o le ha faltado al
+  han llegado a su objetivo. Se nombran hasta tres, primero los que más se han
+  alejado de su objetivo, cada uno con cuánto se ha pasado o le ha faltado al
   cerrar el mes.
 
 Cuando el mes te ha dado [logros](/documentation/achievements), una sección los
@@ -53,7 +54,7 @@ en la pantalla de [flujo de caja](/documentation/cashflow).
 ## Qué dice el correo
 
 Un correo se queda años en la bandeja de entrada, aparece en la pantalla de
-bloqueo y se reenvía, así que el correo no lleva ningún importe. Son porcentajes
+bloqueo y se reenvía, así que el correo del resumen no lleva ningún importe. Son porcentajes
 y recuentos, y un botón para entrar al informe:
 
 - **El titular**, en porcentaje: "Ahorraste el 18 % de lo que ganaste en
@@ -177,7 +178,7 @@ nada en el mes nuevo a fecha del día 10, o el correo está desactivado en
 **Configuración → Notificaciones**. Haya hecho lo que haya hecho el correo,
 todo lo que se haya escrito está en **Resúmenes mensuales**.
 
-### ¿Por qué el correo no enseña ningún importe?
+### ¿Por qué el correo del resumen no enseña ningún importe?
 
 A propósito. Un correo se copia en todos los dispositivos donde lees el correo,
 lo guarda tu proveedor y es fácil de reenviar. Cuenta cómo fue el mes en

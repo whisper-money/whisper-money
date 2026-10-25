@@ -10,7 +10,7 @@ the day the medals arrived.
 ## Quick start
 
 1. Open your account menu at the bottom of the sidebar and choose **Progress**,
-   or click the visit streak in the header.
+   or open the visit streak in the header and choose **View all progress**.
 2. Read **Tracks**: thirteen ladders, each running from its easiest rung to its
    hardest, with what you have earned on the left.
 3. Switch to **Timeline** for the same medals dated by when they actually
@@ -164,6 +164,10 @@ A new medal puts a row in the bell. Three medals on a Tuesday are three rows,
 and at most one email between them for the whole day. The email shows the
 medals themselves, the same pictures the share dialog draws, up to three of
 them, and names every medal it is about underneath.
+
+Unlike the [monthly summary](/documentation/monthly-summary) email, a medal
+email writes a money medal's amount on its picture, the same way the share
+dialog does by default.
 
 Medals also reach your [monthly summary](/documentation/monthly-summary), which
 lists the ones you unlocked that month and the next ones within reach.

@@ -236,8 +236,10 @@ Comida ves cuánto de tu gasto en comida fue el supermercado.
 
 ### Otros
 
-Las categorías por debajo del 3 % de su lado se agrupan en **Otros**, para que
-el diagrama se pueda leer. Otros se abre como cualquier categoría padre: haz clic
+Cuando un lado tiene más de cinco categorías, las que están por debajo del 3 %
+de ese lado se agrupan en **Otros**, para que el diagrama se pueda leer. Las tres
+más grandes se muestran siempre por separado, y Otros solo aparece cuando
+reuniría al menos dos categorías. Otros se abre como cualquier categoría padre: haz clic
 en él, o enfócalo y pulsa Intro, y se divide en las categorías que contenía. El
 lado de ingresos y el de gastos tienen cada uno su propio Otros, y se abren por
 separado.

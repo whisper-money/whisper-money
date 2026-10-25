@@ -10,7 +10,8 @@ en que llegaron las medallas.
 ## Inicio rápido
 
 1. Abre el menú de tu cuenta, abajo en la barra lateral, y entra en
-   **Progreso**, o pulsa la racha de visitas de la cabecera.
+   **Progreso**, o abre la racha de visitas de la cabecera y elige **Ver todo el
+   progreso**.
 2. Lee las **Pistas**: trece escaleras, cada una del peldaño más fácil al más
    difícil, con lo conseguido a la izquierda.
 3. Cambia a **Cronología** para ver esas mismas medallas fechadas por cuándo
@@ -173,6 +174,10 @@ Cada medalla nueva deja una línea en la campana. Tres medallas un martes son
 tres líneas, y como mucho un correo entre todas ellas en todo el día. El correo
 enseña las propias medallas, las mismas imágenes que dibuja el diálogo de
 compartir, hasta tres, y debajo nombra todas las medallas de las que habla.
+
+A diferencia del correo del [resumen mensual](/documentation/monthly-summary),
+el correo de una medalla escribe el importe de una medalla de dinero en su
+imagen, igual que hace por defecto el diálogo de compartir.
 
 Las medallas llegan también a tu [resumen mensual](/documentation/monthly-summary),
 que enumera las que desbloqueaste ese mes y las siguientes que tienes a tu

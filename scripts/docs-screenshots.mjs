@@ -1272,23 +1272,21 @@ const RULE_TITLE = 'Taxi rides';
 
 /**
  * A rule with two groups of two conditions, the smallest shape that shows both
- * the condition drag handles and the group arrows. Seeded here, lazily, so the
- * organization shots stay self-contained; the cashflow flag is switched on for
- * the same reason, so Money Flow is drawn the way the cashflow page documents.
+ * the condition drag handles and the group arrows. Seeded lazily, on the first
+ * shot that needs it, so these shots stay self-contained.
  */
-let organizationSeeded = false;
+let taxiRuleSeeded = false;
 
-function seedOrganization() {
-    if (organizationSeeded || process.env.SKIP_SEED === '1') {
+function seedTaxiRule() {
+    if (taxiRuleSeeded || process.env.SKIP_SEED === '1') {
         return;
     }
 
-    organizationSeeded = true;
+    taxiRuleSeeded = true;
     artisan([
         'tinker',
         '--execute',
         `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
-         Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\CashflowAvailableFree::class);
          $user->automationRules()->where('title', '${RULE_TITLE}')->delete();
          $category = $user->categories()->where('name', 'like', 'Transport%')->first()
              ?? $user->categories()->where('type', 'expense')->orderBy('name')->first();
@@ -1311,8 +1309,29 @@ function seedOrganization() {
     ]);
 }
 
+/**
+ * The cashflow page documents its Available reading as launched, while the
+ * flag behind it is still off by default; switching it on draws Money Flow with
+ * the centre node the page describes.
+ */
+let cashflowAvailableEnabled = false;
+
+function enableCashflowAvailable() {
+    if (cashflowAvailableEnabled || process.env.SKIP_SEED === '1') {
+        return;
+    }
+
+    cashflowAvailableEnabled = true;
+    artisan([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\CashflowAvailableFree::class);`,
+    ]);
+}
+
 SHOTS['automation-rule-builder'] = async (page) => {
-    seedOrganization();
+    seedTaxiRule();
     await page.setViewportSize({ width: 900, height: 1300 });
     await page.goto(`${BASE_URL}/settings/automation-rules`, {
         waitUntil: 'domcontentloaded',
@@ -1336,7 +1355,11 @@ SHOTS['category-create-subcategory'] = async (page) => {
     await page.goto(`${BASE_URL}/settings/categories`, {
         waitUntil: 'domcontentloaded',
     });
-    const row = page.getByRole('row').filter({ hasText: 'Food' }).first();
+    // An exact match: "Food delivery" and the like would also match a substring.
+    const row = page
+        .getByRole('row')
+        .filter({ has: page.getByText('Food', { exact: true }) })
+        .first();
     await row.getByRole('button', { name: 'Open menu' }).click();
     await page
         .getByRole('menuitem', { name: 'Create subcategory', exact: true })
@@ -1347,8 +1370,14 @@ SHOTS['category-create-subcategory'] = async (page) => {
     return [dialog(page)];
 };
 
+/**
+ * The share of the Money Flow card the crop keeps: from just right of the
+ * centre node to the edge, below the card title.
+ */
+const SANKEY_CROP = { left: 0.55, top: 0.15 };
+
 SHOTS['cashflow-sankey-other'] = async (page) => {
-    seedOrganization();
+    enableCashflowAvailable();
     await page.setViewportSize({ width: 1280, height: 1000 });
     // Last month rather than this one: a month in progress has its bills in
     // and its salary still to come, which draws a negative Available.
@@ -1356,10 +1385,9 @@ SHOTS['cashflow-sankey-other'] = async (page) => {
     lastMonth.setDate(1);
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const period = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
-    await page.goto(
-        `${BASE_URL}/cashflow?period=${period}&period_type=month`,
-        { waitUntil: 'domcontentloaded' },
-    );
+    await page.goto(`${BASE_URL}/cashflow?period=${period}&period_type=month`, {
+        waitUntil: 'domcontentloaded',
+    });
 
     const card = cardAround(page.getByText('Money Flow', { exact: true }));
     await card.scrollIntoViewIfNeeded();
@@ -1371,13 +1399,14 @@ SHOTS['cashflow-sankey-other'] = async (page) => {
     // negative. Only the expense side and the opened "Other" are cropped in:
     // they are what the shot is for.
     const box = await card.boundingBox();
-    const left = box.x + box.width * 0.55;
+    const left = box.x + box.width * SANKEY_CROP.left;
+    const top = box.y + box.height * SANKEY_CROP.top;
 
     return {
         x: left,
-        y: box.y + box.height * 0.15,
+        y: top,
         width: box.x + box.width - left,
-        height: box.height * 0.85,
+        height: box.y + box.height - top,
     };
 };
 
