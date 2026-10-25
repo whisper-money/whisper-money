@@ -39,7 +39,8 @@ unlock next**, up to three medals with what is left to reach each one, nearest
 first.
 
 Then **Worth five minutes**: the few things that are actually worth doing, each
-with the consequence of leaving it — a bank connection about to expire,
+with the consequence of leaving it — a
+[bank connection about to expire](/documentation/accounts/bank-connections#consent-expiry-and-reconnecting),
 transactions with no category, a budget that has been short for months.
 
 Every figure comes from the same services the rest of the app reads, so the

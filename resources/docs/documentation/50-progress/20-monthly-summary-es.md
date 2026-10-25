@@ -41,8 +41,9 @@ continuación**, hasta tres medallas con lo que falta para cada una, de la más
 cercana a la más lejana.
 
 Después llega **Cinco minutos bien invertidos**: las pocas cosas que de verdad
-compensa hacer, cada una con la consecuencia de no hacerla —una conexión
-bancaria a punto de caducar, transacciones sin categoría, un presupuesto que
+compensa hacer, cada una con la consecuencia de no hacerla —una
+[conexión bancaria a punto de caducar](/documentation/accounts/bank-connections#el-permiso-caduca-reconectar),
+transacciones sin categoría, un presupuesto que
 lleva meses quedándose corto—.
 
 Todas las cifras salen de los mismos servicios que lee el resto de la

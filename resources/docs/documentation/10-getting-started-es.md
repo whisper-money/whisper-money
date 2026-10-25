@@ -39,7 +39,8 @@ que ya tiene tu dinero dentro.
    banco, conecta un bróker o un exchange con un token, importa un archivo de tu
    banco o añade una cuenta a mano, como una hipoteca o un plan de pensiones.
    Conectar un banco requiere un plan de pago, y se te pregunta en ese momento.
-   Consulta [Cuentas](/documentation/accounts).
+   Consulta [Cuentas](/documentation/accounts) y
+   [Conexiones bancarias](/documentation/accounts/bank-connections).
 4. **La cifra real.** Lo que de verdad gastaste el mes pasado junto a tu
    estimación, y a quién pagaste más.
 5. **Tus comercios, ordenados.** En un plan de pago con la IA activada, Whisper
@@ -117,7 +118,8 @@ móvil), lleva a:
 - **Resúmenes mensuales**: todos los
   [resúmenes mensuales](/documentation/monthly-summary) que te hemos enviado.
 - **Activar modo privado**: oculta los importes en pantalla.
-- **Configuración**: cuentas bancarias y conexiones,
+- **Configuración**: cuentas bancarias y
+  [conexiones](/documentation/accounts/bank-connections),
   [reglas de automatización](/documentation/automation-rules),
   [categorías](/documentation/categories), [etiquetas](/documentation/labels),
   el [Conector de IA](/documentation/ai-connector), tu perfil, notificaciones,
@@ -224,6 +226,7 @@ Empieza por las cuentas. Después añade transacciones. Las categorías y los in
 
 ### ¿Tengo que conectar mi banco?
 
-No. Conectar el banco es una forma de traer transacciones, y requiere un plan de
+No. [Conectar el banco](/documentation/accounts/bank-connections) es una forma
+de traer transacciones, y requiere un plan de
 pago. Añadirlas a mano o importar un archivo de tu banco funciona igual para todo
 lo que viene después.

@@ -22,6 +22,7 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Accounts, connecting a bank | `accounts` |
 | Importing and editing balances | `accounts/import-balances`, `accounts/edit-balances` |
 | Credit cards, statements, limit and usage | `accounts/credit-cards` |
+| Bank and broker connections, syncing, consent renewal | `accounts/bank-connections` |
 | Transactions | `transactions` |
 | Creating and importing transactions | `transactions/create`, `transactions/import` |
 | Splitting a transaction | `transactions/split` |

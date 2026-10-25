@@ -40,7 +40,8 @@ dashboard that already has your money in it.
    connect a broker or exchange with a token, import a file from your bank, or
    add an account by hand, such as a mortgage or a pension. Connecting a bank
    needs a paid plan, and you are asked at that point. See
-   [Accounts](/documentation/accounts).
+   [Accounts](/documentation/accounts) and
+   [Bank connections](/documentation/accounts/bank-connections).
 4. **The real number.** What you actually spent last month next to your guess,
    and who you paid most.
 5. **Your merchants, sorted.** On a paid plan with AI turned on, Whisper Money
@@ -116,7 +117,8 @@ Your account menu, at the bottom of the sidebar (top right on a phone), leads to
 - **Monthly summaries**: every [monthly summary](/documentation/monthly-summary)
   you have been sent.
 - **Enable privacy mode**: hide amounts on screen.
-- **Settings**: bank accounts and connections,
+- **Settings**: bank accounts and
+  [connections](/documentation/accounts/bank-connections),
   [automation rules](/documentation/automation-rules),
   [categories](/documentation/categories), [labels](/documentation/labels), the
   [AI Connector](/documentation/ai-connector), your profile, notifications,
@@ -222,6 +224,7 @@ Start with accounts. Then add transactions. Categories and reports depend on tho
 
 ### Do I have to connect my bank?
 
-No. Connecting a bank is one way to get transactions in, and it needs a paid
+No. [Connecting a bank](/documentation/accounts/bank-connections) is one way to
+get transactions in, and it needs a paid
 plan. Adding them by hand or importing a file from your bank works the same way
 for everything downstream.

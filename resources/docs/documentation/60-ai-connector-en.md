@@ -326,8 +326,8 @@ These are the rules the app itself follows:
   written by hand would be overwritten by the next sync.
 - **On a bank-connected account only the name and the ownership share can be
   changed.** The type, the currency and the bank come from the connection, and a
-  connected account cannot be created from here either: you connect those
-  yourself in the app. In a shared space, an account can only be edited by
+  connected account cannot be created from here either: you
+  [connect those yourself](/documentation/accounts/bank-connections) in the app. In a shared space, an account can only be edited by
   whoever created it.
 - **A budget's period, start day, rollover and tracked categories are fixed
   once it is created.** To change any of those, the budget has to be deleted

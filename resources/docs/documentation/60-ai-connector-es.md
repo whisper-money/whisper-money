@@ -345,7 +345,7 @@ de confianza. Son las reglas que sigue la propia app:
 - **De una cuenta conectada al banco solo se pueden cambiar el nombre y el
   porcentaje de propiedad.** El tipo, la divisa y el banco vienen de la
   conexión, y una cuenta conectada tampoco se puede crear desde aquí: esas las
-  conectas tú en la app. En un espacio compartido, además, cada cuenta solo la
+  [conectas tú en la app](/documentation/accounts/bank-connections). En un espacio compartido, además, cada cuenta solo la
   puede editar quien la creó.
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
