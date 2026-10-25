@@ -130,11 +130,15 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
             return null;
         }
 
+        // Wall-clock 08:00, not midnight plus eight elapsed hours, which is
+        // 07:00 or 09:00 on a DST change day.
         $nextAllowedAt = $localHour >= 23
-            ? $localNow->copy()->addDay()->startOfDay()->addHours(8)
-            : $localNow->copy()->startOfDay()->addHours(8);
+            ? $localNow->copy()->addDay()->setTime(8, 0)
+            : $localNow->copy()->setTime(8, 0);
 
-        return $nextAllowedAt->getTimestamp() - $localNow->getTimestamp();
+        // A release of zero or less is picked up again at once and burns the
+        // job's tries in a loop, so always wait at least a second.
+        return max(1, $nextAllowedAt->getTimestamp() - $localNow->getTimestamp());
     }
 
     private function reportingTimezone(): string
