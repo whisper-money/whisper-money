@@ -1132,6 +1132,78 @@ SHOTS['transaction-amount-filter'] = async (page) => {
     ];
 };
 
+/**
+ * The banks the picker lists come from Enable Banking, whose sandbox serves a
+ * handful of test banks ("Mock ASPSP" among them). The request is answered here
+ * instead, with real Spanish banks and their real Enable Banking logos, and with
+ * Trade Republic badged beta as `banking.beta_banks` does in production. The
+ * brokers and exchanges are added by the dialog itself, as they are for users.
+ */
+const PICKER_BANKS = [
+    ['Banco Santander', false],
+    ['BBVA', false],
+    ['CaixaBank', false],
+    ['ING', false],
+    ['Openbank', false],
+    ['Trade Republic', true],
+].map(([name, beta]) => ({
+    name,
+    country: 'ES',
+    logo: `https://enablebanking.com/brands/ES/${encodeURIComponent(name)}/`,
+    maximum_consent_validity: 7776000,
+    beta,
+}));
+
+async function openBankPicker(page) {
+    await page.route('**/open-banking/institutions?*', (route) =>
+        route.fulfill({ json: PICKER_BANKS }),
+    );
+    await page.goto(`${BASE_URL}/settings/connections`, {
+        waitUntil: 'domcontentloaded',
+    });
+    await page.getByRole('button', { name: 'Connect Bank' }).click();
+    await dialog(page).getByRole('combobox').click();
+    await page.getByRole('option', { name: 'Spain' }).click();
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await dialog(page).getByPlaceholder('Search banks...').waitFor();
+}
+
+SHOTS['bank-picker'] = async (page) => {
+    await openBankPicker(page);
+    // Scrolled to the end of the list, where banks, brokers and both kinds of
+    // beta badge (a curated bank, a new integration) sit side by side.
+    const kraken = dialog(page).getByRole('button', { name: /Kraken/ });
+    await kraken.scrollIntoViewIfNeeded();
+    await dialog(page)
+        .getByRole('button', { name: /Wise/ })
+        .scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
+    // The logos come from Enable Banking's CDN, and a row whose logo has not
+    // arrived yet renders with no logo at all.
+    await page.waitForFunction(() =>
+        [...document.querySelectorAll('[role="dialog"] img')].every(
+            (image) => image.complete,
+        ),
+    );
+    await page.waitForTimeout(600);
+
+    return [dialog(page)];
+};
+
+SHOTS['api-key-form'] = async (page) => {
+    await openBankPicker(page);
+    await dialog(page).getByPlaceholder('Search banks...').fill('Kraken');
+    await dialog(page)
+        .getByRole('button', { name: /Kraken/ })
+        .click();
+    await dialog(page).getByRole('button', { name: 'Continue' }).click();
+    await dialog(page).getByLabel('Private Key').waitFor();
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(800);
+
+    return [dialog(page)];
+};
+
 async function main() {
     const wanted = process.argv.slice(2);
     const names = wanted.length > 0 ? wanted : Object.keys(SHOTS);

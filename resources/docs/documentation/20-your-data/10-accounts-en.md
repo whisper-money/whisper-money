@@ -196,29 +196,21 @@ already here keep the setting they had.
 
 ## Connected and manual accounts
 
-You can track accounts manually or connect supported providers.
+You can keep an account up to date by hand, or connect it so it updates itself.
 
-Manual accounts are good when:
+- **Manual accounts** suit a bank that is not supported, or an account you only
+  update now and then. Add transactions yourself or import them from a file.
+- **Connected accounts** sync on their own. A bank brings in transactions and
+  balances; a broker or crypto exchange, connected with a read-only API key,
+  brings in balances.
 
-- Your bank is not supported.
-- You want full control.
-- You only need occasional updates.
+Connecting is part of the paid plan. Manual accounts, imports, and everything
+built on top of them work without one.
 
-Connected accounts are good when:
-
-- You want automatic transaction updates.
-- You want less manual work.
-- Your bank connection is available and healthy.
-
-Only checking, savings, credit card, and other accounts can receive synced
-transactions. Investment, retirement, real estate, and loan accounts are tracked
-by value, so a connection updates their balance rather than filling a ledger.
-
-Connecting a bank is part of the paid plan. Manual accounts, imports, and
-everything built on top of them work without one.
-
-The [integrations page](/integrations) lists every bank and app that can be
-connected today.
+[Bank connections](/documentation/accounts/bank-connections) explains how to
+connect, what each sync brings in, and what to do when a connection expires. The
+[integrations page](/integrations) lists every bank and app that can be connected
+today.
 
 ## Archiving an account
 

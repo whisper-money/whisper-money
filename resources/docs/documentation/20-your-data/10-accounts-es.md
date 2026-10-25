@@ -200,29 +200,21 @@ mantiene el ajuste que tenía.
 
 ## Cuentas conectadas y manuales
 
-Puedes llevar cuentas manualmente o conectar proveedores compatibles.
+Puedes llevar una cuenta al día a mano o conectarla para que se actualice sola.
 
-Las cuentas manuales son útiles cuando:
+- **Las cuentas manuales** encajan con un banco que no está disponible, o con una
+  cuenta que solo actualizas de vez en cuando. Añades las transacciones tú o las
+  importas desde un archivo.
+- **Las cuentas conectadas** se sincronizan solas. Un banco trae transacciones y
+  saldos; un bróker o un exchange de criptomonedas, conectado con una clave API
+  de solo lectura, trae saldos.
 
-- Tu banco no está soportado.
-- Quieres control total.
-- Solo necesitas actualizar de vez en cuando.
+Conectar forma parte del plan de pago. Las cuentas manuales, las importaciones y
+todo lo que se construye sobre ellas funcionan sin él.
 
-Las cuentas conectadas son útiles cuando:
-
-- Quieres actualizaciones automáticas de transacciones.
-- Quieres menos trabajo manual.
-- La conexión bancaria está disponible y funciona bien.
-
-Solo las cuentas corrientes, de ahorro, de tarjeta de crédito y de tipo «otros»
-pueden recibir transacciones sincronizadas. Las de inversión, jubilación,
-inmueble y préstamo se siguen por valor, así que una conexión actualiza su saldo
-en lugar de rellenar un historial de movimientos.
-
-Conectar un banco forma parte del plan de pago. Las cuentas manuales, las
-importaciones y todo lo que se construye sobre ellas funcionan sin él.
-
-La [página de integraciones](/integraciones) lista todos los bancos y aplicaciones
+[Conexiones bancarias](/documentation/accounts/bank-connections) explica cómo
+conectar, qué trae cada sincronización y qué hacer cuando caduca una conexión. La
+[página de integraciones](/integraciones) lista todos los bancos y aplicaciones
 que se pueden conectar hoy.
 
 ## Archivar una cuenta

@@ -86,11 +86,11 @@ it('links each page to the pages either side of it, reading through its children
         );
 
     // The last child of a page leads on to the next page, not back up.
-    $this->get(route('documentation.show', ['slug' => 'accounts/credit-cards', 'lang' => 'en']))
+    $this->get(route('documentation.show', ['slug' => 'accounts/bank-connections', 'lang' => 'en']))
         ->assertOk()
         ->assertInertia(
             fn (AssertableInertia $page) => $page
-                ->where('neighbours.previous.title', 'Edit balances')
+                ->where('neighbours.previous.title', 'Credit cards')
                 ->where('neighbours.next.title', 'Transactions')
         );
 
