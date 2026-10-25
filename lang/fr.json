@@ -3094,5 +3094,6 @@
     "Creditor: :name": "Créancier : :name",
     "Debtor: :name": "Débiteur : :name",
     "From :value": "À partir de :value",
-    "Up to :value": "Jusqu'à :value"
+    "Up to :value": "Jusqu'à :value",
+    "Preparing :done…": "Préparation de :done…"
 }

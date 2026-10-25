@@ -1,4 +1,3 @@
-import { type TransactionFilters } from '@/types/transaction';
 import {
     act,
     fireEvent,
@@ -30,32 +29,21 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/lib/transaction-csv-export', () => ({ downloadTransactionsCsv }));
 
-const filters: TransactionFilters = {
-    dateFrom: null,
-    dateTo: null,
-    amountMin: null,
-    amountMax: null,
-    categoryIds: ['cat-1'],
-    accountIds: [],
-    labelIds: [],
-    creditorName: '',
-    debtorName: '',
-    searchText: 'coffee',
-    aiCategorizedOnly: false,
-};
-
 const params = { search: 'coffee', category_ids: 'cat-1' };
 
-function renderButton({ hasMore }: { hasMore: boolean }) {
+function renderButton({
+    hasMore,
+    loadedIds = ['tx-1', 'tx-2'],
+}: {
+    hasMore: boolean;
+    loadedIds?: string[];
+}) {
     return render(
         <TransactionExportButton
             params={params}
-            loadedIds={['tx-1', 'tx-2']}
+            loadedIds={loadedIds}
             hasMore={hasMore}
-            filters={filters}
-            categories={[{ id: 'cat-1', name: 'Groceries' } as never]}
-            accounts={[]}
-            labels={[]}
+            filterChips={['“coffee”', 'Groceries']}
         />,
     );
 }
@@ -72,9 +60,10 @@ function mockCount(count: number) {
 
 describe('TransactionExportButton', () => {
     beforeEach(() => {
-        downloadTransactionsCsv.mockResolvedValue(
-            'transactions-2026-10-25.csv',
-        );
+        downloadTransactionsCsv.mockResolvedValue({
+            filename: 'transactions-2026-10-25.csv',
+            rows: 2,
+        });
     });
 
     afterEach(() => {
@@ -198,5 +187,43 @@ describe('TransactionExportButton', () => {
 
         expect(signal?.aborted).toBe(true);
         expect(toastSuccess).not.toHaveBeenCalled();
+        await waitFor(() =>
+            expect(
+                screen.queryByTestId('transaction-export-dialog'),
+            ).not.toBeInTheDocument(),
+        );
+    });
+
+    it('shows an open-ended progress when the count could not be had', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({ ok: false, json: () => ({}) }),
+        );
+        downloadTransactionsCsv.mockImplementation(
+            ({ onProgress }: { onProgress: (rows: number) => void }) => {
+                onProgress(40);
+
+                return new Promise(() => {});
+            },
+        );
+        renderButton({ hasMore: true });
+        fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+        const dialog = await screen.findByTestId('transaction-export-dialog');
+
+        fireEvent.click(
+            await within(dialog).findByRole('button', { name: 'Download' }),
+        );
+
+        expect(
+            await within(dialog).findByText('Preparing 40…'),
+        ).toBeInTheDocument();
+    });
+
+    it('cannot export an empty, fully loaded list', () => {
+        renderButton({ hasMore: false, loadedIds: [] });
+
+        expect(
+            screen.getByRole('button', { name: 'Export CSV' }),
+        ).toBeDisabled();
     });
 });

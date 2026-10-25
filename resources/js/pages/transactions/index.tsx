@@ -97,6 +97,7 @@ import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
+import { describeActiveFilters } from '@/lib/transaction-filter-chips';
 import {
     mergeReEvaluatedTransaction,
     reEvaluateTransactionRules,
@@ -1411,10 +1412,15 @@ export default function Transactions({
                                             (transaction) => transaction.id,
                                         )}
                                         hasMore={nextCursor !== null}
-                                        filters={filters}
-                                        categories={categories}
-                                        accounts={accounts}
-                                        labels={labels}
+                                        filterChips={describeActiveFilters(
+                                            filters,
+                                            {
+                                                categories,
+                                                accounts,
+                                                labels,
+                                                locale,
+                                            },
+                                        )}
                                     />
                                     <DataTableViewOptions table={table} />
                                 </div>

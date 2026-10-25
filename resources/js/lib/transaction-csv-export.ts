@@ -2,9 +2,11 @@ import TransactionExportController from '@/actions/App/Http/Controllers/Transact
 import { getCsrfToken } from '@/lib/csrf';
 import { formatLocalDate } from '@/utils/date';
 
+/** The transactions page's filters and sort, as its query string carries them. */
+export type TransactionExportParams = Record<string, string>;
+
 export interface TransactionCsvExportRequest {
-    /** The page's filters and sort, as its query string carries them. */
-    params: Record<string, string>;
+    params: TransactionExportParams;
     /** Only these rows, in the page's order; every match when left out. */
     ids?: string[];
     signal?: AbortSignal;
@@ -12,7 +14,14 @@ export interface TransactionCsvExportRequest {
     onProgress?: (rows: number) => void;
 }
 
+export interface TransactionCsvDownload {
+    filename: string;
+    /** Transactions in the file, header left out. */
+    rows: number;
+}
+
 const NEWLINE = 10;
+const QUOTE = 34;
 
 /** The name the download is saved under: `transactions-YYYY-MM-DD.csv`. */
 export function transactionCsvFilename(today: Date = new Date()): string {
@@ -21,17 +30,14 @@ export function transactionCsvFilename(today: Date = new Date()): string {
 
 /**
  * Fetches the CSV export and hands it to the browser as a download. The body
- * is read chunk by chunk so the caller can show how far it has got: every row
- * ends in a newline, so newlines past the header count rows. A quoted cell
- * that holds a newline counts one extra, which only ever runs the progress a
- * little early, so callers cap it at the total they expect.
+ * is read chunk by chunk so the caller can show how far it has got.
  */
 export async function downloadTransactionsCsv({
     params,
     ids,
     signal,
     onProgress,
-}: TransactionCsvExportRequest): Promise<string> {
+}: TransactionCsvExportRequest): Promise<TransactionCsvDownload> {
     const response = await fetch(TransactionExportController.url(), {
         method: 'POST',
         headers: {
@@ -49,7 +55,8 @@ export async function downloadTransactionsCsv({
 
     const reader = response.body.getReader();
     const chunks: BlobPart[] = [];
-    let newlines = 0;
+    const countRows = createRowCounter();
+    let rows = 0;
 
     for (;;) {
         const { done, value } = await reader.read();
@@ -59,17 +66,38 @@ export async function downloadTransactionsCsv({
         }
 
         chunks.push(value as Uint8Array<ArrayBuffer>);
-        newlines += value.reduce(
-            (count, byte) => (byte === NEWLINE ? count + 1 : count),
-            0,
-        );
-        onProgress?.(Math.max(0, newlines - 1));
+        rows = countRows(value);
+        onProgress?.(rows);
     }
 
     const filename = transactionCsvFilename();
     saveBlob(new Blob(chunks, { type: 'text/csv;charset=utf-8' }), filename);
 
-    return filename;
+    return { filename, rows };
+}
+
+/**
+ * Counts the rows of a CSV fed to it chunk by chunk, header left out. A row
+ * ends at a newline outside quotes; a note that spans lines sits inside a
+ * quoted cell, and an escaped quote (`""`) flips the state twice, so it
+ * cancels out. Both are single bytes in UTF-8, so a chunk boundary inside a
+ * multi-byte character cannot hide one.
+ */
+function createRowCounter(): (chunk: Uint8Array) => number {
+    let lines = 0;
+    let quoted = false;
+
+    return (chunk) => {
+        for (const byte of chunk) {
+            if (byte === QUOTE) {
+                quoted = !quoted;
+            } else if (byte === NEWLINE && !quoted) {
+                lines++;
+            }
+        }
+
+        return Math.max(0, lines - 1);
+    };
 }
 
 function saveBlob(blob: Blob, filename: string): void {

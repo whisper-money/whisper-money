@@ -4121,5 +4121,6 @@
     "Creditor: :name": "Acreedor: :name",
     "Debtor: :name": "Deudor: :name",
     "From :value": "Desde :value",
-    "Up to :value": "Hasta :value"
+    "Up to :value": "Hasta :value",
+    "Preparing :done…": "Preparando :done…"
 }

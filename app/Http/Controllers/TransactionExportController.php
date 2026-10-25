@@ -40,6 +40,11 @@ class TransactionExportController extends Controller
             }
 
             fclose($output);
-        }, 'transactions-'.today()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'transactions-'.today()->format('Y-m-d').'.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            // The page counts rows as they arrive to show progress; a proxy
+            // that buffers the whole body would hold them back until the end.
+            'X-Accel-Buffering' => 'no',
+        ]);
     }
 }

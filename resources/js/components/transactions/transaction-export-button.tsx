@@ -13,12 +13,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
-import { downloadTransactionsCsv } from '@/lib/transaction-csv-export';
-import { describeActiveFilters } from '@/lib/transaction-filter-chips';
-import { type Account } from '@/types/account';
-import { type Category } from '@/types/category';
-import { type Label } from '@/types/label';
-import { type TransactionFilters } from '@/types/transaction';
+import {
+    downloadTransactionsCsv,
+    type TransactionExportParams,
+} from '@/lib/transaction-csv-export';
+import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -27,21 +26,19 @@ import { toast } from 'sonner';
 type ExportScope = 'loaded' | 'all';
 
 interface TransactionExportButtonProps {
-    /** The page's filters and sort, as its query string carries them. */
-    params: Record<string, string>;
+    params: TransactionExportParams;
     /** Ids of the rows the list holds right now, in its order. */
     loadedIds: string[];
     /** Whether the list has more pages it has not loaded yet. */
     hasMore: boolean;
-    filters: TransactionFilters;
-    categories: Category[];
-    accounts: Account[];
-    labels: Label[];
+    /** One line per active search or filter, for the dialog's summary. */
+    filterChips: string[];
 }
 
 interface ExportProgress {
     received: number;
-    total: number;
+    /** `null` when the count could not be had, so there is no end to show. */
+    total: number | null;
 }
 
 /**
@@ -53,17 +50,18 @@ export function TransactionExportButton({
     params,
     loadedIds,
     hasMore,
-    filters,
-    categories,
-    accounts,
-    labels,
+    filterChips,
 }: TransactionExportButtonProps) {
-    const locale = useLocale();
     const [dialogOpen, setDialogOpen] = useState(false);
-    const { start, cancel, progress } = useCsvDownload(locale);
+    // A fresh key per opening starts the dialog over: default option, count
+    // loading again, rather than one frame of the last visit's numbers.
+    const [dialogKey, setDialogKey] = useState(0);
+    const { start, cancel, progress } = useCsvDownload();
+    const isDirectDownloading = progress !== null && !dialogOpen;
 
     async function handleClick() {
         if (hasMore) {
+            setDialogKey((key) => key + 1);
             setDialogOpen(true);
             return;
         }
@@ -77,10 +75,12 @@ export function TransactionExportButton({
                 variant="outline"
                 className="flex gap-2"
                 onClick={handleClick}
-                disabled={progress !== null && !dialogOpen}
+                disabled={
+                    isDirectDownloading || (!hasMore && loadedIds.length === 0)
+                }
                 aria-label={__('Export CSV')}
             >
-                {progress !== null && !dialogOpen ? (
+                {isDirectDownloading ? (
                     <Spinner className="size-4" />
                 ) : (
                     <Download className="size-4" />
@@ -90,6 +90,7 @@ export function TransactionExportButton({
 
             {hasMore ? (
                 <TransactionExportDialog
+                    key={dialogKey}
                     open={dialogOpen}
                     onOpenChange={(open) => {
                         if (!open) {
@@ -99,19 +100,13 @@ export function TransactionExportButton({
                     }}
                     params={params}
                     loadedIds={loadedIds}
-                    chips={describeActiveFilters(filters, {
-                        categories,
-                        accounts,
-                        labels,
-                        locale,
-                    })}
+                    chips={filterChips}
                     progress={progress}
                     onExport={async (ids, total) => {
                         if (await start({ params, ids, total })) {
                             setDialogOpen(false);
                         }
                     }}
-                    onCancel={cancel}
                 />
             ) : null}
         </>
@@ -121,12 +116,11 @@ export function TransactionExportButton({
 interface TransactionExportDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    params: Record<string, string>;
+    params: TransactionExportParams;
     loadedIds: string[];
     chips: string[];
     progress: ExportProgress | null;
     onExport: (ids: string[] | undefined, total: number | null) => void;
-    onCancel: () => void;
 }
 
 function TransactionExportDialog({
@@ -137,19 +131,10 @@ function TransactionExportDialog({
     chips,
     progress,
     onExport,
-    onCancel,
 }: TransactionExportDialogProps) {
-    const locale = useLocale();
     const [scope, setScope] = useState<ExportScope>('all');
     const matchingCount = useMatchingCount(open, params);
-    const formatCount = (value: number) =>
-        new Intl.NumberFormat(locale).format(value);
-
-    useEffect(() => {
-        if (open) {
-            setScope('all');
-        }
-    }, [open]);
+    const formatCount = useCountFormatter();
 
     const selectedCount = scope === 'all' ? matchingCount : loadedIds.length;
 
@@ -173,7 +158,10 @@ function TransactionExportDialog({
                 {progress ? (
                     <Progress
                         value={progressPercent(progress)}
-                        className="h-2"
+                        className={cn(
+                            'h-2',
+                            progress.total === null && 'animate-pulse',
+                        )}
                         aria-label={__('Export progress')}
                     />
                 ) : (
@@ -242,9 +230,7 @@ function TransactionExportDialog({
                     <Button
                         variant="outline"
                         className="max-sm:h-11"
-                        onClick={
-                            progress ? onCancel : () => onOpenChange(false)
-                        }
+                        onClick={() => onOpenChange(false)}
                     >
                         {__('Cancel')}
                     </Button>
@@ -304,14 +290,32 @@ function progressText(
     { received, total }: ExportProgress,
     formatCount: (value: number) => string,
 ): string {
+    if (total === null) {
+        return __('Preparing :done…', { done: formatCount(received) });
+    }
+
     return __('Preparing :done of :total…', {
         done: formatCount(Math.min(received, total)),
         total: formatCount(total),
     });
 }
 
+/** Full and pulsing when there is no total to measure against. */
 function progressPercent({ received, total }: ExportProgress): number {
+    if (total === null) {
+        return 100;
+    }
+
     return total > 0 ? (Math.min(received, total) / total) * 100 : 0;
+}
+
+function useCountFormatter(): (value: number) => string {
+    const locale = useLocale();
+
+    return useCallback(
+        (value: number) => new Intl.NumberFormat(locale).format(value),
+        [locale],
+    );
 }
 
 /**
@@ -320,7 +324,7 @@ function progressPercent({ received, total }: ExportProgress): number {
  */
 function useMatchingCount(
     open: boolean,
-    params: Record<string, string>,
+    params: TransactionExportParams,
 ): number | null | undefined {
     const [matchingCount, setMatchingCount] = useState<number | null>();
     const query = JSON.stringify(params);
@@ -358,9 +362,9 @@ function useMatchingCount(
 }
 
 interface StartOptions {
-    params: Record<string, string>;
+    params: TransactionExportParams;
     ids?: string[];
-    /** How many rows to expect, for the progress and the toast. */
+    /** How many rows to expect, for the progress bar. */
     total: number | null;
 }
 
@@ -368,7 +372,8 @@ interface StartOptions {
  * Runs one CSV download at a time, keeps its progress, and reports the
  * outcome in a toast. Resolves to whether the file was saved.
  */
-function useCsvDownload(locale: string) {
+function useCsvDownload() {
+    const formatCount = useCountFormatter();
     const [progress, setProgress] = useState<ExportProgress | null>(null);
     const controllerRef = useRef<AbortController | null>(null);
 
@@ -382,25 +387,19 @@ function useCsvDownload(locale: string) {
         async ({ params, ids, total }: StartOptions): Promise<boolean> => {
             const controller = new AbortController();
             controllerRef.current = controller;
-            let received = 0;
-            setProgress({ received, total: total ?? 0 });
+            setProgress({ received: 0, total });
 
             try {
-                const filename = await downloadTransactionsCsv({
+                const { filename, rows } = await downloadTransactionsCsv({
                     params,
                     ids,
                     signal: controller.signal,
-                    onProgress: (rows) => {
-                        received = rows;
-                        setProgress({ received, total: total ?? rows });
-                    },
+                    onProgress: (received) => setProgress({ received, total }),
                 });
 
                 toast.success(__('CSV downloaded'), {
                     description: __(':count transactions · :file', {
-                        count: new Intl.NumberFormat(locale).format(
-                            total ?? received,
-                        ),
+                        count: formatCount(rows),
                         file: filename,
                     }),
                 });
@@ -421,7 +420,7 @@ function useCsvDownload(locale: string) {
                 setProgress(null);
             }
         },
-        [locale],
+        [formatCount],
     );
 
     return { start, cancel, progress };

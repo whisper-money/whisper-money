@@ -177,3 +177,15 @@ test('the count matches the transactions the filters select', function () {
 test('guests cannot count transactions', function () {
     $this->getJson(route('api.transactions.count'))->assertUnauthorized();
 });
+
+test('the list sort refuses a column it does not know', function () {
+    Transaction::query()->sortedForList('-id; drop table users');
+})->throws(InvalidArgumentException::class);
+
+test('an export follows a payee sort with blanks first', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Named', 'creditor_name' => 'Acme']);
+    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Blank', 'creditor_name' => null]);
+
+    expect(array_column(exportedRows($user, ['sort' => 'creditor_name']), 1))->toBe(['Description', 'Blank', 'Named']);
+});

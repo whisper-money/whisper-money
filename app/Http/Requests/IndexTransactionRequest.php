@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CashflowBlock;
+use App\Models\Transaction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -50,7 +51,7 @@ class IndexTransactionRequest extends FormRequest
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'category_source' => ['nullable', 'string', 'in:manual,rule,ai,bank'],
             'search' => ['nullable', 'string', 'max:200'],
-            'sort' => ['nullable', 'string', 'in:transaction_date,-transaction_date,amount,-amount,description,-description,creditor_name,-creditor_name,debtor_name,-debtor_name'],
+            'sort' => ['nullable', 'string', Rule::in(collect(Transaction::LIST_SORT_COLUMNS)->flatMap(fn (string $column) => [$column, '-'.$column]))],
             'cursor' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
         ];
