@@ -136,9 +136,9 @@ never actually kept.
 
 Goals sit next to [budgets](/documentation/budgets) under Planning, and the list
 can be filtered to one or the other. Monthly goals have their own **Monthly
-savings** section above the list; the **Budgets** filter hides it. They are complementary rather than
-alternatives: a budget tells you how much room is left this month, a goal tells
-you how far along you are overall.
+savings** section above the list; the **Budgets** filter hides it. They are
+complementary rather than alternatives: a budget tells you how much room is left
+this month, a goal tells you how far along you are overall.
 
 A goal card fills up as you save. A budget card drains as you spend. That is how
 you tell them apart at a glance in a mixed list.
@@ -228,7 +228,7 @@ June. A month ends in one of these states:
 | --- | --- |
 | **Met** | The month is over and you saved at least its target. A target of zero is met. |
 | **Missed** | The month is over and you saved less than its target. |
-| **In progress** | The current month. You see what is saved, what is left, and the days remaining. |
+| **In progress** | The current month, unless it is partial or archived. You see what is saved, what is left, and the days remaining. |
 | **Partial month** | You created the goal in the **last five days** of the month. It shows what you saved, with no target and no verdict. The first verdict comes next month. |
 | **Archived** | You archived the goal during that month. Same as a partial month: what you saved, no verdict. |
 
@@ -280,7 +280,7 @@ every transaction coming **into** the savings account you pick. It is off by
 default. When you tick it:
 
 - It also tags what already came into that account since the 1st of the current
-  month.
+  month, except transactions another goal already counts.
 - It tags everything incoming — interest and refunds included — so if you only
   want some deposits to count, leave it off and link them by hand.
 - Only savings accounts are offered, because on a savings account the money
@@ -294,7 +294,9 @@ default. When you tick it:
   the goal's page instead.
 
 You can edit or delete the rule in **Settings › Automation rules**. The
-automatic tagging can only be set up when you create the goal.
+automatic tagging can only be set up when you create the goal. The rule
+recognises the account by its name and its bank's name, so if you rename the
+account, update the rule too.
 
 ### Editing a monthly goal
 
@@ -329,8 +331,8 @@ the default for new monthly goals.
   last month, and a line per goal.
 - **Cashflow** — in the Month view, a card with what went to monthly goals that
   month against the sum of their targets, the difference against the plan, how
-  many goals were met, and the share of the month's net cashflow that went to
-  them. See [Cashflow](/documentation/cashflow#monthly-savings).
+  many goals were met, and — when the month's net cashflow is positive — the
+  share of it that went to them. See [Cashflow](/documentation/cashflow#monthly-savings).
 - **Monthly summary** — the [monthly summary](/documentation/monthly-summary)
   report says how many monthly goals you met and by how much the furthest-off
   ones missed or beat their target. The email only shows the count.
@@ -343,7 +345,8 @@ Archiving works as for a one-off goal, with a few differences:
 
 - The current month becomes an **archived** month: what you saved stays, with no
   verdict.
-- Month-end reminders stop, and the automation rule stops tagging transfers.
+- Month-end reminders stop, and the goal's label comes off its automation rule.
+  A rule that did nothing else is deleted.
 - Every past month keeps its target and result, and you can still open the goal
   to look at its history.
 
@@ -454,7 +457,9 @@ it, or archive the old one first.
 ### Why does my share-of-income target not change when my salary arrives?
 
 Because it is built on the average of the three complete months before, and
-frozen when the month opens. This month's salary feeds next month's target.
+frozen when the month opens. This month's salary feeds next month's target. The
+exception is a goal with no complete month of income behind it yet: then the
+target follows this month's income until the month ends.
 
 ### Why does the first month say "Partial month"?
 

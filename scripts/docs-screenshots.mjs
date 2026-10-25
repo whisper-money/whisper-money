@@ -170,6 +170,7 @@ function seededFeatures() {
         `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
          echo json_encode([
              'goal' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('kind', 'one_off')->value('id'),
+             'monthlyGoal' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('kind', 'monthly')->value('id'),
              'split' => App\\Models\\Transaction::query()
                  ->whereBelongsTo($user)
                  ->whereNotNull('split_parent_id')
@@ -185,13 +186,15 @@ const MONTHLY_GOAL_NAME = 'Rainy day fund';
  * missed, a streak and a month in progress to show. Created in the second day
  * of its first month, so that month is judged rather than partial, and run
  * through the daily command so its months are opened and closed the way they
- * are in production. Seeded after seedFeatures(), which clears every goal.
+ * are in production. It clears its own goal first, so a re-run does not pile
+ * them up whatever order the seeds run in.
  */
 function seedMonthlyGoal() {
     return artisan([
         'tinker',
         '--execute',
         `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('name', '${MONTHLY_GOAL_NAME}')->forceDelete();
          $label = $user->labels()->create([
              'name' => '${MONTHLY_GOAL_NAME}',
              'color' => App\\Enums\\LabelColor::Blue->value,
@@ -224,15 +227,6 @@ function seedMonthlyGoal() {
              ])->labels()->attach($label->id);
          }`,
     ]);
-}
-
-function seededMonthlyGoal() {
-    return artisanJson([
-        'tinker',
-        '--execute',
-        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
-         echo json_encode(['id' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('kind', 'monthly')->value('id')]);`,
-    ]).id;
 }
 
 // Import files are written fresh rather than committed, so a screenshot of the
@@ -740,7 +734,15 @@ const SHOTS = {
         // The bars grow in; caught before they settle they read as short.
         await page.waitForTimeout(2500);
 
-        return [page.getByRole('heading', { level: 1 }), cardAround(chart)];
+        // From the header row (name, rule, Edit and Archive) down to the
+        // chart, so the summary cards between them come along.
+        const header = page
+            .getByRole('heading', { name: MONTHLY_GOAL_NAME })
+            .locator(
+                'xpath=ancestor::div[contains(@class, "justify-between")][1]',
+            );
+
+        return [header, cardAround(chart)];
     },
 
     'labels-settings': async (page) => {
@@ -887,6 +889,8 @@ async function main() {
 
         log('seeding a monthly savings goal');
         seedMonthlyGoal();
+        // Opens and closes the goal's months. It runs for every user in the
+        // local database and may queue their month-end notices too.
         artisan(['savings-goals:generate-periods']);
 
         log('opening the full import window');
@@ -896,10 +900,7 @@ async function main() {
     mkdirSync(OUT_DIR, { recursive: true });
 
     const fixtures = writeFixtures(seededTransaction());
-    const features = {
-        ...seededFeatures(),
-        monthlyGoal: seededMonthlyGoal(),
-    };
+    const features = seededFeatures();
     const browser = await launchBrowser();
     const failures = [];
 

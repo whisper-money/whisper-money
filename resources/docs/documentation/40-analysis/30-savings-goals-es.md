@@ -219,7 +219,7 @@ flowchart LR
     jun --> jul[Julio: no cumplido]
     jul --> aug[Agosto: cumplido, objetivo editado]
     aug --> sep[Septiembre: cumplido]
-    sep --> oct[Octubre: en curso]
+    sep --> oct[Octubre: en proceso]
 ```
 
 Cada mes va por su cuenta. Lo que ahorraste en un mes se compara con el
@@ -230,7 +230,7 @@ junio. Un mes acaba en uno de estos estados:
 | --- | --- |
 | **Cumplido** | El mes ha terminado y ahorraste al menos su objetivo. Un objetivo de cero se da por cumplido. |
 | **No cumplido** | El mes ha terminado y ahorraste menos que su objetivo. |
-| **En proceso** | El mes en curso. Ves lo ahorrado, lo que falta y los días que quedan. |
+| **En proceso** | El mes en curso, salvo que sea parcial o archivado. Ves lo ahorrado, lo que falta y los días que quedan. |
 | **Mes parcial** | Creaste el objetivo en los **últimos cinco días** del mes. Muestra lo que ahorraste, sin objetivo ni veredicto. El primer veredicto llega el mes siguiente. |
 | **Archivada** | Archivaste el objetivo durante ese mes. Igual que un mes parcial: lo ahorrado, sin veredicto. |
 
@@ -270,7 +270,7 @@ Lo que ahorró un mes no se guarda: se suma a partir de las transacciones
 etiquetadas cada vez que lo miras. Una transferencia que se sincroniza con unos
 días de retraso, o una que etiquetas semanas después, cae en el mes de su
 propia fecha, y el veredicto de ese mes se recalcula, aunque el mes ya esté
-cerrado. Solo el objetivo se congela.
+cerrado. Lo único que se congela es el importe objetivo.
 
 La excepción es la notificación de un mes cerrado: es una foto del momento en
 que se cerró el mes y no cambia después.
@@ -283,7 +283,7 @@ del objetivo en cada transacción que **entra** en la cuenta de ahorro que elija
 Viene desactivado. Si lo marcas:
 
 - También etiqueta lo que ya ha entrado en esa cuenta desde el día 1 del mes en
-  curso.
+  curso, salvo las transacciones que ya cuenta otro objetivo.
 - Etiqueta todo lo que entra, intereses y devoluciones incluidos, así que si
   solo quieres que cuenten algunos ingresos, déjalo desactivado y vincúlalos a
   mano.
@@ -299,17 +299,19 @@ Viene desactivado. Si lo marcas:
   aportaciones desde la página del objetivo.
 
 Puedes editar o borrar la regla en **Configuración › Reglas de automatización**.
-El etiquetado automático solo se puede configurar al crear el objetivo.
+El etiquetado automático solo se puede configurar al crear el objetivo. La
+regla reconoce la cuenta por su nombre y el de su banco, así que si cambias el
+nombre de la cuenta, actualiza también la regla.
 
 ### Editar un objetivo mensual
 
-Puedes cambiarle el nombre, cambiar su objetivo y activar o desactivar el
-recordatorio. El tipo no se puede cambiar.
+Puedes cambiarle el nombre, cambiar el importe objetivo y activar o desactivar
+el recordatorio. El tipo no se puede cambiar.
 
-**Un objetivo nuevo se aplica desde el mes en curso.** Los meses anteriores
-mantienen el objetivo con el que se evaluaron, así que subir el listón en agosto
-no convierte mayo en un mes no cumplido. En un objetivo por porcentaje de
-ingresos, cambiar solo el porcentaje conserva los ingresos con los que se abrió
+**Un importe objetivo nuevo se aplica desde el mes en curso.** Los meses
+anteriores mantienen el importe con el que se evaluaron, así que subir el
+listón en agosto no convierte mayo en un mes no cumplido. En un objetivo por
+porcentaje de ingresos, cambiar solo el porcentaje conserva los ingresos con los que se abrió
 el mes y les aplica el nuevo porcentaje.
 
 ### Notificaciones
@@ -335,7 +337,8 @@ también eliges el valor por defecto para los objetivos mensuales nuevos.
   cuántos objetivos se cumplieron el mes pasado y una línea por objetivo.
 - **Flujo de caja**: en la vista de mes, una tarjeta con lo que fue a objetivos
   mensuales ese mes frente a la suma de sus objetivos, la diferencia respecto al
-  plan, cuántos se cumplieron y qué parte del flujo neto del mes se llevaron.
+  plan, cuántos se cumplieron y, si el flujo neto del mes es positivo, qué parte
+  de él se llevaron.
   Mira [Flujo de caja](/documentation/cashflow#ahorro-mensual).
 - **Resumen mensual**: el informe del [resumen mensual](/documentation/monthly-summary)
   dice cuántos objetivos mensuales cumpliste y por cuánto fallaron o superaron
@@ -349,8 +352,8 @@ Archivar funciona igual que en un objetivo puntual, con algunas diferencias:
 
 - El mes en curso pasa a ser un mes **archivado**: lo que has ahorrado se
   queda, sin veredicto.
-- Se acaban los recordatorios de fin de mes y la regla de automatización deja
-  de etiquetar transferencias.
+- Se acaban los recordatorios de fin de mes y la etiqueta del objetivo sale de
+  su regla de automatización. Si la regla no hacía nada más, se borra.
 - Cada mes pasado conserva su objetivo y su resultado, y puedes seguir abriendo
   el objetivo para ver su historial.
 
@@ -462,7 +465,8 @@ antes el antiguo.
 
 Porque se calcula con la media de los tres meses completos anteriores y se
 congela al abrirse el mes. La nómina de este mes alimenta el objetivo del mes
-que viene.
+que viene. La excepción es un objetivo que aún no tiene detrás ningún mes
+completo con ingresos: entonces sigue los ingresos de este mes hasta que acaba.
 
 ### ¿Por qué el primer mes dice «Mes parcial»?
 

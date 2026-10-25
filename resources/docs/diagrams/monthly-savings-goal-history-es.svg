@@ -1,6 +1,6 @@
 <svg viewBox="0 0 720 304" role="img" aria-labelledby="monthly-savings-goal-history-es-title monthly-savings-goal-history-es-desc" xmlns="http://www.w3.org/2000/svg">
     <title id="monthly-savings-goal-history-es-title">Un objetivo de ahorro mensual, mes a mes</title>
-    <desc id="monthly-savings-goal-history-es-desc">Siete meses de un objetivo mensual. Abril fue un mes parcial, porque el objetivo se creó en sus últimos días: muestra los 120 ahorrados, sin objetivo ni veredicto. Mayo ahorró 320 frente a un objetivo de 300 y se cumplió; junio ahorró justo 300 y se cumplió; julio ahorró 210 y no se cumplió por 90. Desde agosto el objetivo se editó a 350, y los meses anteriores se quedaron en 300: agosto ahorró 380 y septiembre 360, los dos cumplidos. Octubre sigue en curso con 150 de 350. En total, 4 de 5 meses evaluados cumplidos, una racha actual de 2 y una diferencia acumulada de menos 30.</desc>
+    <desc id="monthly-savings-goal-history-es-desc">Siete meses de un objetivo mensual. Abril fue un mes parcial, porque el objetivo se creó en sus últimos días: muestra los 120 ahorrados, sin objetivo ni veredicto. Mayo ahorró 320 frente a un objetivo de 300 y se cumplió; junio ahorró justo 300 y se cumplió; julio ahorró 210 y no se cumplió por 90. Desde agosto el objetivo se editó a 350, y los meses anteriores se quedaron en 300: agosto ahorró 380 y septiembre 360, los dos cumplidos. Octubre sigue en proceso con 150 de 350. En total, 4 de 5 meses evaluados cumplidos, una racha actual de 2 y una diferencia acumulada de menos 30.</desc>
     <text class="dg-eyebrow" x="24" y="16">AHORRADO CADA MES</text>
     <text class="dg-eyebrow" x="696" y="16" text-anchor="end">4 DE 5 CUMPLIDOS · RACHA 2 · ACUMULADO −30</text>
     <line class="dg-hairline" x1="24" y1="24" x2="696" y2="24"/>
@@ -38,7 +38,7 @@
     <rect class="dg-node-focal" x="627" y="156.25" width="44" height="63.75" rx="3"/>
     <text class="dg-sub" x="649" y="150.25" text-anchor="middle">150</text>
     <text class="dg-eyebrow" x="649" y="236" text-anchor="middle">OCT</text>
-    <text class="dg-name" x="649" y="252" text-anchor="middle">en curso</text>
+    <text class="dg-name" x="649" y="252" text-anchor="middle">en proceso</text>
     <text class="dg-sub" x="649" y="266" text-anchor="middle">faltan 200</text>
     <path class="dg-edge dg-edge-dashed" d="M158,92.5 H424 V71.25 H690"/>
     <text class="dg-eyebrow" x="158" y="66.5">OBJETIVO 300</text>
@@ -50,7 +50,7 @@
     <rect class="dg-node-soft dg-edge-dashed" x="304" y="282" width="12" height="12" rx="2"/>
     <text class="dg-sub" x="322" y="291">Mes parcial</text>
     <rect class="dg-node-focal" x="444" y="282" width="12" height="12" rx="2"/>
-    <text class="dg-sub" x="462" y="291">En curso</text>
+    <text class="dg-sub" x="462" y="291">En proceso</text>
     <line class="dg-edge dg-edge-dashed" x1="574" y1="288" x2="590" y2="288"/>
     <text class="dg-sub" x="596" y="291">Objetivo de ese mes</text>
 </svg>
