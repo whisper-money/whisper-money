@@ -373,6 +373,60 @@ test('a range reads as a year once it is longer than a quarter', function (strin
     '93 days' => ['2026-07-31', '2026-10-31', true],
 ]);
 
+test('a quarterly budget is reserved in the quarter range alongside the shorter-period ones', function () {
+    $insurance = Budget::factory()->quarterly()->create(['user_id' => $this->user->id]);
+    $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($insurance, '2026-10-01', '2026-12-31', 30000, 10000);
+    budgetPeriodWithSpend($groceries, '2026-10-01', '2026-10-31', 40000, 15000);
+
+    $summary = cashflowSummary('2026-10-01', '2026-12-31');
+
+    expect($summary['reserved'])->toBe(45000)
+        ->and(collect($summary['budgets'])->pluck('budget_id')->sort()->values()->all())
+        ->toBe(collect([$insurance->id, $groceries->id])->sort()->values()->all());
+});
+
+test('a quarterly budget is left out of the month and year ranges', function (string $from, string $to) {
+    $insurance = Budget::factory()->quarterly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($insurance, '2026-10-01', '2026-12-31', 30000, 10000);
+
+    $summary = cashflowSummary($from, $to);
+
+    expect($summary['reserved'])->toBe(0)
+        ->and($summary['budgets'])->toBe([]);
+})->with([
+    'month' => ['2026-10-01', '2026-10-31'],
+    'year' => ['2026-01-01', '2026-12-31'],
+]);
+
+test('a range reads as a quarter once it is longer than a month', function (string $from, string $to, bool $readsAsQuarter) {
+    $insurance = Budget::factory()->quarterly()->create(['user_id' => $this->user->id]);
+
+    budgetPeriodWithSpend($insurance, '2026-10-01', '2026-12-31', 30000, 0);
+
+    expect(cashflowSummary($from, $to)['budgets'])->toHaveCount($readsAsQuarter ? 1 : 0);
+})->with([
+    '31 days' => ['2026-10-01', '2026-10-31', false],
+    '31 days with a time on the end date' => ['2026-10-01', '2026-10-31 23:59:59', false],
+    '32 days' => ['2026-10-01', '2026-11-01', true],
+]);
+
+test('a quarterly budget splits the month expense even though the month does not reserve it', function () {
+    $insurance = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $budget = Budget::factory()->quarterly()->fixed()->forCategories($insurance)->create(['user_id' => $this->user->id]);
+
+    BudgetPeriod::factory()->create(['budget_id' => $budget->id, 'start_date' => '2026-10-01', 'end_date' => '2026-12-31', 'allocated_amount' => 50000]);
+    expenseOn($this, $insurance, -12000);
+
+    $summary = cashflowSummary();
+
+    expect($summary['fixed_expense'])->toBe(12000)
+        ->and($summary['general_expense'])->toBe(0)
+        ->and($summary['reserved'])->toBe(0);
+});
+
 test('each budget row carries its expense type', function () {
     $rent = Budget::factory()->monthly()->fixed()->create(['user_id' => $this->user->id, 'name' => 'Rent']);
     $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id, 'name' => 'Groceries']);

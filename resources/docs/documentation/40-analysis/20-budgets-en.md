@@ -170,9 +170,9 @@ and overlaps the view:
 - Only the budget amount counts. Anything carried over from earlier periods is
   left out.
 
-Which budgets count depends on the view. The **Month** and **Quarter** views
-count weekly, every-two-weeks and monthly budgets. The **Year** view counts
-only yearly ones.
+Which budgets count depends on the view. The **Month** view counts weekly,
+every-two-weeks and monthly budgets. The **Quarter** view counts those plus
+quarterly ones. The **Year** view counts only yearly ones.
 
 ## Alerts
 
@@ -212,7 +212,8 @@ bills you cannot cut, like rent or subscriptions, to Fixed.
 
 Either no budget period is in progress today, or every one of them is already
 spent or over. Archived budgets never reserve anything. A yearly budget only
-counts in the Year view, and a monthly one only in the Month and Quarter views.
+counts in the Year view, a quarterly one only in the Quarter view, and a monthly
+one only in the Month and Quarter views.
 
 ### Why does a budget look empty?
 
