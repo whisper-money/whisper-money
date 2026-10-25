@@ -1,0 +1,58 @@
+<svg viewBox="0 0 720 284" role="img" aria-labelledby="net-worth-inputs-en-title net-worth-inputs-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="net-worth-inputs-en-title">What goes into net worth</title>
+    <desc id="net-worth-inputs-en-desc">Checking, savings, investment, retirement and other accounts always add their balance to net worth. Real estate adds its market value and loans subtract what is owed, but only when you include them; both start off for new users. Credit cards never count.</desc>
+    <defs>
+        <marker id="net-worth-inputs-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">ALWAYS ADDS</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="174" y2="24"/>
+    <text class="dg-eyebrow" x="285" y="16">THE TOTAL</text>
+    <line class="dg-hairline" x1="285" y1="24" x2="435" y2="24"/>
+    <text class="dg-eyebrow" x="546" y="16">ONLY IF YOU INCLUDE IT</text>
+    <line class="dg-hairline" x1="546" y1="24" x2="696" y2="24"/>
+    <text class="dg-eyebrow" x="546" y="172">NEVER COUNTS</text>
+    <line class="dg-hairline" x1="546" y1="180" x2="696" y2="180"/>
+    <path class="dg-edge" d="M220,56 V216"/>
+    <path class="dg-edge" d="M220,136 H281" marker-end="url(#net-worth-inputs-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M546,62 H500 Q492,62 492,70 V120 Q492,128 484,128 H439" marker-end="url(#net-worth-inputs-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M546,118 H520 Q512,118 512,126 V142 Q512,150 504,150 H439" marker-end="url(#net-worth-inputs-en-arrow)"/>
+    <path class="dg-edge" d="M174,56 H220"/>
+    <rect class="dg-mask" x="24" y="40" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="40" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="60" text-anchor="middle">Checking</text>
+    <path class="dg-edge" d="M174,96 H220"/>
+    <rect class="dg-mask" x="24" y="80" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="80" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="100" text-anchor="middle">Savings</text>
+    <path class="dg-edge" d="M174,136 H220"/>
+    <rect class="dg-mask" x="24" y="120" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="120" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="140" text-anchor="middle">Investment</text>
+    <path class="dg-edge" d="M174,176 H220"/>
+    <rect class="dg-mask" x="24" y="160" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="160" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="180" text-anchor="middle">Retirement</text>
+    <path class="dg-edge" d="M174,216 H220"/>
+    <rect class="dg-mask" x="24" y="200" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="200" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="220" text-anchor="middle">Others</text>
+    <rect class="dg-mask" x="285" y="108" width="150" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="285" y="108" width="150" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="133" text-anchor="middle">Net worth</text>
+    <text class="dg-sub" x="360" y="150" text-anchor="middle">in your currency</text>
+    <rect class="dg-mask" x="546" y="40" width="150" height="44" rx="6"/>
+    <rect class="dg-node" x="546" y="40" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="58" text-anchor="middle">Real estate</text>
+    <text class="dg-sub" x="621" y="74" text-anchor="middle">+ market value</text>
+    <rect class="dg-mask" x="546" y="96" width="150" height="44" rx="6"/>
+    <rect class="dg-node" x="546" y="96" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="114" text-anchor="middle">Loan</text>
+    <text class="dg-sub" x="621" y="130" text-anchor="middle">− amount owed</text>
+    <rect class="dg-mask" x="546" y="192" width="150" height="44" rx="6"/>
+    <rect class="dg-node-soft" x="546" y="192" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="210" text-anchor="middle">Credit card</text>
+    <text class="dg-sub" x="621" y="226" text-anchor="middle">tracked on its own</text>
+    <text class="dg-aside" x="24" y="272">Loans and real estate start off for new users. Switch them on in the chart’s settings.</text>
+</svg>
