@@ -30,6 +30,11 @@ La descarga respeta los filtros que tengas puestos, así que antes de pulsarlo:
 Después sube el archivo tal y como sale. No hace falta abrirlo, ni renombrar
 columnas, ni borrar filas.
 
+No hace falta que tengas esta página abierta: con **Banktrack** elegido, el paso
+Archivo de la importación trae los mismos pasos en **Cómo exportar tus datos de
+Banktrack**, con un enlace a esta guía que se abre en otra pestaña, así que el
+archivo que ya elegiste se queda.
+
 ## Cómo se leen las columnas
 
 ```mermaid
@@ -83,6 +88,11 @@ cambiar. Las cuentas de efectivo no llevan banco. Una cuenta que se llame igual
 que una de tus cuentas manuales va a ella salvo que elijas otra cosa, y una cuenta
 que tengas conectada no se toca nunca: su histórico de Banktrack va a una cuenta
 manual aparte.
+
+También llegan las cuentas que cerraste en Banktrack hace tiempo. Una que termina
+con saldo cero, o que lleva más de un año sin movimientos, viene con **Archivar
+después de importar** marcado, así que se archiva al terminar la importación,
+con su historial intacto. Desmárcala si quieres seguir viéndola.
 
 ![El paso de cuentas con cuatro cuentas de una exportación de Banktrack, una de ellas con un banco nuevo propio](/docs/documentation/full-import-accounts.png)
 

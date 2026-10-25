@@ -1,0 +1,45 @@
+<svg viewBox="0 0 720 268" role="img" aria-labelledby="import-type-sign-es-title import-type-sign-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="import-type-sign-es-title">Cómo decide el signo la columna de tipo</title>
+    <desc id="import-type-sign-es-desc">El importe de cada fila se lee junto con su valor en la columna de tipo. Si ese valor es uno de los que marcaste como gasto, la fila se importa en negativo, tenga el signo que tenga en el archivo; cualquier otra fila conserva el importe tal como viene. Sin columna de tipo, o sin nada marcado, cada importe entra tal cual.</desc>
+    <defs>
+        <marker id="import-type-sign-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+        <marker id="import-type-sign-es-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead-accent" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">EN EL ARCHIVO</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="200" y2="24"/>
+    <text class="dg-eyebrow" x="264" y="16">LA COLUMNA DE TIPO</text>
+    <line class="dg-hairline" x1="264" y1="24" x2="456" y2="24"/>
+    <text class="dg-eyebrow" x="520" y="16">SE IMPORTA COMO</text>
+    <line class="dg-hairline" x1="520" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M200,72 H220 Q232,72 232,84 V116 Q232,128 244,128 H264" marker-end="url(#import-type-sign-es-arrow)"/>
+    <path class="dg-edge" d="M200,184 H220 Q232,184 232,172 V140 Q232,128 244,128 H264" marker-end="url(#import-type-sign-es-arrow)"/>
+    <path class="dg-edge dg-edge-accent" d="M456,112 H476 Q488,112 488,100 V84 Q488,72 500,72 H520" marker-end="url(#import-type-sign-es-arrow-accent)"/>
+    <path class="dg-edge" d="M456,144 H476 Q488,144 488,156 V172 Q488,184 500,184 H520" marker-end="url(#import-type-sign-es-arrow)"/>
+    <text class="dg-edge-label" x="472" y="64" text-anchor="middle">SÍ</text>
+    <text class="dg-edge-label" x="472" y="204" text-anchor="middle">NO</text>
+    <rect class="dg-mask" x="24" y="44" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="44" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="68" text-anchor="middle">Importe y tipo</text>
+    <text class="dg-sub" x="112" y="84" text-anchor="middle">45,90 · Gasto</text>
+    <rect class="dg-mask" x="24" y="156" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="156" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="112" y="180" text-anchor="middle">Importe y tipo</text>
+    <text class="dg-sub" x="112" y="196" text-anchor="middle">2.500,00 · Ingreso</text>
+    <rect class="dg-mask" x="264" y="96" width="192" height="64" rx="6"/>
+    <rect class="dg-node-focal" x="264" y="96" width="192" height="64" rx="6"/>
+    <text class="dg-name" x="360" y="124" text-anchor="middle">¿Marcado como gasto?</text>
+    <text class="dg-sub" x="360" y="140" text-anchor="middle">tú marcas los valores</text>
+    <rect class="dg-mask" x="520" y="44" width="176" height="56" rx="6"/>
+    <rect class="dg-node" x="520" y="44" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="608" y="68" text-anchor="middle">Siempre negativo</text>
+    <text class="dg-sub" x="608" y="84" text-anchor="middle">45,90 pasa a −45,90</text>
+    <rect class="dg-mask" x="520" y="156" width="176" height="56" rx="6"/>
+    <rect class="dg-node-soft" x="520" y="156" width="176" height="56" rx="6"/>
+    <text class="dg-name" x="608" y="180" text-anchor="middle">Conserva su signo</text>
+    <text class="dg-sub" x="608" y="196" text-anchor="middle">2.500,00 sigue en 2.500,00</text>
+    <text class="dg-aside" x="24" y="248">Sin columna de tipo, o sin nada marcado: cada importe entra tal como lo escribe el archivo.</text>
+</svg>

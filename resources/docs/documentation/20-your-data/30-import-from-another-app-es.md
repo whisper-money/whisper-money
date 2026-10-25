@@ -7,7 +7,7 @@
 ## Inicio rápido
 
 1. Abre **Configuración → Importar desde otra app**, o **¿Vienes de otra app?** en el paso de cuentas mientras configuras tu cuenta.
-2. Indica de dónde vienes y sube el archivo.
+2. Indica de dónde vienes y sube el archivo, o todos los archivos de la exportación.
 3. Revisa las columnas.
 4. Decide qué pasa con cada cuenta.
 5. Revisa las categorías.
@@ -29,20 +29,26 @@ una cuenta en cualquier momento, usa [Importar transacciones](/documentation/tra
 
 ## Qué necesita tu archivo
 
-Un único archivo, exportado de tu app anterior o hecho por ti:
+Una exportación de tu app anterior, o un Excel hecho por ti, en un solo archivo
+o repartida en varios:
 
-- CSV, XLS, XLSX o Numbers, de hasta 10 MB.
+- CSV, XLS, XLSX o Numbers, de hasta 10 MB cada uno.
 - Una fila por transacción.
 - Una fecha, un importe en una sola columna con los gastos en negativo y una descripción.
+  La excepción es Money Pro, que escribe los importes sin signo: mira
+  [Si vienes de Money Pro](#si-vienes-de-money-pro).
 - Una columna que diga a qué cuenta pertenece cada fila. Si no la tiene, elige
   **Todas las filas son de una sola cuenta** y todas van a una sola cuenta con el
   nombre del archivo.
 
-El archivo lo lee tu navegador. No se guarda nada hasta que confirmas el último
-paso, y solo se importan las columnas que asignas.
+El archivo lo lee tu navegador. Para detectar sus columnas, nuestro proveedor de
+IA solo ve las cabeceras y el formato de los datos, nunca tus filas. No se guarda
+nada hasta que confirmas el último paso, y solo se importan las columnas que
+asignas.
 
-¿Vienes de Banktrack? Su exportación se reconoce y se rellena sola: mira
-[Importar desde Banktrack](/documentation/import-from-another-app/banktrack).
+¿Vienes de Banktrack o de Money Pro? Sus exportaciones se reconocen y se rellenan
+solas: mira [Importar desde Banktrack](/documentation/import-from-another-app/banktrack)
+y [Si vienes de Money Pro](#si-vienes-de-money-pro).
 
 ## La importación, paso a paso
 
@@ -59,9 +65,25 @@ flowchart TD
 
 ### Archivo
 
-Elige de dónde vienes: **Banktrack**, u **Otra app o un Excel propio**. Después
-sube el archivo. Una exportación de Banktrack se reconoce por sus cabeceras elijas
-lo que elijas, y sus columnas se rellenan solas.
+Elige de dónde vienes: **Banktrack**, **Money Pro** u **Otra app o un Excel
+propio**. Después sube el archivo. Una exportación de Banktrack o de Money Pro se
+reconoce por sus cabeceras elijas lo que elijas, y sus columnas se rellenan
+solas. Con Banktrack, **Cómo exportar tus datos de Banktrack** detalla los pasos
+dentro de Banktrack y enlaza a la [guía completa](/documentation/import-from-another-app/banktrack).
+
+Algunas apps reparten una exportación en varios archivos (Money Pro la corta
+cada 1.000 filas). Elígelos o arrástralos todos a la vez, o súmalos con **Añadir
+otro fichero**: los archivos con las mismas columnas se leen como una sola
+exportación. Cada archivo aparece con sus filas, y una línea resume los archivos,
+las transacciones y los meses que cubren.
+
+- Un archivo con columnas distintas a las del primero se rechaza, con el nombre
+  de los dos, y no puedes continuar hasta quitarlo.
+- Un archivo con el mismo nombre que otro de la lista se salta.
+- Una fila que no se puede leer se indica con su archivo y su número de fila,
+  por ejemplo «export-part-2.csv, fila 12».
+
+![El paso del archivo con una exportación de Money Pro en dos archivos, los dos en la lista y el formato de Money Pro reconocido](/docs/documentation/full-import-money-pro-files.png)
 
 ![El paso del archivo, con una exportación de Banktrack subida y el formato de Banktrack reconocido](/docs/documentation/full-import-file.png)
 
@@ -86,6 +108,13 @@ Cada dato de una transacción sale de una columna de tu archivo. Whisper Money
 adivina lo que puede, tú corriges el resto, y lo recuerda para el próximo archivo
 de la misma app.
 
+Con **Otra app o un Excel propio**, cuando no hay una elección guardada que
+encaje con el archivo, la IA sugiere qué columna tiene la fecha, el importe, la
+descripción y los demás campos comunes, y el paso muestra **Sugerencia hecha con
+IA** mientras el mapeo siga siendo su sugerencia. Como en el resto de la app,
+solo ve la cabecera de cada columna y el formato de sus datos, nunca tus filas.
+Las columnas de cuenta, categoría y notas se siguen deduciendo de las cabeceras.
+
 ![El paso de columnas, con la fecha, el importe, la descripción, la cuenta y la categoría de una exportación de Banktrack ya asignadas](/docs/documentation/full-import-columns.png)
 
 <div class="cards-wrapper">
@@ -94,7 +123,8 @@ de la misma app.
 ### Obligatorios
 
 - **Fecha**, con su formato.
-- **Valor**, el importe con el signo del archivo: un importe negativo es un gasto.
+- **Valor**, el importe con el signo del archivo: un importe negativo es un gasto
+  (salvo en una exportación de Money Pro, donde lo decide el tipo).
 - **Descripción**.
 - **Cuenta**: cada valor distinto es una cuenta. Elige **Todas las filas son de
   una sola cuenta** si el archivo no tiene esa columna.
@@ -138,6 +168,19 @@ solo muestre una parte.
 
 ![El paso de cuentas, con cuatro cuentas del archivo y un banco nuevo creado para una que la lista no conoce](/docs/documentation/full-import-accounts.png)
 
+#### Cuentas que parecen inactivas
+
+Al mudarte sueles traer cuentas que dejaste de usar hace años. Una cuenta que se
+va a crear parece inactiva cuando termina con saldo cero (su último saldo, o la
+suma de sus movimientos si el archivo no trae saldos) o cuando su último
+movimiento tiene más de un año. Si alguna lo parece, el paso dice cuántas y cada
+una lleva la casilla **Archivar después de importar**, ya marcada.
+
+Desmarca las que quieras seguir viendo. Las marcadas se archivan al terminar la
+importación: conservan todas sus transacciones y saldos, y puedes recuperarlas
+cuando quieras desde los ajustes de Cuentas bancarias. Las cuentas que mandas a
+una tuya, unes con otra o no importas nunca se ofrecen.
+
 ### Categorías
 
 Cada categoría del archivo se compara por nombre con las tuyas. Las que ya
@@ -170,6 +213,40 @@ La importación se hace en segundo plano. Puedes cerrar la pestaña y volver má
 tarde: el progreso te espera en Configuración.
 
 ![La importación terminada, con las cuentas, las categorías y las transacciones que ha traído](/docs/documentation/full-import-done.png)
+
+## Si vienes de Money Pro
+
+Money Pro corta su exportación en archivos de 1.000 filas, y cada uno trae todas
+las cuentas. Elige **Money Pro** y súbelos todos a la vez. Una exportación de
+Money Pro en español se reconoce por sus cabeceras (`Fecha`, `Cantidad`,
+`Cuenta`, `Monto recibido`, `Cuenta de destino`, `Saldo`, `Tipo de
+transacción`), sus columnas se rellenan solas y sus subcategorías se separan por
+`:`.
+
+Sus importes no llevan signo, así que el tipo de transacción decide qué es cada
+fila:
+
+| Tipo de transacción                | En Whisper Money                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Gasto                              | Un gasto: el importe entra en negativo.                                                                                               |
+| Ingreso                            | Un ingreso: el importe entra en positivo.                                                                                             |
+| Transferencia de dinero            | Dos transferencias propias: el importe sale de **Cuenta**, y **Monto recibido**, en su propia moneda, entra en **Cuenta de destino**. |
+| Ajuste de saldo, Saldo de apertura | Ninguna transacción, solo el saldo de ese día, sacado de **Saldo**.                                                                   |
+
+- **Saldo** da el saldo diario en cada fila.
+- Una cuenta que solo aparece como destino de transferencias también se crea.
+- La moneda de cada importe sale de su símbolo. El paso de columnas lista cada
+  símbolo encontrado en **Monedas**, cada uno con una moneda que confirmar: `€`
+  es EUR, `£` es GBP, y `$` es tu propia moneda si es un dólar o un peso, y USD
+  si no. Una cuenta toma la moneda de sus filas.
+- Una fila sin descripción toma el nombre de su categoría o, si no tiene, su tipo.
+- Money Pro no tiene ID de transacción, así que una segunda importación de la
+  misma exportación se apoya en la fecha, el importe y la descripción para saltar
+  lo que ya está.
+- Las monedas que eliges no se recuerdan: una importación posterior vuelve a
+  preguntarlas.
+
+![La tarjeta Monedas del paso de columnas, con cada símbolo de moneda de una exportación de Money Pro y la moneda con la que se lee](/docs/documentation/full-import-money-pro-currencies.png)
 
 ## Después de importar
 
@@ -220,6 +297,12 @@ abierta durante tus primeros días.
 Sí. Elige **Todas las filas son de una sola cuenta** en el campo Cuenta y todo va
 a una cuenta con el nombre del archivo. Para varias cuentas, importa un archivo
 por cuenta.
+
+### Mi exportación viene en varios archivos. ¿Los importo uno a uno?
+
+No. Elígelos todos en el paso Archivo, o súmalos con **Añadir otro fichero**.
+Mientras tengan las mismas columnas, se leen e importan como una sola
+exportación.
 
 ### ¿Qué no se importa?
 

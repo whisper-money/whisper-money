@@ -17,7 +17,7 @@
 //   HEADLESS=0 node scripts/docs-screenshots.mjs       # watch it run
 //   SKIP_SEED=1 node scripts/docs-screenshots.mjs      # reuse the seeded data
 
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -428,18 +428,20 @@ function undoFullImports() {
 }
 
 /**
- * Open the full import on the Banktrack export and walk it forward until the
- * step with this title is on screen.
+ * Open the full import on an export — the Banktrack one unless told otherwise —
+ * and walk it forward until the step with this title is on screen.
  */
-async function openFullImport(page, stepTitle = null) {
+async function openFullImport(
+    page,
+    stepTitle = null,
+    { files = BANKTRACK_EXPORT, source = 'Banktrack' } = {},
+) {
     undoFullImports();
     await page.goto(`${BASE_URL}/settings/import/new`, {
         waitUntil: 'domcontentloaded',
     });
-    await page
-        .getByTestId('full-import-file-input')
-        .setInputFiles(BANKTRACK_EXPORT);
-    await page.getByText('Banktrack format recognized.').waitFor();
+    await page.getByTestId('full-import-file-input').setInputFiles(files);
+    await page.getByText(`${source} format recognized.`).waitFor();
 
     if (stepTitle !== null) {
         const target = page.getByRole('heading', { level: 1, name: stepTitle });
@@ -472,6 +474,123 @@ function cardAround(locator) {
     return locator.locator(
         'xpath=ancestor::div[contains(@class, "rounded-xl")][1]',
     );
+}
+
+/**
+ * The AI's column suggestion, answered here instead of by TypeSafe AI: a local
+ * server has no key for it, and a screenshot should not depend on an outside
+ * service. The answer is the one the real endpoint would give for these
+ * headers, so the step lands in the same "Suggested by AI" state. The gate
+ * still has to be open, which takes any TYPESAFE_API_KEY in the local `.env`.
+ */
+const AI_SUGGESTED_FIELDS = {
+    transaction: {
+        Date: 'transaction_date',
+        Description: 'description',
+        Amount: 'amount',
+        Balance: 'balance',
+        Type: 'transaction_type',
+    },
+    balance: { Date: 'balance_date', Balance: 'balance' },
+};
+
+const COLUMN_SUGGESTIONS = '**/api/import/column-suggestions';
+
+async function answerColumnSuggestions(page) {
+    // One handler however many shots ask for it on the same page.
+    await page.unroute(COLUMN_SUGGESTIONS);
+    await page.route(COLUMN_SUGGESTIONS, async (route) => {
+        const { kind, columns } = route.request().postDataJSON();
+        const fields = {};
+
+        columns.forEach(({ header }, index) => {
+            const field = AI_SUGGESTED_FIELDS[kind]?.[header];
+
+            if (field) {
+                fields[field] = { column: header, index, confidence: 0.98 };
+            }
+        });
+
+        await route.fulfill({ json: { data: fields, cached: false } });
+    });
+}
+
+/**
+ * The badge only shows while the mapping is the AI's suggestion. A layout an
+ * earlier run saved for the account is used instead of asking, so ask by hand
+ * when the button is what is on screen.
+ */
+async function showAiSuggestion(page) {
+    const badge = dialog(page).getByText('Suggested by AI');
+    // Disabled while a suggestion is already on its way.
+    const button = dialog(page).getByRole('button', {
+        name: 'Detect columns with AI',
+        disabled: false,
+    });
+
+    await badge.or(button).first().waitFor({ timeout: 15000 });
+
+    if (!(await badge.isVisible())) {
+        await button.click();
+    }
+
+    await badge.waitFor({ timeout: 15000 });
+    await page.waitForTimeout(600);
+}
+
+/** The transaction importer on the mapping step of this file, as the AI left it. */
+async function openMappingStep(page, file) {
+    await answerColumnSuggestions(page);
+    await openImportDrawer(page);
+    await page.locator('input[type="file"]').setInputFiles(file);
+    await page.waitForTimeout(1200);
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByText('Map Columns').waitFor();
+    await showAiSuggestion(page);
+}
+
+/** Every amount positive, and a column saying which way the money went. */
+function writeTypeColumnFixture() {
+    const path = join(mkdtempSync(join(tmpdir(), 'docs-shots-')), 'typed.csv');
+
+    writeFileSync(
+        path,
+        [
+            'Date,Description,Amount,Type',
+            '2026-07-02,FRESH MARKET,45.90,Expense',
+            '2026-07-05,ACME CORP PAYROLL,2500.00,Income',
+            '2026-07-08,SHELL SERVICE STATION,61.40,Expense',
+            '2026-07-11,CITY TRANSIT MONTHLY,75.00,Expense',
+            '2026-07-14,ONLINE STORE REFUND,12.00,Refund',
+        ].join('\n'),
+        'utf8',
+    );
+
+    return path;
+}
+
+/**
+ * The importer's own synthetic Money Pro export, cut in two the way Money Pro
+ * cuts a long one, so the file step shows several files read as one.
+ */
+function moneyProExport() {
+    const [header, ...rows] = readFileSync(
+        'resources/js/lib/__fixtures__/money-pro-sample.csv',
+        'utf8',
+    )
+        .trim()
+        .split('\n');
+    const dir = mkdtempSync(join(tmpdir(), 'docs-shots-'));
+    const half = Math.ceil(rows.length / 2);
+
+    const files = [rows.slice(0, half), rows.slice(half)].map((part, index) => {
+        const path = join(dir, `money-pro-export-${index + 1}.csv`);
+        writeFileSync(path, [header, ...part].join('\n'), 'utf8');
+
+        return path;
+    });
+
+    return { files, source: 'Money Pro' };
 }
 
 /**
@@ -557,16 +676,23 @@ const SHOTS = {
     },
 
     'import-transactions-mapping': async (page, fixtures) => {
-        await openImportDrawer(page);
-        await page
-            .locator('input[type="file"]')
-            .setInputFiles(join(fixtures, 'transactions.csv'));
-        await page.waitForTimeout(1200);
-        await page.getByRole('button', { name: 'Next' }).click();
-        await page.getByText('Map Columns').waitFor();
-        await page.waitForTimeout(1200);
+        await openMappingStep(page, join(fixtures, 'transactions.csv'));
 
         return drawerClip(page);
+    },
+
+    'import-transactions-type-column': async (page) => {
+        await openMappingStep(page, writeTypeColumnFixture());
+        await dialog(page).getByText('Optional fields').click();
+
+        const row = page
+            .locator('label[for="type-column"]')
+            .locator('xpath=..');
+        await row.locator('label[for^="expense-type-"]').first().waitFor();
+        await row.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(600);
+
+        return [row];
     },
 
     'import-transactions-preview': async (page, fixtures) => {
@@ -587,6 +713,7 @@ const SHOTS = {
     },
 
     'import-balances-mapping': async (page, fixtures) => {
+        await answerColumnSuggestions(page);
         await openAccount(page);
         await page.getByRole('button', { name: 'Import balances' }).click();
         await dialog(page).waitFor();
@@ -597,7 +724,7 @@ const SHOTS = {
         await page.waitForTimeout(1200);
         await page.getByRole('button', { name: 'Next' }).click();
         await page.getByText('Map Columns').waitFor();
-        await page.waitForTimeout(1200);
+        await showAiSuggestion(page);
 
         return drawerClip(page);
     },
@@ -766,6 +893,36 @@ const SHOTS = {
         return [
             stepHeading(page),
             cardAround(page.getByText('Banktrack format recognized.')),
+        ];
+    },
+
+    'full-import-money-pro-files': async (page) => {
+        await openFullImport(page, null, moneyProExport());
+
+        return [
+            stepHeading(page),
+            cardAround(page.getByText('Money Pro format recognized.')),
+        ];
+    },
+
+    'full-import-money-pro-currencies': async (page) => {
+        await page.setViewportSize({ width: 900, height: 1400 });
+        await openFullImport(page, 'Check the columns', moneyProExport());
+
+        // From the section's heading down to the picker of its last symbol.
+        const currencies = page.getByText('Currencies', { exact: true });
+        const lastPicker = page
+            .getByRole('combobox', { name: /^Currency of / })
+            .last();
+        await currencies.evaluate((element) =>
+            element.scrollIntoView({ block: 'start' }),
+        );
+        await page.waitForTimeout(600);
+
+        return [
+            currencies,
+            lastPicker,
+            page.getByText(/^In \d+ amounts?/).last(),
         ];
     },
 

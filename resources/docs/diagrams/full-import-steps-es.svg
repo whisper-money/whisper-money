@@ -1,9 +1,9 @@
 <svg viewBox="0 0 720 208" role="img" aria-labelledby="full-import-steps-es-title full-import-steps-es-desc" xmlns="http://www.w3.org/2000/svg">
     <title id="full-import-steps-es-title">Los siete pasos de una importación completa</title>
-    <desc id="full-import-steps-es-desc">Sube el archivo, di qué hacer con los datos que ya tienes, revisa las columnas, decide qué pasa con cada cuenta y cada categoría, revisa el resumen e importa en segundo plano. No se guarda nada antes del último paso, y la importación se puede deshacer desde Configuración.</desc>
+    <desc id="full-import-steps-es-desc">Sube el archivo, o todos los de la exportación, di qué hacer con los datos que ya tienes, revisa las columnas, decide qué pasa con cada cuenta y cada categoría, revisa el resumen e importa en segundo plano. No se guarda nada antes del último paso, y la importación se puede deshacer desde Configuración.</desc>
     <line class="dg-edge" x1="72" y1="104" x2="648" y2="104"/>
     <text class="dg-name" x="72" y="52" text-anchor="middle">Archivo</text>
-    <text class="dg-sub" x="72" y="64" text-anchor="middle">Banktrack o cualquier CSV</text>
+    <text class="dg-sub" x="72" y="64" text-anchor="middle">Banktrack, Money Pro o CSV</text>
     <circle class="dg-station" cx="72" cy="104" r="16"/>
     <text class="dg-station-number dg-station-number" x="72" y="107" text-anchor="middle">1</text>
     <text class="dg-name" x="168" y="148" text-anchor="middle">Tus datos</text>
