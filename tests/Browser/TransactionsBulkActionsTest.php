@@ -124,7 +124,7 @@ it('deletes the selected rows through the confirmation dialog', function () {
         ->assertSee('Delete Transactions')
         // The dialog asks for the sentence back before it will delete anything.
         ->fill('input[placeholder="Delete 2 Transactions"]', 'Delete 2 Transactions')
-        ->click('button:has-text("Delete")')
+        ->click('[role="dialog"] button:has-text("Delete")')
         ->assertDontSee('Weekly groceries market')
         ->assertDontSee('Coffee subscription')
         ->assertSee('Monthly train pass')
@@ -162,7 +162,7 @@ it('drives the selection from the keyboard', function () {
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
-        ->keys('body', 'c')
+        ->keys('tr:has-text("Coffee subscription") [aria-label="Select row"]', 'c')
         ->click('[cmdk-item]:has-text("Utilities")')
         ->assertSee('Updated 2 transactions');
 
@@ -171,13 +171,15 @@ it('drives the selection from the keyboard', function () {
 
     // Backspace opens the confirmation, it never deletes on its own; Escape
     // closes the dialog first and only then clears the selection.
-    $page->click('tr:has-text("Monthly train pass") [aria-label="Select row"]')
-        ->keys('body', 'Backspace')
+    $trainPass = 'tr:has-text("Monthly train pass") [aria-label="Select row"]';
+
+    $page->click($trainPass)
+        ->keys($trainPass, 'Backspace')
         ->assertSee('Delete Transactions')
-        ->keys('body', 'Escape')
+        ->keys('[role="dialog"]', 'Escape')
         ->assertDontSee('Delete Transactions')
         ->assertPresent('[data-test="bulk-actions-bar"]')
-        ->keys('body', 'Escape')
+        ->keys($trainPass, 'Escape')
         ->assertMissing('[data-test="bulk-actions-bar"]')
         ->assertNoJavascriptErrors();
 
