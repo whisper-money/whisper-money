@@ -126,6 +126,48 @@ describe('TransactionActionsMenu analysis button', () => {
         fireEvent.click(button);
         expect(screen.getByTestId('analysis-drawer')).toBeInTheDocument();
     });
+
+    /**
+     * Below `sm` the label hides so the whole bar fits one line on a 320px
+     * phone; the button keeps its name for screen readers.
+     */
+    it('keeps its accessible name while the label hides below sm', () => {
+        renderMenu(emptyFilters);
+
+        const button = screen.getByRole('button', { name: 'Analysis' });
+
+        expect(within(button).getByText('Analysis')).toHaveClass(
+            'hidden',
+            'sm:inline',
+        );
+        expect(button).toHaveClass('w-9', 'sm:w-auto');
+    });
+
+    it('names itself in a tooltip, below sm only, once a filter enables it', async () => {
+        renderMenu({ ...emptyFilters, labelIds: ['label-1'] });
+
+        fireEvent.focus(screen.getByRole('button', { name: 'Analysis' }));
+
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Analysis',
+        );
+        expect(
+            document.querySelector('[data-slot="tooltip-content"]'),
+        ).toHaveClass('sm:hidden');
+    });
+
+    it('explains how to enable it while no filter is applied', async () => {
+        renderMenu(emptyFilters);
+
+        fireEvent.focus(screen.getByRole('button', { name: 'Analysis' }));
+
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Apply a filter to enable this button',
+        );
+        expect(
+            document.querySelector('[data-slot="tooltip-content"]'),
+        ).not.toHaveClass('sm:hidden');
+    });
 });
 
 describe('TransactionActionsMenu action bar layout', () => {

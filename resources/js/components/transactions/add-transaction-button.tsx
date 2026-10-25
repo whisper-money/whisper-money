@@ -10,6 +10,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
+import { ICON_ONLY_BELOW_SM } from '@/lib/icon-only-below-sm';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { cn } from '@/lib/utils';
 import { type ServerTransaction } from '@/types/transaction';
@@ -18,52 +19,20 @@ import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 /**
- * What a collapsible label measures itself against. `container`: the bar above
- * a transactions list is the size container (see TransactionFilters' actions
- * slot), so it follows the room actually left beside the sidebar, not the
- * viewport. `viewport`: the app header has no container, so it collapses below
- * `sm`, where the mobile header has no room left for it.
- */
-type LabelCollapse = 'container' | 'viewport';
-
-/**
- * Per collapse mode: squaring the button around its icon while the label is
- * hidden, and hiding the label. Spelled out so Tailwind sees every class.
- */
-const COLLAPSE_CLASSES: Record<
-    LabelCollapse,
-    { button: string; label: string }
-> = {
-    container: {
-        button: 'w-9 px-0 has-[>svg]:px-0 @xs:w-auto @xs:px-4 @xs:has-[>svg]:px-3',
-        label: 'hidden @xs:inline',
-    },
-    viewport: {
-        button: 'w-9 px-0 has-[>svg]:px-0 sm:w-auto sm:px-4 sm:has-[>svg]:px-3',
-        label: 'hidden sm:inline',
-    },
-};
-
-/**
  * "+ Transaction", the face of every add-transaction button above a
- * transactions list. A collapsible label drops to the icon alone when the
- * bar is too narrow to fit it next to the other actions (320px phones on
- * /transactions); the accessible name stays on the button's aria-label.
+ * transactions list. A collapsible label drops to the icon alone below `sm`;
+ * the accessible name stays on the button's aria-label.
  */
 export function AddTransactionLabel({
     collapsible = false,
-    collapse = 'container',
 }: {
     collapsible?: boolean;
-    collapse?: LabelCollapse;
 }) {
     return (
         <>
             <Plus className="h-4 w-4" />
             <span
-                className={
-                    collapsible ? COLLAPSE_CLASSES[collapse].label : undefined
-                }
+                className={collapsible ? ICON_ONLY_BELOW_SM.label : undefined}
             >
                 {__('Transaction')}
             </span>
@@ -77,7 +46,6 @@ interface AddTransactionButtonProps {
     variant?: 'default' | 'outline';
     /** Which surface the button sits on, for `transaction_created`. */
     origin?: TransactionCreateOrigin;
-    collapse?: LabelCollapse;
     testId?: string;
 }
 
@@ -90,7 +58,6 @@ export function AddTransactionButton({
     hasTransactionalAccounts,
     variant = 'default',
     origin = 'quick_add',
-    collapse = 'container',
     testId = 'add-transaction-button',
 }: AddTransactionButtonProps) {
     const { data, loading, load } = useTransactionDialogData();
@@ -139,7 +106,7 @@ export function AddTransactionButton({
                         <Button
                             variant={variant}
                             className={cn(
-                                COLLAPSE_CLASSES[collapse].button,
+                                ICON_ONLY_BELOW_SM.button,
                                 (isDisabled || loading) &&
                                     'cursor-not-allowed opacity-50',
                             )}
@@ -148,10 +115,7 @@ export function AddTransactionButton({
                             aria-label={__('Add transaction')}
                             data-testid={testId}
                         >
-                            <AddTransactionLabel
-                                collapsible
-                                collapse={collapse}
-                            />
+                            <AddTransactionLabel collapsible />
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>

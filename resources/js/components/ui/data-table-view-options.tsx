@@ -39,7 +39,7 @@ export function DataTableViewOptions<TData>({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" className='flex gap-2'>
+                <Button variant="outline" className='flex gap-2' aria-label={__('Columns')}>
                     <span className={cn({ 'hidden sm:inline': hideColumnTextOnMobile })}>{__('Columns')}</span>
                     <SlidersHorizontal className="h-4 w-4" />
                 </Button>

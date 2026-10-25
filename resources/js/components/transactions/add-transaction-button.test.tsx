@@ -61,18 +61,19 @@ describe('AddTransactionButton', () => {
     });
 
     /**
-     * On /transactions the bar also holds Analysis and Columns, so the label
-     * only hides when its container is narrower than @xs (a 320px phone).
+     * Below `sm` the bar above the list holds Analysis, Export and Columns
+     * too, so the label hides there to keep the row on one line.
      */
-    it('labels the button "Transaction", collapsing only on a narrow bar', () => {
+    it('labels the button "Transaction", collapsing to its icon below sm', () => {
         render(<AddTransactionButton hasTransactionalAccounts />);
 
         const button = screen.getByRole('button', { name: 'Add transaction' });
 
         expect(within(button).getByText('Transaction')).toHaveClass(
             'hidden',
-            '@xs:inline',
+            'sm:inline',
         );
+        expect(button).toHaveClass('w-9', 'sm:w-auto');
     });
 
     it('opens the create dialog once the lists are loaded', async () => {

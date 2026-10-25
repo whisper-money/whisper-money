@@ -820,9 +820,7 @@ export function TransactionFilters({
                     </div>
                 ) : null}
 
-                {actions ? (
-                    <div className="@container w-full">{actions}</div>
-                ) : null}
+                {actions ? <div className="w-full">{actions}</div> : null}
             </div>
         </div>
     );
