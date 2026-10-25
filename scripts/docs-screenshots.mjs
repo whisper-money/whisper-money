@@ -1204,6 +1204,67 @@ SHOTS['api-key-form'] = async (page) => {
     return [dialog(page)];
 };
 
+/** Privacy mode is a per-browser setting, kept in local storage. */
+const PRIVACY_MODE_KEY = 'privacy-mode-enabled';
+
+/**
+ * The dashboard with every deferred block drawn. Taller than the other shots,
+ * because the net worth chart and the account cards only read as a dashboard
+ * when they are seen together.
+ */
+async function openDashboard(page, { privacyMode = false } = {}) {
+    await page.setViewportSize({ width: VIEWPORT.width, height: 1600 });
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(
+        ([key, enabled]) => localStorage.setItem(key, JSON.stringify(enabled)),
+        [PRIVACY_MODE_KEY, privacyMode],
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-testid="net-worth-chart"]').waitFor();
+    await page.getByText('Top spending categories').waitFor();
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(1500);
+}
+
+/** The accounts heading and the first two rows of account cards under it. */
+function accountCards(page) {
+    const heading = page.getByRole('heading', { level: 2, name: 'Accounts' });
+    const cards = heading.locator('xpath=../following-sibling::div[1]/div');
+
+    return [heading, cards.first(), cards.nth(3)];
+}
+
+SHOTS.dashboard = async (page) => {
+    await openDashboard(page);
+
+    return [
+        cardAround(page.locator('[data-testid="net-worth-chart"]')),
+        ...accountCards(page),
+    ];
+};
+
+SHOTS['dashboard-privacy-reveal'] = async (page) => {
+    await openDashboard(page, { privacyMode: true });
+
+    try {
+        await page
+            .getByRole('button', { name: 'Show amounts in this block' })
+            .nth(1)
+            .click();
+        await page.mouse.move(0, 0);
+        await page.waitForTimeout(800);
+
+        return await union(accountCards(page));
+    } finally {
+        // The setting outlives the page, so the shots after this one would
+        // otherwise be taken with every amount masked.
+        await page.evaluate(
+            (key) => localStorage.setItem(key, 'false'),
+            PRIVACY_MODE_KEY,
+        );
+    }
+};
+
 async function main() {
     const wanted = process.argv.slice(2);
     const names = wanted.length > 0 ? wanted : Object.keys(SHOTS);

@@ -1,0 +1,58 @@
+<svg viewBox="0 0 720 284" role="img" aria-labelledby="net-worth-inputs-es-title net-worth-inputs-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="net-worth-inputs-es-title">Qué entra en el patrimonio neto</title>
+    <desc id="net-worth-inputs-es-desc">Las cuentas corrientes, de ahorro, inversión, jubilación y otras siempre suman su saldo al patrimonio neto. Los inmuebles suman su valor de mercado y los préstamos restan lo que debes, pero solo si los incluyes; los dos empiezan desactivados para los usuarios nuevos. Las tarjetas de crédito nunca cuentan.</desc>
+    <defs>
+        <marker id="net-worth-inputs-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">SIEMPRE SUMA</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="174" y2="24"/>
+    <text class="dg-eyebrow" x="285" y="16">EL TOTAL</text>
+    <line class="dg-hairline" x1="285" y1="24" x2="435" y2="24"/>
+    <text class="dg-eyebrow" x="546" y="16">SOLO SI LO INCLUYES</text>
+    <line class="dg-hairline" x1="546" y1="24" x2="696" y2="24"/>
+    <text class="dg-eyebrow" x="546" y="172">NUNCA CUENTA</text>
+    <line class="dg-hairline" x1="546" y1="180" x2="696" y2="180"/>
+    <path class="dg-edge" d="M220,56 V216"/>
+    <path class="dg-edge" d="M220,136 H281" marker-end="url(#net-worth-inputs-es-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M546,62 H500 Q492,62 492,70 V120 Q492,128 484,128 H439" marker-end="url(#net-worth-inputs-es-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M546,118 H520 Q512,118 512,126 V142 Q512,150 504,150 H439" marker-end="url(#net-worth-inputs-es-arrow)"/>
+    <path class="dg-edge" d="M174,56 H220"/>
+    <rect class="dg-mask" x="24" y="40" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="40" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="60" text-anchor="middle">Corriente</text>
+    <path class="dg-edge" d="M174,96 H220"/>
+    <rect class="dg-mask" x="24" y="80" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="80" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="100" text-anchor="middle">Ahorro</text>
+    <path class="dg-edge" d="M174,136 H220"/>
+    <rect class="dg-mask" x="24" y="120" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="120" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="140" text-anchor="middle">Inversión</text>
+    <path class="dg-edge" d="M174,176 H220"/>
+    <rect class="dg-mask" x="24" y="160" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="160" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="180" text-anchor="middle">Jubilación</text>
+    <path class="dg-edge" d="M174,216 H220"/>
+    <rect class="dg-mask" x="24" y="200" width="150" height="32" rx="6"/>
+    <rect class="dg-node" x="24" y="200" width="150" height="32" rx="6"/>
+    <text class="dg-name" x="99" y="220" text-anchor="middle">Otros</text>
+    <rect class="dg-mask" x="285" y="108" width="150" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="285" y="108" width="150" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="133" text-anchor="middle">Patrimonio neto</text>
+    <text class="dg-sub" x="360" y="150" text-anchor="middle">en tu moneda</text>
+    <rect class="dg-mask" x="546" y="40" width="150" height="44" rx="6"/>
+    <rect class="dg-node" x="546" y="40" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="58" text-anchor="middle">Inmueble</text>
+    <text class="dg-sub" x="621" y="74" text-anchor="middle">+ valor de mercado</text>
+    <rect class="dg-mask" x="546" y="96" width="150" height="44" rx="6"/>
+    <rect class="dg-node" x="546" y="96" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="114" text-anchor="middle">Préstamo</text>
+    <text class="dg-sub" x="621" y="130" text-anchor="middle">− importe pendiente</text>
+    <rect class="dg-mask" x="546" y="192" width="150" height="44" rx="6"/>
+    <rect class="dg-node-soft" x="546" y="192" width="150" height="44" rx="6"/>
+    <text class="dg-name" x="621" y="210" text-anchor="middle">Tarjeta de crédito</text>
+    <text class="dg-sub" x="621" y="226" text-anchor="middle">se sigue aparte</text>
+    <text class="dg-aside" x="24" y="272">Préstamos e inmuebles empiezan desactivados para los usuarios nuevos. Actívalos en los ajustes del gráfico.</text>
+</svg>
