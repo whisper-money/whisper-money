@@ -3101,5 +3101,12 @@
     "selected": "sélectionnées",
     "Select all matching filters": "Tout sélectionner selon le filtre",
     "Selection actions": "Actions de la sélection",
-    "Delete selected transactions": "Supprimer les transactions sélectionnées"
+    "Delete selected transactions": "Supprimer les transactions sélectionnées",
+    "Tap to select": "Touchez pour sélectionner",
+    "Select all visible": "Sélectionner toutes les visibles",
+    "Deselect all": "Tout désélectionner",
+    "Only visible": "Seulement les visibles",
+    "Delete :count": "Supprimer :count",
+    "Select": "Sélectionner",
+    "Done": "Terminé"
 }

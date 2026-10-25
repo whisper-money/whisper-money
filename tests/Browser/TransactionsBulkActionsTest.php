@@ -200,3 +200,69 @@ it('runs the automation rules again for a single row from its actions menu', fun
     expect($this->fixture->movementNamed('Weekly groceries market')->category_id)
         ->toBe($this->fixture->utilities->id);
 });
+
+/**
+ * On the phone there is no checkbox column: the toolbar's Select button (or a
+ * long press on a row) turns taps into ticks, and the compact bar takes over.
+ */
+function visitTransactionsOnAPhone(): mixed
+{
+    return visit('/transactions')
+        ->on()
+        ->iPhone14Pro()
+        ->navigate('/transactions');
+}
+
+it('selects rows by tapping them in selection mode on a phone', function () {
+    $page = visitTransactionsOnAPhone();
+
+    $page->assertSee('Weekly groceries market')
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->click('[data-testid="selection-mode-select"]')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', 'Tap to select')
+        ->click('tr:has-text("Weekly groceries market") td:last-child')
+        ->click('tr:has-text("Coffee subscription") td:last-child')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '2 selected')
+        // A tap toggles the row; it does not open the edit dialog.
+        ->assertDontSee('Edit Transaction')
+        ->click('[data-testid="bulk-category-trigger"]')
+        ->assertSee('Change category')
+        ->click('[cmdk-item]:has-text("Utilities")')
+        ->assertSee('Updated 2 transactions')
+        // A bulk change that went through ends selection mode.
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->assertPresent('[data-testid="selection-mode-select"]')
+        ->assertNoJavascriptErrors();
+
+    expect($this->fixture->movementNamed('Weekly groceries market')->category_id)
+        ->toBe($this->fixture->utilities->id)
+        ->and($this->fixture->movementNamed('Monthly train pass')->category_id)
+        ->toBe($this->fixture->transport->id);
+});
+
+it('enters selection mode on a long press and leaves it with Done on a phone', function () {
+    $page = visitTransactionsOnAPhone();
+
+    $page->assertSee('Weekly groceries market');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const row = [...document.querySelectorAll('tr')]
+                .find((tr) => tr.textContent.includes('Weekly groceries market'));
+            const { x, y } = row.getBoundingClientRect();
+            const init = { bubbles: true, pointerType: 'touch', clientX: x + 20, clientY: y + 10 };
+            row.dispatchEvent(new PointerEvent('pointerdown', init));
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            row.dispatchEvent(new PointerEvent('pointerup', init));
+        })()
+    JS);
+
+    $page->assertSeeIn('[data-testid="bulk-selected-count"]', '1 selected')
+        ->click('[data-testid="bulk-more-actions"]')
+        ->assertSee('Delete 1')
+        ->click('[role="menuitem"]:has-text("Select all visible")')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '8 selected')
+        ->click('[data-testid="selection-mode-done"]')
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->assertNoJavascriptErrors();
+});

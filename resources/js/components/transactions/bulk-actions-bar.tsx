@@ -2,7 +2,9 @@ import { Shortcut } from '@/components/shortcuts/shortcut';
 import { ShortcutKbd } from '@/components/shortcuts/shortcut-kbd';
 import { BulkCategorySelect } from '@/components/transactions/bulk-category-select';
 import { BulkLabelSelect } from '@/components/transactions/bulk-label-select';
+import { MobileBulkActionsBar } from '@/components/transactions/mobile-bulk-actions-bar';
 import { Button } from '@/components/ui/button';
+import { type MobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useShortcut, useShortcutHint } from '@/hooks/use-shortcut';
 import { type ShortcutId } from '@/lib/shortcut-catalog';
 import { cn } from '@/lib/utils';
@@ -20,7 +22,7 @@ import {
 } from 'lucide-react';
 import { type ComponentProps, type Ref, useRef } from 'react';
 
-interface BulkActionsBarProps {
+export interface BulkActionsBarProps {
     selectedCount: number;
     isSelectingAll?: boolean;
     categories: Category[];
@@ -31,8 +33,15 @@ interface BulkActionsBarProps {
     onDelete: () => void;
     onReEvaluateRules: () => void;
     onSelectAll?: () => void;
+    /** Drops "all matching filters" back to the rows that are selected. */
+    onSelectOnlyVisible?: () => void;
     onClear: () => void;
     isUpdating?: boolean;
+    /**
+     * The page's selection mode. On the phone it swaps this bar for the
+     * compact one, mounted alone so the desktop buttons register no shortcuts.
+     */
+    selectionMode?: MobileSelectionMode;
 }
 
 /**
@@ -113,6 +122,19 @@ function BarDivider() {
 }
 
 export function BulkActionsBar({
+    selectionMode,
+    ...props
+}: BulkActionsBarProps) {
+    if (selectionMode?.isMobile) {
+        return (
+            <MobileBulkActionsBar {...props} selectionMode={selectionMode} />
+        );
+    }
+
+    return <DesktopBulkActionsBar {...props} />;
+}
+
+function DesktopBulkActionsBar({
     selectedCount,
     isSelectingAll = false,
     categories,
@@ -125,7 +147,7 @@ export function BulkActionsBar({
     onSelectAll,
     onClear,
     isUpdating = false,
-}: BulkActionsBarProps) {
+}: Omit<BulkActionsBarProps, 'selectionMode'>) {
     const clearHint = useShortcutHint('transaction-selection.clear');
 
     useShortcut('transaction-selection.clear', onClear, {

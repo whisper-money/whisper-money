@@ -1,3 +1,8 @@
+import {
+    DRAWER_COMMAND_CLASS,
+    type PickerDrawer,
+    PopoverOrDrawer,
+} from '@/components/ui/adaptive-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -6,11 +11,6 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import {
     buildCategoryTree,
     flattenCategoryTree,
@@ -71,6 +71,8 @@ interface CategoryComboboxProps {
      * and handles `disabled` itself: the prop only reaches the default one.
      */
     trigger?: ReactElement;
+    /** Opens as a bottom drawer with this header instead of a popover. */
+    drawer?: PickerDrawer;
     'data-testid'?: string;
 }
 
@@ -86,6 +88,7 @@ export function CategoryCombobox({
     emptyOptionLabel,
     header,
     trigger,
+    drawer,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
     const noneLabel = emptyOptionLabel ?? __('Uncategorized');
@@ -133,9 +136,18 @@ export function CategoryCombobox({
     }, [open]);
 
     return (
-        <Popover modal open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                {trigger ?? (
+        <PopoverOrDrawer
+            asDrawer={drawer !== undefined}
+            title={drawer?.title ?? placeholder}
+            description={drawer?.description}
+            modal
+            open={open}
+            onOpenChange={setOpen}
+            align="start"
+            className="w-72"
+            drawerClassName={DRAWER_COMMAND_CLASS}
+            trigger={
+                trigger ?? (
                     <Button
                         variant="outline"
                         role="combobox"
@@ -173,81 +185,80 @@ export function CategoryCombobox({
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         )}
                     </Button>
-                )}
-            </PopoverTrigger>
-            <PopoverContent className="p-0" align="start">
-                {header}
-                <Command shouldFilter={false}>
-                    <CommandInput
-                        placeholder={__('Search categories...')}
-                        value={filterValue}
-                        onValueChange={setFilterValue}
-                    />
+                )
+            }
+        >
+            {header}
+            <Command shouldFilter={false}>
+                <CommandInput
+                    placeholder={__('Search categories...')}
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                />
 
-                    <CommandList ref={listRef}>
-                        {!hasResults && (
-                            <div className="py-6 text-center text-sm text-muted-foreground">
-                                {__('No category found.')}
+                <CommandList ref={listRef}>
+                    {!hasResults && (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                            {__('No category found.')}
+                        </div>
+                    )}
+                    {showNone && (
+                        <CommandItem
+                            value="uncategorized"
+                            onSelect={() => {
+                                onValueChange('null');
+                                setOpen(false);
+                            }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <HelpCircle className="h-3 w-3 text-zinc-500" />
+                                </div>
+                                <span>{noneLabel}</span>
                             </div>
-                        )}
-                        {showNone && (
-                            <CommandItem
-                                value="uncategorized"
-                                onSelect={() => {
-                                    onValueChange('null');
-                                    setOpen(false);
+                            <Check
+                                className={cn(
+                                    'ml-auto h-4 w-4',
+                                    value === 'null'
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                )}
+                            />
+                        </CommandItem>
+                    )}
+                    {visibleNodes.map((category) => (
+                        <CommandItem
+                            key={category.id}
+                            value={getCategoryPath(category.id, categories)}
+                            onSelect={() => {
+                                onValueChange(String(category.id));
+                                setOpen(false);
+                            }}
+                        >
+                            <div
+                                className="flex items-center gap-2"
+                                style={{
+                                    paddingLeft: `${category.depth * 1.25}rem`,
                                 }}
                             >
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <HelpCircle className="h-3 w-3 text-zinc-500" />
-                                    </div>
-                                    <span>{noneLabel}</span>
-                                </div>
-                                <Check
-                                    className={cn(
-                                        'ml-auto h-4 w-4',
-                                        value === 'null'
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                    )}
-                                />
-                            </CommandItem>
-                        )}
-                        {visibleNodes.map((category) => (
-                            <CommandItem
-                                key={category.id}
-                                value={getCategoryPath(category.id, categories)}
-                                onSelect={() => {
-                                    onValueChange(String(category.id));
-                                    setOpen(false);
-                                }}
-                            >
-                                <div
-                                    className="flex items-center gap-2"
-                                    style={{
-                                        paddingLeft: `${category.depth * 1.25}rem`,
-                                    }}
-                                >
-                                    <CategoryIcon category={category} />
-                                    <span className="truncate">
-                                        {category.name}
-                                    </span>
-                                </div>
-                                <Check
-                                    className={cn(
-                                        'ml-auto h-4 w-4',
-                                        value === String(category.id)
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                    )}
-                                />
-                            </CommandItem>
-                        ))}
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+                                <CategoryIcon category={category} />
+                                <span className="truncate">
+                                    {category.name}
+                                </span>
+                            </div>
+                            <Check
+                                className={cn(
+                                    'ml-auto h-4 w-4',
+                                    value === String(category.id)
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                )}
+                            />
+                        </CommandItem>
+                    ))}
+                </CommandList>
+            </Command>
+        </PopoverOrDrawer>
     );
 }
 

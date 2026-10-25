@@ -1,4 +1,9 @@
 import { useLocale } from '@/hooks/use-locale';
+import {
+    useMobileSelectionMode,
+    useRowSelectionGesture,
+    type RowSelectionMode,
+} from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { reloadPage } from '@/lib/leave-page';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
@@ -41,6 +46,7 @@ import {
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { SelectionModeButton } from '@/components/transactions/selection-mode-button';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
@@ -79,6 +85,7 @@ import {
     mergeReEvaluatedTransaction,
     reEvaluateTransactionRules,
 } from '@/lib/transaction-re-evaluation';
+import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -145,6 +152,7 @@ interface TransactionRowProps {
     onDelete: (transaction: ServerTransaction) => void;
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
+    selectionMode: RowSelectionMode;
 }
 
 function TransactionRowComponent({
@@ -158,6 +166,7 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
+    selectionMode,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -172,18 +181,20 @@ function TransactionRowComponent({
         }
         onEdit(transaction);
     };
+    const gesture = useRowSelectionGesture(row, selectionMode, handleRowClick);
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            <ContextMenuTrigger asChild>
+            {/* A long press on the phone enters selection mode, not this menu. */}
+            <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className="cursor-pointer"
-                    onClick={handleRowClick}
+                    className={cn('cursor-pointer', gesture.className)}
+                    {...gesture.handlers}
                 >
                     {row
                         .getVisibleCells()
@@ -648,6 +659,12 @@ export function TransactionList({
         return sortedTransactions.slice(0, displayedCount);
     }, [sortedTransactions, displayedCount]);
 
+    const selectionMode = useMobileSelectionMode({
+        rowSelection,
+        setRowSelection,
+        rows: displayedTransactions,
+    });
+
     const handleReEvaluateRules = useCallback(
         async (transaction: ServerTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
@@ -766,6 +783,7 @@ export function TransactionList({
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
             isDateHidden: columnVisibility.transaction_date === false,
+            showSelectColumnOnMobile: selectionMode.isActive,
             hiddenLabelId,
             statementPayments,
         });
@@ -791,6 +809,7 @@ export function TransactionList({
         openAutomateDialog,
         hideColumns,
         columnVisibility,
+        selectionMode.isActive,
         hiddenLabelId,
         statementPayments,
     ]);
@@ -1003,10 +1022,6 @@ export function TransactionList({
         }
     }
 
-    function handleClearSelection() {
-        setRowSelection({});
-    }
-
     const renderTransactionRow = useCallback(
         (
             row: Row<ServerTransaction>,
@@ -1026,10 +1041,11 @@ export function TransactionList({
                     onAutomate={openAutomateDialog}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
+                    selectionMode={selectionMode.forRows}
                 />
             );
         },
-        [handleReEvaluateRules, openAutomateDialog],
+        [handleReEvaluateRules, openAutomateDialog, selectionMode.forRows],
     );
 
     return (
@@ -1044,6 +1060,9 @@ export function TransactionList({
                     hideAccountFilter={hideAccountFilter}
                     actions={
                         <div className="flex flex-wrap justify-end gap-2">
+                            <SelectionModeButton
+                                selectionMode={selectionMode}
+                            />
                             {showActionsMenu && (
                                 <TransactionActionsMenu
                                     transactions={transactions}
@@ -1266,8 +1285,9 @@ export function TransactionList({
                 onLabelCreated={handleLabelCreated}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
-                onClear={handleClearSelection}
+                onClear={selectionMode.clear}
                 isUpdating={isBulkUpdating || isReEvaluating}
+                selectionMode={selectionMode}
             />
         </>
     );
