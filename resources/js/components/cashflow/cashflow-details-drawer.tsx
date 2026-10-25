@@ -505,7 +505,10 @@ export function CashflowDetailsDrawer({
     );
 }
 
-/** Where the budgets this view leaves out of reserved are reserved instead. */
+/**
+ * Where the budgets this view leaves out of reserved are reserved instead.
+ * Mirrors CashflowBudgetReserveService::periodTypesFor().
+ */
 function otherViewsReserveHint(periodType: CashflowPeriodType): string {
     switch (periodType) {
         case 'month':

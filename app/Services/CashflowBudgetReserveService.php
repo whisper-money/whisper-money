@@ -149,11 +149,11 @@ class CashflowBudgetReserveService
             return [BudgetPeriodType::Yearly];
         }
 
-        $monthTypes = [BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly, BudgetPeriodType::Monthly];
+        $shortPeriodTypes = [BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly, BudgetPeriodType::Monthly];
 
         return $days > self::MAX_MONTH_DAYS
-            ? [...$monthTypes, BudgetPeriodType::Quarterly]
-            : $monthTypes;
+            ? [...$shortPeriodTypes, BudgetPeriodType::Quarterly]
+            : $shortPeriodTypes;
     }
 
     /**
