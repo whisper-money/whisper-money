@@ -23,7 +23,6 @@ export function HeaderAddTransactionButton() {
             hasTransactionalAccounts
             variant="outline"
             origin="header"
-            collapse="viewport"
             testId="header-add-transaction-button"
         />
     );

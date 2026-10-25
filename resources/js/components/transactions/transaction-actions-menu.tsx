@@ -14,8 +14,10 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ICON_ONLY_BELOW_SM } from '@/lib/icon-only-below-sm';
 import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
+import { cn } from '@/lib/utils';
 
 import {
     type ServerTransaction,
@@ -53,6 +55,14 @@ export function TransactionActionsMenu({
     const [isReEvaluating, setIsReEvaluating] = useState(false);
 
     const canAnalyze = hasActiveFilters(filters);
+
+    // A hint opened while the button was disabled must not outlive that
+    // state, or applying a filter would leave a stale tooltip on screen.
+    const [hintCanAnalyze, setHintCanAnalyze] = useState(canAnalyze);
+    if (hintCanAnalyze !== canAnalyze) {
+        setHintCanAnalyze(canAnalyze);
+        setAnalysisHintOpen(false);
+    }
 
     const handleAnalysisClick = () => {
         if (!canAnalyze) {
@@ -108,29 +118,35 @@ export function TransactionActionsMenu({
             <ButtonGroup>
                 <TooltipProvider>
                     <Tooltip
-                        open={!canAnalyze && analysisHintOpen}
+                        open={analysisHintOpen}
                         onOpenChange={setAnalysisHintOpen}
                     >
                         <TooltipTrigger asChild>
                             <Button
                                 variant="outline"
-                                className={
-                                    !canAnalyze
-                                        ? 'cursor-not-allowed opacity-50'
-                                        : ''
-                                }
+                                className={cn(
+                                    ICON_ONLY_BELOW_SM.button,
+                                    !canAnalyze &&
+                                        'cursor-not-allowed opacity-50',
+                                )}
                                 aria-disabled={!canAnalyze}
+                                aria-label={__('Analysis')}
                                 onClick={handleAnalysisClick}
                             >
                                 <BarChart3 className="h-5 w-5" />
-                                {__('Analysis')}
+                                <span className={ICON_ONLY_BELOW_SM.label}>
+                                    {__('Analysis')}
+                                </span>
                             </Button>
                         </TooltipTrigger>
-                        {!canAnalyze && (
-                            <TooltipContent>
-                                {__('Apply a filter to enable this button')}
-                            </TooltipContent>
-                        )}
+                        {/* Enabled, it only names the icon-only button. */}
+                        <TooltipContent
+                            className={canAnalyze ? 'sm:hidden' : undefined}
+                        >
+                            {canAnalyze
+                                ? __('Analysis')
+                                : __('Apply a filter to enable this button')}
+                        </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
 
