@@ -169,13 +169,70 @@ function seededFeatures() {
         '--execute',
         `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
          echo json_encode([
-             'goal' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->value('id'),
+             'goal' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('kind', 'one_off')->value('id'),
              'split' => App\\Models\\Transaction::query()
                  ->whereBelongsTo($user)
                  ->whereNotNull('split_parent_id')
                  ->value('description'),
          ]);`,
     ]);
+}
+
+const MONTHLY_GOAL_NAME = 'Rainy day fund';
+
+/**
+ * A monthly goal with half a year behind it, so its page has months met and
+ * missed, a streak and a month in progress to show. Created in the second day
+ * of its first month, so that month is judged rather than partial, and run
+ * through the daily command so its months are opened and closed the way they
+ * are in production. Seeded after seedFeatures(), which clears every goal.
+ */
+function seedMonthlyGoal() {
+    return artisan([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         $label = $user->labels()->create([
+             'name' => '${MONTHLY_GOAL_NAME}',
+             'color' => App\\Enums\\LabelColor::Blue->value,
+             'source' => App\\Enums\\LabelSource::SavingsGoal,
+         ]);
+         $goal = $user->savingsGoals()->create([
+             'label_id' => $label->id,
+             'name' => '${MONTHLY_GOAL_NAME}',
+             'kind' => App\\Enums\\SavingsGoalKind::Monthly,
+             'monthly_target_type' => App\\Enums\\MonthlyTargetType::Amount,
+             'monthly_target_amount' => 30000,
+             'target_amount' => 0,
+             'initial_amount' => 0,
+         ]);
+         $goal->forceFill(['created_at' => now()->subMonthsNoOverflow(5)->startOfMonth()->addDay()])->save();
+
+         $account = $user->accounts()->where('name', '${ACCOUNT}')->firstOrFail();
+         $savings = $user->categories()->where('type', 'savings')->first();
+
+         // Oldest first: met, met, missed, met, met, and this month on its way.
+         foreach ([5 => 32000, 4 => 30000, 3 => 21000, 2 => 38000, 1 => 36000, 0 => 15000] as $month => $amount) {
+             $account->transactions()->create([
+                 'user_id' => $user->id,
+                 'category_id' => $savings?->id,
+                 'description' => 'Monthly transfer to savings',
+                 'description_iv' => null,
+                 'transaction_date' => now()->subMonthsNoOverflow($month)->startOfMonth()->addDays(2),
+                 'amount' => -$amount,
+                 'currency_code' => $user->currency_code ?? 'USD',
+             ])->labels()->attach($label->id);
+         }`,
+    ]);
+}
+
+function seededMonthlyGoal() {
+    return artisanJson([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         echo json_encode(['id' => App\\Models\\SavingsGoal::query()->where('user_id', $user->id)->where('kind', 'monthly')->value('id')]);`,
+    ]).id;
 }
 
 // Import files are written fresh rather than committed, so a screenshot of the
@@ -655,6 +712,37 @@ const SHOTS = {
         return [dialog(page)];
     },
 
+    'monthly-savings-goal-create': async (page) => {
+        await page.goto(`${BASE_URL}/budgets`, {
+            waitUntil: 'domcontentloaded',
+        });
+        await page.getByRole('button', { name: 'Create' }).first().click();
+        await page.getByRole('menuitem', { name: 'Savings Goal' }).click();
+        await dialog(page).waitFor();
+        await dialog(page)
+            .getByRole('radio', { name: 'Monthly (recurring)' })
+            .click();
+        await dialog(page).getByLabel('Goal Name').fill('Holiday fund');
+        await dialog(page).getByLabel('I want to save every month').fill('250');
+        await page.waitForTimeout(800);
+
+        return [dialog(page)];
+    },
+
+    'monthly-savings-goal-detail': async (page, fixtures, features) => {
+        await page.setViewportSize({ width: 1280, height: 1300 });
+        await page.goto(`${BASE_URL}/savings-goals/${features.monthlyGoal}`, {
+            waitUntil: 'domcontentloaded',
+        });
+        const chart = page.getByText('Saved each month');
+        await chart.waitFor();
+        await page.mouse.move(0, 0);
+        // The bars grow in; caught before they settle they read as short.
+        await page.waitForTimeout(2500);
+
+        return [page.getByRole('heading', { level: 1 }), cardAround(chart)];
+    },
+
     'labels-settings': async (page) => {
         await page.goto(`${BASE_URL}/settings/labels`, {
             waitUntil: 'domcontentloaded',
@@ -797,6 +885,10 @@ async function main() {
         log('seeding a savings goal and a split');
         seedFeatures();
 
+        log('seeding a monthly savings goal');
+        seedMonthlyGoal();
+        artisan(['savings-goals:generate-periods']);
+
         log('opening the full import window');
         seedFullImportWindow();
     }
@@ -804,7 +896,10 @@ async function main() {
     mkdirSync(OUT_DIR, { recursive: true });
 
     const fixtures = writeFixtures(seededTransaction());
-    const features = seededFeatures();
+    const features = {
+        ...seededFeatures(),
+        monthlyGoal: seededMonthlyGoal(),
+    };
     const browser = await launchBrowser();
     const failures = [];
 
