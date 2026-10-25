@@ -33,7 +33,7 @@ class CreateBudget extends WriteTool
             'allocated_amount' => $schema->integer()->description('Limit for each period, in the user currency\'s minor units (50000 = 500.00 EUR, 50000 = 50000 COP).')->required(),
             'period_type' => $schema->string()->enum(array_column(BudgetPeriodType::cases(), 'value'))->description('How often the budget starts over.')->required(),
             'rollover_type' => $schema->string()->enum(array_column(RolloverType::cases(), 'value'))->description('"carry_over" adds what is left to the next period, "reset" starts every period at the limit.')->required(),
-            'period_start_day' => $schema->integer()->min(0)->max(31)->description('Day the period starts: day of the month (1-31) when monthly, day of the week (0 = Sunday, 6 = Saturday) when weekly or biweekly. Ignored when yearly.'),
+            'period_start_day' => $schema->integer()->min(0)->max(31)->description('Day the period starts: day of the month (1-31) when monthly, day of the week (0 = Sunday, 6 = Saturday) when weekly or biweekly. Ignored when quarterly or yearly, which follow the calendar.'),
             'category_ids' => $schema->array()->items($schema->string())->description('Categories to track. Tracking a parent also tracks its children. Call list_categories to see valid ids.'),
             'label_ids' => $schema->array()->items($schema->string())->description('Labels to track. Call list_labels to see valid ids.'),
             'is_catch_all' => $schema->boolean()->description('Track every expense category no other budget tracks. Needs no categories or labels, and only one catch-all budget is allowed.'),
@@ -42,16 +42,14 @@ class CreateBudget extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $periodType = $request->string('period_type')->toString();
-
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'allocated_amount' => ['required', 'integer', 'min:0'],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
             // The field means a day of the week for weekly periods and a day of
-            // the month for monthly ones, so its range depends on period_type.
-            'period_start_day' => ['sometimes', 'nullable', 'integer', 'min:'.($periodType === 'monthly' ? 1 : 0), 'max:'.(in_array($periodType, ['weekly', 'biweekly'], true) ? 6 : 31)],
+            // the month for the rest, so its range depends on period_type.
+            'period_start_day' => ['sometimes', 'nullable', 'integer', ...(BudgetPeriodType::tryFrom($request->string('period_type')->toString())?->startDayRules() ?? [])],
             'is_catch_all' => ['sometimes', 'boolean'],
         ]);
 

@@ -35,6 +35,7 @@ import {
     DEFAULT_BUDGET_EXPENSE_TYPE,
     getBudgetPeriodTypeLabel,
     getRolloverTypeLabel,
+    periodTypeHasStartDay,
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
@@ -114,7 +115,9 @@ export function CreateBudgetDialog({
             {
                 name,
                 period_type: periodType,
-                period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
+                period_start_day: periodTypeHasStartDay(periodType)
+                    ? periodStartDay
+                    : 1,
                 category_ids: isCatchAll ? [] : selectedCategoryIds,
                 label_ids: isCatchAll ? [] : selectedLabelIds,
                 rollover_type: rolloverType,
@@ -204,7 +207,7 @@ export function CreateBudgetDialog({
                             </Select>
                         </div>
 
-                        {periodType !== 'yearly' && (
+                        {periodTypeHasStartDay(periodType) && (
                             <div className="space-y-2">
                                 <UILabel htmlFor="period-start-day">
                                     {periodType === 'monthly'
