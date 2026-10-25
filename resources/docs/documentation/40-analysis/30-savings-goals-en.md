@@ -224,13 +224,13 @@ Each month stands alone. What you saved in a month is compared with **that
 month's** target, and nothing carries over: saving double in May does not cover
 June. A month ends in one of these states:
 
-| Status | When |
-| --- | --- |
-| **Met** | The month is over and you saved at least its target. A target of zero is met. |
-| **Missed** | The month is over and you saved less than its target. |
-| **In progress** | The current month, unless it is partial or archived. You see what is saved, what is left, and the days remaining. |
+| Status            | When                                                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Met**           | The month is over and you saved at least its target. A target of zero is met.                                                                            |
+| **Missed**        | The month is over and you saved less than its target.                                                                                                    |
+| **In progress**   | The current month, unless it is partial or archived. You see what is saved, what is left, and the days remaining.                                        |
 | **Partial month** | You created the goal in the **last five days** of the month. It shows what you saved, with no target and no verdict. The first verdict comes next month. |
-| **Archived** | You archived the goal during that month. Same as a partial month: what you saved, no verdict. |
+| **Archived**      | You archived the goal during that month. Same as a partial month: what you saved, no verdict.                                                            |
 
 Partial and archived months are left out of everything that adds months up:
 they neither extend nor break a streak, and they do not count in months met or

@@ -226,13 +226,13 @@ Cada mes va por su cuenta. Lo que ahorraste en un mes se compara con el
 objetivo de **ese** mes, y no se arrastra nada: ahorrar el doble en mayo no cubre
 junio. Un mes acaba en uno de estos estados:
 
-| Estado | Cuándo |
-| --- | --- |
-| **Cumplido** | El mes ha terminado y ahorraste al menos su objetivo. Un objetivo de cero se da por cumplido. |
-| **No cumplido** | El mes ha terminado y ahorraste menos que su objetivo. |
-| **En proceso** | El mes en curso, salvo que sea parcial o archivado. Ves lo ahorrado, lo que falta y los días que quedan. |
+| Estado          | Cuándo                                                                                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cumplido**    | El mes ha terminado y ahorraste al menos su objetivo. Un objetivo de cero se da por cumplido.                                                               |
+| **No cumplido** | El mes ha terminado y ahorraste menos que su objetivo.                                                                                                      |
+| **En proceso**  | El mes en curso, salvo que sea parcial o archivado. Ves lo ahorrado, lo que falta y los días que quedan.                                                    |
 | **Mes parcial** | Creaste el objetivo en los **últimos cinco días** del mes. Muestra lo que ahorraste, sin objetivo ni veredicto. El primer veredicto llega el mes siguiente. |
-| **Archivada** | Archivaste el objetivo durante ese mes. Igual que un mes parcial: lo ahorrado, sin veredicto. |
+| **Archivada**   | Archivaste el objetivo durante ese mes. Igual que un mes parcial: lo ahorrado, sin veredicto.                                                               |
 
 Los meses parciales y archivados se quedan fuera de todo lo que suma meses: ni
 alargan ni rompen una racha, y no cuentan en los meses cumplidos ni en el
