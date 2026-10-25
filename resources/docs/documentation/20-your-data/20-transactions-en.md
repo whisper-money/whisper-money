@@ -6,7 +6,7 @@ Transactions are the individual money movements in your accounts. They power cat
 
 ## Quick start
 
-1. Add transactions manually, import them from a file, or sync them from a connected account.
+1. [Add transactions by hand](/documentation/transactions/create), [import them from a file](/documentation/transactions/import), or sync them from a connected account.
 2. Check dates, descriptions, and amounts.
 3. Add categories and labels.
 4. Use filters to find groups of transactions.
@@ -106,7 +106,7 @@ Use filters when the list is too large.
 You can filter by:
 
 - Date range, or a whole month, quarter or year in one click
-- Amount range
+- Amount: how big an expense or an income was
 - Category
 - Account
 - Label
@@ -121,6 +121,25 @@ In the Filters menu, next to the date, the **Month**, **Quarter** and **Year**
 buttons set the range to the whole calendar month, quarter or year that contains
 the start date, or today if there is none. The button that matches the current
 range shows as pressed.
+
+Searching the category filter for a parent category lists its subcategories
+too, so you can tick the parent or just the one you mean.
+
+### Amount
+
+The amount filter looks at how big a transaction is. Pick **Expense** or
+**Income** first, then type **Min** and **Max** as plain amounts, without a
+sign. It starts on **Expense**.
+
+![The Amount section of the filters, with Expense chosen and a maximum of 30](/docs/documentation/transaction-amount-filter.png)
+
+- **Expense**, **Max** 30: every expense of 30 or less.
+- **Expense**, **Min** 100: every expense of 100 or more.
+- **Income**, **Min** 1000 and **Max** 3000: income between 1,000 and 3,000.
+
+A saved filter or a link from before this worked might cover both expenses and
+income at once. It then shows with neither side chosen and a note saying so.
+Picking a side turns its limits into plain amounts for that side.
 
 ### Cashflow block
 
@@ -194,12 +213,21 @@ If you create or change rules after transactions already exist, older transactio
 
 Use re-evaluation when you want rules to run again on existing transactions.
 
+Run it on the whole list with **Update categories automatically**, in the **More
+actions** menu above the list, or on just the rows you selected with **Re-evaluate
+rules** in the bulk actions bar.
+
 Use it after:
 
 - Creating a new rule.
 - Fixing a rule condition.
 - Importing many transactions.
 - Cleaning up old uncategorized items.
+
+It can take a moment. Small batches finish while you watch, with a message
+counting the transactions it changed. When it has to wait its turn, a
+**Re-evaluation queued** message says it will finish in the background: there is
+nothing to retry, reload the page later to see the result.
 
 ## FAQ
 

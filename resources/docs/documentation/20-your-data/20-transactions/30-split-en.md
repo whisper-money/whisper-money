@@ -7,7 +7,7 @@ One payment is not always one thing. Splitting turns a single transaction into s
 ## Quick start
 
 1. Find the transaction in your list.
-2. Open its menu and choose **Split**.
+2. Open its menu and choose **Split**, or click the transaction and press **Split into parts** in the dialog.
 3. Give each part a category, any labels, and its share of the amount.
 4. Add more parts if you need them, up to twenty.
 5. When it says everything has been shared out, split.

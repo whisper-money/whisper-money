@@ -7,7 +7,7 @@ Un pago no siempre es una sola cosa. Dividir convierte una transacción en varia
 ## Inicio rápido
 
 1. Busca la transacción en tu lista.
-2. Abre su menú y elige **Dividir**.
+2. Abre su menú y elige **Dividir**, o pulsa la transacción y luego **Dividir en partes** en el diálogo.
 3. Da a cada división una categoría, las etiquetas que quieras y su parte del importe.
 4. Añade más divisiones si las necesitas, hasta veinte.
 5. Cuando indique que está todo repartido, divide.
