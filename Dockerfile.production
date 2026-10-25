@@ -1,5 +1,5 @@
-# Pinned to the patch release so a cached 8.4 base cannot ship an unpatched PHP
-FROM php:8.4.27-fpm
+# Pinned to the patch release so a cached base image cannot ship an unpatched PHP
+FROM php:8.5.12-fpm
 
 ARG SENTRY_RELEASE
 
