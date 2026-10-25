@@ -129,24 +129,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Per-User Data Cache
-    |--------------------------------------------------------------------------
-    |
-    | Widget results cached per user are keyed by a "data version" token that
-    | every write to the user's data bumps (see App\Services\Cache\DataVersion).
-    | Bumping always runs; "enabled" only switches the cached reads, so turning
-    | it back on never serves entries that missed a write while it was off.
-    | "store" holds the tokens and the entries; null means the default store.
-    |
-    */
-
-    'user_data' => [
-        'enabled' => (bool) env('USER_DATA_CACHE_ENABLED', false),
-        'store' => env('USER_DATA_CACHE_STORE'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Cache Key Prefix
     |--------------------------------------------------------------------------
     |

@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Services\BudgetPeriodService;
-use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 
 class GenerateBudgetPeriods extends Command
@@ -33,13 +32,6 @@ class GenerateBudgetPeriods extends Command
     }
 
     public function handle(): int
-    {
-        // A sweep over every user: one data-version bump per user at the end,
-        // not one per row it writes.
-        return DataVersion::deferBumps(fn (): int => $this->generatePeriods());
-    }
-
-    private function generatePeriods(): int
     {
         $this->info('Generating budget periods...');
 

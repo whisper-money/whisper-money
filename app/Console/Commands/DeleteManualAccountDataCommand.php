@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -62,7 +61,6 @@ class DeleteManualAccountDataCommand extends Command
             Transaction::query()->whereIn('account_id', $accountIds)->forceDelete();
             AccountBalance::query()->whereIn('account_id', $accountIds)->delete();
         });
-        DataVersion::bumpUser($user);
 
         $this->info("Deleted {$transactionCount} transaction(s) and {$balanceCount} balance(s) for '{$user->email}'.");
 

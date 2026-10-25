@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BumpsDataVersion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BudgetTransaction extends Model
 {
-    use BumpsDataVersion, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'transaction_id',
@@ -35,10 +34,5 @@ class BudgetTransaction extends Model
     public function budgetPeriod(): BelongsTo
     {
         return $this->belongsTo(BudgetPeriod::class);
-    }
-
-    public function dataVersionOwner(): ?Model
-    {
-        return $this->dataVersionOwnerVia('transaction');
     }
 }

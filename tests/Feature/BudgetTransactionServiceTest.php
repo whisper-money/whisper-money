@@ -446,9 +446,6 @@ test('assignTransaction retries deadlocks during reconciliation (regression for 
         ->once()
         ->withArgs(fn ($callback, $attempts) => $callback instanceof Closure && $attempts === 5)
         ->andReturnUsing(fn ($callback, $attempts) => $databaseManager->transaction($callback, $attempts));
-    // The data-version bump queued inside the transaction runs after commit.
-    DB::shouldReceive('afterCommit')
-        ->andReturnUsing(fn ($callback) => $databaseManager->afterCommit($callback));
 
     $this->service->assignTransaction($transaction);
 

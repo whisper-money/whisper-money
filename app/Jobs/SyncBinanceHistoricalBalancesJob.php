@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Account;
 use App\Services\Banking\BinanceBalanceSyncService;
 use App\Services\Banking\BinanceClient;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class SyncBinanceHistoricalBalancesJob implements ShouldBeUnique, ShouldQueue
 {
-    use DefersDataVersionBumps, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
 

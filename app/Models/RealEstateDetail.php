@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\PropertyType;
-use App\Models\Concerns\BumpsDataVersion;
 use Database\Factories\RealEstateDetailFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,7 +19,7 @@ use Illuminate\Support\Carbon;
 class RealEstateDetail extends Model
 {
     /** @use HasFactory<RealEstateDetailFactory> */
-    use BumpsDataVersion, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'account_id',
@@ -63,10 +62,5 @@ class RealEstateDetail extends Model
     public function linkedLoanAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'linked_loan_account_id');
-    }
-
-    public function dataVersionOwner(): ?Model
-    {
-        return $this->dataVersionOwnerVia('account');
     }
 }

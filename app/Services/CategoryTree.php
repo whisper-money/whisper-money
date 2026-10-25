@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Transaction;
-use App\Services\Cache\DataVersion;
 use Illuminate\Database\UniqueConstraintViolationException;
 
 class CategoryTree
@@ -430,7 +429,6 @@ class CategoryTree
                 'type' => $category->type,
                 'cashflow_direction' => $category->cashflow_direction,
             ]);
-        DataVersion::bumpOwnerOf($category);
     }
 
     /**
@@ -464,6 +462,5 @@ class CategoryTree
             ->where('user_id', $category->user_id)
             ->whereIn('id', $ids)
             ->delete();
-        DataVersion::bumpOwnerOf($category);
     }
 }

@@ -7,7 +7,6 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\Formatters\RemittanceTagFormatter;
 use App\Services\Banking\TransactionDescriptionFormatter;
-use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 
 class BackfillTransactionDescriptions extends Command
@@ -84,7 +83,6 @@ class BackfillTransactionDescriptions extends Command
                         'description' => $formatted['description'],
                         'original_description' => $transaction->original_description ?? $formatted['original_description'],
                     ]);
-                    DataVersion::bumpOwnerOf($transaction);
                 }
 
                 $reformatted++;

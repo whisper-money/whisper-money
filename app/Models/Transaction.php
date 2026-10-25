@@ -12,7 +12,6 @@ use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
 use App\Models\Concerns\BelongsToSpace;
-use App\Models\Concerns\BumpsDataVersion;
 use App\Services\CashflowBlockQuery;
 use App\Services\CategoryTree;
 use App\Services\CurrencyOptions;
@@ -52,7 +51,7 @@ use LogicException;
 class Transaction extends Model
 {
     /** @use HasFactory<TransactionFactory> */
-    use BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     /** @var array<string, class-string> */
     protected $dispatchesEvents = [

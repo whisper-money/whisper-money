@@ -7,7 +7,6 @@ use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
-use App\Models\Concerns\BumpsDataVersion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,7 +24,7 @@ use Illuminate\Support\Carbon;
  */
 class Budget extends Model
 {
-    use Archivable, BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
+    use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
