@@ -18,20 +18,25 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 
 | Topic | Slug |
 | --- | --- |
-| Getting started | `getting-started` |
+| Getting started, onboarding, where things are in the app | `getting-started` |
 | Accounts, connecting a bank | `accounts` |
 | Importing and editing balances | `accounts/import-balances`, `accounts/edit-balances` |
+| Credit cards, statements, limit and usage | `accounts/credit-cards` |
+| Bank and broker connections, syncing, consent renewal | `accounts/bank-connections` |
 | Transactions | `transactions` |
 | Creating and importing transactions | `transactions/create`, `transactions/import` |
 | Splitting a transaction | `transactions/split` |
+| Duplicating a transaction | `transactions/duplicate` |
+| Importing everything from another finance app | `import-from-another-app` |
 | Categories | `categories` |
 | Labels | `labels` |
 | Automation rules | `automation-rules` |
+| Dashboard, net worth chart, account cards, privacy mode | `dashboard` |
 | Cashflow, available and free money, fixed and variable expenses | `cashflow` |
 | Budgets, fixed or variable expense type, reserved money | `budgets` |
-| Savings goals | `savings-goals` |
-| Achievements, medals | `achievements` |
-| Monthly summary | `monthly-summary` |
+| Savings goals, one-off and monthly | `savings-goals` |
+| Achievements, medals, visit streak | `achievements` |
+| Monthly summary, report email | `monthly-summary` |
 | AI Connector, MCP, connecting Claude or ChatGPT | `ai-connector` |
 
 Add `?lang=es` for Spanish: `https://whisper.money/documentation/budgets.md?lang=es`.

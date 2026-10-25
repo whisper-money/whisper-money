@@ -41,8 +41,8 @@ la práctica:
 - Tú decides cuándo existe la conexión. No hay nada conectado hasta que lo
   conectas, y quitarlo corta el acceso al instante.
 
-Whisper Money expone 34 de esas preguntas y acciones, llamadas herramientas: 11
-que leen tus datos y 23 que los modifican. El asistente elige las que necesita
+Whisper Money expone 37 de esas preguntas y acciones, llamadas herramientas: 12
+que leen tus datos y 25 que los modifican. El asistente elige las que necesita
 por su cuenta; tú escribes en lenguaje normal.
 
 ## Qué le puedes pedir
@@ -102,6 +102,23 @@ Prueba:
 </div>
 
 <div class="card">
+### Objetivos de ahorro
+
+Lista tus [objetivos de ahorro](/documentation/savings-goals) con su progreso,
+crea objetivos puntuales o mensuales y cambia los que ya tienes. Un objetivo
+mensual puede además etiquetar solo las transferencias a una de tus cuentas de
+ahorro.
+
+Prueba:
+
+- «¿Cómo va mi fondo de emergencia?»
+- «Quiero ahorrar 200 al mes en mi cuenta de ahorro, y que se etiqueten las
+  transferencias.»
+- «¿Cumplí mi objetivo mensual en septiembre?»
+
+</div>
+
+<div class="card">
 ### Reglas de automatización
 
 Lista tus reglas, escribe otras nuevas, cámbialas y aplica una a las
@@ -117,7 +134,8 @@ Prueba:
 <div class="card">
 ### Flujo de caja, patrimonio y gasto
 
-Las mismas cifras que muestran la pantalla de Flujo de caja y el panel, para el
+Las mismas cifras que muestran la pantalla de [Flujo de caja](/documentation/cashflow)
+y el [panel](/documentation/dashboard), para el
 periodo que le pidas: ingresos, gastos repartidos en fijo, variable y general,
 lo que has ahorrado e invertido, y cuánto siguen reservando tus presupuestos.
 
@@ -286,9 +304,9 @@ crearlo:
 
 - **Solo lectura** puede buscar, analizar e informar, y no puede modificar nada
   nunca.
-- **Lectura y escritura** puede además crear y editar cuentas, y crear, editar
-  y eliminar transacciones, categorías, etiquetas, presupuestos y reglas de
-  automatización.
+- **Lectura y escritura** puede además crear y editar cuentas y objetivos de
+  ahorro, y crear, editar y eliminar transacciones, categorías, etiquetas,
+  presupuestos y reglas de automatización.
 
 Un token se muestra una sola vez, al crearlo, así que cópialo en un lugar seguro
 en ese momento. La página guarda el nombre, el nivel de acceso y las fechas de
@@ -318,7 +336,7 @@ de confianza. Son las reglas que sigue la propia app:
 
 - **Las transacciones sincronizadas del banco y las importadas no se pueden
   editar ni eliminar.** Solo las creadas a mano. Cualquier transacción, venga de
-  donde venga, sí se puede categorizar, etiquetar y dividir.
+  donde venga, sí se puede categorizar, etiquetar, dividir y anotar.
 - **Se pueden añadir transacciones nuevas a cualquier cuenta**, incluidas las
   conectadas al banco. Una sincronización solo trae filas que no ha visto antes,
   así que nunca elimina lo que has añadido tú.
@@ -328,7 +346,7 @@ de confianza. Son las reglas que sigue la propia app:
 - **De una cuenta conectada al banco solo se pueden cambiar el nombre y el
   porcentaje de propiedad.** El tipo, la divisa y el banco vienen de la
   conexión, y una cuenta conectada tampoco se puede crear desde aquí: esas las
-  conectas tú en la app. En un espacio compartido, además, cada cuenta solo la
+  [conectas tú en la app](/documentation/accounts/bank-connections). En un espacio compartido, además, cada cuenta solo la
   puede editar quien la creó.
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
@@ -336,6 +354,10 @@ de confianza. Son las reglas que sigue la propia app:
 - **El [tipo de gasto](/documentation/budgets#tipo-de-gasto) de un presupuesto
   se elige en la app.** Un presupuesto que crea el asistente empieza como
   Variable. Para hacerlo Fijo, edítalo en Whisper Money.
+- **Los objetivos de ahorro se archivan y se eliminan en la app.** El asistente
+  puede crear un objetivo y editarlo, pero no archivarlo ni eliminarlo. El tipo
+  de un objetivo, puntual o mensual, queda fijo al crearlo, y cambiar el
+  objetivo de uno mensual solo afecta al mes en curso y a los siguientes.
 - **Aplicar una regla de automatización a transacciones pasadas se avisa
   antes.** El asistente informa de cuántas transacciones encajan y no cambia
   nada hasta que le dices que siga.

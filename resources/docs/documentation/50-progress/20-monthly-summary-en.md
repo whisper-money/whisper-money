@@ -2,8 +2,8 @@
 
 A monthly summary is a short report on the month that has just closed: what your
 money did, how it compares with the month before, and a few things worth five
-minutes. It arrives by email and it stays in the app, and the figures in it are
-frozen the day it is written.
+minutes. The full report lives in the app, a short version without any amounts
+arrives by email, and the figures in it are frozen the day it is written.
 
 {{TOC}}
 
@@ -30,14 +30,45 @@ that can include:
 - What your investment accounts are holding in gains.
 - How many [budgets](/documentation/budgets) you met, and which you went over.
 - How your [savings goal](/documentation/savings-goals) moved.
+- How many of your [monthly savings goals](/documentation/savings-goals#monthly-goals)
+  met their target. Up to three are named, furthest from their target first,
+  each with how far over or under it ended the month.
+
+When [achievements](/documentation/achievements) came out of the month, a
+section names them: **What you unlocked in** the month, and **What you can
+unlock next**, up to three medals with what is left to reach each one, nearest
+first.
 
 Then **Worth five minutes**: the few things that are actually worth doing, each
-with the consequence of leaving it — a bank connection about to expire,
+with the consequence of leaving it — a
+[bank connection about to expire](/documentation/accounts/bank-connections#consent-expiry-and-reconnecting),
 transactions with no category, a budget that has been short for months.
 
 Every figure comes from the same services the rest of the app reads, so the
 report cannot quote a number you are unable to find on the
 [cashflow](/documentation/cashflow) screen.
+
+## What the email says
+
+An email sits in an inbox for years, shows on a lock screen and gets forwarded,
+so the summary email carries no amounts at all. It is percentages and counts, and a
+button into the report:
+
+- **The headline** in percentages: "You saved 18% of what you earned in
+  September", or how much more you spent than you earned in a month that went
+  the other way.
+- **Up to three figures**, in this order when there is something to show: the
+  change in your net worth, the change in your spending, budgets met ("4 of 6"),
+  your savings goal's progress, and monthly savings goals met.
+- **The analysis**, if you have it: a line saying it is waiting in the report,
+  and a **Read my analysis** link. The text itself stays in the app, because it
+  quotes amounts.
+- **See the full report**, with a line saying what is inside it, such as the
+  medals you unlocked and the things worth doing.
+- **The share card** Whisper Money picked for the month.
+
+Every figure, the to-dos, the medals and the analysis are on the report screen,
+with their amounts.
 
 ## When it arrives
 
@@ -121,7 +152,8 @@ hand out, and an address can be withdrawn.
 
 ## Putting the notice away
 
-The dashboard shows a notice when a new report is waiting. **Dismiss** puts that
+The [dashboard](/documentation/dashboard#the-monthly-summary-notice) shows a
+notice when a new report is waiting. **Dismiss** puts that
 notice away without deleting anything — the report itself stays under **Monthly
 summaries** for as long as your account does.
 
@@ -140,6 +172,12 @@ The likely reasons, in order: the month had nothing in it, nothing had happened
 in the new month by the 10th, or the email is switched off under **Settings →
 Notifications**. Whatever the email did, anything that was written is under
 **Monthly summaries**.
+
+### Why does the summary email not show any amounts?
+
+On purpose. An email is copied to every device you read mail on, is kept by
+your mail provider, and is easy to forward. It says how the month went in
+percentages and leaves the amounts in the app, behind your login.
 
 ### Why does the report not match what the app shows now?
 

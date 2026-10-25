@@ -10,6 +10,8 @@ Categories explain what each transaction means. Pick the right category and your
 2. Use transfer categories for money moving between your own accounts.
 3. Review uncategorized transactions often.
 4. Create automation rules for repeated merchants.
+5. Add subcategories when one category needs more detail, such as Groceries
+   and Restaurants under Food.
 
 > Not sure what to pick? Start with the type. You can rename the category later.
 
@@ -113,6 +115,37 @@ between the two.
 </div>
 </div>
 
+## Subcategories
+
+Categories can nest up to three levels deep: a category, its subcategories, and
+theirs. Food can hold Groceries and Restaurants, and Restaurants can hold Lunch
+at work.
+
+Categories live in **Settings → Categories**. There are two ways to create a
+subcategory:
+
+- **From the category row.** Open the row's **...** menu, or right-click it, and
+  choose **Create subcategory**. The dialog opens with that row already picked
+  as the parent and its colour filled in. The colour can be changed; the type
+  cannot.
+- **From Create Category.** Pick a **Parent category** in the dialog.
+
+![The Create subcategory dialog opened from the Food row: Food already picked as the parent category, its red colour filled in, and the type shown as "Expense · Inherited from parent"](/docs/documentation/category-create-subcategory.png)
+
+A subcategory always has its parent's type and cashflow settings; the dialog
+shows the type as "Inherited from parent".
+Categories on the third level do not offer **Create subcategory**, because they
+cannot hold any.
+
+What the nesting changes:
+
+- **Reports roll up.** A parent's total in cashflow includes its subcategories,
+  and you can open it to see them one by one.
+- **Budgets follow the tree.** A budget that tracks a parent also tracks every
+  subcategory under it.
+- **Search finds the family.** Typing a parent's name in any category picker
+  also lists its subcategories, so you can pick Groceries by searching "Food".
+
 ## Transfers and cashflow direction
 
 Transfer categories can be shown or hidden in cashflow.
@@ -139,6 +172,11 @@ Try this routine:
 2. Assign the obvious ones first.
 3. Leave confusing ones for later if needed.
 4. Create automation rules for repeated merchants or descriptions.
+
+When the month in progress has transactions without a category, Whisper Money
+reminds you once per session with a prompt in the corner of the screen.
+**Categorize** opens that month's uncategorized transactions; **Not now** hides
+the prompt for three days, on every device you use.
 
 ## Who set the category
 
@@ -168,6 +206,10 @@ What to know:
 - Correcting one of its categories can be turned into an automation rule, so the
   same merchant is handled without AI next time.
 
+You can also start a rule from any transaction: its row menu has **Automatize
+categorization**, which drafts a rule from that transaction's description and
+category. See [Automation rules](/documentation/automation-rules).
+
 ## Changing a category
 
 Changing a transaction category updates reports that include that transaction.
@@ -194,6 +236,11 @@ Usually no. If you already track the card purchases, the payment is money moving
 ### How many categories should I create?
 
 Start small. Too many categories make reports harder to read. Add more only when you need more detail.
+
+### Can a subcategory have a different type from its parent?
+
+No. A subcategory takes its parent's type. To track something as a different
+type, create it as a category of its own.
 
 ## Good category habits
 

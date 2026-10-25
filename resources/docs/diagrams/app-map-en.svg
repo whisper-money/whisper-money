@@ -1,0 +1,58 @@
+<svg viewBox="0 0 720 380" role="img" aria-labelledby="app-map-en-title app-map-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="app-map-en-title">Where things are in Whisper Money</title>
+    <desc id="app-map-en-desc">A sketch of the app window. The sidebar on the left holds the five main screens: Dashboard, Cashflow, Accounts, Transactions and Planning. The header along the top has the visit streak, the add transaction button and Import transactions. The account menu at the bottom of the sidebar opens Progress, Monthly summaries, privacy mode, Settings and Documentation; Settings holds bank accounts and connections, automation rules, categories, labels, the AI Connector and your profile, notifications and plan.</desc>
+    <defs>
+        <marker id="app-map-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="36" y="16">SIDEBAR</text>
+    <line class="dg-hairline" x1="36" y1="24" x2="180" y2="24"/>
+    <text class="dg-eyebrow" x="204" y="16">HEADER</text>
+    <line class="dg-hairline" x1="204" y1="24" x2="684" y2="24"/>
+    <rect class="dg-node-soft" x="24" y="32" width="672" height="296" rx="10"/>
+    <rect class="dg-node" x="36" y="44" width="144" height="272" rx="6"/>
+    <rect class="dg-band" x="48" y="58" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="74">Dashboard</text>
+    <rect class="dg-band" x="48" y="90" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="106">Cashflow</text>
+    <rect class="dg-band" x="48" y="122" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="138">Accounts</text>
+    <rect class="dg-band" x="48" y="154" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="170">Transactions</text>
+    <rect class="dg-band" x="48" y="186" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="202">Planning</text>
+    <rect class="dg-node-focal" x="48" y="276" width="120" height="28" rx="4"/>
+    <text class="dg-name" x="108" y="294" text-anchor="middle">Account menu</text>
+    <rect class="dg-node" x="204" y="44" width="480" height="40" rx="6"/>
+    <rect class="dg-node-soft" x="406" y="52" width="87" height="24" rx="12"/>
+    <text class="dg-sub" x="449" y="67" text-anchor="middle">Visit streak</text>
+    <rect class="dg-node-soft" x="501" y="52" width="37" height="24" rx="12"/>
+    <text class="dg-sub" x="519" y="67" text-anchor="middle">Add</text>
+    <rect class="dg-node-soft" x="546" y="52" width="126" height="24" rx="12"/>
+    <text class="dg-sub" x="609" y="67" text-anchor="middle">Import transactions</text>
+    <rect class="dg-band" x="216" y="100" width="180" height="10" rx="3"/>
+    <rect class="dg-band" x="216" y="118" width="120" height="10" rx="3"/>
+    <text class="dg-aside" x="420" y="118">The screen you picked</text>
+    <text class="dg-eyebrow" x="232" y="160">ACCOUNT MENU</text>
+    <line class="dg-hairline" x1="232" y1="166" x2="420" y2="166"/>
+    <path class="dg-edge" d="M168,290 H226" marker-end="url(#app-map-en-arrow)"/>
+    <rect class="dg-mask" x="232" y="174" width="188" height="140" rx="6"/>
+    <rect class="dg-node" x="232" y="174" width="188" height="140" rx="6"/>
+    <text class="dg-name" x="248" y="196">Progress</text>
+    <text class="dg-name" x="248" y="222">Monthly summaries</text>
+    <text class="dg-name" x="248" y="248">Privacy mode</text>
+    <text class="dg-name" x="248" y="300">Documentation</text>
+    <rect class="dg-band-accent" x="240" y="259" width="172" height="22" rx="4"/>
+    <text class="dg-name" x="248" y="274">Settings</text>
+    <path class="dg-edge dg-edge-dashed" d="M412,270 H444 Q452,270 452,262 V212 Q452,204 460,204 H466" marker-end="url(#app-map-en-arrow)"/>
+    <text class="dg-eyebrow" x="472" y="160">IN SETTINGS</text>
+    <line class="dg-hairline" x1="472" y1="166" x2="684" y2="166"/>
+    <text class="dg-sub" x="472" y="190">Bank accounts, Connections</text>
+    <text class="dg-sub" x="472" y="212">Automation rules</text>
+    <text class="dg-sub" x="472" y="234">Categories, Labels</text>
+    <text class="dg-sub" x="472" y="256">AI Connector</text>
+    <text class="dg-sub" x="472" y="278">Profile, Notifications</text>
+    <text class="dg-sub" x="472" y="300">Plan, Appearance</text>
+    <text class="dg-aside" x="24" y="360">Five screens on the left, quick actions on top, everything else behind your account menu.</text>
+</svg>

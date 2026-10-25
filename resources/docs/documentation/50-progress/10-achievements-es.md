@@ -10,7 +10,8 @@ en que llegaron las medallas.
 ## Inicio rápido
 
 1. Abre el menú de tu cuenta, abajo en la barra lateral, y entra en
-   **Progreso**.
+   **Progreso**, o abre la racha de visitas de la cabecera y elige **Ver todo el
+   progreso**.
 2. Lee las **Pistas**: trece escaleras, cada una del peldaño más fácil al más
    difícil, con lo conseguido a la izquierda.
 3. Cambia a **Cronología** para ver esas mismas medallas fechadas por cuándo
@@ -38,6 +39,15 @@ La siguiente medalla de cada pista —el primer peldaño que aún no tienes— l
 con su nombre, su pictograma y la cifra a la que hay que llegar. Todo lo que
 viene después es una silueta con tres interrogantes de la que solo se ve el
 nivel.
+
+Los tres estados se distinguen de un vistazo:
+
+- **Conseguida**: una tarjeta rellena con una marca de verificación sobre la
+  medalla y el mes en que ocurrió.
+- **Siguiente**: un contorno discontinuo alrededor de una medalla atenuada, con
+  su nombre y la cifra a la que hay que llegar.
+- **Bloqueada**: un contorno discontinuo alrededor de una silueta y tres
+  interrogantes.
 
 Cinco de las pistas dibujan además una barra debajo de esa siguiente medalla:
 rachas de visitas, visitas semanales, transacciones, meses con todo categorizado
@@ -69,6 +79,25 @@ apareces por primera vez, porque no hay registro de visitas de antes de que
 hubiera nada que registrar. Y se miden por tu racha más larga, no por la actual:
 una racha que llegó a su tope y se rompió también ocurrió.
 
+## Tu racha de visitas en la cabecera
+
+Mientras tengas una racha de visitas en marcha, la cabecera la enseña en todas
+las pantallas, en el ordenador y en el móvil: una llama y el número de días
+seguidos que has abierto Whisper Money. El anillo alrededor de la llama se va
+llenando a medida que te acercas a la siguiente medalla de visitas, y cuando ya
+has pasado la última se queda lleno mientras el número sigue subiendo.
+
+Pasa el ratón por encima de la racha en el ordenador, o tócala en el móvil, para
+ver las dos pistas de visitas con la siguiente medalla y lo que te falta, y un
+enlace a la pantalla de Progreso entera.
+
+El número de la cabecera es tu racha actual. Las medallas cuentan tu racha más
+larga, así que si una racha se rompió después de otra mejor, el panel te enseña
+las dos.
+
+Si tu dispositivo tiene activado reducir el movimiento, la llama se queda
+quieta.
+
 ## Las medallas de dinero y tu divisa
 
 Las escaleras de dinero están fijadas por divisa, y ajustadas a lo que compra un
@@ -91,10 +120,14 @@ hasta que se ha evaluado a suficiente gente como para que signifique algo: «el
 
 ## Cuándo se conceden
 
-Una vez al día, de noche. No se comprueba nada en el momento de apuntar una
-transacción, porque la mitad de las medallas hablan de un mes cerrado o de un
-saldo a fin de mes: cuando el dinero se mueve todavía no hay nada a lo que
-reaccionar.
+Las medallas de visitas llegan en cuanto te las ganas: la primera vez que abres
+la aplicación el día en que tu racha alcanza un peldaño, se concede la medalla y
+un mensaje te lo dice.
+
+Todas las demás se calculan una vez al día, de noche. No se comprueba nada en el
+momento de apuntar una transacción, porque la mitad de las medallas hablan de un
+mes cerrado o de un saldo a fin de mes: cuando el dinero se mueve todavía no hay
+nada a lo que reaccionar.
 
 Eso significa que puedes estar ya por encima de un umbral con la medalla aún
 cerrada. La pantalla lo dice en lugar de fingir que tu cifra es menor: la barra
@@ -127,6 +160,9 @@ Tres cosas que conviene saber:
 - **Hacer la imagen no publica nada.** Lo que obtienes es un archivo. A dónde va
   después lo decides tú.
 
+En un plan de pago, la imagen lleva además una insignia de **Miembro Pro** en la
+parte de abajo.
+
 Eso último es la diferencia con un [resumen
 mensual](/documentation/monthly-summary), que además se puede compartir como
 enlace público: una dirección que repartes y que puedes retirar. Una medalla no
@@ -135,7 +171,17 @@ tiene dirección. Es una imagen, y no hay nada que retirar.
 ## Cómo te enteras
 
 Cada medalla nueva deja una línea en la campana. Tres medallas un martes son
-tres líneas, y como mucho un correo entre todas ellas en todo el día.
+tres líneas, y como mucho un correo entre todas ellas en todo el día. El correo
+enseña las propias medallas, las mismas imágenes que dibuja el diálogo de
+compartir, hasta tres, y debajo nombra todas las medallas de las que habla.
+
+A diferencia del correo del [resumen mensual](/documentation/monthly-summary),
+el correo de una medalla escribe el importe de una medalla de dinero en su
+imagen, igual que hace por defecto el diálogo de compartir.
+
+Las medallas llegan también a tu [resumen mensual](/documentation/monthly-summary),
+que enumera las que desbloqueaste ese mes y las siguientes que tienes a tu
+alcance.
 
 La primera pasada es la excepción: lee tu histórico entero de golpe y puede
 desbloquear veinte medallas en un segundo. Veinte líneas serían una avalancha
@@ -155,9 +201,10 @@ que importar años de transacciones rellena años de medallas.
 
 ### He pasado la cifra hoy y la medalla sigue cerrada.
 
-Las medallas se calculan una vez al día, de noche. La barra de la siguiente
-medalla enseña tu cifra real, así que puede quedarse por encima del objetivo
-unas horas; la medalla llega en la siguiente pasada.
+Salvo las de visitas, que llegan al momento, las medallas se calculan una vez al
+día, de noche. La barra de la siguiente medalla enseña tu cifra real, así que
+puede quedarse por encima del objetivo unas horas; la medalla llega en la
+siguiente pasada.
 
 ### ¿Por qué no puedo ver cómo se llaman las medallas que vienen?
 
@@ -179,9 +226,8 @@ No. Una vez concedida, se queda concedida.
 Sí, en **Configuración → Notificaciones**. Seguirás viendo todas las medallas
 dentro de la aplicación.
 
-### No encuentro Progreso en el menú de mi cuenta.
+### ¿Por qué la cabecera enseña menos días que mis medallas de visitas?
 
-Los logros todavía se están desplegando, así que la entrada aún no está en todas
-las cuentas. Mientras tanto no pierdes nada: el histórico se lee de las
-transacciones que ya tienes, así que las medallas estarán ahí para recogerlas el
-día que llegue.
+La cabecera cuenta la racha en la que estás ahora. Las medallas de visitas
+cuentan tu racha más larga, que puede haber terminado antes de que empezara
+esta. Las medallas que te dio siguen siendo tuyas.

@@ -37,8 +37,8 @@ means in practice:
 - You decide when the connection exists. Nothing is connected until you connect
   it, and removing it cuts access off at once.
 
-Whisper Money exposes 34 of these questions and actions, called tools: 11 that
-read your data and 23 that change it. The assistant picks the ones it needs on
+Whisper Money exposes 37 of these questions and actions, called tools: 12 that
+read your data and 25 that change it. The assistant picks the ones it needs on
 its own; you write in plain language.
 
 ## What you can ask for
@@ -98,6 +98,21 @@ Try:
 </div>
 
 <div class="card">
+### Savings goals
+
+List your [savings goals](/documentation/savings-goals) with their progress,
+create one-off or monthly goals, and change the ones you have. A monthly goal
+can also tag the transfers to one of your savings accounts on its own.
+
+Try:
+
+- "How is my emergency fund going?"
+- "Save 200 every month into my savings account, and tag the transfers."
+- "Did I meet my monthly goal in September?"
+
+</div>
+
+<div class="card">
 ### Automation rules
 
 List your rules, write new ones, change them, and apply one to the transactions
@@ -113,7 +128,8 @@ Try:
 <div class="card">
 ### Cashflow, net worth and spending
 
-The same figures the Cashflow and dashboard screens show, for any period you
+The same figures the [Cashflow](/documentation/cashflow) and
+[dashboard](/documentation/dashboard) screens show, for any period you
 ask about: income, expenses split into fixed, variable and general, what you
 saved and invested, and how much your budgets still have reserved.
 
@@ -272,8 +288,9 @@ A token is a password for one connection. Two things to choose when you create
 one:
 
 - **Read only** can search, analyse and report, and can never change anything.
-- **Read & write** can also create and edit accounts, and create, edit and
-  delete transactions, categories, labels, budgets and automation rules.
+- **Read & write** can also create and edit accounts and savings goals, and
+  create, edit and delete transactions, categories, labels, budgets and
+  automation rules.
 
 A token is shown once, when you create it, so copy it somewhere safe right then.
 The page keeps the name, the access level, and the dates it was created and last
@@ -301,7 +318,7 @@ These are the rules the app itself follows:
 
 - **Bank-synced and imported transactions cannot be edited or deleted.** Only
   transactions created by hand can. Any transaction, however it arrived, can
-  still be categorized, labelled and split.
+  still be categorized, labelled, split and given a note.
 - **New transactions can be added to any account**, a bank-connected one
   included. A sync only brings in rows it has not seen before, so it never
   removes what you added.
@@ -310,8 +327,8 @@ These are the rules the app itself follows:
   written by hand would be overwritten by the next sync.
 - **On a bank-connected account only the name and the ownership share can be
   changed.** The type, the currency and the bank come from the connection, and a
-  connected account cannot be created from here either: you connect those
-  yourself in the app. In a shared space, an account can only be edited by
+  connected account cannot be created from here either: you
+  [connect those yourself](/documentation/accounts/bank-connections) in the app. In a shared space, an account can only be edited by
   whoever created it.
 - **A budget's period, start day, rollover and tracked categories are fixed
   once it is created.** To change any of those, the budget has to be deleted
@@ -319,6 +336,10 @@ These are the rules the app itself follows:
 - **A budget's [expense type](/documentation/budgets#expense-type) is set in
   the app.** A budget the assistant creates starts as Variable. To make it
   Fixed, edit it in Whisper Money.
+- **Savings goals are archived and deleted in the app.** The assistant can
+  create a goal and edit it, but not archive or delete one. A goal's kind,
+  one-off or monthly, is fixed once it is created, and changing a monthly
+  goal's target only affects the month in progress and the ones after it.
 - **Applying an automation rule to past transactions asks first.** The
   assistant reports how many transactions match and changes nothing until you
   tell it to go ahead.

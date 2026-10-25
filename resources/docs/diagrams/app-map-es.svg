@@ -1,0 +1,58 @@
+<svg viewBox="0 0 720 380" role="img" aria-labelledby="app-map-es-title app-map-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="app-map-es-title">Dónde está cada cosa en Whisper Money</title>
+    <desc id="app-map-es-desc">Un esbozo de la ventana de la aplicación. La barra lateral de la izquierda reúne las cinco pantallas principales: Panel, Flujo de Caja, Cuentas, Transacciones y Planificación. La cabecera de arriba tiene la racha de visitas, el botón de añadir transacción e Importar transacciones. El menú de tu cuenta, abajo en la barra lateral, abre Progreso, Resúmenes mensuales, el modo privado, Configuración y Documentación; en Configuración están las cuentas bancarias y conexiones, las reglas de automatización, las categorías, las etiquetas, el Conector de IA y tu perfil, notificaciones y plan.</desc>
+    <defs>
+        <marker id="app-map-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="36" y="16">BARRA LATERAL</text>
+    <line class="dg-hairline" x1="36" y1="24" x2="180" y2="24"/>
+    <text class="dg-eyebrow" x="204" y="16">CABECERA</text>
+    <line class="dg-hairline" x1="204" y1="24" x2="684" y2="24"/>
+    <rect class="dg-node-soft" x="24" y="32" width="672" height="296" rx="10"/>
+    <rect class="dg-node" x="36" y="44" width="144" height="272" rx="6"/>
+    <rect class="dg-band" x="48" y="58" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="74">Panel</text>
+    <rect class="dg-band" x="48" y="90" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="106">Flujo de Caja</text>
+    <rect class="dg-band" x="48" y="122" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="138">Cuentas</text>
+    <rect class="dg-band" x="48" y="154" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="170">Transacciones</text>
+    <rect class="dg-band" x="48" y="186" width="120" height="24" rx="4"/>
+    <text class="dg-name" x="60" y="202">Planificación</text>
+    <rect class="dg-node-focal" x="48" y="276" width="120" height="28" rx="4"/>
+    <text class="dg-name" x="108" y="294" text-anchor="middle">Menú de tu cuenta</text>
+    <rect class="dg-node" x="204" y="44" width="480" height="40" rx="6"/>
+    <rect class="dg-node-soft" x="350" y="52" width="110" height="24" rx="12"/>
+    <text class="dg-sub" x="404" y="67" text-anchor="middle">Racha de visitas</text>
+    <rect class="dg-node-soft" x="467" y="52" width="54" height="24" rx="12"/>
+    <text class="dg-sub" x="494" y="67" text-anchor="middle">Añadir</text>
+    <rect class="dg-node-soft" x="529" y="52" width="143" height="24" rx="12"/>
+    <text class="dg-sub" x="600" y="67" text-anchor="middle">Importar transacciones</text>
+    <rect class="dg-band" x="216" y="100" width="180" height="10" rx="3"/>
+    <rect class="dg-band" x="216" y="118" width="120" height="10" rx="3"/>
+    <text class="dg-aside" x="420" y="118">La pantalla que hayas elegido</text>
+    <text class="dg-eyebrow" x="232" y="160">MENÚ DE TU CUENTA</text>
+    <line class="dg-hairline" x1="232" y1="166" x2="420" y2="166"/>
+    <path class="dg-edge" d="M168,290 H226" marker-end="url(#app-map-es-arrow)"/>
+    <rect class="dg-mask" x="232" y="174" width="188" height="140" rx="6"/>
+    <rect class="dg-node" x="232" y="174" width="188" height="140" rx="6"/>
+    <text class="dg-name" x="248" y="196">Progreso</text>
+    <text class="dg-name" x="248" y="222">Resúmenes mensuales</text>
+    <text class="dg-name" x="248" y="248">Modo privado</text>
+    <text class="dg-name" x="248" y="300">Documentación</text>
+    <rect class="dg-band-accent" x="240" y="259" width="172" height="22" rx="4"/>
+    <text class="dg-name" x="248" y="274">Configuración</text>
+    <path class="dg-edge dg-edge-dashed" d="M412,270 H444 Q452,270 452,262 V212 Q452,204 460,204 H466" marker-end="url(#app-map-es-arrow)"/>
+    <text class="dg-eyebrow" x="472" y="160">EN CONFIGURACIÓN</text>
+    <line class="dg-hairline" x1="472" y1="166" x2="684" y2="166"/>
+    <text class="dg-sub" x="472" y="190">Cuentas bancarias, Conexiones</text>
+    <text class="dg-sub" x="472" y="212">Reglas de automatización</text>
+    <text class="dg-sub" x="472" y="234">Categorías, Etiquetas</text>
+    <text class="dg-sub" x="472" y="256">Conector de IA</text>
+    <text class="dg-sub" x="472" y="278">Perfil, Notificaciones</text>
+    <text class="dg-sub" x="472" y="300">Plan, Apariencia</text>
+    <text class="dg-aside" x="24" y="360">Cinco pantallas a la izquierda, atajos arriba y todo lo demás tras el menú de tu cuenta.</text>
+</svg>

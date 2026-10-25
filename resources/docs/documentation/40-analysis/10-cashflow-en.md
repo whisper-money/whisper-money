@@ -218,9 +218,45 @@ the seasons.
 **Available** in the middle, and where the money went on the right, expense,
 savings and investment categories alike.
 
-The width of each band is its amount. Small categories are grouped under
-**Other**. Click a category with subcategories to open them, or a category
-without them to see its transactions.
+The width of each band is its amount. Under each category's amount you see its
+share: an income category's share of total income, an expense category's share
+of total spending. The centre node adds what share of your income was left over.
+Shares are rounded to whole percents, so a side can add up to 99% or 101%, and a
+share too small to round shows as `<1%`. In privacy mode the amounts are hidden
+and the shares stay, since a share gives no amount away.
+
+Click a category with subcategories to open them, or a category without them to
+see its transactions. Inside an open category, each subcategory's share is its
+share of that parent, not of the whole side: opening Food tells you how much of
+your food spending was the supermarket.
+
+### Other
+
+When a side has more than five categories, the ones below 3% of that side are
+grouped under **Other**, so the diagram stays readable. The three largest are
+always shown on their own, and Other only appears when it would hold at least
+two categories. Other opens like any parent: click it, or focus it and press
+Enter, and it splits into the categories it was holding. The income side and the
+expense side each have their own Other, and they open separately.
+
+![The expense side of Money Flow with Other opened: Other, 6% of spending, fans out into Cash withdrawal, Clothing and shoes, and Education, each with its share of Other](/docs/documentation/cashflow-sankey-other.png)
+
+### Refunds and offsets
+
+A refund counts against the category it belongs to. A 60 restaurant bill in May
+and a 40 refund in June leave the restaurant category at -40 in June, rather
+than dropping it from the month.
+
+When a whole category nets to the opposite side, it moves to that side of the
+diagram and says why in its name: **(refund)** for an expense category that
+brought money in, **(reversal)** for an income category that took money out, and
+**(withdrawal)** for money taken back out of savings or investments.
+
+Inside an open category, a subcategory that went the other way is shown as an
+offset: a line with a negative amount and a negative share, under the
+subcategories, with a dashed marker instead of a band. A Bank category with fees
+of 1,238, charges of 284 and interest received of 28 reads 1,494; opened, it
+shows Fees 83%, Charges 19% and Interest -2%, which add back up to the parent.
 
 ## Income and expense breakdowns
 
@@ -231,6 +267,10 @@ and its change against the previous period.
 Open a category with subcategories to see them, or click a category to see its
 transactions. Uncategorized transactions appear as their own row, which is
 usually the first thing to fix when a total looks wrong.
+
+A category whose refunds outweighed its spending in the period stays on its own
+list with a negative amount, and no bar or share. That way the rows still add up
+to the total above them.
 
 ## Monthly savings
 
@@ -306,6 +346,13 @@ Switch to the Year view to see what your yearly budgets reserve.
 The expense split follows every budget with a period in the view, whatever its
 periodicity: a transaction tracked by a yearly fixed budget is a fixed expense
 in any month. Only reserved is limited by the view.
+
+### Why does a category show a negative amount?
+
+More money came back to it than left in the period, usually because of a refund
+for something bought in an earlier period. Refunds count against their own
+category, so the totals match what you actually spent. See
+[Refunds and offsets](#refunds-and-offsets).
 
 ### Why are transfers missing?
 

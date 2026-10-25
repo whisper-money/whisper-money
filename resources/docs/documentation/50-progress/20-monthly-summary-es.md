@@ -2,8 +2,9 @@
 
 Un resumen mensual es un informe breve sobre el mes que acaba de cerrarse: qué
 ha hecho tu dinero, cómo queda frente al mes anterior y unas pocas cosas que
-merecen cinco minutos. Llega por correo y se queda en la aplicación, y sus
-cifras se congelan el día en que se escribe.
+merecen cinco minutos. El informe completo está en la aplicación, por correo
+llega una versión corta sin ningún importe, y sus cifras se congelan el día en
+que se escribe.
 
 {{TOC}}
 
@@ -30,15 +31,48 @@ con los números destacados. Según lo que haya pasado en el mes, puede incluir:
 - Cuántos [presupuestos](/documentation/budgets) has cumplido y en cuáles te has
   pasado.
 - Cómo se ha movido tu [objetivo de ahorro](/documentation/savings-goals).
+- Cuántos de tus [objetivos de ahorro mensual](/documentation/savings-goals#objetivos-mensuales)
+  han llegado a su objetivo. Se nombran hasta tres, primero los que más se han
+  alejado de su objetivo, cada uno con cuánto se ha pasado o le ha faltado al
+  cerrar el mes.
+
+Cuando el mes te ha dado [logros](/documentation/achievements), una sección los
+nombra: **Lo que desbloqueaste en** ese mes, y **Lo que puedes desbloquear a
+continuación**, hasta tres medallas con lo que falta para cada una, de la más
+cercana a la más lejana.
 
 Después llega **Cinco minutos bien invertidos**: las pocas cosas que de verdad
-compensa hacer, cada una con la consecuencia de no hacerla —una conexión
-bancaria a punto de caducar, transacciones sin categoría, un presupuesto que
+compensa hacer, cada una con la consecuencia de no hacerla —una
+[conexión bancaria a punto de caducar](/documentation/accounts/bank-connections#el-permiso-caduca-reconectar),
+transacciones sin categoría, un presupuesto que
 lleva meses quedándose corto—.
 
 Todas las cifras salen de los mismos servicios que lee el resto de la
 aplicación, así que el informe no puede citar un número que no puedas encontrar
 en la pantalla de [flujo de caja](/documentation/cashflow).
+
+## Qué dice el correo
+
+Un correo se queda años en la bandeja de entrada, aparece en la pantalla de
+bloqueo y se reenvía, así que el correo del resumen no lleva ningún importe. Son porcentajes
+y recuentos, y un botón para entrar al informe:
+
+- **El titular**, en porcentaje: "Ahorraste el 18 % de lo que ganaste en
+  septiembre", o cuánto más gastaste de lo que ganaste en un mes que fue al
+  revés.
+- **Hasta tres cifras**, en este orden cuando hay algo que enseñar: el cambio de
+  tu patrimonio neto, el cambio de tu gasto, los presupuestos cumplidos ("4 de
+  6"), el progreso de tu objetivo de ahorro y los objetivos de ahorro mensual
+  cumplidos.
+- **El análisis**, si lo tienes: una línea que avisa de que te espera en el
+  informe y un enlace **Leer mi análisis**. El texto se queda en la aplicación,
+  porque cita importes.
+- **Ver el informe completo**, con una línea que dice qué hay dentro, como las
+  medallas que has desbloqueado y las cosas que conviene hacer.
+- **La tarjeta para compartir** que Whisper Money ha elegido para el mes.
+
+Todas las cifras, las tareas, las medallas y el análisis están en la pantalla
+del informe, con sus importes.
 
 ## Cuándo llega
 
@@ -124,7 +158,8 @@ dirección que repartes, y una dirección se puede retirar.
 
 ## Quitar el aviso
 
-El panel muestra un aviso cuando hay un informe nuevo esperando.
+El [panel](/documentation/dashboard#el-aviso-del-resumen-mensual) muestra un
+aviso cuando hay un informe nuevo esperando.
 **Descartar** quita ese aviso sin borrar nada: el informe se queda en
 **Resúmenes mensuales** mientras exista tu cuenta.
 
@@ -143,6 +178,12 @@ Los motivos probables, por orden: el mes no tenía nada dentro, no había pasado
 nada en el mes nuevo a fecha del día 10, o el correo está desactivado en
 **Configuración → Notificaciones**. Haya hecho lo que haya hecho el correo,
 todo lo que se haya escrito está en **Resúmenes mensuales**.
+
+### ¿Por qué el correo del resumen no enseña ningún importe?
+
+A propósito. Un correo se copia en todos los dispositivos donde lees el correo,
+lo guarda tu proveedor y es fácil de reenviar. Cuenta cómo fue el mes en
+porcentajes y deja los importes en la aplicación, detrás de tu sesión.
 
 ### ¿Por qué el informe no coincide con lo que veo ahora en la aplicación?
 
