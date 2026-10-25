@@ -117,7 +117,7 @@ Every connection syncs on its own every six hours. You do not need to keep the a
 
 On **Settings → Connections**, each connection shows its status, when it last synced and, for a bank, when its consent expires. The menu next to it has **Sync Now** if you want fresh data straight away.
 
-Banks limit how many times a day an app can read your data. When that limit is reached, the connection shows **Waiting for the bank** and tries again on its own when the bank allows it. **Sync Now** is hidden until then.
+Banks limit how many times a day an app can read your data. When that limit is reached, **Sync Now** disappears from the menu and the connection tries again on its own once the bank allows another read. If it happens on the very first sync, the connection shows **Waiting for the bank** until then.
 
 ### What the sync brings in
 
@@ -151,7 +151,7 @@ API keys do not expire on Whisper Money's side. They keep working until you revo
 
 ### Errors
 
-If a sync fails, the connection shows the error and a **Retry** button. Temporary problems at the bank or provider are retried on their own. A connection that keeps failing stops syncing on schedule until you retry it or reconnect.
+If a sync fails, the connection shows the error and a **Retry** button. If your bank rejected the session, you see **Reconnect** instead: approve access at your bank again. Temporary problems at the bank or provider are retried on their own. A connection that keeps failing stops syncing on schedule until you retry it or reconnect.
 
 If an API key stops working, for example because you deleted it or it lost a permission, you get an email. Choose **Update Credentials** in the connection's menu and paste a new key. The connection keeps its accounts.
 
@@ -179,6 +179,8 @@ Choose **Disconnect** in the connection's menu. For a bank, this also revokes Wh
 
 Connecting banks needs Enable Banking credentials on the server. Without them, the app simply does not offer banks: the connect dialog becomes **Connect an account** and lists only the brokers and exchanges, which work with their own API keys. During sign-up, choosing another bank takes you to the form for a manual account.
 
+An install with subscriptions turned off has no paid plan, so connecting is open to everyone on it.
+
 ## FAQ
 
 ### Why can't I find my bank?
@@ -199,7 +201,7 @@ Banks keep one session per login. Approving again with the same login replaces t
 
 ### What happens to my connections if my subscription ends?
 
-At the end of the month, bank connections are closed and you get an email. Their accounts stay as manual accounts, with all their transactions and balances.
+At the end of the month, bank connections are closed and you get an email. Their accounts stay as manual accounts, with all their transactions and balances. Broker and exchange connections are not closed.
 
 ### Do I have to keep Whisper Money open for the sync to run?
 

@@ -119,7 +119,7 @@ Cada conexión se sincroniza sola cada seis horas. No hace falta que tengas la a
 
 En **Configuración → Conexiones**, cada conexión muestra su estado, cuándo se sincronizó por última vez y, si es un banco, cuándo vence el permiso. El menú de al lado tiene **Sincronizar Ahora** si quieres datos frescos en ese momento.
 
-Los bancos limitan cuántas veces al día una aplicación puede leer tus datos. Cuando se alcanza ese límite, la conexión muestra **Esperando al banco** y vuelve a intentarlo sola cuando el banco lo permite. Hasta entonces, **Sincronizar Ahora** no aparece.
+Los bancos limitan cuántas veces al día una aplicación puede leer tus datos. Cuando se alcanza ese límite, **Sincronizar Ahora** desaparece del menú y la conexión vuelve a intentarlo sola en cuanto el banco permite otra lectura. Si ocurre en la primera sincronización, la conexión muestra **Esperando al banco** hasta entonces.
 
 ### Qué trae la sincronización
 
@@ -153,7 +153,7 @@ Las claves API no caducan por parte de Whisper Money. Siguen funcionando hasta q
 
 ### Errores
 
-Si una sincronización falla, la conexión muestra el error y un botón **Reintentar**. Los problemas temporales del banco o del proveedor se reintentan solos. Una conexión que sigue fallando deja de sincronizarse de forma programada hasta que la reintentas o la reconectas.
+Si una sincronización falla, la conexión muestra el error y un botón **Reintentar**. Si tu banco rechazó la sesión, verás **Reconectar** en su lugar: vuelve a dar permiso en tu banco. Los problemas temporales del banco o del proveedor se reintentan solos. Una conexión que sigue fallando deja de sincronizarse de forma programada hasta que la reintentas o la reconectas.
 
 Si una clave API deja de funcionar, por ejemplo porque la borraste o perdió un permiso, recibes un email. Elige **Actualizar Credenciales** en el menú de la conexión y pega una clave nueva. La conexión conserva sus cuentas.
 
@@ -181,6 +181,8 @@ Elige **Desconectar** en el menú de la conexión. Si es un banco, también se r
 
 Conectar bancos necesita credenciales de Enable Banking en el servidor. Sin ellas, la aplicación simplemente no ofrece bancos: el diálogo de conexión pasa a ser **Conectar una cuenta** y solo lista los brókers y exchanges, que funcionan con sus propias claves API. Durante el registro, elegir otro banco te lleva al formulario de una cuenta manual.
 
+Una instalación con las suscripciones desactivadas no tiene plan de pago, así que en ella cualquiera puede conectar.
+
 ## Preguntas frecuentes
 
 ### ¿Por qué no encuentro mi banco?
@@ -201,7 +203,7 @@ Los bancos mantienen una sesión por acceso. Dar permiso de nuevo con el mismo a
 
 ### ¿Qué pasa con mis conexiones si termina mi suscripción?
 
-A final de mes se cierran las conexiones bancarias y recibes un email. Sus cuentas se quedan como cuentas manuales, con todas sus transacciones y saldos.
+A final de mes se cierran las conexiones bancarias y recibes un email. Sus cuentas se quedan como cuentas manuales, con todas sus transacciones y saldos. Las conexiones con brókers y exchanges no se cierran.
 
 ### ¿Tengo que tener Whisper Money abierto para que se sincronice?
 
