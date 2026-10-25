@@ -221,9 +221,46 @@ El diagrama **Flujo de Caja** dibuja el periodo de un vistazo: las categorías d
 ingresos a la izquierda, **Disponible** en el centro y a dónde fue el dinero a la
 derecha, tanto categorías de gasto como de ahorro e inversión.
 
-El ancho de cada banda es su importe. Las categorías pequeñas se agrupan en
-**Otros**. Haz clic en una categoría con subcategorías para abrirlas, o en una
-sin ellas para ver sus transacciones.
+El ancho de cada banda es su importe. Debajo del importe de cada categoría ves su
+porcentaje: el de una categoría de ingreso sobre el total de ingresos, y el de
+una de gasto sobre el total de gastos. El nodo central añade qué parte de tus
+ingresos te quedó. Los porcentajes se redondean a enteros, así que un lado puede
+sumar 99 % o 101 %, y uno demasiado pequeño para redondear aparece como `<1%`.
+En el modo privacidad los importes se ocultan y los porcentajes se quedan,
+porque un porcentaje no revela ningún importe.
+
+Haz clic en una categoría con subcategorías para abrirlas, o en una sin ellas
+para ver sus transacciones. Dentro de una categoría abierta, el porcentaje de
+cada subcategoría es sobre esa categoría padre, no sobre todo el lado: al abrir
+Comida ves cuánto de tu gasto en comida fue el supermercado.
+
+### Otros
+
+Las categorías por debajo del 3 % de su lado se agrupan en **Otros**, para que
+el diagrama se pueda leer. Otros se abre como cualquier categoría padre: haz clic
+en él, o enfócalo y pulsa Intro, y se divide en las categorías que contenía. El
+lado de ingresos y el de gastos tienen cada uno su propio Otros, y se abren por
+separado.
+
+![El lado de gastos del diagrama Flujo de Caja con Otros abierto: Otros, el 6 % del gasto, se divide en Retirada de efectivo, Ropa y calzado y Educación, cada una con su porcentaje sobre Otros](/docs/documentation/cashflow-sankey-other.png)
+
+### Devoluciones y compensaciones
+
+Una devolución cuenta contra la categoría a la que pertenece. Una cuenta de
+restaurante de 60 en mayo y una devolución de 40 en junio dejan la categoría de
+restaurantes en -40 en junio, en lugar de hacerla desaparecer del mes.
+
+Cuando una categoría entera queda en el lado contrario, pasa a ese lado del
+diagrama y lo indica en su nombre: **(devolución)** para una categoría de gasto
+que trajo dinero, **(reintegro)** para una categoría de ingreso que sacó dinero,
+y **(retirada)** para dinero que vuelve a salir de ahorro o inversión.
+
+Dentro de una categoría abierta, una subcategoría que fue en sentido contrario
+aparece como compensación: una línea con importe y porcentaje negativos, debajo
+de las subcategorías, con una marca discontinua en lugar de banda. Una categoría
+Banco con comisiones de 1.238, cargos de 284 e intereses cobrados de 28 suma
+1.494; al abrirla muestra Comisiones 83 %, Cargos 19 % e Intereses -2 %, que
+vuelven a sumar lo de la categoría padre.
 
 ## Desgloses de ingresos y gastos
 
@@ -235,6 +272,10 @@ Abre una categoría con subcategorías para verlas, o haz clic en una categoría
 para ver sus transacciones. Las transacciones sin categoría aparecen como una
 fila propia, que suele ser lo primero que hay que arreglar cuando un total
 parece raro.
+
+Una categoría cuyas devoluciones superaron a su gasto en el periodo se queda en
+su lista con importe negativo, sin barra ni porcentaje. Así las filas siguen
+sumando el total que tienen encima.
 
 ## Ahorro mensual
 
@@ -313,6 +354,13 @@ El reparto del gasto sigue todos los presupuestos con un periodo dentro de la
 vista, sea cual sea su periodicidad: una transacción que sigue un presupuesto
 anual fijo es un gasto fijo en cualquier mes. Solo lo reservado depende de la
 vista.
+
+### ¿Por qué una categoría muestra un importe negativo?
+
+En el periodo le volvió más dinero del que salió, normalmente por la devolución
+de algo comprado en un periodo anterior. Las devoluciones cuentan contra su
+propia categoría, así que los totales coinciden con lo que de verdad gastaste.
+Consulta [Devoluciones y compensaciones](#devoluciones-y-compensaciones).
 
 ### ¿Por qué faltan transferencias?
 

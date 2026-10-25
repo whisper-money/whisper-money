@@ -20,6 +20,8 @@ Hay veinte colores para elegir. El color es lo que hace que una etiqueta se lea 
 
 También puedes crear una etiqueta sin salir de la transacción que estás editando. Después aparece en la lista de ajustes como cualquier otra.
 
+Un [objetivo de ahorro](/documentation/savings-goals) también funciona con una etiqueta, que se crea con el objetivo y lleva su nombre. Esa etiqueta pertenece al objetivo: no aparece en esta lista, y al renombrar el objetivo se renombra con él.
+
 ## Para qué sirven las etiquetas
 
 - **Filtrar.** Filtra la lista de transacciones por etiqueta para ver todo lo que pertenece a un proyecto, un viaje o una persona.

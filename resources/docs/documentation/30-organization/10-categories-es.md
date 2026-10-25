@@ -10,6 +10,8 @@ Las categorías explican qué significa cada transacción. Elige bien la categor
 2. Usa categorías de transferencia para dinero que se mueve entre tus propias cuentas.
 3. Revisa las transacciones sin categoría a menudo.
 4. Crea reglas de automatización para comercios repetidos.
+5. Añade subcategorías cuando una categoría necesite más detalle, como
+   Supermercado y Restaurantes dentro de Comida.
 
 > ¿No sabes qué elegir? Empieza por el tipo. Puedes cambiar el nombre de la categoría después.
 
@@ -130,6 +132,39 @@ La dirección solo la eliges tú en las categorías de transferencia. Las de aho
 e inversión cuentan siempre como dinero que sale, y las de ingreso y gasto se
 cuentan por su tipo y no por una dirección.
 
+## Subcategorías
+
+Las categorías se pueden anidar hasta tres niveles: una categoría, sus
+subcategorías y las de estas. Comida puede contener Supermercado y Restaurantes,
+y Restaurantes puede contener Comidas de trabajo.
+
+Las categorías están en **Configuración → Categorías**. Hay dos formas de crear
+una subcategoría:
+
+- **Desde la fila de la categoría.** Abre el menú **...** de la fila, o haz clic
+  derecho sobre ella, y elige **Crear subcategoría**. El diálogo se abre con esa
+  fila ya elegida como categoría padre y con su color. El color se puede
+  cambiar; el tipo no.
+- **Desde Crear Categoría.** Elige una **Categoría padre** en el diálogo.
+
+![El diálogo Crear subcategoría abierto desde la fila Comida: Comida ya elegida como categoría padre, su color rojo ya puesto y el tipo indicado como Gasto, heredado de la categoría padre](/docs/documentation/category-create-subcategory.png)
+
+Una subcategoría tiene siempre el tipo y la configuración de flujo de caja de su
+categoría padre; el diálogo indica el tipo como "Heredado de la categoría
+padre". Las categorías del tercer nivel no ofrecen
+**Crear subcategoría**, porque no pueden tener más.
+
+Lo que cambia al anidarlas:
+
+- **Los informes suman hacia arriba.** El total de una categoría padre en el
+  flujo de caja incluye sus subcategorías, y puedes abrirla para verlas una a
+  una.
+- **Los presupuestos siguen el árbol.** Un presupuesto que sigue una categoría
+  padre sigue también todas sus subcategorías.
+- **La búsqueda encuentra a la familia.** Al escribir el nombre de una categoría
+  padre en cualquier selector de categorías aparecen también sus subcategorías,
+  así que puedes elegir Supermercado buscando "Comida".
+
 ## Transacciones sin categoría
 
 Las transacciones importadas o sincronizadas pueden empezar sin categoría.
@@ -140,6 +175,11 @@ Prueba esta rutina:
 2. Asigna primero las más obvias.
 3. Deja las confusas para más tarde si hace falta.
 4. Crea reglas de automatización para comercios o descripciones repetidas.
+
+Cuando el mes en curso tiene transacciones sin categoría, Whisper Money te lo
+recuerda una vez por sesión con un aviso en una esquina de la pantalla.
+**Categorizar** abre las transacciones sin categoría de ese mes; **Ahora no**
+oculta el aviso durante tres días, en todos tus dispositivos.
 
 ## Quién asignó la categoría
 
@@ -169,6 +209,11 @@ Lo que conviene saber:
 - Corregir una de sus categorías se puede convertir en una regla de
   automatización, para que el mismo comercio se resuelva sin IA la próxima vez.
 
+También puedes empezar una regla desde cualquier transacción: su menú de fila
+tiene **Automatizar categorización**, que prepara una regla con la descripción y
+la categoría de esa transacción. Consulta
+[Reglas de automatización](/documentation/automation-rules).
+
 ## Cambiar una categoría
 
 Cambiar la categoría de una transacción actualiza los informes que incluyen esa transacción.
@@ -195,6 +240,11 @@ Normalmente no. Si ya registras las compras de la tarjeta, el pago es dinero mov
 ### ¿Cuántas categorías debería crear?
 
 Empieza con pocas. Demasiadas categorías hacen que los informes sean más difíciles de leer. Añade más solo cuando necesites más detalle.
+
+### ¿Puede una subcategoría tener un tipo distinto al de su categoría padre?
+
+No. Una subcategoría toma el tipo de su categoría padre. Si quieres registrar
+algo con otro tipo, créalo como una categoría independiente.
 
 ## Buenos hábitos con categorías
 

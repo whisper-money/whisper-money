@@ -9,7 +9,8 @@ the day the medals arrived.
 
 ## Quick start
 
-1. Open your account menu at the bottom of the sidebar and choose **Progress**.
+1. Open your account menu at the bottom of the sidebar and choose **Progress**,
+   or click the visit streak in the header.
 2. Read **Tracks**: thirteen ladders, each running from its easiest rung to its
    hardest, with what you have earned on the left.
 3. Switch to **Timeline** for the same medals dated by when they actually
@@ -34,6 +35,14 @@ of what you have earned are the road ahead.
 The next medal on each track — the first rung you have not earned — arrives
 named, with its pictogram and the figure to reach. Everything past it is a
 silhouette with three question marks, and only its tier is shown.
+
+The three states look different at a glance:
+
+- **Earned**: a filled card with a check mark on the medal and the month it
+  happened.
+- **Next**: a dashed outline around a faded medal, with its name and the figure
+  to reach.
+- **Locked**: a dashed outline around a silhouette and three question marks.
 
 Five of the tracks also draw a small bar under that next medal: visit streaks,
 weekly visits, transactions, fully categorized months and saving streaks. Those
@@ -64,6 +73,23 @@ up, because there is no log of visits from before there was anything to record.
 They are also measured on your longest run, not your current one — a run that
 peaked and then broke still happened.
 
+## Your visit streak in the header
+
+While you have a visit run going, the header shows it on every screen, on the
+computer and on the phone: a flame and the number of days in a row you have
+opened Whisper Money. The ring around the flame fills up as you get closer to
+the next visit medal, and once you are past the last one it stays full while the
+number keeps climbing.
+
+Hover the streak on a computer, or tap it on a phone, to see both visit tracks
+with the next medal and how far off it is, and a link to the whole Progress
+screen.
+
+The number in the header is your current run. The medals count your longest
+run, so if a run broke after a better one, the panel tells you both.
+
+If your device is set to reduce motion, the flame stays still.
+
 ## Money medals and your currency
 
 The money ladders are set per currency, and scaled to what a salary buys locally
@@ -86,9 +112,13 @@ is a sentence that says nothing.
 
 ## When medals are awarded
 
-Once a day, overnight. Nothing is checked at the moment you record a
-transaction, because half the medals are about a closed month or a balance at a
-month end — there is nothing to react to as the money moves.
+Visit medals arrive the moment you earn them: the first time you open the app on
+the day your run reaches a rung, the medal is awarded and a message says so.
+
+Every other medal is worked out once a day, overnight. Nothing is checked at the
+moment you record a transaction, because half the medals are about a closed
+month or a balance at a month end — there is nothing to react to as the money
+moves.
 
 That means you can already stand past a threshold with the medal still locked.
 The screen says so rather than pretending your figure is smaller: the bar reads
@@ -121,6 +151,8 @@ Three things are worth knowing:
 - **Making the picture publishes nothing.** You get a file. Where it goes next
   is entirely up to you.
 
+On a paid plan, the picture also carries a **Pro member** badge at the bottom.
+
 That last point is the difference from a [monthly
 summary](/documentation/monthly-summary), which can also be shared as a public
 link — an address you hand out and can take back. A medal has no address. It is
@@ -129,7 +161,12 @@ a picture, and there is nothing to revoke.
 ## Telling you about it
 
 A new medal puts a row in the bell. Three medals on a Tuesday are three rows,
-and at most one email between them for the whole day.
+and at most one email between them for the whole day. The email shows the
+medals themselves, the same pictures the share dialog draws, up to three of
+them, and names every medal it is about underneath.
+
+Medals also reach your [monthly summary](/documentation/monthly-summary), which
+lists the ones you unlocked that month and the next ones within reach.
 
 The very first pass is the exception: it reads your entire history at once and
 can unlock twenty medals in a second. Twenty rows would be an avalanche nobody
@@ -148,9 +185,9 @@ importing years of transactions fills in years of medals.
 
 ### I passed the number today and the medal is still locked.
 
-Medals are worked out once a day, overnight. The bar under the next medal reads
-your real figure, so it can sit past the goal for a few hours; the medal follows
-on the next pass.
+Apart from visit medals, which arrive straight away, medals are worked out once
+a day, overnight. The bar under the next medal reads your real figure, so it can
+sit past the goal for a few hours; the medal follows on the next pass.
 
 ### Why can I not see what the medals ahead are called?
 
@@ -172,8 +209,8 @@ No. Once a medal is recorded it stays recorded.
 Yes, under **Settings → Notifications**. You will still see every medal in the
 app.
 
-### I cannot find Progress in my account menu.
+### Why does the header show fewer days than my visit medals?
 
-Achievements are still being rolled out, so the entry is not in every account
-yet. Nothing is lost while you wait: the history is read from the transactions
-you already have, so the medals are all there to collect on the day it arrives.
+The header counts the run you are on now. The visit medals count your longest
+run, which may have ended before this one started. The medals from it stay
+yours.

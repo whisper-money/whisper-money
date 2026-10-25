@@ -20,6 +20,8 @@ There are twenty colours to choose from. The colour is what makes a label readab
 
 You can also create a label without leaving the transaction you are editing. It appears in the settings list afterwards like any other.
 
+A [savings goal](/documentation/savings-goals) also works through a label, created with the goal and named after it. That label belongs to the goal: it is not listed here, and renaming the goal renames it.
+
 ## What labels are good for
 
 - **Filtering.** Filter the transaction list by label to see everything belonging to one project, trip or person.
