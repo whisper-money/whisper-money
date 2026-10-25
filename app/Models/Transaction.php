@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 use LogicException;
 
 /**
@@ -202,6 +203,9 @@ class Transaction extends Model
      * What the table needs off each sibling. Scopes do not compose into a dotted
      * `with()` path, so nested eager loads spell the relation out and reuse this.
      */
+    /** Columns the transactions list can sort by, ascending or with a leading `-`. */
+    public const LIST_SORT_COLUMNS = ['transaction_date', 'amount', 'description', 'creditor_name', 'debtor_name'];
+
     public const SPLIT_SIBLING_COLUMNS = 'id,split_parent_id,category_id,amount';
 
     /**
@@ -575,6 +579,36 @@ class Transaction extends Model
         $this->applyCashflowBlockFilter($query, $filters);
 
         return $query;
+    }
+
+    /**
+     * The transactions list's order: the column the sort names, then `id` so
+     * rows that tie keep one stable order across pages and exports. Payee
+     * columns sort their blanks as empty strings, the way they read on screen.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeSortedForList(Builder $query, string $sort): Builder
+    {
+        $column = ltrim($sort, '-');
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+
+        // The column ends up in raw SQL below, so it is checked here rather
+        // than trusted to whichever request handed it over.
+        if (! in_array($column, self::LIST_SORT_COLUMNS, true)) {
+            throw new InvalidArgumentException("Transactions cannot be sorted by [{$column}].");
+        }
+
+        if (in_array($column, ['creditor_name', 'debtor_name'], true)) {
+            $query->select('transactions.*')
+                ->selectRaw("COALESCE({$column}, '') as {$column}_sort")
+                ->orderBy("{$column}_sort", $direction);
+        } else {
+            $query->orderBy($column, $direction);
+        }
+
+        return $query->orderBy('id', 'desc');
     }
 
     /**

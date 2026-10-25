@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
 use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
+use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Transaction;
 use App\Services\TransactionDuplicateMatcher;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +33,20 @@ class TransactionController extends Controller
         $transactions = $query->simplePaginate($perPage);
 
         return response()->json($transactions);
+    }
+
+    /**
+     * How many transactions match the transactions page's filters, for the
+     * export dialog to say how big "all matching" is before downloading it.
+     */
+    public function count(IndexTransactionRequest $request): JsonResponse
+    {
+        $count = Transaction::query()
+            ->where('user_id', $request->user()->id)
+            ->applyFilters($request->filters())
+            ->count();
+
+        return response()->json(['count' => $count]);
     }
 
     /**

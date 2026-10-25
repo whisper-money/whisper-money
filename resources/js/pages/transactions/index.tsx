@@ -42,6 +42,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -96,6 +97,7 @@ import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
+import { describeActiveFilters } from '@/lib/transaction-filter-chips';
 import {
     mergeReEvaluatedTransaction,
     reEvaluateTransactionRules,
@@ -1387,7 +1389,7 @@ export default function Transactions({
                         accounts={accounts}
                         enableSavedFilters={true}
                         actions={
-                            <div className="flex w-full items-center justify-between gap-2">
+                            <div className="flex w-full flex-wrap items-center justify-between gap-2">
                                 <TransactionActionsMenu
                                     transactions={allTransactions}
                                     hasTransactionalAccounts={
@@ -1400,7 +1402,28 @@ export default function Transactions({
                                     filters={filters}
                                 />
 
-                                <DataTableViewOptions table={table} />
+                                <div className="ml-auto flex items-center gap-2">
+                                    <TransactionExportButton
+                                        params={clientFiltersToQueryParams(
+                                            filters,
+                                            sortParam,
+                                        )}
+                                        loadedIds={allTransactions.map(
+                                            (transaction) => transaction.id,
+                                        )}
+                                        hasMore={nextCursor !== null}
+                                        filterChips={describeActiveFilters(
+                                            filters,
+                                            {
+                                                categories,
+                                                accounts,
+                                                labels,
+                                                locale,
+                                            },
+                                        )}
+                                    />
+                                    <DataTableViewOptions table={table} />
+                                </div>
                             </div>
                         }
                     />
