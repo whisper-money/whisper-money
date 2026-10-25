@@ -32,7 +32,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 
 ## Tech Stack
 
-- **Backend:** Laravel 12, PHP 8.4
+- **Backend:** Laravel 12, PHP 8.5
 - **Frontend:** React 19, Inertia.js v3, TypeScript
 - **Styling:** Tailwind CSS v4
 - **Database:** MySQL
