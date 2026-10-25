@@ -38,46 +38,15 @@ class TransactionController extends Controller
         $lastVisitAt = $user->transactions_last_visited_at;
 
         $perPage = (int) ($validated['per_page'] ?? 50);
-        $sortParam = $validated['sort'] ?? '-transaction_date';
-
-        $descending = str_starts_with($sortParam, '-');
-        $sortColumn = ltrim($sortParam, '-');
-        $sortDirection = $descending ? 'desc' : 'asc';
-
-        $filters = array_filter([
-            'date_from' => $validated['date_from'] ?? null,
-            'date_to' => $validated['date_to'] ?? null,
-            'amount_min' => $validated['amount_min'] ?? null,
-            'amount_max' => $validated['amount_max'] ?? null,
-            'category_ids' => $validated['category_ids'] ?? null,
-            'account_ids' => $validated['account_ids'] ?? null,
-            'label_ids' => $validated['label_ids'] ?? null,
-            'creditor_name' => $validated['creditor_name'] ?? null,
-            'debtor_name' => $validated['debtor_name'] ?? null,
-            'category_source' => $validated['category_source'] ?? null,
-            'search' => $validated['search'] ?? null,
-            'cashflow_block' => $validated['cashflow_block'] ?? null,
-            'user_id' => $user->id,
-        ], fn ($value) => $value !== null);
+        $sortParam = $request->sort();
 
         $query = Transaction::query()
             ->where('user_id', $user->id)
             ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
-            ->applyFilters($filters);
-
-        $nullableSortColumns = ['creditor_name', 'debtor_name'];
-
-        if (in_array($sortColumn, $nullableSortColumns, true)) {
-            $sortAlias = $sortColumn.'_sort';
-            $query->select('transactions.*')
-                ->selectRaw("COALESCE({$sortColumn}, '') as {$sortAlias}")
-                ->orderBy($sortAlias, $sortDirection);
-        } else {
-            $query->orderBy($sortColumn, $sortDirection);
-        }
+            ->applyFilters($request->filters())
+            ->sortedForList($sortParam);
 
         $transactions = $query
-            ->orderBy('id', 'desc')
             ->cursorPaginate($perPage)
             ->withQueryString();
 

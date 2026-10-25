@@ -55,4 +55,40 @@ class IndexTransactionRequest extends FormRequest
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
         ];
     }
+
+    /**
+     * The validated filters in the shape `Transaction::applyFilters()` reads,
+     * without the ones the request left out. The owner rides along because
+     * the cashflow block filter decides expense blocks from their budgets.
+     *
+     * @return array<string, mixed>
+     */
+    public function filters(): array
+    {
+        $validated = $this->validated();
+
+        return array_filter([
+            'date_from' => $validated['date_from'] ?? null,
+            'date_to' => $validated['date_to'] ?? null,
+            'amount_min' => $validated['amount_min'] ?? null,
+            'amount_max' => $validated['amount_max'] ?? null,
+            'category_ids' => $validated['category_ids'] ?? null,
+            'account_ids' => $validated['account_ids'] ?? null,
+            'label_ids' => $validated['label_ids'] ?? null,
+            'creditor_name' => $validated['creditor_name'] ?? null,
+            'debtor_name' => $validated['debtor_name'] ?? null,
+            'category_source' => $validated['category_source'] ?? null,
+            'search' => $validated['search'] ?? null,
+            'cashflow_block' => $validated['cashflow_block'] ?? null,
+            'user_id' => $this->user()->id,
+        ], fn ($value) => $value !== null);
+    }
+
+    /**
+     * The list's sort, a column name with a leading `-` for descending.
+     */
+    public function sort(): string
+    {
+        return $this->validated('sort') ?? '-transaction_date';
+    }
 }

@@ -34,6 +34,7 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
     Route::post('transactions/check-duplicates', [TransactionController::class, 'checkDuplicates'])->name('api.transactions.check-duplicates');
     Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
+    Route::get('transactions/count', [TransactionController::class, 'count'])->name('api.transactions.count');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
 
     // One amount converted between two currencies, for the transaction modal

@@ -578,6 +578,30 @@ class Transaction extends Model
     }
 
     /**
+     * The transactions list's order: the column the sort names, then `id` so
+     * rows that tie keep one stable order across pages and exports. Payee
+     * columns sort their blanks as empty strings, the way they read on screen.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeSortedForList(Builder $query, string $sort): Builder
+    {
+        $column = ltrim($sort, '-');
+        $direction = str_starts_with($sort, '-') ? 'desc' : 'asc';
+
+        if (in_array($column, ['creditor_name', 'debtor_name'], true)) {
+            $query->select('transactions.*')
+                ->selectRaw("COALESCE({$column}, '') as {$column}_sort")
+                ->orderBy("{$column}_sort", $direction);
+        } else {
+            $query->orderBy($column, $direction);
+        }
+
+        return $query->orderBy('id', 'desc');
+    }
+
+    /**
      * A cashflow block is only defined over a period, so the filter needs both
      * dates (the requests require them alongside it) and the owner whose
      * budgets decide the expense blocks.

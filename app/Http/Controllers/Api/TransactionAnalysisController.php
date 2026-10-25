@@ -38,23 +38,8 @@ class TransactionAnalysisController extends Controller
     {
         $user = $request->user();
 
-        $validated = $request->validated();
         $currency = $user->currency_code;
-
-        $filters = array_filter([
-            'date_from' => $validated['date_from'] ?? null,
-            'date_to' => $validated['date_to'] ?? null,
-            'amount_min' => $validated['amount_min'] ?? null,
-            'amount_max' => $validated['amount_max'] ?? null,
-            'category_ids' => $validated['category_ids'] ?? null,
-            'account_ids' => $validated['account_ids'] ?? null,
-            'label_ids' => $validated['label_ids'] ?? null,
-            'creditor_name' => $validated['creditor_name'] ?? null,
-            'debtor_name' => $validated['debtor_name'] ?? null,
-            'search' => $validated['search'] ?? null,
-            'cashflow_block' => $validated['cashflow_block'] ?? null,
-            'user_id' => $user->id,
-        ], fn ($value) => $value !== null);
+        $filters = $request->filters();
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
