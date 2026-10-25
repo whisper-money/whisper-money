@@ -137,8 +137,7 @@ sign. It starts on **Expense**.
 - **Expense**, **Min** 100: every expense of 100 or more.
 - **Income**, **Min** 1000 and **Max** 3000: income between 1,000 and 3,000.
 
-A saved filter or a link from before this worked might cover both expenses and
-income at once. It then shows with neither side chosen and a note saying so.
+An older saved filter or link might cover both expenses and income at once. It then shows with neither side chosen and a note saying so.
 Picking a side turns its limits into plain amounts for that side.
 
 ### Cashflow block
@@ -214,8 +213,8 @@ If you create or change rules after transactions already exist, older transactio
 Use re-evaluation when you want rules to run again on existing transactions.
 
 Run it on all your transactions, whatever filter is on, with **Update categories
-automatically** in the **More actions** menu above the list, or on just the rows you selected with **Re-evaluate
-rules** in the bulk actions bar.
+automatically** in the **More actions** menu above the list. Run it on just the
+rows you selected with **Re-evaluate rules** in the bulk actions bar.
 
 Use it after:
 

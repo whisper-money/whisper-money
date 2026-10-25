@@ -138,8 +138,7 @@ Empieza en **Gasto**.
 - **Gasto**, **Mín** 100: todos los gastos de 100 o más.
 - **Ingresos**, **Mín** 1000 y **Máx** 3000: los ingresos de entre 1000 y 3000.
 
-Un filtro guardado o un enlace de antes de este cambio puede abarcar gastos e
-ingresos a la vez. En ese caso aparece sin ningún lado elegido y con una nota que
+Un filtro guardado o un enlace antiguo puede abarcar gastos e ingresos a la vez. En ese caso aparece sin ningún lado elegido y con una nota que
 lo explica. Al elegir un lado, sus límites pasan a ser importes normales de ese
 lado.
 
