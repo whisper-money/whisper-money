@@ -1,0 +1,71 @@
+<svg viewBox="0 0 720 300" role="img" aria-labelledby="bank-connection-flow-en-title bank-connection-flow-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="bank-connection-flow-en-title">How a connection keeps an account up to date</title>
+    <desc id="bank-connection-flow-en-desc">Two paths. A bank: you pick it, approve read access on the bank's own site, choose which accounts to sync, and every six hours a sync brings in transactions and balances; when the consent runs out you reconnect and approve again. A broker or crypto exchange: you paste a read-only API key, which is checked straight away, choose the accounts, and every six hours a sync brings in balances, not transactions.</desc>
+    <defs>
+        <marker id="bank-connection-flow-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">CONNECT</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="136" y2="24"/>
+    <text class="dg-eyebrow" x="164" y="16">AUTHORIZE</text>
+    <line class="dg-hairline" x1="164" y1="24" x2="276" y2="24"/>
+    <text class="dg-eyebrow" x="304" y="16">CHOOSE</text>
+    <line class="dg-hairline" x1="304" y1="24" x2="416" y2="24"/>
+    <text class="dg-eyebrow" x="444" y="16">SYNC</text>
+    <line class="dg-hairline" x1="444" y1="24" x2="556" y2="24"/>
+    <text class="dg-eyebrow" x="584" y="16">YOU GET</text>
+    <line class="dg-hairline" x1="584" y1="24" x2="696" y2="24"/>
+    <path class="dg-edge" d="M136,108 H164" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M276,108 H304" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M416,108 H444" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M556,108 H584" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M136,224 H164" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M276,224 H304" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M416,224 H444" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge" d="M556,224 H584" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <path class="dg-edge dg-edge-dashed" d="M500,80 V60 Q500,52 492,52 H228 Q220,52 220,60 V80" marker-end="url(#bank-connection-flow-en-arrow)"/>
+    <text class="dg-eyebrow" x="360" y="46" text-anchor="middle">CONSENT RUNS OUT → RECONNECT</text>
+    <rect class="dg-mask" x="24" y="80" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="80" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="80" y="104" text-anchor="middle">Your bank</text>
+    <text class="dg-sub" x="80" y="120" text-anchor="middle">by country</text>
+    <rect class="dg-mask" x="164" y="80" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="164" y="80" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="220" y="104" text-anchor="middle">Bank consent</text>
+    <text class="dg-sub" x="220" y="120" text-anchor="middle">on the bank's site</text>
+    <rect class="dg-mask" x="304" y="80" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="304" y="80" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="104" text-anchor="middle">Map accounts</text>
+    <text class="dg-sub" x="360" y="120" text-anchor="middle">create or link</text>
+    <rect class="dg-mask" x="444" y="80" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="444" y="80" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="500" y="104" text-anchor="middle">Every 6 hours</text>
+    <text class="dg-sub" x="500" y="120" text-anchor="middle">or on demand</text>
+    <rect class="dg-mask" x="584" y="80" width="112" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="584" y="80" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="640" y="104" text-anchor="middle">Transactions</text>
+    <text class="dg-sub" x="640" y="120" text-anchor="middle">and balances</text>
+    <rect class="dg-mask" x="24" y="196" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="24" y="196" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="80" y="220" text-anchor="middle">Broker, exchange</text>
+    <text class="dg-sub" x="80" y="236" text-anchor="middle">Kraken, Binance…</text>
+    <rect class="dg-mask" x="164" y="196" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="164" y="196" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="220" y="220" text-anchor="middle">API key</text>
+    <text class="dg-sub" x="220" y="236" text-anchor="middle">read-only, checked</text>
+    <rect class="dg-mask" x="304" y="196" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="304" y="196" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="360" y="220" text-anchor="middle">Map accounts</text>
+    <text class="dg-sub" x="360" y="236" text-anchor="middle">create or link</text>
+    <rect class="dg-mask" x="444" y="196" width="112" height="56" rx="6"/>
+    <rect class="dg-node" x="444" y="196" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="500" y="220" text-anchor="middle">Every 6 hours</text>
+    <text class="dg-sub" x="500" y="236" text-anchor="middle">or on demand</text>
+    <rect class="dg-mask" x="584" y="196" width="112" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="584" y="196" width="112" height="56" rx="6"/>
+    <text class="dg-name" x="640" y="220" text-anchor="middle">Balances</text>
+    <text class="dg-sub" x="640" y="236" text-anchor="middle">what you hold</text>
+    <line class="dg-hairline" x1="24" y1="168" x2="696" y2="168"/>
+    <text class="dg-sub" x="24" y="280">Wise connects with an API key but brings in transactions too, like a bank.</text>
+</svg>
