@@ -30,6 +30,11 @@ The download follows the filters you have on, so before you click it:
 Then upload the file as it comes. There is no need to open it, rename columns
 or delete rows.
 
+You do not need to keep this page open: with **Banktrack** chosen, the File step
+of the import has the same steps under **How to export your data from
+Banktrack**, with a link back to this guide that opens in a new tab, so the file
+you already picked stays.
+
 ## How the columns are read
 
 ```mermaid
@@ -83,6 +88,11 @@ change. Cash accounts get no bank. Accounts named like one of your manual
 accounts go into it unless you choose otherwise, and an account you have
 connected is never touched: its Banktrack history goes into a separate manual
 account.
+
+Accounts you closed in Banktrack long ago come in too. One that ends at a zero
+balance, or has had no movements for over a year, comes with **Archive after
+import** ticked, so it is archived once the import is done, with its history
+intact. Untick it to keep it in view.
 
 ![The accounts step with four accounts from a Banktrack export, one of them with a new bank of its own](/docs/documentation/full-import-accounts.png)
 

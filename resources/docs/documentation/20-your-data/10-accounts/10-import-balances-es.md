@@ -22,6 +22,10 @@ Con dos columnas basta: una fecha y un saldo. Las cuentas de inversión, jubilac
 
 Las fechas se leen sin preguntar cuando el archivo no deja duda, como pasa con `2026-03-31`. Cuando sí admite dos lecturas (`03/04/2026` es el 3 de abril o el 4 de marzo), se te pregunta cuál es en lugar de adivinarlo: equivocarse ahí mueve un año de historial.
 
+La primera vez que importas a la cuenta un archivo con esas columnas, la IA sugiere cuál es la fecha, el saldo y el importe invertido, y el paso muestra **Sugerencia hecha con IA** mientras el mapeo siga siendo su sugerencia. Solo ve la fila de cabecera y el formato de cada columna, ninguna de las filas de debajo, así que no necesita tu consentimiento de IA. Corrige lo que esté mal; cuando una importación trae al menos un saldo, el mapeo se guarda para la cuenta y el siguiente archivo que tenga las columnas que usa lo recibe tal cual. Más detalles en [Importar transacciones](/documentation/transactions/import).
+
+Si la fecha lleva una hora detrás (`2026-03-31 23:59`), la hora se descarta y se guarda el día tal como está escrito. Una fecha con un año anterior a 1900 o posterior a 9999 no se puede leer, y esa fila se queda fuera.
+
 El paso de vista previa muestra las primeras filas tal como se han leído. Si ahí las fechas o los importes se ven mal, vuelve atrás y cambia el mapeo en lugar de importar y arreglarlo después.
 
 ## Después de importar

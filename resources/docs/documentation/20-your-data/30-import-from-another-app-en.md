@@ -7,7 +7,7 @@ Coming from another finance app? Bring its whole export over in one go: your acc
 ## Quick start
 
 1. Open **Settings → Import from another app**, or **Coming from another app?** on the accounts step while you set up your account.
-2. Say where you are coming from and upload the file.
+2. Say where you are coming from and upload the file, or every file of the export.
 3. Check the columns.
 4. Decide what happens to each account.
 5. Check the categories.
@@ -29,20 +29,25 @@ time, use [Import transactions](/documentation/transactions/import) instead.
 
 ## What your file needs
 
-One file, exported from your previous app or kept by you:
+One export from your previous app, or a spreadsheet you kept yourself, in one
+file or split into several:
 
-- CSV, XLS, XLSX or Numbers, up to 10 MB.
+- CSV, XLS, XLSX or Numbers, up to 10 MB each.
 - One row per transaction.
 - A date, an amount in a single column with expenses negative, and a description.
+  Money Pro, which writes every amount without a sign, is the exception: see
+  [Coming from Money Pro](#coming-from-money-pro).
 - A column saying which account each row belongs to. Without one, choose **All
   rows are one account** and every row goes into a single account named after
   the file.
 
-Your browser reads the file. Nothing is saved until you confirm the last step,
-and only the columns you map are imported.
+Your browser reads the file. To detect its columns, our AI provider only sees
+the headers and the shape of the data, never your rows. Nothing is saved until
+you confirm the last step, and only the columns you map are imported.
 
-Coming from Banktrack? Its export is recognized and filled in for you: see
-[Import from Banktrack](/documentation/import-from-another-app/banktrack).
+Coming from Banktrack or Money Pro? Their exports are recognized and filled in
+for you: see [Import from Banktrack](/documentation/import-from-another-app/banktrack)
+and [Coming from Money Pro](#coming-from-money-pro).
 
 ## The import, step by step
 
@@ -59,9 +64,24 @@ flowchart TD
 
 ### File
 
-Pick where you are coming from: **Banktrack**, or **Another app or my own
-spreadsheet**. Then upload the file. A Banktrack export is recognized by its
-headers whichever you picked, and its columns are filled in for you.
+Pick where you are coming from: **Banktrack**, **Money Pro**, or **Another app
+or my own spreadsheet**. Then upload the file. A Banktrack or Money Pro export is
+recognized by its headers whichever you picked, and its columns are filled in
+for you. With Banktrack, **How to export your data from Banktrack** spells out
+the steps in Banktrack and links to the [full guide](/documentation/import-from-another-app/banktrack).
+
+Some apps split one export into several files (Money Pro cuts it every 1,000
+rows). Pick or drop them all at once, or add them with **Add another file**:
+files with the same columns are read as one export. Each file is listed with its
+rows, and a line sums up the files, the transactions and the months they cover.
+
+- A file whose columns differ from the first is refused, naming both files, and
+  you cannot continue until you remove it.
+- A file with the same name as one already in the list is skipped.
+- An unreadable row is reported with its file and row number, such as
+  "export-part-2.csv, row 12".
+
+![The file step with a Money Pro export in two files, both listed and the Money Pro format recognized](/docs/documentation/full-import-money-pro-files.png)
 
 ![The file step, with a Banktrack export uploaded and the Banktrack format recognized](/docs/documentation/full-import-file.png)
 
@@ -86,6 +106,13 @@ Each piece of a transaction comes from one column of your file. Whisper Money
 guesses what it can, you correct the rest, and the choice is remembered for the
 next file from the same app.
 
+With **Another app or my own spreadsheet**, when no saved choice fits the file,
+the AI suggests which column holds the date, the amount, the description and the
+other shared fields, and the step shows **Suggested by AI** while the mapping is
+still its suggestion. Like everywhere else, it only sees each column's header and
+the shape of its data, never your rows. The account, category and notes columns
+are still worked out from the headers.
+
 ![The columns step, with the date, amount, description, account and category columns of a Banktrack export already matched](/docs/documentation/full-import-columns.png)
 
 <div class="cards-wrapper">
@@ -94,7 +121,8 @@ next file from the same app.
 ### Required
 
 - **Date**, with its format.
-- **Amount**, signed as in the file: a negative amount is an expense.
+- **Amount**, signed as in the file: a negative amount is an expense (except
+  in a Money Pro export, whose type decides it).
 - **Description**.
 - **Account**: each different value becomes an account. Choose **All rows are
   one account** when the file has no such column.
@@ -137,6 +165,19 @@ it.
 
 ![The accounts step, with four accounts from the file and a new bank created for one the list does not know](/docs/documentation/full-import-accounts.png)
 
+#### Accounts that look inactive
+
+Moving in often brings accounts you stopped using years ago. An account to be
+created looks inactive when it ends at a zero balance (its last balance, or the
+sum of its movements when the file has no balances), or when its last movement is
+more than a year old. When any does, the step says how many and each one gets an
+**Archive after import** box, already ticked.
+
+Untick the ones you want to keep in view. The ticked ones are archived once the
+import is done: they keep all their transactions and balances, and you can bring
+them back any time from the Bank accounts settings. Accounts you send into one of
+yours, merge, or leave out are never offered.
+
 ### Categories
 
 Each category in the file is matched against yours by name. The ones you
@@ -168,6 +209,36 @@ The import runs in the background. You can close the tab and come back later:
 the progress is waiting in Settings.
 
 ![The import finished, with the accounts, categories and transactions it brought in](/docs/documentation/full-import-done.png)
+
+## Coming from Money Pro
+
+Money Pro cuts its export into files of 1,000 rows, each holding every account.
+Choose **Money Pro** and upload all of them at once. A Money Pro export in Spanish
+is recognized by its headers (`Fecha`, `Cantidad`, `Cuenta`, `Monto recibido`,
+`Cuenta de destino`, `Saldo`, `Tipo de transacción`), its columns are filled in,
+and its subcategories are split at `:`.
+
+Its amounts have no sign, so the transaction type decides what each row becomes:
+
+| Tipo de transacción                | In Whisper Money                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Gasto                              | An expense: the amount comes in negative.                                                                                 |
+| Ingreso                            | Income: the amount comes in positive.                                                                                     |
+| Transferencia de dinero            | Two own transfers: the amount out of **Cuenta**, and **Monto recibido**, in its own currency, into **Cuenta de destino**. |
+| Ajuste de saldo, Saldo de apertura | No transaction, only the balance that day, from **Saldo**.                                                                |
+
+- **Saldo** gives the daily balance on every row.
+- An account that only ever appears as a transfer destination is created too.
+- Each amount's currency comes from its symbol. The Columns step lists every
+  symbol found under **Currencies**, each with a currency to confirm: `€` is EUR,
+  `£` is GBP, and `$` is your own currency when that is a dollar or a peso, USD
+  otherwise. An account takes the currency of its rows.
+- A row with no description takes its category's name, or failing that its type.
+- Money Pro has no transaction ID, so a second import of the same export relies
+  on the date, amount and description to skip what is already there.
+- The currencies you pick are not remembered: a later import asks again.
+
+![The Currencies card of the columns step, with each currency symbol of a Money Pro export and the currency it is read as](/docs/documentation/full-import-money-pro-currencies.png)
 
 ## After the import
 
@@ -218,6 +289,11 @@ open during your first days.
 Yes. Choose **All rows are one account** in the Account field and everything
 goes into one account named after the file. For several accounts, import one
 file per account.
+
+### My export came in several files. Do I import them one by one?
+
+No. Pick them all in the File step, or add them with **Add another file**. As
+long as they have the same columns, they are read and imported as one export.
 
 ### What is not imported?
 

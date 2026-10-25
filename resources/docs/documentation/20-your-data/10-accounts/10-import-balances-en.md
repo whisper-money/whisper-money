@@ -22,6 +22,10 @@ Two columns are enough: a date and a balance. Investment, retirement and savings
 
 Dates are read without asking when the file leaves no doubt, as `2026-03-31` does. When it does read two ways — `03/04/2026` is the 3rd of April or the 4th of March — you are asked which, rather than guessed at: getting that wrong moves a year of history.
 
+The first time you import a file with those columns into the account, the AI suggests which column is the date, the balance and the invested amount, and the step shows **Suggested by AI** while the mapping is still its suggestion. It only sees the header row and the shape of each column, none of the rows below it, so it needs no AI consent. Correct whatever is wrong; once an import brings in at least one balance, the mapping is saved for the account and the next file that has the columns it uses gets it as it is. More on how it works in [Import transactions](/documentation/transactions/import).
+
+A time after the date (`2026-03-31 23:59`) is dropped and the day as written is kept. A date with a year before 1900 or after 9999 cannot be read, and that row is left out.
+
 The preview step shows the first rows as they were read. If the dates or the amounts look wrong there, go back and change the mapping rather than importing and fixing afterwards.
 
 ## After importing
