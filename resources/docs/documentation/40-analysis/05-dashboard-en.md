@@ -1,8 +1,8 @@
 # Dashboard
 
 The dashboard is the first screen after you sign in: your net worth and how it
-has moved, every account at a glance, and what you have been spending on
-lately. Each block is a summary with a way into the page that has the detail.
+has moved, every account at a glance, and what you have been spending on lately.
+Each block is a summary with a way into the page that has the detail.
 
 {{TOC}}
 
@@ -13,8 +13,8 @@ lately. Each block is a summary with a way into the page that has the detail.
    month and over the last 12 months.
 3. Look down the **Accounts** cards for a balance that moved more than you
    expected.
-4. Check **Top spending categories** and **Cashflow** to see where this
-   month's money is going.
+4. Check **Top spending categories** and **Cashflow** to see where this month's
+   money is going.
 5. Switch on **privacy mode** from the user menu before you open the app in
    public.
 
@@ -66,9 +66,10 @@ Net worth adds up your accounts' balances, converted to your currency:
 - An **archived** account stops counting from the day it was archived. The
   months before keep it.
 
-The rules, and why credit cards are left out, are on the
-[Accounts page](/documentation/accounts#net-worth). Accounts hidden from the
-dashboard still count: hiding only takes the card away.
+The [Accounts page](/documentation/accounts#net-worth) has the same rules, and
+[Credit cards](/documentation/accounts/credit-cards) explains why cards are left
+out. Accounts hidden from the dashboard still count: hiding only takes the card
+away.
 
 ### Including loans and real estate
 
@@ -96,35 +97,37 @@ The controls next to the title change the view:
 
 - **Monthly / Daily** switches between the last 12 months and the last 30 days.
   In the daily view the trends read **today** and **for the last 30 days**.
-- **Aggregate** draws the stacked balances, **MoM** the change from one month
-  (or day) to the next as an amount, and **MoM%** the same change as a
-  percentage.
+- The three icons pick the chart: the bars draw the stacked balances, the trend
+  line the change from one month (or day) to the next as an amount, and the
+  percent sign the same change as a percentage.
 
 On a phone, the period and the chart type move into the settings button.
 
 ## Account cards
 
-Under the chart there is one card per account, in the order you choose. Each
-card shows:
+Under the chart there is one card per account, in the order you choose. Most
+cards show:
 
 - **The balance today**, in your currency.
 - **The change against last month**, green when it went up and red when it went
   down. Hover or tap it for the change as a percentage.
-- **A sparkline** of the last 12 months. Hover it to read a month's balance,
-  and for investment, retirement and savings accounts what you had invested.
+- **A sparkline** of the last 12 months. Hover it to read a month's balance, and
+  for investment, retirement and savings accounts what you had invested.
 
 A few cards work differently:
 
-- **Credit cards** show how much of the limit is in use instead of a balance.
-  See [Credit cards](/documentation/accounts/credit-cards).
+- **Credit cards** show how much of the limit is in use instead of a balance,
+  with no change against last month, and their sparkline follows that usage
+  through the current statement. See
+  [Credit cards](/documentation/accounts/credit-cards).
 - **Real estate with a linked mortgage** shows its equity: the market value
-  minus what is still owed, with the bank that holds the mortgage under the
-  name. The loan itself gets no card of its own.
+  minus what is still owed, with "Mortgage at" and the lender under the name.
+  The loan itself gets no card of its own.
 
-Click an account's name to open it. On a manual account, click the balance to
-open **Update balance** (**Update owed amount** on a loan) and record a new figure without leaving the
-dashboard. Connected accounts update their balance on their own, so theirs is
-not clickable.
+Click an account's name to open it. On a manual account other than a credit
+card, click the balance to open **Update balance** (**Update owed amount** on a
+loan) and record a new figure without leaving the dashboard. Connected accounts
+update their balance on their own, so theirs is not clickable.
 
 ### Hiding and reordering accounts
 
@@ -135,8 +138,8 @@ Press the pencil next to **Accounts** to open **Edit accounts**:
 
 The order is shared with the Accounts page. Hiding only affects the dashboard:
 the account still counts towards net worth and appears everywhere else. To put
-away an account you no longer use, [archive it](/documentation/accounts#archiving-an-account)
-instead.
+away an account you no longer use,
+[archive it](/documentation/accounts#archiving-an-account) instead.
 
 ## Spending blocks
 
@@ -155,10 +158,10 @@ to compare with.
 
 ### Top labels
 
-The same view for [labels](/documentation/labels): the ten labels you spent
-most on in the last 30 days. A transaction with two labels counts under both,
-so the labels can add up to more than you spent. The labels behind savings
-goals are left out, because they track saving, not spending.
+The same view for [labels](/documentation/labels): the ten labels you spent most
+on in the last 30 days. A transaction with two labels counts under both, so the
+labels can add up to more than you spent. The labels behind savings goals are
+left out, because they track saving, not spending.
 
 ### Cashflow
 
@@ -173,15 +176,15 @@ worked out.
 When you have a monthly savings goal, a card shows this month across all of
 them: what you have saved against the sum of their targets, the days left, how
 many goals you met last month, and a line per goal. **See all** opens Planning.
-The [savings goals page](/documentation/savings-goals#where-else-monthly-goals-show-up)
+The
+[savings goals page](/documentation/savings-goals#where-else-monthly-goals-show-up)
 explains the figures.
 
 ### The monthly summary notice
 
-Once your [monthly summary](/documentation/monthly-summary) for the month before
-has been sent, a notice at the top of the dashboard says
-it is ready and gives its headline. **Open it** shows the report; the cross
-puts the notice away on every device.
+When a new [monthly summary](/documentation/monthly-summary) has been sent, a
+notice at the top of the dashboard says it is ready and gives its headline.
+**Open it** shows the report; the cross puts the notice away on every device.
 
 ## Privacy mode
 
@@ -201,23 +204,31 @@ turn it off.
 
 ### What it hides
 
-- **Every amount, everywhere in the app.** The digits are replaced by asterisks,
-  so `$1,234.56` reads `$*,***.**`. Chart tooltips are masked too.
-- **Transaction descriptions.** Each one is swapped for a made-up description
-  such as "Grocery Store" or "Coffee Shop Purchase", in your language. A
-  transaction always gets the same made-up description, so the list still
-  reads like a list. Categories, labels and dates are left as they are.
+- **Amounts.** On the dashboard, in the transaction list, in budgets, goals and
+  cashflow, the digits are replaced by asterisks, so `$1,234.56` reads
+  `$*,***.**`. Chart tooltips are masked too.
+- **Transaction descriptions in the transaction list.** Each one is swapped for
+  a made-up description such as "Grocery Store" or "Coffee Shop Purchase", in
+  your language. The same description always gets the same stand-in, so the list
+  still reads like a list. Categories, labels and dates are left as they are.
 
-Percentages stay visible: the trends, the savings rate and shares give no
-amount away, and they keep the dashboard useful with the numbers hidden.
+Percentages stay visible: the trends, the savings rate and shares give no amount
+away, and they keep the dashboard useful with the numbers hidden.
+
+Privacy mode is a screen for casual glances, not a lock. A few places still show
+real figures: the headline of the monthly summary notice, the axis of the
+month-over-month charts, and some dialogs where you edit a transaction or a
+balance. Descriptions also stay readable outside the transaction list, for
+example when splitting a transaction or linking it to a goal.
 
 ### Revealing one block
 
-Sometimes you need one figure, not all of them. With privacy mode on, each
-dashboard block gets an eye button next to its title: the net worth chart,
+Sometimes you need one figure, not all of them. With privacy mode on, these
+dashboard blocks get an eye button next to their title: the net worth chart,
 every account card, **Top spending categories**, **Top labels** and
-**Cashflow**. Press it to show that block's amounts, tooltips included, while
-the rest of the page stays hidden. Press it again to hide them.
+**Cashflow**. **Monthly savings** has none, so its amounts stay hidden. Press it
+to show that block's amounts, tooltips included, while the rest of the page
+stays hidden. Press it again to hide them.
 
 ![Privacy mode on the dashboard: one account card revealed with its eye button pressed, the others still showing asterisks](/docs/documentation/dashboard-privacy-reveal.png)
 

@@ -1207,6 +1207,13 @@ SHOTS['api-key-form'] = async (page) => {
 /** Privacy mode is a per-browser setting, kept in local storage. */
 const PRIVACY_MODE_KEY = 'privacy-mode-enabled';
 
+function setPrivacyMode(page, enabled) {
+    return page.evaluate(
+        ([key, on]) => localStorage.setItem(key, JSON.stringify(on)),
+        [PRIVACY_MODE_KEY, enabled],
+    );
+}
+
 /**
  * The dashboard with every deferred block drawn. Taller than the other shots,
  * because the net worth chart and the account cards only read as a dashboard
@@ -1215,10 +1222,7 @@ const PRIVACY_MODE_KEY = 'privacy-mode-enabled';
 async function openDashboard(page, { privacyMode = false } = {}) {
     await page.setViewportSize({ width: VIEWPORT.width, height: 1600 });
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'domcontentloaded' });
-    await page.evaluate(
-        ([key, enabled]) => localStorage.setItem(key, JSON.stringify(enabled)),
-        [PRIVACY_MODE_KEY, privacyMode],
-    );
+    await setPrivacyMode(page, privacyMode);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="net-worth-chart"]').waitFor();
     await page.getByText('Top spending categories').waitFor();
@@ -1244,9 +1248,10 @@ SHOTS.dashboard = async (page) => {
 };
 
 SHOTS['dashboard-privacy-reveal'] = async (page) => {
-    await openDashboard(page, { privacyMode: true });
-
     try {
+        await openDashboard(page, { privacyMode: true });
+        // The first eye belongs to the net worth chart; the second is the
+        // first account card's.
         await page
             .getByRole('button', { name: 'Show amounts in this block' })
             .nth(1)
@@ -1254,14 +1259,12 @@ SHOTS['dashboard-privacy-reveal'] = async (page) => {
         await page.mouse.move(0, 0);
         await page.waitForTimeout(800);
 
-        return await union(accountCards(page));
+        return accountCards(page);
     } finally {
         // The setting outlives the page, so the shots after this one would
-        // otherwise be taken with every amount masked.
-        await page.evaluate(
-            (key) => localStorage.setItem(key, 'false'),
-            PRIVACY_MODE_KEY,
-        );
+        // otherwise be taken with every amount masked. The page on screen only
+        // reads it on load, so the reveal is still there to be captured.
+        await setPrivacyMode(page, false);
     }
 };
 

@@ -60,23 +60,24 @@ El patrimonio neto suma los saldos de tus cuentas, convertidos a tu moneda:
 
 - **Las cuentas corrientes, de ahorro, inversión, jubilación y otras** siempre
   suman su saldo. Una cuenta en números rojos resta del total.
-- **Los inmuebles** suman su valor de mercado y **los préstamos** restan lo que
-  debes, pero solo si los incluyes. Los dos empiezan desactivados para los
-  usuarios nuevos.
+- **Los inmuebles** (bienes raíces) suman su valor de mercado y **los
+  préstamos** restan lo que debes, pero solo si los incluyes. Los dos empiezan
+  desactivados para los usuarios nuevos.
 - **Las tarjetas de crédito** nunca cuentan, debas lo que debas en ellas.
 - Una cuenta **archivada** deja de contar desde el día en que la archivaste. Los
   meses anteriores la mantienen.
 
-Las reglas, y por qué las tarjetas de crédito se quedan fuera, están en la
-[página de cuentas](/documentation/accounts#patrimonio-neto). Las cuentas
-ocultas en el panel siguen contando: ocultarlas solo quita la tarjeta.
+La [página de cuentas](/documentation/accounts#patrimonio-neto) tiene las mismas
+reglas, y [Tarjetas de crédito](/documentation/accounts/credit-cards) explica
+por qué las tarjetas se quedan fuera. Las cuentas ocultas en el panel siguen
+contando: ocultarlas solo quita la tarjeta.
 
 ### Incluir préstamos e inmuebles
 
 Abre el botón de ajustes del gráfico (el icono de controles, arriba a la
-derecha) y activa **Incluir préstamos** o **Incluir bienes raíces**. La
-elección se guarda en tu cuenta y vale para tu patrimonio neto en todas partes,
-no solo en este gráfico: los logros y el resumen mensual también la usan.
+derecha) y activa **Incluir préstamos** o **Incluir bienes raíces**. La elección
+se guarda en tu cuenta y vale para tu patrimonio neto en todas partes, no solo
+en este gráfico: los logros y el resumen mensual también la usan.
 
 ### Leer el gráfico
 
@@ -95,18 +96,18 @@ barra por debajo de cero.
 
 Los controles junto al título cambian la vista:
 
-- **Mensual / Diario** alterna entre los últimos 12 meses y los últimos 30
-  días. En la vista diaria las tendencias dicen **hoy** y **en los últimos 30
-  días**.
-- **Aggregate** dibuja los saldos apilados, **MoM** el cambio de un mes (o día)
-  al siguiente como importe y **MoM%** el mismo cambio en porcentaje.
+- **Mensual / Diario** alterna entre los últimos 12 meses y los últimos 30 días.
+  En la vista diaria las tendencias dicen **hoy** y **en los últimos 30 días**.
+- Los tres iconos eligen el gráfico: las barras dibujan los saldos apilados, la
+  línea de tendencia el cambio de un mes (o día) al siguiente como importe y el
+  signo de porcentaje el mismo cambio en porcentaje.
 
 En el móvil, el periodo y el tipo de gráfico pasan al botón de ajustes.
 
 ## Tarjetas de cuentas
 
-Debajo del gráfico hay una tarjeta por cuenta, en el orden que elijas. Cada una
-muestra:
+Debajo del gráfico hay una tarjeta por cuenta, en el orden que elijas. La
+mayoría muestra:
 
 - **El saldo de hoy**, en tu moneda.
 - **El cambio respecto al mes anterior**, en verde si ha subido y en rojo si ha
@@ -118,15 +119,18 @@ muestra:
 Algunas tarjetas funcionan distinto:
 
 - **Las tarjetas de crédito** muestran cuánto del límite está en uso en lugar de
-  un saldo. Consulta [Tarjetas de crédito](/documentation/accounts/credit-cards).
+  un saldo, sin cambio respecto al mes anterior, y su minigráfico sigue ese uso
+  durante el extracto en curso. Consulta
+  [Tarjetas de crédito](/documentation/accounts/credit-cards).
 - **Un inmueble con hipoteca vinculada** muestra su valor neto: el valor de
-  mercado menos lo que queda por pagar, con el banco de la hipoteca bajo el
+  mercado menos lo que queda por pagar, con «Hipoteca en» y la entidad bajo el
   nombre. El préstamo no tiene tarjeta propia.
 
-Pulsa el nombre de una cuenta para abrirla. En una cuenta manual, pulsa el saldo
-para abrir **Actualizar balance** (**Actualizar monto adeudado** en un
-préstamo) y apuntar una cifra nueva sin salir del panel. Las cuentas conectadas
-actualizan su saldo solas, así que el suyo no se puede pulsar.
+Pulsa el nombre de una cuenta para abrirla. En una cuenta manual que no sea una
+tarjeta de crédito, pulsa el saldo para abrir **Actualizar balance**
+(**Actualizar monto adeudado** en un préstamo) y apuntar una cifra nueva sin
+salir del panel. Las cuentas conectadas actualizan su saldo solas, así que el
+suyo no se puede pulsar.
 
 ### Ocultar y reordenar cuentas
 
@@ -145,9 +149,9 @@ guardar una cuenta que ya no usas,
 ### Principales categorías de gasto
 
 Tus diez categorías con más gasto en los **últimos 30 días**, cada una con su
-parte del total y una barra para compararlas. La flecha junto a una categoría
-la compara con los 30 días anteriores, y no aparece cuando no había gasto con
-el que comparar.
+parte del total y una barra para compararlas. La flecha junto a una categoría la
+compara con los 30 días anteriores, y no aparece cuando no había gasto con el
+que comparar.
 
 - Una categoría padre con subcategorías se puede desplegar para ver cómo se
   reparte.
@@ -183,10 +187,9 @@ explica las cifras.
 
 ### El aviso del resumen mensual
 
-Cuando se ha enviado tu [resumen mensual](/documentation/monthly-summary) del mes
-anterior, un aviso arriba del panel dice que está listo y muestra su titular.
-**Abrirlo** enseña el informe; la cruz guarda el aviso en todos tus
-dispositivos.
+Cuando se ha enviado un [resumen mensual](/documentation/monthly-summary) nuevo,
+un aviso arriba del panel dice que está listo y muestra su titular. **Abrirlo**
+enseña el informe; la cruz guarda el aviso en todos tus dispositivos.
 
 ## Modo privado
 
@@ -195,36 +198,45 @@ tren, en una cafetería o mientras compartes pantalla.
 
 ### Activarlo y desactivarlo
 
-Abre el menú de usuario (tu nombre, abajo en la barra lateral) y elige
-**Activar modo privado**. Elige **Desactivar modo privado** en el mismo sitio
-para quitarlo. Mientras está activo, el logo se convierte en una casita de
-pájaros, así lo reconoces de un vistazo.
+Abre el menú de usuario (tu nombre, abajo en la barra lateral) y elige **Activar
+modo privado**. Elige **Desactivar modo privado** en el mismo sitio para
+quitarlo. Mientras está activo, el logo se convierte en una casita de pájaros,
+así lo reconoces de un vistazo.
 
 El ajuste es del navegador, no de tu cuenta: activarlo en el portátil deja el
 móvil como estaba, y sigue activo en ese navegador hasta que lo quites.
 
 ### Qué oculta
 
-- **Todos los importes, en toda la aplicación.** Las cifras se sustituyen por
+- **Los importes.** En el panel, en la lista de transacciones, en los
+  presupuestos, los objetivos y el flujo de caja, las cifras se sustituyen por
   asteriscos, así que `1.234,56 €` se lee `*.***,** €`. Los tooltips de los
   gráficos también se ocultan.
-- **Las descripciones de las transacciones.** Cada una se cambia por una
-  inventada, como «Supermercado» o «Compra en cafetería», en tu idioma. Una
-  transacción recibe siempre la misma descripción inventada, así que la lista
-  sigue pareciendo una lista. Categorías, etiquetas y fechas no cambian.
+- **Las descripciones en la lista de transacciones.** Cada una se cambia por una
+  inventada, como «Supermercado» o «Compra en cafetería», en tu idioma. La misma
+  descripción recibe siempre la misma sustituta, así que la lista sigue
+  pareciendo una lista. Categorías, etiquetas y fechas no cambian.
 
 Los porcentajes siguen visibles: las tendencias, la tasa de ahorro y los
 repartos no revelan ningún importe, y mantienen el panel útil con las cifras
 ocultas.
 
+El modo privado sirve para miradas de paso, no es un candado. Algunos sitios
+todavía enseñan cifras reales: el titular del aviso del resumen mensual, el eje
+de los gráficos de cambio mes a mes y algunos diálogos en los que editas una
+transacción o un saldo. Las descripciones también siguen legibles fuera de la
+lista de transacciones, por ejemplo al dividir una transacción o al vincularla a
+un objetivo.
+
 ### Mostrar un solo bloque
 
-A veces necesitas una cifra, no todas. Con el modo privado activo, cada bloque
-del panel tiene un botón con un ojo junto al título: el gráfico de patrimonio
-neto, cada tarjeta de cuenta, **Principales categorías de gasto**,
-**Principales etiquetas** y **Flujo de Caja**. Púlsalo para ver los importes de
-ese bloque, tooltips incluidos, mientras el resto de la página sigue oculto.
-Vuelve a pulsarlo para ocultarlos.
+A veces necesitas una cifra, no todas. Con el modo privado activo, estos bloques
+del panel tienen un botón con un ojo junto al título: el gráfico de patrimonio
+neto, cada tarjeta de cuenta, **Principales categorías de gasto**, **Principales
+etiquetas** y **Flujo de Caja**. **Ahorro mensual** no lo tiene, así que sus
+importes siguen ocultos. Púlsalo para ver los importes de ese bloque, tooltips
+incluidos, mientras el resto de la página sigue oculto. Vuelve a pulsarlo para
+ocultarlos.
 
 ![El modo privado en el panel: una tarjeta de cuenta visible con su botón del ojo pulsado y las demás todavía con asteriscos](/docs/documentation/dashboard-privacy-reveal.png)
 
