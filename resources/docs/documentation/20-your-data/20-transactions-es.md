@@ -107,7 +107,7 @@ Usa filtros cuando la lista sea demasiado grande.
 Puedes filtrar por:
 
 - Rango de fechas, o un mes, trimestre o año entero con un clic
-- Importe: cuánto fue un gasto o un ingreso
+- Valor: cuánto fue un gasto o un ingreso
 - Categoría
 - Cuenta
 - Etiqueta
@@ -126,7 +126,7 @@ el rango actual aparece pulsado.
 Al buscar una categoría padre en el filtro de categorías salen también sus
 subcategorías, así que puedes marcar la padre o solo la que buscas.
 
-### Importe
+### Valor
 
 El filtro **Valor** mira cuánto es una transacción. Elige primero **Gasto** o
 **Ingresos** y luego escribe **Mín** y **Máx** como importes normales, sin signo.
@@ -216,8 +216,9 @@ Si creas o cambias reglas después de que existan transacciones, las antiguas pu
 
 Usa la reevaluación cuando quieras que las reglas vuelvan a ejecutarse sobre transacciones existentes.
 
-Lánzala sobre toda la lista con **Actualizar categorías automáticamente**, en el
-menú **Más acciones** que hay encima de la lista, o solo sobre las filas que
+Lánzala sobre todas tus transacciones, tengas el filtro que tengas, con
+**Actualizar categorías automáticamente** en el menú **Más acciones** que hay
+encima de la lista, o solo sobre las filas que
 hayas seleccionado con **Reevaluar reglas** en la barra de acciones masivas.
 
 Úsala después de:

@@ -213,8 +213,8 @@ If you create or change rules after transactions already exist, older transactio
 
 Use re-evaluation when you want rules to run again on existing transactions.
 
-Run it on the whole list with **Update categories automatically**, in the **More
-actions** menu above the list, or on just the rows you selected with **Re-evaluate
+Run it on all your transactions, whatever filter is on, with **Update categories
+automatically** in the **More actions** menu above the list, or on just the rows you selected with **Re-evaluate
 rules** in the bulk actions bar.
 
 Use it after:

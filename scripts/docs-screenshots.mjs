@@ -355,13 +355,17 @@ const SPLIT_MARK = '[aria-label="This transaction is part of a split"]';
  * Give the next part of a split its category. The label picker beside it is a
  * combobox too, so the category ones are told apart by the placeholder they are
  * still showing — which also means each call lands on the next part along.
+ * Pass `trigger` to open a specific picker instead.
  */
-async function pickCategory(page, name) {
-    await dialog(page)
+async function pickCategory(
+    page,
+    name,
+    trigger = dialog(page)
         .getByRole('combobox')
         .filter({ hasText: 'Uncategorized' })
-        .first()
-        .click();
+        .first(),
+) {
+    await trigger.click();
     await page.getByPlaceholder('Search categories...').fill(name);
     await page
         .getByRole('option', { name: new RegExp(name) })
@@ -1104,15 +1108,11 @@ async function openQuickAdd(page) {
 
 SHOTS['transaction-quick-add'] = async (page) => {
     await openQuickAdd(page);
-    await dialog(page).getByTestId('category-chip').click();
-    await page
-        .getByPlaceholder('Search categories...')
-        .fill('Cafes, restaurants');
-    await page
-        .getByRole('option', { name: /Cafes, restaurants/ })
-        .first()
-        .click();
-    await page.waitForTimeout(400);
+    await pickCategory(
+        page,
+        'Cafes, restaurants',
+        dialog(page).getByTestId('category-chip'),
+    );
 
     return [dialog(page)];
 };

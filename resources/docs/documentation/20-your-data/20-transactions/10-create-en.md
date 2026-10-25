@@ -10,7 +10,7 @@ Add a transaction by hand when it did not arrive from a bank file or a connected
 2. Choose **Expense** or **Income** and type the amount.
 3. Type a description.
 4. Check the account, date and category chips under it.
-5. Press **Create Transaction**, or <kbd>⌘</kbd> <kbd>Enter</kbd> on a Mac and <kbd>Ctrl</kbd> <kbd>Enter</kbd> elsewhere.
+5. Press **Create Transaction**, or **⌘ Enter** on a Mac and **Ctrl Enter** elsewhere.
 
 ## Where the button is
 
@@ -24,7 +24,7 @@ When you have no account that can hold transactions, such as when all you have i
 
 The dialog opens short: the amount, the description, and a row of chips with sensible defaults. For most transactions that is all there is to check.
 
-![The Add Transaction dialog in its short form: the expense and income toggle and the amount at the top, the description below, and a row of chips for the account, the date, the category and the balance](/docs/documentation/transaction-quick-add.png)
+![The Add Transaction dialog in its short form: the expense and income toggle and the amount at the top, the description below, and a row of chips for the account, the date, a category already picked from its chip, and the balance](/docs/documentation/transaction-quick-add.png)
 
 - **Account**: the account you last added a transaction to by hand. On an account page it is that account. Click it to pick another one.
 - **Date**: **Today**. Click it to show the date field and pick another day.
@@ -41,7 +41,7 @@ Four fields are required: **amount**, **description**, **date** and **account**.
 
 - **Amount** is typed without a sign: the **Expense / Income** toggle next to it decides whether the money goes out or comes in.
 - **Description** is what you will recognise later, and what automation rules read.
-- **Date** decides which month the transaction is reported in. "Today" is today where you are, not in some other time zone.
+- **Date** decides which month the transaction is reported in. "Today" is today in your device's time zone.
 - **Account** decides which balance the transaction belongs to.
 
 **Category** and **labels** are optional and can be added at any time afterwards. When you search the category picker, a parent category comes with all its subcategories, so typing "Food" also lists Groceries, Food delivery and the rest of what sits under it. Notes sit behind an **Add note** button until you need them.
@@ -54,19 +54,21 @@ The currency picker inside the amount field starts on the account's currency. Ch
 
 When the two currencies differ, the dialog shows what the amount comes to in the account's currency, using the exchange rate on the transaction's date. Choosing another account puts the currency back to that account's.
 
+If there is no exchange rate for that day, the dialog shows only the amount you typed, and the account's balance is not moved even with the balance option on. Update it by hand if you need to.
+
 ## Adding several in a row
 
-**Save and add another** saves the transaction and keeps the dialog open for the next one. The account, the date, Expense or Income and the category stay as they were. The amount, the description and the notes are cleared, and the cursor goes back to the amount.
+**Save and add another** saves the transaction and keeps the dialog open for the next one. The account, the date, Expense or Income, the category and the labels stay as they were. The amount, the description and the notes are cleared, and the cursor goes back to the amount.
 
 It is the quickest way to enter a stack of receipts in one go.
 
 ## Keyboard shortcuts
 
-| Shortcut                                                                           | What it does                                                                                                                                  |
-| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| <kbd>⌘</kbd> <kbd>Enter</kbd> on a Mac, <kbd>Ctrl</kbd> <kbd>Enter</kbd> elsewhere | Saves: **Create Transaction** when adding, **Save Changes** when editing. It works while you are still typing in a field.                     |
-| <kbd>N</kbd>                                                                       | Opens the notes and puts the cursor in them. It does nothing while you are typing in a field, or before **More options** is open when adding. |
-| <kbd>Esc</kbd>                                                                     | Closes the dialog without saving.                                                                                                             |
+| Shortcut                                       | What it does                                                                                                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **⌘ Enter** on a Mac, **Ctrl Enter** elsewhere | Saves: **Create Transaction** when adding, **Save Changes** when editing. It works while you are still typing in a field.                     |
+| **N**                                          | Opens the notes and puts the cursor in them. It does nothing while you are typing in a field, or before **More options** is open when adding. |
+| **Esc**                                        | Closes the dialog without saving.                                                                                                             |
 
 On a screen wider than a phone, the buttons show their shortcut next to their name.
 
@@ -80,13 +82,13 @@ On an account connected to a bank the option is not offered: the bank is the sou
 
 A transaction created by hand is matched against your automation rules like any other. A rule only fills what you left empty: choose a category yourself and the rule will not replace it.
 
-When a rule matches, its name is shown after saving. When a rule chose the category while the short form was hiding it, the message says which category it picked and offers to undo the save.
+When a rule chose the category while the short form was hiding it, the message after saving says which category it picked and offers to undo the save. Otherwise, a matching rule is named in the message.
 
 The exception is a [duplicated](/documentation/transactions/duplicate) transaction, which keeps what the original had.
 
 ## Editing a transaction
 
-Click a transaction in the list to open the same dialog with what it holds. **Save Changes** saves it, and the bin button next to it deletes it after asking you to confirm. There is no Cancel button: the cross, <kbd>Esc</kbd> or clicking outside close it without saving.
+Click a transaction in the list to open the same dialog with what it holds. **Save Changes** saves it, and the bin button next to it deletes it after asking you to confirm. There is no Cancel button: the cross, **Esc** or clicking outside close it without saving.
 
 A transaction you created yourself can be changed entirely. One that came from your bank or from a file shows its bank details read-only, and keeps its category, labels, notes and date editable. See [Can I move the date of a transaction my bank sent?](/documentation/transactions#can-i-move-the-date-of-a-transaction-my-bank-sent).
 
@@ -100,6 +102,6 @@ Because money going out is a negative amount everywhere in Whisper Money. Report
 
 Yes. Pick the currency in the amount field. The transaction keeps the amount in that currency, and totals and the account's balance use it converted at the rate of the transaction's date.
 
-### Why did a transaction I added late at night land on the wrong day?
+### Which day does a transaction I add late at night get?
 
-It should not any more. Dates are calendar days in your own time zone, so a transaction added at 23:30 is dated today, not tomorrow. If an older one looks a day off, open it and fix the date.
+Today's. Dates are calendar days in your device's time zone, so a transaction added at 23:30 is dated today, not tomorrow, and it shows on that same day wherever you look at it.
