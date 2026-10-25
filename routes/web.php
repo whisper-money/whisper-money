@@ -272,7 +272,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');
     Route::post('transactions/export', TransactionExportController::class)
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:transaction-export')
         ->name('transactions.export');
     Route::post('transactions/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'bulk'])->name('transactions.re-evaluate-rules.bulk');
     Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');

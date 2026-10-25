@@ -73,7 +73,7 @@ export function TransactionExportButton({
         <>
             <Button
                 variant="outline"
-                className="flex gap-2"
+                className="flex gap-2 max-sm:size-9 max-sm:px-0"
                 onClick={handleClick}
                 disabled={
                     isDirectDownloading || (!hasMore && loadedIds.length === 0)

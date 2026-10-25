@@ -189,3 +189,19 @@ test('an export follows a payee sort with blanks first', function () {
 
     expect(array_column(exportedRows($user, ['sort' => 'creditor_name']), 1))->toBe(['Description', 'Blank', 'Named']);
 });
+
+test('the export keeps its own rate limit, apart from the api routes', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    foreach (range(1, 12) as $ignored) {
+        $this->actingAs($user)->getJson(route('api.transactions.count'))->assertOk();
+    }
+
+    $this->actingAs($user)->post(route('transactions.export'))->assertOk();
+
+    foreach (range(1, 9) as $ignored) {
+        $this->actingAs($user)->post(route('transactions.export'))->assertOk();
+    }
+
+    $this->actingAs($user)->post(route('transactions.export'))->assertTooManyRequests();
+});

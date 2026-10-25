@@ -1389,7 +1389,7 @@ export default function Transactions({
                         accounts={accounts}
                         enableSavedFilters={true}
                         actions={
-                            <div className="flex w-full items-center justify-between gap-2">
+                            <div className="flex w-full flex-wrap items-center justify-between gap-2">
                                 <TransactionActionsMenu
                                     transactions={allTransactions}
                                     hasTransactionalAccounts={
@@ -1402,7 +1402,7 @@ export default function Transactions({
                                     filters={filters}
                                 />
 
-                                <div className="flex items-center gap-2">
+                                <div className="ml-auto flex items-center gap-2">
                                     <TransactionExportButton
                                         params={clientFiltersToQueryParams(
                                             filters,

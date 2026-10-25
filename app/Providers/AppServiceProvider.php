@@ -93,6 +93,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by((string) $request->user()?->getAuthIdentifier());
         });
 
+        // A CSV export scans the user's whole filtered history, so ten a minute
+        // is generous for a person and a ceiling for a script. Named for the
+        // same reason as above: its own bucket, not the API routes' counter.
+        RateLimiter::for('transaction-export', function (Request $request): Limit {
+            return Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
         // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
         // to the MCP server) with our own on-brand Blade view.
         Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));
