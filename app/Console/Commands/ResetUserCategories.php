@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Actions\CreateDefaultCategories;
 use App\Models\User;
-use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 
 class ResetUserCategories extends Command
@@ -46,7 +45,6 @@ class ResetUserCategories extends Command
 
         if ($categoriesCount > 0) {
             $user->categories()->forceDelete();
-            DataVersion::bumpUser($user);
             $this->info("Deleted {$categoriesCount} existing categories.");
         } else {
             $this->info('No existing categories found.');

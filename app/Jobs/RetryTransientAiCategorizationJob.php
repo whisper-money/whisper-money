@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
@@ -24,7 +23,7 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class RetryTransientAiCategorizationJob implements ShouldBeUnique, ShouldQueue
 {
-    use DefersDataVersionBumps, Queueable;
+    use Queueable;
 
     public int $timeout = 300;
 

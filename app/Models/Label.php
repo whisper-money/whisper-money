@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\LabelSource;
 use App\Models\Concerns\BelongsToSpace;
-use App\Models\Concerns\BumpsDataVersion;
 use Database\Factories\LabelFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -17,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Label extends Model
 {
     /** @use HasFactory<LabelFactory> */
-    use BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'name',

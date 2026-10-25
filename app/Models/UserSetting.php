@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\ChartColorScheme;
-use App\Models\Concerns\BumpsDataVersion;
 use Database\Factories\UserSettingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UserSetting extends Model
 {
     /** @use HasFactory<UserSettingFactory> */
-    use BumpsDataVersion, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'user_id',

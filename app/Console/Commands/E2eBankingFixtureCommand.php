@@ -6,7 +6,6 @@ use App\Enums\BankingConnectionStatus;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Cache\DataVersion;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -121,7 +120,6 @@ class E2eBankingFixtureCommand extends Command
 
         $user->accounts()->forceDelete();
         $user->bankingConnections()->forceDelete();
-        DataVersion::bumpUser($user);
         $user->subscriptions()->delete();
 
         $user->restore();

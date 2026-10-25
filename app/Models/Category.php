@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\Concerns\BelongsToSpace;
-use App\Models\Concerns\BumpsDataVersion;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -28,7 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
-    use BelongsToSpace, BumpsDataVersion, HasFactory, HasUuids, SoftDeletes;
+    use BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
     /**
      * Maximum allowed nesting depth (a root counts as level 1).

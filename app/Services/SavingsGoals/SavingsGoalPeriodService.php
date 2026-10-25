@@ -5,7 +5,6 @@ namespace App\Services\SavingsGoals;
 use App\Enums\MonthlyTargetType;
 use App\Models\SavingsGoal;
 use App\Models\SavingsGoalPeriod;
-use App\Services\Cache\DataVersion;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -175,7 +174,6 @@ class SavingsGoalPeriodService
 
         if ($claimed === 1) {
             $period->forceFill($frozen);
-            DataVersion::bumpOwnerOf($goal);
         }
 
         return $claimed === 1;

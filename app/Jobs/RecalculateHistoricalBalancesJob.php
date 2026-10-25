@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\Concerns\DefersDataVersionBumps;
 use App\Models\Account;
 use App\Services\Banking\BalanceSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -25,7 +24,7 @@ use Illuminate\Foundation\Queue\Queueable;
  */
 class RecalculateHistoricalBalancesJob implements ShouldBeUnique, ShouldQueue
 {
-    use DefersDataVersionBumps, Queueable;
+    use Queueable;
 
     public function __construct(public Account $account) {}
 

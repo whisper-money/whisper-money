@@ -6,7 +6,6 @@ use App\Enums\BudgetExpenseType;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Models\Budget;
 use App\Models\User;
-use App\Services\Cache\DataVersion;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -68,7 +67,6 @@ class BudgetService
                 $budget->periods()
                     ->where('end_date', '>=', today())
                     ->update(['allocated_amount' => $allocatedAmount]);
-                DataVersion::bumpOwnerOf($budget);
             }
         });
 

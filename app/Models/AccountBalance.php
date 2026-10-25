@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BumpsDataVersion;
 use Carbon\Carbon;
 use Database\Factories\AccountBalanceFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -16,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AccountBalance extends Model
 {
     /** @use HasFactory<AccountBalanceFactory> */
-    use BumpsDataVersion, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'account_id',
@@ -46,10 +45,5 @@ class AccountBalance extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
-    }
-
-    public function dataVersionOwner(): ?Model
-    {
-        return $this->dataVersionOwnerVia('account');
     }
 }

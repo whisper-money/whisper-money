@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\StatementFrequency;
-use App\Models\Concerns\BumpsDataVersion;
 use Carbon\CarbonImmutable;
 use Database\Factories\CreditCardDetailFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -29,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CreditCardDetail extends Model
 {
     /** @use HasFactory<CreditCardDetailFactory> */
-    use BumpsDataVersion, HasFactory, HasUuids;
+    use HasFactory, HasUuids;
 
     protected $fillable = [
         'account_id',
@@ -79,10 +78,5 @@ class CreditCardDetail extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);
-    }
-
-    public function dataVersionOwner(): ?Model
-    {
-        return $this->dataVersionOwnerVia('account');
     }
 }
