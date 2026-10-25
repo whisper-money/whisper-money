@@ -29,7 +29,7 @@ class StoreAutomationRuleRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:'.AutomationRule::MAX_TITLE_LENGTH],
             'priority' => ['required', 'integer', 'min:0'],
-            'rules_json' => ['required', 'json', function ($attribute, $value, $fail) {
+            'rules_json' => ['bail', 'required', 'json', function ($attribute, $value, $fail) {
                 $decoded = json_decode($value, true);
                 if (! is_array($decoded) || empty($decoded)) {
                     $fail('The rules JSON must be a valid JsonLogic object.');

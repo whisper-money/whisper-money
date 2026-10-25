@@ -118,6 +118,40 @@ test('user cannot create rule with invalid json logic', function () {
     $response->assertSessionHasErrors('rules_json');
 });
 
+test('user cannot create rule with rules json sent as an array', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->postJson(route('automation-rules.store'), [
+        'title' => 'Array JSON Rule',
+        'priority' => 0,
+        'rules_json' => ['and' => [['>' => [['var' => 'amount'], 50]]]],
+        'action_category_id' => $category->id,
+    ]);
+
+    $response->assertUnprocessable()->assertJsonValidationErrors('rules_json');
+    expect(AutomationRule::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('user cannot update rule with rules json sent as an array', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'title' => 'Old Title',
+    ]);
+
+    $response = $this->actingAs($user)->patchJson(route('automation-rules.update', $rule), [
+        'title' => 'New Title',
+        'priority' => 0,
+        'rules_json' => ['and' => [['>' => [['var' => 'amount'], 50]]]],
+        'action_category_id' => $category->id,
+    ]);
+
+    $response->assertUnprocessable()->assertJsonValidationErrors('rules_json');
+    expect($rule->fresh()->title)->toBe('Old Title');
+});
+
 test('user can update their automation rule', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
