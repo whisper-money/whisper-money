@@ -1,0 +1,45 @@
+<svg viewBox="0 0 720 300" role="img" aria-labelledby="credit-card-cycle-es-title credit-card-cycle-es-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="credit-card-cycle-es-title">El ciclo del extracto de una tarjeta de crédito</title>
+    <desc id="credit-card-cycle-es-desc">Las compras del 7 de agosto al 6 de septiembre forman un extracto que cierra el 6 de septiembre y se carga en su fecha de cargo, el 26 de septiembre, hasta 45 días después en una tarjeta mensual o 7 en una semanal. Un pago el 13 de septiembre se asigna al último extracto cerrado antes de él. El crédito dispuesto suma el extracto pendiente de cargo y el ciclo abierto, 420 más 180, menos los 300 pagados de ellos: 300 dispuestos de un límite de 1.000, 700 disponibles.</desc>
+    <defs>
+        <marker id="credit-card-cycle-es-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+        <marker id="credit-card-cycle-es-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead-accent" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">EXTRACTO · 7 AGO – 6 SEP</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="357" y2="24"/>
+    <text class="dg-eyebrow" x="373" y="16">CICLO ABIERTO · 7 SEP – 6 OCT</text>
+    <line class="dg-hairline" x1="373" y1="24" x2="696" y2="24"/>
+    <rect class="dg-mask" x="24" y="40" width="333" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="24" y="40" width="333" height="56" rx="6"/>
+    <text class="dg-name" x="190" y="64" text-anchor="middle">Extracto pendiente de cargo</text>
+    <text class="dg-sub" x="190" y="80" text-anchor="middle">Compras 420 · Pagado 300 · Pendiente 120</text>
+    <rect class="dg-mask" x="373" y="40" width="323" height="56" rx="6"/>
+    <rect class="dg-node" x="373" y="40" width="323" height="56" rx="6"/>
+    <text class="dg-name" x="534" y="64" text-anchor="middle">Ciclo abierto</text>
+    <text class="dg-sub" x="534" y="80" text-anchor="middle">Compras hasta hoy 180</text>
+    <line class="dg-edge" x1="24" y1="144" x2="696" y2="144"/>
+    <path class="dg-edge dg-edge-accent" d="M436,140 V112 Q436,104 428,104 H198 Q190,104 190,100" marker-end="url(#credit-card-cycle-es-arrow-accent)"/>
+    <text class="dg-edge-label" x="446" y="118">PAGA EL ÚLTIMO EXTRACTO CERRADO</text>
+    <text class="dg-eyebrow" x="446" y="134">PAGO 13 SEP</text>
+    <circle class="dg-station-focal" cx="436" cy="144" r="4"/>
+    <circle class="dg-station-focal" cx="365" cy="144" r="4"/>
+    <text class="dg-eyebrow" x="365" y="164" text-anchor="middle">CIERRA 6 SEP</text>
+    <circle class="dg-station" cx="579" cy="144" r="4"/>
+    <text class="dg-eyebrow" x="579" y="164" text-anchor="middle">SE CARGA 26 SEP</text>
+    <line class="dg-hairline" x1="500" y1="138" x2="500" y2="150"/>
+    <text class="dg-eyebrow" x="500" y="164" text-anchor="middle">HOY</text>
+    <path class="dg-edge dg-edge-dashed" d="M369,180 H575" marker-end="url(#credit-card-cycle-es-arrow)"/>
+    <text class="dg-edge-label" x="472" y="196" text-anchor="middle">FECHA DE CARGO · MISMO DÍA A 45 DÍAS (7 SI SEMANAL)</text>
+    <text class="dg-eyebrow" x="24" y="220">LÍMITE DE CRÉDITO 1.000</text>
+    <line class="dg-hairline" x1="24" y1="228" x2="696" y2="228"/>
+    <rect class="dg-track" x="24" y="240" width="672" height="16" rx="3"/>
+    <rect class="dg-bar-accent" x="24" y="240" width="202" height="16" rx="3"/>
+    <text class="dg-name" x="24" y="276">Dispuesto 300</text>
+    <text class="dg-sub" x="24" y="290">420 + 180 − 300 pagados</text>
+    <text class="dg-name" x="696" y="276" text-anchor="end">Disponible 700</text>
+    <text class="dg-sub" x="696" y="290" text-anchor="end">límite − dispuesto</text>
+</svg>

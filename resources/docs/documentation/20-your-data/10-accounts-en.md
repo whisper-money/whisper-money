@@ -8,7 +8,8 @@ Accounts are the foundation of Whisper Money. They hold balances, transactions, 
 
 1. Create one account for each place where you keep or owe money.
 2. Pick the account type that best matches the real account.
-3. Add balances for accounts that are balance-only.
+3. Add balances for accounts that are balance-only. A credit card takes its
+   credit limit instead.
 4. Import transactions for accounts that have day-to-day activity.
 5. Review the Accounts page to see balances and net worth movement.
 
@@ -63,9 +64,11 @@ Good for:
 
 Use this for credit cards.
 
-Credit cards are left out of net worth entirely. They are spending accounts, not
-wealth, so the balance is tracked on the account itself and neither added to nor
-subtracted from your total.
+A credit card has no balance. It has a credit limit, what you have used of it,
+and an estimate of the next statement it will be charged. Credit cards are left
+out of net worth entirely.
+
+[Credit cards](/documentation/accounts/credit-cards) explains how it all works.
 
 </div>
 
@@ -75,6 +78,9 @@ subtracted from your total.
 Use this for broker or investment accounts.
 
 These are usually balance-only accounts. You track value over time instead of daily transactions.
+
+Record what you put in, and the account shows what it has gained. Savings and
+retirement accounts can do the same.
 
 </div>
 
@@ -98,8 +104,12 @@ Examples:
 - Personal loan
 - Student loan
 
-Loans are the only account type that reduces net worth: the amount owed is
-subtracted from your assets.
+Add the loan details to follow its amortization: the annual interest rate
+(from 0% to 100%), the term in months and the original amount go together, with
+an optional start date.
+
+When loans are included in net worth, they are the only account type that
+reduces it: the amount owed is subtracted from your assets.
 
 </div>
 
@@ -146,8 +156,43 @@ Whisper Money uses different words depending on the account type.
 - Normal accounts use **balance**.
 - Loan accounts use **owed amount**.
 - Real estate accounts use **market value**.
+- Credit cards have no balance at all: they use **credit limit** and **used**.
 
 This keeps the language closer to what the number means.
+
+## Invested amount and gain
+
+Investment, retirement and savings accounts can record an **invested amount**
+next to the balance: what you put in, not what it is worth now. Enter it when you
+create the account, or with each balance when you update it. If you only know
+what you put in, the account opens with a balance equal to it.
+
+Once an invested amount is recorded, the account page shows three cards:
+
+- **Current Value**, the latest balance.
+- **Invested**, what you put in.
+- **Gain**, the difference, and what it is as a percent of what you invested.
+  Below what you invested, it reads as a loss.
+
+The invested amount is always in the account's own currency, like its balance.
+
+## Net worth
+
+Net worth adds up your accounts' balances. Not every account type counts the
+same way:
+
+- Checking, savings, investment, retirement and other accounts add to it.
+- Credit cards never count: what you owe on them is neither added nor
+  subtracted.
+- Loans subtract what is owed, and real estate adds its market value, but only
+  when you include them.
+
+Use the settings button on the net worth chart to switch **Include loans** and
+**Include real estate** on or off. The choice applies to your net worth
+everywhere, not just the chart: the dashboard totals, your achievements and the
+monthly summary email follow it too. Both start off for new users, so your first
+chart shows money you can use rather than a mortgage or a flat. Users who were
+already here keep the setting they had.
 
 ## Connected and manual accounts
 
@@ -227,13 +272,20 @@ the new share on their own.
 
 ### Why is my loan reducing net worth?
 
-A loan is money owed. Whisper Money subtracts it from assets when calculating net worth.
+A loan is money owed. When loans are included, Whisper Money subtracts it from
+assets when calculating net worth. Switch **Include loans** off in the net worth
+chart settings to leave it out.
+
+### Why don't my loan or my flat show up in net worth?
+
+Loans and real estate start off for new users. Switch on **Include loans** or
+**Include real estate** in the net worth chart settings.
 
 ### Why is my credit card not reducing net worth?
 
-A credit card is a spending account, not wealth. Whisper Money tracks what you
-owe on the card itself and leaves it out of the net worth total, so paying the
-card off does not move that number.
+A credit card is a spending account, not wealth. Whisper Money tracks how much
+of its limit you have used on the card itself and leaves it out of the net worth
+total, so paying the card off does not move that number.
 
 ### Why does real estate use market value?
 

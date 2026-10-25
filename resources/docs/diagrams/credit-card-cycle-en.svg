@@ -1,0 +1,45 @@
+<svg viewBox="0 0 720 300" role="img" aria-labelledby="credit-card-cycle-en-title credit-card-cycle-en-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="credit-card-cycle-en-title">A credit card's statement cycle</title>
+    <desc id="credit-card-cycle-en-desc">Purchases from August 7 to September 6 make up a statement that closes on September 6 and is charged on its due date, September 26, up to 45 days later on a monthly card or 7 on a weekly one. A payment on September 13 is attributed to the last statement closed before it. The credit used adds the statement still to be charged and the open cycle, 420 plus 180, less the 300 paid on them: 300 used of a 1,000 limit, 700 available.</desc>
+    <defs>
+        <marker id="credit-card-cycle-en-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead" points="0 0, 8 3, 0 6"/>
+        </marker>
+        <marker id="credit-card-cycle-en-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon class="dg-arrowhead-accent" points="0 0, 8 3, 0 6"/>
+        </marker>
+    </defs>
+    <text class="dg-eyebrow" x="24" y="16">STATEMENT · AUG 7 – SEP 6</text>
+    <line class="dg-hairline" x1="24" y1="24" x2="357" y2="24"/>
+    <text class="dg-eyebrow" x="373" y="16">OPEN CYCLE · SEP 7 – OCT 6</text>
+    <line class="dg-hairline" x1="373" y1="24" x2="696" y2="24"/>
+    <rect class="dg-mask" x="24" y="40" width="333" height="56" rx="6"/>
+    <rect class="dg-node-focal" x="24" y="40" width="333" height="56" rx="6"/>
+    <text class="dg-name" x="190" y="64" text-anchor="middle">Statement to be charged</text>
+    <text class="dg-sub" x="190" y="80" text-anchor="middle">Purchases 420 · Paid 300 · Pending 120</text>
+    <rect class="dg-mask" x="373" y="40" width="323" height="56" rx="6"/>
+    <rect class="dg-node" x="373" y="40" width="323" height="56" rx="6"/>
+    <text class="dg-name" x="534" y="64" text-anchor="middle">Open cycle</text>
+    <text class="dg-sub" x="534" y="80" text-anchor="middle">Purchases so far 180</text>
+    <line class="dg-edge" x1="24" y1="144" x2="696" y2="144"/>
+    <path class="dg-edge dg-edge-accent" d="M436,140 V112 Q436,104 428,104 H198 Q190,104 190,100" marker-end="url(#credit-card-cycle-en-arrow-accent)"/>
+    <text class="dg-edge-label" x="446" y="118">PAYS THE LAST CLOSED STATEMENT</text>
+    <text class="dg-eyebrow" x="446" y="134">PAYMENT SEP 13</text>
+    <circle class="dg-station-focal" cx="436" cy="144" r="4"/>
+    <circle class="dg-station-focal" cx="365" cy="144" r="4"/>
+    <text class="dg-eyebrow" x="365" y="164" text-anchor="middle">CLOSES SEP 6</text>
+    <circle class="dg-station" cx="579" cy="144" r="4"/>
+    <text class="dg-eyebrow" x="579" y="164" text-anchor="middle">CHARGED SEP 26</text>
+    <line class="dg-hairline" x1="500" y1="138" x2="500" y2="150"/>
+    <text class="dg-eyebrow" x="500" y="164" text-anchor="middle">TODAY</text>
+    <path class="dg-edge dg-edge-dashed" d="M369,180 H575" marker-end="url(#credit-card-cycle-en-arrow)"/>
+    <text class="dg-edge-label" x="472" y="196" text-anchor="middle">DUE DATE · SAME DAY TO 45 DAYS (7 IF WEEKLY)</text>
+    <text class="dg-eyebrow" x="24" y="220">CREDIT LIMIT 1,000</text>
+    <line class="dg-hairline" x1="24" y1="228" x2="696" y2="228"/>
+    <rect class="dg-track" x="24" y="240" width="672" height="16" rx="3"/>
+    <rect class="dg-bar-accent" x="24" y="240" width="202" height="16" rx="3"/>
+    <text class="dg-name" x="24" y="276">Used 300</text>
+    <text class="dg-sub" x="24" y="290">420 + 180 − 300 paid</text>
+    <text class="dg-name" x="696" y="276" text-anchor="end">Available 700</text>
+    <text class="dg-sub" x="696" y="290" text-anchor="end">limit − used</text>
+</svg>

@@ -762,6 +762,90 @@ const SHOTS = {
     },
 };
 
+const CREDIT_CARD = 'Visa Card';
+
+/**
+ * `demo:reset` seeds no credit card, so one is written here: a limit, monthly
+ * statement dates whose last closing was twelve days ago, a few weeks of
+ * purchases across the statement waiting for its charge and the open cycle,
+ * and a payment on that statement. That gives the usage chart a line to draw,
+ * a limit to draw it against and a payment dot.
+ */
+function seedCreditCard() {
+    return artisan([
+        'tinker',
+        '--execute',
+        `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
+         $user->accounts()->where('name', '${CREDIT_CARD}')->get()->each->forceDelete();
+
+         $card = $user->accounts()->create([
+             'name' => '${CREDIT_CARD}',
+             'currency_code' => $user->currency_code ?? 'USD',
+             'type' => App\\Enums\\AccountType::CreditCard,
+         ]);
+         $closing = now()->subDays(12)->startOfDay();
+         $card->creditCardDetail()->create([
+             'credit_limit' => 300000,
+             'statement_closing_date' => $closing->toDateString(),
+             'payment_due_date' => $closing->copy()->addDays(20)->toDateString(),
+         ]);
+
+         $categories = $user->categories()->get()->keyBy('name');
+         $fallback = $user->categories()->where('type', 'expense')->orderBy('name')->first();
+         $transfer = $user->categories()->where('type', 'transfer')->orderBy('name')->first();
+         $purchases = [
+             [38, 'Whole Foods Market', -11240, 'Groceries'],
+             [33, 'Shell Gas Station', -6480, 'Fuel'],
+             [29, 'Amazon.com', -18999, null],
+             [24, 'Trader Joe\\'s', -7315, 'Groceries'],
+             [19, 'Downtown Parking', -2400, 'Parking'],
+             [15, 'Best Buy', -32999, null],
+             [10, 'Safeway Supermarket', -9420, 'Groceries'],
+             [6, 'Shell Gas Station', -5860, 'Fuel'],
+             [3, 'Amazon.com', -4599, null],
+             [1, 'Costco Wholesale', -15230, 'Groceries'],
+         ];
+         foreach ($purchases as [$daysAgo, $description, $amount, $category]) {
+             $card->transactions()->create([
+                 'user_id' => $user->id,
+                 'category_id' => ($categories[$category] ?? $fallback)?->id,
+                 'description' => $description,
+                 'description_iv' => null,
+                 'transaction_date' => now()->subDays($daysAgo)->startOfDay(),
+                 'amount' => $amount,
+                 'currency_code' => $card->currency_code,
+             ]);
+         }
+
+         // Booked after the closing, so it pays the statement still waiting
+         // for its charge and lowers what is used.
+         $card->transactions()->create([
+             'user_id' => $user->id,
+             'category_id' => $transfer?->id,
+             'description' => 'Card payment',
+             'description_iv' => null,
+             'transaction_date' => $closing->copy()->addDays(5),
+             'amount' => 30000,
+             'currency_code' => $card->currency_code,
+         ]);`,
+    ]);
+}
+
+async function openCreditCard(page) {
+    await page.goto(`${BASE_URL}/accounts`, { waitUntil: 'domcontentloaded' });
+    await page.getByText(CREDIT_CARD).first().click();
+    await page.waitForURL(/\/accounts\//);
+    await page.getByText('Credit limit', { exact: true }).waitFor();
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(1500);
+}
+
+SHOTS['credit-card-usage'] = async (page) => {
+    await openCreditCard(page);
+
+    return [cardAround(page.getByText('Credit limit', { exact: true }))];
+};
+
 async function main() {
     const wanted = process.argv.slice(2);
     const names = wanted.length > 0 ? wanted : Object.keys(SHOTS);
@@ -799,6 +883,9 @@ async function main() {
 
         log('opening the full import window');
         seedFullImportWindow();
+
+        log('seeding a credit card');
+        seedCreditCard();
     }
 
     mkdirSync(OUT_DIR, { recursive: true });
