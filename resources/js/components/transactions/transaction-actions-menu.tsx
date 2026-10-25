@@ -56,6 +56,14 @@ export function TransactionActionsMenu({
 
     const canAnalyze = hasActiveFilters(filters);
 
+    // A hint opened while the button was disabled must not outlive that
+    // state, or applying a filter would leave a stale tooltip on screen.
+    const [hintCanAnalyze, setHintCanAnalyze] = useState(canAnalyze);
+    if (hintCanAnalyze !== canAnalyze) {
+        setHintCanAnalyze(canAnalyze);
+        setAnalysisHintOpen(false);
+    }
+
     const handleAnalysisClick = () => {
         if (!canAnalyze) {
             if (isMobile) {
@@ -131,7 +139,7 @@ export function TransactionActionsMenu({
                                 </span>
                             </Button>
                         </TooltipTrigger>
-                        {/* Once a filter enables it, the tooltip only names the button while its label is hidden. */}
+                        {/* Enabled, it only names the icon-only button. */}
                         <TooltipContent
                             className={canAnalyze ? 'sm:hidden' : undefined}
                         >

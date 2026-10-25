@@ -156,6 +156,28 @@ describe('TransactionActionsMenu analysis button', () => {
         ).toHaveClass('sm:hidden');
     });
 
+    it('drops the tapped hint once a filter enables the button', async () => {
+        isMobile = true;
+        const { rerender } = renderMenu(emptyFilters);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Analysis' }));
+        expect(await screen.findByRole('tooltip')).toHaveTextContent(
+            'Apply a filter to enable this button',
+        );
+
+        rerender(
+            <TransactionActionsMenu
+                transactions={[]}
+                hasTransactionalAccounts
+                filters={{ ...emptyFilters, labelIds: ['label-1'] }}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        });
+    });
+
     it('explains how to enable it while no filter is applied', async () => {
         renderMenu(emptyFilters);
 

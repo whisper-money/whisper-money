@@ -7,4 +7,4 @@
 export const ICON_ONLY_BELOW_SM = {
     button: 'w-9 px-0 has-[>svg]:px-0 sm:w-auto sm:px-4 sm:has-[>svg]:px-3',
     label: 'hidden sm:inline',
-};
+} as const;
