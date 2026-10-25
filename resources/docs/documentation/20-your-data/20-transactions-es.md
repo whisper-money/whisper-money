@@ -6,7 +6,7 @@ Las transacciones son los movimientos individuales de dinero en tus cuentas. Ali
 
 ## Inicio rápido
 
-1. Añade transacciones manualmente, impórtalas desde un archivo o sincronízalas desde una cuenta conectada.
+1. [Añade transacciones a mano](/documentation/transactions/create), [impórtalas desde un archivo](/documentation/transactions/import) o sincronízalas desde una cuenta conectada.
 2. Revisa fechas, descripciones e importes.
 3. Añade categorías y etiquetas.
 4. Usa filtros para encontrar grupos de transacciones.
@@ -107,7 +107,7 @@ Usa filtros cuando la lista sea demasiado grande.
 Puedes filtrar por:
 
 - Rango de fechas, o un mes, trimestre o año entero con un clic
-- Rango de importes
+- Valor: cuánto fue un gasto o un ingreso
 - Categoría
 - Cuenta
 - Etiqueta
@@ -122,6 +122,25 @@ En el menú de filtros, junto a la fecha, los botones **Mes**, **Trimestre** y
 **Año** ajustan el rango al mes, trimestre o año natural completo que contiene
 la fecha de inicio, o el día de hoy si no hay ninguna. El botón que coincide con
 el rango actual aparece pulsado.
+
+Al buscar una categoría padre en el filtro de categorías salen también sus
+subcategorías, así que puedes marcar la padre o solo la que buscas.
+
+### Valor
+
+El filtro **Valor** mira cuánto es una transacción. Elige primero **Gasto** o
+**Ingresos** y luego escribe **Mín** y **Máx** como importes normales, sin signo.
+Empieza en **Gasto**.
+
+![La sección Valor de los filtros, con Gasto elegido y un máximo de 30](/docs/documentation/transaction-amount-filter.png)
+
+- **Gasto**, **Máx** 30: todos los gastos de 30 o menos.
+- **Gasto**, **Mín** 100: todos los gastos de 100 o más.
+- **Ingresos**, **Mín** 1000 y **Máx** 3000: los ingresos de entre 1000 y 3000.
+
+Un filtro guardado o un enlace antiguo puede abarcar gastos e ingresos a la vez. En ese caso aparece sin ningún lado elegido y con una nota que
+lo explica. Al elegir un lado, sus límites pasan a ser importes normales de ese
+lado.
 
 ### Bloque de flujo de caja
 
@@ -196,12 +215,22 @@ Si creas o cambias reglas después de que existan transacciones, las antiguas pu
 
 Usa la reevaluación cuando quieras que las reglas vuelvan a ejecutarse sobre transacciones existentes.
 
+Lánzala sobre todas tus transacciones, tengas el filtro que tengas, con
+**Actualizar categorías automáticamente** en el menú **Más acciones** que hay
+encima de la lista, o solo sobre las filas que
+hayas seleccionado con **Reevaluar reglas** en la barra de acciones masivas.
+
 Úsala después de:
 
 - Crear una regla nueva.
 - Corregir una condición.
 - Importar muchas transacciones.
 - Limpiar transacciones antiguas sin categoría.
+
+Puede tardar un poco. Los lotes pequeños terminan mientras miras, con un aviso
+que cuenta las transacciones que ha cambiado. Cuando le toca esperar turno, un
+aviso de **Reevaluación en cola** indica que terminará en segundo plano: no hay
+nada que reintentar, recarga la página más tarde para ver el resultado.
 
 ## Preguntas frecuentes
 

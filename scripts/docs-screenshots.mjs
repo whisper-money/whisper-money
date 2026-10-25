@@ -355,13 +355,17 @@ const SPLIT_MARK = '[aria-label="This transaction is part of a split"]';
  * Give the next part of a split its category. The label picker beside it is a
  * combobox too, so the category ones are told apart by the placeholder they are
  * still showing — which also means each call lands on the next part along.
+ * Pass `trigger` to open a specific picker instead.
  */
-async function pickCategory(page, name) {
-    await dialog(page)
+async function pickCategory(
+    page,
+    name,
+    trigger = dialog(page)
         .getByRole('combobox')
         .filter({ hasText: 'Uncategorized' })
-        .first()
-        .click();
+        .first(),
+) {
+    await trigger.click();
     await page.getByPlaceholder('Search categories...').fill(name);
     await page
         .getByRole('option', { name: new RegExp(name) })
@@ -650,17 +654,10 @@ const SHOTS = {
     },
 
     'create-transaction-dialog': async (page) => {
-        await openTransactions(page);
-        await page.getByRole('button', { name: 'Add transaction' }).click();
-        await dialog(page).waitFor();
-        // The account is deliberately left unchosen: the picker renders every
-        // account as "[Encrypted]" (accounts.encrypted is true on rows whose
-        // name_iv is null), and a screenshot should not teach that as normal.
-        await page
-            .getByPlaceholder('Transaction description')
-            .fill('Blue Bottle Coffee');
-        await page.getByPlaceholder('25.00').fill('-6.75');
-        await page.waitForTimeout(500);
+        await openQuickAdd(page);
+        await page.getByRole('button', { name: 'More options' }).click();
+        await page.waitForTimeout(300);
+        await pickCategory(page, 'Cafes, restaurants');
 
         return [dialog(page)];
     },
@@ -1091,6 +1088,48 @@ SHOTS['credit-card-usage'] = async (page) => {
     await openCreditCard(page);
 
     return [cardAround(page.getByText('Credit limit', { exact: true }))];
+};
+
+/**
+ * The create dialog as it opens, collapsed, with an expense typed in: the
+ * state every manual transaction starts from.
+ */
+async function openQuickAdd(page) {
+    await openTransactions(page);
+    // The list's own button: the header one only shows for some users.
+    await page.getByTestId('add-transaction-button').click();
+    await dialog(page).waitFor();
+    await page
+        .getByPlaceholder('Transaction description')
+        .fill('Dinner with friends');
+    await dialog(page).locator('#amount').fill('45.50');
+    await page.waitForTimeout(400);
+}
+
+SHOTS['transaction-quick-add'] = async (page) => {
+    await openQuickAdd(page);
+    await pickCategory(
+        page,
+        'Cafes, restaurants',
+        dialog(page).getByTestId('category-chip'),
+    );
+
+    return [dialog(page)];
+};
+
+SHOTS['transaction-amount-filter'] = async (page) => {
+    await openTransactions(page);
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+
+    const panel = page.locator('[data-test="transaction-filters-panel"]');
+    await panel.waitFor();
+    await panel.getByTestId('filter-amount-max').fill('30');
+    await page.waitForTimeout(800);
+
+    return [
+        panel.getByText('Amount', { exact: true }),
+        panel.getByTestId('filter-amount-max'),
+    ];
 };
 
 async function main() {
