@@ -42,6 +42,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -1400,7 +1401,23 @@ export default function Transactions({
                                     filters={filters}
                                 />
 
-                                <DataTableViewOptions table={table} />
+                                <div className="flex items-center gap-2">
+                                    <TransactionExportButton
+                                        params={clientFiltersToQueryParams(
+                                            filters,
+                                            sortParam,
+                                        )}
+                                        loadedIds={allTransactions.map(
+                                            (transaction) => transaction.id,
+                                        )}
+                                        hasMore={nextCursor !== null}
+                                        filters={filters}
+                                        categories={categories}
+                                        accounts={accounts}
+                                        labels={labels}
+                                    />
+                                    <DataTableViewOptions table={table} />
+                                </div>
                             </div>
                         }
                     />
