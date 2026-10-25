@@ -266,3 +266,31 @@ it('enters selection mode on a long press and leaves it with Done on a phone', f
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
         ->assertNoJavascriptErrors();
 });
+
+it('shrinks the bar to icons on one row when the content column is narrow', function () {
+    $page = visit('/transactions')->resize(900, 800);
+
+    $page->assertSee('Weekly groceries market')
+        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->assertPresent('[data-test="bulk-actions-bar"][data-compact]')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
+        ->assertVisible('[data-testid="bulk-select-all"]')
+        ->assertVisible('[aria-label="Re-evaluate rules"]')
+        ->assertVisible('[aria-label="Delete"]')
+        ->assertVisible('[aria-label="Clear selection"]')
+        // One row, and inside the viewport rather than spilling off its edge.
+        ->assertScript(<<<'JS'
+            (() => {
+                const bar = document.querySelector('[data-test="bulk-actions-bar"]').getBoundingClientRect();
+
+                return bar.height < 60 && bar.left >= 0 && bar.right <= window.innerWidth;
+            })()
+        JS)
+        ->click('[data-testid="bulk-labels-trigger"]')
+        ->assertPresent('[cmdk-input]')
+        ->assertNoJavascriptErrors();
+
+    $page->resize(1600, 900)
+        ->assertMissing('[data-test="bulk-actions-bar"][data-compact]')
+        ->assertSeeIn('[data-test="bulk-actions-bar"]', 'Re-evaluate rules');
+});

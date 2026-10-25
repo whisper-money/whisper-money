@@ -156,6 +156,79 @@ describe('BulkActionsBar', () => {
     });
 });
 
+describe('BulkActionsBar on a narrow desktop column', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    /** A content column narrower than the bar laid out in full. */
+    function crowd() {
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(
+            600,
+        );
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+            900,
+        );
+    }
+
+    it('keeps every control, shrinking the actions to icons', () => {
+        crowd();
+        renderBar();
+
+        expect(screen.getByRole('toolbar')).toHaveAttribute('data-compact');
+        expect(screen.getByTestId('bulk-selected-count')).toHaveTextContent(
+            '3',
+        );
+
+        for (const name of [
+            'Select all matching filters',
+            'Category',
+            'Labels',
+            'Re-evaluate rules',
+            'Delete',
+            'Clear selection',
+        ]) {
+            expect(screen.getByRole('button', { name })).toBeInTheDocument();
+        }
+
+        expect(
+            screen.getByTestId('bulk-category-trigger'),
+        ).not.toHaveTextContent('Category');
+    });
+
+    it('names the action and its key in a tooltip', async () => {
+        crowd();
+        renderBar();
+
+        fireEvent.focus(
+            screen.getByRole('button', { name: 'Re-evaluate rules' }),
+        );
+
+        const tooltip = await screen.findByRole('tooltip');
+
+        expect(tooltip).toHaveTextContent('Re-evaluate rules');
+        expect(tooltip.querySelector('kbd')).toHaveTextContent('R');
+    });
+
+    it('still answers the shortcuts', () => {
+        crowd();
+        const { onReEvaluateRules } = renderBar();
+
+        press('r');
+
+        expect(onReEvaluateRules).toHaveBeenCalledOnce();
+    });
+
+    it('lays the actions out in full when the column has room', () => {
+        renderBar();
+
+        expect(screen.getByRole('toolbar')).not.toHaveAttribute('data-compact');
+        expect(screen.getByTestId('bulk-category-trigger')).toHaveTextContent(
+            'Category',
+        );
+    });
+});
+
 function mobileSelection(
     overrides: Partial<MobileSelectionMode> = {},
 ): MobileSelectionMode {
