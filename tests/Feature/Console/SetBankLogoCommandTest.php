@@ -12,7 +12,6 @@ function makePng(int $width, int $height): string
     ob_start();
     imagepng($im);
     $contents = ob_get_clean();
-    imagedestroy($im);
 
     return (string) $contents;
 }
@@ -23,7 +22,6 @@ function makeJpeg(int $width, int $height): string
     ob_start();
     imagejpeg($im);
     $contents = ob_get_clean();
-    imagedestroy($im);
 
     return (string) $contents;
 }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Whisper Money is a privacy-first personal finance app. Your data is never shared with third parties—you are the owner. It uses Laravel 13 (PHP 8.4) backend with React 19 frontend via Inertia.js v3.
+Whisper Money is a privacy-first personal finance app. Your data is never shared with third parties—you are the owner. It uses Laravel 13 (PHP 8.5) backend with React 19 frontend via Inertia.js v3.
 
 ## Commands
 
@@ -166,7 +166,7 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 ## Foundational Context
 
-This application is a Laravel application running on PHP 8.4. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
+This application is a Laravel application running on PHP 8.5. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
 
 Before relying on a package's API, confirm its installed version:
 - PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.

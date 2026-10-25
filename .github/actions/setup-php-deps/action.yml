@@ -1,6 +1,6 @@
 name: Setup PHP & Composer Deps
 description: |
-  Sets up PHP 8.4 and installs Composer dependencies with two layers of cache:
+  Sets up PHP 8.5 and installs Composer dependencies with two layers of cache:
   the global Composer cache directory and the resolved `vendor/` directory
   itself. On a `vendor/` cache hit we skip `composer install` entirely.
 
@@ -8,7 +8,7 @@ inputs:
   php-version:
     description: PHP version to install
     required: false
-    default: '8.4'
+    default: '8.5'
   tools:
     description: Tools to install via shivammathur/setup-php
     required: false
