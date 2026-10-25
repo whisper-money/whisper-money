@@ -36,7 +36,11 @@ export function AppSidebar() {
 
     return (
         <>
-            <div className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-1 rounded-full border border-border/75 bg-sidebar/50 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur md:hidden">
+            {/* The selection bar takes the nav's place while rows are being picked. */}
+            <div
+                className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-1 rounded-full border border-border/75 bg-sidebar/50 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur group-has-[[data-test=mobile-bulk-actions-bar]]/sidebar-wrapper:hidden md:hidden"
+                data-test="mobile-nav"
+            >
                 {mainNavItems.map((item) => {
                     const isActive = page.url.startsWith(resolveUrl(item.href));
                     const label = item.mobileTitle ?? item.title;

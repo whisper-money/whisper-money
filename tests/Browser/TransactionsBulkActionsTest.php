@@ -220,6 +220,8 @@ it('selects rows by tapping them in selection mode on a phone', function () {
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
         ->click('[data-testid="selection-mode-select"]')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', 'Tap to select')
+        // The bar takes the bottom nav's place rather than sitting over it.
+        ->assertMissing('[data-test="mobile-nav"]')
         ->click('tr:has-text("Weekly groceries market") td:last-child')
         ->click('tr:has-text("Coffee subscription") td:last-child')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '2 selected')
@@ -231,6 +233,7 @@ it('selects rows by tapping them in selection mode on a phone', function () {
         ->assertSee('Updated 2 transactions')
         // A bulk change that went through ends selection mode.
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->assertVisible('[data-test="mobile-nav"]')
         ->assertPresent('[data-testid="selection-mode-select"]')
         ->assertNoJavascriptErrors();
 
