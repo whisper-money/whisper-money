@@ -89,8 +89,14 @@ If progress is low, the budget may be generous or the period may not be finished
 ## Budget periods
 
 A budget repeats over a period you choose: **monthly**, **weekly**, **every two
-weeks**, or **yearly**. Monthly suits most spending; weekly works well for
-groceries; yearly fits things like insurance or taxes that arrive once.
+weeks**, **quarterly**, or **yearly**. Monthly suits most spending; weekly works
+well for groceries; quarterly fits bills that come every three months, like
+utilities or a car service; yearly fits things like insurance or taxes that
+arrive once.
+
+Quarterly and yearly budgets follow the calendar, so they have no start day: a
+quarterly period runs January–March, April–June, July–September or
+October–December, and a yearly one runs January–December.
 
 When reviewing a budget, make sure you are looking at the right period.
 

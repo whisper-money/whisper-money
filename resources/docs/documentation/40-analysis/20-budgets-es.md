@@ -89,9 +89,14 @@ Si el progreso es bajo, puede que el presupuesto sea generoso o que el periodo n
 ## Periodos de presupuesto
 
 Un presupuesto se repite en el periodo que elijas: **mensual**, **semanal**,
-**cada dos semanas** o **anual**. El mensual encaja con la mayoría del gasto; el
-semanal va bien para la compra; el anual sirve para cosas como seguros o
-impuestos que llegan una vez.
+**cada dos semanas**, **trimestral** o **anual**. El mensual encaja con la
+mayoría del gasto; el semanal va bien para la compra; el trimestral sirve para
+recibos que llegan cada tres meses, como suministros o la revisión del coche; el
+anual sirve para cosas como seguros o impuestos que llegan una vez.
+
+Los presupuestos trimestrales y anuales siguen el calendario, así que no tienen
+día de inicio: un periodo trimestral va de enero a marzo, de abril a junio, de
+julio a septiembre o de octubre a diciembre, y uno anual de enero a diciembre.
 
 Al revisar un presupuesto, asegúrate de mirar el periodo correcto.
 

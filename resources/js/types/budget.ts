@@ -8,6 +8,7 @@ export const BUDGET_PERIOD_TYPES = [
     'monthly',
     'weekly',
     'biweekly',
+    'quarterly',
     'yearly',
 ] as const;
 
@@ -98,9 +99,18 @@ export function getBudgetPeriodTypeLabel(type: BudgetPeriodType): string {
         monthly: __('Monthly'),
         weekly: __('Weekly'),
         biweekly: __('Bi-weekly'),
+        quarterly: __('Quarterly'),
         yearly: __('Yearly'),
     };
     return labels[type];
+}
+
+/**
+ * Quarterly and yearly periods follow the calendar (they start on the 1st of
+ * the quarter or of January), so the start day only applies to the others.
+ */
+export function periodTypeHasStartDay(type: BudgetPeriodType): boolean {
+    return type !== 'quarterly' && type !== 'yearly';
 }
 
 export function getRolloverTypeLabel(type: RolloverType): string {

@@ -795,6 +795,27 @@ it('creates a budget with its periods and backfills the transactions already in 
     expect($budget->getCurrentPeriod()->spentAmount())->toBe(7_500);
 });
 
+it('creates a quarterly budget on the calendar quarter, ignoring the start day', function () {
+    $this->travelTo('2026-11-12 09:00:00');
+
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    callWriteTool($user, CreateBudget::class, [
+        'name' => 'Car maintenance',
+        'allocated_amount' => 60_000,
+        'period_type' => 'quarterly',
+        'rollover_type' => 'carry_over',
+        'period_start_day' => 15,
+        'category_ids' => [$category->id],
+    ])->assertOk()->assertSee('Car maintenance');
+
+    $period = $user->budgets()->sole()->getCurrentPeriod();
+
+    expect($period->start_date->toDateString())->toBe('2026-10-01')
+        ->and($period->end_date->toDateString())->toBe('2026-12-31');
+});
+
 it('creates a catch-all budget without categories, but only one', function () {
     $user = User::factory()->create();
 

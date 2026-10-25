@@ -47,6 +47,14 @@ class BudgetFactory extends Factory
         ]);
     }
 
+    public function quarterly(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'period_type' => BudgetPeriodType::Quarterly,
+            'period_start_day' => 1,
+        ]);
+    }
+
     public function yearly(): static
     {
         return $this->state(fn (array $attributes) => [

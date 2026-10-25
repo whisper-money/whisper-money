@@ -66,6 +66,67 @@ test('user can create a yearly budget', function () {
         ->and($currentPeriod->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
 });
 
+test('user can create a quarterly budget aligned to the calendar quarter', function () {
+    Carbon::setTestNow(Carbon::parse('2026-08-20 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Quarterly Budget',
+        'period_type' => 'quarterly',
+        'period_start_day' => 1,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'carry_over',
+        'allocated_amount' => 90000,
+    ]);
+
+    $response->assertRedirect()->assertSessionHasNoErrors();
+
+    $budget = Budget::where('user_id', $user->id)->sole();
+    $currentPeriod = $budget->getCurrentPeriod();
+
+    expect($budget->period_type)->toBe(BudgetPeriodType::Quarterly)
+        ->and($currentPeriod->start_date->toDateString())->toBe('2026-07-01')
+        ->and($currentPeriod->end_date->toDateString())->toBe('2026-09-30')
+        ->and($budget->periods()->orderBy('start_date')->first()->start_date->toDateString())->toBe('2026-04-01');
+});
+
+test('a quarterly budget rejects a start day outside 1-31', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->post('/budgets', [
+        'name' => 'Quarterly Budget',
+        'period_type' => 'quarterly',
+        'period_start_day' => 0,
+        'category_ids' => [$category->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 90000,
+    ])->assertSessionHasErrors('period_start_day');
+
+    expect(Budget::where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('user can update a quarterly budget', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->quarterly()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)->patch("/budgets/{$budget->id}", [
+        'name' => 'Renamed Quarterly',
+        'period_type' => 'quarterly',
+        'period_start_day' => 1,
+        'allocated_amount' => 120000,
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect($budget->fresh())
+        ->name->toBe('Renamed Quarterly')
+        ->period_type->toBe(BudgetPeriodType::Quarterly);
+});
+
 test('user can view their budgets', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
