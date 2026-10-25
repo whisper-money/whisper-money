@@ -200,3 +200,100 @@ it('runs the automation rules again for a single row from its actions menu', fun
     expect($this->fixture->movementNamed('Weekly groceries market')->category_id)
         ->toBe($this->fixture->utilities->id);
 });
+
+/**
+ * On the phone there is no checkbox column: the toolbar's Select button (or a
+ * long press on a row) turns taps into ticks, and the compact bar takes over.
+ */
+function visitTransactionsOnAPhone(): mixed
+{
+    return visit('/transactions')
+        ->on()
+        ->iPhone14Pro()
+        ->navigate('/transactions');
+}
+
+it('selects rows by tapping them in selection mode on a phone', function () {
+    $page = visitTransactionsOnAPhone();
+
+    $page->assertSee('Weekly groceries market')
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->click('[data-testid="selection-mode-select"]')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', 'Tap to select')
+        // The bar takes the bottom nav's place rather than sitting over it.
+        ->assertMissing('[data-test="mobile-nav"]')
+        ->click('tr:has-text("Weekly groceries market") td:last-child')
+        ->click('tr:has-text("Coffee subscription") td:last-child')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '2 selected')
+        // A tap toggles the row; it does not open the edit dialog.
+        ->assertDontSee('Edit Transaction')
+        ->click('[data-testid="bulk-category-trigger"]')
+        ->assertSee('Change category')
+        ->click('[cmdk-item]:has-text("Utilities")')
+        ->assertSee('Updated 2 transactions')
+        // A bulk change that went through ends selection mode.
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->assertVisible('[data-test="mobile-nav"]')
+        ->assertPresent('[data-testid="selection-mode-select"]')
+        ->assertNoJavascriptErrors();
+
+    expect($this->fixture->movementNamed('Weekly groceries market')->category_id)
+        ->toBe($this->fixture->utilities->id)
+        ->and($this->fixture->movementNamed('Monthly train pass')->category_id)
+        ->toBe($this->fixture->transport->id);
+});
+
+it('enters selection mode on a long press and leaves it with Done on a phone', function () {
+    $page = visitTransactionsOnAPhone();
+
+    $page->assertSee('Weekly groceries market');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const row = [...document.querySelectorAll('tr')]
+                .find((tr) => tr.textContent.includes('Weekly groceries market'));
+            const { x, y } = row.getBoundingClientRect();
+            const init = { bubbles: true, pointerType: 'touch', clientX: x + 20, clientY: y + 10 };
+            row.dispatchEvent(new PointerEvent('pointerdown', init));
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            row.dispatchEvent(new PointerEvent('pointerup', init));
+        })()
+    JS);
+
+    $page->assertSeeIn('[data-testid="bulk-selected-count"]', '1 selected')
+        ->click('[data-testid="bulk-more-actions"]')
+        ->assertSee('Delete 1')
+        ->click('[role="menuitem"]:has-text("Select all visible")')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '8 selected')
+        ->click('[data-testid="selection-mode-done"]')
+        ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
+        ->assertNoJavascriptErrors();
+});
+
+it('shrinks the bar to icons on one row when the content column is narrow', function () {
+    $page = visit('/transactions')->resize(900, 800);
+
+    $page->assertSee('Weekly groceries market')
+        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->assertPresent('[data-test="bulk-actions-bar"][data-compact]')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
+        ->assertVisible('[data-testid="bulk-select-all"]')
+        ->assertVisible('[aria-label="Re-evaluate rules"]')
+        ->assertVisible('[aria-label="Delete"]')
+        ->assertVisible('[aria-label="Clear selection"]')
+        // One row, and inside the viewport rather than spilling off its edge.
+        ->assertScript(<<<'JS'
+            (() => {
+                const bar = document.querySelector('[data-test="bulk-actions-bar"]').getBoundingClientRect();
+
+                return bar.height < 60 && bar.left >= 0 && bar.right <= window.innerWidth;
+            })()
+        JS)
+        ->click('[data-testid="bulk-labels-trigger"]')
+        ->assertPresent('[cmdk-input]')
+        ->assertNoJavascriptErrors();
+
+    $page->resize(1600, 900)
+        ->assertMissing('[data-test="bulk-actions-bar"][data-compact]')
+        ->assertSeeIn('[data-test="bulk-actions-bar"]', 'Re-evaluate rules');
+});

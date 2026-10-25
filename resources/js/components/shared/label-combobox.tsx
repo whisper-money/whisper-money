@@ -1,6 +1,11 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { normalizeLabelComboboxState } from '@/components/shared/label-combobox-state';
 import { LabelIcon } from '@/components/shared/label-icon';
+import {
+    DRAWER_COMMAND_CLASS,
+    PopoverOrDrawer,
+    type PickerDrawer,
+} from '@/components/ui/adaptive-popover';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,11 +15,6 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
@@ -37,6 +37,8 @@ interface LabelComboboxProps {
      * and handles `disabled` itself: the prop only reaches the default one.
      */
     trigger?: ReactElement;
+    /** Opens as a bottom drawer with this header instead of a popover. */
+    drawer?: PickerDrawer;
 }
 
 export function LabelCombobox({
@@ -50,6 +52,7 @@ export function LabelCombobox({
     allowRemoveAll = false,
     onLabelCreated,
     trigger,
+    drawer,
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -158,9 +161,18 @@ export function LabelCombobox({
         );
 
     return (
-        <Popover modal open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                {trigger ?? (
+        <PopoverOrDrawer
+            asDrawer={drawer !== undefined}
+            title={drawer?.title ?? placeholder}
+            description={drawer?.description}
+            modal
+            open={open}
+            onOpenChange={setOpen}
+            align="start"
+            className="w-[300px]"
+            drawerClassName={DRAWER_COMMAND_CLASS}
+            trigger={
+                trigger ?? (
                     <Button
                         variant="outline"
                         role="combobox"
@@ -225,102 +237,99 @@ export function LabelCombobox({
                         )}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
-                )}
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-                <Command shouldFilter={false}>
-                    <CommandInput
-                        placeholder={__('Search or create labels...')}
-                        value={inputValue}
-                        onValueChange={setInputValue}
-                    />
+                )
+            }
+        >
+            <Command shouldFilter={false}>
+                <CommandInput
+                    placeholder={__('Search or create labels...')}
+                    value={inputValue}
+                    onValueChange={setInputValue}
+                />
 
-                    <CommandList>
-                        {sortedLabels.length === 0 && !showCreateOption && (
-                            <CommandEmpty>
-                                {__('No labels found.')}
-                            </CommandEmpty>
-                        )}
-                        {allowRemoveAll && (
-                            <CommandItem
-                                onSelect={() => {
-                                    onValueChange([]);
-                                    setOpen(false);
-                                }}
-                                className="gap-2"
-                            >
-                                <X className="h-4 w-4" />
-                                {__('Remove all labels')}
-                            </CommandItem>
-                        )}
-                        {showCreateOption && (
-                            <CommandItem
-                                onSelect={handleCreate}
-                                disabled={isCreating}
-                                className="gap-2"
-                                data-testid="label-create-option"
-                            >
-                                <Plus className="h-4 w-4" />
-                                {isCreating
-                                    ? 'Creating...'
-                                    : `Create "${inputValue.trim()}"`}
-                            </CommandItem>
-                        )}
-                        {sortedLabels
-                            .filter(
-                                (label) =>
-                                    !inputValue ||
-                                    label.name
-                                        .toLowerCase()
-                                        .includes(inputValue.toLowerCase()),
-                            )
-                            .map((label) => {
-                                const colorClasses = getLabelColorClasses(
-                                    label.color,
-                                );
-                                const isSelected = safeValue.includes(label.id);
-                                return (
-                                    <CommandItem
-                                        key={label.id}
-                                        value={label.name}
-                                        onSelect={() => handleSelect(label.id)}
-                                        data-testid="label-option"
-                                        data-label-name={label.name}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className={cn(
-                                                    'flex h-5 w-5 items-center justify-center rounded-full',
-                                                    colorClasses.bg,
-                                                )}
-                                            >
-                                                <LabelIcon
-                                                    label={label}
-                                                    className={cn(
-                                                        'h-3 w-3',
-                                                        colorClasses.text,
-                                                    )}
-                                                />
-                                            </div>
-                                            <span className="truncate">
-                                                {label.name}
-                                            </span>
-                                        </div>
-                                        <Check
+                <CommandList>
+                    {sortedLabels.length === 0 && !showCreateOption && (
+                        <CommandEmpty>{__('No labels found.')}</CommandEmpty>
+                    )}
+                    {allowRemoveAll && (
+                        <CommandItem
+                            onSelect={() => {
+                                onValueChange([]);
+                                setOpen(false);
+                            }}
+                            className="gap-2"
+                        >
+                            <X className="h-4 w-4" />
+                            {__('Remove all labels')}
+                        </CommandItem>
+                    )}
+                    {showCreateOption && (
+                        <CommandItem
+                            onSelect={handleCreate}
+                            disabled={isCreating}
+                            className="gap-2"
+                            data-testid="label-create-option"
+                        >
+                            <Plus className="h-4 w-4" />
+                            {isCreating
+                                ? 'Creating...'
+                                : `Create "${inputValue.trim()}"`}
+                        </CommandItem>
+                    )}
+                    {sortedLabels
+                        .filter(
+                            (label) =>
+                                !inputValue ||
+                                label.name
+                                    .toLowerCase()
+                                    .includes(inputValue.toLowerCase()),
+                        )
+                        .map((label) => {
+                            const colorClasses = getLabelColorClasses(
+                                label.color,
+                            );
+                            const isSelected = safeValue.includes(label.id);
+                            return (
+                                <CommandItem
+                                    key={label.id}
+                                    value={label.name}
+                                    onSelect={() => handleSelect(label.id)}
+                                    data-testid="label-option"
+                                    data-label-name={label.name}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div
                                             className={cn(
-                                                'ml-auto h-4 w-4',
-                                                isSelected
-                                                    ? 'opacity-100'
-                                                    : 'opacity-0',
+                                                'flex h-5 w-5 items-center justify-center rounded-full',
+                                                colorClasses.bg,
                                             )}
-                                        />
-                                    </CommandItem>
-                                );
-                            })}
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
+                                        >
+                                            <LabelIcon
+                                                label={label}
+                                                className={cn(
+                                                    'h-3 w-3',
+                                                    colorClasses.text,
+                                                )}
+                                            />
+                                        </div>
+                                        <span className="truncate">
+                                            {label.name}
+                                        </span>
+                                    </div>
+                                    <Check
+                                        className={cn(
+                                            'ml-auto h-4 w-4',
+                                            isSelected
+                                                ? 'opacity-100'
+                                                : 'opacity-0',
+                                        )}
+                                    />
+                                </CommandItem>
+                            );
+                        })}
+                </CommandList>
+            </Command>
+        </PopoverOrDrawer>
     );
 }
 

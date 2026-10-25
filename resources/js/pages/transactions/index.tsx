@@ -1,5 +1,10 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
+import {
+    useMobileSelectionMode,
+    useRowSelectionGesture,
+    type RowSelectionMode,
+} from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { toLocalDate } from '@/utils/date';
@@ -39,6 +44,7 @@ import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { SelectionModeButton } from '@/components/transactions/selection-mode-button';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
@@ -308,6 +314,7 @@ interface TransactionRowProps {
     onDelete: (transaction: ServerTransaction) => void;
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
+    selectionMode: RowSelectionMode;
 }
 
 function TransactionRowComponent({
@@ -322,6 +329,7 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
+    selectionMode,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -336,10 +344,12 @@ function TransactionRowComponent({
         }
         onEdit(transaction);
     };
+    const gesture = useRowSelectionGesture(row, selectionMode, handleRowClick);
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            <ContextMenuTrigger asChild>
+            {/* A long press on the phone enters selection mode, not this menu. */}
+            <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
@@ -348,9 +358,10 @@ function TransactionRowComponent({
                     data-index={virtualRow.index}
                     className={cn(
                         'cursor-pointer',
+                        gesture.className,
                         isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
                     )}
-                    onClick={handleRowClick}
+                    {...gesture.handlers}
                 >
                     {row
                         .getVisibleCells()
@@ -585,6 +596,15 @@ export default function Transactions({
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
+
+    const selectOnlyVisible = useCallback(() => setIsSelectingAll(false), []);
+
+    const selectionMode = useMobileSelectionMode({
+        rowSelection,
+        setRowSelection,
+        rows: allTransactions,
+        onClear: selectOnlyVisible,
+    });
 
     // Debounce timer ref for search
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1066,6 +1086,7 @@ export default function Transactions({
                 onSplit: setSplitTransaction,
                 onUnsplit: setUnsplitTransaction,
                 isDateHidden: columnVisibility.transaction_date === false,
+                showSelectColumnOnMobile: selectionMode.isActive,
                 categorizingIds,
             }),
         [
@@ -1079,6 +1100,7 @@ export default function Transactions({
             handleReEvaluateRules,
             openAutomateDialog,
             columnVisibility,
+            selectionMode.isActive,
             categorizingIds,
         ],
     );
@@ -1335,11 +1357,6 @@ export default function Transactions({
         }
     }
 
-    function handleClearSelection() {
-        setRowSelection({});
-        setIsSelectingAll(false);
-    }
-
     function handleSelectAll() {
         setIsSelectingAll(true);
     }
@@ -1364,10 +1381,16 @@ export default function Transactions({
                     onAutomate={openAutomateDialog}
                     onSplit={setSplitTransaction}
                     onUnsplit={setUnsplitTransaction}
+                    selectionMode={selectionMode.forRows}
                 />
             );
         },
-        [handleReEvaluateRules, lastVisitAtMount, openAutomateDialog],
+        [
+            handleReEvaluateRules,
+            lastVisitAtMount,
+            openAutomateDialog,
+            selectionMode.forRows,
+        ],
     );
 
     return (
@@ -1403,6 +1426,9 @@ export default function Transactions({
                                 />
 
                                 <div className="ml-auto flex items-center gap-2">
+                                    <SelectionModeButton
+                                        selectionMode={selectionMode}
+                                    />
                                     <TransactionExportButton
                                         params={clientFiltersToQueryParams(
                                             filters,
@@ -1749,8 +1775,10 @@ export default function Transactions({
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onSelectAll={handleSelectAll}
-                onClear={handleClearSelection}
+                onSelectOnlyVisible={selectOnlyVisible}
+                onClear={selectionMode.clear}
                 isUpdating={isBulkUpdating || isReEvaluating}
+                selectionMode={selectionMode}
             />
         </AppSidebarLayout>
     );

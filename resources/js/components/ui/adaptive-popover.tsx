@@ -1,6 +1,7 @@
 import {
     Drawer,
     DrawerContent,
+    DrawerDescription,
     DrawerHeader,
     DrawerTitle,
     DrawerTrigger,
@@ -12,7 +13,13 @@ import {
 } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { type ComponentProps, type ReactNode, useEffect, useRef } from 'react';
+import {
+    type ComponentProps,
+    type HTMLAttributes,
+    type ReactNode,
+    useEffect,
+    useRef,
+} from 'react';
 
 export type PopoverSide = ComponentProps<typeof PopoverContent>['side'];
 export type PopoverAlign = ComponentProps<typeof PopoverContent>['align'];
@@ -30,6 +37,99 @@ export type PopoverAlign = ComponentProps<typeof PopoverContent>['align'];
  * is exactly where the toast sits.
  */
 const ABOVE_TOASTS = 'z-[1000000000]';
+
+/**
+ * A `Command` picker in a drawer: a taller list than the popover's 300px, and
+ * rows tall enough for a thumb.
+ */
+export const DRAWER_COMMAND_CLASS =
+    '[&_[cmdk-list]]:max-h-[55vh] [&_[cmdk-item]]:min-h-11';
+
+/** A picker opened as a bottom drawer, with the header it shows there. */
+export interface PickerDrawer {
+    title: string;
+    description?: string;
+}
+
+/**
+ * The panel itself, with the caller deciding which one: a popover, or a bottom
+ * drawer. `AdaptivePopover` decides by the viewport; a picker that only some
+ * callers want as a drawer (the phone's bulk-actions bar) passes it explicitly.
+ */
+export function PopoverOrDrawer({
+    asDrawer,
+    open,
+    onOpenChange,
+    trigger,
+    title,
+    description,
+    children,
+    side = 'bottom',
+    align = 'end',
+    modal = false,
+    className,
+    drawerClassName,
+    triggerProps,
+    contentProps,
+}: {
+    asDrawer: boolean;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    trigger: ReactNode;
+    /** The drawer's name, read out to a screen reader. */
+    title: string;
+    /** Shows the drawer's header, title included, with this line under it. */
+    description?: string;
+    children: ReactNode;
+    side?: PopoverSide;
+    align?: PopoverAlign;
+    modal?: boolean;
+    /** Classes of the popover. */
+    className?: string;
+    /** Classes of the drawer's body. */
+    drawerClassName?: string;
+    triggerProps?: HTMLAttributes<HTMLElement>;
+    contentProps?: Omit<ComponentProps<typeof PopoverContent>, 'children'>;
+}) {
+    if (asDrawer) {
+        return (
+            <Drawer open={open} onOpenChange={onOpenChange}>
+                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                <DrawerContent className={ABOVE_TOASTS}>
+                    <DrawerHeader
+                        className={description ? 'text-left' : 'sr-only'}
+                    >
+                        <DrawerTitle>{title}</DrawerTitle>
+                        {description && (
+                            <DrawerDescription>{description}</DrawerDescription>
+                        )}
+                    </DrawerHeader>
+                    <div
+                        className={cn('overflow-y-auto pb-3', drawerClassName)}
+                    >
+                        {children}
+                    </div>
+                </DrawerContent>
+            </Drawer>
+        );
+    }
+
+    return (
+        <Popover modal={modal} open={open} onOpenChange={onOpenChange}>
+            <PopoverTrigger asChild {...triggerProps}>
+                {trigger}
+            </PopoverTrigger>
+            <PopoverContent
+                side={side}
+                align={align}
+                {...contentProps}
+                className={cn('overflow-hidden p-0', ABOVE_TOASTS, className)}
+            >
+                {children}
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 /**
  * A panel hung off a button in the chrome: a popover on desktop, a bottom
@@ -68,44 +168,29 @@ export function AdaptivePopover({
     const isMobile = useIsMobile();
     const hover = useHoverToOpen(openOnHover && !isMobile, onOpenChange);
 
-    if (isMobile) {
-        return (
-            <Drawer open={open} onOpenChange={onOpenChange}>
-                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-                <DrawerContent className={ABOVE_TOASTS}>
-                    <DrawerHeader className="sr-only">
-                        <DrawerTitle>{title}</DrawerTitle>
-                    </DrawerHeader>
-                    <div className="overflow-y-auto pb-3">{children}</div>
-                </DrawerContent>
-            </Drawer>
-        );
-    }
-
     return (
-        <Popover open={open} onOpenChange={onOpenChange}>
-            <PopoverTrigger asChild {...hover}>
-                {trigger}
-            </PopoverTrigger>
-            <PopoverContent
-                side={side}
-                align={align}
-                className={cn(
-                    'w-[360px] overflow-hidden p-0',
-                    ABOVE_TOASTS,
-                    className,
-                )}
+        <PopoverOrDrawer
+            asDrawer={isMobile}
+            open={open}
+            onOpenChange={onOpenChange}
+            trigger={trigger}
+            title={title}
+            side={side}
+            align={align}
+            className={cn('w-[360px]', className)}
+            triggerProps={hover}
+            contentProps={{
+                ...hover,
                 // Hovering is not asking to be moved: pulling focus into the
                 // panel the moment the pointer grazes the trigger steals the
                 // keyboard from whatever the reader was doing.
-                onOpenAutoFocus={
-                    openOnHover ? (event) => event.preventDefault() : undefined
-                }
-                {...hover}
-            >
-                {children}
-            </PopoverContent>
-        </Popover>
+                onOpenAutoFocus: openOnHover
+                    ? (event) => event.preventDefault()
+                    : undefined,
+            }}
+        >
+            {children}
+        </PopoverOrDrawer>
     );
 }
 
