@@ -136,11 +136,12 @@ presupuestos archivados y los importes arrastrados no cuentan.
 
 Qué presupuestos cuentan depende de la vista:
 
-- **Mes** y **Trimestre**: presupuestos semanales, quincenales y mensuales.
+- **Mes**: presupuestos semanales, quincenales y mensuales.
+- **Trimestre**: presupuestos semanales, quincenales, mensuales y trimestrales.
 - **Año**: solo presupuestos anuales.
 
-Lo que le queda a un presupuesto anual no es dinero retenido de los ingresos de
-un mes, y un presupuesto mensual dice poco de un año entero, así que cada uno se
+Lo que le queda a un presupuesto trimestral o anual no es dinero retenido de los
+ingresos de un mes, y un presupuesto mensual dice poco de un año entero, así que cada uno se
 queda en la vista que le corresponde. Consulta
 [periodos de presupuesto](/documentation/budgets#periodos-de-presupuesto) y
 [presupuestos en el flujo de caja](/documentation/budgets#presupuestos-en-el-flujo-de-caja).
@@ -192,9 +193,11 @@ funciona igual de bien en un periodo pasado que en el actual.
   presupuesto en curso en esta vista, cada uno con lo que gastaste de lo
   asignado y lo que le queda, y cuánto reserva cada grupo.
 
-Una nota al final te remite a la otra vista: en Mes y Trimestre te recuerda que
-los presupuestos anuales se reservan en la vista Año, y en Año, que los
-semanales y mensuales se reservan en la vista Mes.
+Una nota al final te remite a las otras vistas: en Mes te recuerda que los
+presupuestos trimestrales se reservan en la vista Trimestre y los anuales en la
+vista Año; en Trimestre, que los anuales se reservan en la vista Año; y en Año,
+que los semanales y mensuales se reservan en la vista Mes y los trimestrales en
+la vista Trimestre.
 
 ## Ver las transacciones de un bloque
 
@@ -274,7 +277,7 @@ Revisa esto primero:
 4. ¿Los importes importados tienen el signo correcto?
 5. ¿Hay transacciones sin categoría?
 6. ¿Tus presupuestos tienen el tipo de gasto correcto, fijo o variable?
-7. ¿Estás en la vista que corresponde a tus presupuestos: Mes o Trimestre para los semanales y mensuales, Año para los anuales?
+7. ¿Estás en la vista que corresponde a tus presupuestos: Mes o Trimestre para los semanales y mensuales, Trimestre para los trimestrales, Año para los anuales?
 
 ## Preguntas frecuentes
 
@@ -303,15 +306,15 @@ no les queda nada o no tienes presupuestos de esa periodicidad.
 
 ### ¿Por qué mi presupuesto anual no aparece en lo reservado del mes?
 
-Las vistas Mes y Trimestre solo reservan presupuestos semanales, quincenales y
-mensuales. Cambia a la vista Año para ver lo que reservan tus presupuestos
-anuales.
+La vista Mes solo reserva presupuestos semanales, quincenales y mensuales, y la
+vista Trimestre añade los trimestrales. Cambia a la vista Año para ver lo que
+reservan tus presupuestos anuales, o a la vista Trimestre para los trimestrales.
 
 ### ¿Por qué un presupuesto anual sí cuenta en los gastos fijos o variables del mes?
 
 El reparto del gasto sigue todos los presupuestos con un periodo dentro de la
 vista, sea cual sea su periodicidad: una transacción que sigue un presupuesto
-anual fijo es un gasto fijo en cualquier mes. Solo lo reservado depende de la
+anual o trimestral fijo es un gasto fijo en cualquier mes. Solo lo reservado depende de la
 vista.
 
 ### ¿Por qué faltan transferencias?

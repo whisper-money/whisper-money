@@ -261,29 +261,22 @@ describe('CashflowDetailsDrawer', () => {
         ).toBeTruthy();
     });
 
-    it('points to the view that reserves the budgets this one leaves out', () => {
-        const { rerender } = renderDrawer();
+    it.each([
+        [
+            'month',
+            'Quarterly budgets are reserved in the Quarter view, and yearly ones in the Year view',
+        ],
+        ['quarter', 'Yearly budgets are reserved in the Year view'],
+        [
+            'year',
+            'Weekly and monthly budgets are reserved in the Month view, and quarterly ones in the Quarter view',
+        ],
+    ] as const)(
+        'points the %s view to the views that reserve the budgets it leaves out',
+        (periodType, hint) => {
+            renderDrawer({ periodType });
 
-        expect(
-            screen.getByText('Yearly budgets are reserved in the Year view'),
-        ).toBeTruthy();
-
-        rerender(
-            <CashflowDetailsDrawer
-                open
-                onOpenChange={vi.fn()}
-                current={summary()}
-                previous={previous}
-                currency="EUR"
-                periodType="year"
-                periodLabel="2026"
-            />,
-        );
-
-        expect(
-            screen.getByText(
-                'Weekly and monthly budgets are reserved in the Month view',
-            ),
-        ).toBeTruthy();
-    });
+            expect(screen.getByText(hint)).toBeTruthy();
+        },
+    );
 });

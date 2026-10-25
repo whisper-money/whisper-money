@@ -497,16 +497,26 @@ export function CashflowDetailsDrawer({
                     </div>
 
                     <p className="text-center text-xs text-muted-foreground">
-                        {periodType === 'year'
-                            ? __(
-                                  'Weekly and monthly budgets are reserved in the Month view',
-                              )
-                            : __(
-                                  'Yearly budgets are reserved in the Year view',
-                              )}
+                        {otherViewsReserveHint(periodType)}
                     </p>
                 </div>
             </DrawerContent>
         </Drawer>
     );
+}
+
+/** Where the budgets this view leaves out of reserved are reserved instead. */
+function otherViewsReserveHint(periodType: CashflowPeriodType): string {
+    switch (periodType) {
+        case 'month':
+            return __(
+                'Quarterly budgets are reserved in the Quarter view, and yearly ones in the Year view',
+            );
+        case 'quarter':
+            return __('Yearly budgets are reserved in the Year view');
+        case 'year':
+            return __(
+                'Weekly and monthly budgets are reserved in the Month view, and quarterly ones in the Quarter view',
+            );
+    }
 }

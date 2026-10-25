@@ -134,12 +134,13 @@ counted.
 
 Which budgets count depends on the view:
 
-- **Month** and **Quarter**: weekly, bi-weekly and monthly budgets.
+- **Month**: weekly, bi-weekly and monthly budgets.
+- **Quarter**: weekly, bi-weekly, monthly and quarterly budgets.
 - **Year**: yearly budgets only.
 
-A yearly budget's margin is not money held back from one month's income, and a
-monthly budget says little about a whole year, so each is kept to the view it
-fits. See [budget periods](/documentation/budgets#budget-periods) and
+A quarterly or yearly budget's margin is not money held back from one month's
+income, and a monthly budget says little about a whole year, so each is kept to
+the view it fits. See [budget periods](/documentation/budgets#budget-periods) and
 [budgets on the Cashflow page](/documentation/budgets#budgets-on-the-cashflow-page).
 
 When you look at a past or future period, there is usually nothing in progress
@@ -189,9 +190,11 @@ just as well for a past period as for the current one.
   this view, each with what you spent of what you allocated and what is left,
   and how much each group reserves.
 
-A note at the bottom points you to the other view: in Month and Quarter it
-reminds you that yearly budgets are reserved in the Year view, and in Year that
-weekly and monthly budgets are reserved in the Month view.
+A note at the bottom points you to the other views: in Month it reminds you that
+quarterly budgets are reserved in the Quarter view and yearly ones in the Year
+view, in Quarter that yearly budgets are reserved in the Year view, and in Year
+that weekly and monthly budgets are reserved in the Month view and quarterly
+ones in the Quarter view.
 
 ## View a block's transactions
 
@@ -270,7 +273,7 @@ Check these first:
 4. Are imported amounts positive and negative the right way around?
 5. Are there uncategorized transactions?
 6. Do your budgets have the right expense type, fixed or variable?
-7. Are you in the view that matches your budgets: Month or Quarter for weekly and monthly budgets, Year for yearly ones?
+7. Are you in the view that matches your budgets: Month or Quarter for weekly and monthly budgets, Quarter for quarterly ones, Year for yearly ones?
 
 ## FAQ
 
@@ -298,13 +301,14 @@ budgets of that periodicity.
 
 ### Why doesn't my yearly budget appear in the month's reserved?
 
-The Month and Quarter views only reserve weekly, bi-weekly and monthly budgets.
-Switch to the Year view to see what your yearly budgets reserve.
+The Month view only reserves weekly, bi-weekly and monthly budgets, and the
+Quarter view adds quarterly ones. Switch to the Year view to see what your
+yearly budgets reserve, or to the Quarter view for your quarterly ones.
 
 ### Why does a yearly budget still count in a month's fixed or variable expenses?
 
 The expense split follows every budget with a period in the view, whatever its
-periodicity: a transaction tracked by a yearly fixed budget is a fixed expense
+periodicity: a transaction tracked by a yearly or quarterly fixed budget is a fixed expense
 in any month. Only reserved is limited by the view.
 
 ### Why are transfers missing?

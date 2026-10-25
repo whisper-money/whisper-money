@@ -176,9 +176,9 @@ hoy y se solapa con la vista:
 - Solo cuenta el importe del presupuesto. Lo arrastrado de periodos anteriores
   se deja fuera.
 
-Qué presupuestos cuentan depende de la vista. Las vistas **Mes** y **Trimestre**
-cuentan los presupuestos semanales, de cada dos semanas y mensuales. La vista
-**Año** cuenta solo los anuales.
+Qué presupuestos cuentan depende de la vista. La vista **Mes** cuenta los
+presupuestos semanales, de cada dos semanas y mensuales. La vista **Trimestre**
+cuenta esos y además los trimestrales. La vista **Año** cuenta solo los anuales.
 
 ## Avisos
 
@@ -218,7 +218,8 @@ cubren facturas que no puedes recortar, como el alquiler o las suscripciones.
 
 O no hay ningún periodo de presupuesto en curso hoy, o todos están ya agotados o
 superados. Los presupuestos archivados nunca reservan nada. Un presupuesto anual
-solo cuenta en la vista Año, y uno mensual solo en las vistas Mes y Trimestre.
+solo cuenta en la vista Año, uno trimestral solo en la vista Trimestre, y uno
+mensual solo en las vistas Mes y Trimestre.
 
 ### ¿Por qué un presupuesto aparece vacío?
 

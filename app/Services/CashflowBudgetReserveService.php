@@ -23,6 +23,11 @@ class CashflowBudgetReserveService
     use ConvertsTransactionCurrency;
 
     /**
+     * The longest a month gets; any longer range is read as a quarter.
+     */
+    private const MAX_MONTH_DAYS = 31;
+
+    /**
      * The longest a quarter gets; any longer range is read as a year.
      */
     private const MAX_QUARTER_DAYS = 92;
@@ -43,10 +48,11 @@ class CashflowBudgetReserveService
      * ignores any carried-over amount.
      *
      * Both only count the budgets whose period fits the range: weekly,
-     * bi-weekly and monthly budgets for a range of up to a quarter (the month
-     * and quarter views), yearly ones for anything longer (the year view). A
-     * yearly budget's margin is not money held back from one month's income,
-     * and a monthly one's says little about a whole year.
+     * bi-weekly and monthly budgets for a range of up to a month (the month
+     * view), those plus quarterly ones for a range of up to a quarter (the
+     * quarter view), and yearly ones for anything longer (the year view). A
+     * quarterly or yearly budget's margin is not money held back from one
+     * month's income, and a monthly one's says little about a whole year.
      *
      * `fixed_expense` is the part of `$expense` booked to categories (or
      * their children) and labels tracked by a budget marked fixed with a
@@ -137,11 +143,17 @@ class CashflowBudgetReserveService
      */
     private function periodTypesFor(PeriodComparator $period): array
     {
-        if ($period->days() > self::MAX_QUARTER_DAYS) {
+        $days = $period->days();
+
+        if ($days > self::MAX_QUARTER_DAYS) {
             return [BudgetPeriodType::Yearly];
         }
 
-        return [BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly, BudgetPeriodType::Monthly];
+        $monthTypes = [BudgetPeriodType::Weekly, BudgetPeriodType::Biweekly, BudgetPeriodType::Monthly];
+
+        return $days > self::MAX_MONTH_DAYS
+            ? [...$monthTypes, BudgetPeriodType::Quarterly]
+            : $monthTypes;
     }
 
     /**
