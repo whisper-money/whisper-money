@@ -894,6 +894,35 @@ test('daily bank sync email job releases during quiet hours in user timezone', f
     expect(UserMailLog::query()->count())->toBe(0);
 });
 
+test('daily bank sync email job releases until 08:00 local, including on DST change days', function (string $utcNow, int $expectedDelay) {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse($utcNow, 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => 'Europe/Madrid']);
+    $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    $job = (new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString()))->withFakeQueueInteractions();
+    $job->handle();
+
+    $job->assertReleased(delay: $expectedDelay);
+    expect(now()->addSeconds($expectedDelay)->setTimezone('Europe/Madrid')->format('H:i'))->toBe('08:00');
+
+    Mail::assertNothingQueued();
+})->with([
+    'autumn change, 07:00 local' => ['2026-10-25 06:00:30', 3570],
+    'night before autumn change, 23:30 local' => ['2026-10-24 21:30:00', 34200],
+    'spring change, 07:30 local' => ['2027-03-28 05:30:00', 1800],
+    'regular day, 23:30 local' => ['2026-04-15 21:30:00', 30600],
+]);
+
 test('daily bank sync email job sends at first allowed local hour for user timezone', function () {
     Mail::fake();
 
