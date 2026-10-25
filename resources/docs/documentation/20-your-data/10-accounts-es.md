@@ -8,7 +8,8 @@ Las cuentas son la base de Whisper Money. Guardan saldos, transacciones e histor
 
 1. Crea una cuenta por cada lugar donde tienes o debes dinero.
 2. Elige el tipo que mejor encaje con la cuenta real.
-3. Añade saldos para cuentas que solo necesitan seguimiento de valor.
+3. Añade saldos para cuentas que solo necesitan seguimiento de valor. A una
+   tarjeta de crédito ponle su límite de crédito en su lugar.
 4. Importa transacciones para cuentas con actividad diaria.
 5. Revisa la página de Cuentas para ver saldos y evolución del patrimonio neto.
 
@@ -63,9 +64,12 @@ Usa este tipo para dinero que mantienes apartado.
 
 Usa este tipo para tarjetas de crédito.
 
-Las tarjetas de crédito quedan fuera del patrimonio neto por completo. Son cuentas
-de gasto, no patrimonio, así que el saldo se sigue en la propia cuenta y no se
-suma ni se resta a tu total.
+Una tarjeta de crédito no tiene saldo. Tiene un límite de crédito, lo que has
+dispuesto de él y una estimación del próximo extracto que se cargará. Las
+tarjetas de crédito quedan fuera del patrimonio neto por completo.
+
+[Tarjetas de crédito](/documentation/accounts/credit-cards) explica cómo funciona
+todo.
 
 </div>
 
@@ -75,6 +79,9 @@ suma ni se resta a tu total.
 Usa este tipo para cuentas de broker o inversión.
 
 Normalmente son cuentas de solo saldo. Sigues su valor en el tiempo en vez de transacciones diarias.
+
+Apunta lo que has puesto y la cuenta te muestra cuánto ha ganado. Las cuentas
+de ahorro y de jubilación pueden hacer lo mismo.
 
 </div>
 
@@ -98,8 +105,12 @@ Ejemplos:
 - Préstamo personal
 - Préstamo estudiantil
 
-Los préstamos son el único tipo de cuenta que reduce el patrimonio neto: el
-importe debido se resta de tus activos.
+Añade los detalles del préstamo para seguir su amortización: la tasa de interés
+anual (del 0 % al 100 %), el plazo en meses y el importe original van juntos, y
+la fecha de inicio es opcional.
+
+Cuando los préstamos se incluyen en el patrimonio neto, son el único tipo de
+cuenta que lo reduce: el importe debido se resta de tus activos.
 
 </div>
 
@@ -146,8 +157,46 @@ Whisper Money usa palabras distintas según el tipo de cuenta.
 - Las cuentas normales usan **saldo**.
 - Las cuentas de préstamo usan **importe debido**.
 - Las cuentas de inmueble usan **valor de mercado**.
+- Las tarjetas de crédito no tienen saldo: usan **límite de crédito** y
+  **dispuesto**.
 
 Así el lenguaje se acerca más a lo que significa el número.
+
+## Cantidad invertida y ganancia
+
+Las cuentas de inversión, jubilación y ahorro pueden guardar una **cantidad
+invertida** junto al saldo: lo que has puesto, no lo que vale ahora. Escríbela al
+crear la cuenta, o con cada saldo cuando lo actualices. Si solo sabes lo que has
+puesto, la cuenta empieza con un saldo igual a esa cantidad.
+
+En cuanto hay una cantidad invertida guardada, la página de la cuenta muestra
+tres tarjetas:
+
+- **Valor actual**, el último saldo.
+- **Invertido**, lo que has puesto.
+- **Ganancia**, la diferencia, y lo que supone en porcentaje de lo invertido. Si
+  la cuenta vale menos de lo que pusiste, se lee como una pérdida.
+
+La cantidad invertida está siempre en la moneda de la cuenta, igual que su saldo.
+
+## Patrimonio neto
+
+El patrimonio neto suma los saldos de tus cuentas. No todos los tipos cuentan
+igual:
+
+- Las cuentas corrientes, de ahorro, inversión, jubilación y otros suman.
+- Las tarjetas de crédito nunca cuentan: lo que debes en ellas ni se suma ni se
+  resta.
+- Los préstamos restan lo que debes y los inmuebles suman su valor de mercado,
+  pero solo si los incluyes.
+
+Usa el botón de ajustes del gráfico de patrimonio neto para activar o desactivar
+**Incluir préstamos** e **Incluir bienes raíces**. La elección vale para tu
+patrimonio neto en todas partes, no solo en el gráfico: los totales del panel,
+tus logros y el correo del resumen mensual también la siguen. Los dos empiezan
+desactivados para los usuarios nuevos, así que tu primer gráfico muestra el
+dinero que puedes usar y no una hipoteca o un piso. Quien ya usaba Whisper Money
+mantiene el ajuste que tenía.
 
 ## Cuentas conectadas y manuales
 
@@ -228,13 +277,21 @@ calculan al leerlos, así que recogen la parte nueva por su cuenta.
 
 ### ¿Por qué mi préstamo reduce el patrimonio neto?
 
-Un préstamo es dinero que debes. Whisper Money lo resta de tus activos al calcular el patrimonio neto.
+Un préstamo es dinero que debes. Cuando los préstamos están incluidos, Whisper
+Money lo resta de tus activos al calcular el patrimonio neto. Desactiva **Incluir
+préstamos** en los ajustes del gráfico de patrimonio neto para dejarlo fuera.
+
+### ¿Por qué mi préstamo o mi piso no aparecen en el patrimonio neto?
+
+Los préstamos y los inmuebles empiezan desactivados para los usuarios nuevos.
+Activa **Incluir préstamos** o **Incluir bienes raíces** en los ajustes del
+gráfico de patrimonio neto.
 
 ### ¿Por qué mi tarjeta de crédito no reduce el patrimonio neto?
 
 Una tarjeta de crédito es una cuenta de gasto, no patrimonio. Whisper Money sigue
-lo que debes en la propia tarjeta y lo deja fuera del total de patrimonio neto,
-así que pagar la tarjeta no mueve esa cifra.
+cuánto has dispuesto de su límite en la propia tarjeta y lo deja fuera del total
+de patrimonio neto, así que pagar la tarjeta no mueve esa cifra.
 
 ### ¿Por qué los inmuebles usan valor de mercado?
 
