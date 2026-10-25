@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import {
     memo,
+    type ReactElement,
     type ReactNode,
     useEffect,
     useMemo,
@@ -65,6 +66,11 @@ interface CategoryComboboxProps {
     emptyOptionLabel?: string;
     /** Optional content rendered at the very top of the open dropdown. */
     header?: ReactNode;
+    /**
+     * Replaces the default trigger button. It must forward its ref and props,
+     * and handles `disabled` itself: the prop only reaches the default one.
+     */
+    trigger?: ReactElement;
     'data-testid'?: string;
 }
 
@@ -79,6 +85,7 @@ export function CategoryCombobox({
     withoutChevronIcon = false,
     emptyOptionLabel,
     header,
+    trigger,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
     const noneLabel = emptyOptionLabel ?? __('Uncategorized');
@@ -128,43 +135,45 @@ export function CategoryCombobox({
     return (
         <Popover modal open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className={cn(
-                        'w-full max-w-full justify-between !pr-2 !pl-1',
-                        triggerClassName,
-                    )}
-                    disabled={disabled}
-                    onClick={(e) => e.stopPropagation()}
-                    data-testid={dataTestId}
-                >
-                    {selectedCategory ? (
-                        <div className="flex items-center gap-2 overflow-x-hidden">
-                            <CategoryIcon category={selectedCategory} />
-                            <span className="truncate">
-                                {selectedCategory.name}
-                            </span>
-                        </div>
-                    ) : value === 'null' ? (
-                        <div className="flex items-center gap-2 truncate">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                <HelpCircle className="h-3 w-3 text-zinc-500" />
+                {trigger ?? (
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                            'w-full max-w-full justify-between !pr-2 !pl-1',
+                            triggerClassName,
+                        )}
+                        disabled={disabled}
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={dataTestId}
+                    >
+                        {selectedCategory ? (
+                            <div className="flex items-center gap-2 overflow-x-hidden">
+                                <CategoryIcon category={selectedCategory} />
+                                <span className="truncate">
+                                    {selectedCategory.name}
+                                </span>
                             </div>
-                            <span className="truncate text-zinc-500">
-                                {noneLabel}
+                        ) : value === 'null' ? (
+                            <div className="flex items-center gap-2 truncate">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                    <HelpCircle className="h-3 w-3 text-zinc-500" />
+                                </div>
+                                <span className="truncate text-zinc-500">
+                                    {noneLabel}
+                                </span>
+                            </div>
+                        ) : (
+                            <span className="truncate text-muted-foreground">
+                                {placeholder}
                             </span>
-                        </div>
-                    ) : (
-                        <span className="truncate text-muted-foreground">
-                            {placeholder}
-                        </span>
-                    )}
-                    {withoutChevronIcon === false && (
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    )}
-                </Button>
+                        )}
+                        {withoutChevronIcon === false && (
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        )}
+                    </Button>
+                )}
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
                 {header}

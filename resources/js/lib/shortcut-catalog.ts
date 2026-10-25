@@ -16,7 +16,10 @@ import { __ } from '@/utils/i18n';
  * At runtime the layer stack decides what fires, not the scope — except for
  * `global`, whose shortcuts fire whatever dialog is open on top.
  */
-export type ShortcutScope = 'global' | 'transaction-dialog';
+export type ShortcutScope =
+    | 'global'
+    | 'transaction-dialog'
+    | 'transaction-selection';
 
 export interface ShortcutDefinition {
     /** `mod+enter`, `shift+mod+k`, `n`… see `parseCombo`. */
@@ -51,6 +54,38 @@ export const SHORTCUTS = {
         keys: 'n',
         scope: 'transaction-dialog',
         description: () => __('Add note'),
+    },
+    'transaction-selection.category': {
+        keys: 'c',
+        scope: 'transaction-selection',
+        description: () => __('Change category'),
+    },
+    'transaction-selection.labels': {
+        keys: 'l',
+        scope: 'transaction-selection',
+        description: () => __('Add labels'),
+    },
+    'transaction-selection.re-evaluate-rules': {
+        keys: 'r',
+        scope: 'transaction-selection',
+        description: () => __('Re-evaluate rules'),
+    },
+    'transaction-selection.delete': {
+        keys: 'backspace',
+        scope: 'transaction-selection',
+        description: () => __('Delete selected transactions'),
+    },
+    // Forward delete does the same, for keyboards where it is the one labelled
+    // Delete. The chip shows ⌫ only.
+    'transaction-selection.delete-forward': {
+        keys: 'delete',
+        scope: 'transaction-selection',
+        description: () => __('Delete selected transactions'),
+    },
+    'transaction-selection.clear': {
+        keys: 'escape',
+        scope: 'transaction-selection',
+        description: () => __('Clear selection'),
     },
 } satisfies Record<string, ShortcutDefinition>;
 

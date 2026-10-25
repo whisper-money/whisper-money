@@ -42,8 +42,8 @@ it('changes the category of every selected row', function () {
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
-        ->assertSee('2 transactions')
-        ->click('Change category')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '2')
+        ->click('[data-testid="bulk-category-trigger"]')
         ->click('[cmdk-item]:has-text("Utilities")')
         ->assertSee('Updated 2 transactions');
 
@@ -66,10 +66,10 @@ it('extends the selection to every row matching the filters', function () {
 
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
-        ->assertSee('1 transaction')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
         ->click('[data-testid="bulk-select-all"]')
         ->assertSee('All matching filters')
-        ->click('Change category')
+        ->click('[data-testid="bulk-category-trigger"]')
         ->click('[cmdk-item]:has-text("Utilities")')
         ->assertSee('Updated 8 transactions')
         ->assertNoJavascriptErrors();
@@ -86,7 +86,7 @@ it('adds a label to the selection and clears it from the rows without a reload',
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
-        ->click('[data-testid="label-combobox-trigger"]')
+        ->click('[data-testid="bulk-labels-trigger"]')
         ->click('[data-testid="label-option"][data-label-name="Holiday"]')
         ->assertSee('Updated 2 transactions');
 
@@ -99,7 +99,7 @@ it('adds a label to the selection and clears it from the rows without a reload',
     // starts by ticking the same two rows again.
     $page->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
-        ->click('[data-testid="label-combobox-trigger"]')
+        ->click('[data-testid="bulk-labels-trigger"]')
         ->click('[cmdk-item]:has-text("Remove all labels")')
         ->assertSee('Updated 2 transactions');
 
@@ -120,12 +120,11 @@ it('deletes the selected rows through the confirmation dialog', function () {
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
-        ->click('[data-test="bulk-actions-bar"] [aria-label="More actions"]')
-        ->click('[role="menuitem"]:has-text("Delete")')
+        ->click('[data-test="bulk-actions-bar"] button:has-text("Delete")')
         ->assertSee('Delete Transactions')
         // The dialog asks for the sentence back before it will delete anything.
         ->fill('input[placeholder="Delete 2 Transactions"]', 'Delete 2 Transactions')
-        ->click('button:has-text("Delete")')
+        ->click('[role="dialog"] button:has-text("Delete")')
         ->assertDontSee('Weekly groceries market')
         ->assertDontSee('Coffee subscription')
         ->assertSee('Monthly train pass')
@@ -145,8 +144,7 @@ it('runs the automation rules again over the selection', function () {
     $page->assertSee('Weekly groceries market')
         ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
         ->click('tr:has-text("Monthly train pass") [aria-label="Select row"]')
-        ->click('[data-test="bulk-actions-bar"] [aria-label="More actions"]')
-        ->click('[role="menuitem"]:has-text("Re-evaluate rules")')
+        ->click('[data-test="bulk-actions-bar"] button:has-text("Re-evaluate rules")')
         ->assertSee('Re-evaluation complete!')
         ->assertSeeIn('tr:has-text("Weekly groceries market")', 'Utilities')
         ->assertNoJavascriptErrors();
@@ -156,6 +154,36 @@ it('runs the automation rules again over the selection', function () {
         // Selected too, but no rule matches it, so its category is left alone.
         ->and($this->fixture->movementNamed('Monthly train pass')->category_id)
         ->toBe($this->fixture->transport->id);
+});
+
+it('drives the selection from the keyboard', function () {
+    $page = visit('/transactions');
+
+    $page->assertSee('Weekly groceries market')
+        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->click('tr:has-text("Coffee subscription") [aria-label="Select row"]')
+        ->keys('tr:has-text("Coffee subscription") [aria-label="Select row"]', 'c')
+        ->click('[cmdk-item]:has-text("Utilities")')
+        ->assertSee('Updated 2 transactions');
+
+    expect($this->fixture->movementNamed('Coffee subscription')->category_id)
+        ->toBe($this->fixture->utilities->id);
+
+    // Backspace opens the confirmation, it never deletes on its own; Escape
+    // closes the dialog first and only then clears the selection.
+    $trainPass = 'tr:has-text("Monthly train pass") [aria-label="Select row"]';
+
+    $page->click($trainPass)
+        ->keys($trainPass, 'Backspace')
+        ->assertSee('Delete Transactions')
+        ->keys('[role="dialog"]', 'Escape')
+        ->assertDontSee('Delete Transactions')
+        ->assertPresent('[data-test="bulk-actions-bar"]')
+        ->keys($trainPass, 'Escape')
+        ->assertMissing('[data-test="bulk-actions-bar"]')
+        ->assertNoJavascriptErrors();
+
+    expect($this->fixture->movementNamed('Monthly train pass'))->not->toBeNull();
 });
 
 it('runs the automation rules again for a single row from its actions menu', function () {

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 
 interface LabelComboboxProps {
     value?: string[] | null;
@@ -32,6 +32,11 @@ interface LabelComboboxProps {
     allowCreate?: boolean;
     allowRemoveAll?: boolean;
     onLabelCreated?: (label: Label) => void;
+    /**
+     * Replaces the default trigger button. It must forward its ref and props,
+     * and handles `disabled` itself: the prop only reaches the default one.
+     */
+    trigger?: ReactElement;
 }
 
 export function LabelCombobox({
@@ -44,6 +49,7 @@ export function LabelCombobox({
     allowCreate = true,
     allowRemoveAll = false,
     onLabelCreated,
+    trigger,
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -154,70 +160,72 @@ export function LabelCombobox({
     return (
         <Popover modal open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className={cn(
-                        'min-h-10 w-full justify-between',
-                        triggerClassName,
-                    )}
-                    disabled={disabled}
-                    data-testid="label-combobox-trigger"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {selectedLabels.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                            {selectedLabels.map((label) => {
-                                const colorClasses = getLabelColorClasses(
-                                    label.color,
-                                );
-                                return (
-                                    <Badge
-                                        key={label.id}
-                                        className={cn(
-                                            'gap-1 px-2 py-0.5',
-                                            colorClasses.bg,
-                                            colorClasses.text,
-                                        )}
-                                    >
-                                        <LabelIcon
-                                            label={label}
-                                            className="h-3 w-3"
-                                        />
-                                        {label.name}
-                                        <span
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) =>
-                                                handleRemove(label.id, e)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (
-                                                    e.key === 'Enter' ||
-                                                    e.key === ' '
-                                                ) {
-                                                    handleRemove(
-                                                        label.id,
-                                                        e as unknown as React.MouseEvent,
-                                                    );
-                                                }
-                                            }}
-                                            className="ml-0.5 cursor-pointer rounded-full hover:bg-black/10"
+                {trigger ?? (
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                            'min-h-10 w-full justify-between',
+                            triggerClassName,
+                        )}
+                        disabled={disabled}
+                        data-testid="label-combobox-trigger"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {selectedLabels.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                                {selectedLabels.map((label) => {
+                                    const colorClasses = getLabelColorClasses(
+                                        label.color,
+                                    );
+                                    return (
+                                        <Badge
+                                            key={label.id}
+                                            className={cn(
+                                                'gap-1 px-2 py-0.5',
+                                                colorClasses.bg,
+                                                colorClasses.text,
+                                            )}
                                         >
-                                            <X className="h-3 w-3" />
-                                        </span>
-                                    </Badge>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <span className="text-muted-foreground">
-                            {placeholder}
-                        </span>
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+                                            <LabelIcon
+                                                label={label}
+                                                className="h-3 w-3"
+                                            />
+                                            {label.name}
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) =>
+                                                    handleRemove(label.id, e)
+                                                }
+                                                onKeyDown={(e) => {
+                                                    if (
+                                                        e.key === 'Enter' ||
+                                                        e.key === ' '
+                                                    ) {
+                                                        handleRemove(
+                                                            label.id,
+                                                            e as unknown as React.MouseEvent,
+                                                        );
+                                                    }
+                                                }}
+                                                className="ml-0.5 cursor-pointer rounded-full hover:bg-black/10"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </span>
+                                        </Badge>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                {placeholder}
+                            </span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                )}
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-0" align="start">
                 <Command shouldFilter={false}>
