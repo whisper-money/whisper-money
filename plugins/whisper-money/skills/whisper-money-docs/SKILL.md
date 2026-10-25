@@ -31,6 +31,7 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Categories | `categories` |
 | Labels | `labels` |
 | Automation rules | `automation-rules` |
+| Dashboard, net worth chart, account cards, privacy mode | `dashboard` |
 | Cashflow, available and free money, fixed and variable expenses | `cashflow` |
 | Budgets, fixed or variable expense type, reserved money | `budgets` |
 | Savings goals, one-off and monthly | `savings-goals` |

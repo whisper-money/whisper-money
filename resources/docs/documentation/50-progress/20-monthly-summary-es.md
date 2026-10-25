@@ -158,7 +158,8 @@ dirección que repartes, y una dirección se puede retirar.
 
 ## Quitar el aviso
 
-El panel muestra un aviso cuando hay un informe nuevo esperando.
+El [panel](/documentation/dashboard#el-aviso-del-resumen-mensual) muestra un
+aviso cuando hay un informe nuevo esperando.
 **Descartar** quita ese aviso sin borrar nada: el informe se queda en
 **Resúmenes mensuales** mientras exista tu cuenta.
 

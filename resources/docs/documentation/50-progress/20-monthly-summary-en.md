@@ -152,7 +152,8 @@ hand out, and an address can be withdrawn.
 
 ## Putting the notice away
 
-The dashboard shows a notice when a new report is waiting. **Dismiss** puts that
+The [dashboard](/documentation/dashboard#the-monthly-summary-notice) shows a
+notice when a new report is waiting. **Dismiss** puts that
 notice away without deleting anything — the report itself stays under **Monthly
 summaries** for as long as your account does.
 

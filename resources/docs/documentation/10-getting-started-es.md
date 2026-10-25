@@ -99,7 +99,7 @@ La barra lateral reúne las cinco pantallas principales. En el móvil están en 
 barra en la parte de abajo, con nombres más cortos: Inicio, Cashflow, Cuentas,
 Movim. y Plan.
 
-- **Panel**: tu patrimonio neto a lo largo del tiempo, los saldos de tus
+- **[Panel](/documentation/dashboard)**: tu patrimonio neto a lo largo del tiempo, los saldos de tus
   cuentas, el flujo de caja del mes y tus categorías y etiquetas principales.
 - **[Flujo de Caja](/documentation/cashflow)**: ingresos, gastos y lo que
   apartas, por mes, trimestre o año.
@@ -122,7 +122,8 @@ móvil), lleva a:
 - **Progreso**: tus [logros](/documentation/achievements).
 - **Resúmenes mensuales**: todos los
   [resúmenes mensuales](/documentation/monthly-summary) que te hemos enviado.
-- **Activar modo privado**: oculta los importes en pantalla.
+- **Activar modo privado**: oculta los importes en pantalla. Consulta
+  [el modo privado](/documentation/dashboard#modo-privado).
 - **Apariencia**: tema claro, oscuro o el de tu sistema.
 - **Configuración**: cuentas bancarias y
   [conexiones](/documentation/accounts/bank-connections),

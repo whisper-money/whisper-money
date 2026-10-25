@@ -128,7 +128,8 @@ Try:
 <div class="card">
 ### Cashflow, net worth and spending
 
-The same figures the Cashflow and dashboard screens show, for any period you
+The same figures the [Cashflow](/documentation/cashflow) and
+[dashboard](/documentation/dashboard) screens show, for any period you
 ask about: income, expenses split into fixed, variable and general, what you
 saved and invested, and how much your budgets still have reserved.
 

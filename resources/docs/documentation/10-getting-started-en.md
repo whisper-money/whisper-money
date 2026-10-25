@@ -99,7 +99,7 @@ flowchart LR
 The sidebar holds the five main screens. On a phone they sit in a bar along the
 bottom, with shorter names: Home, Cashflow, Accounts, Movements and Plan.
 
-- **Dashboard**: your net worth over time, your account balances, the month's
+- **[Dashboard](/documentation/dashboard)**: your net worth over time, your account balances, the month's
   cashflow, and your top categories and labels.
 - **[Cashflow](/documentation/cashflow)**: income, expenses and what you set
   aside, for a month, a quarter or a year.
@@ -121,7 +121,8 @@ Your account menu, at the bottom of the sidebar (top right on a phone), leads to
 - **Progress**: your [achievements](/documentation/achievements).
 - **Monthly summaries**: every [monthly summary](/documentation/monthly-summary)
   you have been sent.
-- **Enable privacy mode**: hide amounts on screen.
+- **Enable privacy mode**: hide amounts on screen. See
+  [privacy mode](/documentation/dashboard#privacy-mode).
 - **Appearance**: light, dark or your system's theme.
 - **Settings**: bank accounts and
   [connections](/documentation/accounts/bank-connections),

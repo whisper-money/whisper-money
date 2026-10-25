@@ -134,7 +134,8 @@ Prueba:
 <div class="card">
 ### Flujo de caja, patrimonio y gasto
 
-Las mismas cifras que muestran la pantalla de Flujo de caja y el panel, para el
+Las mismas cifras que muestran la pantalla de [Flujo de caja](/documentation/cashflow)
+y el [panel](/documentation/dashboard), para el
 periodo que le pidas: ingresos, gastos repartidos en fijo, variable y general,
 lo que has ahorrado e invertido, y cuánto siguen reservando tus presupuestos.
 
