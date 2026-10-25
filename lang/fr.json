@@ -3097,5 +3097,9 @@
     "Debtor: :name": "Débiteur : :name",
     "From :value": "À partir de :value",
     "Up to :value": "Jusqu'à :value",
-    "Preparing :done…": "Préparation de :done…"
+    "Preparing :done…": "Préparation de :done…",
+    "selected": "sélectionnées",
+    "Select all matching filters": "Tout sélectionner selon le filtre",
+    "Selection actions": "Actions de la sélection",
+    "Delete selected transactions": "Supprimer les transactions sélectionnées"
 }
