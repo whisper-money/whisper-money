@@ -261,7 +261,7 @@ class BudgetController extends Controller
     {
         $this->authorize('delete', $budget);
 
-        $budget->delete();
+        $this->budgetService->delete($budget);
 
         return redirect()->route('budgets.index');
     }
@@ -269,9 +269,9 @@ class BudgetController extends Controller
     /**
      * Archiving records the day it happened and is one-way: the budget turns
      * read-only, stops absorbing transactions and stops claiming its categories
-     * away from the catch-all, and no further periods are generated for it. The
-     * periods it already has keep their figures, which is why the budget stays
-     * reachable instead of being deleted.
+     * away from the catch-all from that day on, and no further periods are
+     * generated for it. The periods it already has keep what they counted before
+     * that day, which is why the budget stays reachable instead of being deleted.
      *
      * The periods `GenerateBudgetPeriods` had already run ahead are left behind
      * on purpose: `show()` only navigates to periods that have started, so they
@@ -281,7 +281,7 @@ class BudgetController extends Controller
     {
         $this->authorize('archive', $budget);
 
-        $budget->update(['archived_at' => now()]);
+        $this->budgetService->archive($budget);
 
         // Named route, not back(): the dialog only exists on this page, and the
         // previous-url redirect resolves to the app's internal host behind a

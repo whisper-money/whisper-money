@@ -3,6 +3,7 @@
 namespace App\Mcp\Tools;
 
 use App\Models\User;
+use App\Services\BudgetService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -28,7 +29,7 @@ class DeleteBudget extends WriteTool
         // An archived budget can still be thrown away, it just cannot change.
         $budget = $this->budgetOfUser($request, $user, allowArchived: true);
 
-        $budget->delete();
+        app(BudgetService::class)->delete($budget);
 
         return $this->json(['deleted' => true, 'id' => $budget->id]);
     }

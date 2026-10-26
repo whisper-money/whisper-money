@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\BudgetExpenseType;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
+use App\Jobs\RebuildCatchAllBudgetPeriods;
 use App\Models\Budget;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\DB;
  */
 class BudgetService
 {
-    public function __construct(private readonly BudgetPeriodService $periods) {}
+    public function __construct(
+        private readonly BudgetPeriodService $periods,
+        private readonly BudgetTransactionService $transactions,
+    ) {}
 
     /**
      * Create a budget with its current and previous period, then backfill both
@@ -47,8 +51,56 @@ class BudgetService
 
         AssignHistoricalTransactionsToBudget::dispatch($budget, $period);
         AssignHistoricalTransactionsToBudget::dispatch($budget, $previousPeriod);
+        // Queued after the backfills, so the expenses it takes from the
+        // catch-all are already in the new budget. The order is only cosmetic:
+        // the claims it reads were all written above.
+        $this->rebuildCatchAllAround($budget);
 
         return $budget;
+    }
+
+    /**
+     * Delete a budget; the catch-all takes back what it used to claim.
+     */
+    public function delete(Budget $budget): void
+    {
+        $budget->delete();
+
+        $this->rebuildCatchAllAround($budget);
+    }
+
+    /**
+     * Archive a budget: it stops counting from today on, and the catch-all
+     * takes over from that day. What it counted before stays with it, see
+     * {@see BudgetTransactionService::releaseFromArchiveDay()}.
+     */
+    public function archive(Budget $budget): void
+    {
+        $budget->update(['archived_at' => now()]);
+
+        if (! $budget->is_catch_all) {
+            $this->transactions->releaseFromArchiveDay($budget);
+        }
+
+        $this->rebuildCatchAllAround($budget);
+    }
+
+    /**
+     * Re-derive the user's catch-all periods over the stretch a budget's
+     * periods cover, once what that budget claims there has changed.
+     */
+    private function rebuildCatchAllAround(Budget $budget): void
+    {
+        if ($budget->is_catch_all) {
+            return;
+        }
+
+        $from = $budget->periods()->min('start_date');
+        $to = $budget->periods()->max('end_date');
+
+        if ($from !== null && $to !== null) {
+            RebuildCatchAllBudgetPeriods::dispatch($budget->user_id, (string) $from, (string) $to);
+        }
     }
 
     /**

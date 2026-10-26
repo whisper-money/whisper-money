@@ -182,7 +182,7 @@ test('catch-all budget still absorbs an expense carrying a label no budget track
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->where('budget_period_id', $catchAll->id)->exists())->toBeTrue();
 });
 
-test('catch-all budget keeps an expense whose label budget has no period covering it', function () {
+test('catch-all budget keeps an expense whose label budget has no period overlapping the catch-all period', function () {
     $catchAll = catchAllPeriod($this->user);
     $category = Category::factory()->create([
         'user_id' => $this->user->id,
@@ -190,14 +190,14 @@ test('catch-all budget keeps an expense whose label budget has no period coverin
     ]);
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 
-    // The label budget was created later and only covers future dates, so it
-    // cannot take this expense — dropping it from the catch-all would leave it
-    // out of every budget.
+    // The label budget was created later and only covers dates past the
+    // catch-all period, so it claims nothing there — dropping the expense from
+    // the catch-all would leave it out of every budget.
     $tracked = Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id]);
     BudgetPeriod::factory()->create([
         'budget_id' => $tracked->id,
-        'start_date' => now()->addDays(10),
-        'end_date' => now()->addDays(40),
+        'start_date' => now()->addDays(40),
+        'end_date' => now()->addDays(70),
     ]);
 
     $transaction = Transaction::factory()->create([
