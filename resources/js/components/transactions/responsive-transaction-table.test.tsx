@@ -6,7 +6,6 @@ import {
     type ColumnDef,
     getCoreRowModel,
     type RowSelectionState,
-    type SortingState,
     useReactTable,
 } from '@tanstack/react-table';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -75,12 +74,6 @@ const TRANSACTIONS = [
 const COLUMNS: ColumnDef<ServerTransaction>[] = [
     { id: 'select', cell: () => null },
     {
-        id: 'transaction_date',
-        accessorKey: 'transaction_date',
-        meta: { label: 'Date' },
-        cell: () => null,
-    },
-    {
         id: 'description',
         accessorKey: 'description',
         cell: ({ row }) => row.original.description,
@@ -104,33 +97,20 @@ const rowActions = {
 };
 
 function TransactionsList({
-    onSortingChange = () => {},
     maxHeight,
     framedOnPhone,
 }: {
-    onSortingChange?: (sorting: SortingState) => void;
     maxHeight?: number;
     framedOnPhone?: boolean;
 }) {
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-    const [sorting, setSorting] = useState<SortingState>([
-        { id: 'transaction_date', desc: true },
-    ]);
     const table = useReactTable({
         data: TRANSACTIONS,
         columns: COLUMNS,
         getRowId: (row) => row.id,
         getCoreRowModel: getCoreRowModel(),
         onRowSelectionChange: setRowSelection,
-        onSortingChange: (updater) =>
-            setSorting((previous) => {
-                const next =
-                    typeof updater === 'function' ? updater(previous) : updater;
-                onSortingChange(next);
-
-                return next;
-            }),
-        state: { rowSelection, sorting },
+        state: { rowSelection },
     });
 
     const selectionMode: RowSelectionMode = {
@@ -154,7 +134,6 @@ function TransactionsList({
                         <td>{row.original.description}</td>
                     </tr>
                 )}
-                sorting={sorting}
                 rowSelection={rowSelection}
                 daySummaryOf={(date) =>
                     summarizeDay(
@@ -164,7 +143,6 @@ function TransactionsList({
                         (transaction) => transaction.amount,
                     )
                 }
-                isGroupedByDay
                 selectionMode={selectionMode}
                 listRow={{ categories: [], labels: [] }}
                 rowActions={rowActions}

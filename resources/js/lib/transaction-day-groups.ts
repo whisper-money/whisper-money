@@ -1,17 +1,7 @@
 import { type Transaction } from '@/types/transaction';
 import { formatDate, toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { type SortingState } from '@tanstack/react-table';
 import { isToday, isValid, isYesterday } from 'date-fns';
-
-/**
- * The table groups rows under a header per day only while it is sorted by
- * date: sorted by anything else, the rows of one day are scattered and the
- * headers would repeat.
- */
-export function isSortedByDate(sorting: SortingState): boolean {
-    return sorting[0]?.id === 'transaction_date';
-}
 
 function capitalize(text: string): string {
     return text.charAt(0).toUpperCase() + text.slice(1);

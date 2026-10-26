@@ -281,26 +281,23 @@ const groupByTransactionDate = (transaction: ServerTransaction): string =>
 
 /**
  * Everything a list of transactions needs to draw its day headers, so both
- * pages wire them the same way, as table rows or as bands of the compact list. Leaves the
- * list flat when it is not grouped by day.
+ * pages wire them the same way, as table rows or as bands of the compact list.
  */
 export function useTransactionDayHeaders({
     table,
     rowSelection,
     daySummaryOf,
-    isGroupedByDay,
     layout,
     selectionActive,
 }: {
     table: Table<ServerTransaction>;
     rowSelection: RowSelectionState;
     daySummaryOf: DaySummaryOf;
-    isGroupedByDay: boolean;
     layout: 'table' | 'list';
     /** Rows are being picked, which the card headers answer to. */
     selectionActive: boolean;
 }): {
-    groupRowsBy?: (transaction: ServerTransaction) => string;
+    groupRowsBy: (transaction: ServerTransaction) => string;
     renderGroupHeader: (
         group: DataTableRowGroup<ServerTransaction>,
         measureProps: DataTableMeasureProps,
@@ -333,7 +330,7 @@ export function useTransactionDayHeaders({
     );
 
     return {
-        groupRowsBy: isGroupedByDay ? groupByTransactionDate : undefined,
+        groupRowsBy: groupByTransactionDate,
         renderGroupHeader,
     };
 }

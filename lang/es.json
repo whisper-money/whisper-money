@@ -4137,8 +4137,5 @@
     "Some amounts of this day could not be converted to :currency": "Algunos importes de este día no se han podido convertir a :currency",
     "Select every transaction of :day": "Seleccionar todas las transacciones de :day",
     "Select day": "Seleccionar día",
-    "Deselect day": "Deseleccionar día",
-    "Sort by": "Ordenar por",
-    "Ascending": "Ascendente",
-    "Descending": "Descendente"
+    "Deselect day": "Deseleccionar día"
 }

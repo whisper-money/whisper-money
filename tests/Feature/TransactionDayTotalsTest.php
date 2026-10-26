@@ -153,10 +153,12 @@ test('a day cut by the pagination shows its whole figure on both pages', functio
     ]);
 });
 
-test('a list sorted by anything but the date carries no day totals', function () {
+test('a bookmarked sort is ignored: the list stays by date and carries its day totals', function () {
     dayTransaction('2025-11-12', -1500);
 
-    expect(dayTotalsFor(['sort' => '-amount']))->toBe([]);
+    expect(dayTotalsFor(['sort' => '-amount']))->toBe([
+        '2025-11-12' => ['count' => 1, 'total' => -1500],
+    ]);
 });
 
 test('a partial load of the transactions brings the day totals asked beside them', function () {

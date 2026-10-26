@@ -44,7 +44,6 @@ const NO_FILTERS: AppliedFilters = {
     category_source: null,
     search: '',
     cashflow_block: null,
-    sort: '',
 };
 
 function row(id: string, transaction_date = '2026-10-01'): ServerTransaction {
@@ -87,7 +86,7 @@ function renderSource(nextCursor: string | null = 'cursor-2') {
 }
 
 describe('clientFiltersToQueryParams', () => {
-    it('writes only the filters in use, and the sort unless it is the default', () => {
+    it('writes only the filters in use', () => {
         const filters = {
             dateFrom: new Date(2026, 9, 1),
             dateTo: null,
@@ -102,18 +101,13 @@ describe('clientFiltersToQueryParams', () => {
             aiCategorizedOnly: true,
         } as TransactionFilters;
 
-        expect(
-            clientFiltersToQueryParams(filters, '-transaction_date'),
-        ).toEqual({
+        expect(clientFiltersToQueryParams(filters)).toEqual({
             date_from: '2026-10-01',
             amount_min: '0',
             category_ids: 'food,fuel',
             search: 'coffee',
             category_source: 'ai',
         });
-        expect(clientFiltersToQueryParams(filters, 'creditor_name').sort).toBe(
-            'creditor_name',
-        );
     });
 });
 
@@ -133,7 +127,6 @@ describe('useServerTransactionSource', () => {
             label_ids: ['label'],
             bank: { id: 'bank' },
         });
-        expect(result.current.manualSorting).toBe(true);
         expect(result.current.pagination).toMatchObject({
             displayedCount: 1,
             hasMore: true,
@@ -145,17 +138,18 @@ describe('useServerTransactionSource', () => {
         });
     });
 
-    it('asks the server again on a new sort and starts a new query', () => {
+    it('asks the server again on a new filter and starts a new query', () => {
         const { result } = renderSource();
 
         act(() =>
-            result.current.onSortingChange([
-                { id: 'creditor_name', desc: true },
-            ]),
+            result.current.onFiltersChange({
+                ...result.current.filters,
+                aiCategorizedOnly: true,
+            }),
         );
 
         expect(visit).toHaveBeenCalledWith(
-            '/transactions?sort=-creditor_name',
+            '/transactions?category_source=ai',
             expect.objectContaining({ preserveState: true }),
         );
         expect(result.current.isLoading).toBe(true);

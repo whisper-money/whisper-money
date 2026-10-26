@@ -75,7 +75,6 @@ const COLUMNS: ColumnDef<ServerTransaction>[] = [
 ];
 
 function TransactionsTable({
-    isGroupedByDay = true,
     columnVisibility = {},
     amountInUserCurrency = (transaction) => transaction.amount,
     daySummaryOf = (date) =>
@@ -85,7 +84,6 @@ function TransactionsTable({
         ),
     onSelectionChange = () => {},
 }: {
-    isGroupedByDay?: boolean;
     columnVisibility?: VisibilityState;
     amountInUserCurrency?: AmountInUserCurrency;
     daySummaryOf?: DaySummaryOf;
@@ -113,9 +111,7 @@ function TransactionsTable({
             <DataTable
                 table={table}
                 columns={COLUMNS}
-                groupRowsBy={
-                    isGroupedByDay ? (row) => row.transaction_date : undefined
-                }
+                groupRowsBy={(row) => row.transaction_date}
                 renderGroupHeader={(group, measureProps) => (
                     <TransactionDayHeader
                         table={table}
@@ -252,12 +248,5 @@ describe('TransactionDayHeader', () => {
         expect(
             within(dayHeaders()[0]).getAllByRole('cell')[2],
         ).toHaveTextContent('-€45.00');
-    });
-
-    it('draws no headers when the table is not sorted by date', () => {
-        render(<TransactionsTable isGroupedByDay={false} />);
-
-        expect(dayHeaders()).toHaveLength(0);
-        expect(screen.getAllByRole('row')).toHaveLength(4);
     });
 });

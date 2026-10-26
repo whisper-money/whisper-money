@@ -7,7 +7,7 @@ use function Pest\Laravel\actingAs;
 
 /**
  * The transactions list beyond CRUD: the filter panel, the saved filters built
- * on top of it, paging, sorting and the analysis drawer. Creating, editing,
+ * on top of it, paging, the order of the rows and the analysis drawer. Creating, editing,
  * deleting and searching a transaction live in TransactionsTest.
  *
  * The panel and each of its dropdowns is a layer of its own that covers the
@@ -215,20 +215,15 @@ it('loads the next page of movements on demand', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('reorders the list from the date column header', function () {
-    $page = visit('/transactions');
+it('always lists newest first under day headers, even from a bookmarked sort', function () {
+    $page = visit('/transactions?sort=creditor_name');
 
-    // Newest first by default, grouped by day: the first row is the header of
-    // the newest day and the first transaction sits right under it.
+    // The first row is the header of the newest day and the first transaction
+    // sits right under it; no heading offers another order.
     $page->assertSee('Weekly groceries market')
         ->assertPresent('tr[data-index="0"][data-testid="transaction-day-header"]')
-        ->assertSeeIn('tr[data-index="1"]', 'Weekly groceries market');
-
-    // The Date column steps aside while grouped, so its sort button sits in
-    // the Category heading.
-    $page->click('th button:has-text("Date")')
-        ->assertQueryStringHas('sort', 'transaction_date')
-        ->assertSeeIn('tr[data-index="1"]', 'Gym membership fee')
+        ->assertSeeIn('tr[data-index="1"]', 'Weekly groceries market')
+        ->assertMissing('th button:not([role="checkbox"])')
         ->assertNoJavascriptErrors();
 });
 

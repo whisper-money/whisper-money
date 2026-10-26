@@ -31,7 +31,6 @@ function buildColumnsOptions() {
         accounts: [],
         banks: [],
         labels: [],
-        locale: 'en',
         onEdit: () => {},
         onDuplicate: () => {},
         onDelete: () => {},
@@ -43,98 +42,66 @@ function buildColumnsOptions() {
     };
 }
 
-function buildColumns(
-    isDateHidden: boolean,
-    statementPayments?: Map<string, CreditCardPayment>,
-) {
+function buildColumns(statementPayments?: Map<string, CreditCardPayment>) {
     return createTransactionColumns({
         ...buildColumnsOptions(),
-        isDateHidden,
         statementPayments,
     });
 }
 
-describe('createTransactionColumns Date column while grouped by day', () => {
-    function dateColumn(isGroupedByDay: boolean) {
-        return createTransactionColumns({
-            ...buildColumnsOptions(),
-            isGroupedByDay,
-        }).find((column) => column.id === 'transaction_date');
-    }
-
-    it('cannot be toggled back while the day headers carry the date', () => {
-        expect(dateColumn(true)?.enableHiding).toBe(false);
-    });
-
-    it('can be toggled under any other sort', () => {
-        expect(dateColumn(false)?.enableHiding).toBe(true);
-    });
-
-    function CategoryHeading({ isGroupedByDay }: { isGroupedByDay: boolean }) {
+describe('createTransactionColumns headings', () => {
+    function Headings() {
         const table = useReactTable({
             data: [],
-            columns: createTransactionColumns({
-                ...buildColumnsOptions(),
-                isGroupedByDay,
-            }),
+            columns: buildColumns(),
             getCoreRowModel: getCoreRowModel(),
-            manualSorting: true,
             state: {
-                sorting: [{ id: 'transaction_date', desc: true }],
-                columnVisibility: { transaction_date: !isGroupedByDay },
+                columnVisibility: { creditor_name: true, debtor_name: true },
             },
         });
-        const header = table
-            .getFlatHeaders()
-            .find((candidate) => candidate.column.id === 'category_id');
 
         return (
             <div>
-                {header &&
-                    flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                    )}
+                {table.getFlatHeaders().map((header) => (
+                    <div key={header.id}>
+                        {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                        )}
+                    </div>
+                ))}
             </div>
         );
     }
 
-    it('keeps the date order reachable from the Category heading while hidden', () => {
-        render(<CategoryHeading isGroupedByDay />);
-
+    it('has no Date column: the day headers carry the date', () => {
         expect(
-            screen.getByRole('button', { name: 'Date' }),
-        ).toBeInTheDocument();
+            buildColumns().some(
+                (column) =>
+                    column.id === 'transaction_date' ||
+                    ('accessorKey' in column &&
+                        column.accessorKey === 'transaction_date'),
+            ),
+        ).toBe(false);
+    });
+
+    it('labels every column without a control to sort by it', () => {
+        render(<Headings />);
+
         expect(screen.getByText('Category')).toBeInTheDocument();
+        expect(screen.getByText('Creditor')).toBeInTheDocument();
+        expect(screen.getByText('Debtor')).toBeInTheDocument();
+        expect(screen.queryByRole('button')).toBeNull();
     });
 
-    it('leaves the Category heading alone under any other sort', () => {
-        render(<CategoryHeading isGroupedByDay={false} />);
-
-        expect(screen.queryByRole('button', { name: 'Date' })).toBeNull();
-        expect(screen.getByText('Category')).toBeInTheDocument();
-    });
-});
-
-describe('createTransactionColumns category padding', () => {
-    it('collapses the Category left padding while the Date column is shown', () => {
-        const className = categoryClassName(buildColumns(false));
-
-        expect(className).toContain('pl-0');
-        expect(className).not.toContain('pl-2');
-    });
-
-    it('restores the Category left padding when the Date column is hidden', () => {
-        const className = categoryClassName(buildColumns(true));
-
-        expect(className).toContain('pl-2');
-        expect(className).not.toContain('pl-0');
+    it('pads the Category column as the first one after the checkbox', () => {
+        expect(categoryClassName(buildColumns())).toContain('pl-2');
     });
 });
 
 describe('createTransactionColumns amount', () => {
     it('shows the amount in the currency the transaction was made in', () => {
-        const amount = buildColumns(false).find(
+        const amount = buildColumns().find(
             (column) =>
                 'accessorKey' in column && column.accessorKey === 'amount',
         );
@@ -180,7 +147,7 @@ describe('createTransactionColumns statement payments', () => {
         transaction: ServerTransaction,
         statementPayments?: Map<string, CreditCardPayment>,
     ) {
-        const description = buildColumns(false, statementPayments).find(
+        const description = buildColumns(statementPayments).find(
             (column) =>
                 'accessorKey' in column && column.accessorKey === 'description',
         );
@@ -249,9 +216,7 @@ describe('createTransactionColumns statement payments', () => {
 
 describe('createTransactionColumns select checkboxes', () => {
     function renderSelectCheckboxes() {
-        const select = buildColumns(false).find(
-            (column) => column.id === 'select',
-        );
+        const select = buildColumns().find((column) => column.id === 'select');
         const table = {
             getIsAllPageRowsSelected: () => false,
             getIsSomePageRowsSelected: () => false,

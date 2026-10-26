@@ -58,7 +58,7 @@ test('a user downloads their transactions as a csv file', function () {
         ->and($row)->toBe(['2026-03-14', 'Corner shop, "the good one"', '-12.50', 'EUR', 'Checking', 'Acme Bank', 'Groceries', 'Home, Shared', 'Weekly shop', 'Corner Shop SL', '']);
 });
 
-test('the export follows the sort of the transactions page', function (array $transactions, array $payload, array $expectedDescriptions) {
+test('the export lists the transactions newest first, as the page does', function (array $transactions, array $payload, array $expectedDescriptions) {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     foreach ($transactions as $attributes) {
@@ -67,25 +67,15 @@ test('the export follows the sort of the transactions page', function (array $tr
 
     expect(array_column(exportedRows($user, $payload), 1))->toBe(['Description', ...$expectedDescriptions]);
 })->with([
-    'newest first by default' => [
+    'without a sort' => [
         [['description' => 'Older', 'transaction_date' => '2026-01-01'], ['description' => 'Newer', 'transaction_date' => '2026-02-01']],
         [],
         ['Newer', 'Older'],
     ],
-    'amount ascending' => [
-        [['description' => 'Big', 'amount' => -9000], ['description' => 'Small', 'amount' => -100]],
+    'ignoring a sort it is handed' => [
+        [['description' => 'Older', 'transaction_date' => '2026-01-01', 'amount' => -100], ['description' => 'Newer', 'transaction_date' => '2026-02-01', 'amount' => -9000]],
         ['sort' => 'amount'],
-        ['Big', 'Small'],
-    ],
-    'amount descending' => [
-        [['description' => 'Big', 'amount' => -9000], ['description' => 'Small', 'amount' => -100]],
-        ['sort' => '-amount'],
-        ['Small', 'Big'],
-    ],
-    'payee with blanks first' => [
-        [['description' => 'Named', 'creditor_name' => 'Acme'], ['description' => 'Blank', 'creditor_name' => null]],
-        ['sort' => 'creditor_name'],
-        ['Blank', 'Named'],
+        ['Newer', 'Older'],
     ],
 ]);
 
@@ -191,10 +181,6 @@ test('the count matches the transactions the filters select', function () {
 test('guests cannot count transactions', function () {
     $this->getJson(route('api.transactions.count'))->assertUnauthorized();
 });
-
-test('the list sort refuses a column it does not know', function () {
-    Transaction::query()->sortedForList('-id; drop table users');
-})->throws(InvalidArgumentException::class);
 
 test('the export keeps its own rate limit, apart from the api routes', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);

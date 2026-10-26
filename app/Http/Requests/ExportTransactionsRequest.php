@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 /**
- * The transactions page's filters and sort, plus the ids of the rows the list
+ * The transactions page's filters, plus the ids of the rows the list
  * has loaded when the user exports only those.
  */
 class ExportTransactionsRequest extends IndexTransactionRequest

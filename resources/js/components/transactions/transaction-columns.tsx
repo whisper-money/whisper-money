@@ -1,8 +1,6 @@
-import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Column, ColumnDef } from '@tanstack/react-table';
-import { getYear, parseISO } from 'date-fns';
-import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ColumnDef } from '@tanstack/react-table';
+import { MoreHorizontal } from 'lucide-react';
 import { Fragment } from 'react';
 
 import { BankLogo } from '@/components/bank-logo';
@@ -39,7 +37,6 @@ interface CreateColumnsOptions {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
-    locale: string;
     onEdit: (transaction: ServerTransaction) => void;
     onDuplicate: (transaction: ServerTransaction) => void;
     onDelete: (transaction: ServerTransaction) => void;
@@ -53,12 +50,6 @@ interface CreateColumnsOptions {
     onAutomate: (transaction: ServerTransaction) => void;
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
-    isDateHidden?: boolean;
-    /**
-     * Rows sit under a header per day, which carries the date: the Date column
-     * is hidden and cannot be toggled back meanwhile.
-     */
-    isGroupedByDay?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
     /** A label every row already carries, so showing it would say nothing. */
@@ -70,55 +61,11 @@ interface CreateColumnsOptions {
     statementPayments?: Map<string, CreditCardPayment>;
 }
 
-/**
- * The columns a list of transactions can be sorted by, which the table offers
- * from its headings and the card layout from its sort menu.
- */
-export const SORTABLE_TRANSACTION_COLUMNS = [
-    'transaction_date',
-    'creditor_name',
-    'debtor_name',
-] as const;
-
-/**
- * A column heading that sorts on click. The sort direction comes in as a prop:
- * read off the column, the React Compiler would memoize the arrow in place.
- */
-function SortableHeader({
-    column,
-    sorted,
-    label,
-    className,
-}: {
-    column: Column<ServerTransaction>;
-    sorted: false | 'asc' | 'desc';
-    label: string;
-    className?: string;
-}) {
-    return (
-        <Button
-            variant="ghost"
-            className={className}
-            onClick={() => column.toggleSorting(sorted === 'asc')}
-        >
-            {label}
-            {sorted === 'desc' ? (
-                <ArrowDown className="h-3 w-3" />
-            ) : sorted === 'asc' ? (
-                <ArrowUp className="h-3 w-3" />
-            ) : (
-                <ArrowUpDown className="h-3 w-3 opacity-25" />
-            )}
-        </Button>
-    );
-}
-
 export function createTransactionColumns({
     categories,
     accounts,
     banks,
     labels,
-    locale,
     onEdit,
     onDuplicate,
     onDelete,
@@ -128,8 +75,6 @@ export function createTransactionColumns({
     onAutomate,
     onSplit,
     onUnsplit,
-    isDateHidden = false,
-    isGroupedByDay = false,
     categorizingIds,
     hiddenLabelId,
     statementPayments,
@@ -161,70 +106,16 @@ export function createTransactionColumns({
                 />
             ),
 
-            enableSorting: false,
             enableHiding: false,
-        },
-        {
-            id: 'transaction_date',
-            accessorKey: 'transaction_date',
-            meta: {
-                label: __('Date'),
-                cellClassName: 'whitespace-normal',
-            },
-            header: ({ column }) => (
-                <SortableHeader
-                    column={column}
-                    sorted={column.getIsSorted()}
-                    label={__('Date')}
-                    className="px-0"
-                />
-            ),
-            cell: ({ row }) => {
-                const date = parseISO(row.getValue('transaction_date'));
-                const currentYear = getYear(new Date());
-                const transactionYear = getYear(date);
-                const formatString =
-                    transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
-
-                const formatted = formatDate(date, formatString, locale);
-                // Capitalize first letter (important for Spanish dates)
-                const capitalized =
-                    formatted.charAt(0).toUpperCase() + formatted.slice(1);
-
-                return (
-                    <div className="pl-3 whitespace-nowrap">{capitalized}</div>
-                );
-            },
-            enableHiding: !isGroupedByDay,
         },
         {
             accessorKey: 'category_id',
             meta: {
                 label: __('Category'),
-                cellClassName: `${isDateHidden ? 'pl-2' : 'pl-0'} max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal`,
+                cellClassName:
+                    'pl-2 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
             },
-            // The Date column steps aside while grouped by day, but the order
-            // it sets must stay reachable: its button moves in front of the
-            // Category heading, right above the day headers carrying the date.
-            header: ({ table }) => {
-                const dateColumn = table.getColumn('transaction_date');
-
-                if (!isGroupedByDay || !dateColumn) {
-                    return __('Category');
-                }
-
-                return (
-                    <div className="flex items-center gap-3">
-                        <SortableHeader
-                            column={dateColumn}
-                            sorted={dateColumn.getIsSorted()}
-                            label={__('Date')}
-                            className="px-0"
-                        />
-                        <span>{__('Category')}</span>
-                    </div>
-                );
-            },
+            header: () => __('Category'),
             cell: ({ row }) => {
                 return (
                     <CategoryCell
@@ -346,13 +237,7 @@ export function createTransactionColumns({
                 label: __('Creditor'),
                 cellClassName: 'max-w-[180px] whitespace-normal',
             },
-            header: ({ column }) => (
-                <SortableHeader
-                    column={column}
-                    sorted={column.getIsSorted()}
-                    label={__('Creditor')}
-                />
-            ),
+            header: () => __('Creditor'),
             cell: ({ row }) => {
                 const creditorName = row.original.creditor_name;
 
@@ -370,13 +255,7 @@ export function createTransactionColumns({
                 label: __('Debtor'),
                 cellClassName: 'max-w-[180px] whitespace-normal',
             },
-            header: ({ column }) => (
-                <SortableHeader
-                    column={column}
-                    sorted={column.getIsSorted()}
-                    label={__('Debtor')}
-                />
-            ),
+            header: () => __('Debtor'),
             cell: ({ row }) => {
                 const debtorName = row.original.debtor_name;
 

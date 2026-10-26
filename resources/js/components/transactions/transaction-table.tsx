@@ -10,11 +10,9 @@ import { Button } from '@/components/ui/button';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Spinner } from '@/components/ui/spinner';
-import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
-import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
 import {
     type Account,
@@ -35,7 +33,6 @@ import {
     type ColumnFiltersState,
     getCoreRowModel,
     getFilteredRowModel,
-    getSortedRowModel,
     type Row,
     type RowSelectionState,
     useReactTable,
@@ -141,8 +138,6 @@ export function TransactionTable({
     onBalanceUpdated,
     onTransactionsChanged,
 }: TransactionTableProps) {
-    const locale = useLocale();
-    const { sorting } = source;
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -193,25 +188,15 @@ export function TransactionTable({
         onClear: selectOnlyVisible,
     });
 
-    const { isGroupedByDay, tableColumnVisibility, onColumnVisibilityChange } =
-        useTransactionDayGrouping({
-            sorting,
-            columnVisibility,
-            setColumnVisibility,
-        });
-
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
             categories,
             accounts,
             banks,
             labels,
-            locale,
             ...rowActions,
             onUpdate: updateTransaction,
             onCategorized: handleCategorized,
-            isDateHidden: tableColumnVisibility.transaction_date === false,
-            isGroupedByDay,
             hiddenLabelId,
             statementPayments,
             categorizingIds,
@@ -231,13 +216,10 @@ export function TransactionTable({
         banks,
         categories,
         labels,
-        locale,
         rowActions,
         updateTransaction,
         handleCategorized,
         hideColumns,
-        tableColumnVisibility,
-        isGroupedByDay,
         hiddenLabelId,
         statementPayments,
         categorizingIds,
@@ -246,20 +228,16 @@ export function TransactionTable({
     const table = useReactTable({
         data: source.rows,
         columns,
-        manualSorting: source.manualSorting,
-        onSortingChange: source.onSortingChange,
         onColumnFiltersChange: setColumnFilters,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        onColumnVisibilityChange,
+        onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
         state: {
-            sorting,
             columnFilters,
-            columnVisibility: tableColumnVisibility,
+            columnVisibility,
             rowSelection,
         },
     });
@@ -320,10 +298,8 @@ export function TransactionTable({
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            sorting={sorting}
                             rowSelection={rowSelection}
                             daySummaryOf={source.daySummaryOf}
-                            isGroupedByDay={isGroupedByDay}
                             selectionMode={selectionMode.forRows}
                             listRow={{
                                 categories,
