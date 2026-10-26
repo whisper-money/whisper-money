@@ -30,6 +30,7 @@ import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isLocalHostname,
     isOutlookSafeLinksNoise,
     isPageLeaveAbortNoise,
     isPostMessageDataCloneNoise,
@@ -71,7 +72,8 @@ Sentry.init({
     },
     enabled:
         import.meta.env.MODE === 'production' &&
-        Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
+        Boolean(import.meta.env.SENTRY_LARAVEL_DSN) &&
+        !isLocalHostname(window.location.hostname),
 });
 
 initializePostHog();

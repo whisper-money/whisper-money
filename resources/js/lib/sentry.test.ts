@@ -4,6 +4,7 @@ import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
+    isLocalHostname,
     isOutlookSafeLinksNoise,
     isPostMessageDataCloneNoise,
     isSafariCashbackExtensionNoise,
@@ -610,5 +611,33 @@ describe('isUnattendedRequestNoise', () => {
                 networkError('https://whisper.money/cashflow'),
             ),
         ).toBe(true);
+    });
+});
+
+describe('isLocalHostname', () => {
+    it.each([
+        'localhost',
+        'LOCALHOST',
+        'localhost.',
+        'dev.whisper.money.localhost',
+        '127.0.0.1',
+        '127.1.2.3',
+        '[::1]',
+        '::1',
+        '0.0.0.0',
+    ])('treats %s as local', (hostname) => {
+        expect(isLocalHostname(hostname)).toBe(true);
+    });
+
+    it.each([
+        'whisper.money',
+        'www.whisper.money',
+        'localhost.whisper.money',
+        'mylocalhost',
+        '127.0.0.1.nip.io',
+        '10.0.0.1',
+        '192.168.1.10',
+    ])('reports from %s', (hostname) => {
+        expect(isLocalHostname(hostname)).toBe(false);
     });
 });

@@ -37,6 +37,7 @@ const OUTLOOK_SAFE_LINKS_PATTERN =
     /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/i;
 const BROWSER_EXTENSION_URL_PATTERN =
     /^(chrome-extension|moz-extension|safari-web-extension|safari-extension|ms-browser-extension):\/\//i;
+const LOOPBACK_IPV4_PATTERN = /^127(\.\d{1,3}){3}$/;
 
 export function isChunkLoadErrorEvent(event: Event): boolean {
     return (
@@ -178,5 +179,32 @@ export function isOutlookSafeLinksNoise(event: Event): boolean {
         event.exception?.values?.some((exception) =>
             OUTLOOK_SAFE_LINKS_PATTERN.test(exception.value ?? ''),
         ) ?? false
+    );
+}
+
+/**
+ * Whether the page is served from this machine rather than from whisper.money.
+ *
+ * The production gate on `MODE` only says how the bundle was built. Any local
+ * `bun run build` bakes in `MODE === 'production'` and, through `envPrefix`, the
+ * DSN from the local `.env` — so a built bundle served by `php artisan serve`
+ * reported to Sentry as production. That is what agents' headless QA runs do,
+ * on `http://127.0.0.1:<port>`, and `composer run dev` sits behind portless on
+ * `dev.whisper.money.localhost`; FRONTEND-Y was seven events from those and
+ * none from a real user. Covers `localhost` and its `*.localhost` subdomains,
+ * the whole 127.0.0.0/8 loopback block, IPv6 loopback (bracketed, as
+ * `location.hostname` gives it) and `0.0.0.0`, which only a dev server answers.
+ * LAN addresses are left reporting on purpose: a self-hosted install looks the same.
+ */
+export function isLocalHostname(hostname: string): boolean {
+    const normalizedHostname = hostname.toLowerCase().replace(/\.$/, '');
+
+    return (
+        normalizedHostname === 'localhost' ||
+        normalizedHostname.endsWith('.localhost') ||
+        LOOPBACK_IPV4_PATTERN.test(normalizedHostname) ||
+        normalizedHostname === '[::1]' ||
+        normalizedHostname === '::1' ||
+        normalizedHostname === '0.0.0.0'
     );
 }
