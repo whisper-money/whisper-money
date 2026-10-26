@@ -43,7 +43,9 @@ class BudgetNotificationService
             ->get();
 
         foreach ($periods as $period) {
-            if (! $period->budget) {
+            // An archived budget still takes in what is dated before its archive
+            // day, but it is read-only: no news about it is worth an email.
+            if (! $period->budget || $period->budget->isArchived()) {
                 continue;
             }
 

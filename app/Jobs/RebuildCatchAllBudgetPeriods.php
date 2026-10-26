@@ -6,6 +6,7 @@ use App\Models\BudgetPeriod;
 use App\Services\BudgetTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,7 +21,12 @@ class RebuildCatchAllBudgetPeriods implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    /**
+     * Waiting behind another rebuild of the same user releases the job without
+     * failing it, which still spends a try: retried for a while instead, and
+     * failed after three genuine exceptions.
+     */
+    public int $maxExceptions = 3;
 
     public int $backoff = 10;
 
@@ -29,6 +35,22 @@ class RebuildCatchAllBudgetPeriods implements ShouldQueue
         public string $from,
         public string $to,
     ) {}
+
+    public function retryUntil(): Carbon
+    {
+        return now()->addMinutes(15);
+    }
+
+    /**
+     * One rebuild per user at a time: two interleaving would each release and
+     * backfill the same periods, and clear the processing flag under the other.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping($this->userId))->releaseAfter(10)->expireAfter(600)];
+    }
 
     public function handle(BudgetTransactionService $service): void
     {
@@ -45,21 +67,21 @@ class RebuildCatchAllBudgetPeriods implements ShouldQueue
     /**
      * Flagged as processing while it runs, like a backfill, unless the
      * period's own backfill already holds the flag and will clear it itself.
+     * Taken with a conditional update, so the flag is only cleared by whoever set it.
      */
     private function rebuild(BudgetTransactionService $service, BudgetPeriod $period): void
     {
-        if ($period->processing_historical) {
-            $service->rebuildCatchAllPeriod($period);
-
-            return;
-        }
-
-        $period->update(['processing_historical' => true]);
+        $holdsFlag = BudgetPeriod::query()
+            ->whereKey($period->id)
+            ->where('processing_historical', false)
+            ->update(['processing_historical' => true]) === 1;
 
         try {
             $service->rebuildCatchAllPeriod($period);
         } finally {
-            $period->update(['processing_historical' => false]);
+            if ($holdsFlag) {
+                BudgetPeriod::query()->whereKey($period->id)->update(['processing_historical' => false]);
+            }
         }
     }
 }

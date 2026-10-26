@@ -51,9 +51,8 @@ class BudgetService
 
         AssignHistoricalTransactionsToBudget::dispatch($budget, $period);
         AssignHistoricalTransactionsToBudget::dispatch($budget, $previousPeriod);
-        // Queued after the backfills, so the expenses it takes from the
-        // catch-all are already in the new budget. The order is only cosmetic:
-        // the claims it reads were all written above.
+        // Queued last, though the order does not matter: the claims it reads
+        // were all written above.
         $this->rebuildCatchAllAround($budget);
 
         return $budget;
@@ -76,11 +75,13 @@ class BudgetService
      */
     public function archive(Budget $budget): void
     {
-        $budget->update(['archived_at' => now()]);
+        DB::transaction(function () use ($budget): void {
+            $budget->update(['archived_at' => now()]);
 
-        if (! $budget->is_catch_all) {
-            $this->transactions->releaseFromArchiveDay($budget);
-        }
+            if (! $budget->is_catch_all) {
+                $this->transactions->releaseFromArchiveDay($budget);
+            }
+        });
 
         $this->rebuildCatchAllAround($budget);
     }

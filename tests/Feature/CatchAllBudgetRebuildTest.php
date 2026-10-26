@@ -147,11 +147,17 @@ test('archiving a budget hands the catch-all what is dated from the archive day 
 
     expect(periodTransactionIds($catchAll))->toEqualCanonicalizing([$sameDay->id, $scheduled->id]);
 
-    // And so does assigning a transaction on its own.
+    // And so does assigning a transaction on its own: one dated before the
+    // archive day that arrives late is still the archived budget's, and one
+    // dated from that day on is the catch-all's.
     $late = expense($this->user, $this->category, '2026-10-01');
+    $after = expense($this->user, $this->category, '2026-10-16');
 
-    expect(periodTransactionIds($catchAll))->not->toContain($late->id)
-        ->and(budgetTransactionIds($budget))->not->toContain($late->id);
+    expect(budgetTransactionIds($budget))->toEqualCanonicalizing([$before->id, $late->id])
+        ->and(periodTransactionIds($catchAll))->toEqualCanonicalizing([$sameDay->id, $scheduled->id, $after->id]);
+
+    // A read-only budget sends no news about what it still takes in.
+    Mail::assertNothingSent();
 });
 
 test('a label budget claims an expense over the whole catch-all period it overlaps, not only on its own dates', function () {
@@ -197,6 +203,12 @@ test('the catch-all spends what the cashflow general block counts over the same 
 test('the rebuild command heals a double-counted catch-all, leaving it alone on a dry run', function () {
     $catchAll = yearlyCatchAll($this->user);
     $claimed = expense($this->user, $this->category, '2026-10-05');
+    $archivedCategory = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $archived = createBudget($this->user, 'monthly', categoryIds: [$archivedCategory->id]);
+    $afterArchive = expense($this->user, $archivedCategory, '2026-10-20');
+    // Archived the old way, still holding what is dated from its archive day
+    // on, which the catch-all takes over as soon as anything rebuilds it.
+    $archived->update(['archived_at' => now()]);
 
     // The state the bug left behind: a budget created without releasing the
     // catch-all's copy, and an expense the catch-all never picked up.
@@ -207,18 +219,21 @@ test('the rebuild command heals a double-counted catch-all, leaving it alone on 
     $missed = expense($this->user, $other, '2026-10-06');
     BudgetTransaction::query()->where('transaction_id', $missed->id)->delete();
 
-    expect(periodTransactionIds($catchAll))->toBe([$claimed->id]);
+    expect(periodTransactionIds($catchAll))->toEqualCanonicalizing([$claimed->id, $afterArchive->id]);
 
     $this->artisan('budgets:rebuild-catch-all', ['--dry-run' => true])
+        ->expectsOutputToContain('1 transaction(s) dated from an archive day on would be dropped from archived budgets')
         ->expectsOutputToContain('1 transaction(s) would be released, 1 would be absorbed')
         ->assertSuccessful();
 
-    expect(periodTransactionIds($catchAll))->toBe([$claimed->id]);
+    expect(periodTransactionIds($catchAll))->toEqualCanonicalizing([$claimed->id, $afterArchive->id])
+        ->and(budgetTransactionIds($archived))->toBe([$afterArchive->id]);
 
     $this->artisan('budgets:rebuild-catch-all', ['--user' => $this->user->email])->assertSuccessful();
 
-    expect(periodTransactionIds($catchAll))->toBe([$missed->id])
-        ->and(budgetTransactionIds($budget))->toBe([$claimed->id]);
+    expect(periodTransactionIds($catchAll))->toEqualCanonicalizing([$missed->id, $afterArchive->id])
+        ->and(budgetTransactionIds($budget))->toBe([$claimed->id])
+        ->and(budgetTransactionIds($archived))->toBe([]);
 
     Mail::assertNothingSent();
 });
