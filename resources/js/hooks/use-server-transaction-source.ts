@@ -344,6 +344,7 @@ export function useServerTransactionSource({
             loadsOnScroll: true,
         },
         reload,
+        refreshRows: reload,
         queryKey,
         matchingFilters,
         queryParams: clientFiltersToQueryParams(filters, sortParam),

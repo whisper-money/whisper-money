@@ -44,6 +44,12 @@ export interface TransactionTableSource {
     pagination: TransactionTablePagination;
     /** Fetches the rows again, after a change the source cannot apply itself. */
     reload: () => void;
+    /**
+     * Fetches just the rows again without leaving the page, when the source
+     * can: after a server-side bulk change. Without it, those changes wait
+     * for the next visit rather than reloading the whole page.
+     */
+    refreshRows?: () => void;
     /** Changes when a new query replaces the rows, so the ticked rows go. */
     queryKey: number;
     /**
