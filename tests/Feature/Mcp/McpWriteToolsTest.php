@@ -340,7 +340,7 @@ it('splits a transaction into parts and keeps the original out of every list', f
         ->and(Transaction::withTrashed()->find($original->id)->trashed())->toBeTrue();
 });
 
-it('refuses parts that do not add up to the original', function () {
+it('refuses parts that do not add up to the original or move money the other way', function (array $splits) {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([
@@ -351,27 +351,15 @@ it('refuses parts that do not add up to the original', function () {
 
     callWriteTool($user, SplitTransaction::class, [
         'transaction_id' => $original->id,
-        'splits' => [['amount' => -3000], ['amount' => -1000]],
+        'splits' => $splits,
     ])->assertHasErrors();
 
     expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0)
         ->and(Transaction::query()->find($original->id))->not->toBeNull();
-});
-
-it('refuses a part that moves money the other way', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-    $original = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'amount' => -5000,
-    ]);
-
-    callWriteTool($user, SplitTransaction::class, [
-        'transaction_id' => $original->id,
-        'splits' => [['amount' => -6000], ['amount' => 1000]],
-    ])->assertHasErrors();
-});
+})->with([
+    'parts that do not add up' => [[['amount' => -3000], ['amount' => -1000]]],
+    'a part that moves money the other way' => [[['amount' => -6000], ['amount' => 1000]]],
+]);
 
 it('refuses a category from outside the space', function () {
     $user = User::factory()->create();
@@ -453,23 +441,6 @@ it('refuses to split one part of a split again', function () {
         'transaction_id' => $part->id,
         'splits' => [['amount' => -1500], ['amount' => -1500]],
     ])->assertHasErrors();
-});
-
-it('refuses to split for a read-only token', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-    $original = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'amount' => -5000,
-    ]);
-
-    callWriteTool($user, SplitTransaction::class, [
-        'transaction_id' => $original->id,
-        'splits' => [['amount' => -3000], ['amount' => -2000]],
-    ], ['mcp:read'])->assertHasErrors(['read-only']);
-
-    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
 });
 
 it('refuses to delete one part of a split', function () {
@@ -1032,28 +1003,70 @@ it('refuses to delete another user\'s budget', function () {
     expect(Budget::query()->find($foreignBudget->id))->not->toBeNull();
 });
 
-it('rejects a write tool called with a read-only token', function () {
+it('rejects a write tool called with a read-only token', function (string $tool, Closure $arrange, Closure $untouched) {
     $user = User::factory()->create();
+    $arguments = $arrange($user);
 
-    callWriteTool($user, CreateLabel::class, [
-        'name' => 'Should not exist',
-        'color' => 'blue',
-    ], ['mcp:read'])->assertHasErrors(['read-only']);
+    callWriteTool($user, $tool, $arguments, ['mcp:read'])->assertHasErrors(['read-only']);
 
-    expect($user->labels()->count())->toBe(0);
-});
+    $untouched($user, $arguments);
+})->with([
+    'create_label' => [
+        CreateLabel::class,
+        fn () => ['name' => 'Should not exist', 'color' => 'blue'],
+        fn (User $user) => expect($user->labels()->count())->toBe(0),
+    ],
+    'split_transaction' => [
+        SplitTransaction::class,
+        function (User $user): array {
+            $account = Account::factory()->create(['user_id' => $user->id]);
+            $original = Transaction::factory()->create([
+                'user_id' => $user->id,
+                'account_id' => $account->id,
+                'amount' => -5000,
+            ]);
 
-it('still enforces the Pro-plan gate on write tools', function () {
+            return [
+                'transaction_id' => $original->id,
+                'splits' => [['amount' => -3000], ['amount' => -2000]],
+            ];
+        },
+        fn (User $user, array $arguments) => expect(Transaction::query()->where('split_parent_id', $arguments['transaction_id'])->count())->toBe(0),
+    ],
+    'create_account' => [
+        CreateAccount::class,
+        fn () => ['name' => 'Should not exist', 'type' => 'checking', 'currency_code' => 'EUR'],
+        fn (User $user) => expect($user->accounts()->count())->toBe(0),
+    ],
+    'update_account' => [
+        UpdateAccount::class,
+        fn (User $user) => [
+            'account_id' => Account::factory()->create(['user_id' => $user->id, 'name' => 'Untouched'])->id,
+            'name' => 'Should not stick',
+        ],
+        fn (User $user, array $arguments) => expect(Account::query()->find($arguments['account_id'])->name)->toBe('Untouched'),
+    ],
+]);
+
+it('still enforces the Pro-plan gate on write tools', function (string $tool, Closure $arrange, Closure $untouched) {
     config(['subscriptions.enabled' => true]);
     $user = User::factory()->create();
 
-    callWriteTool($user, CreateLabel::class, [
-        'name' => 'Gated',
-        'color' => 'blue',
-    ])->assertHasErrors(['Pro']);
+    callWriteTool($user, $tool, $arrange($user))->assertHasErrors(['Pro']);
 
-    expect($user->labels()->count())->toBe(0);
-});
+    $untouched($user);
+})->with([
+    'create_label' => [
+        CreateLabel::class,
+        fn () => ['name' => 'Gated', 'color' => 'blue'],
+        fn (User $user) => expect($user->labels()->count())->toBe(0),
+    ],
+    'apply_automation_rule' => [
+        ApplyAutomationRule::class,
+        fn (User $user) => ['automation_rule_id' => groceryRuleOverHistory($user)[0]->id, 'dry_run' => false],
+        fn (User $user) => expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0),
+    ],
+]);
 
 it('never lets a write tool touch another user\'s data', function () {
     $user = User::factory()->create();
@@ -1192,20 +1205,6 @@ it('lets a read-only token list automation rules but never apply one', function 
         ->tool(ListAutomationRules::class)
         ->assertOk()
         ->assertSee($rule->title);
-
-    expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
-});
-
-it('still enforces the Pro-plan gate on apply_automation_rule', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->create();
-    [$rule] = groceryRuleOverHistory($user);
-
-    callWriteTool($user, ApplyAutomationRule::class, [
-        'automation_rule_id' => $rule->id,
-        'dry_run' => false,
-    ])->assertHasErrors(['Pro']);
 
     expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
 });
@@ -1429,18 +1428,6 @@ it('restricts the very first account to a primary currency', function () {
     expect($user->accounts()->count())->toBe(0);
 });
 
-it('rejects create_account for a read-only token', function () {
-    $user = User::factory()->create();
-
-    callWriteTool($user, CreateAccount::class, [
-        'name' => 'Should not exist',
-        'type' => 'checking',
-        'currency_code' => 'EUR',
-    ], ['mcp:read'])->assertHasErrors(['read-only']);
-
-    expect($user->accounts()->count())->toBe(0);
-});
-
 it('changes only the fields update_account is passed', function () {
     $user = User::factory()->create();
     $bank = Bank::factory()->create();
@@ -1615,18 +1602,6 @@ it('demands a property type only while the property is being created', function 
     ])->assertHasErrors();
 
     expect($user->accounts()->where('name', 'A flat with no type')->exists())->toBeFalse();
-});
-
-it('rejects update_account for a read-only token', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Untouched']);
-
-    callWriteTool($user, UpdateAccount::class, [
-        'account_id' => $account->id,
-        'name' => 'Should not stick',
-    ], ['mcp:read'])->assertHasErrors(['read-only']);
-
-    expect($account->fresh()->name)->toBe('Untouched');
 });
 
 it('creates a credit card with its statement dates', function () {

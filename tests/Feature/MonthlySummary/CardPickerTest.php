@@ -29,52 +29,19 @@ function payload(array $overrides = []): array
     ], $overrides);
 }
 
-it('leads with a streak of three months or more', function (): void {
-    expect(app(CardPicker::class)->pick(payload(['streak_months' => 3])))
-        ->toBe(MonthlySummaryCard::Streak);
-});
-
-it('does not call two months a streak', function (): void {
-    expect(app(CardPicker::class)->pick(payload(['streak_months' => 2])))
-        ->toBe(MonthlySummaryCard::SpendingSplit);
-});
-
-it('picks the savings rate when it is the best of the year', function (): void {
-    expect(app(CardPicker::class)->pick(payload(['best_savings_rate_in_year' => true])))
-        ->toBe(MonthlySummaryCard::SavingsRate);
-});
-
-it('picks a goal that crossed a ten-percent mark since last month', function (): void {
-    $picked = app(CardPicker::class)->pick(
-        payload(['goal' => ['name' => 'Japan', 'percent' => 62.0]]),
-        previousGoalPercent: 58.0,
-    );
-
-    expect($picked)->toBe(MonthlySummaryCard::SavingsGoal);
-});
-
-it('ignores a goal that only crept forward', function (): void {
-    $picked = app(CardPicker::class)->pick(
-        payload(['goal' => ['name' => 'Japan', 'percent' => 62.0]]),
-        previousGoalPercent: 61.0,
-    );
-
-    expect($picked)->toBe(MonthlySummaryCard::SpendingSplit);
-});
-
-it('picks a finished goal even with nothing to compare against', function (): void {
-    expect(app(CardPicker::class)->pick(payload(['goal' => ['name' => 'Japan', 'percent' => 100.0]])))
-        ->toBe(MonthlySummaryCard::SavingsGoal);
-});
-
-it('picks net worth when it grew more than a tenth over the year', function (): void {
-    expect(app(CardPicker::class)->pick(payload(['net_worth' => ['current' => 1000000, 'year_percent' => 18.4]])))
-        ->toBe(MonthlySummaryCard::NetWorth);
-});
-
-it('falls back to the spending split, which every month has', function (): void {
-    expect(app(CardPicker::class)->pick(payload()))->toBe(MonthlySummaryCard::SpendingSplit);
-});
+it('picks the first card whose rule holds', function (array $overrides, ?float $previousGoalPercent, MonthlySummaryCard $expected): void {
+    expect(app(CardPicker::class)->pick(payload($overrides), previousGoalPercent: $previousGoalPercent))
+        ->toBe($expected);
+})->with([
+    'leads with a streak of three months or more' => [['streak_months' => 3], null, MonthlySummaryCard::Streak],
+    'does not call two months a streak' => [['streak_months' => 2], null, MonthlySummaryCard::SpendingSplit],
+    'picks the savings rate when it is the best of the year' => [['best_savings_rate_in_year' => true], null, MonthlySummaryCard::SavingsRate],
+    'picks a goal that crossed a ten-percent mark since last month' => [['goal' => ['name' => 'Japan', 'percent' => 62.0]], 58.0, MonthlySummaryCard::SavingsGoal],
+    'ignores a goal that only crept forward' => [['goal' => ['name' => 'Japan', 'percent' => 62.0]], 61.0, MonthlySummaryCard::SpendingSplit],
+    'picks a finished goal even with nothing to compare against' => [['goal' => ['name' => 'Japan', 'percent' => 100.0]], null, MonthlySummaryCard::SavingsGoal],
+    'picks net worth when it grew more than a tenth over the year' => [['net_worth' => ['current' => 1000000, 'year_percent' => 18.4]], null, MonthlySummaryCard::NetWorth],
+    'falls back to the spending split, which every month has' => [[], null, MonthlySummaryCard::SpendingSplit],
+]);
 
 it('offers no card at all when nothing moved', function (): void {
     $picked = app(CardPicker::class)->pick(payload([
