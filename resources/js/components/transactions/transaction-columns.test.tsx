@@ -19,11 +19,8 @@ function categoryClassName(columns: ColumnDef<ServerTransaction>[]): string {
     return (category?.meta as { cellClassName?: string }).cellClassName ?? '';
 }
 
-function buildColumns(
-    isDateHidden: boolean,
-    statementPayments?: Map<string, CreditCardPayment>,
-) {
-    return createTransactionColumns({
+function buildColumnsOptions() {
+    return {
         categories: [],
         accounts: [],
         banks: [],
@@ -37,10 +34,36 @@ function buildColumns(
         onAutomate: () => {},
         onSplit: () => {},
         onUnsplit: () => {},
+    };
+}
+
+function buildColumns(
+    isDateHidden: boolean,
+    statementPayments?: Map<string, CreditCardPayment>,
+) {
+    return createTransactionColumns({
+        ...buildColumnsOptions(),
         isDateHidden,
         statementPayments,
     });
 }
+
+describe('createTransactionColumns Date column while grouped by day', () => {
+    function dateColumn(isGroupedByDay: boolean) {
+        return createTransactionColumns({
+            ...buildColumnsOptions(),
+            isGroupedByDay,
+        }).find((column) => column.id === 'transaction_date');
+    }
+
+    it('cannot be toggled back while the day headers carry the date', () => {
+        expect(dateColumn(true)?.enableHiding).toBe(false);
+    });
+
+    it('can be toggled under any other sort', () => {
+        expect(dateColumn(false)?.enableHiding).toBe(true);
+    });
+});
 
 describe('createTransactionColumns category padding', () => {
     it('collapses the Category left padding while the Date column is shown', () => {

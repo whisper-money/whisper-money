@@ -1,4 +1,5 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
+import { useAmountsInUserCurrency } from '@/hooks/use-amounts-in-user-currency';
 import { useLocale } from '@/hooks/use-locale';
 import {
     useMobileSelectionMode,
@@ -7,6 +8,7 @@ import {
 } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
+import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
@@ -21,7 +23,7 @@ import {
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
-import { format, getYear, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronRight, X } from 'lucide-react';
 import {
     createElement,
@@ -47,6 +49,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { TransactionDayHeader } from '@/components/transactions/transaction-day-header';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
@@ -461,25 +464,6 @@ function getInitialColumnVisibility(): VisibilityState {
     return defaultVisibility;
 }
 
-function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
-    const parsedDate = parseISO(date);
-    const currentYear = getYear(new Date());
-    const transactionYear = getYear(parsedDate);
-    const formatString =
-        transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
-
-    return (
-        <tr className="hidden">
-            <td
-                colSpan={colSpan}
-                className="px-4 pt-2 text-sm text-muted-foreground"
-            >
-                {format(parsedDate, formatString)}
-            </td>
-        </tr>
-    );
-}
-
 export default function Transactions({
     transactions: serverTransactions,
     appliedFilters,
@@ -604,6 +588,14 @@ export default function Transactions({
         rows: allTransactions,
         onClear: selectOnlyVisible,
     });
+
+    const { isGroupedByDay, tableColumnVisibility, onColumnVisibilityChange } =
+        useTransactionDayGrouping({
+            sorting,
+            columnVisibility,
+            setColumnVisibility,
+        });
+    const amountInUserCurrency = useAmountsInUserCurrency(allTransactions);
 
     // Debounce timer ref for search
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1084,7 +1076,8 @@ export default function Transactions({
                 onAutomate: openAutomateDialog,
                 onSplit: setSplitTransaction,
                 onUnsplit: setUnsplitTransaction,
-                isDateHidden: columnVisibility.transaction_date === false,
+                isDateHidden: tableColumnVisibility.transaction_date === false,
+                isGroupedByDay,
                 categorizingIds,
             }),
         [
@@ -1097,7 +1090,8 @@ export default function Transactions({
             showAutomatizeToast,
             handleReEvaluateRules,
             openAutomateDialog,
-            columnVisibility,
+            tableColumnVisibility,
+            isGroupedByDay,
             categorizingIds,
         ],
     );
@@ -1109,12 +1103,12 @@ export default function Transactions({
         onSortingChange: handleSortingChange,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
-        onColumnVisibilityChange: setColumnVisibility,
+        onColumnVisibilityChange,
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
         state: {
             sorting,
-            columnVisibility,
+            columnVisibility: tableColumnVisibility,
             rowSelection,
         },
     });
@@ -1491,9 +1485,21 @@ export default function Transactions({
                                 columns={columns}
                                 emptyMessage={__('No transactions found.')}
                                 renderRow={renderTransactionRow}
-                                getRowDate={(row) => row.transaction_date}
-                                renderDateHeader={(date, colSpan) => (
-                                    <DateHeader date={date} colSpan={colSpan} />
+                                groupRowsBy={
+                                    isGroupedByDay
+                                        ? (row) => row.transaction_date
+                                        : undefined
+                                }
+                                renderGroupHeader={(group, measureProps) => (
+                                    <TransactionDayHeader
+                                        table={table}
+                                        date={group.key}
+                                        rows={group.rows}
+                                        amountInUserCurrency={
+                                            amountInUserCurrency
+                                        }
+                                        measureProps={measureProps}
+                                    />
                                 )}
                                 topRow={
                                     showAiConsentBanner ? (

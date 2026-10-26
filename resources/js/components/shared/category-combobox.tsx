@@ -66,6 +66,8 @@ interface CategoryComboboxProps {
     emptyOptionLabel?: string;
     /** Optional content rendered at the very top of the open dropdown. */
     header?: ReactNode;
+    /** Replaces the grey question mark the trigger shows when nothing is picked. */
+    uncategorizedIcon?: ReactNode;
     /**
      * Replaces the default trigger button. It must forward its ref and props,
      * and handles `disabled` itself: the prop only reaches the default one.
@@ -87,6 +89,7 @@ export function CategoryCombobox({
     withoutChevronIcon = false,
     emptyOptionLabel,
     header,
+    uncategorizedIcon,
     trigger,
     drawer,
     'data-testid': dataTestId,
@@ -169,9 +172,11 @@ export function CategoryCombobox({
                             </div>
                         ) : value === 'null' ? (
                             <div className="flex items-center gap-2 truncate">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                    <HelpCircle className="h-3 w-3 text-zinc-500" />
-                                </div>
+                                {uncategorizedIcon ?? (
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                        <HelpCircle className="h-3 w-3 text-zinc-500" />
+                                    </div>
+                                )}
                                 <span className="truncate text-zinc-500">
                                     {noneLabel}
                                 </span>

@@ -53,6 +53,11 @@ interface CreateColumnsOptions {
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
     isDateHidden?: boolean;
+    /**
+     * Rows sit under a header per day, which carries the date: the Date column
+     * is hidden and cannot be toggled back meanwhile.
+     */
+    isGroupedByDay?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
     /** A label every row already carries, so showing it would say nothing. */
@@ -86,6 +91,7 @@ export function createTransactionColumns({
     onSplit,
     onUnsplit,
     isDateHidden = false,
+    isGroupedByDay = false,
     categorizingIds,
     hiddenLabelId,
     statementPayments,
@@ -163,7 +169,7 @@ export function createTransactionColumns({
                     <div className="pl-3 whitespace-nowrap">{capitalized}</div>
                 );
             },
-            enableHiding: true,
+            enableHiding: !isGroupedByDay,
         },
         {
             accessorKey: 'category_id',
