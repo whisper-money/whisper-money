@@ -46,17 +46,17 @@ beforeEach(function () {
     seedEuroRates('2026-05-12', ['eur' => 1.0, 'gbp' => 0.5]);
     seedEuroRates('2026-05-06', ['eur' => 1.0, 'usd' => 2.0]);
 
-    multiCurrencyMovement('Bakery in Madrid', -1000, '2026-05-18', $this->euroAccount);
+    movementOn('Bakery in Madrid', -1000, '2026-05-18', $this->euroAccount);
     foreach (range(1, 3) as $index) {
-        multiCurrencyMovement("Diner in Boston {$index}", -1000, '2026-05-18', $this->dollarAccount);
+        movementOn("Diner in Boston {$index}", -1000, '2026-05-18', $this->dollarAccount);
     }
 
-    multiCurrencyMovement('Metro in Madrid', -500, '2026-05-12', $this->euroAccount);
-    multiCurrencyMovement('Subway in New York', -3000, '2026-05-12', $this->dollarAccount);
+    movementOn('Metro in Madrid', -500, '2026-05-12', $this->euroAccount);
+    movementOn('Subway in New York', -3000, '2026-05-12', $this->dollarAccount);
 
     foreach (range(1, 6) as $index) {
-        multiCurrencyMovement("Market stall {$index}", -100, '2026-05-06', $this->euroAccount);
-        multiCurrencyMovement("Coffee cart {$index}", -200, '2026-05-06', $this->dollarAccount);
+        movementOn("Market stall {$index}", -100, '2026-05-06', $this->euroAccount);
+        movementOn("Coffee cart {$index}", -200, '2026-05-06', $this->dollarAccount);
     }
 
     actingAs($this->user);
@@ -74,7 +74,7 @@ function seedEuroRates(string $date, array $rates): void
     ]);
 }
 
-function multiCurrencyMovement(string $description, int $amount, string $date, Account $account): Transaction
+function movementOn(string $description, int $amount, string $date, Account $account): Transaction
 {
     return Transaction::factory()->create([
         'user_id' => test()->user->id,
@@ -88,7 +88,7 @@ function multiCurrencyMovement(string $description, int $amount, string $date, A
     ]);
 }
 
-function dayHeader(string $day): string
+function dayHeaderSelector(string $day): string
 {
     return "[data-testid=\"transaction-day-header\"]:has-text(\"{$day}\")";
 }
@@ -101,14 +101,14 @@ it('adds up each day of /transactions in the user currency, at the day rate', fu
     $page->assertPresent('[data-testid="transaction-list-layout"][data-layout="table"]')
         ->assertSee('Bakery in Madrid')
         ->assertSee('10 transactions loaded')
-        ->assertSeeIn(dayHeader('May 18'), '4 transactions')
-        ->assertSeeIn(dayHeader('May 18'), '-€20.00')
-        ->assertSeeIn(dayHeader('May 12'), '2 transactions')
-        ->assertSeeIn(dayHeader('May 12'), '—')
-        ->assertDontSeeIn(dayHeader('May 12'), '€')
-        // Five of its twelve rows made the first page; the header counts them all.
-        ->assertSeeIn(dayHeader('May 6'), '12 transactions')
-        ->assertSeeIn(dayHeader('May 6'), '-€12.00')
+        ->assertSeeIn(dayHeaderSelector('May 18'), '4 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 18'), '-€20.00')
+        ->assertSeeIn(dayHeaderSelector('May 12'), '2 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 12'), '—')
+        ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
+        // Four of its twelve rows made the first page; the header counts them all.
+        ->assertSeeIn(dayHeaderSelector('May 6'), '12 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€12.00')
         ->assertSee('10 transactions loaded')
         ->assertNoJavascriptErrors();
 });
@@ -118,10 +118,10 @@ it('adds up each day of the compact list on a phone', function () {
 
     $page->assertPresent('[data-testid="transaction-list-layout"][data-layout="list"]')
         ->assertSee('Bakery in Madrid')
-        ->assertSeeIn(dayHeader('May 18'), '-€20.00')
-        ->assertSeeIn(dayHeader('May 12'), '—')
-        ->assertDontSeeIn(dayHeader('May 12'), '€')
-        ->assertSeeIn(dayHeader('May 6'), '-€12.00')
+        ->assertSeeIn(dayHeaderSelector('May 18'), '-€20.00')
+        ->assertSeeIn(dayHeaderSelector('May 12'), '—')
+        ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€12.00')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
         ->assertNoJavascriptErrors();
 });
@@ -129,12 +129,18 @@ it('adds up each day of the compact list on a phone', function () {
 it('adds up each day of a dollar account in the user currency', function () {
     $page = visit("/accounts/{$this->dollarAccount->id}")->resize(1440, 900);
 
+    // This list holds its rows in memory and converts each one on its own, so
+    // the "—" below only means something once a conversion has come back.
     $page->waitForText('Subway in New York', 10)
         ->assertDontSee('Bakery in Madrid')
-        ->assertSeeIn(dayHeader('May 12'), '1 transaction')
-        ->assertSeeIn(dayHeader('May 12'), '—')
-        ->assertDontSeeIn(dayHeader('May 12'), '€')
-        ->assertSeeIn(dayHeader('May 6'), '6 transactions')
-        ->assertSeeIn(dayHeader('May 6'), '-€6.00')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '6 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€6.00')
+        ->assertSeeIn(dayHeaderSelector('May 12'), '1 transaction')
+        ->assertSeeIn(dayHeaderSelector('May 12'), '—')
+        ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
+        // Converted row by row, each third of a euro rounds on its own: the
+        // known cent apart from the server's -€10.00 for the same rows.
+        ->assertSeeIn(dayHeaderSelector('May 18'), '3 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 18'), '-€9.99')
         ->assertNoJavascriptErrors();
 });
