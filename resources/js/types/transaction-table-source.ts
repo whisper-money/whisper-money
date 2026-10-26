@@ -1,7 +1,7 @@
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import {
-    type TransactionFilters,
     type ServerTransaction,
+    type TransactionFilters,
 } from '@/types/transaction';
 import { type OnChangeFn, type SortingState } from '@tanstack/react-table';
 import { type Dispatch, type SetStateAction } from 'react';
@@ -45,9 +45,10 @@ export interface TransactionTableSource {
     /** Fetches the rows again, after a change the source cannot apply itself. */
     reload: () => void;
     /**
-     * Fetches just the rows again without leaving the page, when the source
-     * can: after a server-side bulk change. Without it, those changes wait
-     * for the next visit rather than reloading the whole page.
+     * Fetches the rows again after a server-side bulk change, when the source
+     * can do that without reloading the whole page. The server source sets it
+     * to its own `reload`; the in-memory one leaves it out, so its rows keep
+     * those changes until the next visit rather than reloading the page.
      */
     refreshRows?: () => void;
     /** Changes when a new query replaces the rows, so the ticked rows go. */

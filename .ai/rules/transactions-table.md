@@ -32,8 +32,9 @@ come from is a `TransactionTableSource` (`resources/js/types/transaction-table-s
   the browser, with day totals over every row the filters keep.
 
 The two pages are thin wrappers: a source, plus what only they show, passed to
-the table as props (`renderToolbar` for the actions menu, export and column
-picker; `topRow` for the AI banner; `footerActions` for "View in Transactions";
+the table as props (`renderToolbar` for the actions menu, export and the
+`columnPicker` it hands over; `topRow` for the AI consent banner, whose logic is
+`useAiCategorizationConsent`; `footerActions` for "View in Transactions";
 `isNewRow`, `hiddenLabelId`, `statementPayments`, `categorizingIds`, …).
 
 ## Where a change goes
@@ -61,6 +62,11 @@ server's figure (`TransactionsMultiCurrencyDayTotalsTest`).
 
 `DataTable`, `useGroupedRowVirtualizer` and the compact list inside
 `ResponsiveTransactionTable` opt out (`'use no memo'`): they read the TanStack
-table and virtualizer, stable objects that change underneath.
-Hand table state to them as React state (`sorting`, `rowSelection`), as
-`TransactionTable` does, not only through the table instance.
+table and virtualizer, stable objects that change underneath. Hand table state
+to them as React state (`sorting`, `rowSelection`), as `TransactionTable` does,
+not only through the table instance.
+
+`TransactionTable` itself is compiled, so it never hands the TanStack table to
+the page: a toolbar reading it during render would be cached on a reference
+that never changes. Give the page what it needs ready-made instead, as the
+`columnPicker` element.

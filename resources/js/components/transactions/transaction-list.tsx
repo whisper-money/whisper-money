@@ -9,7 +9,6 @@ import { type ReactNode } from 'react';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { Button } from '@/components/ui/button';
-import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import {
     filterTransactionalAccounts,
     type Account,
@@ -91,7 +90,8 @@ export function TransactionList({
             maxHeight={maxHeight}
             onBalanceUpdated={onBalanceUpdated}
             onTransactionsChanged={onTransactionsChanged}
-            renderToolbar={({ table, clearSelection }) => (
+            showColumnPickerTextOnMobile
+            renderToolbar={({ columnPicker, clearSelection }) => (
                 <div className="flex flex-wrap justify-end gap-2">
                     {showActionsMenu && (
                         <TransactionActionsMenu
@@ -108,10 +108,7 @@ export function TransactionList({
                         />
                     )}
                     {headerActions}
-                    <DataTableViewOptions
-                        table={table}
-                        hideColumnTextOnMobile={false}
-                    />
+                    {columnPicker}
                 </div>
             )}
             footerActions={

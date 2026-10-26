@@ -8,6 +8,7 @@ import { TransactionRowDialogs } from '@/components/transactions/transaction-row
 import { TransactionTableRow } from '@/components/transactions/transaction-table-row';
 import { Button } from '@/components/ui/button';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
@@ -15,7 +16,11 @@ import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility'
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
-import { type Account, type Bank, type CreditCardPayment } from '@/types/account';
+import {
+    type Account,
+    type Bank,
+    type CreditCardPayment,
+} from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
@@ -33,7 +38,6 @@ import {
     getSortedRowModel,
     type Row,
     type RowSelectionState,
-    type Table,
     useReactTable,
 } from '@tanstack/react-table';
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
@@ -50,7 +54,8 @@ const NO_HIDDEN_COLUMNS: string[] = [];
 
 /** What the toolbar beside the filters can reach of the table. */
 export interface TransactionTableToolbar {
-    table: Table<ServerTransaction>;
+    /** The picker for the table's columns, for the page to place. */
+    columnPicker: ReactNode;
     /** The labels, including any a dialog created since the page loaded. */
     labels: Label[];
     clearSelection: () => void;
@@ -65,6 +70,8 @@ interface TransactionTableProps {
     automationRules: AutomationRule[];
     /** What sits beside the filters: menus, export, the column picker. */
     renderToolbar: (toolbar: TransactionTableToolbar) => ReactNode;
+    /** Keep the column picker's text on narrow screens. */
+    showColumnPickerTextOnMobile?: boolean;
     hideAccountFilter?: boolean;
     enableSavedFilters?: boolean;
     /** Columns this page never shows, whatever the saved choice. */
@@ -110,6 +117,7 @@ export function TransactionTable({
     labels: initialLabels,
     automationRules,
     renderToolbar,
+    showColumnPickerTextOnMobile = false,
     hideAccountFilter = false,
     enableSavedFilters = false,
     hideColumns = NO_HIDDEN_COLUMNS,
@@ -281,7 +289,18 @@ export function TransactionTable({
                     accounts={accounts}
                     hideAccountFilter={hideAccountFilter}
                     enableSavedFilters={enableSavedFilters}
-                    actions={renderToolbar({ table, labels, clearSelection })}
+                    actions={renderToolbar({
+                        columnPicker: (
+                            <DataTableViewOptions
+                                table={table}
+                                hideColumnTextOnMobile={
+                                    !showColumnPickerTextOnMobile
+                                }
+                            />
+                        ),
+                        labels,
+                        clearSelection,
+                    })}
                 />
 
                 {source.isLoading ? (

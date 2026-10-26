@@ -93,10 +93,11 @@ function renderTable(tableSource: TransactionTableSource) {
             banks={[]}
             labels={[]}
             automationRules={[]}
-            renderToolbar={({ table, clearSelection }) => (
-                <button onClick={clearSelection}>
-                    clear {table.getRowModel().rows.length} rows
-                </button>
+            renderToolbar={({ columnPicker, clearSelection }) => (
+                <>
+                    <button onClick={clearSelection}>clear selection</button>
+                    {columnPicker}
+                </>
             )}
             topRow={<p>banner</p>}
             footerActions={<a href="/elsewhere">elsewhere</a>}
@@ -120,7 +121,8 @@ describe('TransactionTable', () => {
     it('draws the source rows, the page toolbar, banner and footer', () => {
         renderTable(source());
 
-        expect(screen.getByText('clear 2 rows')).toBeTruthy();
+        expect(screen.getByText('clear selection')).toBeTruthy();
+        expect(screen.getByRole('button', { name: /columns/i })).toBeTruthy();
         expect(screen.getByText('banner')).toBeTruthy();
         expect(screen.getByText('tick a')).toBeTruthy();
         expect(screen.getByText('2 transactions loaded')).toBeTruthy();
@@ -160,7 +162,7 @@ describe('TransactionTable', () => {
         renderTable(source());
 
         fireEvent.click(screen.getByText('tick b'));
-        act(() => fireEvent.click(screen.getByText('clear 2 rows')));
+        act(() => fireEvent.click(screen.getByText('clear selection')));
 
         expect(screen.getByTestId('bulk-bar').textContent).toBe('0 selected');
     });
