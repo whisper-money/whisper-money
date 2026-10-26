@@ -25,10 +25,8 @@ import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { AddTransactionLabel } from '@/components/transactions/add-transaction-button';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
-import {
-    TransactionList,
-    TransactionListSkeleton,
-} from '@/components/transactions/transaction-list';
+import { TransactionList } from '@/components/transactions/transaction-list';
+import { TransactionListSkeleton } from '@/components/transactions/transaction-list-skeleton';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';

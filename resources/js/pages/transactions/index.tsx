@@ -31,7 +31,7 @@ import { TransactionActionsMenu } from '@/components/transactions/transaction-ac
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
-import { TransactionListSkeleton } from '@/components/transactions/transaction-list';
+import { TransactionListSkeleton } from '@/components/transactions/transaction-list-skeleton';
 import { TransactionRowDialogs } from '@/components/transactions/transaction-row-dialogs';
 import { TransactionTableRow } from '@/components/transactions/transaction-table-row';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';

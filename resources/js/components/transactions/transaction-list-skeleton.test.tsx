@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { TransactionListSkeleton } from './transaction-list';
+import { TransactionListSkeleton } from './transaction-list-skeleton';
 
 describe('TransactionListSkeleton', () => {
     it('renders the table-shaped skeleton shared by the deferred fallback and the internal loading state', () => {

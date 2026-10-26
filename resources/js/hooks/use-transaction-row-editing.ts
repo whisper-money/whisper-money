@@ -1,6 +1,9 @@
 import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { type AutomateCategorizationCandidate } from '@/components/automation-rules/automate-categorization-dialog';
-import { showAutomatizeToast } from '@/lib/automatize-toast';
+import {
+    type AutomatizeSource,
+    showAutomatizeToast,
+} from '@/lib/automatize-toast';
 import { consoleDebug } from '@/lib/debug';
 import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
@@ -17,8 +20,6 @@ import {
     useMemo,
     useState,
 } from 'react';
-
-export type AutomatizeSource = 'transaction_table' | 'edit_transaction_modal';
 
 /**
  * Lays an edited transaction over the row it replaces. The relations the
@@ -137,7 +138,10 @@ export function useTransactionRowEditing({
         (
             transaction: ServerTransaction,
             category: Category,
-            source: AutomatizeSource,
+            source: Extract<
+                AutomatizeSource,
+                'transaction_table' | 'edit_transaction_modal'
+            >,
         ) => {
             const nextAutomateCandidate = { transaction, category };
 

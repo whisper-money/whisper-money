@@ -51,7 +51,7 @@ export function TransactionTableRow({
     };
 
     return (
-        <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
+        <ContextMenu onOpenChange={setContextMenuOpen}>
             <ContextMenuTrigger asChild>
                 <TableRow
                     ref={rowVirtualizer.measureElement}

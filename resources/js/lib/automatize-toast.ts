@@ -3,6 +3,13 @@ import { __ } from '@/utils/i18n';
 import { createElement } from 'react';
 import { toast } from 'sonner';
 
+/** Where a transaction was categorized, as the analytics event reports it. */
+export type AutomatizeSource =
+    | 'transaction_table'
+    | 'edit_transaction_modal'
+    | 'categorize_flow'
+    | 'onboarding';
+
 /**
  * The "Transaction categorized" toast, with an Automatize action that opens
  * the rule dialog for that transaction and category.
@@ -14,7 +21,7 @@ export function showAutomatizeToast({
     duration = 12000,
 }: {
     /** Where the categorization happened, for analytics. */
-    source: string;
+    source: AutomatizeSource;
     onAutomatize: () => void;
     id?: string;
     duration?: number;
