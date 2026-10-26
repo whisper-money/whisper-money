@@ -825,6 +825,7 @@ export function TransactionList({
 
     const dayHeaders = useTransactionDayHeaders({
         table,
+        rowSelection,
         transactions: displayedTransactions,
         isGroupedByDay,
         hasMoreRows: displayedCount < sortedTransactions.length,

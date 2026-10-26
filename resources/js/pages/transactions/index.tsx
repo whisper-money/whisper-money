@@ -1113,6 +1113,7 @@ export default function Transactions({
 
     const dayHeaders = useTransactionDayHeaders({
         table,
+        rowSelection,
         transactions: allTransactions,
         isGroupedByDay,
         hasMoreRows: nextCursor !== null,

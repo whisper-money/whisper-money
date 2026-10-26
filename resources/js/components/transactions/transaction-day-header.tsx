@@ -24,7 +24,11 @@ import { type SharedData } from '@/types';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { type Row, type Table } from '@tanstack/react-table';
+import {
+    type Row,
+    type RowSelectionState,
+    type Table,
+} from '@tanstack/react-table';
 import { useCallback } from 'react';
 
 interface TransactionDayHeaderProps {
@@ -32,6 +36,12 @@ interface TransactionDayHeaderProps {
     date: string;
     /** The loaded rows of this day, which its checkbox ticks. */
     rows: Row<ServerTransaction>[];
+    /**
+     * The table's selection, handed in as state rather than read off the rows:
+     * `row.getIsSelected()` reads a mutable table, which the React Compiler
+     * memoizes past, so the checkbox would never move.
+     */
+    rowSelection: RowSelectionState;
     amountInUserCurrency: AmountInUserCurrency;
     /** More of this day may sit on a page that is not loaded yet. */
     isPartial?: boolean;
@@ -109,6 +119,7 @@ export function TransactionDayHeader({
     table,
     date,
     rows,
+    rowSelection,
     amountInUserCurrency,
     isPartial = false,
     measureProps,
@@ -125,7 +136,7 @@ export function TransactionDayHeader({
     const trailingSpan =
         amountIndex === -1 ? 0 : columnIds.length - amountIndex - 1;
 
-    const selectedCount = rows.filter((row) => row.getIsSelected()).length;
+    const selectedCount = rows.filter((row) => rowSelection[row.id]).length;
     const allSelected = selectedCount === rows.length;
 
     function toggleDay(checked: boolean) {
@@ -206,11 +217,13 @@ const groupByTransactionDate = (transaction: ServerTransaction): string =>
  */
 export function useTransactionDayHeaders({
     table,
+    rowSelection,
     transactions,
     isGroupedByDay,
     hasMoreRows,
 }: {
     table: Table<ServerTransaction>;
+    rowSelection: RowSelectionState;
     /** The loaded rows, in the order the table shows them. */
     transactions: ServerTransaction[];
     isGroupedByDay: boolean;
@@ -224,7 +237,9 @@ export function useTransactionDayHeaders({
     ) => React.ReactNode;
 } {
     const amountInUserCurrency = useAmountsInUserCurrency(transactions);
-    const lastLoadedId = transactions.at(-1)?.id;
+    // By date rather than by row: within one day the table may order the rows
+    // differently from the list it was handed.
+    const lastLoadedDate = transactions.at(-1)?.transaction_date;
 
     const renderGroupHeader = useCallback(
         (
@@ -235,14 +250,19 @@ export function useTransactionDayHeaders({
                 table={table}
                 date={group.key}
                 rows={group.rows}
+                rowSelection={rowSelection}
                 amountInUserCurrency={amountInUserCurrency}
-                isPartial={
-                    hasMoreRows && group.rows.at(-1)?.id === lastLoadedId
-                }
+                isPartial={hasMoreRows && group.key === lastLoadedDate}
                 measureProps={measureProps}
             />
         ),
-        [table, amountInUserCurrency, hasMoreRows, lastLoadedId],
+        [
+            table,
+            rowSelection,
+            amountInUserCurrency,
+            hasMoreRows,
+            lastLoadedDate,
+        ],
     );
 
     return {

@@ -129,6 +129,7 @@ function TransactionsTable({
                         table={table}
                         date={group.key}
                         rows={group.rows}
+                        rowSelection={rowSelection}
                         amountInUserCurrency={amountInUserCurrency}
                         isPartial={isPartial}
                         measureProps={measureProps}
