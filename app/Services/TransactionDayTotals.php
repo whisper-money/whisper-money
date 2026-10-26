@@ -20,9 +20,14 @@ class TransactionDayTotals
 
     /**
      * One grouped query over the given days. Each currency's sum is converted
-     * at its own day's rate, which is the same as converting row by row since
-     * every row of the group shares that day. A day holding an amount with no
-     * rate gets a null total: a figure that skipped it would be wrong.
+     * at its own day's rate, the rate every row of that group would get, so it
+     * matches converting row by row up to one rounding per currency instead of
+     * one per row. A day holding an amount with no rate gets a null total: a
+     * figure that skipped it would be wrong.
+     *
+     * A rate the table does not hold yet is fetched from the provider once and
+     * stored, as every other conversion does; an unreachable provider answers
+     * with no rate, so the day shows no total rather than holding up the page.
      *
      * @param  Builder<Transaction>  $filtered  The list's query with its filters, without order or eager loads
      * @param  Collection<int, string>  $dates  Days as `Y-m-d`

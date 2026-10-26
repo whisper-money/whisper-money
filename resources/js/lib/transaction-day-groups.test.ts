@@ -181,6 +181,13 @@ describe('reconcileDaySummary', () => {
         ).toEqual({ count: 1, total: { status: 'ready', amount: 700 } });
     });
 
+    it('waits for the figure of a day served without one', () => {
+        expect(reconcileDaySummary(undefined, served, served, 'EUR')).toEqual({
+            count: 2,
+            total: { status: 'pending' },
+        });
+    });
+
     it('leaves the total out when a changed row needs a rate', () => {
         expect(
             reconcileDaySummary(

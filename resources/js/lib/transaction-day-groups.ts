@@ -168,6 +168,12 @@ export function reconcileDaySummary(
     loaded: Transaction[],
     userCurrency: string,
 ): DaySummary {
+    // Served without a figure: the list is switching to a date sort and the
+    // answer that carries one is still on its way.
+    if (server === undefined && served.length > 0) {
+        return { count: loaded.length, total: { status: 'pending' } };
+    }
+
     const count = (server?.count ?? 0) - served.length + loaded.length;
     const servedKeys = new Set(served.map(rowFingerprint));
     const loadedKeys = new Set(loaded.map(rowFingerprint));

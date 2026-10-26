@@ -111,7 +111,7 @@ class TransactionController extends Controller
             'transactions' => $transactions,
             // Only a list sorted by date draws day headers. Asked for beside
             // `transactions` on every page load, it covers the days that page touches.
-            'dayTotals' => fn (): array => ltrim($sortParam, '-') === 'transaction_date'
+            'dayTotals' => fn (): array => $request->isSortedByDate()
                 ? $dayTotals->forDays(
                     $filtered,
                     $transactions->getCollection()->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString()),
