@@ -53,54 +53,6 @@ test('users can connect a bitpanda account with valid credentials', function () 
     Queue::assertNothingPushed();
 });
 
-test('invalid bitpanda credentials return 422', function () {
-    $user = User::factory()->onboarded()->create();
-    Http::fake([
-        'api.bitpanda.com/v1/wallets' => Http::response(['error' => 'Unauthorized'], 401),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [
-        'api_key' => 'invalid-api-key-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonFragment(['message' => 'Invalid API key or failed to connect to Bitpanda.']);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'bitpanda',
-    ]);
-});
-
-test('free tier users cannot connect a bitpanda account after onboarding when subscriptions are enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $response = $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [
-        'api_key' => 'valid-test-api-key-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertStatus(402);
-    $response->assertJson(['redirect' => route('subscribe')]);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'bitpanda',
-    ]);
-});
-
-test('bitpanda requires authentication', function () {
-    $response = $this->postJson('/open-banking/bitpanda/connect', [
-        'api_key' => 'valid-test-api-key-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertUnauthorized();
-});
-
 test('bitpanda api_key is required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
     $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [])

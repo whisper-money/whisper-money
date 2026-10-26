@@ -414,16 +414,41 @@ function enableBankingConnectionWithAccounts(int $count): BankingConnection
     return $connection;
 }
 
-function finalAttemptJobFor(BankingConnection $connection): SyncBankingConnectionJob
+/**
+ * A throwaway P-256 private key in PEM form, the kind Coinbase CDP API keys use,
+ * so the client can sign JWTs against a faked HTTP layer.
+ */
+function testEcPrivateKey(): string
+{
+    $key = openssl_pkey_new([
+        'private_key_type' => OPENSSL_KEYTYPE_EC,
+        'curve_name' => 'prime256v1',
+    ]);
+
+    openssl_pkey_export($key, $pem);
+
+    return $pem;
+}
+
+/**
+ * A sync job that believes the queue is on the given attempt, so its retry
+ * bookkeeping runs the way it would on a real worker.
+ */
+function syncJobOnAttempt(BankingConnection $connection, int $attempt): SyncBankingConnectionJob
 {
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
-    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('attempts')->andReturn($attempt);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     return $job;
+}
+
+function finalAttemptJobFor(BankingConnection $connection): SyncBankingConnectionJob
+{
+    return syncJobOnAttempt($connection, 3);
 }
 
 /**

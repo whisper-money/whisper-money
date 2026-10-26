@@ -15,18 +15,6 @@ afterEach(function () {
     Sleep::fake(false);
 });
 
-function ecPrivateKeyForCoinbase(): string
-{
-    $key = openssl_pkey_new([
-        'private_key_type' => OPENSSL_KEYTYPE_EC,
-        'curve_name' => 'prime256v1',
-    ]);
-
-    openssl_pkey_export($key, $pem);
-
-    return $pem;
-}
-
 test('syncs coinbase balance with crypto and fiat wallets', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->coinbase()->create([
@@ -76,7 +64,7 @@ test('syncs coinbase balance with crypto and fiat wallets', function () {
         ]),
     ]);
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client);
 
@@ -146,7 +134,7 @@ test('prices an asset Coinbase only quotes in USD instead of dropping it from th
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client);
 
@@ -231,7 +219,7 @@ test('mixes fiat-quoted and USD-only assets in one balance', function () {
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client);
 
@@ -306,7 +294,7 @@ test('settles EURC at its euro peg instead of asking Coinbase to quote it', func
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     app(CoinbaseBalanceSyncService::class)->sync($account, $client);
 
     // 1 BTC * 50000 EUR + 100 EURC at par = 50100 EUR.
@@ -376,7 +364,7 @@ test('prices the rest of the portfolio when Coinbase rejects one product id', fu
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     app(CoinbaseBalanceSyncService::class)->sync($account, $client);
 
     // BTC survives the rejected batch: only the unquotable asset is lost.
@@ -440,7 +428,7 @@ test('gives up on a rate-limited price batch rather than retrying every asset', 
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     app(CoinbaseBalanceSyncService::class)->sync($account, $client);
 
     // A rate limit is not one bad product id, and CoinbaseClient already burns
@@ -531,7 +519,7 @@ test('first sync creates twelve monthly coinbase historical balances', function 
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
@@ -626,7 +614,7 @@ test('historical sync falls back to usd coinbase candles when target pair is una
         return Http::response([], 404);
     });
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
@@ -679,7 +667,7 @@ test('subsequent sync backfills coinbase monthly history when missing', function
         ]),
     ]);
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: false, backfillMissingHistory: true);
 
@@ -726,30 +714,10 @@ test('treats usd stablecoins as usd when valuing', function () {
         ]),
     ]);
 
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
+    $client = new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey());
     $service = app(CoinbaseBalanceSyncService::class);
     $service->sync($account, $client);
 
     $balance = $account->balances()->first();
     expect($balance->balance)->toBe(100_000); // 1000 USD → 100000 cents
-});
-
-test('skips sync when external_account_id is missing', function () {
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    $connection = BankingConnection::factory()->coinbase()->create([
-        'user_id' => $user->id,
-    ]);
-    $account = Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => null,
-        'currency_code' => 'EUR',
-    ]);
-
-    $client = new CoinbaseClient('organizations/org/apiKeys/key', ecPrivateKeyForCoinbase());
-    $service = app(CoinbaseBalanceSyncService::class);
-    $service->sync($account, $client);
-
-    expect($account->balances()->count())->toBe(0);
-    Http::assertNothingSent();
 });

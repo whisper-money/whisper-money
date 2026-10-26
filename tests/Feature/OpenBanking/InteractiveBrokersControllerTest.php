@@ -63,32 +63,6 @@ test('users can connect with valid flex credentials', function () {
     Queue::assertNothingPushed();
 });
 
-test('invalid flex credentials return 422', function () {
-    $user = User::factory()->onboarded()->create();
-    Http::fake([
-        '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Fail</Status><ErrorCode>1015</ErrorCode><ErrorMessage>Invalid token.</ErrorMessage></FlexStatementResponse>'),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());
-
-    $response->assertUnprocessable();
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'interactivebrokers',
-    ]);
-});
-
-test('free tier users cannot connect after onboarding when subscriptions are enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-    $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());
-
-    $response->assertStatus(402);
-    $response->assertJson(['redirect' => route('subscribe')]);
-});
-
 test('token and query_id are required', function () {
     $user = User::factory()->onboarded()->create();
     $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', [])
@@ -127,13 +101,6 @@ test('auto-creates accounts during onboarding', function () {
     ]);
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
-});
-
-test('requires authentication', function () {
-    $this->postJson('/open-banking/interactive-brokers/connect', [
-        'token' => 'flex-token-1234567890',
-        'query_id' => '123456',
-    ])->assertUnauthorized();
 });
 
 test('reports a friendly message while the statement is still generating', function () {

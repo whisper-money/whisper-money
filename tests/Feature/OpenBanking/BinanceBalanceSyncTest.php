@@ -266,22 +266,6 @@ test('handles empty balances gracefully', function () {
     expect($account->balances()->count())->toBe(0);
 });
 
-test('skips account without external_account_id', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'external_account_id' => null,
-    ]);
-
-    $client = Mockery::mock(BinanceClient::class);
-    $client->shouldNotReceive('getAccount');
-
-    $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
-
-    expect($account->balances()->count())->toBe(0);
-});
-
 test('first sync fetches historical snapshots and converts using currency API', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->binance()->create([

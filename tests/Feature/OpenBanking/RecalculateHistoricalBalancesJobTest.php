@@ -73,61 +73,44 @@ test('storing a transaction dated inside the balance history queues a rebuild', 
     );
 });
 
-test('storing a transaction dated past the newest balance queues nothing', function () {
+test('storing a transaction that cannot change the balance walk queues nothing', function (Closure $scenario) {
     Queue::fake();
 
-    [$user, $account] = connectedAccountWithBalanceHistory();
+    [$user, $account, $overrides] = $scenario();
 
-    postTransaction($user, $account, ['transaction_date' => '2026-03-20']);
+    postTransaction($user, $account, $overrides);
 
     Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
-});
+})->with([
+    'dated past the newest balance' => fn () => [...connectedAccountWithBalanceHistory(), ['transaction_date' => '2026-03-20']],
+    'on an account with no balance history' => function () {
+        $user = User::factory()->onboarded()->create();
+        $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+        $account = Account::factory()->connected()->create([
+            'user_id' => $user->id,
+            'banking_connection_id' => $connection->id,
+            'external_account_id' => 'ext-123',
+            'currency_code' => 'EUR',
+        ]);
 
-test('storing a transaction on an account with no balance history queues nothing', function () {
-    Queue::fake();
-
-    $user = User::factory()->onboarded()->create();
-    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => 'ext-123',
-        'currency_code' => 'EUR',
-    ]);
-
-    postTransaction($user, $account);
-
-    Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
-});
-
-test('storing a hand-entered transaction queues nothing', function () {
-    Queue::fake();
-
-    [$user, $account] = connectedAccountWithBalanceHistory();
-
+        return [$user, $account, []];
+    },
     // The walk never subtracts a hand-entered row, so it cannot change what the
     // walk would produce.
-    postTransaction($user, $account, ['source' => 'manually_created']);
+    'hand-entered' => fn () => [...connectedAccountWithBalanceHistory(), ['source' => 'manually_created']],
+    'on a manual account' => function () {
+        $user = User::factory()->onboarded()->create();
+        $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
 
-    Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
-});
+        AccountBalance::factory()->create([
+            'account_id' => $account->id,
+            'balance_date' => '2026-03-10',
+            'balance' => 100000,
+        ]);
 
-test('storing a transaction on a manual account queues nothing', function () {
-    Queue::fake();
-
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
-
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => '2026-03-10',
-        'balance' => 100000,
-    ]);
-
-    postTransaction($user, $account);
-
-    Queue::assertNotPushed(RecalculateHistoricalBalancesJob::class);
-});
+        return [$user, $account, []];
+    },
+]);
 
 test('an import of many rows collapses into a single queued rebuild', function () {
     Queue::fake();

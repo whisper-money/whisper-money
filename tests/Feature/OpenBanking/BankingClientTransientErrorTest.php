@@ -21,18 +21,6 @@ afterEach(function () {
     Sleep::fake(false);
 });
 
-function transientErrorEcPrivateKey(): string
-{
-    $key = openssl_pkey_new([
-        'private_key_type' => OPENSSL_KEYTYPE_EC,
-        'curve_name' => 'prime256v1',
-    ]);
-
-    openssl_pkey_export($key, $pem);
-
-    return $pem;
-}
-
 /**
  * The API-key clients that share TranslatesTransportFailures, each paired with
  * the provider slug the translated exception must carry and the name a person
@@ -41,7 +29,7 @@ function transientErrorEcPrivateKey(): string
  */
 dataset('api key banking clients', [
     'binance' => ['binance', 'Binance', fn () => (new BinanceClient('api-key', 'api-secret'))->getAccount()],
-    'coinbase' => ['coinbase', 'Coinbase', fn () => (new CoinbaseClient('organizations/org/apiKeys/key', transientErrorEcPrivateKey()))->getAccounts()],
+    'coinbase' => ['coinbase', 'Coinbase', fn () => (new CoinbaseClient('organizations/org/apiKeys/key', testEcPrivateKey()))->getAccounts()],
     'bitpanda' => ['bitpanda', 'Bitpanda', fn () => (new BitpandaClient('api-key'))->getCryptoWallets()],
     'kraken' => ['kraken', 'Kraken', fn () => (new KrakenClient('api-key', base64_encode('api-secret')))->getBalance()],
     'indexacapital' => ['indexacapital', 'Indexa Capital', fn () => (new IndexaCapitalClient('api-token'))->getUser()],
