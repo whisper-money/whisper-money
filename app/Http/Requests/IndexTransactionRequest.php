@@ -92,4 +92,13 @@ class IndexTransactionRequest extends FormRequest
     {
         return $this->validated('sort') ?? '-transaction_date';
     }
+
+    /**
+     * Whether the list is sorted by date, either way: the only order that
+     * draws day headers, mirrored by `isSortedByDate()` on the client.
+     */
+    public function isSortedByDate(): bool
+    {
+        return ltrim($this->sort(), '-') === 'transaction_date';
+    }
 }

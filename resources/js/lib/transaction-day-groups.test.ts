@@ -5,6 +5,7 @@ import {
     formatDayHeading,
     formatTransactionCount,
     isSortedByDate,
+    reconcileDaySummary,
     sumDayTotal,
 } from './transaction-day-groups';
 
@@ -129,5 +130,83 @@ describe('sumDayTotal', () => {
                 (t) => (t.currency_code === 'USD' ? null : t.amount),
             ),
         ).toEqual({ status: 'missing' });
+    });
+});
+
+describe('reconcileDaySummary', () => {
+    function row(
+        id: string,
+        amount: number,
+        currency_code = 'EUR',
+    ): Transaction {
+        return { id, amount, currency_code } as Transaction;
+    }
+
+    const served = [row('a', -1000), row('b', -500, 'USD')];
+
+    it('keeps the server figure while the page changed nothing', () => {
+        expect(
+            reconcileDaySummary(
+                { count: 9, total: -12000 },
+                served,
+                [...served],
+                'EUR',
+            ),
+        ).toEqual({ count: 9, total: { status: 'ready', amount: -12000 } });
+    });
+
+    it('moves the figure by a deleted or edited row in the user currency', () => {
+        expect(
+            reconcileDaySummary(
+                { count: 9, total: -12000 },
+                served,
+                [row('b', -500, 'USD')],
+                'EUR',
+            ),
+        ).toEqual({ count: 8, total: { status: 'ready', amount: -11000 } });
+
+        expect(
+            reconcileDaySummary(
+                { count: 9, total: -12000 },
+                served,
+                [row('a', -2500), row('b', -500, 'USD')],
+                'EUR',
+            ),
+        ).toEqual({ count: 9, total: { status: 'ready', amount: -13500 } });
+    });
+
+    it('counts a day the server never saw from the rows moved into it', () => {
+        expect(
+            reconcileDaySummary(undefined, [], [row('c', 700)], 'EUR'),
+        ).toEqual({ count: 1, total: { status: 'ready', amount: 700 } });
+    });
+
+    it('waits for the figure of a day served without one', () => {
+        expect(reconcileDaySummary(undefined, served, served, 'EUR')).toEqual({
+            count: 2,
+            total: { status: 'pending' },
+        });
+    });
+
+    it('leaves the total out when a changed row needs a rate', () => {
+        expect(
+            reconcileDaySummary(
+                { count: 9, total: -12000 },
+                served,
+                [row('a', -1000)],
+                'EUR',
+            ).total,
+        ).toEqual({ status: 'missing' });
+    });
+
+    it('leaves the total out when the server had no rate for the day', () => {
+        expect(
+            reconcileDaySummary(
+                { count: 2, total: null },
+                served,
+                served,
+                'EUR',
+            ),
+        ).toEqual({ count: 2, total: { status: 'missing' } });
     });
 });

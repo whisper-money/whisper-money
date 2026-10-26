@@ -121,3 +121,81 @@ export function sumDayTotal(
 
     return isPending ? { status: 'pending' } : { status: 'ready', amount };
 }
+
+/** What a day header says about its day: how many rows and their total. */
+export interface DaySummary {
+    count: number;
+    total: DayTotalState;
+}
+
+/** A day as the server counted it, its total null when a rate was missing. */
+export interface ServerDayTotal {
+    count: number;
+    total: number | null;
+}
+
+/** The summary of each day, looked up by its `Y-m-d` date. */
+export type DaySummaryOf = (date: string) => DaySummary;
+
+/** Every transaction of a day, all of them in memory. */
+export function summarizeDay(
+    transactions: Transaction[],
+    amountInUserCurrency: AmountInUserCurrency,
+): DaySummary {
+    return {
+        count: transactions.length,
+        total: sumDayTotal(transactions, amountInUserCurrency),
+    };
+}
+
+function rowFingerprint(transaction: Transaction): string {
+    return `${transaction.id}|${transaction.currency_code}|${transaction.amount}`;
+}
+
+/**
+ * The server's figure for a day, moved by whatever the page changed since it
+ * served the day's rows: a deleted row, an edited amount, a row moved in from
+ * another day. Rows the page has not touched cancel out, so only the changed
+ * ones need a rate; one in another currency leaves the total out, as a missing
+ * rate does.
+ *
+ * @param served The day's rows as the server handed them over.
+ * @param loaded The day's rows as the page holds them now.
+ */
+export function reconcileDaySummary(
+    server: ServerDayTotal | undefined,
+    served: Transaction[],
+    loaded: Transaction[],
+    userCurrency: string,
+): DaySummary {
+    // Served without a figure: the list is switching to a date sort and the
+    // answer that carries one is still on its way.
+    if (server === undefined && served.length > 0) {
+        return { count: loaded.length, total: { status: 'pending' } };
+    }
+
+    const count = (server?.count ?? 0) - served.length + loaded.length;
+    const servedKeys = new Set(served.map(rowFingerprint));
+    const loadedKeys = new Set(loaded.map(rowFingerprint));
+    const removed = served.filter(
+        (row) => !loadedKeys.has(rowFingerprint(row)),
+    );
+    const added = loaded.filter((row) => !servedKeys.has(rowFingerprint(row)));
+
+    const isInUserCurrency = (row: Transaction) =>
+        row.currency_code.toUpperCase() === userCurrency.toUpperCase();
+
+    if (
+        server?.total === null ||
+        ![...removed, ...added].every(isInUserCurrency)
+    ) {
+        return { count, total: { status: 'missing' } };
+    }
+
+    const amount =
+        (server?.total ?? 0) +
+        added.reduce((sum, row) => sum + row.amount, 0) -
+        removed.reduce((sum, row) => sum + row.amount, 0);
+
+    return { count, total: { status: 'ready', amount } };
+}

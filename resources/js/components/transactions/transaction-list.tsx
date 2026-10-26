@@ -1,3 +1,4 @@
+import { useInMemoryDaySummaries } from '@/hooks/use-day-summaries';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
@@ -604,6 +605,10 @@ export function TransactionList({
         return sortedTransactions.slice(0, displayedCount);
     }, [sortedTransactions, displayedCount]);
 
+    // Over every row the filters keep, not only the drawn slice, so a day cut
+    // by "load more" still says what it holds in full.
+    const daySummaryOf = useInMemoryDaySummaries(filteredTransactions);
+
     const selectionMode = useMobileSelectionMode({
         rowSelection,
         setRowSelection,
@@ -1054,11 +1059,8 @@ export function TransactionList({
                             maxHeight={maxHeight}
                             sorting={sorting}
                             rowSelection={rowSelection}
-                            transactions={displayedTransactions}
+                            daySummaryOf={daySummaryOf}
                             isGroupedByDay={isGroupedByDay}
-                            hasMoreRows={
-                                displayedCount < sortedTransactions.length
-                            }
                             selectionMode={selectionMode.forRows}
                             listRow={{
                                 categories,

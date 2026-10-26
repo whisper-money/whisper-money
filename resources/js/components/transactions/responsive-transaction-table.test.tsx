@@ -1,5 +1,6 @@
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
 import { type RowSelectionMode } from '@/hooks/use-mobile-selection-mode';
+import { summarizeDay } from '@/lib/transaction-day-groups';
 import { type ServerTransaction } from '@/types/transaction';
 import {
     type ColumnDef,
@@ -17,11 +18,6 @@ let listWidth = 600;
 
 vi.mock('@/hooks/use-element-width', () => ({
     useElementWidth: () => [() => undefined, listWidth],
-}));
-
-vi.mock('@/hooks/use-amounts-in-user-currency', () => ({
-    useAmountsInUserCurrency: () => (transaction: ServerTransaction) =>
-        transaction.amount,
 }));
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
@@ -154,9 +150,15 @@ function TransactionsList({
                 )}
                 sorting={sorting}
                 rowSelection={rowSelection}
-                transactions={TRANSACTIONS}
+                daySummaryOf={(date) =>
+                    summarizeDay(
+                        TRANSACTIONS.filter(
+                            (row) => row.transaction_date === date,
+                        ),
+                        (transaction) => transaction.amount,
+                    )
+                }
                 isGroupedByDay
-                hasMoreRows={false}
                 selectionMode={selectionMode}
                 listRow={{ categories: [], labels: [] }}
                 rowActions={rowActions}

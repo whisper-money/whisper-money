@@ -11,6 +11,8 @@ use function Pest\Laravel\actingAs;
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
     $this->account = Account::factory()->create(['user_id' => $this->user->id]);
+    // The factory books rows in random currencies, which the day totals convert.
+    fakeCurrencyApi();
 });
 
 test('index returns paginated transactions as Inertia props', function () {

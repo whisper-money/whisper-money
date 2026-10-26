@@ -289,6 +289,7 @@ it('keeps a part amount locked even when the original was created by hand', func
 });
 
 it('lists the parts and not the original, with the other parts loaded', function () {
+    fakeCurrencyApi();
     $original = splittableTransaction();
 
     $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
