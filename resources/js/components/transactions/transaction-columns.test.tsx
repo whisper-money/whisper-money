@@ -1,7 +1,13 @@
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
 import type { CreditCardPayment } from '@/types/account';
 import type { ServerTransaction } from '@/types/transaction';
-import type { CellContext, ColumnDef } from '@tanstack/react-table';
+import {
+    type CellContext,
+    type ColumnDef,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+} from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createTransactionColumns } from './transaction-columns';
@@ -19,11 +25,8 @@ function categoryClassName(columns: ColumnDef<ServerTransaction>[]): string {
     return (category?.meta as { cellClassName?: string }).cellClassName ?? '';
 }
 
-function buildColumns(
-    isDateHidden: boolean,
-    statementPayments?: Map<string, CreditCardPayment>,
-) {
-    return createTransactionColumns({
+function buildColumnsOptions() {
+    return {
         categories: [],
         accounts: [],
         banks: [],
@@ -37,10 +40,81 @@ function buildColumns(
         onAutomate: () => {},
         onSplit: () => {},
         onUnsplit: () => {},
+    };
+}
+
+function buildColumns(
+    isDateHidden: boolean,
+    statementPayments?: Map<string, CreditCardPayment>,
+) {
+    return createTransactionColumns({
+        ...buildColumnsOptions(),
         isDateHidden,
         statementPayments,
     });
 }
+
+describe('createTransactionColumns Date column while grouped by day', () => {
+    function dateColumn(isGroupedByDay: boolean) {
+        return createTransactionColumns({
+            ...buildColumnsOptions(),
+            isGroupedByDay,
+        }).find((column) => column.id === 'transaction_date');
+    }
+
+    it('cannot be toggled back while the day headers carry the date', () => {
+        expect(dateColumn(true)?.enableHiding).toBe(false);
+    });
+
+    it('can be toggled under any other sort', () => {
+        expect(dateColumn(false)?.enableHiding).toBe(true);
+    });
+
+    function CategoryHeading({ isGroupedByDay }: { isGroupedByDay: boolean }) {
+        const table = useReactTable({
+            data: [],
+            columns: createTransactionColumns({
+                ...buildColumnsOptions(),
+                isGroupedByDay,
+            }),
+            getCoreRowModel: getCoreRowModel(),
+            manualSorting: true,
+            state: {
+                sorting: [{ id: 'transaction_date', desc: true }],
+                columnVisibility: { transaction_date: !isGroupedByDay },
+            },
+        });
+        const header = table
+            .getFlatHeaders()
+            .find((candidate) => candidate.column.id === 'category_id');
+
+        return (
+            <div>
+                {header &&
+                    flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                    )}
+            </div>
+        );
+    }
+
+    it('keeps the date order reachable from the Category heading while hidden', () => {
+        render(<CategoryHeading isGroupedByDay />);
+
+        expect(
+            screen.getByRole('button', { name: 'Date' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Category')).toBeInTheDocument();
+    });
+
+    it('leaves the Category heading alone under any other sort', () => {
+        render(<CategoryHeading isGroupedByDay={false} />);
+
+        expect(screen.queryByRole('button', { name: 'Date' })).toBeNull();
+        expect(screen.getByText('Category')).toBeInTheDocument();
+    });
+});
 
 describe('createTransactionColumns category padding', () => {
     it('collapses the Category left padding while the Date column is shown', () => {

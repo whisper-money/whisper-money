@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\Api\AccountImportConfigController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
+use App\Http\Controllers\Api\ConvertedAmountsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\FullImportController;
@@ -39,6 +40,11 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
 
     // One amount converted between two currencies, for the transaction modal
     Route::get('exchange-rate', ExchangeRateController::class)->name('api.exchange-rate');
+
+    // Many amounts converted into the user's currency, for the day totals of the transactions table
+    Route::post('converted-amounts', ConvertedAmountsController::class)
+        ->middleware('throttle:30,1')
+        ->name('api.converted-amounts');
 
     // Category analysis
     Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');

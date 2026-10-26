@@ -235,6 +235,13 @@ export function CategoryCell({
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
                     trigger={trigger}
+                    uncategorizedIcon={
+                        <span
+                            aria-hidden
+                            data-testid="uncategorized-icon"
+                            className="size-6 shrink-0 rounded-full border-2 border-dashed border-amber-400 bg-amber-50 dark:border-amber-500/70 dark:bg-amber-500/10"
+                        />
+                    }
                     data-testid="row-category-select"
                 />
             </div>

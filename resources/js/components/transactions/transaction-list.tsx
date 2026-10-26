@@ -5,6 +5,7 @@ import {
     type RowSelectionMode,
 } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
+import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { reloadPage } from '@/lib/leave-page';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
@@ -24,7 +25,7 @@ import {
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
-import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
+import { isWithinInterval, parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import {
     createElement,
@@ -49,6 +50,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import {
@@ -281,25 +283,6 @@ function getInitialColumnVisibility(): VisibilityState {
         );
     }
     return defaultVisibility;
-}
-
-function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
-    const parsedDate = parseISO(date);
-    const currentYear = getYear(new Date());
-    const transactionYear = getYear(parsedDate);
-    const formatString =
-        transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
-
-    return (
-        <tr className="hidden bg-muted/50">
-            <td
-                colSpan={colSpan}
-                className="px-4 py-2 text-sm font-semibold text-muted-foreground"
-            >
-                {format(parsedDate, formatString)}
-            </td>
-        </tr>
-    );
 }
 
 export interface TransactionListProps {
@@ -664,6 +647,13 @@ export function TransactionList({
         rows: displayedTransactions,
     });
 
+    const { isGroupedByDay, tableColumnVisibility, onColumnVisibilityChange } =
+        useTransactionDayGrouping({
+            sorting,
+            columnVisibility,
+            setColumnVisibility,
+        });
+
     const handleReEvaluateRules = useCallback(
         async (transaction: ServerTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
@@ -781,7 +771,8 @@ export function TransactionList({
             onAutomate: openAutomateDialog,
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
-            isDateHidden: columnVisibility.transaction_date === false,
+            isDateHidden: tableColumnVisibility.transaction_date === false,
+            isGroupedByDay,
             hiddenLabelId,
             statementPayments,
         });
@@ -806,7 +797,8 @@ export function TransactionList({
         handleReEvaluateRules,
         openAutomateDialog,
         hideColumns,
-        columnVisibility,
+        tableColumnVisibility,
+        isGroupedByDay,
         hiddenLabelId,
         statementPayments,
     ]);
@@ -820,15 +812,23 @@ export function TransactionList({
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        onColumnVisibilityChange: setColumnVisibility,
+        onColumnVisibilityChange,
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
         state: {
             sorting,
             columnFilters,
-            columnVisibility,
+            columnVisibility: tableColumnVisibility,
             rowSelection,
         },
+    });
+
+    const dayHeaders = useTransactionDayHeaders({
+        table,
+        rowSelection,
+        transactions: displayedTransactions,
+        isGroupedByDay,
+        hasMoreRows: displayedCount < sortedTransactions.length,
     });
 
     const loadMore = useCallback(() => {
@@ -1091,10 +1091,7 @@ export function TransactionList({
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            getRowDate={(row) => row.transaction_date}
-                            renderDateHeader={(date, colSpan) => (
-                                <DateHeader date={date} colSpan={colSpan} />
-                            )}
+                            {...dayHeaders}
                         />
 
                         <DataTablePagination
