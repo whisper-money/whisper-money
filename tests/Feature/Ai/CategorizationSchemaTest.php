@@ -34,17 +34,22 @@ it('defaults rule origin to user and supports the ai state and scope', function 
         ->and($aiRules->first()->is($aiRule))->toBeTrue();
 });
 
-it('reports ai_categorized for a direct AI label', function () {
+it('reports ai_categorized only for a direct AI label', function (CategorySource $source, bool $aiCategorized) {
     $transaction = Transaction::factory()->create([
-        'category_source' => CategorySource::Ai,
+        'category_source' => $source,
     ]);
 
-    expect($transaction->ai_categorized)->toBeTrue();
-});
+    expect($transaction->ai_categorized)->toBe($aiCategorized);
+})->with([
+    'direct AI label' => [CategorySource::Ai, true],
+    'manual category' => [CategorySource::Manual, false],
+]);
 
-it('reports ai_categorized when categorized by an AI-origin rule', function () {
+it('reports ai_categorized only when the categorizing rule is AI-origin', function (bool $aiOrigin) {
     $user = User::factory()->create();
-    $rule = AutomationRule::factory()->ai()->for($user)->create();
+    $rule = $aiOrigin
+        ? AutomationRule::factory()->ai()->for($user)->create()
+        : AutomationRule::factory()->for($user)->create();
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -53,27 +58,8 @@ it('reports ai_categorized when categorized by an AI-origin rule', function () {
     ]);
     $transaction->load('categorizedByRule');
 
-    expect($transaction->ai_categorized)->toBeTrue();
-});
-
-it('does not report ai_categorized for a user-owned rule', function () {
-    $user = User::factory()->create();
-    $rule = AutomationRule::factory()->for($user)->create();
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_source' => CategorySource::Rule,
-        'categorized_by_rule_id' => $rule->id,
-    ]);
-    $transaction->load('categorizedByRule');
-
-    expect($transaction->ai_categorized)->toBeFalse();
-});
-
-it('does not report ai_categorized for a manual category', function () {
-    $transaction = Transaction::factory()->create([
-        'category_source' => CategorySource::Manual,
-    ]);
-
-    expect($transaction->ai_categorized)->toBeFalse();
-});
+    expect($transaction->ai_categorized)->toBe($aiOrigin);
+})->with([
+    'AI-origin rule' => true,
+    'user-owned rule' => false,
+]);

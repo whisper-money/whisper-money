@@ -1,24 +1,13 @@
 <?php
 
 use App\Ai\Agents\TransactionCategorizationAgent;
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
 use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 
 use function Pest\Laravel\artisan;
-
-function bfCategory(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
 
 function bfFakeAllToIndex(int $index): void
 {
@@ -37,7 +26,7 @@ function bfFakeAllToIndex(int $index): void
 it('categorizes a user\'s uncategorized transactions and learns rules', function () {
     $user = User::factory()->create();
     $user->recordAiConsent();
-    $category = bfCategory($user);
+    $category = aiExpenseCategory($user);
 
     $transactions = collect(range(1, 3))->map(fn (): Transaction => Transaction::factory()->create([
         'user_id' => $user->id,
@@ -60,7 +49,7 @@ it('categorizes a user\'s uncategorized transactions and learns rules', function
 
 it('refuses to backfill an ineligible user', function () {
     $user = User::factory()->create();
-    bfCategory($user);
+    aiExpenseCategory($user);
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => null,
@@ -75,7 +64,7 @@ it('refuses to backfill an ineligible user', function () {
 it('reports when there is nothing to backfill', function () {
     $user = User::factory()->create();
     $user->recordAiConsent();
-    bfCategory($user);
+    aiExpenseCategory($user);
 
     artisan('ai:categorize-backfill', ['user' => $user->id])
         ->expectsOutputToContain('No uncategorized transactions to backfill.')

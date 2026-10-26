@@ -1,44 +1,11 @@
 <?php
 
 use App\Ai\Agents\TransactionCategorizationAgent;
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategoryCatalog;
-
-function eligibleOnboardedUser(): User
-{
-    $user = User::factory()->onboarded()->create();
-    $user->recordAiConsent();
-
-    return $user;
-}
-
-function leafIndexFor(CategoryCatalog $catalog, string $categoryId): int
-{
-    $index = 0;
-
-    while (($id = $catalog->categoryIdForIndex($index)) !== null) {
-        if ($id === $categoryId) {
-            return $index;
-        }
-        $index++;
-    }
-
-    throw new RuntimeException("category {$categoryId} is not a leaf in the catalog");
-}
-
-function expenseLeaf(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
 
 function fakeCategorizesEachRef(int $index): void
 {
@@ -60,9 +27,9 @@ function runOnboardingCategorization(User $user): void
 }
 
 it('categorizes the remaining uncategorized transactions when onboarding completes', function () {
-    $user = eligibleOnboardedUser();
-    $category = expenseLeaf($user);
-    $index = leafIndexFor(CategoryCatalog::forUser($user), $category->id);
+    $user = aiEligibleUser();
+    $category = aiExpenseCategory($user);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     fakeCategorizesEachRef($index);
 
@@ -81,9 +48,9 @@ it('categorizes the remaining uncategorized transactions when onboarding complet
 });
 
 it('leaves transactions already categorized by rules untouched', function () {
-    $user = eligibleOnboardedUser();
-    $category = expenseLeaf($user);
-    $index = leafIndexFor(CategoryCatalog::forUser($user), $category->id);
+    $user = aiEligibleUser();
+    $category = aiExpenseCategory($user);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     fakeCategorizesEachRef($index);
 
@@ -100,7 +67,7 @@ it('leaves transactions already categorized by rules untouched', function () {
 
 it('does nothing for a user who is not eligible', function () {
     $user = User::factory()->onboarded()->create();
-    expenseLeaf($user);
+    aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,

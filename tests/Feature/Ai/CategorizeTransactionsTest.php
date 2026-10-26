@@ -21,28 +21,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Lottery;
 use Illuminate\Support\Sleep;
 
-function leafIndex(CategoryCatalog $catalog, string $categoryId): int
-{
-    $index = 0;
-
-    while (($id = $catalog->categoryIdForIndex($index)) !== null) {
-        if ($id === $categoryId) {
-            return $index;
-        }
-        $index++;
-    }
-
-    throw new RuntimeException("category {$categoryId} is not a leaf in the catalog");
-}
-
-function groceries(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
-
 function uncategorized(User $user): Transaction
 {
     return Transaction::factory()->create([
@@ -57,10 +35,10 @@ function uncategorized(User $user): Transaction
 
 it('auto-applies the category when confidence clears the label bar', function () {
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[
@@ -88,10 +66,10 @@ it('auto-applies the category when confidence clears the label bar', function ()
 
 it('leaves the transaction blank but records the suggestion when confidence is below the label bar', function () {
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[
@@ -127,7 +105,7 @@ it('returns nothing when the user has no leaf categories', function () {
 
 it('drops the chunk, skips reporting and schedules a retry on a transient provider failure', function (Closure $makeFailure) {
     $user = User::factory()->create();
-    groceries($user);
+    aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
     Exceptions::fake();
@@ -151,7 +129,7 @@ it('drops the chunk, skips reporting and schedules a retry on a transient provid
 
 it('reports unexpected failures and does not schedule a retry so real bugs are not swallowed', function () {
     $user = User::factory()->create();
-    groceries($user);
+    aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
     Exceptions::fake();
@@ -167,15 +145,14 @@ it('reports unexpected failures and does not schedule a retry so real bugs are n
     Queue::assertNotPushed(RetryTransientAiCategorizationJob::class);
 });
 
-it('routes prompts through the configured provider so local Ollama can be used', function () {
-    config()->set('ai_categorization.provider', 'ollama');
-    config()->set('ai_categorization.model', 'gemma3:12b');
+it('prompts the configured categorization provider and model', function (array $config, string $provider, ?string $model) {
+    config()->set($config);
 
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[
@@ -188,38 +165,20 @@ it('routes prompts through the configured provider so local Ollama can be used',
 
     app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
 
-    TransactionCategorizationAgent::assertPrompted(
-        fn ($prompt): bool => (string) $prompt->provider === 'ollama'
-            && $prompt->model === 'gemma3:12b',
-    );
-});
-
-it('defaults the categorization provider to gemini for backward compatibility', function () {
-    $user = User::factory()->create();
-    $category = groceries($user);
-    $transaction = uncategorized($user);
-
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
-
-    TransactionCategorizationAgent::fake([
-        ['results' => [[
-            'ref' => $transaction->id,
-            'category_index' => $index,
-            'confidence' => 0.95,
-            'merchant_unambiguous' => true,
-        ]]],
-    ]);
-
-    app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+    $model ??= (string) config('ai_categorization.model');
 
     TransactionCategorizationAgent::assertPrompted(
-        fn ($prompt): bool => (string) $prompt->provider === 'gemini',
+        fn ($prompt): bool => (string) $prompt->provider === $provider
+            && $prompt->model === $model,
     );
-});
+})->with([
+    'gemini by default, for backward compatibility' => [[], 'gemini', null],
+    'local Ollama, when configured' => [['ai_categorization.provider' => 'ollama', 'ai_categorization.model' => 'gemma3:12b'], 'ollama', 'gemma3:12b'],
+]);
 
 it('skips results whose category index does not resolve', function () {
     $user = User::factory()->create();
-    groceries($user);
+    aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
     TransactionCategorizationAgent::fake([
@@ -263,9 +222,9 @@ describe('Jev backend', function () {
         TransactionCategorizationAgent::fake()->preventStrayPrompts();
 
         $this->user = User::factory()->create();
-        $this->category = groceries($this->user);
+        $this->category = aiExpenseCategory($this->user);
         $this->transaction = uncategorized($this->user);
-        $this->index = leafIndex(CategoryCatalog::forUser($this->user), $this->category->id);
+        $this->index = catalogLeafIndex(CategoryCatalog::forUser($this->user), $this->category->id);
 
         config()->set('ai_categorization.jev_ratio', 1.0);
     });
@@ -281,7 +240,7 @@ describe('Jev backend', function () {
         ]);
         $second = uncategorized($this->user);
         $catalog = CategoryCatalog::forUser($this->user);
-        $index = fn (Category $category): string => (string) leafIndex($catalog, $category->id);
+        $index = fn (Category $category): string => (string) catalogLeafIndex($catalog, $category->id);
 
         Http::fake(['api.typesafe.ai/*' => Http::response(jevAnswer('none'))]);
 
@@ -450,19 +409,19 @@ describe('Jev backend', function () {
     });
 });
 
-it('scores an out-of-scale confidence as zero rather than as certainty', function () {
+it('scores a confidence outside 0..1 as zero and leaves the transaction uncategorized', function (int $confidence, bool $merchantUnambiguous) {
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[
             'ref' => $transaction->id,
             'category_index' => $index,
-            'confidence' => 200,
-            'merchant_unambiguous' => true,
+            'confidence' => $confidence,
+            'merchant_unambiguous' => $merchantUnambiguous,
         ]]],
     ]);
 
@@ -470,49 +429,26 @@ it('scores an out-of-scale confidence as zero rather than as certainty', functio
 
     $transaction->refresh();
 
-    // Zero, not 1.0: at 1.0 the answer would clear both the label bar and the
-    // higher rule bar, so one malformed response would auto-apply the category
-    // and teach a permanent merchant rule off it.
     expect($transaction->ai_confidence)->toEqual(0.0)
         ->and($transaction->category_id)->toBeNull()
         ->and($transaction->category_source)->toBeNull()
         ->and($transaction->ai_suggested_category_id)->toBe($category->id)
         ->and($outcomes[0]->confidence)->toEqual(0.0)
         ->and($outcomes[0]->applied)->toBeFalse();
-});
-
-it('scores a negative confidence as zero and leaves the transaction uncategorized', function () {
-    $user = User::factory()->create();
-    $category = groceries($user);
-    $transaction = uncategorized($user);
-
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
-
-    TransactionCategorizationAgent::fake([
-        ['results' => [[
-            'ref' => $transaction->id,
-            'category_index' => $index,
-            'confidence' => -5,
-            'merchant_unambiguous' => false,
-        ]]],
-    ]);
-
-    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
-
-    $transaction->refresh();
-
-    expect($transaction->ai_confidence)->toEqual(0.0)
-        ->and($transaction->category_id)->toBeNull()
-        ->and($outcomes[0]->confidence)->toEqual(0.0)
-        ->and($outcomes[0]->applied)->toBeFalse();
-});
+})->with([
+    // Zero, not 1.0: at 1.0 the answer would clear both the label bar and the
+    // higher rule bar, so one malformed response would auto-apply the category
+    // and teach a permanent merchant rule off it.
+    'out of scale, rather than as certainty' => [200, true],
+    'negative' => [-5, false],
+]);
 
 it('logs the raw value when the confidence is out of range', function () {
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[
@@ -541,10 +477,10 @@ it('learns no rule from an out-of-scale confidence even when the merchant is una
     // bar too. Goes through AiCategorizer::run() (not just forTransactions())
     // because that is what actually feeds outcomes into the rule learner.
     $user = User::factory()->create();
-    $category = groceries($user);
+    $category = aiExpenseCategory($user);
     $transaction = uncategorized($user);
 
-    $index = leafIndex(CategoryCatalog::forUser($user), $category->id);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake([
         ['results' => [[

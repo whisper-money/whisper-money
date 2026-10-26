@@ -7,14 +7,6 @@ use App\Models\User;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Queue;
 
-function aiEligibleUser(): User
-{
-    $user = User::factory()->onboarded()->create();
-    $user->recordAiConsent();
-
-    return $user;
-}
-
 function aiCategorizationJobsQueued(): int
 {
     return Queue::pushed(CallQueuedListener::class)

@@ -12,14 +12,6 @@ use App\Services\Ai\CategorizationOutcome;
 use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\DB;
 
-function expenseCategory(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
-
 function merchantTransaction(User $user, string $creditor): Transaction
 {
     return Transaction::factory()->create([
@@ -38,7 +30,7 @@ function outcome(Transaction $transaction, string $categoryId, float $confidence
 
 it('creates an ai-owned rule at the lowest priority and links the transaction', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
     AutomationRule::factory()->for($user)->create(['priority' => 5]);
     $transaction = merchantTransaction($user, 'Mercadona');
 
@@ -60,11 +52,11 @@ it('resolves a fresh instance per container lookup so the memoized corpus cannot
 
 it('learns each correction correctly across a batch while loading the corpus once', function () {
     $user = User::factory()->create();
-    $target = expenseCategory($user);
+    $target = aiExpenseCategory($user);
     // A separate category keeps the corrected txns out of the "uncategorized"
     // count, so the overbroad guard (which needs uncategorized rows) is a no-op
     // and each correction actually learns a description rule.
-    $existing = expenseCategory($user);
+    $existing = aiExpenseCategory($user);
 
     // Merchant-less, plaintext transactions force the description-token path,
     // which is what loads the per-user description corpus.
@@ -108,10 +100,10 @@ it('learns each correction correctly across a batch while loading the corpus onc
 
 it('does not learn a description rule from a single short token', function () {
     $user = User::factory()->create();
-    $target = expenseCategory($user);
+    $target = aiExpenseCategory($user);
     // Corrected txn parked in another category, so the overbroad guard (which
     // measures uncategorized rows) is a no-op and only the token guard decides.
-    $existing = expenseCategory($user);
+    $existing = aiExpenseCategory($user);
 
     // Merchant-less so the description-token path runs. A lone short token like
     // "suc" (sucursal) is a generic banking abbreviation and must not become a
@@ -127,50 +119,34 @@ it('does not learn a description rule from a single short token', function () {
     expect(app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id))->toBeNull();
 });
 
-it('learns a description rule from a single sufficiently long token', function () {
+it('learns a description rule from a merchant-less transaction', function (string $description, array $rulesJson) {
     $user = User::factory()->create();
-    $target = expenseCategory($user);
-    $existing = expenseCategory($user);
+    $target = aiExpenseCategory($user);
+    $existing = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'category_id' => $existing->id,
         'creditor_name' => null,
         'debtor_name' => null,
-        'description' => 'netflix',
+        'description' => $description,
     ]);
 
     $rule = app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id);
 
     expect($rule)->not->toBeNull()
-        ->and($rule->rules_json)->toBe(['in' => ['netflix', ['var' => 'description']]]);
-});
-
-it('learns a description rule from two short tokens', function () {
-    $user = User::factory()->create();
-    $target = expenseCategory($user);
-    $existing = expenseCategory($user);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => $existing->id,
-        'creditor_name' => null,
-        'debtor_name' => null,
-        'description' => 'abc def',
-    ]);
-
-    $rule = app(AiRuleLearner::class)->learnFromCorrection($transaction, $target->id);
-
-    expect($rule)->not->toBeNull()
-        ->and($rule->rules_json)->toBe(['and' => [
-            ['in' => ['abc', ['var' => 'description']]],
-            ['in' => ['def', ['var' => 'description']]],
-        ]]);
-});
+        ->and($rule->rules_json)->toBe($rulesJson);
+})->with([
+    'a single sufficiently long token' => ['netflix', ['in' => ['netflix', ['var' => 'description']]]],
+    'two short tokens' => ['abc def', ['and' => [
+        ['in' => ['abc', ['var' => 'description']]],
+        ['in' => ['def', ['var' => 'description']]],
+    ]]],
+]);
 
 it('appends a new merchant to the existing ai rule for the same category', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     $first = app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'Mercadona'), $category->id));
     $second = app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'Carrefour'), $category->id));
@@ -187,7 +163,7 @@ it('appends a new merchant to the existing ai rule for the same category', funct
 
 it('does not duplicate a merchant already on the rule', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'Mercadona'), $category->id));
     $rule = app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'mercadona'), $category->id));
@@ -197,7 +173,7 @@ it('does not duplicate a merchant already on the rule', function () {
 
 it('learns a rule that categorizes a future transaction from the same merchant', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'Mercadona'), $category->id));
 
@@ -209,7 +185,7 @@ it('learns a rule that categorizes a future transaction from the same merchant',
 
 it('does not learn an ambiguous merchant', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     $rule = app(AiRuleLearner::class)->learn(
         outcome(merchantTransaction($user, 'Amazon'), $category->id, unambiguous: false),
@@ -221,7 +197,7 @@ it('does not learn an ambiguous merchant', function () {
 
 it('does not learn below the rule confidence bar', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     $rule = app(AiRuleLearner::class)->learn(
         outcome(merchantTransaction($user, 'Mercadona'), $category->id, confidence: 0.8),
@@ -232,7 +208,7 @@ it('does not learn below the rule confidence bar', function () {
 
 it('does not learn when the transaction has no merchant key', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -248,7 +224,7 @@ it('does not learn when the transaction has no merchant key', function () {
 
 it('never reuses a user-owned rule, even for the same category', function () {
     $user = User::factory()->create();
-    $category = expenseCategory($user);
+    $category = aiExpenseCategory($user);
     $userRule = AutomationRule::factory()->for($user)->create(['action_category_id' => $category->id]);
 
     $aiRule = app(AiRuleLearner::class)->learn(outcome(merchantTransaction($user, 'Mercadona'), $category->id));
@@ -264,7 +240,7 @@ it('keeps the generated title within the column when the bank stuffs the stateme
         'type' => CategoryType::Expense,
         'cashflow_direction' => CategoryCashflowDirection::Outflow,
     ]);
-    $existing = expenseCategory($user);
+    $existing = aiExpenseCategory($user);
 
     // Real payload from PHP-LARAVEL-53: the bank sends the whole statement line
     // (dates, concept, amount, running balance, card number) as the merchant, so
