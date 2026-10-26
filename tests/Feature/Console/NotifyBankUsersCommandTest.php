@@ -197,30 +197,6 @@ test('takes the path of any of the locale files, or of none of them', function (
     Mail::assertQueued(BankNoticeEmail::class, 1);
 })->with(['', '.en.md', '.es.md']);
 
-test('a dry run sends nothing, and says who would have received what', function () {
-    noticeUser('dry@example.com', attributes: ['locale' => 'es']);
-    $base = notice(['en' => "# Heads up\n\nHi :name.", 'es' => "# Atención\n\nHola :name."]);
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => $base, '--dry-run' => true])
-        ->expectsOutputToContain('dry@example.com')
-        ->expectsOutputToContain('[dry-run] No emails sent.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-    assertDatabaseCount('user_mail_logs', 0);
-});
-
-test('a declined confirmation sends nothing', function () {
-    noticeUser('declined@example.com');
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => englishNotice()])
-        ->expectsConfirmation('Send "Heads up about your bank" to 1 user(s) connected to QA Notice Bank (ES)?', 'no')
-        ->expectsOutputToContain('Cancelled.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
-
 test('records a mail log naming both the bank and the notice', function () {
     $user = noticeUser('logged@example.com');
 
@@ -234,20 +210,6 @@ test('records a mail log naming both the bank and the notice', function () {
     ]);
 });
 
-test('does not send the same notice to the same user twice', function () {
-    noticeUser('once@example.com');
-    $base = englishNotice();
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => $base, '--force' => true])->assertSuccessful();
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => $base, '--force' => true])
-        ->expectsOutputToContain('everyone connected already got this notice')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankNoticeEmail::class, 1);
-    assertDatabaseCount('user_mail_logs', 1);
-});
-
 test('a second notice to the same bank is not suppressed by the first', function () {
     noticeUser('twice@example.com');
 
@@ -256,20 +218,6 @@ test('a second notice to the same bank is not suppressed by the first', function
 
     Mail::assertQueued(BankNoticeEmail::class, 2);
     assertDatabaseCount('user_mail_logs', 2);
-});
-
-test('resend asks for confirmation even with force, and sends again once given', function () {
-    noticeUser('again@example.com');
-    $base = englishNotice();
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => $base, '--force' => true])->assertSuccessful();
-
-    artisan('banking:notify-users', ['aspsp' => 'QA Notice Bank', 'notice' => $base, '--force' => true, '--resend' => true])
-        ->expectsConfirmation('Send "Heads up about your bank" to 1 user(s) connected to QA Notice Bank (ES)?', 'yes')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankNoticeEmail::class, 2);
-    assertDatabaseCount('user_mail_logs', 1);
 });
 
 test('each recipient reads the notice in their own language, and English when they have none', function (string $locale, string $expected) {

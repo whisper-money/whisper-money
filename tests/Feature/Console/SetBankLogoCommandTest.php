@@ -6,37 +6,26 @@ use Illuminate\Support\Facades\Storage;
 
 use function Pest\Laravel\artisan;
 
-function makePng(int $width, int $height): string
+function logoImage(int $width, int $height, string $format = 'png'): string
 {
     $im = imagecreatetruecolor($width, $height);
     ob_start();
-    imagepng($im);
+    $format === 'jpeg' ? imagejpeg($im) : imagepng($im);
     $contents = ob_get_clean();
 
     return (string) $contents;
 }
 
-function makeJpeg(int $width, int $height): string
-{
-    $im = imagecreatetruecolor($width, $height);
-    ob_start();
-    imagejpeg($im);
-    $contents = ob_get_clean();
-
-    return (string) $contents;
-}
-
-test('downloads and stores a square image as the bank logo', function () {
+test('downloads and stores a square image as the bank logo', function (string $format, string $url) {
     Storage::fake('public');
 
     $bank = Bank::factory()->create(['logo' => null]);
-    $squarePng = makePng(300, 300);
 
     Http::fake([
-        'https://example.test/logo.png' => Http::response($squarePng, 200, ['Content-Type' => 'image/png']),
+        $url => Http::response(logoImage(300, 300, $format), 200, ['Content-Type' => "image/{$format}"]),
     ]);
 
-    artisan('banks:set-logo', ['bank' => $bank->id, 'url' => 'https://example.test/logo.png'])
+    artisan('banks:set-logo', ['bank' => $bank->id, 'url' => $url])
         ->expectsOutputToContain('Image downloaded (300×300px).')
         ->expectsOutputToContain('Resized to 250×250px.')
         ->expectsOutputToContain("Logo updated for \"{$bank->name}\".")
@@ -44,13 +33,16 @@ test('downloads and stores a square image as the bank logo', function () {
 
     Storage::disk('public')->assertExists("banks/logos/{$bank->id}.png");
     expect($bank->fresh()->logo)->not->toBeNull();
-});
+})->with([
+    'png' => ['png', 'https://example.test/logo.png'],
+    'jpeg' => ['jpeg', 'https://example.test/logo.jpg'],
+]);
 
 test('does not resize images already within 250px', function () {
     Storage::fake('public');
 
     $bank = Bank::factory()->create(['logo' => null]);
-    $squarePng = makePng(100, 100);
+    $squarePng = logoImage(100, 100);
 
     Http::fake([
         'https://example.test/logo.png' => Http::response($squarePng, 200, ['Content-Type' => 'image/png']),
@@ -96,7 +88,7 @@ test('fails when url does not point to an image', function () {
 
 test('fails when image is not square', function () {
     $bank = Bank::factory()->create(['logo' => null]);
-    $rectangularPng = makePng(400, 200);
+    $rectangularPng = logoImage(400, 200);
 
     Http::fake([
         'https://example.test/logo.png' => Http::response($rectangularPng, 200, ['Content-Type' => 'image/png']),
@@ -121,31 +113,11 @@ test('fails when downloaded content is not a valid image', function () {
         ->assertFailed();
 });
 
-test('downloads and stores a square jpeg image as the bank logo', function () {
-    Storage::fake('public');
-
-    $bank = Bank::factory()->create(['logo' => null]);
-    $squareJpeg = makeJpeg(300, 300);
-
-    Http::fake([
-        'https://example.test/logo.jpg' => Http::response($squareJpeg, 200, ['Content-Type' => 'image/jpeg']),
-    ]);
-
-    artisan('banks:set-logo', ['bank' => $bank->id, 'url' => 'https://example.test/logo.jpg'])
-        ->expectsOutputToContain('Image downloaded (300×300px).')
-        ->expectsOutputToContain('Resized to 250×250px.')
-        ->expectsOutputToContain("Logo updated for \"{$bank->name}\".")
-        ->assertSuccessful();
-
-    Storage::disk('public')->assertExists("banks/logos/{$bank->id}.png");
-    expect($bank->fresh()->logo)->not->toBeNull();
-});
-
 test('prompts for bank uuid and url when no arguments are provided', function () {
     Storage::fake('public');
 
     $bank = Bank::factory()->create(['logo' => null]);
-    $squarePng = makePng(100, 100);
+    $squarePng = logoImage(100, 100);
 
     Http::fake([
         'https://example.test/logo.png' => Http::response($squarePng, 200, ['Content-Type' => 'image/png']),

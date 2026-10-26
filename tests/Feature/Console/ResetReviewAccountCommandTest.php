@@ -13,21 +13,18 @@ beforeEach(function () {
     ]]);
 });
 
-test('demo:reset --review fails when the reviewer password is not configured', function () {
-    config(['app.review.password' => null]);
+test('demo:reset --review fails when the reviewer password is not configured', function (array $config) {
+    config(['app.review.password' => null, ...$config]);
 
     $this->artisan('demo:reset --review')->assertFailed();
 
     expect(User::where('email', 'openai-review@whisper.money')->exists())->toBeFalse();
-});
-
-test('demo:reset --review ignores DEMO_ENABLED', function () {
-    config(['app.demo.enabled' => false, 'app.review.password' => null]);
-
+})->with([
+    'demo setting left alone' => [[]],
     // Failing on the missing reviewer config (rather than reporting the demo as
     // disabled) is what proves the demo switch is not consulted.
-    $this->artisan('demo:reset --review')->assertFailed();
-});
+    'demo disabled' => [['app.demo.enabled' => false]],
+]);
 
 test('demo:reset --review seeds the data the stored test cases ask about, ending today', function () {
     config(['subscriptions.enabled' => true]);

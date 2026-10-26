@@ -20,39 +20,35 @@ afterEach(function () {
     File::deleteDirectory($this->localPath);
 });
 
-it('imports data for user by uuid', function () {
-    $user = User::factory()->create();
-
-    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
-        ->assertSuccessful();
-});
-
-it('imports data for user by email', function () {
+it('finds the user by uuid or email', function (string $identifiedBy) {
     $user = User::factory()->create(['email' => 'test@example.com']);
 
-    artisan('user:setup-main', ['user' => 'test@example.com', '--path' => $this->localPath])
+    artisan('user:setup-main', ['user' => $user->{$identifiedBy}, '--path' => $this->localPath])
+        ->expectsOutputToContain("Found user: {$user->name} (test@example.com)")
+        ->expectsOutputToContain("No JSON files found in {$this->localPath}")
         ->assertSuccessful();
-});
+})->with([
+    'by uuid' => 'id',
+    'by email' => 'email',
+]);
 
 it('asks for user identifier when not provided as argument', function () {
     $user = User::factory()->create(['email' => 'test@example.com']);
 
     artisan('user:setup-main', ['--path' => $this->localPath])
         ->expectsQuestion('Enter user UUID or email', 'test@example.com')
+        ->expectsOutputToContain("Found user: {$user->name} (test@example.com)")
         ->assertSuccessful();
 });
 
-it('fails when user is not found by uuid', function () {
-    artisan('user:setup-main', ['user' => '00000000-0000-0000-0000-000000000000'])
-        ->expectsOutput('User not found: 00000000-0000-0000-0000-000000000000')
+it('fails when the user is not found', function (string $identifier) {
+    artisan('user:setup-main', ['user' => $identifier])
+        ->expectsOutput("User not found: {$identifier}")
         ->assertFailed();
-});
-
-it('fails when user is not found by email', function () {
-    artisan('user:setup-main', ['user' => 'nonexistent@example.com'])
-        ->expectsOutput('User not found: nonexistent@example.com')
-        ->assertFailed();
-});
+})->with([
+    'by uuid' => '00000000-0000-0000-0000-000000000000',
+    'by email' => 'nonexistent@example.com',
+]);
 
 it('imports categories from json file', function () {
     $user = User::factory()->create();

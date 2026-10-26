@@ -2,10 +2,12 @@
 
 use App\Enums\DripEmailType;
 use App\Jobs\SendUpdateEmailJob;
+use App\Mail\UpdateEmail;
 use App\Models\User;
 use App\Models\UserMailLog;
 use App\Support\PriceTiers;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\View;
 use Stripe\Collection as StripeCollection;
@@ -197,12 +199,17 @@ test('job creates mail log entry after sending', function () {
 
 test('job sends email with correct view and user data', function () {
     Queue::fake([]);
+    Mail::fake();
 
     $user = User::factory()->create(['name' => 'John Doe']);
 
     $job = new SendUpdateEmailJob($user, 'test-update', 'test-2026', 'Custom Subject');
     $job->handle();
 
+    Mail::assertQueued(UpdateEmail::class, fn (UpdateEmail $mail): bool => $mail->hasTo($user->email)
+        && $mail->user->is($user)
+        && $mail->viewName === 'test-update'
+        && $mail->emailSubject === 'Custom Subject');
     expect(UserMailLog::where('user_id', $user->id)->exists())->toBeTrue();
 });
 

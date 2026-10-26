@@ -38,19 +38,15 @@ test('command dispatches jobs for multiple user emails', function () {
     });
 });
 
-test('command handles non-existent user gracefully', function () {
-    artisan('email:subscription-cancelled', ['emails' => 'nonexistent@example.com'])
+test('command skips an address that is no user', function (string $email) {
+    artisan('email:subscription-cancelled', ['emails' => $email])
         ->assertSuccessful();
 
     Queue::assertNothingPushed();
-});
-
-test('command handles invalid email format gracefully', function () {
-    artisan('email:subscription-cancelled', ['emails' => 'not-an-email'])
-        ->assertSuccessful();
-
-    Queue::assertNothingPushed();
-});
+})->with([
+    'non-existent user' => 'nonexistent@example.com',
+    'invalid email format' => 'not-an-email',
+]);
 
 test('command handles mixed valid and invalid emails', function () {
     $user = User::factory()->create();

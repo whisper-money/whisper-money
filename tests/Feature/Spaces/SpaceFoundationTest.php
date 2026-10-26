@@ -57,7 +57,7 @@ it('resolves active space back to personal when the pointer is stale', function 
         ->and($user->fresh()->current_space_id)->toBe($user->personalSpace->id);
 });
 
-it('backfills legacy rows that predate spaces', function () {
+it('backfills legacy rows that predate spaces', function (bool $softDeleted) {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
 
@@ -66,27 +66,17 @@ it('backfills legacy rows that predate spaces', function () {
     User::query()->where('id', $user->id)->update(['current_space_id' => null]);
     Space::query()->where('owner_id', $user->id)->delete();
 
-    $this->artisan('spaces:backfill')->assertSuccessful();
-
-    $user->refresh();
-    expect($user->current_space_id)->not->toBeNull()
-        ->and($account->fresh()->space_id)->toBe($user->current_space_id);
-});
-
-it('backfills soft-deleted users and their rows', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
-
-    // Simulate a pre-migration, soft-deleted user with dangling data.
-    Account::query()->where('id', $account->id)->update(['space_id' => null]);
-    User::query()->where('id', $user->id)->update(['current_space_id' => null]);
-    Space::query()->where('owner_id', $user->id)->delete();
-    $user->delete();
+    if ($softDeleted) {
+        $user->delete();
+    }
 
     $this->artisan('spaces:backfill')->assertSuccessful();
 
-    $trashed = User::withTrashed()->find($user->id);
-    expect($trashed->trashed())->toBeTrue()
-        ->and($trashed->current_space_id)->not->toBeNull()
-        ->and($account->fresh()->space_id)->toBe($trashed->current_space_id);
-});
+    $backfilled = User::withTrashed()->find($user->id);
+    expect($backfilled->trashed())->toBe($softDeleted)
+        ->and($backfilled->current_space_id)->not->toBeNull()
+        ->and($account->fresh()->space_id)->toBe($backfilled->current_space_id);
+})->with([
+    'of a live user' => false,
+    'of a soft-deleted user' => true,
+]);
