@@ -13,12 +13,24 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @phpstan-type Claim array{categories: array<int, string>, labels: array<int, string>, until: ?string}
+ */
 class BudgetTransactionService
 {
     public function __construct(
         private readonly CategoryTree $tree = new CategoryTree,
         private readonly BudgetNotificationService $notifications = new BudgetNotificationService,
     ) {}
+
+    /**
+     * Claims already read for a catch-all period, keyed by period id. Only set
+     * while {@see self::assignTransactions()} runs, so a batch reads each
+     * period's claims once and the next batch sees any budget created since.
+     *
+     * @var array<string, array<int, Claim>>|null
+     */
+    private ?array $claimsByPeriod = null;
 
     /**
      * @param  bool  $notify  set to false for bulk backfills, where the emails
@@ -34,22 +46,27 @@ class BudgetTransactionService
      * category tree once for the whole batch instead of walking it level by
      * level for every transaction.
      *
-     * The tree is only held for this call, so the next batch sees any category
-     * re-parented in the meantime.
+     * The tree and the catch-all claims are only held for this call, so the
+     * next batch sees any category re-parented or budget created in the meantime.
      *
      * @param  iterable<int, Transaction>  $transactions
      */
     public function assignTransactions(iterable $transactions, bool $notify = true): void
     {
         $parentMaps = [];
+        $this->claimsByPeriod = [];
 
-        foreach ($transactions as $transaction) {
-            $userId = $transaction->user_id;
-            $parentMap = $userId && $transaction->category_id
-                ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId))
-                : null;
+        try {
+            foreach ($transactions as $transaction) {
+                $userId = $transaction->user_id;
+                $parentMap = $userId && $transaction->category_id
+                    ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId))
+                    : null;
 
-            $this->assignWithCategoryTree($transaction, $notify, $parentMap);
+                $this->assignWithCategoryTree($transaction, $notify, $parentMap);
+            }
+        } finally {
+            $this->claimsByPeriod = null;
         }
     }
 
@@ -72,14 +89,21 @@ class BudgetTransactionService
         $transaction->loadMissing('labels');
         $transaction->loadMissing(['account' => fn ($query) => $query->withTrashed()]);
 
-        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId, $categoryParentMap);
+        // A budget tracking a parent category also covers its children, so a
+        // transaction matches a budget when any of its category's ancestors
+        // (or itself) is attached to that budget.
+        $categoryMatchIds = $transaction->category_id
+            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id, $categoryParentMap)
+            : [];
+
+        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId, $categoryMatchIds);
 
         // A catch-all budget only absorbs what nothing else counts. Any budget
         // already tracking this transaction — by category or by label — in a
         // period covering its date takes precedence, so the catch-all steps in
         // only when there is no such period.
         if ($matchingPeriodIds === []) {
-            $matchingPeriodIds = $this->catchAllPeriodIds($transaction);
+            $matchingPeriodIds = $this->catchAllPeriodIds($transaction, $categoryMatchIds);
         }
 
         // Apply changes atomically so concurrent workers cannot leave the
@@ -133,44 +157,19 @@ class BudgetTransactionService
 
         $assignedCount = 0;
 
-        // Tracking a parent category also tracks its children's spending.
-        $categoryIds = collect($this->tree->expand($budget->user_id, $budget->categories->pluck('id')->all()));
-        $labelIds = $budget->labels->pluck('id');
-
         Log::info('Building query for historical transactions', [
             'user_id' => $budget->user_id,
-            'category_ids' => $categoryIds->all(),
-            'label_ids' => $labelIds->all(),
+            'category_ids' => $budget->categories->pluck('id')->all(),
+            'label_ids' => $budget->labels->pluck('id')->all(),
             'start_date' => $period->start_date->toDateString(),
             'end_date' => $period->end_date->toDateString(),
         ]);
 
-        // Build the query for matching transactions
-        $query = Transaction::query()
-            ->where('user_id', $budget->user_id)
-            ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
+        $query = $this->historicalQuery($budget, $period)
             // The owning account weighs every snapshot; eager loaded so a
             // 500-row chunk does not turn into 500 account lookups, and with
             // trashed ones so it agrees with the SQL re-weigh.
-            ->with(['account' => fn ($query) => $query->withTrashed()])
-            ->withoutTrashed();
-
-        if ($budget->is_catch_all) {
-            $this->applyCatchAllFilters($query, $period, $budget->user_id);
-        } else {
-            // Filter by any tracked category OR label
-            $query->where(function ($q) use ($categoryIds, $labelIds) {
-                if ($categoryIds->isNotEmpty()) {
-                    $q->whereIn('category_id', $categoryIds);
-                }
-
-                if ($labelIds->isNotEmpty()) {
-                    $q->orWhereHas('labels', function ($labelQuery) use ($labelIds) {
-                        $labelQuery->whereIn('labels.id', $labelIds);
-                    });
-                }
-            });
-        }
+            ->with(['account' => fn ($query) => $query->withTrashed()]);
 
         $totalCount = $query->count();
         Log::info("Found {$totalCount} transactions to process in date range");
@@ -181,6 +180,127 @@ class BudgetTransactionService
         });
 
         return $assignedCount;
+    }
+
+    /**
+     * Bring a catch-all period back in line with what it should absorb today:
+     * release the rows another budget claims by now, then backfill the ones
+     * nothing claims any more. Silent, like every historical assignment.
+     *
+     * @return array{released: int, absorbed: int}
+     */
+    public function rebuildCatchAllPeriod(BudgetPeriod $period): array
+    {
+        if (! $period->budget?->is_catch_all) {
+            return ['released' => 0, 'absorbed' => 0];
+        }
+
+        return [
+            'released' => $this->staleCatchAllRows($period->budget, $period)->delete(),
+            'absorbed' => $this->assignHistoricalTransactionsToPeriod($period),
+        ];
+    }
+
+    /**
+     * What {@see self::rebuildCatchAllPeriod()} would change, without changing it.
+     *
+     * @return array{released: int, absorbed: int}
+     */
+    public function catchAllDrift(BudgetPeriod $period): array
+    {
+        $budget = $period->budget;
+
+        if (! $budget?->is_catch_all) {
+            return ['released' => 0, 'absorbed' => 0];
+        }
+
+        return [
+            'released' => $this->staleCatchAllRows($budget, $period)->count(),
+            'absorbed' => $this->historicalQuery($budget, $period)
+                ->whereDoesntHave('budgetTransactions', fn (Builder $query) => $query->where('budget_period_id', $period->id))
+                ->count(),
+        ];
+    }
+
+    /**
+     * Rows a catch-all period holds although it should not absorb them any more.
+     *
+     * @return Builder<BudgetTransaction>
+     */
+    private function staleCatchAllRows(Budget $catchAll, BudgetPeriod $period): Builder
+    {
+        return BudgetTransaction::query()
+            ->where('budget_period_id', $period->id)
+            ->whereNotIn('transaction_id', $this->historicalQuery($catchAll, $period)->select('transactions.id'));
+    }
+
+    /**
+     * Stop an archived budget counting from its archive day on: the rows it
+     * holds for transactions dated that day or later are dropped, so the
+     * catch-all can take them without counting them twice. What it counted
+     * before stays as it was.
+     */
+    public function releaseFromArchiveDay(Budget $budget): int
+    {
+        return $this->rowsFromArchiveDay($budget)?->delete() ?? 0;
+    }
+
+    /**
+     * How many rows {@see self::releaseFromArchiveDay()} would drop.
+     */
+    public function countFromArchiveDay(Budget $budget): int
+    {
+        return $this->rowsFromArchiveDay($budget)?->count() ?? 0;
+    }
+
+    /**
+     * @return Builder<BudgetTransaction>|null null when the budget is running
+     */
+    private function rowsFromArchiveDay(Budget $budget): ?Builder
+    {
+        if ($budget->archived_at === null) {
+            return null;
+        }
+
+        return BudgetTransaction::query()
+            ->whereIn('budget_period_id', $budget->periods()->select('id'))
+            ->whereHas('transaction', fn (Builder $query) => $query->where('transaction_date', '>=', $budget->archived_at->toDateString()));
+    }
+
+    /**
+     * The transactions a budget period takes in when backfilled.
+     *
+     * @return Builder<Transaction>
+     */
+    private function historicalQuery(Budget $budget, BudgetPeriod $period): Builder
+    {
+        $query = Transaction::query()
+            ->where('user_id', $budget->user_id)
+            ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
+            ->withoutTrashed();
+
+        if ($budget->is_catch_all) {
+            $this->applyCatchAllFilters($query, $period, $budget->user_id);
+
+            return $query;
+        }
+
+        // Tracking a parent category also tracks its children's spending.
+        $categoryIds = $this->tree->expand($budget->user_id, $budget->categories->pluck('id')->all());
+        $labelIds = $budget->labels->pluck('id')->all();
+
+        return $query->where(fn (Builder $tracked) => $this->whereTracks($tracked, $categoryIds, $labelIds));
+    }
+
+    /**
+     * @param  Builder<Transaction>  $query
+     * @param  array<int, string>  $categoryIds  already expanded to their children
+     * @param  array<int, string>  $labelIds
+     */
+    private function whereTracks(Builder $query, array $categoryIds, array $labelIds): void
+    {
+        $query->whereIn('category_id', $categoryIds)
+            ->orWhereHas('labels', fn (Builder $labelQuery) => $labelQuery->whereIn('labels.id', $labelIds));
     }
 
     /**
@@ -287,56 +407,73 @@ class BudgetTransactionService
 
     /**
      * Narrow a transaction query to what a catch-all budget absorbs: expenses
-     * whose category and labels are not already tracked by another budget.
+     * no other budget claims over the catch-all period, see {@see self::claimsOverPeriod()}.
      *
      * @param  Builder<Transaction>  $query
      */
     private function applyCatchAllFilters(Builder $query, BudgetPeriod $period, string $userId): void
     {
-        $claimed = $this->claimedIds($userId, $period);
-        $claimedCategoryIds = $this->tree->expand($userId, $claimed['categories']);
-
         $query->whereNotNull('category_id')
-            ->when(
-                $claimedCategoryIds !== [],
-                fn ($q) => $q->whereNotIn('category_id', $claimedCategoryIds),
-            )
-            ->when(
-                $claimed['labels'] !== [],
-                fn ($q) => $q->whereDoesntHave(
-                    'labels',
-                    fn ($labelQuery) => $labelQuery->whereIn('labels.id', $claimed['labels']),
-                ),
-            )
             ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
+
+        [$archived, $running] = collect($this->claimsOverPeriod($userId, $period))
+            ->partition(fn (array $claim): bool => $claim['until'] !== null);
+
+        // The running budgets claim in one go, keeping the query as small as it was.
+        $this->excludeClaim($query, $userId, [
+            'categories' => $running->flatMap(fn (array $claim) => $claim['categories'])->unique()->values()->all(),
+            'labels' => $running->flatMap(fn (array $claim) => $claim['labels'])->unique()->values()->all(),
+            'until' => null,
+        ]);
+
+        foreach ($archived as $claim) {
+            $this->excludeClaim($query, $userId, $claim);
+        }
+    }
+
+    /**
+     * @param  Builder<Transaction>  $query
+     * @param  Claim  $claim
+     */
+    private function excludeClaim(Builder $query, string $userId, array $claim): void
+    {
+        $categoryIds = $this->tree->expand($userId, $claim['categories']);
+
+        if ($categoryIds === [] && $claim['labels'] === []) {
+            return;
+        }
+
+        // A plain negation is safe here: the catch-all only reads categorized
+        // rows, so `category_id in (...)` is never NULL.
+        $query->whereNot(fn (Builder $claimed) => $claimed
+            ->when($claim['until'] !== null, fn (Builder $q) => $q->where('transaction_date', '<', $claim['until']))
+            ->where(fn (Builder $tracked) => $this->whereTracks($tracked, $categoryIds, $claim['labels'])));
     }
 
     /**
      * Budget periods that track this transaction by category or by label and
      * cover its date.
      *
-     * @param  array<string, ?string>|null  $categoryParentMap
+     * @param  array<int, string>  $categoryMatchIds  the transaction's category and its ancestors
      * @return array<int, string>
      */
-    private function trackedPeriodIds(Transaction $transaction, string $userId, ?array $categoryParentMap): array
+    private function trackedPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
     {
         $transactionLabelIds = $transaction->labels->pluck('id');
 
-        // A budget tracking a parent category also covers its children, so a
-        // transaction matches a budget when any of its category's ancestors
-        // (or itself) is attached to that budget.
-        $categoryMatchIds = $transaction->category_id
-            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id, $categoryParentMap)
-            : [];
-
         // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
+            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId, $transaction) {
                 // An archived budget stops counting from the day it was
-                // archived, so it takes in nothing new from here on. Spelled
-                // out rather than via Budget::scopeNotArchived: inside a
-                // whereHas closure the builder is not typed to the model.
-                $query->whereNull('archived_at')
+                // archived, so it takes in nothing dated from then on. What is
+                // dated before is still its own, as {@see self::claimsOverPeriod()}
+                // tells the catch-all — otherwise a late or edited transaction
+                // would land in neither. Spelled out rather than via
+                // Budget::scopeNotArchived: inside a whereHas closure the
+                // builder is not typed to the model.
+                $query->where(fn ($archive) => $archive
+                    ->whereNull('archived_at')
+                    ->orWhereDate('archived_at', '>', $transaction->transaction_date->toDateString()))
                     ->where('user_id', $userId)
                     ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
                         $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
@@ -377,11 +514,15 @@ class BudgetTransactionService
     }
 
     /**
-     * Catch-all budget periods that should absorb this expense.
+     * Catch-all budget periods that should absorb this expense: those covering
+     * its date over which no other budget claims it. Judged per catch-all
+     * period, the way {@see self::applyCatchAllFilters()} backfills one, so a
+     * transaction lands where the rebuild would have put it.
      *
+     * @param  array<int, string>  $categoryMatchIds  the transaction's category and its ancestors
      * @return array<int, string>
      */
-    private function catchAllPeriodIds(Transaction $transaction): array
+    private function catchAllPeriodIds(Transaction $transaction, array $categoryMatchIds): array
     {
         if ($transaction->category_id === null) {
             return [];
@@ -403,39 +544,76 @@ class BudgetTransactionService
             // Date-only comparison for the same reason as in trackedPeriodIds().
             ->where('start_date', '<=', $transaction->transaction_date->toDateString())
             ->where('end_date', '>=', $transaction->transaction_date->toDateString())
+            ->get()
+            ->reject(fn (BudgetPeriod $period): bool => collect($this->claimsOverPeriod($transaction->user_id, $period))
+                ->contains(fn (array $claim): bool => $this->claimCoversTransaction($claim, $transaction, $categoryMatchIds)))
             ->pluck('id')
+            ->values()
             ->all();
     }
 
     /**
-     * Categories and labels tracked by the user's other budgets over the same
-     * stretch of time as the given catch-all period.
+     * @param  Claim  $claim
+     * @param  array<int, string>  $categoryMatchIds
+     */
+    private function claimCoversTransaction(array $claim, Transaction $transaction, array $categoryMatchIds): bool
+    {
+        if ($claim['until'] !== null && $transaction->transaction_date->toDateString() >= $claim['until']) {
+            return false;
+        }
+
+        return array_intersect($claim['categories'], $categoryMatchIds) !== []
+            || array_intersect($claim['labels'], $transaction->labels->pluck('id')->all()) !== [];
+    }
+
+    /**
+     * What the user's other budgets claim away from the given catch-all period:
+     * one claim per budget with a period overlapping it, its categories (not
+     * yet expanded to their children) and labels.
      *
      * A budget only claims spending it actually counts, so one whose periods do
      * not reach this far back leaves its categories and labels unclaimed here —
      * otherwise the catch-all would drop those expenses without any budget
      * picking them up.
      *
-     * @return array{categories: array<int, string>, labels: array<int, string>}
+     * An archived budget stopped counting on the day it was archived, so it
+     * claims only what is dated before that day (`until`, exclusive): the
+     * catch-all picks up the rest. {@see self::releaseFromArchiveDay()} drops
+     * the archived budget's own rows from that day on, so nothing counts twice.
+     *
+     * @return array<int, Claim>
      */
-    private function claimedIds(string $userId, BudgetPeriod $period): array
+    private function claimsOverPeriod(string $userId, BudgetPeriod $period): array
     {
-        $budgets = Budget::query()
-            // An archived budget releases what it used to claim: it no longer
-            // counts those expenses, so the catch-all has to pick them up.
-            ->notArchived()
+        if ($this->claimsByPeriod !== null) {
+            return $this->claimsByPeriod[$period->id] ??= $this->readClaimsOverPeriod($userId, $period);
+        }
+
+        return $this->readClaimsOverPeriod($userId, $period);
+    }
+
+    /**
+     * @return array<int, Claim>
+     */
+    private function readClaimsOverPeriod(string $userId, BudgetPeriod $period): array
+    {
+        return Budget::query()
             ->where('user_id', $userId)
             ->where('is_catch_all', false)
-            ->whereHas('periods', function ($query) use ($period) {
-                $query->where('start_date', '<=', $period->end_date)
-                    ->where('end_date', '>=', $period->start_date);
-            })
+            ->where(fn (Builder $query) => $query
+                ->whereNull('archived_at')
+                ->orWhereDate('archived_at', '>', $period->start_date->toDateString()))
+            // Date-only comparison for the same reason as in trackedPeriodIds().
+            ->whereHas('periods', fn (Builder $query) => $query
+                ->where('start_date', '<=', $period->end_date->toDateString())
+                ->where('end_date', '>=', $period->start_date->toDateString()))
             ->with('categories:id', 'labels:id')
-            ->get();
-
-        return [
-            'categories' => $budgets->flatMap(fn (Budget $budget) => $budget->categories->pluck('id'))->unique()->values()->all(),
-            'labels' => $budgets->flatMap(fn (Budget $budget) => $budget->labels->pluck('id'))->unique()->values()->all(),
-        ];
+            ->get()
+            ->map(fn (Budget $budget): array => [
+                'categories' => $budget->categories->pluck('id')->all(),
+                'labels' => $budget->labels->pluck('id')->all(),
+                'until' => $budget->archived_at?->toDateString(),
+            ])
+            ->all();
     }
 }
