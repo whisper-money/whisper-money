@@ -4,51 +4,36 @@ import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
+import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
+import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    Cell,
-    flexRender,
     getCoreRowModel,
     Row,
     SortingState,
     useReactTable,
-    VisibilityState,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { ChevronRight, X } from 'lucide-react';
-import {
-    createElement,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import {
-    AutomateCategorizationDialog,
-    type AutomateCategorizationCandidate,
-} from '@/components/automation-rules/automate-categorization-dialog';
-import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
-import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
-import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
-import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
-import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
+import { TransactionListSkeleton } from '@/components/transactions/transaction-list';
+import { TransactionRowDialogs } from '@/components/transactions/transaction-row-dialogs';
+import { TransactionTableRow } from '@/components/transactions/transaction-table-row';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     AlertDialog,
@@ -62,7 +47,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import {
@@ -74,9 +58,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { TableCell, TableRow } from '@/components/ui/table';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import {
     cashflowBlockFromParam,
@@ -88,20 +70,13 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
-import { reloadPage } from '@/lib/leave-page';
 import { isNewSince } from '@/lib/new-transactions';
-import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
 import { type ServerDayTotal } from '@/lib/transaction-day-groups';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { describeActiveFilters } from '@/lib/transaction-filter-chips';
-import {
-    mergeReEvaluatedTransaction,
-    reEvaluateTransactionRules,
-} from '@/lib/transaction-re-evaluation';
-import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
+import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
 import { isSplitPart } from '@/lib/transaction-splits';
-import { cn } from '@/lib/utils';
 import { status as categorizationStatus } from '@/routes/ai/categorization';
 import {
     dismiss as dismissConsent,
@@ -162,8 +137,6 @@ interface Props {
     aiConsentPromptDismissed: boolean;
     lastVisitAt: string | null;
 }
-
-const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
 
 function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
@@ -294,141 +267,6 @@ function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
     };
 }
 
-interface TransactionRowProps extends TransactionRowActionHandlers {
-    row: Row<ServerTransaction>;
-    virtualRow: VirtualItem;
-    rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-    isNew: boolean;
-}
-
-function TransactionRowComponent({
-    row,
-    virtualRow,
-    rowVirtualizer,
-    isNew,
-    onEdit,
-    onDuplicate,
-    onReEvaluateRules,
-    onAutomate,
-    onDelete,
-    onSplit,
-    onUnsplit,
-}: TransactionRowProps) {
-    const transaction = row.original;
-    const [contextMenuOpen, setContextMenuOpen] = useState(false);
-
-    const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
-        const target = event.target as HTMLElement;
-        const isInteractive = target.closest(
-            'button, [role="checkbox"], [role="combobox"], [role="menuitem"], [role="option"], [cmdk-item], a, input, select, textarea, [data-radix-popper-content-wrapper]',
-        );
-        if (isInteractive) {
-            return;
-        }
-        onEdit(transaction);
-    };
-
-    return (
-        <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            <ContextMenuTrigger asChild>
-                <TableRow
-                    ref={rowVirtualizer.measureElement}
-                    data-state={
-                        (row.getIsSelected() || contextMenuOpen) && 'selected'
-                    }
-                    data-index={virtualRow.index}
-                    className={cn(
-                        'cursor-pointer',
-                        isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
-                    )}
-                    onClick={handleRowClick}
-                >
-                    {row
-                        .getVisibleCells()
-                        .filter((cell: Cell<ServerTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      isVirtual?: boolean;
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return !meta?.isVirtual;
-                        })
-                        .map(
-                            (
-                                cell: Cell<ServerTransaction, unknown>,
-                                cellIndex: number,
-                            ) => {
-                                const meta = cell.column.columnDef.meta as
-                                    | {
-                                          cellClassName?: string;
-                                          cellStyle?: React.CSSProperties;
-                                      }
-                                    | undefined;
-                                return (
-                                    <TableCell
-                                        key={cell.id}
-                                        className={cn(
-                                            meta?.cellClassName,
-                                            'pt-2.5 pb-2',
-                                            isNew &&
-                                                cellIndex === 0 &&
-                                                'border-l-2 border-l-blue-500',
-                                        )}
-                                        style={meta?.cellStyle}
-                                    >
-                                        {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext(),
-                                        )}
-                                    </TableCell>
-                                );
-                            },
-                        )}
-                </TableRow>
-            </ContextMenuTrigger>
-            <TransactionRowContextMenuContent
-                transaction={transaction}
-                onEdit={onEdit}
-                onDuplicate={onDuplicate}
-                onReEvaluateRules={onReEvaluateRules}
-                onAutomate={onAutomate}
-                onDelete={onDelete}
-                onSplit={onSplit}
-                onUnsplit={onUnsplit}
-            />
-        </ContextMenu>
-    );
-}
-
-function getInitialColumnVisibility(): VisibilityState {
-    const defaultVisibility = {
-        transaction_date: true,
-        account: true,
-        creditor_name: false,
-        debtor_name: false,
-        labels: true,
-        notes: false,
-    };
-    if (typeof window === 'undefined') {
-        return defaultVisibility;
-    }
-
-    try {
-        const stored = localStorage.getItem(COLUMN_VISIBILITY_KEY);
-        if (stored) {
-            return { ...defaultVisibility, ...JSON.parse(stored) };
-        }
-    } catch (error) {
-        console.error(
-            'Failed to load column visibility from localStorage:',
-            error,
-        );
-    }
-    return defaultVisibility;
-}
-
 export default function Transactions({
     transactions: serverTransactions,
     dayTotals: initialDayTotals,
@@ -462,24 +300,6 @@ export default function Transactions({
         undefined,
     );
     const { start: startCategorizationPoll } = usePollJobStatus();
-
-    const [labels, setLabels] = useState<Label[]>(() => initialLabels);
-
-    useEffect(() => {
-        setLabels(initialLabels);
-    }, [initialLabels]);
-
-    const handleLabelCreated = useCallback((label: Label) => {
-        setLabels((previousLabels) => {
-            const nextLabels = previousLabels.filter(
-                (existingLabel) => existingLabel.id !== label.id,
-            );
-
-            return [...nextLabels, label].sort((a, b) =>
-                a.name.localeCompare(b.name),
-            );
-        });
-    }, []);
 
     const [allTransactions, setAllTransactions] = useState<ServerTransaction[]>(
         () => serverTransactions.data.map(normalizeTransaction),
@@ -541,30 +361,29 @@ export default function Transactions({
         return [{ id: column, desc }];
     }, [sortParam]);
 
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        getInitialColumnVisibility(),
-    );
+    const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState({});
-    const [editTransaction, setEditTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [duplicateTransaction, setDuplicateTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [splitTransaction, setSplitTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [unsplitTransaction, setUnsplitTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [deleteTransaction, setDeleteTransaction] =
-        useState<ServerTransaction | null>(null);
+    const editing = useTransactionRowEditing({
+        initialLabels,
+        setRows: setAllTransactions,
+    });
+    const {
+        labels,
+        handleLabelCreated,
+        rowActions,
+        updateTransaction,
+        handleCategorized,
+        deleteTransaction,
+        setDeleteTransaction,
+        isReEvaluating,
+        setIsReEvaluating,
+    } = editing;
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
     const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-    const [isReEvaluating, setIsReEvaluating] = useState(false);
-    const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
-    const [automateCandidate, setAutomateCandidate] =
-        useState<AutomateCategorizationCandidate | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
@@ -901,75 +720,6 @@ export default function Transactions({
         return () => observer.disconnect();
     }, [nextCursor, handleLoadMore]);
 
-    // Persist column visibility
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                COLUMN_VISIBILITY_KEY,
-                JSON.stringify(columnVisibility),
-            );
-        } catch (error) {
-            console.error(
-                'Failed to save column visibility to localStorage:',
-                error,
-            );
-        }
-    }, [columnVisibility]);
-
-    const updateTransaction = useCallback(
-        (updatedTransaction: ServerTransaction) => {
-            setAllTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (transaction.id !== updatedTransaction.id) {
-                        return transaction;
-                    }
-
-                    return {
-                        ...transaction,
-                        ...updatedTransaction,
-                        account:
-                            updatedTransaction.account === undefined
-                                ? transaction.account
-                                : updatedTransaction.account,
-                        bank:
-                            updatedTransaction.bank === undefined
-                                ? transaction.bank
-                                : updatedTransaction.bank,
-                        category:
-                            updatedTransaction.category === undefined
-                                ? (transaction.category ?? null)
-                                : updatedTransaction.category,
-                    };
-                }),
-            );
-        },
-        [],
-    );
-
-    const handleReEvaluateRules = useCallback(
-        async (transaction: ServerTransaction) => {
-            consoleDebug('=== Re-evaluating rules for single transaction ===');
-
-            setIsReEvaluating(true);
-            try {
-                const response = await axios.post<{
-                    data: ServerTransaction;
-                }>(reEvaluateSingle({ transaction: transaction.id }).url);
-
-                const updated = response.data.data;
-
-                updateTransaction(
-                    mergeReEvaluatedTransaction(transaction, updated),
-                );
-            } catch (error) {
-                console.error('Failed to re-evaluate rules:', error);
-            } finally {
-                setIsReEvaluating(false);
-            }
-        },
-        [updateTransaction],
-    );
-
     async function handleBulkReEvaluateRules() {
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
 
@@ -1001,53 +751,6 @@ export default function Transactions({
         }
     }
 
-    const showAutomatizeToast = useCallback(
-        (
-            transaction: ServerTransaction,
-            category: Category,
-            source: 'transaction_table' | 'edit_transaction_modal',
-        ) => {
-            const nextAutomateCandidate = { transaction, category };
-
-            setAutomateCandidate(nextAutomateCandidate);
-            toast.success(__('Transaction categorized'), {
-                closeButton: true,
-                duration: 12000,
-                action: {
-                    label: createElement(
-                        'span',
-                        {
-                            title: __(
-                                'Automatize the categorization of future transactions like this one',
-                            ),
-                        },
-                        __('Automatize'),
-                    ),
-                    onClick: () => {
-                        captureEvent(
-                            'automation_rule_toast_automatize_clicked',
-                            { source },
-                        );
-                        setAutomateCandidate(nextAutomateCandidate);
-                        setAutomateDialogOpen(true);
-                    },
-                },
-            });
-        },
-        [],
-    );
-
-    const openAutomateDialog = useCallback((transaction: ServerTransaction) => {
-        captureEvent('automation_rule_toast_automatize_clicked', {
-            source: 'row_menu',
-        });
-        setAutomateCandidate({
-            transaction,
-            category: transaction.category ?? null,
-        });
-        setAutomateDialogOpen(true);
-    }, []);
-
     const columns = useMemo(
         () =>
             createTransactionColumns({
@@ -1056,15 +759,9 @@ export default function Transactions({
                 banks,
                 labels,
                 locale,
-                onEdit: setEditTransaction,
-                onDuplicate: setDuplicateTransaction,
-                onDelete: setDeleteTransaction,
+                ...rowActions,
                 onUpdate: updateTransaction,
-                onCategorized: showAutomatizeToast,
-                onReEvaluateRules: handleReEvaluateRules,
-                onAutomate: openAutomateDialog,
-                onSplit: setSplitTransaction,
-                onUnsplit: setUnsplitTransaction,
+                onCategorized: handleCategorized,
                 isDateHidden: tableColumnVisibility.transaction_date === false,
                 isGroupedByDay,
                 categorizingIds,
@@ -1075,10 +772,9 @@ export default function Transactions({
             categories,
             labels,
             locale,
+            rowActions,
             updateTransaction,
-            showAutomatizeToast,
-            handleReEvaluateRules,
-            openAutomateDialog,
+            handleCategorized,
             tableColumnVisibility,
             isGroupedByDay,
             categorizingIds,
@@ -1341,19 +1037,6 @@ export default function Transactions({
         setIsSelectingAll(true);
     }
 
-    const rowActions = useMemo<TransactionRowActionHandlers>(
-        () => ({
-            onEdit: setEditTransaction,
-            onDuplicate: setDuplicateTransaction,
-            onReEvaluateRules: handleReEvaluateRules,
-            onDelete: setDeleteTransaction,
-            onAutomate: openAutomateDialog,
-            onSplit: setSplitTransaction,
-            onUnsplit: setUnsplitTransaction,
-        }),
-        [handleReEvaluateRules, openAutomateDialog],
-    );
-
     const renderTransactionRow = useCallback(
         (
             row: Row<ServerTransaction>,
@@ -1361,12 +1044,13 @@ export default function Transactions({
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {
             return (
-                <TransactionRowComponent
+                <TransactionTableRow
                     key={row.id}
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
                     isNew={isNewSince(row.original, lastVisitAtMount)}
+                    cellClassName="pt-2.5 pb-2"
                     {...rowActions}
                 />
             );
@@ -1433,41 +1117,7 @@ export default function Transactions({
                     />
 
                     {isNavigating ? (
-                        <div className="space-y-4">
-                            <div className="overflow-hidden rounded-md border">
-                                <div className="grid grid-cols-4 gap-4 border-b p-4">
-                                    <Skeleton className="h-5 w-8" />
-                                    <Skeleton className="h-5 w-24" />
-                                    <Skeleton className="h-5 w-64" />
-                                    <Skeleton className="h-5 w-20 justify-self-end" />
-                                </div>
-                                <div className="divide-y">
-                                    <div className="bg-muted/50 px-4 py-2">
-                                        <Skeleton className="h-4 w-32" />
-                                    </div>
-                                    {Array.from({ length: 6 }).map(
-                                        (_, index) => (
-                                            <div
-                                                key={index}
-                                                className="grid grid-cols-4 gap-4 p-4"
-                                            >
-                                                <Skeleton className="h-4 w-8" />
-                                                <Skeleton className="h-4 w-28" />
-                                                <div className="space-y-2">
-                                                    <Skeleton className="h-4 w-full" />
-                                                    <Skeleton className="h-3 w-48" />
-                                                </div>
-                                                <Skeleton className="h-4 w-20 justify-self-end" />
-                                            </div>
-                                        ),
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <Skeleton className="h-5 w-32" />
-                                <Skeleton className="h-9 w-48" />
-                            </div>
-                        </div>
+                        <TransactionListSkeleton />
                     ) : (
                         <>
                             <ResponsiveTransactionTable
@@ -1562,63 +1212,14 @@ export default function Transactions({
                 </div>
             </div>
 
-            <EditTransactionDialog
-                transaction={editTransaction}
+            <TransactionRowDialogs
+                editing={editing}
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
-                labels={labels}
                 automationRules={automationRules}
-                open={!!editTransaction}
-                onOpenChange={(open) => !open && setEditTransaction(null)}
-                onSuccess={updateTransaction}
-                onCategorized={showAutomatizeToast}
-                onLabelCreated={handleLabelCreated}
-                onDelete={setDeleteTransaction}
-                onSplit={setSplitTransaction}
-                mode="edit"
+                onDuplicated={refreshTransactions}
             />
-
-            <SplitTransactionDialog
-                transaction={splitTransaction}
-                categories={categories}
-                labels={labels}
-                open={!!splitTransaction}
-                onOpenChange={(open) => !open && setSplitTransaction(null)}
-                onSuccess={reloadPage}
-                onLabelCreated={handleLabelCreated}
-            />
-
-            <UnsplitTransactionDialog
-                transaction={unsplitTransaction}
-                categories={categories}
-                onOpenChange={(open) => !open && setUnsplitTransaction(null)}
-                onSuccess={reloadPage}
-            />
-
-            <EditTransactionDialog
-                transaction={null}
-                categories={categories}
-                accounts={accounts}
-                banks={banks}
-                labels={labels}
-                automationRules={automationRules}
-                open={!!duplicateTransaction}
-                onOpenChange={(open) => !open && setDuplicateTransaction(null)}
-                onSuccess={() => refreshTransactions()}
-                onLabelCreated={handleLabelCreated}
-                mode="create"
-                duplicateFrom={duplicateTransaction}
-            />
-
-            <AutomateCategorizationDialog
-                open={automateDialogOpen}
-                candidate={automateCandidate}
-                categories={categories}
-                onOpenChange={setAutomateDialogOpen}
-            />
-
-            <PostSaveApplyRulePrompt />
 
             <AlertDialog
                 open={!!deleteTransaction && !isBulkDeleteMode}
