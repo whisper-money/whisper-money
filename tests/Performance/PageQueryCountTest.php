@@ -70,6 +70,11 @@ use App\Models\Transaction;
 | query; the client-side visit test at the bottom counts what navigation
 | actually costs. The transactions page had the slack to absorb it.
 |
+| And the transactions page went up by one when its day headers started
+| counting and adding up every matching transaction of a day, not only the
+| loaded ones: one grouped query over the days the page shows. A reader with
+| transactions in another currency pays one more, the rates of those days.
+|
 | Run this suite in isolation:
 |   php artisan test --testsuite=Performance
 |
@@ -109,7 +114,7 @@ test('account show page does not exceed query threshold', function () {
 });
 
 test('transactions index page does not exceed query threshold', function () {
-    assertMaxQueries(25, function () {
+    assertMaxQueries(26, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions Index');
 });
@@ -215,10 +220,13 @@ test('transactions page query count does not scale with number of transactions',
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,
+        // In the reader's currency: a foreign row would fetch its day's rate
+        // the first time, which scales with the days, not the rows.
+        'currency_code' => $this->user->currency_code,
     ]);
 
     // Same threshold — paginated queries should not scale
-    assertMaxQueries(25, function () {
+    assertMaxQueries(26, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions with 120 records');
 });

@@ -1,4 +1,5 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
+import { useServerDaySummaries } from '@/hooks/use-day-summaries';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
@@ -91,6 +92,7 @@ import { reloadPage } from '@/lib/leave-page';
 import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
+import { type ServerDayTotal } from '@/lib/transaction-day-groups';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { describeActiveFilters } from '@/lib/transaction-filter-chips';
 import {
@@ -149,6 +151,7 @@ interface AppliedFilters {
 
 interface Props {
     transactions: CursorPaginatedResponse<ServerTransaction>;
+    dayTotals: Record<string, ServerDayTotal>;
     appliedFilters: AppliedFilters;
     categories: Category[];
     accounts: Account[];
@@ -428,6 +431,7 @@ function getInitialColumnVisibility(): VisibilityState {
 
 export default function Transactions({
     transactions: serverTransactions,
+    dayTotals: initialDayTotals,
     appliedFilters,
     categories,
     accounts,
@@ -483,6 +487,29 @@ export default function Transactions({
     const [nextCursor, setNextCursor] = useState<string | null>(
         serverTransactions.next_cursor,
     );
+    // The rows exactly as served, beside the server's count and total of each
+    // day they touch: the headers move those figures by local edits only.
+    const [served, setServed] = useState(() => ({
+        transactions: allTransactions,
+        dayTotals: initialDayTotals,
+    }));
+
+    const replaceLoadedRows = useCallback((props: Record<string, unknown>) => {
+        const txns = props.transactions;
+
+        if (!isCursorPaginatedResponse<ServerTransaction>(txns)) {
+            return;
+        }
+
+        const rows = txns.data.map(normalizeTransaction);
+        setAllTransactions(rows);
+        setNextCursor(txns.next_cursor);
+        setServed({
+            transactions: rows,
+            dayTotals:
+                (props.dayTotals as Record<string, ServerDayTotal>) ?? {},
+        });
+    }, []);
 
     // Reset is handled explicitly via onSuccess in navigateWithFilters,
     // and append is handled via onSuccess in handleLoadMore.
@@ -571,6 +598,12 @@ export default function Transactions({
             setColumnVisibility,
         });
 
+    const daySummaryOf = useServerDaySummaries({
+        dayTotals: served.dayTotals,
+        served: served.transactions,
+        loaded: allTransactions,
+    });
+
     // Debounce timer ref for search
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -589,19 +622,7 @@ export default function Transactions({
                 router.visit(transactionsIndex({ query: params }).url, {
                     preserveScroll: true,
                     preserveState: true,
-                    onSuccess: (page) => {
-                        const txns = (page.props as { transactions?: unknown })
-                            .transactions;
-
-                        if (
-                            !isCursorPaginatedResponse<ServerTransaction>(txns)
-                        ) {
-                            return;
-                        }
-
-                        setAllTransactions(txns.data.map(normalizeTransaction));
-                        setNextCursor(txns.next_cursor);
-                    },
+                    onSuccess: (page) => replaceLoadedRows(page.props),
                     onFinish: () => setIsNavigating(false),
                 });
             };
@@ -612,7 +633,7 @@ export default function Transactions({
                 doNavigate();
             }
         },
-        [],
+        [replaceLoadedRows],
     );
 
     // Handle filter changes from the filter component
@@ -666,20 +687,10 @@ export default function Transactions({
     // Refresh the transaction list from the server (resets accumulated pages)
     const refreshTransactions = useCallback(() => {
         router.reload({
-            only: ['transactions'],
-            onSuccess: (page) => {
-                const txns = (page.props as { transactions?: unknown })
-                    .transactions;
-
-                if (!isCursorPaginatedResponse<ServerTransaction>(txns)) {
-                    return;
-                }
-
-                setAllTransactions(txns.data.map(normalizeTransaction));
-                setNextCursor(txns.next_cursor);
-            },
+            only: ['transactions', 'dayTotals'],
+            onSuccess: (page) => replaceLoadedRows(page.props),
         });
-    }, []);
+    }, [replaceLoadedRows]);
 
     // Clear the spinner for any row AI has finished categorizing.
     useEffect(() => {
@@ -840,7 +851,7 @@ export default function Transactions({
                 headers: {
                     'X-Inertia': 'true',
                     'X-Inertia-Version': version ?? '',
-                    'X-Inertia-Partial-Data': 'transactions',
+                    'X-Inertia-Partial-Data': 'transactions,dayTotals',
                     'X-Inertia-Partial-Component': component,
                     Accept: 'text/html, application/xhtml+xml',
                 },
@@ -853,11 +864,15 @@ export default function Transactions({
                 return;
             }
 
-            setAllTransactions((prev) => [
-                ...prev,
-                ...next.data.map(normalizeTransaction),
-            ]);
+            const rows = next.data.map(normalizeTransaction);
+            setAllTransactions((prev) => [...prev, ...rows]);
             setNextCursor(next.next_cursor);
+            // A day already shown keeps the figure it came with: the page's
+            // own edits are measured against that one.
+            setServed((previous) => ({
+                transactions: [...previous.transactions, ...rows],
+                dayTotals: { ...json.props.dayTotals, ...previous.dayTotals },
+            }));
         } catch (error) {
             console.error('Failed to load more transactions:', error);
         } finally {
@@ -1462,9 +1477,8 @@ export default function Transactions({
                                 renderRow={renderTransactionRow}
                                 sorting={sorting}
                                 rowSelection={rowSelection}
-                                transactions={allTransactions}
+                                daySummaryOf={daySummaryOf}
                                 isGroupedByDay={isGroupedByDay}
-                                hasMoreRows={nextCursor !== null}
                                 selectionMode={selectionMode.forRows}
                                 listRow={{
                                     categories,

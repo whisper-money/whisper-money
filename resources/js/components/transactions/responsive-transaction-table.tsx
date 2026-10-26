@@ -14,6 +14,7 @@ import {
     type RowSelectionMode,
     useLongPressSelect,
 } from '@/hooks/use-mobile-selection-mode';
+import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
@@ -60,11 +61,9 @@ interface ResponsiveTransactionTableProps {
     /** The table's state, handed in because the compiler memoizes past reads off it. */
     sorting: SortingState;
     rowSelection: RowSelectionState;
-    /** The loaded rows, in the order the table shows them. */
-    transactions: ServerTransaction[];
+    /** What each day header says about its whole day, loaded rows or not. */
+    daySummaryOf: DaySummaryOf;
     isGroupedByDay: boolean;
-    /** More rows exist beyond the loaded ones, so the last day may go on. */
-    hasMoreRows: boolean;
     selectionMode: RowSelectionMode;
     listRow: TransactionListRowOptions;
     rowActions: TransactionRowActionHandlers;
@@ -84,9 +83,8 @@ export function ResponsiveTransactionTable({
     topRow,
     sorting,
     rowSelection,
-    transactions,
+    daySummaryOf,
     isGroupedByDay,
-    hasMoreRows,
     selectionMode,
     listRow,
     rowActions,
@@ -99,9 +97,8 @@ export function ResponsiveTransactionTable({
     const dayHeaders = useTransactionDayHeaders({
         table,
         rowSelection,
-        transactions,
+        daySummaryOf,
         isGroupedByDay,
-        hasMoreRows,
         layout,
         selectionActive,
     });

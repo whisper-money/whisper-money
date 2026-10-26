@@ -1,6 +1,10 @@
 import { DataTable } from '@/components/ui/data-table';
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
-import { type AmountInUserCurrency } from '@/lib/transaction-day-groups';
+import {
+    type AmountInUserCurrency,
+    type DaySummaryOf,
+    summarizeDay,
+} from '@/lib/transaction-day-groups';
 import { type ServerTransaction } from '@/types/transaction';
 import {
     type ColumnDef,
@@ -74,13 +78,17 @@ function TransactionsTable({
     isGroupedByDay = true,
     columnVisibility = {},
     amountInUserCurrency = (transaction) => transaction.amount,
-    isPartial = false,
+    daySummaryOf = (date) =>
+        summarizeDay(
+            TRANSACTIONS.filter((row) => row.transaction_date === date),
+            amountInUserCurrency,
+        ),
     onSelectionChange = () => {},
 }: {
-    isPartial?: boolean;
     isGroupedByDay?: boolean;
     columnVisibility?: VisibilityState;
     amountInUserCurrency?: AmountInUserCurrency;
+    daySummaryOf?: DaySummaryOf;
     onSelectionChange?: (selection: RowSelectionState) => void;
 }) {
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -113,9 +121,8 @@ function TransactionsTable({
                         table={table}
                         date={group.key}
                         rows={group.rows}
+                        summary={daySummaryOf(group.key)}
                         rowSelection={rowSelection}
-                        amountInUserCurrency={amountInUserCurrency}
-                        isPartial={isPartial}
                         measureProps={measureProps}
                     />
                 )}
@@ -228,10 +235,21 @@ describe('TransactionDayHeader', () => {
         expect(onSelectionChange).toHaveBeenLastCalledWith({ c: true });
     });
 
-    it('says a day may go on when more rows wait to be loaded', () => {
-        render(<TransactionsTable isPartial />);
+    it('counts and adds up the whole day, not only its loaded rows', () => {
+        render(
+            <TransactionsTable
+                daySummaryOf={() => ({
+                    count: 7,
+                    total: { status: 'ready', amount: -4500 },
+                })}
+            />,
+        );
 
-        expect(dayHeaders()[0]).toHaveTextContent('2 transactions so far');
+        expect(dayHeaders()[0]).toHaveTextContent('7 transactions');
+        expect(dayHeaders()[0]).not.toHaveTextContent('so far');
+        expect(
+            within(dayHeaders()[0]).getAllByRole('cell')[2],
+        ).toHaveTextContent('-€45.00');
     });
 
     it('draws no headers when the table is not sorted by date', () => {
