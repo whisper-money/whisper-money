@@ -1,10 +1,25 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { PHONE_BLEED } from '@/lib/phone-bleed';
+import { cn } from '@/lib/utils';
 
-/** The table-shaped placeholder every transactions table shows while loading. */
-export function TransactionListSkeleton() {
+/**
+ * The table-shaped placeholder every transactions table shows while loading,
+ * edge to edge on a phone like the list it stands in for.
+ */
+export function TransactionListSkeleton({
+    framedOnPhone = false,
+}: {
+    /** The list sits inside a card: keep the frame on a phone too. */
+    framedOnPhone?: boolean;
+}) {
     return (
         <div className="space-y-4">
-            <div className="overflow-hidden rounded-md border">
+            <div
+                className={cn(
+                    'overflow-hidden rounded-md border',
+                    !framedOnPhone && PHONE_BLEED,
+                )}
+            >
                 <div className="grid grid-cols-4 gap-4 border-b p-4">
                     <Skeleton className="h-5 w-8" />
                     <Skeleton className="h-5 w-24" />

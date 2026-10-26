@@ -58,7 +58,7 @@ it('fits the compact list on a phone and sorts it from the menu above it', funct
 it('runs the compact list edge to edge on a phone and keeps its frame beside the sidebar', function () {
     $frameOf = <<<'JS'
         (() => {
-            const list = document.querySelector('[data-full-bleed]');
+            const list = document.querySelector('[data-testid="transaction-compact-list-rows"]');
             const rect = list.getBoundingClientRect();
             const style = getComputedStyle(list);
             return JSON.stringify({

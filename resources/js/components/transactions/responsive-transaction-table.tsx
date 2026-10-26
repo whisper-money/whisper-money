@@ -10,10 +10,12 @@ import {
     useGroupedRowVirtualizer,
 } from '@/components/ui/data-table';
 import { useElementWidth } from '@/hooks/use-element-width';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
     type RowSelectionMode,
     useLongPressSelect,
 } from '@/hooks/use-mobile-selection-mode';
+import { PHONE_BLEED } from '@/lib/phone-bleed';
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { cn } from '@/lib/utils';
@@ -37,6 +39,16 @@ import { Fragment, type MouseEvent, useRef } from 'react';
  * takes its share, so a 1024px window with it open already gets the list.
  */
 const LIST_LAYOUT_BELOW_PX = 56 * 16; // 56rem at the 16px root size the app keeps
+
+/**
+ * Each row draws its hairline below; inside a frame the last one would sit on
+ * the frame's border and double it. Edge to edge there is no bottom border, so
+ * the last row keeps its own: the md-only twin.
+ */
+const LAST_ROW_ON_FRAME =
+    '[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0';
+const MD_LAST_ROW_ON_FRAME =
+    'md:[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0';
 
 /** What a row of the compact list shows beyond the transaction itself. */
 export interface TransactionListRowOptions {
@@ -69,12 +81,10 @@ interface ResponsiveTransactionTableProps {
     listRow: TransactionListRowOptions;
     rowActions: TransactionRowActionHandlers;
     /**
-     * On a phone, run the compact list edge to edge out of the page's 24px
-     * side padding (`p-6`), with no frame: one hairline where it starts and
-     * the rows' own hairlines below. Leave it off where the list sits inside
-     * a card, whose padding is not the page's.
+     * Keep the compact list's frame on a phone, for a list inside a card.
+     * Otherwise it runs edge to edge there (see `PHONE_BLEED`).
      */
-    fullBleedOnPhone?: boolean;
+    framedOnPhone?: boolean;
 }
 
 /**
@@ -96,7 +106,7 @@ export function ResponsiveTransactionTable({
     selectionMode,
     listRow,
     rowActions,
-    fullBleedOnPhone = false,
+    framedOnPhone = false,
 }: ResponsiveTransactionTableProps) {
     const [containerRef, width] = useElementWidth<HTMLDivElement>();
     const layout =
@@ -133,7 +143,7 @@ export function ResponsiveTransactionTable({
                     topRow={topRow}
                     listRow={listRow}
                     rowActions={rowActions}
-                    fullBleedOnPhone={fullBleedOnPhone}
+                    framedOnPhone={framedOnPhone}
                     {...dayHeaders}
                 />
             ) : (
@@ -162,7 +172,7 @@ function TransactionCompactList({
     topRow,
     listRow,
     rowActions,
-    fullBleedOnPhone,
+    framedOnPhone,
     groupRowsBy,
     renderGroupHeader,
 }: Pick<
@@ -176,7 +186,7 @@ function TransactionCompactList({
     | 'topRow'
     | 'listRow'
     | 'rowActions'
-    | 'fullBleedOnPhone'
+    | 'framedOnPhone'
 > & {
     selectionActive: boolean;
     groupRowsBy?: (transaction: ServerTransaction) => string;
@@ -191,6 +201,11 @@ function TransactionCompactList({
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const rows = table.getRowModel().rows;
+    // Edge to edge on a phone, a box of its own height would leave no gutter
+    // to scroll the page by: every swipe would scroll the list instead. There
+    // the list grows with the page, as /transactions does everywhere.
+    const isPhone = useIsMobile();
+    const boxHeight = isPhone && !framedOnPhone ? undefined : maxHeight;
     const { items, rowVirtualizer, virtualRows, paddingTop, paddingBottom } =
         useGroupedRowVirtualizer({
             rows,
@@ -198,7 +213,7 @@ function TransactionCompactList({
             scrollRef,
             // Without a height of its own the list grows with the page, which
             // scrolls instead.
-            scrollsWithWindow: !maxHeight,
+            scrollsWithWindow: !boxHeight,
             estimateSize: { group: 33, row: 68 },
         });
 
@@ -214,8 +229,7 @@ function TransactionCompactList({
                 <div
                     className={cn(
                         'overflow-hidden rounded-md border',
-                        fullBleedOnPhone &&
-                            'max-md:-mx-6 max-md:rounded-none max-md:border-x-0',
+                        !framedOnPhone && PHONE_BLEED,
                     )}
                 >
                     {topRow}
@@ -225,16 +239,20 @@ function TransactionCompactList({
                 ref={scrollRef}
                 className={cn(
                     'overflow-hidden rounded-md border',
-                    fullBleedOnPhone
-                        ? // Edge to edge on a phone: a hairline above, and the
-                          // last row keeps its own below, since no frame does.
-                          'max-md:-mx-6 max-md:rounded-none max-md:border-x-0 max-md:border-b-0 md:[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0'
-                        : // Each row draws its hairline below; the last one
-                          // would sit on the frame's border and double it.
-                          '[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0',
+                    framedOnPhone
+                        ? LAST_ROW_ON_FRAME
+                        : [
+                              PHONE_BLEED,
+                              'max-md:border-b-0',
+                              MD_LAST_ROW_ON_FRAME,
+                          ],
                 )}
-                data-full-bleed={fullBleedOnPhone || undefined}
-                style={maxHeight ? { maxHeight, overflowY: 'auto' } : undefined}
+                data-testid="transaction-compact-list-rows"
+                style={
+                    boxHeight
+                        ? { maxHeight: boxHeight, overflowY: 'auto' }
+                        : undefined
+                }
             >
                 {rows.length === 0 ? (
                     <div className="p-6 text-center text-sm text-muted-foreground">

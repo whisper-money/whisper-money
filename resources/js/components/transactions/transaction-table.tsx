@@ -311,7 +311,7 @@ export function TransactionTable({
                 />
 
                 {source.isLoading ? (
-                    <TransactionListSkeleton />
+                    <TransactionListSkeleton framedOnPhone={framedOnPhone} />
                 ) : (
                     <>
                         <ResponsiveTransactionTable
@@ -334,7 +334,7 @@ export function TransactionTable({
                             }}
                             rowActions={rowActions}
                             topRow={topRow}
-                            fullBleedOnPhone={!framedOnPhone}
+                            framedOnPhone={framedOnPhone}
                         />
 
                         <TransactionTableFooter
