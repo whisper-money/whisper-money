@@ -718,6 +718,7 @@ it('rejects statement dates that do not make sense', function (array $payload, s
     'not a date' => [['statement_closing_date' => 'soon', 'payment_due_date' => '2026-05-10'], 'statement_closing_date'],
     'due before closing' => [['statement_closing_date' => '2026-04-25', 'payment_due_date' => '2026-04-20'], 'payment_due_date'],
     'due too long after closing' => [['statement_closing_date' => '2026-04-01', 'payment_due_date' => '2026-05-17'], 'payment_due_date'],
+    'unknown frequency' => [['statement_frequency' => 'biweekly'], 'statement_frequency'],
 ]);
 
 it('accepts a statement charged the same day it closes', function (string $frequency) {
@@ -833,12 +834,6 @@ it('forgets a card left with only its statement frequency', function () {
         ->assertSessionHasNoErrors();
 
     assertDatabaseMissing('credit_card_details', ['account_id' => test()->card->id]);
-});
-
-it('rejects an unknown statement frequency', function () {
-    actingAs(test()->user)
-        ->patch(route('accounts.credit-card-detail.update', test()->card), ['statement_frequency' => 'biweekly'])
-        ->assertSessionHasErrors('statement_frequency');
 });
 
 it('does not let another user set the statement dates', function () {

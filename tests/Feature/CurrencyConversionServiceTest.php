@@ -25,24 +25,22 @@ function deadlockOnCacheInsert(): QueryException
     );
 }
 
-test('converts crypto to fiat using CDN rates', function () {
+test('converts using CDN rates', function (string $from, string $to, array $rates, float $quantity, float $expected) {
+    $base = strtolower($to);
+
     Http::fake([
-        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
-            'eur' => [
-                'btc' => 0.000015,
-                'eth' => 0.0004,
-            ],
-        ]),
+        "cdn.jsdelivr.net/*currencies/{$base}*" => Http::response([$base => $rates]),
     ]);
 
     $service = new CurrencyConversionService;
+    $result = $service->convert($from, $to, $quantity, '2026-01-15');
 
-    // 1 EUR = 0.000015 BTC → 1 BTC = 1/0.000015 = 66666.67 EUR
-    // 2 BTC = 133333.33 EUR
-    $result = $service->convert('BTC', 'EUR', 2.0, '2026-01-15');
-
-    expect($result)->toBe(2.0 / 0.000015);
-});
+    expect($result)->toBe($expected);
+})->with([
+    // 1 EUR = 0.000015 BTC → 1 BTC = 1/0.000015 = 66666.67 EUR, so 2 BTC = 133333.33 EUR
+    'crypto to fiat' => ['BTC', 'EUR', ['btc' => 0.000015, 'eth' => 0.0004], 2.0, 2.0 / 0.000015],
+    'new latam fiat currency' => ['ARS', 'USD', ['ars' => 1400.0], 2800.0, 2.0],
+]);
 
 test('returns quantity when source equals target', function () {
     Http::fake();
@@ -85,17 +83,20 @@ test('uses fallback URL when primary fails', function () {
     expect($result)->toBe(1.0 / 0.00002);
 });
 
-test('degrades to zero when both primary and fallback fail', function () {
+test('degrades to zero when both primary and fallback fail', function (int $status, string $to) {
     Http::fake([
-        'cdn.jsdelivr.net/*' => Http::response('Server Error', 500),
-        'currency-api.pages.dev/*' => Http::response('Server Error', 500),
+        'cdn.jsdelivr.net/*' => Http::response('Error', $status),
+        'currency-api.pages.dev/*' => Http::response('Error', $status),
     ]);
 
     $service = new CurrencyConversionService;
-    $result = $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
+    $result = $service->convert('BTC', $to, 1.0, '2026-01-15');
 
     expect($result)->toBe(0.0);
-});
+})->with([
+    'server errors' => [500, 'EUR'],
+    'unknown base currency, every source 404' => [404, 'XXX'],
+]);
 
 test('degrades to zero and stops walking dates when the source times out', function () {
     $attempts = 0;
@@ -127,18 +128,6 @@ test('caches rates across service instances so repeat lookups skip HTTP', functi
     (new CurrencyConversionService)->convert('BTC', 'EUR', 1.0, '2026-01-15');
 
     Http::assertSentCount(1);
-});
-
-test('returns zero when base currency is unknown and all sources return 404', function () {
-    Http::fake([
-        'cdn.jsdelivr.net/*' => Http::response('Not Found', 404),
-        'currency-api.pages.dev/*' => Http::response('Not Found', 404),
-    ]);
-
-    $service = new CurrencyConversionService;
-    $result = $service->convert('BTC', 'XXX', 1.0, '2026-01-15');
-
-    expect($result)->toBe(0.0);
 });
 
 test('falls back to previous historical date when requested release is missing', function () {
@@ -190,21 +179,6 @@ test('different dates make separate requests', function () {
     $service->convert('BTC', 'EUR', 1.0, '2026-01-16');
 
     Http::assertSentCount(2);
-});
-
-test('converts new latam fiat currency using CDN rates', function () {
-    Http::fake([
-        'cdn.jsdelivr.net/*currencies/usd*' => Http::response([
-            'usd' => [
-                'ars' => 1400.0,
-            ],
-        ]),
-    ]);
-
-    $service = new CurrencyConversionService;
-    $result = $service->convert('ARS', 'USD', 2800.0, '2026-01-15');
-
-    expect($result)->toBe(2.0);
 });
 
 test('returns the fetched rates when the cache write deadlocks (regression for PHP-LARAVEL-J)', function () {

@@ -108,35 +108,23 @@ it('can create a real estate account with only required fields', function () {
     ]);
 });
 
-it('requires property_type when creating a real estate account', function () {
+it('rejects a missing or unknown property_type when creating a real estate account', function (array $propertyType) {
     actingAs($this->user);
 
     $data = [
         'name' => 'My House',
         'currency_code' => 'USD',
         'type' => AccountType::RealEstate->value,
-        // property_type is missing
+        ...$propertyType,
     ];
 
     $response = $this->post(route('accounts.store'), $data);
 
     $response->assertSessionHasErrors(['property_type']);
-});
-
-it('validates property_type must be a valid enum value', function () {
-    actingAs($this->user);
-
-    $data = [
-        'name' => 'My House',
-        'currency_code' => 'USD',
-        'type' => AccountType::RealEstate->value,
-        'property_type' => 'castle',
-    ];
-
-    $response = $this->post(route('accounts.store'), $data);
-
-    $response->assertSessionHasErrors(['property_type']);
-});
+})->with([
+    'missing' => [[]],
+    'not a valid enum value' => [['property_type' => 'castle']],
+]);
 
 it('can create a real estate account with a linked loan', function () {
     actingAs($this->user);
@@ -170,13 +158,12 @@ it('can create a real estate account with a linked loan', function () {
     ]);
 });
 
-it('validates linked_loan_account_id must be a loan account owned by the user', function () {
+it('validates linked_loan_account_id must be a loan account owned by the user', function (AccountType $type, bool $ownedByAnotherUser) {
     actingAs($this->user);
 
-    // Non-loan account owned by user
-    $checkingAccount = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
+    $linkedAccount = Account::factory()->create([
+        'user_id' => $ownedByAnotherUser ? User::factory()->create()->id : $this->user->id,
+        'type' => $type,
     ]);
 
     $data = [
@@ -184,35 +171,16 @@ it('validates linked_loan_account_id must be a loan account owned by the user', 
         'currency_code' => 'USD',
         'type' => AccountType::RealEstate->value,
         'property_type' => PropertyType::Residential->value,
-        'linked_loan_account_id' => $checkingAccount->id,
+        'linked_loan_account_id' => $linkedAccount->id,
     ];
 
     $response = $this->post(route('accounts.store'), $data);
 
     $response->assertSessionHasErrors(['linked_loan_account_id']);
-});
-
-it('validates linked_loan_account_id cannot be another users loan', function () {
-    actingAs($this->user);
-
-    $otherUser = User::factory()->create();
-    $otherLoan = Account::factory()->create([
-        'user_id' => $otherUser->id,
-        'type' => AccountType::Loan,
-    ]);
-
-    $data = [
-        'name' => 'My House',
-        'currency_code' => 'USD',
-        'type' => AccountType::RealEstate->value,
-        'property_type' => PropertyType::Residential->value,
-        'linked_loan_account_id' => $otherLoan->id,
-    ];
-
-    $response = $this->post(route('accounts.store'), $data);
-
-    $response->assertSessionHasErrors(['linked_loan_account_id']);
-});
+})->with([
+    'a non-loan account owned by the user' => [AccountType::Checking, false],
+    'another users loan' => [AccountType::Loan, true],
+]);
 
 it('does not require property_type for non-real-estate accounts', function () {
     actingAs($this->user);
@@ -685,7 +653,7 @@ it('validates revaluation percentage is between -100 and 100', function () {
     $response->assertSessionHasErrors(['revaluation_percentage']);
 });
 
-it('can update revaluation percentage via real estate detail endpoint', function () {
+it('can update revaluation percentage via real estate detail endpoint', function (?float $initial, ?float $sent, ?string $stored) {
     actingAs($this->user);
 
     $account = Account::factory()->realEstate()->create([
@@ -694,44 +662,24 @@ it('can update revaluation percentage via real estate detail endpoint', function
 
     $detail = RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => null,
+        'revaluation_percentage' => $initial,
     ]);
 
     $response = $this->patch(route('accounts.real-estate-detail.update', $account), [
-        'revaluation_percentage' => 5.25,
+        'revaluation_percentage' => $sent,
     ]);
 
     $response->assertRedirect(route('accounts.show', $account));
 
     assertDatabaseHas('real_estate_details', [
         'id' => $detail->id,
-        'revaluation_percentage' => '5.25',
-    ]);
-});
-
-it('can clear revaluation percentage by setting null', function () {
-    actingAs($this->user);
-
-    $account = Account::factory()->realEstate()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => 3.50,
+        'revaluation_percentage' => $stored,
     ]);
-
-    $response = $this->patch(route('accounts.real-estate-detail.update', $account), [
-        'revaluation_percentage' => null,
-    ]);
-
-    $response->assertRedirect(route('accounts.show', $account));
-
-    assertDatabaseHas('real_estate_details', [
-        'account_id' => $account->id,
-        'revaluation_percentage' => null,
-    ]);
-});
+})->with([
+    'set a percentage' => [null, 5.25, '5.25'],
+    'clear it by setting null' => [3.50, null, null],
+]);
 
 // -------------------------------------------------------------------
 // Show page returns revaluation_percentage and purchase_date correctly
@@ -897,16 +845,13 @@ it('generates historical balances when creating real estate account with purchas
     expect($balances[4]->balance)->toBe((int) round(20000000 + 4000000 * (106 / $totalDays)));
 });
 
-it('does not generate historical balances when purchase_price is missing', function () {
+it('does not generate historical balances without the full purchase data', function (array $payload, array $expectedBalances) {
     actingAs($this->user);
 
     $data = [
-        'name' => 'My House',
-        'currency_code' => 'EUR',
         'type' => AccountType::RealEstate->value,
         'property_type' => PropertyType::Residential->value,
-        'purchase_date' => '2025-06-01',
-        'balance' => 30000000,
+        ...$payload,
     ];
 
     $this->post(route('accounts.store'), $data);
@@ -916,34 +861,22 @@ it('does not generate historical balances when purchase_price is missing', funct
         ->where('type', AccountType::RealEstate->value)
         ->first();
 
-    // Only today's balance should exist (from the regular balance creation)
-    expect($account->balances)->toHaveCount(1);
-    expect($account->balances->first()->balance)->toBe(30000000);
-});
-
-it('does not generate historical balances when purchase_date is missing', function () {
-    actingAs($this->user);
-
-    $data = [
-        'name' => 'My House',
-        'currency_code' => 'EUR',
-        'type' => AccountType::RealEstate->value,
-        'property_type' => PropertyType::Residential->value,
-        'purchase_price' => 20000000,
-        'balance' => 30000000,
-    ];
-
-    $this->post(route('accounts.store'), $data);
-
-    $account = Account::query()
-        ->where('user_id', $this->user->id)
-        ->where('type', AccountType::RealEstate->value)
-        ->first();
-
-    // Only today's balance should exist
-    expect($account->balances)->toHaveCount(1);
-    expect($account->balances->first()->balance)->toBe(30000000);
-});
+    // Only today's balance from the regular balance creation, if any
+    expect($account->balances->pluck('balance')->all())->toBe($expectedBalances);
+})->with([
+    'purchase_price is missing' => [
+        ['name' => 'My House', 'currency_code' => 'EUR', 'purchase_date' => '2025-06-01', 'balance' => 30000000],
+        [30000000],
+    ],
+    'purchase_date is missing' => [
+        ['name' => 'My House', 'currency_code' => 'EUR', 'purchase_price' => 20000000, 'balance' => 30000000],
+        [30000000],
+    ],
+    'balance is not provided' => [
+        ['name' => 'No Balance Property', 'currency_code' => 'USD', 'purchase_price' => 20000000, 'purchase_date' => '2025-06-01'],
+        [],
+    ],
+]);
 
 it('handles purchase_date equal to today when generating historical balances', function () {
     actingAs($this->user);
@@ -999,29 +932,6 @@ it('generates flat balances when purchase_price equals current value', function 
     foreach ($balances as $balance) {
         expect($balance->balance)->toBe(50000000);
     }
-});
-
-it('does not generate historical balances when balance is not provided', function () {
-    actingAs($this->user);
-
-    $data = [
-        'name' => 'No Balance Property',
-        'currency_code' => 'USD',
-        'type' => AccountType::RealEstate->value,
-        'property_type' => PropertyType::Residential->value,
-        'purchase_price' => 20000000,
-        'purchase_date' => '2025-06-01',
-    ];
-
-    $this->post(route('accounts.store'), $data);
-
-    $account = Account::query()
-        ->where('user_id', $this->user->id)
-        ->where('type', AccountType::RealEstate->value)
-        ->first();
-
-    // No balances should be created
-    expect($account->balances)->toHaveCount(0);
 });
 
 it('dispatches a job for older balances when purchase predates 12-month window', function () {
