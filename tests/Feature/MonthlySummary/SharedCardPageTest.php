@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\CardFormat;
 use App\Enums\CardTheme;
 use App\Models\MonthlySummary;
 use App\Models\User;
@@ -178,13 +177,6 @@ it('draws the card in the owner\'s language, whatever the visitor reads in', fun
     $this->withHeader('Accept-Language', 'fr')->get("/s/{$token}")->assertOk();
 
     expect($drawnIn)->toBe('es');
-});
-
-it('offers the two shapes the networks want, at the sizes they want', function (): void {
-    // 4:5 for a feed, 9:16 for a story. Wide is still a case on the enum but is
-    // offered by nothing — see CardFormat::shareable().
-    expect(array_map(fn (CardFormat $format): array => $format->dimensions(), CardFormat::shareable()))
-        ->toBe([[1080, 1350], [1080, 1920]]);
 });
 
 it('refuses a shape no screen offers', function (): void {

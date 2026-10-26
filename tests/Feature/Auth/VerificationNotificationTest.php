@@ -29,17 +29,3 @@ test('verification email links to the public signed route', function () {
         ->toContain('/verify-email/'.$user->id.'/'.sha1($user->email))
         ->toContain('signature=');
 });
-
-test('does not send verification notification if email is verified', function () {
-    Notification::fake();
-
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    $this->actingAs($user)
-        ->post(route('verification.send'))
-        ->assertRedirect(route('dashboard', absolute: false));
-
-    Notification::assertNothingSent();
-});

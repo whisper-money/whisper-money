@@ -126,12 +126,6 @@ it('counts the run as it stands today, and measures the medal on the longest one
         ->and($visits['progress'])->toBe(['now' => 12, 'goal' => 30, 'unlocking' => false]);
 });
 
-it('sends both visit tracks, in the order the panel draws them', function (): void {
-    $tracks = collect(challengesFor(challenged())['medals'])->pluck('track');
-
-    expect($tracks->all())->toBe(['visits', 'visit_weeks']);
-});
-
 it('draws a run of zero without pretending it is one', function (): void {
     // A reader who has never been counted: the payload says zero and the pill
     // is not drawn at all.

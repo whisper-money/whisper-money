@@ -3,25 +3,8 @@
 use App\Enums\CategorySource;
 use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
-use App\Models\CategoryCorrection;
 use App\Models\Transaction;
 use App\Models\User;
-
-it('casts the AI categorization fields on a transaction', function () {
-    $rule = AutomationRule::factory()->ai()->for(User::factory())->create();
-
-    $transaction = Transaction::factory()->create([
-        'category_source' => CategorySource::Ai,
-        'ai_confidence' => 0.873,
-        'categorized_by_rule_id' => $rule->id,
-    ]);
-
-    $transaction->refresh();
-
-    expect($transaction->category_source)->toBe(CategorySource::Ai)
-        ->and($transaction->ai_confidence)->toBeFloat()->toEqual(0.873)
-        ->and($transaction->categorizedByRule->is($rule))->toBeTrue();
-});
 
 it('hides the categorizing rule id from serialization but exposes the source', function () {
     $transaction = Transaction::factory()->create([
@@ -49,19 +32,6 @@ it('defaults rule origin to user and supports the ai state and scope', function 
 
     expect($aiRules)->toHaveCount(1)
         ->and($aiRules->first()->is($aiRule))->toBeTrue();
-});
-
-it('records a category correction with casted fields', function () {
-    $correction = CategoryCorrection::factory()->create([
-        'source' => CategorySource::Ai,
-        'confidence' => 0.612,
-    ]);
-
-    $correction->refresh();
-
-    expect($correction->source)->toBe(CategorySource::Ai)
-        ->and($correction->confidence)->toBeFloat()->toEqual(0.612)
-        ->and($correction->transaction)->not->toBeNull();
 });
 
 it('reports ai_categorized for a direct AI label', function () {

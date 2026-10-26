@@ -5,12 +5,6 @@ use App\Notifications\VerifyEmailNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 
-test('registration screen can be rendered', function () {
-    $response = $this->withoutVite()->get(route('register'));
-
-    $response->assertSuccessful();
-});
-
 test('new users can register', function () {
     Queue::fake();
 

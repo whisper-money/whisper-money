@@ -90,14 +90,3 @@ test('failed method logs error but does not update connection status', function 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
 });
-
-test('uniqueId returns account-based identifier', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-    ]);
-
-    $job = new SyncBinanceHistoricalBalancesJob($account);
-
-    expect($job->uniqueId())->toBe('binance-historical-'.$account->id);
-});

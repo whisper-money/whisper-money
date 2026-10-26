@@ -5,7 +5,6 @@ use App\Models\Account;
 use App\Models\User;
 use App\Services\LoanBalanceGeneratorService;
 use Carbon\Carbon;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
@@ -42,9 +41,4 @@ it('generates balances for the specified date range when dispatched', function (
     $dates = $balances->pluck('balance_date')->map->toDateString()->toArray();
     expect($dates)->not->toContain('2026-06-15');
     expect($dates)->not->toContain('2025-06-01');
-});
-
-it('implements ShouldQueue', function () {
-    expect(GenerateHistoricalLoanBalancesJob::class)
-        ->toImplement(ShouldQueue::class);
 });

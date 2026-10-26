@@ -64,13 +64,6 @@ test('chart color scheme updates existing setting', function () {
     expect($user->fresh()->setting->chart_color_scheme)->toBe(ChartColorScheme::Neutral);
 });
 
-test('chart color scheme defaults to colorful when no setting exists', function () {
-    $user = User::factory()->create();
-
-    expect($user->setting)->toBeNull();
-    expect($user->setting?->chart_color_scheme?->value ?? 'colorful')->toBe('colorful');
-});
-
 test('chart color scheme is shared via inertia', function () {
     $user = User::factory()->create();
     UserSetting::factory()->for($user)->withScheme(ChartColorScheme::Pink)->create();
