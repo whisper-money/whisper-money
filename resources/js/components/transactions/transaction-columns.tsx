@@ -64,6 +64,12 @@ interface CreateColumnsOptions {
     statementPayments?: Map<string, CreditCardPayment>;
 }
 
+/**
+ * The desktop checkbox, a size up on the phone with a finger-sized hit area.
+ */
+const selectCheckboxClassName =
+    'ml-2 max-md:relative max-md:size-5 max-md:after:absolute max-md:after:-inset-2.5 max-md:[&_svg]:size-4';
+
 export function createTransactionColumns({
     categories,
     accounts,
@@ -93,7 +99,7 @@ export function createTransactionColumns({
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    className="ml-2"
+                    className={selectCheckboxClassName}
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
@@ -104,7 +110,7 @@ export function createTransactionColumns({
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
-                    className="ml-2 max-md:size-6 max-md:rounded-full max-md:border-2 max-md:data-[state=checked]:bg-primary max-md:data-[state=checked]:[&_svg]:stroke-primary-foreground"
+                    className={selectCheckboxClassName}
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
                     aria-label={__('Select row')}
