@@ -1,23 +1,19 @@
-import { useServerDaySummaries } from '@/hooks/use-day-summaries';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
+import {
+    useServerTransactionSource,
+    type AppliedFilters,
+} from '@/hooks/use-server-transaction-source';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
-import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
-import {
-    getCoreRowModel,
-    Row,
-    SortingState,
-    useReactTable,
-} from '@tanstack/react-table';
+import { Head, usePage } from '@inertiajs/react';
+import { getCoreRowModel, Row, useReactTable } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
-import { format } from 'date-fns';
 import { ChevronRight, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -40,15 +36,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Spinner } from '@/components/ui/spinner';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import {
-    cashflowBlockFromParam,
-    cashflowBlockParam,
-    withoutDatelessCashflowBlock,
-} from '@/lib/cashflow-block';
-import {
-    isCursorPaginatedResponse,
-    type CursorPaginatedResponse,
-} from '@/lib/cursor-pagination';
+import { type CursorPaginatedResponse } from '@/lib/cursor-pagination';
 import { isNewSince } from '@/lib/new-transactions';
 import { type ServerDayTotal } from '@/lib/transaction-day-groups';
 import { describeActiveFilters } from '@/lib/transaction-filter-chips';
@@ -70,10 +58,7 @@ import {
 } from '@/types/categorization';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import {
-    type TransactionFilters as Filters,
-    type ServerTransaction,
-} from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -81,22 +66,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: transactionsIndex.url(),
     },
 ];
-
-interface AppliedFilters {
-    date_from: string | null;
-    date_to: string | null;
-    amount_min: number | null;
-    amount_max: number | null;
-    category_ids: string[];
-    account_ids: string[];
-    label_ids: string[];
-    creditor_name: string;
-    debtor_name: string;
-    category_source: string | null;
-    search: string;
-    cashflow_block: string | null;
-    sort: string;
-}
 
 interface Props {
     transactions: CursorPaginatedResponse<ServerTransaction>;
@@ -110,135 +79,6 @@ interface Props {
     hasAiConsent: boolean;
     aiConsentPromptDismissed: boolean;
     lastVisitAt: string | null;
-}
-
-function serverToClientFilters(applied: AppliedFilters): Filters {
-    return {
-        dateFrom: applied.date_from ? toLocalDate(applied.date_from) : null,
-        dateTo: applied.date_to ? toLocalDate(applied.date_to) : null,
-        amountMin: applied.amount_min,
-        amountMax: applied.amount_max,
-        categoryIds: applied.category_ids,
-        accountIds: applied.account_ids,
-        labelIds: applied.label_ids,
-        creditorName: applied.creditor_name,
-        debtorName: applied.debtor_name,
-        searchText: applied.search,
-        aiCategorizedOnly: applied.category_source === 'ai',
-        cashflowBlock: cashflowBlockFromParam(applied.cashflow_block),
-    };
-}
-
-function clientFiltersToQueryParams(
-    filters: Filters,
-    sort: string,
-): Record<string, string> {
-    const params: Record<string, string> = {};
-
-    if (filters.dateFrom) {
-        params.date_from = format(filters.dateFrom, 'yyyy-MM-dd');
-    }
-    if (filters.dateTo) {
-        params.date_to = format(filters.dateTo, 'yyyy-MM-dd');
-    }
-    if (filters.amountMin !== null) {
-        params.amount_min = filters.amountMin.toString();
-    }
-    if (filters.amountMax !== null) {
-        params.amount_max = filters.amountMax.toString();
-    }
-    if (filters.categoryIds.length > 0) {
-        params.category_ids = filters.categoryIds.join(',');
-    }
-    if (filters.accountIds.length > 0) {
-        params.account_ids = filters.accountIds.join(',');
-    }
-    if (filters.labelIds.length > 0) {
-        params.label_ids = filters.labelIds.join(',');
-    }
-    if (filters.creditorName) {
-        params.creditor_name = filters.creditorName;
-    }
-    if (filters.debtorName) {
-        params.debtor_name = filters.debtorName;
-    }
-    if (filters.searchText) {
-        params.search = filters.searchText;
-    }
-    if (filters.aiCategorizedOnly) {
-        params.category_source = 'ai';
-    }
-    const cashflowBlock = cashflowBlockParam(filters);
-    if (cashflowBlock) {
-        params.cashflow_block = cashflowBlock;
-    }
-    if (sort !== '-transaction_date') {
-        params.sort = sort;
-    }
-
-    return params;
-}
-
-function clientFiltersToBackendFilters(
-    filters: Filters,
-): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
-
-    if (filters.dateFrom) {
-        result.date_from = format(filters.dateFrom, 'yyyy-MM-dd');
-    }
-    if (filters.dateTo) {
-        result.date_to = format(filters.dateTo, 'yyyy-MM-dd');
-    }
-    if (filters.amountMin !== null && filters.amountMin !== undefined) {
-        result.amount_min = filters.amountMin;
-    }
-    if (filters.amountMax !== null && filters.amountMax !== undefined) {
-        result.amount_max = filters.amountMax;
-    }
-    if (filters.categoryIds.length > 0) {
-        result.category_ids = filters.categoryIds;
-    }
-    if (filters.accountIds.length > 0) {
-        result.account_ids = filters.accountIds;
-    }
-    if (filters.labelIds.length > 0) {
-        result.label_ids = filters.labelIds;
-    }
-    if (filters.creditorName) {
-        result.creditor_name = filters.creditorName;
-    }
-    if (filters.debtorName) {
-        result.debtor_name = filters.debtorName;
-    }
-    if (filters.searchText) {
-        result.search = filters.searchText;
-    }
-    if (filters.aiCategorizedOnly) {
-        result.category_source = 'ai';
-    }
-    const cashflowBlock = cashflowBlockParam(filters);
-    if (cashflowBlock) {
-        result.cashflow_block = cashflowBlock;
-    }
-
-    return result;
-}
-
-/**
- * Everything the table reads that the payload does not carry ready to use: a
- * date trimmed to its day, the account's bank hoisted onto the row, and labels
- * present as both the objects and the ids the columns filter on.
- */
-function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
-    return {
-        ...tx,
-        transaction_date: String(tx.transaction_date).slice(0, 10),
-        notes: tx.notes || null,
-        bank: tx.account?.bank || undefined,
-        labels: tx.labels || [],
-        label_ids: tx.labels?.map((l) => l.id) || [],
-    };
 }
 
 export default function Transactions({
@@ -275,71 +115,25 @@ export default function Transactions({
     );
     const { start: startCategorizationPoll } = usePollJobStatus();
 
-    const [allTransactions, setAllTransactions] = useState<ServerTransaction[]>(
-        () => serverTransactions.data.map(normalizeTransaction),
-    );
-    const [nextCursor, setNextCursor] = useState<string | null>(
-        serverTransactions.next_cursor,
-    );
-    // The rows exactly as served, beside the server's count and total of each
-    // day they touch: the headers move those figures by local edits only.
-    const [served, setServed] = useState(() => ({
-        transactions: allTransactions,
+    const source = useServerTransactionSource({
+        transactions: serverTransactions,
         dayTotals: initialDayTotals,
-    }));
-
-    const replaceLoadedRows = useCallback((props: Record<string, unknown>) => {
-        const txns = props.transactions;
-
-        if (!isCursorPaginatedResponse<ServerTransaction>(txns)) {
-            return;
-        }
-
-        const rows = txns.data.map(normalizeTransaction);
-        setAllTransactions(rows);
-        setNextCursor(txns.next_cursor);
-        setServed({
-            transactions: rows,
-            dayTotals:
-                (props.dayTotals as Record<string, ServerDayTotal>) ?? {},
-        });
-    }, []);
-
-    // Reset is handled explicitly via onSuccess in navigateWithFilters,
-    // and append is handled via onSuccess in handleLoadMore.
-    // No useEffect watching serverTransactions — avoids race conditions.
-
-    // Filter state from server-applied filters
-    const [filters, setFilters] = useState<Filters>(() =>
-        serverToClientFilters(appliedFilters),
-    );
-    const [sortParam, setSortParam] = useState(
-        appliedFilters.sort || '-transaction_date',
-    );
+        appliedFilters,
+    });
+    const { rows: allTransactions, filters, sorting, pagination } = source;
+    const { hasMore, loadMore, loadsOnScroll } = pagination;
+    const refreshTransactions = source.reload;
 
     // Frozen at mount so per-row "new" marks stay stable for the whole visit.
     // The marker is server-side (per user), so it's shared across devices; the
     // controller advances it on load using the newest created_at it served.
     const [lastVisitAtMount] = useState<string | null>(() => lastVisitAt);
 
-    // Sync filter state when appliedFilters prop changes
-    useEffect(() => {
-        setFilters(serverToClientFilters(appliedFilters));
-        setSortParam(appliedFilters.sort || '-transaction_date');
-    }, [appliedFilters]);
-
-    // Derive sorting state for TanStack Table from sort param
-    const sorting = useMemo<SortingState>(() => {
-        const desc = sortParam.startsWith('-');
-        const column = sortParam.replace(/^-/, '');
-        return [{ id: column, desc }];
-    }, [sortParam]);
-
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState({});
     const editing = useTransactionRowEditing({
         initialLabels,
-        setRows: setAllTransactions,
+        setRows: source.setRows,
     });
     const {
         labels,
@@ -348,35 +142,29 @@ export default function Transactions({
         updateTransaction,
         handleCategorized,
     } = editing;
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [isNavigating, setIsNavigating] = useState(false);
-
-    // Refresh the transaction list from the server (resets accumulated pages)
-    const refreshTransactions = useCallback(() => {
-        router.reload({
-            only: ['transactions', 'dayTotals'],
-            onSuccess: (page) => replaceLoadedRows(page.props),
-        });
-    }, [replaceLoadedRows]);
-
-    const matchingFilters = useMemo(
-        () => clientFiltersToBackendFilters(filters),
-        [filters],
-    );
     const bulk = useTransactionBulkActions({
-        rows: allTransactions,
-        setRows: setAllTransactions,
+        rows: source.heldRows,
+        setRows: source.setRows,
         rowSelection,
         setRowSelection,
         categories,
         labels,
         accounts,
         editing,
-        matchingFilters,
+        matchingFilters: source.matchingFilters,
         onServerChanged: refreshTransactions,
         announceOutcome: true,
     });
     const { selectOnlyVisible } = bulk;
+
+    // A new query replaces the rows, so nothing stays ticked across it.
+    const [seenQueryKey, setSeenQueryKey] = useState(source.queryKey);
+
+    if (source.queryKey !== seenQueryKey) {
+        setSeenQueryKey(source.queryKey);
+        setRowSelection({});
+        selectOnlyVisible();
+    }
 
     const selectionMode = useMobileSelectionMode({
         rowSelection,
@@ -391,92 +179,6 @@ export default function Transactions({
             columnVisibility,
             setColumnVisibility,
         });
-
-    const daySummaryOf = useServerDaySummaries({
-        dayTotals: served.dayTotals,
-        served: served.transactions,
-        loaded: allTransactions,
-    });
-
-    // Debounce timer ref for search
-    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Navigate to server with new filters/sort
-    const navigateWithFilters = useCallback(
-        (newFilters: Filters, newSort: string, debounceMs = 0) => {
-            if (searchTimerRef.current) {
-                clearTimeout(searchTimerRef.current);
-            }
-
-            const doNavigate = () => {
-                const params = clientFiltersToQueryParams(newFilters, newSort);
-                setIsNavigating(true);
-                setRowSelection({});
-                selectOnlyVisible();
-                router.visit(transactionsIndex({ query: params }).url, {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onSuccess: (page) => replaceLoadedRows(page.props),
-                    onFinish: () => setIsNavigating(false),
-                });
-            };
-
-            if (debounceMs > 0) {
-                searchTimerRef.current = setTimeout(doNavigate, debounceMs);
-            } else {
-                doNavigate();
-            }
-        },
-        [replaceLoadedRows, selectOnlyVisible],
-    );
-
-    // Handle filter changes from the filter component
-    const handleFiltersChange = useCallback(
-        (changedFilters: Filters) => {
-            const newFilters = withoutDatelessCashflowBlock(changedFilters);
-            setFilters(newFilters);
-
-            // Debounce search, immediate for other filters
-            const isSearchChange = newFilters.searchText !== filters.searchText;
-            const onlySearchChanged =
-                isSearchChange &&
-                newFilters.dateFrom === filters.dateFrom &&
-                newFilters.dateTo === filters.dateTo &&
-                newFilters.amountMin === filters.amountMin &&
-                newFilters.amountMax === filters.amountMax &&
-                JSON.stringify(newFilters.categoryIds) ===
-                    JSON.stringify(filters.categoryIds) &&
-                JSON.stringify(newFilters.accountIds) ===
-                    JSON.stringify(filters.accountIds) &&
-                JSON.stringify(newFilters.labelIds) ===
-                    JSON.stringify(filters.labelIds) &&
-                newFilters.creditorName === filters.creditorName &&
-                newFilters.debtorName === filters.debtorName;
-
-            navigateWithFilters(
-                newFilters,
-                sortParam,
-                onlySearchChanged ? 300 : 0,
-            );
-        },
-        [filters, sortParam, navigateWithFilters],
-    );
-
-    // Handle sort changes from table column headers
-    const handleSortingChange = useCallback(
-        (updater: SortingState | ((prev: SortingState) => SortingState)) => {
-            const newSorting =
-                typeof updater === 'function' ? updater(sorting) : updater;
-            if (newSorting.length === 0) {
-                return;
-            }
-            const { id, desc } = newSorting[0];
-            const newSort = desc ? `-${id}` : id;
-            setSortParam(newSort);
-            navigateWithFilters(filters, newSort);
-        },
-        [sorting, filters, navigateWithFilters],
-    );
 
     // Clear the spinner for any row AI has finished categorizing.
     useEffect(() => {
@@ -620,64 +322,18 @@ export default function Transactions({
         );
     }, []);
 
-    // Load More with cursor pagination (fetch directly to avoid cursor in URL)
-    const { component, version } = usePage();
-    const handleLoadMore = useCallback(async () => {
-        if (!nextCursor || isLoadingMore) {
-            return;
-        }
-
-        setIsLoadingMore(true);
-        try {
-            const params = clientFiltersToQueryParams(filters, sortParam);
-            params.cursor = nextCursor;
-            const url = transactionsIndex({ query: params }).url;
-
-            const response = await fetch(url, {
-                headers: {
-                    'X-Inertia': 'true',
-                    'X-Inertia-Version': version ?? '',
-                    'X-Inertia-Partial-Data': 'transactions,dayTotals',
-                    'X-Inertia-Partial-Component': component,
-                    Accept: 'text/html, application/xhtml+xml',
-                },
-            });
-
-            const json = await response.json();
-            const next = json.props.transactions;
-
-            if (!isCursorPaginatedResponse<ServerTransaction>(next)) {
-                return;
-            }
-
-            const rows = next.data.map(normalizeTransaction);
-            setAllTransactions((prev) => [...prev, ...rows]);
-            setNextCursor(next.next_cursor);
-            // A day already shown keeps the figure it came with: the page's
-            // own edits are measured against that one.
-            setServed((previous) => ({
-                transactions: [...previous.transactions, ...rows],
-                dayTotals: { ...json.props.dayTotals, ...previous.dayTotals },
-            }));
-        } catch (error) {
-            console.error('Failed to load more transactions:', error);
-        } finally {
-            setIsLoadingMore(false);
-        }
-    }, [nextCursor, isLoadingMore, filters, sortParam, component, version]);
-
     // Auto-load more when the sentinel becomes visible
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const el = loadMoreRef.current;
-        if (!el || !nextCursor) {
+        if (!el || !hasMore || !loadsOnScroll) {
             return;
         }
 
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0]?.isIntersecting) {
-                    handleLoadMore();
+                    loadMore();
                 }
             },
             { rootMargin: '200px' },
@@ -685,7 +341,7 @@ export default function Transactions({
 
         observer.observe(el);
         return () => observer.disconnect();
-    }, [nextCursor, handleLoadMore]);
+    }, [hasMore, loadMore, loadsOnScroll]);
 
     const columns = useMemo(
         () =>
@@ -720,8 +376,8 @@ export default function Transactions({
     const table = useReactTable({
         data: allTransactions,
         columns,
-        manualSorting: true,
-        onSortingChange: handleSortingChange,
+        manualSorting: source.manualSorting,
+        onSortingChange: source.onSortingChange,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
         onColumnVisibilityChange,
@@ -773,7 +429,7 @@ export default function Transactions({
                 <div className="space-y-4">
                     <TransactionFiltersComponent
                         filters={filters}
-                        onFiltersChange={handleFiltersChange}
+                        onFiltersChange={source.onFiltersChange}
                         categories={categories}
                         labels={labels}
                         accounts={accounts}
@@ -794,14 +450,11 @@ export default function Transactions({
 
                                 <div className="ml-auto flex items-center gap-2">
                                     <TransactionExportButton
-                                        params={clientFiltersToQueryParams(
-                                            filters,
-                                            sortParam,
-                                        )}
+                                        params={source.queryParams}
                                         loadedIds={allTransactions.map(
                                             (transaction) => transaction.id,
                                         )}
-                                        hasMore={nextCursor !== null}
+                                        hasMore={pagination.hasMore}
                                         filterChips={describeActiveFilters(
                                             filters,
                                             {
@@ -818,7 +471,7 @@ export default function Transactions({
                         }
                     />
 
-                    {isNavigating ? (
+                    {source.isLoading ? (
                         <TransactionListSkeleton />
                     ) : (
                         <>
@@ -829,7 +482,7 @@ export default function Transactions({
                                 renderRow={renderTransactionRow}
                                 sorting={sorting}
                                 rowSelection={rowSelection}
-                                daySummaryOf={daySummaryOf}
+                                daySummaryOf={source.daySummaryOf}
                                 isGroupedByDay={isGroupedByDay}
                                 selectionMode={selectionMode.forRows}
                                 listRow={{
@@ -887,17 +540,17 @@ export default function Transactions({
                             />
 
                             <DataTablePagination
-                                displayedCount={allTransactions.length}
-                                rowCountLabel={__('transactions loaded')}
+                                displayedCount={pagination.displayedCount}
+                                rowCountLabel={pagination.rowCountLabel}
                             >
-                                {nextCursor && (
+                                {pagination.hasMore && (
                                     <div ref={loadMoreRef}>
                                         <Button
-                                            onClick={handleLoadMore}
-                                            disabled={isLoadingMore}
+                                            onClick={pagination.loadMore}
+                                            disabled={pagination.isLoadingMore}
                                             variant="outline"
                                         >
-                                            {isLoadingMore ? (
+                                            {pagination.isLoadingMore ? (
                                                 <>
                                                     <Spinner />
                                                     {__('Loading')}

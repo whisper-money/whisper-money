@@ -191,8 +191,10 @@ describe('TransactionDayHeader', () => {
     it('leaves the total out when a rate is missing', () => {
         render(
             <TransactionsTable
-                amountInUserCurrency={(transaction) =>
-                    transaction.id === 'b' ? null : transaction.amount
+                amountInUserCurrency={(amount) =>
+                    amount.transaction_date === '2026-10-26'
+                        ? null
+                        : amount.amount
                 }
             />,
         );

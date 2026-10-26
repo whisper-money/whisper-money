@@ -7,6 +7,9 @@ import {
     isSortedByDate,
     reconcileDaySummary,
     sumDayTotal,
+    summarizeDay,
+    sumPerCurrency,
+    type DatedAmount,
 } from './transaction-day-groups';
 
 function transaction(amount: number, currency_code = 'EUR'): Transaction {
@@ -92,7 +95,7 @@ describe('formatTransactionCount', () => {
 });
 
 describe('sumDayTotal', () => {
-    const asIs = (t: Transaction) => t.amount;
+    const asIs = (t: DatedAmount) => t.amount;
 
     it('adds the day up, income and expenses alike', () => {
         expect(
@@ -104,7 +107,7 @@ describe('sumDayTotal', () => {
     });
 
     it('adds converted amounts for rows in another currency', () => {
-        const converted = (t: Transaction) =>
+        const converted = (t: DatedAmount) =>
             t.currency_code === 'USD' ? t.amount / 2 : t.amount;
 
         expect(
@@ -130,6 +133,62 @@ describe('sumDayTotal', () => {
                 (t) => (t.currency_code === 'USD' ? null : t.amount),
             ),
         ).toEqual({ status: 'missing' });
+    });
+});
+
+describe('summarizeDay', () => {
+    function dated(
+        amount: number,
+        currency_code: string,
+        transaction_date = '2026-05-18',
+    ): Transaction {
+        return { amount, currency_code, transaction_date } as Transaction;
+    }
+
+    it('adds each currency up before converting it once, as the server does', () => {
+        // At 3 dollars a euro, each -10 USD rounds to -333 cents on its own
+        // (-999 in all) while their -30 USD sum is exactly -1000 cents.
+        const converted = vi.fn((amount: DatedAmount) =>
+            amount.currency_code === 'USD'
+                ? Math.round(amount.amount / 3)
+                : amount.amount,
+        );
+
+        const summary = summarizeDay(
+            [
+                dated(-1000, 'USD'),
+                dated(-1000, 'usd'),
+                dated(-1000, 'USD'),
+                dated(-500, 'EUR'),
+            ],
+            converted,
+        );
+
+        expect(summary).toEqual({
+            count: 4,
+            total: { status: 'ready', amount: -1500 },
+        });
+        expect(converted).toHaveBeenCalledWith({
+            amount: -3000,
+            currency_code: 'USD',
+            transaction_date: '2026-05-18',
+        });
+        expect(converted).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('sumPerCurrency', () => {
+    it('gives one amount per currency, whatever its case', () => {
+        expect(
+            sumPerCurrency([
+                { amount: -100, currency_code: 'usd', transaction_date: 'd' },
+                { amount: -200, currency_code: 'EUR', transaction_date: 'd' },
+                { amount: -50, currency_code: 'USD', transaction_date: 'd' },
+            ] as Transaction[]),
+        ).toEqual([
+            { amount: -150, currency_code: 'USD', transaction_date: 'd' },
+            { amount: -200, currency_code: 'EUR', transaction_date: 'd' },
+        ]);
     });
 });
 

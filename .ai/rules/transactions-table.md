@@ -8,6 +8,8 @@ paths:
     - 'resources/js/hooks/use-transaction-row-editing.ts'
     - 'resources/js/hooks/use-transaction-bulk-actions.ts'
     - 'resources/js/components/transactions/transaction-delete-dialogs.tsx'
+    - 'resources/js/hooks/use-in-memory-transaction-source.ts'
+    - 'resources/js/hooks/use-server-transaction-source.ts'
 ---
 
 # The transactions table exists twice (being unified)
@@ -35,9 +37,23 @@ one table over several PRs. What a row does is already shared:
 So a new row action goes into `TransactionRowActionHandlers`, the hook and,
 if it opens a dialog, `TransactionRowDialogs`; both tables pick it up.
 
-Still duplicated in both files until the last PR lands: the table shell
-(data loading, sorting, filters, load more, day summaries). Anything added
-there has to be wired in **both** places; grep for the symbol you just added.
+Where the rows come from is a `TransactionTableSource`
+(`resources/js/types/transaction-table-source.ts`), one per kind of page:
+
+- `useServerTransactionSource`: `/transactions`. Filters and sort live in the
+  URL and every change asks the server again; "load more" fetches the next
+  cursor page; day counts and totals come from the server (`dayTotals`).
+- `useInMemoryTransactionSource`: the account, budget and savings-goal pages.
+  Rows filtered, sorted and paged in the browser; day totals computed here.
+
+Both total a day the same way: each currency summed over the day, then
+converted once (`summarizeDay` / `TransactionDayTotals`). Never convert row by
+row and add up: the rounding drifts a cent from the server's figure.
+
+Still duplicated in both files until the last PR lands: the table shell (the
+toolbar, the table, the footer, the dialogs and the bulk bar mounted around
+the source). Anything added there has to be wired in **both** places; grep for
+the symbol you just added.
 
 Bitten before the split: split transactions were wired in `TransactionList`
 only, so the row menu on `/transactions` threw `onSplit is not a function`.

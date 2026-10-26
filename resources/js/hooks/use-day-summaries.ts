@@ -4,6 +4,7 @@ import {
     reconcileDaySummary,
     type ServerDayTotal,
     summarizeDay,
+    sumPerCurrency,
 } from '@/lib/transaction-day-groups';
 import { type SharedData } from '@/types';
 import { type Transaction } from '@/types/transaction';
@@ -30,13 +31,18 @@ function groupByDate<T extends Transaction>(
 
 /**
  * Day summaries for a list held whole in memory, which may draw only part of
- * it: each day counts and adds up every row of the list, drawn or not.
+ * it: each day counts and adds up every row of the list, drawn or not, and
+ * converts each currency's sum once, as the server does for /transactions.
  */
 export function useInMemoryDaySummaries(
     transactions: Transaction[],
 ): DaySummaryOf {
-    const amountInUserCurrency = useAmountsInUserCurrency(transactions);
     const byDate = useMemo(() => groupByDate(transactions), [transactions]);
+    const daySums = useMemo(
+        () => [...byDate.values()].flatMap(sumPerCurrency),
+        [byDate],
+    );
+    const amountInUserCurrency = useAmountsInUserCurrency(daySums);
 
     return useCallback(
         (date: string) =>

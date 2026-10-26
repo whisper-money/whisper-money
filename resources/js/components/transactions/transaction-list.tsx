@@ -1,4 +1,4 @@
-import { useInMemoryDaySummaries } from '@/hooks/use-day-summaries';
+import { useInMemoryTransactionSource } from '@/hooks/use-in-memory-transaction-source';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
@@ -14,19 +14,11 @@ import {
     getFilteredRowModel,
     getSortedRowModel,
     Row,
-    SortingState,
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
-import { isWithinInterval, parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
-import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useState,
-    type ReactNode,
-} from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
@@ -51,13 +43,8 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import {
-    type TransactionFilters as Filters,
-    type ServerTransaction,
-    type Transaction,
-} from '@/types/transaction';
+import { type ServerTransaction, type Transaction } from '@/types/transaction';
 import { UUID } from '@/types/uuid';
-import { toMajorUnits } from '@/utils/currency';
 
 const NO_LABELS: Label[] = [];
 
@@ -107,31 +94,18 @@ export function TransactionList({
     statementPayments,
 }: TransactionListProps) {
     const locale = useLocale();
-    const [transactions, setTransactions] = useState<ServerTransaction[]>([]);
-    const [isLoading, setIsLoading] = useState(
-        providedTransactions === undefined,
-    );
-    const [sorting, setSorting] = useState<SortingState>([
-        { id: 'transaction_date', desc: true },
-    ]);
+    const source = useInMemoryTransactionSource({
+        transactions: providedTransactions,
+        accountId,
+        pageSize,
+    });
+    const { sorting, filters, pagination } = source;
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState({});
-    const [filters, setFilters] = useState<Filters>({
-        dateFrom: null,
-        dateTo: null,
-        amountMin: null,
-        amountMax: null,
-        categoryIds: [],
-        accountIds: accountId ? [accountId] : [],
-        labelIds: [],
-        creditorName: '',
-        debtorName: '',
-        searchText: '',
-    });
     const editing = useTransactionRowEditing({
         initialLabels: initialLabels ?? NO_LABELS,
-        setRows: setTransactions,
+        setRows: source.setRows,
         onRowUpdated: onTransactionsChanged,
     });
     const {
@@ -142,8 +116,8 @@ export function TransactionList({
         handleCategorized,
     } = editing;
     const bulk = useTransactionBulkActions({
-        rows: transactions,
-        setRows: setTransactions,
+        rows: source.heldRows,
+        setRows: source.setRows,
         rowSelection,
         setRowSelection,
         categories,
@@ -153,216 +127,10 @@ export function TransactionList({
         onBalanceUpdated,
         onTransactionsChanged,
     });
-    const [displayedCount, setDisplayedCount] = useState(pageSize);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-    useEffect(() => {
-        setIsLoading(true);
-        try {
-            const processed = (providedTransactions ?? []).map(
-                (transaction) =>
-                    ({
-                        ...transaction,
-                        description: transaction.description,
-                        notes: transaction.notes || null,
-                        label_ids:
-                            transaction.label_ids ??
-                            transaction.labels?.map((label) => label.id) ??
-                            [],
-                    }) as ServerTransaction,
-            );
-
-            setTransactions(processed);
-        } catch (error) {
-            console.error('Error processing transactions:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [providedTransactions]);
-
-    const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
-        new Set(),
-    );
-    const [isSearching, setIsSearching] = useState(false);
-
-    useEffect(() => {
-        if (!filters.searchText) {
-            setSearchMatchedIds(new Set());
-            setIsSearching(false);
-            return;
-        }
-
-        setIsSearching(true);
-        const searchLower = filters.searchText.toLowerCase();
-        const matchedIds = new Set<string>();
-
-        for (const tx of transactions) {
-            const description = (
-                tx.description ??
-                tx.description ??
-                ''
-            ).toLowerCase();
-            const notes = (tx.notes ?? tx.notes ?? '').toLowerCase();
-
-            if (
-                description.includes(searchLower) ||
-                notes.includes(searchLower)
-            ) {
-                matchedIds.add(tx.id);
-            }
-        }
-
-        setSearchMatchedIds(matchedIds);
-        setIsSearching(false);
-    }, [filters.searchText, transactions]);
-
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter((transaction) => {
-            // When scoped to a single account, drop rows that were reassigned to
-            // another account (e.g. via inline edit). The list no longer
-            // refetches, so without this they would linger until a full reload.
-            if (accountId && transaction.account_id !== accountId) {
-                return false;
-            }
-
-            if (filters.searchText && !searchMatchedIds.has(transaction.id)) {
-                return false;
-            }
-
-            if (filters.dateFrom || filters.dateTo) {
-                const transactionDate = parseISO(transaction.transaction_date);
-                if (
-                    filters.dateFrom &&
-                    filters.dateTo &&
-                    !isWithinInterval(transactionDate, {
-                        start: filters.dateFrom,
-                        end: filters.dateTo,
-                    })
-                ) {
-                    return false;
-                }
-                if (filters.dateFrom && transactionDate < filters.dateFrom) {
-                    return false;
-                }
-                if (filters.dateTo && transactionDate > filters.dateTo) {
-                    return false;
-                }
-            }
-
-            const amountInMajorUnits = toMajorUnits(
-                transaction.amount,
-                transaction.currency_code,
-            );
-
-            if (
-                filters.amountMin !== null &&
-                amountInMajorUnits < filters.amountMin
-            ) {
-                return false;
-            }
-            if (
-                filters.amountMax !== null &&
-                amountInMajorUnits > filters.amountMax
-            ) {
-                return false;
-            }
-
-            if (
-                filters.categoryIds.length > 0 &&
-                !filters.categoryIds.includes(transaction.category_id || -1)
-            ) {
-                return false;
-            }
-
-            if (
-                !accountId &&
-                filters.accountIds.length > 0 &&
-                !filters.accountIds.includes(transaction.account_id)
-            ) {
-                return false;
-            }
-
-            if (
-                filters.creditorName &&
-                !transaction.creditor_name
-                    ?.toLowerCase()
-                    .includes(filters.creditorName.toLowerCase())
-            ) {
-                return false;
-            }
-
-            if (
-                filters.debtorName &&
-                !transaction.debtor_name
-                    ?.toLowerCase()
-                    .includes(filters.debtorName.toLowerCase())
-            ) {
-                return false;
-            }
-
-            return true;
-        });
-    }, [transactions, filters, accountId, searchMatchedIds]);
-
-    const sortedTransactions = useMemo(() => {
-        if (sorting.length === 0) {
-            return filteredTransactions;
-        }
-
-        const sorted = [...filteredTransactions];
-        sorted.sort((a, b) => {
-            for (const sort of sorting) {
-                const { id, desc } = sort;
-                let comparison = 0;
-
-                if (id === 'transaction_date') {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    comparison = dateA - dateB;
-                } else if (id === 'amount') {
-                    comparison = parseFloat(a.amount) - parseFloat(b.amount);
-                } else if (id === 'description') {
-                    comparison = a.description.localeCompare(b.description);
-                } else if (id === 'account') {
-                    const accountA = a.account?.name || '';
-                    const accountB = b.account?.name || '';
-                    comparison = accountA.localeCompare(accountB);
-                } else if (id === 'category') {
-                    const categoryA = a.category?.name || '';
-                    const categoryB = b.category?.name || '';
-                    comparison = categoryA.localeCompare(categoryB);
-                } else if (id === 'creditor_name') {
-                    comparison = (a.creditor_name || '').localeCompare(
-                        b.creditor_name || '',
-                    );
-                } else if (id === 'debtor_name') {
-                    comparison = (a.debtor_name || '').localeCompare(
-                        b.debtor_name || '',
-                    );
-                }
-
-                if (comparison !== 0) {
-                    return desc ? -comparison : comparison;
-                }
-            }
-            return 0;
-        });
-
-        return sorted;
-    }, [filteredTransactions, sorting]);
-
-    const displayedTransactions = useMemo(() => {
-        return sortedTransactions.slice(0, displayedCount);
-    }, [sortedTransactions, displayedCount]);
-
-    // Over every row the filters keep, not only the drawn slice, so a day cut
-    // by "load more" still says what it holds in full.
-    const daySummaryOf = useInMemoryDaySummaries(filteredTransactions);
-
     const selectionMode = useMobileSelectionMode({
         rowSelection,
         setRowSelection,
-        rows: displayedTransactions,
+        rows: source.rows,
     });
 
     const { isGroupedByDay, tableColumnVisibility, onColumnVisibilityChange } =
@@ -414,9 +182,10 @@ export function TransactionList({
     ]);
 
     const table = useReactTable({
-        data: displayedTransactions,
+        data: source.rows,
         columns,
-        onSortingChange: setSorting,
+        manualSorting: source.manualSorting,
+        onSortingChange: source.onSortingChange,
         onColumnFiltersChange: setColumnFilters,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
@@ -432,24 +201,6 @@ export function TransactionList({
             rowSelection,
         },
     });
-
-    const loadMore = useCallback(() => {
-        if (displayedCount < sortedTransactions.length && !isLoadingMore) {
-            setIsLoadingMore(true);
-            requestAnimationFrame(() => {
-                setDisplayedCount((prev) =>
-                    Math.min(prev + pageSize, sortedTransactions.length),
-                );
-                requestAnimationFrame(() => {
-                    setIsLoadingMore(false);
-                });
-            });
-        }
-    }, [displayedCount, sortedTransactions.length, isLoadingMore, pageSize]);
-
-    useEffect(() => {
-        setDisplayedCount(pageSize);
-    }, [filters, sorting, pageSize]);
 
     const renderTransactionRow = useCallback(
         (
@@ -475,7 +226,7 @@ export function TransactionList({
             <div className="space-y-4">
                 <TransactionFiltersComponent
                     filters={filters}
-                    onFiltersChange={setFilters}
+                    onFiltersChange={source.onFiltersChange}
                     categories={categories}
                     labels={labels}
                     accounts={accounts}
@@ -484,7 +235,7 @@ export function TransactionList({
                         <div className="flex flex-wrap justify-end gap-2">
                             {showActionsMenu && (
                                 <TransactionActionsMenu
-                                    transactions={transactions}
+                                    transactions={source.heldRows}
                                     hasTransactionalAccounts={
                                         filterTransactionalAccounts(accounts)
                                             .length > 0
@@ -506,7 +257,7 @@ export function TransactionList({
                     }
                 />
 
-                {isLoading || isSearching ? (
+                {source.isLoading ? (
                     <TransactionListSkeleton />
                 ) : (
                     <>
@@ -518,7 +269,7 @@ export function TransactionList({
                             maxHeight={maxHeight}
                             sorting={sorting}
                             rowSelection={rowSelection}
-                            daySummaryOf={daySummaryOf}
+                            daySummaryOf={source.daySummaryOf}
                             isGroupedByDay={isGroupedByDay}
                             selectionMode={selectionMode.forRows}
                             listRow={{
@@ -531,17 +282,17 @@ export function TransactionList({
                         />
 
                         <DataTablePagination
-                            displayedCount={displayedCount}
-                            total={sortedTransactions.length}
-                            rowCountLabel={__('transactions total')}
+                            displayedCount={pagination.displayedCount}
+                            total={pagination.total}
+                            rowCountLabel={pagination.rowCountLabel}
                         >
-                            {displayedCount < sortedTransactions.length && (
+                            {pagination.hasMore && (
                                 <Button
-                                    onClick={loadMore}
-                                    disabled={isLoadingMore}
+                                    onClick={pagination.loadMore}
+                                    disabled={pagination.isLoadingMore}
                                     variant="outline"
                                 >
-                                    {isLoadingMore ? (
+                                    {pagination.isLoadingMore ? (
                                         <>
                                             <Spinner />
                                             {__('Loading')}
