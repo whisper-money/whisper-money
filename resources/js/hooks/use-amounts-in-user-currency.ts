@@ -1,7 +1,9 @@
 import ConvertedAmountsController from '@/actions/App/Http/Controllers/Api/ConvertedAmountsController';
-import { type AmountInUserCurrency } from '@/lib/transaction-day-groups';
+import {
+    type AmountInUserCurrency,
+    type DatedAmount,
+} from '@/lib/transaction-day-groups';
 import { type SharedData } from '@/types';
-import { type Transaction } from '@/types/transaction';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,7 +21,7 @@ function conversionKey({ from, amount, date }: ConversionItem): string {
     return `${from.toUpperCase()}|${date}|${amount}`;
 }
 
-function toConversionItem(transaction: Transaction): ConversionItem {
+function toConversionItem(transaction: DatedAmount): ConversionItem {
     return {
         from: transaction.currency_code,
         amount: transaction.amount,
@@ -36,7 +38,7 @@ function toConversionItem(transaction: Transaction): ConversionItem {
  * edited row asks again only because its amount, currency or date changed.
  */
 export function useAmountsInUserCurrency(
-    transactions: Transaction[],
+    transactions: DatedAmount[],
 ): AmountInUserCurrency {
     const userCurrency = usePage<SharedData>().props.auth.user.currency_code;
     const [converted, setConverted] = useState<Map<string, number | null>>(
@@ -100,7 +102,7 @@ export function useAmountsInUserCurrency(
     }, [transactions, isInUserCurrency]);
 
     return useCallback(
-        (transaction: Transaction) => {
+        (transaction: DatedAmount) => {
             if (isInUserCurrency(transaction.currency_code)) {
                 return transaction.amount;
             }

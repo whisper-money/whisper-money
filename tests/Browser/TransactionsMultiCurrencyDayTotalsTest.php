@@ -16,7 +16,7 @@ use function Pest\Laravel\actingAs;
  * Every day the list shows has a rate row seeded, so no conversion reaches the
  * provider fake. Rates are EUR-based, `usd => 2.0` reading as 1 EUR = 2 USD.
  *
- * - May 18: 1 EUR row and 3 USD rows at 3.0. The server sums the dollars
+ * - May 18: 1 EUR row and 3 USD rows at 3.0. Both lists sum the dollars
  *   before converting them (-30.00 USD → -10.00 EUR), where converting row by
  *   row would round each third down and land on -9.99.
  * - May 12: 1 EUR row and 1 USD row on a day whose rates hold no dollar, so
@@ -129,8 +129,9 @@ it('adds up each day of the compact list on a phone', function () {
 it('adds up each day of a dollar account in the user currency', function () {
     $page = visit("/accounts/{$this->dollarAccount->id}")->resize(1440, 900);
 
-    // This list holds its rows in memory and converts each one on its own, so
-    // the "—" below only means something once a conversion has come back.
+    // This list holds its rows in memory and converts each day's dollars in
+    // the browser, so the "—" below only means something once a conversion
+    // has come back.
     $page->waitForText('Subway in New York', 10)
         ->assertDontSee('Bakery in Madrid')
         ->assertSeeIn(dayHeaderSelector('May 6'), '30 transactions')
@@ -138,9 +139,9 @@ it('adds up each day of a dollar account in the user currency', function () {
         ->assertSeeIn(dayHeaderSelector('May 12'), '1 transaction')
         ->assertSeeIn(dayHeaderSelector('May 12'), '—')
         ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
-        // Converted row by row, each third of a euro rounds on its own: the
-        // known cent apart from the server's -€10.00 for the same rows.
+        // The day's dollars convert as one sum, as on /transactions, so no
+        // third of a euro rounds on its own into -€9.99.
         ->assertSeeIn(dayHeaderSelector('May 18'), '3 transactions')
-        ->assertSeeIn(dayHeaderSelector('May 18'), '-€9.99')
+        ->assertSeeIn(dayHeaderSelector('May 18'), '-€10.00')
         ->assertNoJavascriptErrors();
 });
