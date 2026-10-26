@@ -251,7 +251,7 @@ test('user cannot use another users category in rule', function () {
 });
 
 // Case-insensitive matching itself is evaluated in AutomationRuleEvaluationTest
-// ('matches case-insensitively') and the shared rule engine parity fixtures.
+// (the 'case-insensitive match' row) and the shared rule engine parity fixtures.
 test('user can create a text filter rule in any letter case', function (string $title, array $rule) {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
