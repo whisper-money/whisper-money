@@ -250,16 +250,18 @@ test('user cannot use another users category in rule', function () {
     $response->assertSessionHasErrors('action_category_id');
 });
 
-test('rules with description filter are case insensitive with lowercase rule', function () {
+// Case-insensitive matching itself is evaluated in AutomationRuleEvaluationTest
+// ('matches case-insensitively') and the shared rule engine parity fixtures.
+test('user can create a text filter rule in any letter case', function (string $title, array $rule) {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     $response = $this->actingAs($user)
         ->from(route('automation-rules.index'))
         ->post(route('automation-rules.store'), [
-            'title' => 'Case Insensitive Description Rule (lowercase)',
+            'title' => $title,
             'priority' => 10,
-            'rules_json' => json_encode(['in' => ['m3 sport', ['var' => 'description']]]),
+            'rules_json' => json_encode($rule),
             'action_category_id' => $category->id,
             'action_note' => null,
         ]);
@@ -267,72 +269,14 @@ test('rules with description filter are case insensitive with lowercase rule', f
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
-        'title' => 'Case Insensitive Description Rule (lowercase)',
+        'title' => $title,
     ]);
-});
-
-test('rules with description filter are case insensitive with uppercase rule', function () {
-    $user = User::factory()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
-
-    $response = $this->actingAs($user)
-        ->from(route('automation-rules.index'))
-        ->post(route('automation-rules.store'), [
-            'title' => 'Case Insensitive Description Rule (uppercase)',
-            'priority' => 10,
-            'rules_json' => json_encode(['in' => ['M3 SPORT', ['var' => 'description']]]),
-            'action_category_id' => $category->id,
-            'action_note' => null,
-        ]);
-
-    $response->assertRedirect(route('automation-rules.index'));
-    $this->assertDatabaseHas('automation_rules', [
-        'user_id' => $user->id,
-        'title' => 'Case Insensitive Description Rule (uppercase)',
-    ]);
-});
-
-test('rules with description filter are case insensitive with mixed case rule', function () {
-    $user = User::factory()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
-
-    $response = $this->actingAs($user)
-        ->from(route('automation-rules.index'))
-        ->post(route('automation-rules.store'), [
-            'title' => 'Case Insensitive Description Rule (mixed)',
-            'priority' => 10,
-            'rules_json' => json_encode(['in' => ['M3 Sport Academy', ['var' => 'description']]]),
-            'action_category_id' => $category->id,
-            'action_note' => null,
-        ]);
-
-    $response->assertRedirect(route('automation-rules.index'));
-    $this->assertDatabaseHas('automation_rules', [
-        'user_id' => $user->id,
-        'title' => 'Case Insensitive Description Rule (mixed)',
-    ]);
-});
-
-test('rules with notes filter are case insensitive', function () {
-    $user = User::factory()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
-
-    $response = $this->actingAs($user)
-        ->from(route('automation-rules.index'))
-        ->post(route('automation-rules.store'), [
-            'title' => 'Case Insensitive Notes Rule',
-            'priority' => 10,
-            'rules_json' => json_encode(['in' => ['IMPORTANT NOTE', ['var' => 'notes']]]),
-            'action_category_id' => $category->id,
-            'action_note' => null,
-        ]);
-
-    $response->assertRedirect(route('automation-rules.index'));
-    $this->assertDatabaseHas('automation_rules', [
-        'user_id' => $user->id,
-        'title' => 'Case Insensitive Notes Rule',
-    ]);
-});
+})->with([
+    'lowercase description rule' => ['Case Insensitive Description Rule (lowercase)', ['in' => ['m3 sport', ['var' => 'description']]]],
+    'uppercase description rule' => ['Case Insensitive Description Rule (uppercase)', ['in' => ['M3 SPORT', ['var' => 'description']]]],
+    'mixed case description rule' => ['Case Insensitive Description Rule (mixed)', ['in' => ['M3 Sport Academy', ['var' => 'description']]]],
+    'uppercase notes rule' => ['Case Insensitive Notes Rule', ['in' => ['IMPORTANT NOTE', ['var' => 'notes']]]],
+]);
 
 test('user can create an automation rule with labels action', function () {
     $user = User::factory()->create();

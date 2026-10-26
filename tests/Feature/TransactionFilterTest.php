@@ -321,125 +321,74 @@ test('category and label filters combine with OR', function () {
         ->and($ids)->toContain($txWithLabel->id);
 });
 
-test('search matches description', function () {
+test('search matches', function (array $matching, array $other, string $search) {
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'description' => 'Grocery Store Purchase',
+        ...$matching,
     ]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'description' => 'Gas Station',
+        ...$other,
     ]);
 
     $response = actingAs($this->user)->get(route('transactions.index', [
-        'search' => 'Grocery',
+        'search' => $search,
+    ]));
+
+    $response->assertInertia(function ($page) use ($matching) {
+        $page->has('transactions.data', 1);
+
+        foreach ($matching as $attribute => $value) {
+            $page->where("transactions.data.0.{$attribute}", $value);
+        }
+    });
+})->with([
+    'description' => [
+        ['description' => 'Grocery Store Purchase'],
+        ['description' => 'Gas Station'],
+        'Grocery',
+    ],
+    'counterparty names' => [
+        ['description' => 'Card payment', 'creditor_name' => 'Amazon EU'],
+        ['description' => 'Card payment', 'creditor_name' => 'Coffee Shop'],
+        'Amazon',
+    ],
+    'notes' => [
+        ['description' => 'Some purchase', 'notes' => 'weekly groceries for the family'],
+        ['description' => 'Another purchase', 'notes' => null],
+        'groceries',
+    ],
+]);
+
+test('filter by counterparty name', function (string $field, string $matching, string $other, string $filter) {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        $field => $matching,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        $field => $other,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        $field => $filter,
     ]));
 
     $response->assertInertia(fn ($page) => $page
         ->has('transactions.data', 1)
-        ->where('transactions.data.0.description', 'Grocery Store Purchase')
+        ->where("transactions.data.0.{$field}", $matching)
+        ->where("appliedFilters.{$field}", $filter)
     );
-});
-
-test('filter by creditor name', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'creditor_name' => 'Amazon EU',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'creditor_name' => 'Coffee Shop',
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'creditor_name' => 'Amazon',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 1)
-        ->where('transactions.data.0.creditor_name', 'Amazon EU')
-        ->where('appliedFilters.creditor_name', 'Amazon')
-    );
-});
-
-test('filter by debtor name', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'debtor_name' => 'Payroll GmbH',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'debtor_name' => 'Other Sender',
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'debtor_name' => 'Payroll',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 1)
-        ->where('transactions.data.0.debtor_name', 'Payroll GmbH')
-        ->where('appliedFilters.debtor_name', 'Payroll')
-    );
-});
-
-test('search matches counterparty names', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Card payment',
-        'creditor_name' => 'Amazon EU',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Card payment',
-        'creditor_name' => 'Coffee Shop',
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'search' => 'Amazon',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 1)
-        ->where('transactions.data.0.creditor_name', 'Amazon EU')
-    );
-});
-
-test('search matches notes', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Some purchase',
-        'notes' => 'weekly groceries for the family',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Another purchase',
-        'notes' => null,
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'search' => 'groceries',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 1)
-    );
-});
+})->with([
+    'creditor' => ['creditor_name', 'Amazon EU', 'Coffee Shop', 'Amazon'],
+    'debtor' => ['debtor_name', 'Payroll GmbH', 'Other Sender', 'Payroll'],
+]);
 
 test('combined filters work', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
@@ -486,95 +435,31 @@ test('combined filters work', function () {
     );
 });
 
-test('sort by date ascending', function () {
+test('sorts transactions', function (array $first, array $second, array $query, string $attribute, string|int $expectedFirst) {
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'transaction_date' => '2025-06-15',
+        ...$first,
     ]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'transaction_date' => '2025-01-01',
+        ...$second,
     ]);
 
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'sort' => 'transaction_date',
-    ]));
+    $response = actingAs($this->user)->get(route('transactions.index', $query));
 
     $response->assertInertia(fn ($page) => $page
         ->has('transactions.data', 2)
-        ->where('transactions.data.0.transaction_date', fn ($date) => str_contains($date, '2025-01-01'))
+        ->where("transactions.data.0.{$attribute}", $expectedFirst)
     );
-});
-
-test('sort by date descending (default)', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'transaction_date' => '2025-06-15',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'transaction_date' => '2025-01-01',
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 2)
-        ->where('transactions.data.0.transaction_date', fn ($date) => str_contains($date, '2025-06-15'))
-    );
-});
-
-test('sort by amount', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'amount' => -10000,
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'amount' => 5000,
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'sort' => 'amount',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 2)
-        ->where('transactions.data.0.amount', -10000)
-    );
-});
-
-test('sort by description', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Zebra Store',
-    ]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Apple Store',
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'sort' => 'description',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 2)
-        ->where('transactions.data.0.description', 'Apple Store')
-    );
-});
+})->with([
+    'by date ascending' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], ['sort' => 'transaction_date'], 'transaction_date', '2025-01-01'],
+    'by date descending (default)' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], [], 'transaction_date', '2025-06-15'],
+    'by amount' => [['amount' => -10000], ['amount' => 5000], ['sort' => 'amount'], 'amount', -10000],
+    'by description' => [['description' => 'Zebra Store'], ['description' => 'Apple Store'], ['sort' => 'description'], 'description', 'Apple Store'],
+]);
 
 test('cursor pagination returns correct results', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);

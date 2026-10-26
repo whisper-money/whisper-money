@@ -20,16 +20,23 @@ test('banking:sync dispatches job for all connections when no filters provided',
     Queue::assertPushed(SyncAllBankingConnectionsJob::class);
 });
 
-test('banking:sync filters by user email', function () {
+test('banking:sync dispatches only the connection matching the filters', function (array $filters, bool $siblingSharesUser) {
     Queue::fake();
 
     $user = User::factory()->create(['email' => 'test@example.com']);
     $connection = BankingConnection::factory()->for($user)->create();
 
-    // Another user's connection that should NOT be synced
-    BankingConnection::factory()->create();
+    // Another connection that should NOT be synced
+    BankingConnection::factory()
+        ->when($siblingSharesUser, fn ($factory) => $factory->for($user))
+        ->create();
 
-    artisan('banking:sync', ['--user' => 'test@example.com'])
+    $options = collect([
+        '--user' => 'test@example.com',
+        '--connection' => $connection->id,
+    ])->only($filters)->all();
+
+    artisan('banking:sync', $options)
         ->expectsOutputToContain('Banking sync jobs dispatched for 1 connection(s).')
         ->assertSuccessful();
 
@@ -38,23 +45,11 @@ test('banking:sync filters by user email', function () {
         return $job->bankingConnection->id === $connection->id;
     });
     Queue::assertNotPushed(SyncAllBankingConnectionsJob::class);
-});
-
-test('banking:sync filters by connection ID', function () {
-    Queue::fake();
-
-    $connection = BankingConnection::factory()->create();
-    BankingConnection::factory()->create();
-
-    artisan('banking:sync', ['--connection' => $connection->id])
-        ->expectsOutputToContain('Banking sync jobs dispatched for 1 connection(s).')
-        ->assertSuccessful();
-
-    Queue::assertPushed(SyncBankingConnectionJob::class, 1);
-    Queue::assertPushed(SyncBankingConnectionJob::class, function ($job) use ($connection) {
-        return $job->bankingConnection->id === $connection->id;
-    });
-});
+})->with([
+    'user email' => [['--user'], false],
+    'connection ID' => [['--connection'], false],
+    'user and connection combined' => [['--user', '--connection'], true],
+]);
 
 test('banking:sync fails when user email is not found', function () {
     artisan('banking:sync', ['--user' => 'nonexistent@example.com'])
@@ -87,23 +82,6 @@ test('banking:sync skips expired connections when filtering by user', function (
         ->assertSuccessful();
 
     Queue::assertPushed(SyncBankingConnectionJob::class, 1);
-});
-
-test('banking:sync can combine user and connection filters', function () {
-    Queue::fake();
-
-    $user = User::factory()->create(['email' => 'test@example.com']);
-    $connection = BankingConnection::factory()->for($user)->create();
-    BankingConnection::factory()->for($user)->create();
-
-    artisan('banking:sync', ['--user' => 'test@example.com', '--connection' => $connection->id])
-        ->expectsOutputToContain('Banking sync jobs dispatched for 1 connection(s).')
-        ->assertSuccessful();
-
-    Queue::assertPushed(SyncBankingConnectionJob::class, 1);
-    Queue::assertPushed(SyncBankingConnectionJob::class, function ($job) use ($connection) {
-        return $job->bankingConnection->id === $connection->id;
-    });
 });
 
 test('banking:sync passes fullSync flag when --full is provided', function () {

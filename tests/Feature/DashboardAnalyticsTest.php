@@ -10,6 +10,7 @@ use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -634,17 +635,17 @@ test('net worth evolution uses last balance of each month per account', function
     expect($data['data'][0][$account->id])->toBe(200000);
 });
 
-test('net worth evolution returns account metadata including bank', function () {
+test('net worth evolution returns account metadata including bank', function (string $endpoint, string $name, Carbon $from, Carbon $to) {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
-        'name' => 'My Credit Card',
+        'name' => $name,
         'currency_code' => 'USD',
     ]);
 
-    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
+    $response = $this->getJson("/api/dashboard/{$endpoint}?".http_build_query([
+        'from' => $from->toDateString(),
+        'to' => $to->toDateString(),
     ]));
 
     $response->assertOk();
@@ -652,12 +653,15 @@ test('net worth evolution returns account metadata including bank', function () 
 
     expect($data['accounts'][$account->id])->toMatchArray([
         'id' => $account->id,
-        'name' => 'My Credit Card',
+        'name' => $name,
         'type' => 'credit_card',
     ]);
     expect($data['accounts'][$account->id])->toHaveKey('bank');
     expect($data['accounts'][$account->id]['bank'])->toHaveKeys(['id', 'name', 'logo']);
-});
+})->with([
+    'monthly' => ['net-worth-evolution', 'My Credit Card', fn () => now()->startOfMonth(), fn () => now()->endOfMonth()],
+    'daily' => ['net-worth-daily-evolution', 'My Daily CC', fn () => now()->subDays(1), fn () => now()],
+]);
 
 test('account daily balance evolution returns daily data points', function () {
     $account = Account::factory()->create([
@@ -939,7 +943,7 @@ test('account daily balance evolution includes invested_amount for investment ac
     expect($data['data'][1]['invested_amount'])->toBe(420000);
 });
 
-test('account daily balance evolution does not include invested_amount for non-investment accounts', function () {
+test('account balance evolution does not include invested_amount for non-investment accounts', function (string $endpoint, int $balance, Carbon $balanceDate, Carbon $from, Carbon $to) {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
@@ -949,20 +953,23 @@ test('account daily balance evolution does not include invested_amount for non-i
 
     AccountBalance::factory()->create([
         'account_id' => $account->id,
-        'balance_date' => now(),
-        'balance' => 500000,
+        'balance_date' => $balanceDate,
+        'balance' => $balance,
     ]);
 
-    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
-        'from' => now()->toDateString(),
-        'to' => now()->toDateString(),
+    $response = $this->getJson('/api/dashboard/account/'.$account->id."/{$endpoint}?".http_build_query([
+        'from' => $from->toDateString(),
+        'to' => $to->toDateString(),
     ]));
 
     $response->assertOk();
     $data = $response->json();
 
     expect($data['data'][0])->not->toHaveKey('invested_amount');
-});
+})->with([
+    'daily' => ['daily-balance-evolution', 500000, fn () => now(), fn () => now(), fn () => now()],
+    'monthly' => ['balance-evolution', 1000000, fn () => now()->endOfMonth(), fn () => now()->startOfMonth(), fn () => now()->endOfMonth()],
+]);
 
 test('account daily balance evolution carries forward last known invested_amount across gaps', function () {
     $account = Account::factory()->create([
@@ -1025,31 +1032,6 @@ test('account balance evolution includes invested_amount for retirement accounts
 
     expect($data['data'][0])->toHaveKey('invested_amount');
     expect($data['data'][0]['invested_amount'])->toBe(800000);
-});
-
-test('account balance evolution does not include invested_amount for checking accounts', function () {
-    $account = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'My Checking',
-        'currency_code' => 'USD',
-    ]);
-
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => now()->endOfMonth(),
-        'balance' => 1000000,
-    ]);
-
-    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    $data = $response->json();
-
-    expect($data['data'][0])->not->toHaveKey('invested_amount');
 });
 
 test('net worth evolution includes invested_amount in accountsConfig for investment accounts', function () {
@@ -1121,31 +1103,6 @@ test('net worth evolution returns null invested_amount when no invested data exi
     expect($data['accounts'][$investment->id]['invested_amount'])->toBeNull();
 });
 
-test('net worth daily evolution returns account metadata including bank', function () {
-    $account = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::CreditCard,
-        'name' => 'My Daily CC',
-        'currency_code' => 'USD',
-    ]);
-
-    $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
-        'from' => now()->subDays(1)->toDateString(),
-        'to' => now()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    $data = $response->json();
-
-    expect($data['accounts'][$account->id])->toMatchArray([
-        'id' => $account->id,
-        'name' => 'My Daily CC',
-        'type' => 'credit_card',
-    ]);
-    expect($data['accounts'][$account->id])->toHaveKey('bank');
-    expect($data['accounts'][$account->id]['bank'])->toHaveKeys(['id', 'name', 'logo']);
-});
-
 test('account balance evolution includes display_* fields when account currency differs from user currency', function () {
     // User currency is USD (default from factory)
     $account = Account::factory()->create([
@@ -1191,23 +1148,23 @@ test('account balance evolution includes display_* fields when account currency 
     expect($data['account']['currency_code'])->toBe('EUR');
 });
 
-test('account balance evolution does not include display_* fields when currencies match', function () {
+test('account balance evolution does not include display_* fields when currencies match', function (string $endpoint, string $name, Carbon $balanceDate, Carbon $from, Carbon $to) {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
-        'name' => 'USD Checking',
+        'name' => $name,
         'currency_code' => 'USD',
     ]);
 
     AccountBalance::factory()->create([
         'account_id' => $account->id,
-        'balance_date' => now()->endOfMonth(),
+        'balance_date' => $balanceDate,
         'balance' => 100000,
     ]);
 
-    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
+    $response = $this->getJson('/api/dashboard/account/'.$account->id."/{$endpoint}?".http_build_query([
+        'from' => $from->toDateString(),
+        'to' => $to->toDateString(),
     ]));
 
     $response->assertOk();
@@ -1215,7 +1172,10 @@ test('account balance evolution does not include display_* fields when currencie
 
     expect($data['data'][0])->not->toHaveKey('display_value');
     expect($data)->not->toHaveKey('display_currency_code');
-});
+})->with([
+    'monthly' => ['balance-evolution', 'USD Checking', fn () => now()->endOfMonth(), fn () => now()->startOfMonth(), fn () => now()->endOfMonth()],
+    'daily' => ['daily-balance-evolution', 'USD Daily', fn () => now(), fn () => now(), fn () => now()],
+]);
 
 test('account daily balance evolution includes display_* fields when account currency differs from user currency', function () {
     $account = Account::factory()->create([
@@ -1275,32 +1235,6 @@ test('account daily balance evolution includes display_* fields when account cur
     expect($data['account']['currency_code'])->toBe('GBP');
 });
 
-test('account daily balance evolution does not include display_* fields when currencies match', function () {
-    $account = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'USD Daily',
-        'currency_code' => 'USD',
-    ]);
-
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => now(),
-        'balance' => 100000,
-    ]);
-
-    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
-        'from' => now()->toDateString(),
-        'to' => now()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    $data = $response->json();
-
-    expect($data['data'][0])->not->toHaveKey('display_value');
-    expect($data)->not->toHaveKey('display_currency_code');
-});
-
 test('account balance evolution includes display_invested_amount for foreign currency investment accounts', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
@@ -1348,7 +1282,7 @@ test('account balance evolution includes display_invested_amount for foreign cur
     expect($data['display_currency_code'])->toBe('USD');
 });
 
-test('account balance evolution converts mortgage using loan currency when it differs from property currency', function () {
+test('account balance evolution converts mortgage using loan currency when it differs from property currency', function (string $endpoint, Carbon $balanceDate, Carbon $from) {
     // User currency is USD, property is USD, loan is EUR — only the mortgage needs conversion
     $property = Account::factory()->create([
         'user_id' => $this->user->id,
@@ -1366,30 +1300,27 @@ test('account balance evolution converts mortgage using loan currency when it di
         'linked_loan_account_id' => $loan->id,
     ]);
 
-    $lastMonth = now()->subMonthNoOverflow();
-    $endOfMonth = $lastMonth->copy()->endOfMonth();
-
     AccountBalance::factory()->create([
         'account_id' => $property->id,
-        'balance_date' => $endOfMonth,
+        'balance_date' => $balanceDate,
         'balance' => 50000000, // $500,000.00 USD
     ]);
     AccountBalance::factory()->create([
         'account_id' => $loan->id,
-        'balance_date' => $endOfMonth,
+        'balance_date' => $balanceDate,
         'balance' => 18000000, // €180,000.00 EUR
     ]);
 
     // 1 USD = 0.90 EUR, so EUR -> USD = 18000000 / 0.90
     ExchangeRate::factory()->create([
         'base_currency' => 'usd',
-        'date' => $endOfMonth->toDateString(),
+        'date' => $balanceDate->toDateString(),
         'rates' => ['eur' => 0.90],
     ]);
 
-    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/balance-evolution?'.http_build_query([
-        'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
-        'to' => $endOfMonth->toDateString(),
+    $response = $this->getJson('/api/dashboard/account/'.$property->id."/{$endpoint}?".http_build_query([
+        'from' => $from->toDateString(),
+        'to' => $balanceDate->toDateString(),
     ]));
 
     $response->assertOk();
@@ -1403,58 +1334,10 @@ test('account balance evolution converts mortgage using loan currency when it di
     expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.90));
     expect($data['data'][0])->not->toHaveKey('display_mortgage_balance');
     expect($data)->not->toHaveKey('display_currency_code');
-});
-
-test('account daily balance evolution converts mortgage using loan currency when it differs from property currency', function () {
-    $property = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::RealEstate,
-        'currency_code' => 'USD',
-    ]);
-    $loan = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Loan,
-        'currency_code' => 'EUR',
-    ]);
-
-    RealEstateDetail::factory()->create([
-        'account_id' => $property->id,
-        'linked_loan_account_id' => $loan->id,
-    ]);
-
-    $today = now();
-
-    AccountBalance::factory()->create([
-        'account_id' => $property->id,
-        'balance_date' => $today,
-        'balance' => 50000000,
-    ]);
-    AccountBalance::factory()->create([
-        'account_id' => $loan->id,
-        'balance_date' => $today,
-        'balance' => 18000000,
-    ]);
-
-    ExchangeRate::factory()->create([
-        'base_currency' => 'usd',
-        'date' => $today->toDateString(),
-        'rates' => ['eur' => 0.90],
-    ]);
-
-    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/daily-balance-evolution?'.http_build_query([
-        'from' => $today->toDateString(),
-        'to' => $today->toDateString(),
-    ]));
-
-    $response->assertOk();
-    $data = $response->json();
-
-    expect($data['data'][0]['value'])->toBe(50000000);
-    expect($data['data'][0])->not->toHaveKey('display_value');
-    expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.90));
-    expect($data['data'][0])->not->toHaveKey('display_mortgage_balance');
-    expect($data)->not->toHaveKey('display_currency_code');
-});
+})->with([
+    'monthly' => ['balance-evolution', fn () => now()->subMonthNoOverflow()->endOfMonth(), fn () => now()->subMonthNoOverflow()->startOfMonth()],
+    'daily' => ['daily-balance-evolution', fn () => now(), fn () => now()],
+]);
 
 test('account balance evolution exposes alternate user-currency mortgage values when property and user currencies differ', function () {
     $this->user->update(['currency_code' => 'USD']);

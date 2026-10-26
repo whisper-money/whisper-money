@@ -169,22 +169,15 @@ it('refuses an unsigned unsubscribe link', function (): void {
     expect($user->fresh()->wantsMarketingEmails())->toBeTrue();
 });
 
-it('queues a campaign as marketing by default', function (): void {
+it('queues a campaign as marketing unless told it is operational', function (array $options, bool $marketing): void {
     Queue::fake();
     User::factory()->create();
 
-    $this->artisan('email:update', ['view' => 'mcp-launch-aug-2026', '--force' => true])
+    $this->artisan('email:update', ['view' => 'mcp-launch-aug-2026', ...$options, '--force' => true])
         ->assertSuccessful();
 
-    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => $job->marketing);
-});
-
-it('queues a campaign as a notice when told it is operational', function (): void {
-    Queue::fake();
-    User::factory()->create();
-
-    $this->artisan('email:update', ['view' => 'mcp-launch-aug-2026', '--operational' => true, '--force' => true])
-        ->assertSuccessful();
-
-    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => ! $job->marketing);
-});
+    Queue::assertPushed(SendUpdateEmailJob::class, fn (SendUpdateEmailJob $job): bool => $job->marketing === $marketing);
+})->with([
+    'marketing by default' => [[], true],
+    'a notice with --operational' => [['--operational' => true], false],
+]);

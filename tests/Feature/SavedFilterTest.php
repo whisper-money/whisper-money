@@ -27,89 +27,59 @@ test('lists only the current user saved filters ordered by name', function () {
     expect($response->json('data.1.name'))->toBe('Zurich trip');
 });
 
-test('updates the analysis day override on a saved filter', function () {
+test('updates an analysis override on a saved filter', function (string $field, string|int $value, AnalysisMode|int $stored) {
     $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+    $endpoint = str_replace('_', '-', $field);
 
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 21])
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/{$endpoint}", [$field => $value])
         ->assertOk()
-        ->assertJsonPath('data.analysis_days', 21);
+        ->assertJsonPath("data.{$field}", $value);
 
-    expect($savedFilter->fresh()->analysis_days)->toBe(21);
-});
+    expect($savedFilter->fresh()->{$field})->toBe($stored);
+})->with([
+    'analysis day override' => ['analysis_days', 21, 21],
+    'analysis view mode' => ['analysis_mode', 'income', AnalysisMode::Income],
+    'monthly trend analysis view mode' => ['analysis_mode', 'trend', AnalysisMode::Trend],
+]);
 
-test('clears the analysis day override when sent null', function () {
+test('clears an analysis override when sent null', function (string $field, string|int $initial) {
     $savedFilter = SavedFilter::factory()->create([
         'user_id' => $this->user->id,
-        'analysis_days' => 14,
+        $field => $initial,
     ]);
+    $endpoint = str_replace('_', '-', $field);
 
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => null])
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/{$endpoint}", [$field => null])
         ->assertOk()
-        ->assertJsonPath('data.analysis_days', null);
+        ->assertJsonPath("data.{$field}", null);
 
-    expect($savedFilter->fresh()->analysis_days)->toBeNull();
-});
+    expect($savedFilter->fresh()->{$field})->toBeNull();
+})->with([
+    'analysis day override' => ['analysis_days', 14],
+    'analysis view mode' => ['analysis_mode', 'expense'],
+]);
 
-test('cannot update the analysis days of another user saved filter', function () {
+test('cannot update an analysis override of another user saved filter', function (string $field, string|int $value) {
     $savedFilter = SavedFilter::factory()->create(['name' => 'Not mine']);
+    $endpoint = str_replace('_', '-', $field);
 
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 5])
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/{$endpoint}", [$field => $value])
         ->assertForbidden();
-});
+})->with([
+    'analysis day override' => ['analysis_days', 5],
+    'analysis view mode' => ['analysis_mode', 'income'],
+]);
 
-test('rejects an invalid analysis day override', function () {
+test('rejects an invalid analysis override', function (string $field, string|int $value) {
     $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+    $endpoint = str_replace('_', '-', $field);
 
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 0])
-        ->assertJsonValidationErrors('analysis_days');
-});
-
-test('updates the analysis view mode on a saved filter', function () {
-    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
-
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'income'])
-        ->assertOk()
-        ->assertJsonPath('data.analysis_mode', 'income');
-
-    expect($savedFilter->fresh()->analysis_mode)->toBe(AnalysisMode::Income);
-});
-
-test('stores the monthly trend analysis view mode', function () {
-    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
-
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'trend'])
-        ->assertOk()
-        ->assertJsonPath('data.analysis_mode', 'trend');
-
-    expect($savedFilter->fresh()->analysis_mode)->toBe(AnalysisMode::Trend);
-});
-
-test('clears the analysis view mode when sent null', function () {
-    $savedFilter = SavedFilter::factory()->create([
-        'user_id' => $this->user->id,
-        'analysis_mode' => 'expense',
-    ]);
-
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => null])
-        ->assertOk()
-        ->assertJsonPath('data.analysis_mode', null);
-
-    expect($savedFilter->fresh()->analysis_mode)->toBeNull();
-});
-
-test('cannot update the analysis mode of another user saved filter', function () {
-    $savedFilter = SavedFilter::factory()->create(['name' => 'Not mine']);
-
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'income'])
-        ->assertForbidden();
-});
-
-test('rejects an unknown analysis view mode', function () {
-    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
-
-    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'sideways'])
-        ->assertJsonValidationErrors('analysis_mode');
-});
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/{$endpoint}", [$field => $value])
+        ->assertJsonValidationErrors($field);
+})->with([
+    'analysis day override of zero' => ['analysis_days', 0],
+    'unknown analysis view mode' => ['analysis_mode', 'sideways'],
+]);
 
 test('stores a saved filter for the current user', function () {
     $payload = [
