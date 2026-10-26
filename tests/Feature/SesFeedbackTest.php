@@ -7,6 +7,7 @@ use App\Models\SuppressedEmailAddress;
 use App\Models\User;
 use App\Models\UserMailLog;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -234,4 +235,17 @@ it('drops only the suppressed recipient when a message has several', function ()
     expect($messages)->toHaveCount(1);
     expect($messages[0]->getOriginalMessage()->getTo())->toHaveCount(1)
         ->and($messages[0]->getOriginalMessage()->getTo()[0]->getAddress())->toBe('fine@example.com');
+});
+
+it('lets other MessageSending listeners run', function () {
+    $reached = false;
+    Event::listen(MessageSending::class, function () use (&$reached) {
+        $reached = true;
+    });
+
+    $user = User::factory()->create(['email' => 'fine@example.com']);
+
+    Mail::to($user->email)->send(new WelcomeEmail($user));
+
+    expect($reached)->toBeTrue();
 });
