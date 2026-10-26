@@ -21,8 +21,10 @@ use function Pest\Laravel\actingAs;
  *   row would round each third down and land on -9.99.
  * - May 12: 1 EUR row and 1 USD row on a day whose rates hold no dollar, so
  *   the total is unknown while the count is not.
- * - May 6: 6 EUR rows and 6 USD rows at 2.0, more than a page of ten holds
- *   after the two days above it.
+ * - May 6: 30 EUR rows and 30 USD rows at 2.0, more than the first page of
+ *   fifty holds after the two days above it. The cut lands thousands of
+ *   pixels down, so the infinite-scroll sentinel stays out of reach whatever
+ *   the viewport and the first page is all the list holds.
  */
 beforeEach(function () {
     // Bypass the Stripe-backed subscription gate; gating itself is covered elsewhere.
@@ -54,7 +56,7 @@ beforeEach(function () {
     movementOn('Metro in Madrid', -500, '2026-05-12', $this->euroAccount);
     movementOn('Subway in New York', -3000, '2026-05-12', $this->dollarAccount);
 
-    foreach (range(1, 6) as $index) {
+    foreach (range(1, 30) as $index) {
         movementOn("Market stall {$index}", -100, '2026-05-06', $this->euroAccount);
         movementOn("Coffee cart {$index}", -200, '2026-05-06', $this->dollarAccount);
     }
@@ -94,34 +96,32 @@ function dayHeaderSelector(string $day): string
 }
 
 it('adds up each day of /transactions in the user currency, at the day rate', function () {
-    // Short enough that the infinite-scroll sentinel below the first page
-    // stays out of reach, so the page holds those ten rows alone.
-    $page = visit('/transactions?per_page=10')->resize(1440, 600);
+    $page = visit('/transactions')->resize(1440, 900);
 
     $page->assertPresent('[data-testid="transaction-list-layout"][data-layout="table"]')
         ->assertSee('Bakery in Madrid')
-        ->assertSee('10 transactions loaded')
+        ->assertSee('50 transactions loaded')
         ->assertSeeIn(dayHeaderSelector('May 18'), '4 transactions')
         ->assertSeeIn(dayHeaderSelector('May 18'), '-€20.00')
         ->assertSeeIn(dayHeaderSelector('May 12'), '2 transactions')
         ->assertSeeIn(dayHeaderSelector('May 12'), '—')
         ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
-        // Four of its twelve rows made the first page; the header counts them all.
-        ->assertSeeIn(dayHeaderSelector('May 6'), '12 transactions')
-        ->assertSeeIn(dayHeaderSelector('May 6'), '-€12.00')
-        ->assertSee('10 transactions loaded')
+        // 44 of its 60 rows made the first page; the header counts them all.
+        ->assertSeeIn(dayHeaderSelector('May 6'), '60 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€60.00')
+        ->assertSee('50 transactions loaded')
         ->assertNoJavascriptErrors();
 });
 
 it('adds up each day of the compact list on a phone', function () {
-    $page = visit('/transactions?per_page=10')->resize(390, 844);
+    $page = visit('/transactions')->resize(390, 844);
 
     $page->assertPresent('[data-testid="transaction-list-layout"][data-layout="list"]')
         ->assertSee('Bakery in Madrid')
         ->assertSeeIn(dayHeaderSelector('May 18'), '-€20.00')
         ->assertSeeIn(dayHeaderSelector('May 12'), '—')
         ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
-        ->assertSeeIn(dayHeaderSelector('May 6'), '-€12.00')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€60.00')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
         ->assertNoJavascriptErrors();
 });
@@ -133,8 +133,8 @@ it('adds up each day of a dollar account in the user currency', function () {
     // the "—" below only means something once a conversion has come back.
     $page->waitForText('Subway in New York', 10)
         ->assertDontSee('Bakery in Madrid')
-        ->assertSeeIn(dayHeaderSelector('May 6'), '6 transactions')
-        ->assertSeeIn(dayHeaderSelector('May 6'), '-€6.00')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '30 transactions')
+        ->assertSeeIn(dayHeaderSelector('May 6'), '-€30.00')
         ->assertSeeIn(dayHeaderSelector('May 12'), '1 transaction')
         ->assertSeeIn(dayHeaderSelector('May 12'), '—')
         ->assertDontSeeIn(dayHeaderSelector('May 12'), '€')
