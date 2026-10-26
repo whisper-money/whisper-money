@@ -53,11 +53,6 @@ interface CreateColumnsOptions {
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
     isDateHidden?: boolean;
-    /**
-     * Selection mode on the phone: the checkbox column, hidden there
-     * otherwise, shows as a round check in front of each row.
-     */
-    showSelectColumnOnMobile?: boolean;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
     /** A label every row already carries, so showing it would say nothing. */
@@ -85,7 +80,6 @@ export function createTransactionColumns({
     onSplit,
     onUnsplit,
     isDateHidden = false,
-    showSelectColumnOnMobile = false,
     categorizingIds,
     hiddenLabelId,
     statementPayments,
@@ -93,11 +87,6 @@ export function createTransactionColumns({
     return [
         {
             id: 'select',
-            meta: {
-                cellClassName: showSelectColumnOnMobile
-                    ? undefined
-                    : 'hidden md:table-cell',
-            },
             header: ({ table }) => (
                 <Checkbox
                     checked={

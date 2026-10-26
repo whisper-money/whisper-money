@@ -202,8 +202,9 @@ it('runs the automation rules again for a single row from its actions menu', fun
 });
 
 /**
- * On the phone there is no checkbox column: the toolbar's Select button (or a
- * long press on a row) turns taps into ticks, and the compact bar takes over.
+ * On the phone the checkbox column is always there, as on desktop. Once a row
+ * is ticked (from its checkbox or a long press) taps toggle rows, and the
+ * compact bar takes over until the selection is empty again.
  */
 function visitTransactionsOnAPhone(): mixed
 {
@@ -213,16 +214,15 @@ function visitTransactionsOnAPhone(): mixed
         ->navigate('/transactions');
 }
 
-it('selects rows by tapping them in selection mode on a phone', function () {
+it('selects rows from their checkboxes and then by tapping them on a phone', function () {
     $page = visitTransactionsOnAPhone();
 
     $page->assertSee('Weekly groceries market')
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
-        ->click('[data-testid="selection-mode-select"]')
-        ->assertSeeIn('[data-testid="bulk-selected-count"]', 'Tap to select')
+        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '1 selected')
         // The bar takes the bottom nav's place rather than sitting over it.
         ->assertMissing('[data-test="mobile-nav"]')
-        ->click('tr:has-text("Weekly groceries market") td:last-child')
         ->click('tr:has-text("Coffee subscription") td:last-child')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '2 selected')
         // A tap toggles the row; it does not open the edit dialog.
@@ -231,10 +231,9 @@ it('selects rows by tapping them in selection mode on a phone', function () {
         ->assertSee('Change category')
         ->click('[cmdk-item]:has-text("Utilities")')
         ->assertSee('Updated 2 transactions')
-        // A bulk change that went through ends selection mode.
+        // A bulk change that went through empties the selection.
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
         ->assertVisible('[data-test="mobile-nav"]')
-        ->assertPresent('[data-testid="selection-mode-select"]')
         ->assertNoJavascriptErrors();
 
     expect($this->fixture->movementNamed('Weekly groceries market')->category_id)
@@ -243,7 +242,7 @@ it('selects rows by tapping them in selection mode on a phone', function () {
         ->toBe($this->fixture->transport->id);
 });
 
-it('enters selection mode on a long press and leaves it with Done on a phone', function () {
+it('ticks a row on a long press and clears the selection from the menu on a phone', function () {
     $page = visitTransactionsOnAPhone();
 
     $page->assertSee('Weekly groceries market');
@@ -265,7 +264,8 @@ it('enters selection mode on a long press and leaves it with Done on a phone', f
         ->assertSee('Delete 1')
         ->click('[role="menuitem"]:has-text("Select all visible")')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '8 selected')
-        ->click('[data-testid="selection-mode-done"]')
+        ->click('[data-testid="bulk-more-actions"]')
+        ->click('[role="menuitem"]:has-text("Clear selection")')
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
         ->assertNoJavascriptErrors();
 });

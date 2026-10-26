@@ -4129,10 +4129,8 @@
     "Select all matching filters": "Seleccionar todas las del filtro",
     "Selection actions": "Acciones de la selección",
     "Delete selected transactions": "Eliminar las transacciones seleccionadas",
-    "Tap to select": "Toca para seleccionar",
     "Select all visible": "Seleccionar todas las visibles",
     "Deselect all": "Deseleccionar todas",
     "Only visible": "Solo las visibles",
-    "Delete :count": "Eliminar :count",
-    "Select": "Seleccionar"
+    "Delete :count": "Eliminar :count"
 }
