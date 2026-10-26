@@ -13,6 +13,25 @@ import { type SortingState } from '@tanstack/react-table';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+/** The rows as the table edits them: notes never undefined, label ids set. */
+function toServerRows(
+    transactions: Transaction[] | undefined,
+): ServerTransaction[] {
+    return (transactions ?? []).map(
+        (transaction) =>
+            ({
+                ...transaction,
+                notes: transaction.notes || null,
+                label_ids:
+                    transaction.label_ids ??
+                    (transaction as Partial<ServerTransaction>).labels?.map(
+                        (label) => label.id,
+                    ) ??
+                    [],
+            }) as ServerTransaction,
+    );
+}
+
 function matchesFilters(
     transaction: ServerTransaction,
     filters: Filters,
@@ -167,9 +186,8 @@ export function useInMemoryTransactionSource({
     accountId?: UUID;
     pageSize?: number;
 }): TransactionTableSource {
-    const [transactions, setTransactions] = useState<ServerTransaction[]>([]);
-    const [isLoading, setIsLoading] = useState(
-        providedTransactions === undefined,
+    const [transactions, setTransactions] = useState<ServerTransaction[]>(() =>
+        toServerRows(providedTransactions),
     );
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'transaction_date', desc: true },
@@ -190,47 +208,22 @@ export function useInMemoryTransactionSource({
     const [displayedCount, setDisplayedCount] = useState(pageSize);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-    useEffect(() => {
-        setIsLoading(true);
-        try {
-            const processed = (providedTransactions ?? []).map(
-                (transaction) =>
-                    ({
-                        ...transaction,
-                        description: transaction.description,
-                        notes: transaction.notes || null,
-                        label_ids:
-                            transaction.label_ids ??
-                            (
-                                transaction as Partial<ServerTransaction>
-                            ).labels?.map((label) => label.id) ??
-                            [],
-                    }) as ServerTransaction,
-            );
+    // The page hands new rows over after a reload or a period change; the
+    // first ones are already in the state above, so no frame draws it empty.
+    const [handedRows, setHandedRows] = useState(providedTransactions);
 
-            setTransactions(processed);
-        } catch (error) {
-            console.error('Error processing transactions:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [providedTransactions]);
+    if (providedTransactions !== handedRows) {
+        setHandedRows(providedTransactions);
+        setTransactions(toServerRows(providedTransactions));
+    }
 
-    const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
-        new Set(),
-    );
-    const [isSearching, setIsSearching] = useState(false);
-
-    useEffect(() => {
-        if (!filters.searchText) {
-            setSearchMatchedIds(new Set());
-            setIsSearching(false);
-            return;
-        }
-
-        setIsSearching(true);
+    const searchMatchedIds = useMemo(() => {
         const searchLower = filters.searchText.toLowerCase();
         const matchedIds = new Set<string>();
+
+        if (!searchLower) {
+            return matchedIds;
+        }
 
         for (const tx of transactions) {
             const description = (tx.description ?? '').toLowerCase();
@@ -244,8 +237,7 @@ export function useInMemoryTransactionSource({
             }
         }
 
-        setSearchMatchedIds(matchedIds);
-        setIsSearching(false);
+        return matchedIds;
     }, [filters.searchText, transactions]);
 
     const filteredTransactions = useMemo(
@@ -297,7 +289,7 @@ export function useInMemoryTransactionSource({
         rows: displayedTransactions,
         heldRows: transactions,
         setRows: setTransactions,
-        isLoading: isLoading || isSearching,
+        isLoading: providedTransactions === undefined,
         filters,
         onFiltersChange: setFilters,
         sorting,

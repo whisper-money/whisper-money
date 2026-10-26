@@ -121,7 +121,7 @@ export default function Transactions({
         appliedFilters,
     });
     const { rows: allTransactions, filters, sorting, pagination } = source;
-    const { hasMore, loadMore } = pagination;
+    const { hasMore, loadMore, loadsOnScroll } = pagination;
     const refreshTransactions = source.reload;
 
     // Frozen at mount so per-row "new" marks stay stable for the whole visit.
@@ -326,7 +326,7 @@ export default function Transactions({
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const el = loadMoreRef.current;
-        if (!el || !hasMore) {
+        if (!el || !hasMore || !loadsOnScroll) {
             return;
         }
 
@@ -341,7 +341,7 @@ export default function Transactions({
 
         observer.observe(el);
         return () => observer.disconnect();
-    }, [hasMore, loadMore]);
+    }, [hasMore, loadMore, loadsOnScroll]);
 
     const columns = useMemo(
         () =>
@@ -376,7 +376,7 @@ export default function Transactions({
     const table = useReactTable({
         data: allTransactions,
         columns,
-        manualSorting: true,
+        manualSorting: source.manualSorting,
         onSortingChange: source.onSortingChange,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),

@@ -78,6 +78,27 @@ describe('useInMemoryTransactionSource', () => {
         expect(result.current.pagination.hasMore).toBe(false);
     });
 
+    it('holds the rows from the first render, so it never draws empty first', () => {
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({ transactions: ROWS }),
+        );
+
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.heldRows).toHaveLength(3);
+    });
+
+    it('takes the rows the page hands over next', () => {
+        const { result, rerender } = renderHook(
+            ({ transactions }) =>
+                useInMemoryTransactionSource({ transactions }),
+            { initialProps: { transactions: ROWS } },
+        );
+
+        rerender({ transactions: [transaction('z')] });
+
+        expect(result.current.heldRows.map((row) => row.id)).toEqual(['z']);
+    });
+
     it('keeps an account page to its account', async () => {
         const { result } = renderHook(() =>
             useInMemoryTransactionSource({

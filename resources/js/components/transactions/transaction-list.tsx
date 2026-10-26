@@ -184,6 +184,7 @@ export function TransactionList({
     const table = useReactTable({
         data: source.rows,
         columns,
+        manualSorting: source.manualSorting,
         onSortingChange: source.onSortingChange,
         onColumnFiltersChange: setColumnFilters,
         getRowId: (row) => row.id.toString(),
