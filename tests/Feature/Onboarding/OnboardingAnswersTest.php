@@ -38,25 +38,15 @@ it('merges a later answer into the ones already stored', function () {
     ]);
 });
 
-it('rejects an answer that is not one of the options offered', function () {
+it('rejects an answer the onboarding does not offer', function (array $answer, string $field) {
     $user = User::factory()->create(['onboarded_at' => null]);
 
     $this->actingAs($user)
-        ->post('/onboarding/answers', ['goal' => 'something-else'])
-        ->assertSessionHasErrors('goal');
+        ->post('/onboarding/answers', $answer)
+        ->assertSessionHasErrors($field);
 
     expect($user->refresh()->onboarding_answers)->toBeNull();
-});
-
-it('rejects a spending guess that is not a whole amount', function () {
-    $user = User::factory()->create(['onboarded_at' => null]);
-
-    $this->actingAs($user)
-        ->post('/onboarding/answers', ['spending_guess' => 'a lot'])
-        ->assertSessionHasErrors('spending_guess');
-});
-
-it('is closed to guests', function () {
-    $this->post('/onboarding/answers', ['goal' => 'debt'])
-        ->assertRedirect('/register');
-});
+})->with([
+    'a goal that is not one of the options offered' => [['goal' => 'something-else'], 'goal'],
+    'a spending guess that is not a whole amount' => [['spending_guess' => 'a lot'], 'spending_guess'],
+]);

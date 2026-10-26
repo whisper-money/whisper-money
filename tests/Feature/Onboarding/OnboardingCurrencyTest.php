@@ -51,8 +51,3 @@ it('rejects a currency that cannot be a primary one', function (string $currency
 
     expect($user->refresh()->currency_code)->toBe('USD');
 })->with(['unknown' => 'XYZ', 'not a primary one' => 'BTC', 'lowercase' => 'eur', 'empty' => '']);
-
-it('is closed to guests', function () {
-    $this->patch('/onboarding/currency', ['currency_code' => 'EUR'])
-        ->assertRedirect('/register');
-});

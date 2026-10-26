@@ -83,29 +83,20 @@ it('does not return transactions belonging to other users', function () {
         );
 });
 
-it('lands directly on the connections step when ?step=create-account is requested', function () {
+it('opens on the step the query asks for, if it is a real one', function (string $step, ?string $initialStep) {
     $user = User::factory()->create(['onboarded_at' => null]);
 
-    $response = $this->actingAs($user)->get('/onboarding?step=create-account');
+    $response = $this->actingAs($user)->get("/onboarding?step={$step}");
 
     $response->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('onboarding/index')
-            ->where('initialStep', 'create-account')
+            ->where('initialStep', $initialStep)
         );
-});
-
-it('ignores an unknown step and falls back to the default flow', function () {
-    $user = User::factory()->create(['onboarded_at' => null]);
-
-    $response = $this->actingAs($user)->get('/onboarding?step=not-a-real-step');
-
-    $response->assertSuccessful()
-        ->assertInertia(fn ($page) => $page
-            ->component('onboarding/index')
-            ->where('initialStep', null)
-        );
-});
+})->with([
+    'lands directly on the connections step for create-account' => ['create-account', 'create-account'],
+    'ignores an unknown step and falls back to the default flow' => ['not-a-real-step', null],
+]);
 
 // The batch is queued when the user leaves the AI suggestions step, so by the
 // time they finish onboarding it has been running for two or three steps.
