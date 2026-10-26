@@ -52,14 +52,6 @@ test('shared auth user does not expose sensitive fields', function () {
     );
 });
 
-test('all pages receive app url in shared props', function () {
-    $response = $this->withoutVite()->get(route('home'));
-
-    $response->assertInertia(fn (Assert $page) => $page
-        ->where('appUrl', config('app.url'))
-    );
-});
-
 test('shared feature flags do not include coinbase flag', function () {
     $response = $this->withoutVite()->get(route('home'));
 

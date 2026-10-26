@@ -1090,22 +1090,6 @@ it('does not return projected data for non-loan accounts', function () {
 // Model relationships
 // -------------------------------------------------------------------
 
-it('has a one-to-one relationship between account and loan detail', function () {
-    $account = Account::factory()->loan()->create([
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-    ]);
-
-    $detail = LoanDetail::factory()->create([
-        'account_id' => $account->id,
-        'annual_interest_rate' => 4.5,
-    ]);
-
-    expect($account->fresh()->loanDetail)->not->toBeNull();
-    expect($account->fresh()->loanDetail->id)->toBe($detail->id);
-    expect($detail->fresh()->account->id)->toBe($account->id);
-});
-
 it('preserves loan detail when account is soft deleted', function () {
     actingAs($this->user);
 

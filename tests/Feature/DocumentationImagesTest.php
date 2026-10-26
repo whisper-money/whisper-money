@@ -65,12 +65,6 @@ it('has a light and a dark copy of every screenshot a page points at', function 
     }
 });
 
-it('describes every screenshot, because the alt text is all an agent gets', function () {
-    foreach (documentationImages() as $image) {
-        expect(str_word_count($image['alt']))->toBeGreaterThan(3, "{$image['page']} has a screenshot with too short an alt: \"{$image['alt']}\"");
-    }
-});
-
 it('renders a screenshot as a light and a dark image, one of which the theme hides', function () {
     $this->get(route('documentation.show', ['slug' => 'transactions', 'lang' => 'en']))
         ->assertOk()

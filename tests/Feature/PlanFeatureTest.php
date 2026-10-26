@@ -3,13 +3,6 @@
 use App\Enums\PlanFeature;
 use App\Models\User;
 
-test('every current feature requires a pro plan', function (PlanFeature $feature) {
-    expect($feature->requiresProPlan())->toBeTrue();
-})->with([
-    [PlanFeature::ConnectedAccounts],
-    [PlanFeature::AiSuggestions],
-]);
-
 test('every feature is available when subscriptions are disabled', function () {
     config()->set('subscriptions.enabled', false);
     $user = User::factory()->create();

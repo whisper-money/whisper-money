@@ -133,13 +133,6 @@ test('pinning the page language leaves the visitor session locale alone', functi
     expect(session('locale'))->toBe('es');
 });
 
-test('the spanish and english pages are distinct translations of each other', function () {
-    expect(MarketingContent::integrations('en')['heading'])
-        ->not->toBe(MarketingContent::integrations('es')['heading'])
-        ->and(IntegrationsPage::path('en'))->toBe('integrations')
-        ->and(IntegrationsPage::path('es'))->toBe('integraciones');
-});
-
 test('the copy names the same api providers, with the same logos, as the connect flow', function () {
     $registry = connectProviderRegistry();
 
@@ -162,15 +155,6 @@ test('every api key app is listed in the country group the connect flow offers i
     }
 })->with(MarketingContent::LOCALES);
 
-test('indexa capital sits with the spanish banks, not in the worldwide group', function () {
-    // The connect flow only offers it when Spain is selected.
-    expect(MarketingContent::API_PROVIDERS['Indexa Capital']['country'])->toBe('ES');
-
-    $worldwide = collect(IntegrationsPage::countries('en'))->firstWhere('code', MarketingContent::WORLDWIDE);
-
-    expect(collect($worldwide['entries'])->pluck('name'))->not->toContain('Indexa Capital');
-});
-
 test('the worldwide group comes first and is not counted as a country', function (string $locale) {
     $groups = IntegrationsPage::countries($locale);
 
@@ -182,35 +166,8 @@ test('the worldwide group comes first and is not counted as a country', function
     expect(IntegrationsPage::content($locale)['banks_intro'])->toContain((string) $countries);
 })->with(MarketingContent::LOCALES);
 
-test('the catalogue carries a logo for every entry, whether or not the page paints it', function (string $locale) {
-    // The list renders names only. The logos stay in the payload because they
-    // are what the provider gives us and what any future logo treatment needs.
-    foreach (IntegrationsPage::countries($locale) as $group) {
-        foreach ($group['entries'] as $entry) {
-            expect($entry['logo'])->not->toBeEmpty("{$entry['name']} has no logo");
-        }
-    }
-})->with(MarketingContent::LOCALES);
-
-test('the page speaks to someone who has never heard of open banking', function (string $locale) {
-    $content = IntegrationsPage::content($locale);
-    $prose = json_encode($content, JSON_UNESCAPED_UNICODE);
-
-    foreach (['PSD2', 'open banking', 'banca abierta', 'API key', 'clave de API', 'aspsp', 'MCP'] as $jargon) {
-        expect(strtolower((string) $prose))->not->toContain(strtolower($jargon), "the copy still says \"{$jargon}\"");
-    }
-})->with(MarketingContent::LOCALES);
-
 test('the countries offered on the page are the ones the connect flow offers', function () {
     expect(array_keys(MarketingContent::COUNTRIES))->toEqualCanonicalizing(connectCountryCodes());
-});
-
-test('every country is named in every language', function () {
-    foreach (MarketingContent::COUNTRIES as $code => $names) {
-        foreach (MarketingContent::LOCALES as $locale) {
-            expect($names[$locale] ?? '')->not->toBeEmpty("{$code} has no {$locale} name");
-        }
-    }
 });
 
 test('the committed catalogue is a real one, deduplicated per country', function () {

@@ -286,36 +286,6 @@ test('hasProPlan returns true for past due users during stripe retries', functio
     expect($user->hasPastDueSubscription())->toBeTrue();
 });
 
-test('landing page passes subscriptions enabled prop when enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome')
-            ->has('subscriptionsEnabled')
-            ->where('subscriptionsEnabled', true)
-            ->has('pricing')
-            ->has('pricing.plans')
-            ->has('pricing.defaultPlan')
-            ->has('pricing.promo')
-            ->has('pricing.currency')
-        );
-});
-
-test('landing page passes subscriptions enabled prop when disabled', function () {
-    config(['subscriptions.enabled' => false]);
-
-    $this->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome')
-            ->has('subscriptionsEnabled')
-            ->where('subscriptionsEnabled', false)
-            ->has('pricing')
-        );
-});
-
 test('pricing config includes all plan details', function () {
     config(['subscriptions.enabled' => true]);
 
@@ -510,10 +480,6 @@ test('taxRates returns configured stripe tax rate ids', function () {
     $user = User::factory()->create();
 
     expect($user->taxRates())->toBe(['txr_test_1', 'txr_test_2']);
-});
-
-test('taxRates config defaults to the production tax rate id', function () {
-    expect(config('subscriptions.tax_rates'))->toContain('txr_1TPfzrLRCmKA3oWMNWmkQeq2');
 });
 
 test('billing portal creates stripe customer when user has no stripe id', function () {

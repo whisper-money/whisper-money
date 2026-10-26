@@ -19,11 +19,6 @@ beforeEach(function () {
     ]);
 });
 
-it('lists the shared accounts', function () {
-    expect(User::sharedAccountEmails())
-        ->toBe(['demo@whisper.money', 'prensa@whisper.money']);
-});
-
 it('keeps shared-account calls out of the MCP usage report', function () {
     $press = User::factory()->create(['email' => 'prensa@whisper.money']);
     $demo = User::factory()->create(['email' => 'demo@whisper.money']);

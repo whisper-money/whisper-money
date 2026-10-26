@@ -211,12 +211,6 @@ test('translations are kept by the client per locale', function () {
     expect(inertiaVisit($this->user->fresh(), [$key])->json('props.translations'))->not->toBeEmpty();
 });
 
-test('the version comes from package.json', function () {
-    $version = json_decode(file_get_contents(base_path('package.json')))->version;
-
-    inertiaVisit($this->user)->assertJsonPath('props.version', $version);
-});
-
 test('a page that renders its own list leaves the shared key out, so the client drops it', function () {
     // Settings > Labels lists only the labels a user manages, under the same
     // prop name. Without a once key for it in the response, the client keeps

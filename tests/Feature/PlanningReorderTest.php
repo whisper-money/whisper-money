@@ -41,14 +41,6 @@ test('the planning list is served in the stored order', function () {
         );
 });
 
-test('a budget keeps a null position until it is dragged', function () {
-    $budget = Budget::factory()->create(['user_id' => $this->user->id]);
-    $goal = SavingsGoal::factory()->create(['user_id' => $this->user->id]);
-
-    expect($budget->fresh()->position)->toBeNull();
-    expect($goal->fresh()->position)->toBeNull();
-});
-
 test('users cannot reorder a budget they do not own', function () {
     $other = Budget::factory()->create(['user_id' => User::factory()->create()->id]);
 

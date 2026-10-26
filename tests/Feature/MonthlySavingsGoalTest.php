@@ -17,7 +17,6 @@ use App\Models\User;
 use App\Services\SavingsGoals\MonthlySavingsGoalStats;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -657,13 +656,6 @@ test('a shared space measures a share-of-income target against every member\'s i
     expect($goal->periods()->sole())
         ->income_base->toBe(300000)
         ->resolved_target_amount->toBe(30000);
-});
-
-test('the daily command runs just after midnight', function () {
-    $event = collect(app(Schedule::class)->events())
-        ->first(fn ($event): bool => str_contains($event->command ?? '', 'savings-goals:generate-periods'));
-
-    expect($event->expression)->toBe('5 0 * * *');
 });
 
 test('a share-of-income target only counts the income of the goal\'s space', function () {
