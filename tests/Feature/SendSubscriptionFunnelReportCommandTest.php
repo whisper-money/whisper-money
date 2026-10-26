@@ -4,6 +4,8 @@ use App\Ai\Agents\ReportSummaryAgent;
 use App\Models\User;
 use App\Services\Stats\SubscriptionFunnelCollector;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -250,4 +252,11 @@ it('does not overwrite the comparison baseline on a --no-discord run', function 
     artisan('stats:subscription-funnel')->assertSuccessful();
 
     expect(Cache::get('report_summary_baseline:subscription-funnel'))->not->toBe(['weeks' => ['sentinel']]);
+});
+
+it('is no longer scheduled, so the weekly Discord post stops', function () {
+    $isScheduled = collect(app(Schedule::class)->events())
+        ->contains(fn (Event $event): bool => str_contains((string) $event->command, 'stats:subscription-funnel'));
+
+    expect($isScheduled)->toBeFalse();
 });
