@@ -6,8 +6,8 @@ use App\Models\User;
 use App\Models\UserMailLog;
 use App\Support\PriceTiers;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\View;
 use Stripe\Collection as StripeCollection;
 use Stripe\Service\PriceService;
 use Stripe\StripeClient;
@@ -53,35 +53,9 @@ function cacheHighTierPriceIds(): array
 beforeEach(function () {
     Queue::fake();
 
-    $viewPath = resource_path('views/mail/updates');
-    if (! File::exists($viewPath)) {
-        File::makeDirectory($viewPath, 0755, true);
-    }
-
-    $testViewContent = <<<'BLADE'
-<x-mail::message>
-# Test Update
-
-Hello {{ $user->name }},
-
-This is a test update email.
-
-Thanks,
-Victor
-</x-mail::message>
-BLADE;
-
-    File::put(
-        resource_path('views/mail/updates/test-update.blade.php'),
-        $testViewContent
-    );
-});
-
-afterEach(function () {
-    $testViewPath = resource_path('views/mail/updates/test-update.blade.php');
-    if (File::exists($testViewPath)) {
-        File::delete($testViewPath);
-    }
+    // The test-update template lives under tests/, so nothing is written into
+    // resources/views while the suite runs.
+    View::addLocation(base_path('tests/Fixtures/views'));
 });
 
 test('command dispatches jobs for all users', function () {
@@ -94,6 +68,7 @@ test('command dispatches jobs for all users', function () {
     ])->assertSuccessful();
 
     Queue::assertPushed(SendUpdateEmailJob::class, 3);
+    Queue::assertPushedOn('emails', SendUpdateEmailJob::class);
 
     foreach ($users as $user) {
         Queue::assertPushed(SendUpdateEmailJob::class, function ($job) use ($user) {
@@ -174,18 +149,6 @@ test('command uses custom subject when provided', function () {
     Queue::assertPushed(SendUpdateEmailJob::class, function ($job) {
         return $job->subject === 'Custom Subject Here';
     });
-});
-
-test('job is dispatched to emails queue', function () {
-    User::factory()->create();
-
-    artisan('email:update', [
-        'view' => 'test-update',
-        'identifier' => 'test-2026',
-        '--force' => true,
-    ])->assertSuccessful();
-
-    Queue::assertPushedOn('emails', SendUpdateEmailJob::class);
 });
 
 test('command handles empty user database gracefully', function () {

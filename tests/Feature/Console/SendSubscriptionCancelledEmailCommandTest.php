@@ -19,6 +19,7 @@ test('command dispatches job for valid user email', function () {
     Queue::assertPushed(SendSubscriptionCancelledEmailJob::class, function ($job) use ($user) {
         return $job->user->id === $user->id;
     });
+    Queue::assertPushedOn('emails', SendSubscriptionCancelledEmailJob::class);
 });
 
 test('command dispatches jobs for multiple user emails', function () {
@@ -59,13 +60,4 @@ test('command handles mixed valid and invalid emails', function () {
 
     Queue::assertPushed(SendSubscriptionCancelledEmailJob::class, fn ($job) => $job->user->id === $user->id);
     Queue::assertCount(1);
-});
-
-test('job is dispatched to emails queue', function () {
-    $user = User::factory()->create();
-
-    artisan('email:subscription-cancelled', ['emails' => $user->email])
-        ->assertSuccessful();
-
-    Queue::assertPushedOn('emails', SendSubscriptionCancelledEmailJob::class);
 });

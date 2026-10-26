@@ -3,27 +3,41 @@
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 use function Pest\Laravel\artisan;
+
+/*
+ * Every test reads from a throwaway directory passed through --path, so the
+ * suite never writes to or deletes the developer's real .local directory.
+ */
+beforeEach(function () {
+    $this->localPath = sys_get_temp_dir().'/setup-main-user-'.Str::uuid();
+    File::ensureDirectoryExists($this->localPath);
+});
+
+afterEach(function () {
+    File::deleteDirectory($this->localPath);
+});
 
 it('imports data for user by uuid', function () {
     $user = User::factory()->create();
 
-    artisan('user:setup-main', ['user' => $user->id])
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
         ->assertSuccessful();
 });
 
 it('imports data for user by email', function () {
     $user = User::factory()->create(['email' => 'test@example.com']);
 
-    artisan('user:setup-main', ['user' => 'test@example.com'])
+    artisan('user:setup-main', ['user' => 'test@example.com', '--path' => $this->localPath])
         ->assertSuccessful();
 });
 
 it('asks for user identifier when not provided as argument', function () {
     $user = User::factory()->create(['email' => 'test@example.com']);
 
-    artisan('user:setup-main')
+    artisan('user:setup-main', ['--path' => $this->localPath])
         ->expectsQuestion('Enter user UUID or email', 'test@example.com')
         ->assertSuccessful();
 });
@@ -42,8 +56,6 @@ it('fails when user is not found by email', function () {
 
 it('imports categories from json file', function () {
     $user = User::factory()->create();
-    $localPath = base_path('.local');
-    File::ensureDirectoryExists($localPath);
 
     $categoriesData = [
         [
@@ -62,23 +74,19 @@ it('imports categories from json file', function () {
         ],
     ];
 
-    File::put("{$localPath}/categories.json", json_encode($categoriesData));
+    File::put("{$this->localPath}/categories.json", json_encode($categoriesData));
 
-    artisan('user:setup-main', ['user' => $user->id])
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
         ->assertSuccessful();
 
     $user->refresh();
 
     expect($user->categories)->toHaveCount(2)
         ->and($user->categories->pluck('name')->toArray())->toContain('Food', 'Transportation');
-
-    File::delete("{$localPath}/categories.json");
 });
 
 it('imports automation rules from json file', function () {
     $user = User::factory()->create();
-    $localPath = base_path('.local');
-    File::ensureDirectoryExists($localPath);
 
     $categoriesData = [
         [
@@ -104,10 +112,10 @@ it('imports automation rules from json file', function () {
         ],
     ];
 
-    File::put("{$localPath}/categories.json", json_encode($categoriesData));
-    File::put("{$localPath}/automated_rules.json", json_encode($rulesData));
+    File::put("{$this->localPath}/categories.json", json_encode($categoriesData));
+    File::put("{$this->localPath}/automated_rules.json", json_encode($rulesData));
 
-    artisan('user:setup-main', ['user' => $user->id])
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
         ->assertSuccessful();
 
     $user->refresh();
@@ -115,15 +123,10 @@ it('imports automation rules from json file', function () {
     expect($user->automationRules)->toHaveCount(1)
         ->and($user->automationRules->first()->title)->toBe('Groceries Rule')
         ->and($user->automationRules->first()->category->name)->toBe('Groceries');
-
-    File::delete("{$localPath}/categories.json");
-    File::delete("{$localPath}/automated_rules.json");
 });
 
 it('skips automation rules when category is not found', function () {
     $user = User::factory()->create();
-    $localPath = base_path('.local');
-    File::ensureDirectoryExists($localPath);
 
     $rulesData = [
         [
@@ -139,38 +142,41 @@ it('skips automation rules when category is not found', function () {
         ],
     ];
 
-    File::put("{$localPath}/automated_rules.json", json_encode($rulesData));
+    File::put("{$this->localPath}/automated_rules.json", json_encode($rulesData));
 
-    artisan('user:setup-main', ['user' => $user->id])
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
         ->assertSuccessful();
 
     $user->refresh();
 
     expect($user->automationRules)->toHaveCount(0);
-
-    File::delete("{$localPath}/automated_rules.json");
 });
 
 it('handles missing local directory gracefully', function () {
     $user = User::factory()->create();
-    $localPath = base_path('.local');
+    $missingPath = "{$this->localPath}/missing";
 
-    if (File::isDirectory($localPath)) {
-        File::deleteDirectory($localPath);
-    }
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $missingPath])
+        ->expectsOutputToContain("Directory not found: {$missingPath}")
+        ->assertSuccessful();
+});
+
+it('reads the .local directory of the project when no path is given', function () {
+    $user = User::factory()->create();
+
+    File::partialMock()
+        ->shouldReceive('isDirectory')
+        ->once()
+        ->with(base_path('.local'))
+        ->andReturnFalse();
 
     artisan('user:setup-main', ['user' => $user->id])
         ->assertSuccessful();
-
-    File::ensureDirectoryExists($localPath);
 });
 
 it('imports data for existing user with existing categories', function () {
     $user = User::factory()->create();
     Category::factory()->create(['user_id' => $user->id, 'name' => 'Existing Category']);
-
-    $localPath = base_path('.local');
-    File::ensureDirectoryExists($localPath);
 
     $categoriesData = [
         [
@@ -182,15 +188,13 @@ it('imports data for existing user with existing categories', function () {
         ],
     ];
 
-    File::put("{$localPath}/categories.json", json_encode($categoriesData));
+    File::put("{$this->localPath}/categories.json", json_encode($categoriesData));
 
-    artisan('user:setup-main', ['user' => $user->id])
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
         ->assertSuccessful();
 
     $user->refresh();
 
     expect($user->categories)->toHaveCount(2)
         ->and($user->categories->pluck('name')->toArray())->toContain('Existing Category', 'New Category');
-
-    File::delete("{$localPath}/categories.json");
 });

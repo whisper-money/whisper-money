@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\File;
 
 class SetupMainUser extends Command
 {
-    protected $signature = 'user:setup-main {user? : The UUID or email of the user}';
+    protected $signature = 'user:setup-main
+                            {user? : The UUID or email of the user}
+                            {--path= : Directory to read the JSON files from (default: .local in the project root)}';
 
     protected $description = 'Import user data from JSON files in the .local directory';
 
@@ -32,10 +34,10 @@ class SetupMainUser extends Command
         $this->info("Found user: {$user->name} ({$user->email})");
         $this->newLine();
 
-        $localPath = base_path('.local');
+        $localPath = $this->option('path') ?? base_path('.local');
 
         if (! File::isDirectory($localPath)) {
-            $this->warn("Directory .local not found at {$localPath}");
+            $this->warn("Directory not found: {$localPath}");
 
             return self::SUCCESS;
         }
@@ -43,7 +45,7 @@ class SetupMainUser extends Command
         $jsonFiles = File::glob("{$localPath}/*.json");
 
         if (empty($jsonFiles)) {
-            $this->warn('No JSON files found in .local directory');
+            $this->warn("No JSON files found in {$localPath}");
 
             return self::SUCCESS;
         }
