@@ -119,10 +119,8 @@ export function TransactionDeleteDialogs({
                     onOpenChange={(open) => !open && dialog.onClose()}
                 >
                     <DialogContent>
-                        <TypedBulkDeleteConfirmation
-                            dialog={dialog}
-                            isOpen={isOpen}
-                        />
+                        {/* Unmounted on close, so the typed text starts empty. */}
+                        <TypedBulkDeleteConfirmation dialog={dialog} />
                     </DialogContent>
                 </Dialog>
             )}
@@ -132,22 +130,10 @@ export function TransactionDeleteDialogs({
 
 function TypedBulkDeleteConfirmation({
     dialog,
-    isOpen,
 }: {
     dialog: TransactionDeleteDialogState;
-    isOpen: boolean;
 }) {
     const [typed, setTyped] = useState('');
-    const [wasOpen, setWasOpen] = useState(isOpen);
-
-    // Start empty the next time the dialog opens.
-    if (isOpen !== wasOpen) {
-        setWasOpen(isOpen);
-
-        if (!isOpen) {
-            setTyped('');
-        }
-    }
     const confirmationText = getBulkDeleteConfirmationText(
         dialog.selectedCount,
     );

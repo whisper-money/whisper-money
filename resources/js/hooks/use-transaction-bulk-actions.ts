@@ -80,7 +80,7 @@ export function useTransactionBulkActions({
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-    const [isReEvaluating, setIsReEvaluating] = useState(false);
+    const [isReEvaluatingBulk, setIsReEvaluatingBulk] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
 
     const selectedIds = useMemo(
@@ -239,21 +239,21 @@ export function useTransactionBulkActions({
     async function applyBulkEdit(
         changes: { category_id: number | null } | { label_ids: string[] },
         applyLocally: (previous: ServerTransaction[]) => ServerTransaction[],
-        failureMessage: string,
+        failure: { log: string; toast: string },
     ): Promise<boolean> {
         if (selectedIds.length === 0 && !reachesAllMatching) {
             return false;
         }
 
         setIsBulkUpdating(true);
+        let progressToastId: string | number | undefined;
         try {
             if (reachesAllMatching) {
-                const toastId = toast.loading(__('Updating transactions...'));
+                progressToastId = toast.loading(__('Updating transactions...'));
                 const response = await axios.patch<{ count: number }>(
                     bulkUpdateTransactions.url(),
                     { filters: matchingFilters, ...changes },
                 );
-                toast.dismiss(toastId);
                 toast.success(
                     __(`Updated :count transactions`, {
                         count: response.data.count,
@@ -280,13 +280,18 @@ export function useTransactionBulkActions({
 
             return true;
         } catch (error) {
-            console.error(failureMessage, error);
+            console.error(failure.log, error);
             if (announceOutcome) {
-                toast.error(__(failureMessage));
+                toast.error(failure.toast);
             }
 
             return false;
         } finally {
+            // Never leave "Updating transactions..." up after a failure. No
+            // id would dismiss every toast, the success one included.
+            if (progressToastId !== undefined) {
+                toast.dismiss(progressToastId);
+            }
             setIsBulkUpdating(false);
         }
     }
@@ -310,7 +315,10 @@ export function useTransactionBulkActions({
                           }
                         : transaction,
                 ),
-            'Failed to update transactions',
+            {
+                log: 'Failed to update transactions:',
+                toast: __('Failed to update transactions'),
+            },
         );
 
         if (updated && !reachesAllMatching) {
@@ -323,7 +331,10 @@ export function useTransactionBulkActions({
             { label_ids: labelIds },
             (previous) =>
                 applyBulkLabels(previous, selectedIds, labelIds, labels),
-            'Failed to update transactions with labels',
+            {
+                log: 'Failed to update transactions with labels:',
+                toast: __('Failed to update transactions with labels'),
+            },
         );
     }
 
@@ -334,7 +345,7 @@ export function useTransactionBulkActions({
             return;
         }
 
-        setIsReEvaluating(true);
+        setIsReEvaluatingBulk(true);
 
         try {
             const outcome = await reEvaluateTransactionRules(
@@ -353,7 +364,7 @@ export function useTransactionBulkActions({
                 onServerChanged?.();
             }
         } finally {
-            setIsReEvaluating(false);
+            setIsReEvaluatingBulk(false);
         }
     }
 
@@ -371,7 +382,8 @@ export function useTransactionBulkActions({
             onLabelsChange: handleBulkLabelsChange,
             onDelete: handleBulkDeleteClick,
             onReEvaluateRules: handleBulkReEvaluateRules,
-            isUpdating: isBulkUpdating || isReEvaluating || isReEvaluatingRow,
+            isUpdating:
+                isBulkUpdating || isReEvaluatingBulk || isReEvaluatingRow,
         },
         deleteDialog: {
             transaction: deleteTransaction,

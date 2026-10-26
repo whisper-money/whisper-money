@@ -179,6 +179,7 @@ describe('useTransactionBulkActions', () => {
         await act(() => result.current.bulk.barProps.onLabelsChange(['label']));
 
         expect(toastMock.success).toHaveBeenCalledOnce();
+        expect(toastMock.dismiss).not.toHaveBeenCalled();
     });
 
     it('sends the filters instead of ids while reaching every matching row', async () => {
@@ -198,6 +199,25 @@ describe('useTransactionBulkActions', () => {
         expect(sync.updateMany).not.toHaveBeenCalled();
         expect(onServerChanged).toHaveBeenCalledOnce();
         expect(result.current.bulk.barProps.isSelectingAll).toBe(false);
+    });
+
+    it('clears the progress toast when the server rejects a bulk edit', async () => {
+        toastMock.loading.mockReturnValue('progress');
+        patch.mockRejectedValue(new Error('500'));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { result } = renderBulk([transaction('a')], ['a'], {
+            matchingFilters: {},
+            announceOutcome: true,
+        });
+
+        act(() => result.current.bulk.barProps.onSelectAll?.());
+        await act(() => result.current.bulk.barProps.onCategoryChange(null));
+
+        expect(toastMock.dismiss).toHaveBeenCalledWith('progress');
+        expect(toastMock.error).toHaveBeenCalledWith(
+            'Failed to update transactions',
+        );
+        expect(result.current.bulk.barProps.isSelectingAll).toBe(true);
     });
 
     it('re-evaluates by filters while reaching every matching row', async () => {
