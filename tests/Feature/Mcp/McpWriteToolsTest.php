@@ -340,7 +340,7 @@ it('splits a transaction into parts and keeps the original out of every list', f
         ->and(Transaction::withTrashed()->find($original->id)->trashed())->toBeTrue();
 });
 
-it('refuses parts that do not add up to the original or move money the other way', function (array $splits) {
+it('refuses an invalid split', function (array $splits) {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $original = Transaction::factory()->create([

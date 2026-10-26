@@ -37,7 +37,7 @@ it('creates a token for the scope picked and flashes the secret once', function 
     expect($token->abilities)->toBe($abilities);
 })->with([
     'read-only' => ['Claude Desktop', 'read', ['mcp:read']],
-    'read & write, carrying the mcp:write ability' => ['Claude Code', 'read_write', ['mcp:read', 'mcp:write']],
+    'read & write' => ['Claude Code', 'read_write', ['mcp:read', 'mcp:write']],
 ]);
 
 it('rejects a token without a name or a valid scope', function (array $payload, string $field) {

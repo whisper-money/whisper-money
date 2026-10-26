@@ -165,29 +165,29 @@ it('accepts bitcoin when creating account', function () {
     ]);
 });
 
-it('rejects an invalid account on creation', function (Closure $payload, array $errors) {
+it('rejects an invalid account on creation', function (array $payload, array $errors) {
     actingAs($this->user);
 
-    $response = $this->post(route('accounts.store'), $payload($this->bank));
+    $response = $this->post(route('accounts.store'), $payload);
 
     $response->assertSessionHasErrors($errors);
 })->with([
-    'missing required fields' => [fn (Bank $bank) => [], ['name', 'currency_code', 'type']],
-    'currency outside the allowed list' => [fn (Bank $bank) => [
+    'missing required fields' => [[], ['name', 'currency_code', 'type']],
+    'currency outside the allowed list' => [fn () => [
         'name' => 'My Account',
-        'bank_id' => $bank->id,
+        'bank_id' => $this->bank->id,
         'currency_code' => 'INVALID',
         'type' => AccountType::Checking->value,
     ], ['currency_code']],
-    'bitcoin as a first account' => [fn (Bank $bank) => [
+    'bitcoin as a first account' => [fn () => [
         'name' => 'Bitcoin Account',
-        'bank_id' => $bank->id,
+        'bank_id' => $this->bank->id,
         'currency_code' => 'BTC',
         'type' => AccountType::Investment->value,
     ], ['currency_code']],
-    'type that is not an AccountType' => [fn (Bank $bank) => [
+    'type that is not an AccountType' => [fn () => [
         'name' => 'My Account',
-        'bank_id' => $bank->id,
+        'bank_id' => $this->bank->id,
         'currency_code' => 'USD',
         'type' => 'invalid_type',
     ], ['type']],
@@ -284,7 +284,7 @@ it('deletes all transactions when deleting account', function () {
     expect(Transaction::find($transaction2->id))->toBeNull();
 });
 
-it('keeps the currency and bank of a connected account', function (Closure $changes, string $field, Closure $kept) {
+it('keeps the currency and bank of a connected account', function (array $changes, string $field) {
     actingAs($this->user);
 
     $account = Account::factory()->connected()->create([
@@ -299,18 +299,18 @@ it('keeps the currency and bank of a connected account', function (Closure $chan
         'bank_id' => $this->bank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Checking->value,
-        ...$changes(),
+        ...$changes,
     ]);
 
     $response->assertSessionHasErrors([$field]);
     assertDatabaseHas('accounts', [
         'id' => $account->id,
-        ...$kept($this->bank),
+        $field => $account->{$field},
     ]);
 })->with([
-    'another currency' => [fn () => ['currency_code' => 'USD'], 'currency_code', fn (Bank $bank) => ['currency_code' => 'EUR']],
-    'another bank' => [fn () => ['bank_id' => Bank::factory()->create()->id], 'bank_id', fn (Bank $bank) => ['bank_id' => $bank->id]],
-    'a cleared bank' => [fn () => ['bank_id' => null], 'bank_id', fn (Bank $bank) => ['bank_id' => $bank->id]],
+    'another currency' => [['currency_code' => 'USD'], 'currency_code'],
+    'another bank' => [fn () => ['bank_id' => Bank::factory()->create()->id], 'bank_id'],
+    'a cleared bank' => [['bank_id' => null], 'bank_id'],
 ]);
 
 it('still updates a connected account when the currency is left alone', function () {

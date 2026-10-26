@@ -160,7 +160,7 @@ test('user with a subscription Stripe can still collect on cannot delete their a
     expect(User::query()->find($user->id))->not->toBeNull();
 })->with([
     'active' => ['active', []],
-    'on a trial' => ['trialing', ['trial_ends_at' => now()->addDays(7)]],
+    'on a trial' => ['trialing', fn () => ['trial_ends_at' => now()->addDays(7)]],
     'past due' => ['past_due', []],
     'unpaid' => ['unpaid', []],
     'incomplete' => ['incomplete', []],

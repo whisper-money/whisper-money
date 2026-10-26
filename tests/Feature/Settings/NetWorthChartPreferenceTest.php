@@ -65,11 +65,11 @@ test('the preference defaults to off when no setting exists', function (string $
 test('the preference is shared via inertia', function (string $routeName, string $field, string $prop) {
     $user = User::factory()->create();
     UserSetting::factory()->for($user)->create([
-        $field => false,
+        $field => true,
     ]);
 
     $response = $this->actingAs($user)->get(route('appearance.edit'));
 
     $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where($prop, false));
+    $response->assertInertia(fn ($page) => $page->where($prop, true));
 })->with('net worth chart preferences');
