@@ -198,7 +198,6 @@ export function useTransactionRowEditing({
         unsplitTransaction,
         setUnsplitTransaction,
         isReEvaluating,
-        setIsReEvaluating,
         automateDialogOpen,
         setAutomateDialogOpen,
         automateCandidate,

@@ -582,6 +582,7 @@
     "Are you overspending? Know exactly where you stand.": "Dépensez-vous plus ? Sachez exactement où vous en êtes.",
     "Are you sure you want to delete": "Etes-vous sûr de vouloir supprimer",
     "Are you sure you want to delete \"": "Etes-vous sûr de vouloir supprimer \"",
+    "Are you sure you want to delete :count transactions? This action cannot be undone.": "Êtes-vous sûr de vouloir supprimer :count transactions ? Cette action ne peut pas être annulée.",
     "Are you sure you want to delete this balance record? This action cannot be undone.": "Êtes-vous sûr de vouloir supprimer cet enregistrement de solde ? Cette action ne peut pas être annulée.",
     "Are you sure you want to delete this owed amount record? This action cannot be undone.": "Etes-vous sûr de vouloir supprimer cet enregistrement de montant dû ? Cette action ne peut pas être annulée.",
     "Are you sure you want to delete this transaction? This action cannot be undone.": "Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action ne peut pas être annulée.",
