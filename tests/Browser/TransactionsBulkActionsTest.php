@@ -264,6 +264,10 @@ it('ticks a row on a long press and clears the selection from the menu on a phon
         ->assertSee('Delete 1')
         ->click('[role="menuitem"]:has-text("Select all visible")')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '8 selected')
+        // Radix keeps the menu mounted through its exit animation. Pressing ⋯
+        // before it is gone reopens the menu, and the leaving menu's
+        // outside-press handler then closes it again.
+        ->assertNotPresent('[role="menu"]')
         ->click('[data-testid="bulk-more-actions"]')
         ->click('[role="menuitem"]:has-text("Clear selection")')
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
