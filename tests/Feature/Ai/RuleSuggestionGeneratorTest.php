@@ -38,36 +38,26 @@ it('skips the model entirely when there are no groups', function () {
     expect($generator->generate([], []))->toBe([]);
 });
 
-it('prompts the configured provider and model, defaulting to gemini', function () {
-    RuleSuggestionAgent::fake([['suggestions' => []]]);
-
-    (new LaravelAiRuleSuggestionGenerator)->generate(
-        groups: [benchGroup('alpha')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
-    );
-
-    RuleSuggestionAgent::assertPrompted(
-        fn ($prompt): bool => (string) $prompt->provider === 'gemini'
-            && $prompt->model === (string) config('ai_suggestions.model'),
-    );
-});
-
-it('routes prompts through Ollama when the provider is configured for local AI', function () {
-    config()->set('ai_suggestions.provider', 'ollama');
-    config()->set('ai_suggestions.model', 'gemma3:12b');
+it('prompts the configured provider and model', function (array $config, string $provider, ?string $model) {
+    config()->set($config);
 
     RuleSuggestionAgent::fake([['suggestions' => []]]);
 
     (new LaravelAiRuleSuggestionGenerator)->generate(
         groups: [benchGroup('alpha')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     );
 
+    $model ??= (string) config('ai_suggestions.model');
+
     RuleSuggestionAgent::assertPrompted(
-        fn ($prompt): bool => (string) $prompt->provider === 'ollama'
-            && $prompt->model === 'gemma3:12b',
+        fn ($prompt): bool => (string) $prompt->provider === $provider
+            && $prompt->model === $model,
     );
-});
+})->with([
+    'defaulting to gemini and the configured model' => [[], 'gemini', null],
+    'Ollama, when configured for local AI' => [['ai_suggestions.provider' => 'ollama', 'ai_suggestions.model' => 'gemma3:12b'], 'ollama', 'gemma3:12b'],
+]);
 
 function genSuggestion(string $key): array
 {
@@ -86,6 +76,14 @@ function benchGroup(string $key): array
     return ['key' => $key, 'field' => 'creditor_name', 'count' => 3, 'avg_amount' => -10.0, 'direction' => 'outflow', 'samples' => [$key]];
 }
 
+/**
+ * @return list<array<string, mixed>>
+ */
+function benchCategoryOptions(): array
+{
+    return [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]];
+}
+
 it('splits groups into batches and merges their suggestions', function () {
     config()->set('ai_suggestions.group_batch_size', 1);
 
@@ -98,7 +96,7 @@ it('splits groups into batches and merges their suggestions', function () {
 
     $suggestions = $generator->generate(
         groups: [benchGroup('alpha'), benchGroup('beta')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     );
 
     expect($suggestions)->toHaveCount(2)
@@ -120,7 +118,7 @@ it('keeps successful batches when one batch fails after retry', function () {
 
     $suggestions = $generator->generate(
         groups: [benchGroup('boomtoken'), benchGroup('goodkey')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     );
 
     expect($suggestions)->toHaveCount(1)
@@ -144,7 +142,7 @@ it('does not report an expected transient provider failure', function (Closure $
 
     $suggestions = $generator->generate(
         groups: [benchGroup('boomtoken'), benchGroup('goodkey')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     );
 
     expect($suggestions)->toHaveCount(1)
@@ -170,7 +168,7 @@ it('reports an unexpected batch failure', function () {
 
     $generator->generate(
         groups: [benchGroup('boomtoken'), benchGroup('goodkey')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     );
 
     Exceptions::assertReported(RuntimeException::class);
@@ -187,6 +185,6 @@ it('rethrows when every batch fails', function () {
 
     expect(fn () => $generator->generate(
         groups: [benchGroup('alpha'), benchGroup('beta')],
-        categoryOptions: [['id' => 'cat-1', 'name' => 'X', 'path' => 'X', 'type' => 'expense', 'direction' => 'outflow', 'is_leaf' => true]],
+        categoryOptions: benchCategoryOptions(),
     ))->toThrow(RuntimeException::class);
 });

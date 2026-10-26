@@ -226,48 +226,25 @@ it('accepts suggestions and applies them immediately during onboarding', functio
         ->and(Transaction::query()->where('user_id', $this->user->id)->where('creditor_name', 'MERCADONA')->whereNotNull('category_id')->count())->toBe(6);
 });
 
-it('does not flag an upgrade when subscriptions are disabled', function () {
-    config()->set('subscriptions.enabled', false);
+it('flags an upgrade only for free users without a connected account', function (bool $subscriptionsEnabled, Closure $arrange, bool $requiresUpgrade) {
+    config()->set('subscriptions.enabled', $subscriptionsEnabled);
+    $arrange($this->user);
 
     $this->actingAs($this->user)
         ->getJson(route('ai.rule-suggestions.show'))
         ->assertOk()
-        ->assertJson(['requires_upgrade' => false]);
-});
-
-it('flags an upgrade for free users without a connected account', function () {
-    config()->set('subscriptions.enabled', true);
-
-    $this->actingAs($this->user)
-        ->getJson(route('ai.rule-suggestions.show'))
-        ->assertOk()
-        ->assertJson(['requires_upgrade' => true]);
-});
-
-it('does not flag an upgrade when the user already linked a bank', function () {
-    config()->set('subscriptions.enabled', true);
-    BankingConnection::factory()->for($this->user)->create();
-
-    $this->actingAs($this->user)
-        ->getJson(route('ai.rule-suggestions.show'))
-        ->assertOk()
-        ->assertJson(['requires_upgrade' => false]);
-});
-
-it('does not flag an upgrade for subscribed users', function () {
-    config()->set('subscriptions.enabled', true);
-    $this->user->subscriptions()->create([
+        ->assertJson(['requires_upgrade' => $requiresUpgrade]);
+})->with([
+    'subscriptions disabled' => [false, fn (User $user) => null, false],
+    'free user without a connected account' => [true, fn (User $user) => null, true],
+    'user who already linked a bank' => [true, fn (User $user) => BankingConnection::factory()->for($user)->create(), false],
+    'subscribed user' => [true, fn (User $user) => $user->subscriptions()->create([
         'type' => 'default',
         'stripe_id' => 'sub_test123',
         'stripe_status' => 'active',
         'stripe_price' => 'price_test123',
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('ai.rule-suggestions.show'))
-        ->assertOk()
-        ->assertJson(['requires_upgrade' => false]);
-});
+    ]), false],
+]);
 
 /**
  * The consent screen asks differently the second time round ("you switched this

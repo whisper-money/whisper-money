@@ -1,11 +1,8 @@
 <?php
 
 use App\Ai\Agents\TransactionCategorizationAgent;
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
 use App\Jobs\RetryTransientAiCategorizationJob;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategoryCatalog;
@@ -14,16 +11,9 @@ it('categorizes the still-pending transactions when run for a consenting user', 
     $user = User::factory()->create();
     $user->recordAiConsent();
 
-    $category = Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
+    $category = aiExpenseCategory($user);
 
-    $catalog = CategoryCatalog::forUser($user);
-    $index = 0;
-    while (($id = $catalog->categoryIdForIndex($index)) !== null && $id !== $category->id) {
-        $index++;
-    }
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -54,10 +44,7 @@ it('categorizes the still-pending transactions when run for a consenting user', 
 it('does nothing when the user has not consented to AI', function () {
     $user = User::factory()->create();
 
-    Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
+    aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,

@@ -25,32 +25,19 @@ it('drops a narrower token already covered by a broader one in the same category
         ->and($result[0]['match_token'])->toBe('endesa');
 });
 
-it('keeps overlapping tokens that target different categories', function () {
+it('keeps overlapping tokens that differ in category, match field or operator', function (array $broader, array $narrower) {
     $result = $this->consolidator->consolidate([
-        ($this->make)(['match_token' => 'endesa', 'proposed_category_id' => 'cat-1']),
-        ($this->make)(['match_token' => 'endesa energia', 'proposed_category_id' => 'cat-2']),
+        ($this->make)(['match_token' => 'endesa', ...$broader]),
+        ($this->make)(['match_token' => 'endesa energia', ...$narrower]),
     ]);
 
     expect($result)->toHaveCount(2);
-});
-
-it('does not prune across different match fields', function () {
-    $result = $this->consolidator->consolidate([
-        ($this->make)(['match_field' => 'description', 'match_token' => 'endesa']),
-        ($this->make)(['match_field' => 'creditor_name', 'match_token' => 'endesa energia']),
-    ]);
-
-    expect($result)->toHaveCount(2);
-});
-
-it('only prunes contains tokens, never equals', function () {
-    $result = $this->consolidator->consolidate([
-        ($this->make)(['match_operator' => 'contains', 'match_token' => 'endesa']),
-        ($this->make)(['match_operator' => 'equals', 'match_token' => 'endesa energia']),
-    ]);
-
-    expect($result)->toHaveCount(2);
-});
+})->with([
+    'different categories' => [['proposed_category_id' => 'cat-1'], ['proposed_category_id' => 'cat-2']],
+    'different match fields' => [['match_field' => 'description'], ['match_field' => 'creditor_name']],
+    // Only contains tokens are pruned, never equals.
+    'an equals token' => [['match_operator' => 'contains'], ['match_operator' => 'equals']],
+]);
 
 it('groups new-category proposals by name and direction when pruning', function () {
     $result = $this->consolidator->consolidate([

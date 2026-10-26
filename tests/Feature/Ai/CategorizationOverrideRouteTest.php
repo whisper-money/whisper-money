@@ -1,10 +1,7 @@
 <?php
 
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
 use App\Models\AutomationRule;
-use App\Models\Category;
 use App\Models\CategoryCorrection;
 use App\Models\Transaction;
 use App\Models\User;
@@ -14,17 +11,9 @@ use App\Services\AutomationRuleService;
 
 use function Pest\Laravel\actingAs;
 
-function routeCategory(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
-
 it('records provenance when an automation rule categorizes a transaction', function () {
     $user = User::factory()->create();
-    $category = routeCategory($user);
+    $category = aiExpenseCategory($user);
     $rule = AutomationRule::factory()->for($user)->create([
         'action_category_id' => $category->id,
         'rules_json' => ['==' => [['var' => 'creditor_name'], 'mercadona']],
@@ -46,8 +35,8 @@ it('records provenance when an automation rule categorizes a transaction', funct
 
 it('self-heals and logs a correction when the user overrides an ai category via the update route', function () {
     $user = User::factory()->create();
-    $from = routeCategory($user);
-    $to = routeCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     // Learn an ai rule, then categorize a matching transaction through it.
     app(AiRuleLearner::class)->learn(new CategorizationOutcome(

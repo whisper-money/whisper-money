@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\CategoryCashflowDirection;
+use App\Enums\CategoryType;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
@@ -11,6 +13,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Ai\CategoryCatalog;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
@@ -76,6 +79,56 @@ dataset('transient provider failures', [
         'cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received',
     ),
 ]);
+
+/*
+|--------------------------------------------------------------------------
+| AI categorization fixtures
+|--------------------------------------------------------------------------
+|
+| The user, category and catalog lookup every AI categorization test starts
+| from. The agent answers with a category's index in the catalog the prompt
+| listed, so a fake has to look that index up rather than guess it.
+|
+*/
+
+/**
+ * An onboarded user who has consented to AI categorization.
+ */
+function aiEligibleUser(): User
+{
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    return $user;
+}
+
+/**
+ * A leaf expense category, the kind the catalog offers for a card payment.
+ */
+function aiExpenseCategory(User $user): Category
+{
+    return Category::factory()->for($user)->create([
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+}
+
+/**
+ * The index the catalog lists a category under, which is what the agent answers with.
+ */
+function catalogLeafIndex(CategoryCatalog $catalog, string $categoryId): int
+{
+    $index = 0;
+
+    while (($id = $catalog->categoryIdForIndex($index)) !== null) {
+        if ($id === $categoryId) {
+            return $index;
+        }
+        $index++;
+    }
+
+    throw new RuntimeException("category {$categoryId} is not a leaf in the catalog");
+}
 
 /*
 |--------------------------------------------------------------------------

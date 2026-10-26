@@ -1,11 +1,8 @@
 <?php
 
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
 use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
-use App\Models\Category;
 use App\Models\CategoryCorrection;
 use App\Models\Transaction;
 use App\Models\User;
@@ -14,14 +11,6 @@ use App\Services\Ai\CategorizationOutcome;
 use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\Exceptions;
-
-function cohCategory(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
 
 function cohMerchantTxn(User $user, string $creditor): Transaction
 {
@@ -51,8 +40,8 @@ function cohMatched(User $user, string $creditor): Transaction
 
 it('logs a correction and deletes the ai rule when its only merchant is corrected', function () {
     $user = User::factory()->create();
-    $from = cohCategory($user);
-    $to = cohCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     $rule = cohLearnRule($user, $from->id, 'Mercadona');
     $matched = cohMatched($user, 'Mercadona');
@@ -72,8 +61,8 @@ it('logs a correction and deletes the ai rule when its only merchant is correcte
 
 it('drops only the corrected merchant from a multi-merchant ai rule', function () {
     $user = User::factory()->create();
-    $from = cohCategory($user);
-    $to = cohCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     cohLearnRule($user, $from->id, 'Mercadona');
     $rule = cohLearnRule($user, $from->id, 'Carrefour');
@@ -87,8 +76,8 @@ it('drops only the corrected merchant from a multi-merchant ai rule', function (
 
 it('logs a correction for a direct ai label without any rule', function () {
     $user = User::factory()->create();
-    $from = cohCategory($user);
-    $to = cohCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -107,8 +96,8 @@ it('logs a correction for a direct ai label without any rule', function () {
 
 it('ignores corrections to a user-owned rule', function () {
     $user = User::factory()->create();
-    $from = cohCategory($user);
-    $to = cohCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     $rule = AutomationRule::factory()->for($user)->create(['action_category_id' => $from->id]);
     $transaction = Transaction::factory()->create([
@@ -126,8 +115,8 @@ it('ignores corrections to a user-owned rule', function () {
 
 it('ignores corrections to a manual category', function () {
     $user = User::factory()->create();
-    $from = cohCategory($user);
-    $to = cohCategory($user);
+    $from = aiExpenseCategory($user);
+    $to = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -142,7 +131,7 @@ it('ignores corrections to a manual category', function () {
 
 it('does nothing when the category is unchanged', function () {
     $user = User::factory()->create();
-    $category = cohCategory($user);
+    $category = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -158,8 +147,8 @@ it('does nothing when the category is unchanged', function () {
 
 it('learns a forward rule from an ai correction so the next merchant transaction skips ai', function () {
     $user = User::factory()->create();
-    $wrong = cohCategory($user);
-    $right = cohCategory($user);
+    $wrong = aiExpenseCategory($user);
+    $right = aiExpenseCategory($user);
 
     cohLearnRule($user, $wrong->id, 'Mercadona');
     $matched = cohMatched($user, 'Mercadona');
@@ -182,11 +171,11 @@ it('learns a forward rule from an ai correction so the next merchant transaction
 
 it('learns a description rule when there is no merchant key', function () {
     $user = User::factory()->create();
-    $to = cohCategory($user);
+    $to = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
-        'category_id' => cohCategory($user)->id,
+        'category_id' => aiExpenseCategory($user)->id,
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.9,
         'creditor_name' => null,
@@ -221,7 +210,7 @@ it('does not learn an over-broad description rule', function () {
     config()->set('ai_suggestions.overbroad_fraction', 0.1);
 
     $user = User::factory()->create();
-    $to = cohCategory($user);
+    $to = aiExpenseCategory($user);
 
     foreach (range(1, 5) as $ignored) {
         Transaction::factory()->create([
@@ -235,7 +224,7 @@ it('does not learn an over-broad description rule', function () {
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
-        'category_id' => cohCategory($user)->id,
+        'category_id' => aiExpenseCategory($user)->id,
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.9,
         'creditor_name' => null,
@@ -251,10 +240,10 @@ it('does not learn an over-broad description rule', function () {
 
 it('moves a merchant key to the new category when the user changes their mind', function () {
     $user = User::factory()->create();
-    $first = cohCategory($user);
-    $second = cohCategory($user);
+    $first = aiExpenseCategory($user);
+    $second = aiExpenseCategory($user);
 
-    cohLearnRule($user, cohCategory($user)->id, 'Mercadona');
+    cohLearnRule($user, aiExpenseCategory($user)->id, 'Mercadona');
     $matched = cohMatched($user, 'Mercadona');
     $firstRule = app(CategoryOverrideHandler::class)->record($matched, $first->id);
 
@@ -274,8 +263,8 @@ it('moves a merchant key to the new category when the user changes their mind', 
 
 it('out-ranks an ai rule when a direct ai label is corrected for the same merchant', function () {
     $user = User::factory()->create();
-    $wrong = cohCategory($user);
-    $right = cohCategory($user);
+    $wrong = aiExpenseCategory($user);
+    $right = aiExpenseCategory($user);
 
     // An ai rule already maps mercadona -> wrong (learned from an earlier txn).
     $aiRule = cohLearnRule($user, $wrong->id, 'Mercadona');
@@ -301,7 +290,7 @@ it('out-ranks an ai rule when a direct ai label is corrected for the same mercha
 
 it('self-heals but learns nothing when correcting to uncategorized', function () {
     $user = User::factory()->create();
-    cohLearnRule($user, cohCategory($user)->id, 'Mercadona');
+    cohLearnRule($user, aiExpenseCategory($user)->id, 'Mercadona');
     $matched = cohMatched($user, 'Mercadona');
     $aiRuleId = $matched->categorized_by_rule_id;
 
@@ -314,11 +303,11 @@ it('self-heals but learns nothing when correcting to uncategorized', function ()
 
 it('learns a debtor_name rule when only the debtor is present', function () {
     $user = User::factory()->create();
-    $to = cohCategory($user);
+    $to = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
-        'category_id' => cohCategory($user)->id,
+        'category_id' => aiExpenseCategory($user)->id,
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.9,
         'creditor_name' => null,
@@ -344,11 +333,11 @@ it('learns a debtor_name rule when only the debtor is present', function () {
 
 it('learns a single-token description rule as a bare contains clause', function () {
     $user = User::factory()->create();
-    $to = cohCategory($user);
+    $to = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
-        'category_id' => cohCategory($user)->id,
+        'category_id' => aiExpenseCategory($user)->id,
         'category_source' => CategorySource::Ai,
         'ai_confidence' => 0.9,
         'creditor_name' => null,
@@ -363,7 +352,7 @@ it('learns a single-token description rule as a bare contains clause', function 
 
 it('still applies the correction when learning blows up', function () {
     $user = User::factory()->create();
-    $target = cohCategory($user);
+    $target = aiExpenseCategory($user);
     $transaction = cohMerchantTxn($user, 'Mercadona');
     $transaction->update(['category_source' => CategorySource::Ai]);
 

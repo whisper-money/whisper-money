@@ -3,22 +3,14 @@
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 
-function eligibleUser(): User
-{
-    $user = User::factory()->create();
-    $user->recordAiConsent();
-
-    return $user;
-}
-
 it('allows an enabled, pro, consented user', function () {
-    expect(app(AiCategorizationGate::class)->allows(eligibleUser()))->toBeTrue();
+    expect(app(AiCategorizationGate::class)->allows(aiEligibleUser()))->toBeTrue();
 });
 
 it('denies when the master kill switch is off', function () {
     config()->set('ai_categorization.enabled', false);
 
-    expect(app(AiCategorizationGate::class)->allows(eligibleUser()))->toBeFalse();
+    expect(app(AiCategorizationGate::class)->allows(aiEligibleUser()))->toBeFalse();
 });
 
 it('denies a user without active AI consent', function () {
@@ -30,5 +22,5 @@ it('denies a user without active AI consent', function () {
 it('denies a non-pro user when subscriptions are enforced', function () {
     config()->set('subscriptions.enabled', true);
 
-    expect(app(AiCategorizationGate::class)->allows(eligibleUser()))->toBeFalse();
+    expect(app(AiCategorizationGate::class)->allows(aiEligibleUser()))->toBeFalse();
 });

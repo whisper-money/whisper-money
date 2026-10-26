@@ -1,29 +1,10 @@
 <?php
 
 use App\Ai\Agents\TransactionCategorizationAgent;
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
-use App\Enums\CategoryType;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategoryCatalog;
-
-function eligible(): User
-{
-    $user = User::factory()->onboarded()->create();
-    $user->recordAiConsent();
-
-    return $user;
-}
-
-function leaf(User $user): Category
-{
-    return Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
-}
 
 function fakeCategorizes(Transaction $marker, int $index): void
 {
@@ -41,19 +22,9 @@ function fakeCategorizes(Transaction $marker, int $index): void
 }
 
 it('categorizes an eligible uncategorized transaction on creation', function () {
-    $user = eligible();
-    $category = leaf($user);
-    $index = (function () use ($user, $category): int {
-        $catalog = CategoryCatalog::forUser($user);
-        $i = 0;
-        while ($catalog->categoryIdForIndex($i) !== null) {
-            if ($catalog->categoryIdForIndex($i) === $category->id) {
-                return $i;
-            }
-            $i++;
-        }
-        throw new RuntimeException('not a leaf');
-    })();
+    $user = aiEligibleUser();
+    $category = aiExpenseCategory($user);
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     fakeCategorizes(new Transaction, $index);
 
@@ -72,7 +43,7 @@ it('categorizes an eligible uncategorized transaction on creation', function () 
 
 it('does nothing when the user is not eligible', function () {
     $user = User::factory()->create();
-    leaf($user);
+    aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -85,9 +56,9 @@ it('does nothing when the user is not eligible', function () {
 });
 
 it('does not categorize transactions created while onboarding', function () {
-    $user = eligible();
+    $user = aiEligibleUser();
     $user->update(['onboarded_at' => null]);
-    leaf($user);
+    aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
@@ -100,8 +71,8 @@ it('does not categorize transactions created while onboarding', function () {
 });
 
 it('does not categorize a transaction that already has a category', function () {
-    $user = eligible();
-    $category = leaf($user);
+    $user = aiEligibleUser();
+    $category = aiExpenseCategory($user);
 
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,

@@ -1,8 +1,6 @@
 <?php
 
 use App\Ai\Agents\TransactionCategorizationAgent;
-use App\Enums\CategoryCashflowDirection;
-use App\Enums\CategoryType;
 use App\Jobs\CategorizeUncategorizedTransactionsJob;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -17,7 +15,7 @@ use function Pest\Laravel\actingAs;
 
 // Onboarded, every one of them: `StartCategorizationBackfill` returns early
 // while the wizard is still running, so a mid-onboarding user would pass the
-// three "does not dispatch" tests below for a reason none of them is about.
+// "does not dispatch a backfill" cases below for a reason none of them is about.
 it('dispatches a backfill and returns job progress when consent is granted', function () {
     Bus::fake();
     $user = User::factory()->onboarded()->create();
@@ -36,30 +34,10 @@ it('dispatches a backfill and returns job progress when consent is granted', fun
     Bus::assertDispatched(CategorizeUncategorizedTransactionsJob::class);
 });
 
-it('does not dispatch a backfill when nothing is uncategorized', function () {
+it('records consent but does not dispatch a backfill', function (Closure $arrange) {
     Bus::fake();
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->for($user)->create();
-    Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => $category->id,
-    ]);
-
-    actingAs($user)->postJson(route('ai.consent.store'))
-        ->assertOk()
-        ->assertJsonPath('categorization', null);
-
-    Bus::assertNotDispatched(CategorizeUncategorizedTransactionsJob::class);
-});
-
-it('does not dispatch a backfill for a user without a paid plan', function () {
-    config(['subscriptions.enabled' => true]);
-    Bus::fake();
-    $user = User::factory()->onboarded()->create();
-    Transaction::factory()->create([
-        'user_id' => $user->id,
-        'category_id' => null,
-    ]);
+    $arrange($user);
 
     actingAs($user)->postJson(route('ai.consent.store'))
         ->assertOk()
@@ -68,23 +46,20 @@ it('does not dispatch a backfill for a user without a paid plan', function () {
 
     expect($user->hasActiveAiConsent())->toBeTrue();
     Bus::assertNotDispatched(CategorizeUncategorizedTransactionsJob::class);
-});
-
-it('does not dispatch a backfill when AI categorization is disabled', function () {
-    config(['ai_categorization.enabled' => false]);
-    Bus::fake();
-    $user = User::factory()->onboarded()->create();
-    Transaction::factory()->create([
+})->with([
+    'when nothing is uncategorized' => fn (User $user) => Transaction::factory()->create([
         'user_id' => $user->id,
-        'category_id' => null,
-    ]);
-
-    actingAs($user)->postJson(route('ai.consent.store'))
-        ->assertOk()
-        ->assertJsonPath('categorization', null);
-
-    Bus::assertNotDispatched(CategorizeUncategorizedTransactionsJob::class);
-});
+        'category_id' => Category::factory()->for($user)->create()->id,
+    ]),
+    'for a user without a paid plan' => function (User $user) {
+        config(['subscriptions.enabled' => true]);
+        Transaction::factory()->create(['user_id' => $user->id, 'category_id' => null]);
+    },
+    'when AI categorization is disabled' => function (User $user) {
+        config(['ai_categorization.enabled' => false]);
+        Transaction::factory()->create(['user_id' => $user->id, 'category_id' => null]);
+    },
+]);
 
 it('returns categorization progress from the status endpoint', function () {
     $user = User::factory()->create();
@@ -123,19 +98,9 @@ it('does not leak another user\'s categorization progress', function () {
 it('records progress while categorizing the uncategorized transactions', function () {
     $user = User::factory()->create();
     $user->recordAiConsent();
-    $category = Category::factory()->for($user)->create([
-        'type' => CategoryType::Expense,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-    ]);
+    $category = aiExpenseCategory($user);
 
-    $catalog = CategoryCatalog::forUser($user);
-    $index = 0;
-    while (
-        ($id = $catalog->categoryIdForIndex($index)) !== null
-        && $id !== $category->id
-    ) {
-        $index++;
-    }
+    $index = catalogLeafIndex(CategoryCatalog::forUser($user), $category->id);
 
     TransactionCategorizationAgent::fake(function (string $prompt) use ($index): array {
         preg_match_all('/"ref":"([0-9a-f-]+)"/', $prompt, $matches);
