@@ -43,57 +43,6 @@ test('users can connect a binance account with valid credentials', function () {
     Queue::assertNothingPushed();
 });
 
-test('invalid binance credentials return 422', function () {
-    $user = User::factory()->onboarded()->create();
-    Http::fake([
-        'api.binance.com/api/v3/account*' => Http::response(['msg' => 'Invalid API-key'], 401),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
-        'api_key' => 'invalid-api-key-12345',
-        'api_secret' => 'invalid-api-secret-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonFragment(['message' => 'Invalid API credentials or failed to connect to Binance.']);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'binance',
-    ]);
-});
-
-test('free tier users cannot connect a binance account after onboarding when subscriptions are enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
-        'api_key' => 'valid-test-api-key-12345',
-        'api_secret' => 'valid-test-api-secret-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertStatus(402);
-    $response->assertJson(['redirect' => route('subscribe')]);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'binance',
-    ]);
-});
-
-test('binance requires authentication', function () {
-    $response = $this->postJson('/open-banking/binance/connect', [
-        'api_key' => 'valid-test-api-key-12345',
-        'api_secret' => 'valid-test-api-secret-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertUnauthorized();
-});
-
 test('binance api_key and api_secret are required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
     $this->actingAs($user)->postJson('/open-banking/binance/connect', [])

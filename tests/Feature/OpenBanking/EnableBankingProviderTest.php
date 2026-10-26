@@ -13,154 +13,101 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-test('getTransactions wraps EnableBanking ASPSP errors as non-reportable transient errors', function () {
+/**
+ * The two account endpoints a sync calls. Both go through the same error
+ * classification, so every failure below is checked against each of them.
+ */
+dataset('enable banking account endpoints', [
+    'getTransactions' => ['transactions', fn ($provider) => $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString())],
+    'getBalances' => ['balances', fn ($provider) => $provider->getBalances('ext-123')],
+]);
+
+test('known upstream failures are wrapped as non-reportable errors', function (string $path, Closure $call, Closure $response, string $exception, string $previous, array $properties) {
     Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+        "api.enablebanking.com/accounts/ext-123/{$path}*" => $response(),
+    ]);
+
+    try {
+        $call(enableBankingProviderForTest());
+    } catch (Throwable $e) {
+        expect($e)->toBeInstanceOf($exception)
+            ->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf($previous);
+
+        foreach ($properties as $property => $value) {
+            expect($e->{$property})->toBe($value);
+        }
+
+        return;
+    }
+
+    test()->fail("Expected {$exception}.");
+})->with('enable banking account endpoints')->with([
+    'an ASPSP error' => [
+        fn () => Http::response([
             'code' => 400,
             'message' => 'Error interacting with ASPSP',
             'detail' => 'Unknown error',
             'error' => 'ASPSP_ERROR',
         ], 400),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', '2026-04-08', '2026-07-07');
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBe(400)
-            ->and($e->providerCode)->toBe('ASPSP_ERROR')
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getTransactions wraps connection failures as non-reportable transient errors', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::failedConnection(),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBeNull()
-            ->and($e->providerCode)->toBeNull()
-            ->and($e->getPrevious())->toBeInstanceOf(ConnectionException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getTransactions wraps an upstream 500 as a non-reportable transient error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+        TransientBankingProviderException::class,
+        RequestException::class,
+        ['provider' => 'enablebanking', 'statusCode' => 400, 'providerCode' => 'ASPSP_ERROR'],
+    ],
+    'a connection failure' => [
+        fn () => Http::failedConnection(),
+        TransientBankingProviderException::class,
+        ConnectionException::class,
+        ['provider' => 'enablebanking', 'statusCode' => null, 'providerCode' => null],
+    ],
+    'an upstream 500' => [
+        fn () => Http::response([
             'code' => 500,
             'message' => 'Internal server error',
         ], 500),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBe(500)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getBalances wraps an upstream 500 as a non-reportable transient error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances*' => Http::response([
-            'code' => 500,
-            'message' => 'Internal server error',
-        ], 500),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBe(500)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getTransactions wraps an expired session 401 as a non-reportable expired session error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+        TransientBankingProviderException::class,
+        RequestException::class,
+        ['provider' => 'enablebanking', 'statusCode' => 500],
+    ],
+    // Payload shape from PHP-LARAVEL-3J. Expiring a connection is a one-way
+    // door, so a single one of these must leave it schedulable and self-healing.
+    'a PSU-action-required 403, transient rather than expiring the connection' => [
+        fn () => Http::response([
+            'code' => 403,
+            'message' => 'Internal error.',
+            'detail' => [
+                'message' => 'Internal error.',
+                'error_name' => 'PsuActionRequiredException',
+            ],
+        ], 403),
+        TransientBankingProviderException::class,
+        RequestException::class,
+        ['statusCode' => 403, 'providerCode' => 'PsuActionRequiredException'],
+    ],
+    'an expired session 401' => [
+        fn () => Http::response([
             'code' => 401,
             'message' => 'Session is expired',
             'error' => 'EXPIRED_SESSION',
             'detail' => null,
         ], 401),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (ExpiredBankingSessionException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected expired banking session exception.');
-});
-
-test('getBalances wraps an expired session 401 as a non-reportable expired session error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+        ExpiredBankingSessionException::class,
+        RequestException::class,
+        [],
+    ],
+    'a closed session 401, needing a reconnect' => [
+        fn () => Http::response([
             'code' => 401,
-            'message' => 'Session is expired',
-            'error' => 'EXPIRED_SESSION',
+            'message' => 'Session is closed',
+            'error' => 'CLOSED_SESSION',
             'detail' => null,
         ], 401),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (ExpiredBankingSessionException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected expired banking session exception.');
-});
-
-test('getTransactions wraps an inaccessible account 400 as a non-reportable error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+        ExpiredBankingSessionException::class,
+        RequestException::class,
+        [],
+    ],
+    'an inaccessible account 400' => [
+        fn () => Http::response([
             'code' => 400,
             'message' => 'Account not found',
             'detail' => [
@@ -168,47 +115,11 @@ test('getTransactions wraps an inaccessible account 400 as a non-reportable erro
                 'error_name' => 'AccountNotAccessibleException',
             ],
         ], 400),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (InaccessibleBankAccountException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected inaccessible bank account exception.');
-});
-
-test('getBalances wraps an inaccessible account 400 as a non-reportable error', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
-            'code' => 400,
-            'message' => 'Account not found',
-            'detail' => [
-                'message' => 'Account not found',
-                'error_name' => 'AccountNotAccessibleException',
-            ],
-        ], 400),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (InaccessibleBankAccountException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected inaccessible bank account exception.');
-});
+        InaccessibleBankAccountException::class,
+        RequestException::class,
+        [],
+    ],
+]);
 
 test('getTransactions wraps a 422 wrong-period as a non-reportable error', function () {
     Http::fake([
@@ -320,54 +231,6 @@ test('getTransactions keeps non-ASPSP client errors reportable', function () {
         ->toThrow(RequestException::class);
 });
 
-test('getBalances wraps connection failures as non-reportable transient errors', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances' => Http::failedConnection(),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBeNull()
-            ->and($e->providerCode)->toBeNull()
-            ->and($e->getPrevious())->toBeInstanceOf(ConnectionException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getBalances wraps EnableBanking ASPSP errors as non-reportable transient errors', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
-            'code' => 400,
-            'message' => 'Error interacting with ASPSP',
-            'error' => 'ASPSP_ERROR',
-        ], 400),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
-            ->and($e->statusCode)->toBe(400)
-            ->and($e->providerCode)->toBe('ASPSP_ERROR')
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
 test('getBalances keeps non-ASPSP client errors reportable', function () {
     Http::fake([
         'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
@@ -381,86 +244,6 @@ test('getBalances keeps non-ASPSP client errors reportable', function () {
 
     expect(fn () => $provider->getBalances('ext-123'))
         ->toThrow(RequestException::class);
-});
-
-test('getTransactions treats a PSU-action-required 403 as transient rather than expiring the connection', function () {
-    // Payload shape from PHP-LARAVEL-3J. Expiring a connection is a one-way
-    // door, so a single one of these must leave it schedulable and self-healing.
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
-            'code' => 403,
-            'message' => 'Internal error.',
-            'detail' => [
-                'message' => 'Internal error.',
-                'error_name' => 'PsuActionRequiredException',
-            ],
-        ], 403),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->statusCode)->toBe(403)
-            ->and($e->providerCode)->toBe('PsuActionRequiredException')
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
-});
-
-test('getTransactions treats a closed session 401 as needing a reconnect', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
-            'code' => 401,
-            'message' => 'Session is closed',
-            'error' => 'CLOSED_SESSION',
-            'detail' => null,
-        ], 401),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
-    } catch (ExpiredBankingSessionException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected expired banking session exception.');
-});
-
-test('getBalances treats a PSU-action-required 403 as transient rather than expiring the connection', function () {
-    Http::fake([
-        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
-            'code' => 403,
-            'message' => 'Internal error.',
-            'detail' => [
-                'message' => 'Internal error.',
-                'error_name' => 'PsuActionRequiredException',
-            ],
-        ], 403),
-    ]);
-
-    $provider = enableBankingProviderForTest();
-
-    try {
-        $provider->getBalances('ext-123');
-    } catch (TransientBankingProviderException $e) {
-        expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
-
-        return;
-    }
-
-    test()->fail('Expected transient banking provider exception.');
 });
 
 test('a 403 the bank sends for another reason still surfaces as a request exception', function () {

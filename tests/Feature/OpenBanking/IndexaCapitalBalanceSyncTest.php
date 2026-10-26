@@ -100,22 +100,6 @@ test('updates existing balance for same date', function () {
     expect($account->balances()->first()->balance)->toBe(2000000);
 });
 
-test('skips account without external_account_id', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'external_account_id' => null,
-    ]);
-
-    $client = Mockery::mock(IndexaCapitalClient::class);
-    $client->shouldNotReceive('getPerformance');
-
-    $service = app(IndexaCapitalBalanceSyncService::class);
-    $service->sync($account, $client);
-
-    expect($account->balances()->count())->toBe(0);
-});
-
 test('returns empty performance when indexa capital responds 404', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([

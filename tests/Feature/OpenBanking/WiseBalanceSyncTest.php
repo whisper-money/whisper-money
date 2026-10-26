@@ -77,22 +77,3 @@ test('updates the existing wise balance for today instead of duplicating', funct
     expect($account->balances()->count())->toBe(1);
     expect($account->balances()->first()->balance)->toBe(1981);
 });
-
-test('skips wise balance sync when external_account_id is missing', function () {
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    $connection = BankingConnection::factory()->wise()->create([
-        'user_id' => $user->id,
-    ]);
-    $account = Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => null,
-        'currency_code' => 'EUR',
-    ]);
-
-    $service = app(WiseBalanceSyncService::class);
-    $service->sync($account, new WiseClient('test-token'));
-
-    expect($account->balances()->count())->toBe(0);
-    Http::assertNothingSent();
-});

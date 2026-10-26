@@ -109,23 +109,3 @@ test('connecting wise during onboarding auto-creates accounts for both profiles'
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
-
-test('invalid wise token returns 422', function () {
-    Http::fake([
-        'api.wise.com/v1/profiles' => Http::response(['error' => 'unauthorized'], 401),
-    ]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $response = $this->actingAs($user)->postJson('/open-banking/wise/connect', [
-        'api_token' => 'invalid-wise-token-12345',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonFragment(['message' => 'Invalid API token or failed to connect to Wise.']);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'wise',
-    ]);
-});

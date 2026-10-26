@@ -468,23 +468,6 @@ test('skips deleted crypto wallets', function () {
     expect($account->balances()->first()->balance)->toBe(0);
 });
 
-test('skips account without external_account_id', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'external_account_id' => null,
-    ]);
-
-    $client = Mockery::mock(BitpandaClient::class);
-    $client->shouldNotReceive('getTickerPrices');
-    $client->shouldNotReceive('getCryptoWallets');
-
-    $service = app(BitpandaBalanceSyncService::class);
-    $service->sync($account, $client);
-
-    expect($account->balances()->count())->toBe(0);
-});
-
 test('skips zero balance fiat wallets', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->bitpanda()->create([

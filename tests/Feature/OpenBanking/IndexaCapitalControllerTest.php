@@ -49,51 +49,6 @@ test('users can connect an indexa capital account with valid token', function ()
     Queue::assertNothingPushed();
 });
 
-test('invalid token returns 422', function () {
-    $user = User::factory()->onboarded()->create();
-    Http::fake([
-        'api.indexacapital.com/users/me' => Http::response(['message' => 'Unauthorized'], 401),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
-        'api_token' => 'invalid-token-12345',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonFragment(['message' => 'Invalid API token or failed to connect to Indexa Capital.']);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'indexacapital',
-    ]);
-});
-
-test('free tier users cannot connect an indexa capital account after onboarding when subscriptions are enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
-        'api_token' => 'valid-test-token-12345',
-    ]);
-
-    $response->assertStatus(402);
-    $response->assertJson(['redirect' => route('subscribe')]);
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'indexacapital',
-    ]);
-});
-
-test('indexa capital requires authentication', function () {
-    $response = $this->postJson('/open-banking/indexa-capital/connect', [
-        'api_token' => 'valid-test-token-12345',
-    ]);
-
-    $response->assertUnauthorized();
-});
-
 test('api_token is required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
     $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [])

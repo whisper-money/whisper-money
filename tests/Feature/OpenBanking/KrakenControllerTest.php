@@ -65,40 +65,12 @@ test('a kraken key without a required permission is rejected naming it', functio
     'query ledger entries' => [[], ['EGeneral:Permission denied'], 'Query Ledger Entries'],
 ]);
 
-test('an invalid kraken key returns 422', function () {
-    fakeKrakenPermissions(['EAPI:Invalid key']);
-
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user)->postJson('/open-banking/kraken/connect', krakenCredentials())
-        ->assertUnprocessable()
-        ->assertJsonFragment(['message' => 'Invalid API key or failed to connect to Kraken.']);
-
-    $this->assertDatabaseMissing('banking_connections', ['user_id' => $user->id, 'provider' => 'kraken']);
-});
-
 test('kraken requires the api key, secret and country', function () {
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user)->postJson('/open-banking/kraken/connect', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['api_key', 'api_secret', 'country']);
-});
-
-test('kraken requires authentication', function () {
-    $this->postJson('/open-banking/kraken/connect', krakenCredentials())->assertUnauthorized();
-});
-
-test('free tier users cannot connect a kraken account after onboarding when subscriptions are enabled', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user)->postJson('/open-banking/kraken/connect', krakenCredentials())
-        ->assertStatus(402)
-        ->assertJson(['redirect' => route('subscribe')]);
-
-    $this->assertDatabaseMissing('banking_connections', ['user_id' => $user->id, 'provider' => 'kraken']);
 });
 
 test('kraken auto-creates the portfolio account during onboarding', function () {

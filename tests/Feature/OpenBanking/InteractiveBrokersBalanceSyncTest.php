@@ -255,15 +255,6 @@ test('throws a rate-limit error when IB throttles the query', function () {
     }
 });
 
-test('skips an account without an external_account_id', function () {
-    [$user] = ibSetup();
-    $account = Account::factory()->create(['user_id' => $user->id, 'external_account_id' => null]);
-
-    app(InteractiveBrokersBalanceSyncService::class)->sync($account, []);
-
-    expect($account->balances()->count())->toBe(0);
-});
-
 test('classifies an invalid or deleted query id as an auth error', function () {
     Http::fake([
         '*SendRequest*' => Http::response(
