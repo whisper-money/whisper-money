@@ -2,58 +2,71 @@
 paths:
     - 'resources/js/pages/transactions/index.tsx'
     - 'resources/js/components/transactions/transaction-list.tsx'
+    - 'resources/js/components/transactions/transaction-table.tsx'
     - 'resources/js/components/transactions/transaction-columns.tsx'
     - 'resources/js/components/transactions/transaction-table-row.tsx'
     - 'resources/js/components/transactions/transaction-row-dialogs.tsx'
+    - 'resources/js/components/transactions/transaction-delete-dialogs.tsx'
     - 'resources/js/hooks/use-transaction-row-editing.ts'
     - 'resources/js/hooks/use-transaction-bulk-actions.ts'
-    - 'resources/js/components/transactions/transaction-delete-dialogs.tsx'
     - 'resources/js/hooks/use-in-memory-transaction-source.ts'
     - 'resources/js/hooks/use-server-transaction-source.ts'
+    - 'resources/js/types/transaction-table-source.ts'
 ---
 
-# The transactions table exists twice (being unified)
+# One transactions table, two data sources
 
-`pages/transactions/index.tsx` does **not** use `TransactionList`, which is what
-the account, budget and savings-goal pages use. The two are being merged into
-one table over several PRs. What a row does is already shared:
+Every list of transactions is `TransactionTable`
+(`resources/js/components/transactions/transaction-table.tsx`). It owns the
+rows with their menus and dialogs, selection, bulk actions, day headers, the
+table or compact list, the skeleton and the "load more" footer. Where the rows
+come from is a `TransactionTableSource` (`resources/js/types/transaction-table-source.ts`):
 
-- `useTransactionRowEditing` (`resources/js/hooks/use-transaction-row-editing.ts`):
-  the transaction each row dialog is open for, the row action handlers
-  (`rowActions`), the in-place row update, single-row re-evaluate, the
-  automatize toast, and the labels the dialogs can create.
-- `TransactionRowDialogs`: the edit, duplicate, split, unsplit and automate
-  dialogs, mounted once per table.
-- `TransactionTableRow`: the desktop row and its right-click menu.
-- `useTransactionBulkActions` (`resources/js/hooks/use-transaction-bulk-actions.ts`):
-  bulk category, labels, re-evaluate and delete, the single-row delete, and
-  what `BulkActionsBar` takes (`barProps`). "All matching filters" exists only
-  when the table passes `matchingFilters` (the server-paged `/transactions`).
-- `TransactionDeleteDialogs`: the delete confirmations; `/transactions` makes
-  the user type the count for a bulk delete (`confirmBulkByTyping`).
-- `getTransactionRowActions()` (`resources/js/lib/transaction-row-actions.ts`):
-  the contents of both row menus. Add an action there, never inline.
+- `useServerTransactionSource`: `/transactions` (`pages/transactions/index.tsx`).
+  Filters and sort live in the URL and every change asks the server again; "load
+  more" fetches the next cursor page (and loads on scroll); day counts and totals
+  come from the server (`dayTotals`), moved only by local edits. Only this source
+  has `matchingFilters` ("all matching filters" bulk actions) and `refreshRows`.
+- `useInMemoryTransactionSource`: `TransactionList`, the account, budget and
+  savings-goal pages. Rows the page already holds, filtered, sorted and sliced in
+  the browser, with day totals over every row the filters keep.
 
-So a new row action goes into `TransactionRowActionHandlers`, the hook and,
-if it opens a dialog, `TransactionRowDialogs`; both tables pick it up.
+The two pages are thin wrappers: a source, plus what only they show, passed to
+the table as props (`renderToolbar` for the actions menu, export and the
+`columnPicker` it hands over; `topRow` for the AI consent banner, whose logic is
+`useAiCategorizationConsent`; `footerActions` for "View in Transactions";
+`isNewRow`, `hiddenLabelId`, `statementPayments`, `categorizingIds`, …).
 
-Where the rows come from is a `TransactionTableSource`
-(`resources/js/types/transaction-table-source.ts`), one per kind of page:
+## Where a change goes
 
-- `useServerTransactionSource`: `/transactions`. Filters and sort live in the
-  URL and every change asks the server again; "load more" fetches the next
-  cursor page; day counts and totals come from the server (`dayTotals`).
-- `useInMemoryTransactionSource`: the account, budget and savings-goal pages.
-  Rows filtered, sorted and paged in the browser; day totals computed here.
+- **A row action**: `getTransactionRowActions()` (`lib/transaction-row-actions.ts`)
+  for both menus, `TransactionRowActionHandlers` and `useTransactionRowEditing`
+  for the handler and, if it opens a dialog, `TransactionRowDialogs`. Never
+  inline in a menu.
+- **A bulk action or the delete confirmation**: `useTransactionBulkActions`
+  (it returns the `barProps` for `BulkActionsBar`) and `TransactionDeleteDialogs`.
+- **Anything every table does** (a column option, a footer control, selection):
+  `TransactionTable`. A page-only difference is a prop, not a branch on which
+  source it was handed.
+- **How rows are fetched, filtered, sorted or paged**: the source. A new kind of
+  list implements `TransactionTableSource` rather than growing the table.
 
-Both total a day the same way: each currency summed over the day, then
-converted once (`summarizeDay` / `TransactionDayTotals`). Never convert row by
-row and add up: the rounding drifts a cent from the server's figure.
+## Day totals follow the server
 
-Still duplicated in both files until the last PR lands: the table shell (the
-toolbar, the table, the footer, the dialogs and the bulk bar mounted around
-the source). Anything added there has to be wired in **both** places; grep for
-the symbol you just added.
+Both sources total a day the same way: each currency summed over the day, then
+converted once (`summarizeDay` here, `TransactionDayTotals` on the server).
+Never convert row by row and add up: the rounding drifts a cent from the
+server's figure (`TransactionsMultiCurrencyDayTotalsTest`).
 
-Bitten before the split: split transactions were wired in `TransactionList`
-only, so the row menu on `/transactions` threw `onSplit is not a function`.
+## React Compiler
+
+`DataTable`, `useGroupedRowVirtualizer` and the compact list inside
+`ResponsiveTransactionTable` opt out (`'use no memo'`): they read the TanStack
+table and virtualizer, stable objects that change underneath. Hand table state
+to them as React state (`sorting`, `rowSelection`), as `TransactionTable` does,
+not only through the table instance.
+
+`TransactionTable` itself is compiled, so it never hands the TanStack table to
+the page: a toolbar reading it during render would be cached on a reference
+that never changes. Give the page what it needs ready-made instead, as the
+`columnPicker` element.
