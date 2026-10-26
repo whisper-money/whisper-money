@@ -21,23 +21,7 @@ test('new users can register', function () {
         ->assertCookie('whisper_money_returning_user');
 });
 
-test('new users store their detected timezone on registration', function () {
-    Queue::fake();
-
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-        'timezone' => 'America/New_York',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
-    expect($user->timezone)->toBe('America/New_York');
-});
-
-test('new users can register with a legacy timezone alias', function () {
+test('new users store the timezone their browser detected, if it is a real one', function (array $timezone, ?string $stored) {
     Queue::fake();
 
     $response = $this->post(route('register.store'), [
@@ -45,50 +29,22 @@ test('new users can register with a legacy timezone alias', function () {
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
-        'timezone' => 'Asia/Calcutta',
+        ...$timezone,
     ]);
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('onboarding', absolute: false));
 
     expect(User::where('email', 'test@example.com')->first()->timezone)
-        ->toBe('Asia/Calcutta');
-});
+        ->toBe($stored);
+})->with([
+    'detected timezone' => [['timezone' => 'America/New_York'], 'America/New_York'],
+    'legacy timezone alias' => [['timezone' => 'Asia/Calcutta'], 'Asia/Calcutta'],
+    'unrecognized timezone' => [['timezone' => 'Not/AZone'], null],
+    'no timezone' => [[], null],
+]);
 
-test('new users can register when the browser sends an unrecognized timezone', function () {
-    Queue::fake();
-
-    $response = $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-        'timezone' => 'Not/AZone',
-    ]);
-
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('onboarding', absolute: false));
-
-    expect(User::where('email', 'test@example.com')->first()->timezone)
-        ->toBeNull();
-});
-
-test('new users can register without a timezone', function () {
-    Queue::fake();
-
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
-    expect($user->timezone)->toBeNull();
-});
-
-test('new users receive a verification email on registration', function () {
+test('new users receive a verification email on registration and are not verified yet', function () {
     Notification::fake();
 
     $this->post(route('register.store'), [
@@ -101,20 +57,6 @@ test('new users receive a verification email on registration', function () {
     $user = User::where('email', 'test@example.com')->first();
 
     Notification::assertSentTo($user, VerifyEmailNotification::class);
-});
-
-test('new users are not verified after registration', function () {
-    Queue::fake();
-
-    $this->post(route('register.store'), [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ]);
-
-    $user = User::where('email', 'test@example.com')->first();
-
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
 

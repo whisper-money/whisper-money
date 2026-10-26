@@ -33,7 +33,7 @@ it('flags transactions that already exist on the account', function () {
     $response->assertOk()->assertJson(['duplicates' => [true, false]]);
 });
 
-it('normalizes case and whitespace when matching descriptions', function () {
+it('normalizes case and whitespace when matching descriptions', function (string $description) {
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
@@ -45,12 +45,15 @@ it('normalizes case and whitespace when matching descriptions', function () {
     $response = $this->postJson('/api/transactions/check-duplicates', [
         'account_id' => $this->account->id,
         'transactions' => [
-            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => "  cOFFee   shOP  \n"],
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => $description],
         ],
     ]);
 
     $response->assertOk()->assertJson(['duplicates' => [true]]);
-});
+})->with([
+    'mixed case and runs of whitespace' => "  cOFFee   shOP  \n",
+    'non-breaking spaces read as regular whitespace' => "Coffee\u{00A0}Shop",
+]);
 
 it('scopes duplicate detection to the given account', function () {
     $otherAccount = Account::factory()->create(['user_id' => $this->user->id]);
@@ -85,25 +88,6 @@ it('does not leak another users account', function () {
     ]);
 
     $response->assertNotFound();
-});
-
-it('treats non-breaking spaces as regular whitespace when matching', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'transaction_date' => '2026-01-15',
-        'amount' => 1234,
-        'description' => 'Coffee Shop',
-    ]);
-
-    $response = $this->postJson('/api/transactions/check-duplicates', [
-        'account_id' => $this->account->id,
-        'transactions' => [
-            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => "Coffee\u{00A0}Shop"],
-        ],
-    ]);
-
-    $response->assertOk()->assertJson(['duplicates' => [true]]);
 });
 
 it('only matches existing transactions within the incoming date range', function () {
