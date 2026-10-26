@@ -50,7 +50,7 @@ test('every comparison page renders in its own language and links every language
     }
 })->with(comparisonRoutes());
 
-test('every comparison page has a markdown twin canonicalised to the html page with every testimonial', function (string $locale, string $slug) {
+test('every comparison page has a markdown twin canonicalised to the html page', function (string $locale, string $slug) {
     $response = $this->get('/'.ComparisonPages::path($locale, $slug).'.md')->assertSuccessful();
 
     expect($response->headers->get('Content-Type'))->toContain('text/markdown')

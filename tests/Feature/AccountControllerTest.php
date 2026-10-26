@@ -135,14 +135,14 @@ test('users can toggle dashboard visibility of their accounts', function () {
     expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
 });
 
-test('the toggled flag is required', function (string $routeName, string $flag) {
+test('the visibility and archive endpoints require their flag', function (string $routeName, string $flag) {
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
     $this->patch(route($routeName, $account), [])
         ->assertSessionHasErrors($flag);
 })->with([
-    'hidden, when toggling visibility' => ['accounts.visibility', 'hidden'],
-    'archived, when archiving' => ['accounts.archived', 'archived'],
+    'toggling visibility' => ['accounts.visibility', 'hidden'],
+    'archiving' => ['accounts.archived', 'archived'],
 ]);
 
 test('users cannot toggle visibility of accounts they do not own', function () {
@@ -735,11 +735,42 @@ test('real estate balance evolution includes mortgage balance data', function ()
     expect($lastPoint['value'])->toBe(36000000);
 });
 
-test('balance evolution has no mortgage data without a linked loan', function (Account $account, int $balance) {
+test('real estate balance evolution without linked loan has no mortgage data', function () {
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 35000000,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$realEstateAccount->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->not->toHaveKey('mortgage_balance');
+});
+
+test('non-real-estate account balance evolution has no mortgage data', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
     AccountBalance::factory()->create([
         'account_id' => $account->id,
         'balance_date' => now()->endOfMonth(),
-        'balance' => $balance,
+        'balance' => 100000,
     ]);
 
     $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
@@ -751,23 +782,7 @@ test('balance evolution has no mortgage data without a linked loan', function (A
     $data = $response->json();
 
     expect($data['data'][0])->not->toHaveKey('mortgage_balance');
-})->with([
-    'real estate account without linked loan' => [function () {
-        $realEstateAccount = Account::factory()->realEstate()->create([
-            'user_id' => $this->user->id,
-        ]);
-
-        RealEstateDetail::factory()->create([
-            'account_id' => $realEstateAccount->id,
-        ]);
-
-        return $realEstateAccount;
-    }, 35000000],
-    'non-real-estate account' => [fn () => Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-    ]), 100000],
-]);
+});
 
 test('accounts index serializes the standard account field set without sensitive columns', function () {
     Account::factory()->create([

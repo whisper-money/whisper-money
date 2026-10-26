@@ -117,6 +117,13 @@ test('assignHistoricalTransactionsToPeriod skips soft deleted transactions', fun
 
     $deletedTransaction->delete();
 
+    $liveTransaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -3000,
+    ]);
+
     $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
     ]);
@@ -129,9 +136,12 @@ test('assignHistoricalTransactionsToPeriod skips soft deleted transactions', fun
 
     $count = $this->service->assignHistoricalTransactionsToPeriod($period);
 
-    expect($count)->toBe(0);
+    expect($count)->toBe(1);
     $this->assertDatabaseMissing('budget_transactions', [
         'transaction_id' => $deletedTransaction->id,
+    ]);
+    $this->assertDatabaseHas('budget_transactions', [
+        'transaction_id' => $liveTransaction->id,
     ]);
 });
 

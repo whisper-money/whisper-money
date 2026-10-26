@@ -51,7 +51,24 @@ it('applies the annual revaluation monthly', function (float $percentage, int $p
 // Skipping accounts with nothing to revalue
 // -------------------------------------------------------------------
 
-it('skips accounts with nothing to revalue', function (?float $percentage, bool $hasBalance) {
+it('skips accounts that have no existing balance', function () {
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+        'revaluation_percentage' => 5.00,
+    ]);
+
+    // No balance created
+
+    artisan('real-estate:apply-revaluation')->assertSuccessful();
+
+    expect(AccountBalance::where('account_id', $account->id)->count())->toBe(0);
+});
+
+it('skips accounts without a revaluation percentage', function (?float $percentage) {
     $account = Account::factory()->realEstate()->create([
         'user_id' => $this->user->id,
     ]);
@@ -61,17 +78,15 @@ it('skips accounts with nothing to revalue', function (?float $percentage, bool 
         'revaluation_percentage' => $percentage,
     ]);
 
-    if ($hasBalance) {
-        AccountBalance::factory()->create([
-            'account_id' => $account->id,
-            'balance_date' => now()->subMonth()->toDateString(),
-            'balance' => 10000000,
-        ]);
-    }
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subMonth()->toDateString(),
+        'balance' => 10000000,
+    ]);
 
     artisan('real-estate:apply-revaluation')->assertSuccessful();
 
-    expect(AccountBalance::where('account_id', $account->id)->count())->toBe($hasBalance ? 1 : 0);
+    // Should not create a new balance for today
     expect(
         AccountBalance::query()
             ->where('account_id', $account->id)
@@ -79,9 +94,8 @@ it('skips accounts with nothing to revalue', function (?float $percentage, bool 
             ->exists()
     )->toBeFalse();
 })->with([
-    'no existing balance' => [5.00, false],
-    'null revaluation percentage' => [null, true],
-    'zero revaluation percentage' => [0.0, true],
+    'null percentage' => [null],
+    'zero percentage' => [0.0],
 ]);
 
 // -------------------------------------------------------------------
