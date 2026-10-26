@@ -84,6 +84,9 @@ jobs:
         # without extra grants. The Performance suite is excluded because it
         # runs as its own `performance-tests` job, a separate required check, so a
         # query-count regression shows up under its own name.
+        #
+        # Coverage scope (pcov.directory) comes from php.ini, set by the
+        # setup step above, so every paratest worker collects it.
         run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4 --coverage-crap4j=build/crap4j.xml
         env:
           TESTCONTAINERS: false
