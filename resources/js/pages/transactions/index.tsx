@@ -1,5 +1,4 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
-import { useAmountsInUserCurrency } from '@/hooks/use-amounts-in-user-currency';
 import { useLocale } from '@/hooks/use-locale';
 import {
     useMobileSelectionMode,
@@ -49,7 +48,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { TransactionDayHeader } from '@/components/transactions/transaction-day-header';
+import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
@@ -595,7 +594,6 @@ export default function Transactions({
             columnVisibility,
             setColumnVisibility,
         });
-    const amountInUserCurrency = useAmountsInUserCurrency(allTransactions);
 
     // Debounce timer ref for search
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1113,6 +1111,13 @@ export default function Transactions({
         },
     });
 
+    const dayHeaders = useTransactionDayHeaders({
+        table,
+        transactions: allTransactions,
+        isGroupedByDay,
+        hasMoreRows: nextCursor !== null,
+    });
+
     async function handleDelete() {
         if (!deleteTransaction) {
             return;
@@ -1485,22 +1490,7 @@ export default function Transactions({
                                 columns={columns}
                                 emptyMessage={__('No transactions found.')}
                                 renderRow={renderTransactionRow}
-                                groupRowsBy={
-                                    isGroupedByDay
-                                        ? (row) => row.transaction_date
-                                        : undefined
-                                }
-                                renderGroupHeader={(group, measureProps) => (
-                                    <TransactionDayHeader
-                                        table={table}
-                                        date={group.key}
-                                        rows={group.rows}
-                                        amountInUserCurrency={
-                                            amountInUserCurrency
-                                        }
-                                        measureProps={measureProps}
-                                    />
-                                )}
+                                {...dayHeaders}
                                 topRow={
                                     showAiConsentBanner ? (
                                         <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">

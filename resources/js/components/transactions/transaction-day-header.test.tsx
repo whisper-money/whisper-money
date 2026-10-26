@@ -90,8 +90,10 @@ function TransactionsTable({
     isGroupedByDay = true,
     columnVisibility = {},
     amountInUserCurrency = (transaction) => transaction.amount,
+    isPartial = false,
     onSelectionChange = () => {},
 }: {
+    isPartial?: boolean;
     isGroupedByDay?: boolean;
     columnVisibility?: VisibilityState;
     amountInUserCurrency?: AmountInUserCurrency;
@@ -128,6 +130,7 @@ function TransactionsTable({
                         date={group.key}
                         rows={group.rows}
                         amountInUserCurrency={amountInUserCurrency}
+                        isPartial={isPartial}
                         measureProps={measureProps}
                     />
                 )}
@@ -238,6 +241,12 @@ describe('TransactionDayHeader', () => {
         fireEvent.click(within(dayHeaders()[0]).getByRole('checkbox'));
         fireEvent.click(within(dayHeaders()[0]).getByRole('checkbox'));
         expect(onSelectionChange).toHaveBeenLastCalledWith({ c: true });
+    });
+
+    it('says a day may go on when more rows wait to be loaded', () => {
+        render(<TransactionsTable isPartial />);
+
+        expect(dayHeaders()[0]).toHaveTextContent('2 transactions so far');
     });
 
     it('draws no headers when the table is not sorted by date', () => {

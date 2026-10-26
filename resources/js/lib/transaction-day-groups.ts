@@ -66,7 +66,7 @@ export type AmountInUserCurrency = (
     transaction: Transaction,
 ) => number | null | undefined;
 
-export type DayTotal =
+export type DayTotalState =
     | { status: 'ready'; amount: number }
     | { status: 'pending' }
     | { status: 'missing' };
@@ -79,7 +79,7 @@ export type DayTotal =
 export function sumDayTotal(
     transactions: Transaction[],
     amountInUserCurrency: AmountInUserCurrency,
-): DayTotal {
+): DayTotalState {
     let amount = 0;
     let isPending = false;
 

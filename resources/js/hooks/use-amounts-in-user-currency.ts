@@ -78,8 +78,14 @@ export function useAmountsInUserCurrency(
                     { items: chunk.map(([, item]) => item) },
                 )
                 .then(({ data }) => data.amounts)
-                // Offline or a server error: a total is better missing than wrong.
-                .catch(() => chunk.map(() => null))
+                .catch(() => {
+                    // Offline or a server error: a total is better missing than
+                    // wrong for now, and these rows are asked for again the
+                    // next time the list changes.
+                    chunk.forEach(([key]) => requested.current.delete(key));
+
+                    return chunk.map(() => null);
+                })
                 .then((amounts) =>
                     setConverted((previous) => {
                         const next = new Map(previous);

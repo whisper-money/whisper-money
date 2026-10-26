@@ -42,7 +42,9 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::get('exchange-rate', ExchangeRateController::class)->name('api.exchange-rate');
 
     // Many amounts converted into the user's currency, for the day totals of the transactions table
-    Route::post('converted-amounts', ConvertedAmountsController::class)->name('api.converted-amounts');
+    Route::post('converted-amounts', ConvertedAmountsController::class)
+        ->middleware('throttle:30,1')
+        ->name('api.converted-amounts');
 
     // Category analysis
     Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');

@@ -76,4 +76,22 @@ describe('useAmountsInUserCurrency', () => {
 
         await waitFor(() => expect(result.current(rows[0])).toBeNull());
     });
+
+    it('asks again for rows whose request failed once the list changes', async () => {
+        post.mockRejectedValueOnce(new Error('offline'));
+        post.mockResolvedValueOnce({ data: { amounts: [-500] } });
+        const rows = [transaction('b', -1000, 'USD')];
+
+        const { result, rerender } = renderHook(
+            ({ list }) => useAmountsInUserCurrency(list),
+            { initialProps: { list: rows } },
+        );
+
+        await waitFor(() => expect(result.current(rows[0])).toBeNull());
+
+        rerender({ list: [...rows] });
+
+        await waitFor(() => expect(result.current(rows[0])).toBe(-500));
+        expect(post).toHaveBeenCalledTimes(2);
+    });
 });

@@ -1,8 +1,18 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Checkbox } from '@/components/ui/checkbox';
-import { type DataTableMeasureProps } from '@/components/ui/data-table';
+import {
+    type DataTableMeasureProps,
+    type DataTableRowGroup,
+} from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell, TableRow } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useAmountsInUserCurrency } from '@/hooks/use-amounts-in-user-currency';
 import { useLocale } from '@/hooks/use-locale';
 import {
     type AmountInUserCurrency,
@@ -15,6 +25,7 @@ import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { type Row, type Table } from '@tanstack/react-table';
+import { useCallback } from 'react';
 
 interface TransactionDayHeaderProps {
     table: Table<ServerTransaction>;
@@ -22,6 +33,8 @@ interface TransactionDayHeaderProps {
     /** The loaded rows of this day, which its checkbox ticks. */
     rows: Row<ServerTransaction>[];
     amountInUserCurrency: AmountInUserCurrency;
+    /** More of this day may sit on a page that is not loaded yet. */
+    isPartial?: boolean;
     measureProps: DataTableMeasureProps;
 }
 
@@ -52,16 +65,26 @@ function DayTotal({
     }
 
     if (total.status === 'missing') {
+        const reason = __(
+            'Some amounts of this day could not be converted to :currency',
+            { currency: currencyCode },
+        );
+
         return (
-            <span
-                className="text-muted-foreground"
-                title={__(
-                    'Some amounts of this day could not be converted to :currency',
-                    { currency: currencyCode },
-                )}
-            >
-                —
-            </span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span
+                            tabIndex={0}
+                            aria-label={reason}
+                            className="text-muted-foreground"
+                        >
+                            —
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{reason}</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         );
     }
 
@@ -87,6 +110,7 @@ export function TransactionDayHeader({
     date,
     rows,
     amountInUserCurrency,
+    isPartial = false,
     measureProps,
 }: TransactionDayHeaderProps) {
     const locale = useLocale();
@@ -155,6 +179,7 @@ export function TransactionDayHeader({
                     </span>
                     <span className="text-xs text-muted-foreground">
                         · {formatTransactionCount(rows.length)}
+                        {isPartial && ` ${__('so far')}`}
                     </span>
                     {amountIndex === -1 && (
                         <span className="ml-auto pr-2">{total}</span>
@@ -169,4 +194,59 @@ export function TransactionDayHeader({
             )}
         </TableRow>
     );
+}
+
+const groupByTransactionDate = (transaction: ServerTransaction): string =>
+    transaction.transaction_date;
+
+/**
+ * Everything a `DataTable` of transactions needs to draw its day headers, so
+ * both tables wire them the same way. Leaves the table flat when it is not
+ * grouped by day.
+ */
+export function useTransactionDayHeaders({
+    table,
+    transactions,
+    isGroupedByDay,
+    hasMoreRows,
+}: {
+    table: Table<ServerTransaction>;
+    /** The loaded rows, in the order the table shows them. */
+    transactions: ServerTransaction[];
+    isGroupedByDay: boolean;
+    /** More rows exist beyond the loaded ones, so the last day may go on. */
+    hasMoreRows: boolean;
+}): {
+    groupRowsBy?: (transaction: ServerTransaction) => string;
+    renderGroupHeader: (
+        group: DataTableRowGroup<ServerTransaction>,
+        measureProps: DataTableMeasureProps,
+    ) => React.ReactNode;
+} {
+    const amountInUserCurrency = useAmountsInUserCurrency(transactions);
+    const lastLoadedId = transactions.at(-1)?.id;
+
+    const renderGroupHeader = useCallback(
+        (
+            group: DataTableRowGroup<ServerTransaction>,
+            measureProps: DataTableMeasureProps,
+        ) => (
+            <TransactionDayHeader
+                table={table}
+                date={group.key}
+                rows={group.rows}
+                amountInUserCurrency={amountInUserCurrency}
+                isPartial={
+                    hasMoreRows && group.rows.at(-1)?.id === lastLoadedId
+                }
+                measureProps={measureProps}
+            />
+        ),
+        [table, amountInUserCurrency, hasMoreRows, lastLoadedId],
+    );
+
+    return {
+        groupRowsBy: isGroupedByDay ? groupByTransactionDate : undefined,
+        renderGroupHeader,
+    };
 }

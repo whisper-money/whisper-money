@@ -202,6 +202,8 @@ export function DataTable<TData, TValue>({
                                     const item = items[virtualRow.index];
 
                                     if (item.type === 'group') {
+                                        // The key sits on the fragment: spread
+                                        // through the measure props, React warns.
                                         return (
                                             <Fragment key={virtualRow.key}>
                                                 {renderGroupHeader?.(

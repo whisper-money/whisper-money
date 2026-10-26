@@ -1,4 +1,3 @@
-import { useAmountsInUserCurrency } from '@/hooks/use-amounts-in-user-currency';
 import { useLocale } from '@/hooks/use-locale';
 import {
     useMobileSelectionMode,
@@ -51,7 +50,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { TransactionDayHeader } from '@/components/transactions/transaction-day-header';
+import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import {
@@ -654,9 +653,6 @@ export function TransactionList({
             columnVisibility,
             setColumnVisibility,
         });
-    const amountInUserCurrency = useAmountsInUserCurrency(
-        displayedTransactions,
-    );
 
     const handleReEvaluateRules = useCallback(
         async (transaction: ServerTransaction) => {
@@ -825,6 +821,13 @@ export function TransactionList({
             columnVisibility: tableColumnVisibility,
             rowSelection,
         },
+    });
+
+    const dayHeaders = useTransactionDayHeaders({
+        table,
+        transactions: displayedTransactions,
+        isGroupedByDay,
+        hasMoreRows: displayedCount < sortedTransactions.length,
     });
 
     const loadMore = useCallback(() => {
@@ -1087,20 +1090,7 @@ export function TransactionList({
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            groupRowsBy={
-                                isGroupedByDay
-                                    ? (row) => row.transaction_date
-                                    : undefined
-                            }
-                            renderGroupHeader={(group, measureProps) => (
-                                <TransactionDayHeader
-                                    table={table}
-                                    date={group.key}
-                                    rows={group.rows}
-                                    amountInUserCurrency={amountInUserCurrency}
-                                    measureProps={measureProps}
-                                />
-                            )}
+                            {...dayHeaders}
                         />
 
                         <DataTablePagination

@@ -4135,5 +4135,6 @@
     "Delete :count": "Eliminar :count",
     "Choose category": "Elegir categoría",
     "Some amounts of this day could not be converted to :currency": "Algunos importes de este día no se han podido convertir a :currency",
-    "Select every transaction of :day": "Seleccionar todas las transacciones de :day"
+    "Select every transaction of :day": "Seleccionar todas las transacciones de :day",
+    "so far": "hasta ahora"
 }
