@@ -1,0 +1,138 @@
+import { type Transaction } from '@/types/transaction';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useInMemoryTransactionSource } from './use-in-memory-transaction-source';
+
+vi.mock('@/hooks/use-day-summaries', () => ({
+    useInMemoryDaySummaries: (rows: Transaction[]) => (date: string) => ({
+        count: rows.filter((row) => row.transaction_date === date).length,
+        total: { status: 'pending' },
+    }),
+}));
+
+function transaction(
+    id: string,
+    overrides: Partial<Transaction> = {},
+): Transaction {
+    return {
+        id,
+        description: id,
+        notes: null,
+        amount: -1000,
+        currency_code: 'EUR',
+        transaction_date: '2026-10-01',
+        account_id: 'checking',
+        category_id: null,
+        creditor_name: null,
+        debtor_name: null,
+        ...overrides,
+    } as unknown as Transaction;
+}
+
+const ROWS = [
+    transaction('a', { transaction_date: '2026-10-03', creditor_name: 'Zed' }),
+    transaction('b', {
+        transaction_date: '2026-10-01',
+        description: 'Coffee',
+        creditor_name: 'Amy',
+    }),
+    transaction('c', {
+        transaction_date: '2026-10-02',
+        account_id: 'savings',
+    }),
+];
+
+describe('useInMemoryTransactionSource', () => {
+    beforeEach(() => {
+        vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+            callback();
+            return 0;
+        });
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('draws the newest rows first, a page at a time', async () => {
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({ transactions: ROWS, pageSize: 2 }),
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.rows.map((row) => row.id)).toEqual(['a', 'c']);
+        expect(result.current.heldRows).toHaveLength(3);
+        expect(result.current.pagination).toMatchObject({
+            displayedCount: 2,
+            total: 3,
+            hasMore: true,
+            loadsOnScroll: false,
+        });
+
+        act(() => result.current.pagination.loadMore());
+
+        expect(result.current.rows.map((row) => row.id)).toEqual([
+            'a',
+            'c',
+            'b',
+        ]);
+        expect(result.current.pagination.hasMore).toBe(false);
+    });
+
+    it('keeps an account page to its account', async () => {
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({
+                transactions: ROWS,
+                accountId: 'checking',
+            }),
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.filters.accountIds).toEqual(['checking']);
+        expect(result.current.rows.map((row) => row.id)).toEqual(['a', 'b']);
+    });
+
+    it('sorts and searches in the browser, back to the first page', async () => {
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({ transactions: ROWS, pageSize: 1 }),
+        );
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        act(() => result.current.pagination.loadMore());
+
+        act(() =>
+            result.current.onSortingChange([
+                { id: 'creditor_name', desc: false },
+            ]),
+        );
+
+        expect(result.current.manualSorting).toBe(false);
+        expect(result.current.pagination.displayedCount).toBe(1);
+        expect(result.current.rows.map((row) => row.id)).toEqual(['c']);
+
+        act(() =>
+            result.current.onFiltersChange({
+                ...result.current.filters,
+                searchText: 'coffee',
+            }),
+        );
+
+        await waitFor(() =>
+            expect(result.current.rows.map((row) => row.id)).toEqual(['b']),
+        );
+    });
+
+    it('counts each day over every row the filters keep, drawn or not', async () => {
+        const sameDay = [transaction('a'), transaction('b'), transaction('c')];
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({
+                transactions: sameDay,
+                pageSize: 1,
+            }),
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.rows).toHaveLength(1);
+        expect(result.current.daySummaryOf('2026-10-01').count).toBe(3);
+    });
+});
