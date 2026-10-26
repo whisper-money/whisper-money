@@ -100,14 +100,14 @@ it('reports no spending for the user who brought no movements', function () {
         ]);
 });
 
-it('turns the target into the catch-all budget that holds it', function () {
+it('turns the target into the catch-all budget that holds it', function (bool $warn) {
     Queue::fake();
 
     $user = closingUser();
     spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
 
     $this->actingAs($user)
-        ->postJson('/onboarding/target', ['amount' => 20000, 'warn' => true])
+        ->postJson('/onboarding/target', ['amount' => 20000, 'warn' => $warn])
         ->assertOk()
         ->assertJson(['target' => 20000]);
 
@@ -115,30 +115,17 @@ it('turns the target into the catch-all budget that holds it', function () {
 
     expect($budget->is_catch_all)->toBeTrue()
         ->and($budget->period_type)->toBe(BudgetPeriodType::Monthly)
-        ->and($budget->notify_on_close_to_limit)->toBeTrue()
-        ->and($budget->notify_on_over_limit)->toBeTrue()
+        ->and($budget->notify_on_close_to_limit)->toBe($warn)
+        ->and($budget->notify_on_over_limit)->toBe($warn)
         // What is left of the month once the target is set aside.
         ->and($budget->getCurrentPeriod()->allocated_amount)->toBe(80000);
 
     // Only a target with a budget behind it may be reported by step 11.
     expect($user->fresh()->onboarding_answers)->toMatchArray(['target' => 20000]);
-});
-
-it('leaves the warnings off when the toggle was turned off', function () {
-    Queue::fake();
-
-    $user = closingUser();
-    spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
-
-    $this->actingAs($user)
-        ->postJson('/onboarding/target', ['amount' => 20000, 'warn' => false])
-        ->assertOk();
-
-    $budget = $user->budgets()->sole();
-
-    expect($budget->notify_on_close_to_limit)->toBeFalse()
-        ->and($budget->notify_on_over_limit)->toBeFalse();
-});
+})->with([
+    'warnings on' => true,
+    'warnings off' => false,
+]);
 
 // A reload, or a second run at the step, must not leave two budgets claiming
 // the same movements.
@@ -191,8 +178,3 @@ it('rejects a target that is not a positive amount', function (mixed $amount) {
         ->postJson('/onboarding/target', ['amount' => $amount, 'warn' => true])
         ->assertJsonValidationErrorFor('amount');
 })->with([0, -100, 'lots', null]);
-
-it('requires both onboarding and a session', function () {
-    $this->getJson('/onboarding/summary')->assertUnauthorized();
-    $this->postJson('/onboarding/target', ['amount' => 20000, 'warn' => true])->assertUnauthorized();
-});

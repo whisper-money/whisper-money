@@ -37,17 +37,14 @@ it('calculates remaining balance after payments', function () {
         ->toBeLessThan(19800000);
 });
 
-it('returns zero balance when all payments made', function () {
-    $remaining = $this->service->calculateRemainingBalance(20000000, 3.5, 360, 360);
+it('returns zero balance once every payment is made', function (int $paymentsMade) {
+    $remaining = $this->service->calculateRemainingBalance(20000000, 3.5, 360, $paymentsMade);
 
     expect($remaining)->toBe(0);
-});
-
-it('returns zero balance when payments exceed term', function () {
-    $remaining = $this->service->calculateRemainingBalance(20000000, 3.5, 360, 400);
-
-    expect($remaining)->toBe(0);
-});
+})->with([
+    'all payments made' => 360,
+    'payments exceed term' => 400,
+]);
 
 it('returns full principal when no payments made', function () {
     $remaining = $this->service->calculateRemainingBalance(20000000, 3.5, 360, 0);

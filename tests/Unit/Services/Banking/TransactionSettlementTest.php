@@ -14,11 +14,8 @@ test('a settled, unknown or absent status is reported as settled', function (?st
     'booked' => 'BOOK',
     'other' => 'OTHR',
     'absent' => null,
+    'lowercase pending code' => 'pdng',
 ]);
-
-test('a lowercase status is not mistaken for an unsettled one', function () {
-    expect(TransactionSettlement::isUnsettled(['status' => 'pdng']))->toBeFalse();
-});
 
 test('the un-posted card code is canonicalized to its settled form', function () {
     expect(TransactionSettlement::canonicalCardCode(['MCRD', 'UPCT']))->toBe(['CCRD', 'POSD']);

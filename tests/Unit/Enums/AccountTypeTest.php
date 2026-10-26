@@ -2,26 +2,17 @@
 
 use App\Enums\AccountType;
 
-it('supports invested amount for investment accounts', function () {
-    expect(AccountType::Investment->supportsInvestedAmount())->toBeTrue();
-});
-
-it('supports invested amount for retirement accounts', function () {
-    expect(AccountType::Retirement->supportsInvestedAmount())->toBeTrue();
-});
-
-it('supports invested amount for savings accounts', function () {
-    expect(AccountType::Savings->supportsInvestedAmount())->toBeTrue();
-});
-
-it('does not support invested amount for non-investment account types', function (AccountType $type) {
-    expect($type->supportsInvestedAmount())->toBeFalse();
+it('supports an invested amount only on investment, retirement and savings accounts', function (AccountType $type, bool $supportsInvestedAmount) {
+    expect($type->supportsInvestedAmount())->toBe($supportsInvestedAmount);
 })->with([
-    'checking' => AccountType::Checking,
-    'credit card' => AccountType::CreditCard,
-    'loan' => AccountType::Loan,
-    'real estate' => AccountType::RealEstate,
-    'others' => AccountType::Others,
+    'investment' => [AccountType::Investment, true],
+    'retirement' => [AccountType::Retirement, true],
+    'savings' => [AccountType::Savings, true],
+    'checking' => [AccountType::Checking, false],
+    'credit card' => [AccountType::CreditCard, false],
+    'loan' => [AccountType::Loan, false],
+    'real estate' => [AccountType::RealEstate, false],
+    'others' => [AccountType::Others, false],
 ]);
 
 it('sets money aside only on savings, investment and retirement accounts', function (AccountType $type, bool $isSetAside) {
@@ -37,54 +28,41 @@ it('sets money aside only on savings, investment and retirement accounts', funct
     'others' => [AccountType::Others, false],
 ]);
 
-it('reduces net worth for liability account types', function (AccountType $type) {
-    expect($type->reducesNetWorth())->toBeTrue();
+it('reduces net worth only for liability account types', function (AccountType $type, bool $reducesNetWorth) {
+    expect($type->reducesNetWorth())->toBe($reducesNetWorth);
 })->with([
-    'loan' => AccountType::Loan,
+    'loan' => [AccountType::Loan, true],
+    'checking' => [AccountType::Checking, false],
+    'credit card' => [AccountType::CreditCard, false],
+    'savings' => [AccountType::Savings, false],
+    'investment' => [AccountType::Investment, false],
+    'retirement' => [AccountType::Retirement, false],
+    'real estate' => [AccountType::RealEstate, false],
+    'others' => [AccountType::Others, false],
 ]);
 
-it('does not reduce net worth for asset account types', function (AccountType $type) {
-    expect($type->reducesNetWorth())->toBeFalse();
+it('counts every account type but credit cards in the net worth total', function (AccountType $type, bool $countsInNetWorth) {
+    expect($type->countsInNetWorth())->toBe($countsInNetWorth);
 })->with([
-    'checking' => AccountType::Checking,
-    'credit card' => AccountType::CreditCard,
-    'savings' => AccountType::Savings,
-    'investment' => AccountType::Investment,
-    'retirement' => AccountType::Retirement,
-    'real estate' => AccountType::RealEstate,
-    'others' => AccountType::Others,
+    'credit card' => [AccountType::CreditCard, false],
+    'checking' => [AccountType::Checking, true],
+    'savings' => [AccountType::Savings, true],
+    'investment' => [AccountType::Investment, true],
+    'retirement' => [AccountType::Retirement, true],
+    'real estate' => [AccountType::RealEstate, true],
+    'loan' => [AccountType::Loan, true],
+    'others' => [AccountType::Others, true],
 ]);
 
-it('excludes credit cards from the net worth total', function () {
-    expect(AccountType::CreditCard->countsInNetWorth())->toBeFalse();
-});
-
-it('counts non credit card account types in the net worth total', function (AccountType $type) {
-    expect($type->countsInNetWorth())->toBeTrue();
+it('is non-transactional only for balance-only account types', function (AccountType $type, bool $isNonTransactional) {
+    expect($type->isNonTransactional())->toBe($isNonTransactional);
 })->with([
-    'checking' => AccountType::Checking,
-    'savings' => AccountType::Savings,
-    'investment' => AccountType::Investment,
-    'retirement' => AccountType::Retirement,
-    'real estate' => AccountType::RealEstate,
-    'loan' => AccountType::Loan,
-    'others' => AccountType::Others,
-]);
-
-it('is non-transactional for balance-only account types', function (AccountType $type) {
-    expect($type->isNonTransactional())->toBeTrue();
-})->with([
-    'investment' => AccountType::Investment,
-    'retirement' => AccountType::Retirement,
-    'real estate' => AccountType::RealEstate,
-]);
-
-it('is transactional for standard account types', function (AccountType $type) {
-    expect($type->isNonTransactional())->toBeFalse();
-})->with([
-    'checking' => AccountType::Checking,
-    'savings' => AccountType::Savings,
-    'credit card' => AccountType::CreditCard,
-    'loan' => AccountType::Loan,
-    'others' => AccountType::Others,
+    'investment' => [AccountType::Investment, true],
+    'retirement' => [AccountType::Retirement, true],
+    'real estate' => [AccountType::RealEstate, true],
+    'checking' => [AccountType::Checking, false],
+    'savings' => [AccountType::Savings, false],
+    'credit card' => [AccountType::CreditCard, false],
+    'loan' => [AccountType::Loan, false],
+    'others' => [AccountType::Others, false],
 ]);

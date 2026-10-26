@@ -3,38 +3,30 @@
 use App\Enums\AccountType;
 use App\Enums\BankingProvider;
 
-it('uses an API key for non-EnableBanking providers', function (BankingProvider $provider) {
-    expect($provider->usesApiKey())->toBeTrue();
+it('uses an API key for every provider but EnableBanking', function (BankingProvider $provider, bool $usesApiKey) {
+    expect($provider->usesApiKey())->toBe($usesApiKey);
 })->with([
-    'indexa capital' => BankingProvider::IndexaCapital,
-    'binance' => BankingProvider::Binance,
-    'bitpanda' => BankingProvider::Bitpanda,
-    'kraken' => BankingProvider::Kraken,
-    'coinbase' => BankingProvider::Coinbase,
-    'interactive brokers' => BankingProvider::InteractiveBrokers,
-    'wise' => BankingProvider::Wise,
+    'indexa capital' => [BankingProvider::IndexaCapital, true],
+    'binance' => [BankingProvider::Binance, true],
+    'bitpanda' => [BankingProvider::Bitpanda, true],
+    'kraken' => [BankingProvider::Kraken, true],
+    'coinbase' => [BankingProvider::Coinbase, true],
+    'interactive brokers' => [BankingProvider::InteractiveBrokers, true],
+    'wise' => [BankingProvider::Wise, true],
+    'enable banking' => [BankingProvider::EnableBanking, false],
 ]);
 
-it('does not use an API key for EnableBanking', function () {
-    expect(BankingProvider::EnableBanking->usesApiKey())->toBeFalse();
-});
-
-it('defaults investment providers to an investment account', function (BankingProvider $provider) {
-    expect($provider->defaultAccountType())->toBe(AccountType::Investment);
+it('defaults investment providers to an investment account and cash providers to a checking one', function (BankingProvider $provider, AccountType $accountType) {
+    expect($provider->defaultAccountType())->toBe($accountType);
 })->with([
-    'indexa capital' => BankingProvider::IndexaCapital,
-    'binance' => BankingProvider::Binance,
-    'bitpanda' => BankingProvider::Bitpanda,
-    'kraken' => BankingProvider::Kraken,
-    'coinbase' => BankingProvider::Coinbase,
-    'interactive brokers' => BankingProvider::InteractiveBrokers,
-]);
-
-it('defaults cash providers to a checking account', function (BankingProvider $provider) {
-    expect($provider->defaultAccountType())->toBe(AccountType::Checking);
-})->with([
-    'wise' => BankingProvider::Wise,
-    'enable banking' => BankingProvider::EnableBanking,
+    'indexa capital' => [BankingProvider::IndexaCapital, AccountType::Investment],
+    'binance' => [BankingProvider::Binance, AccountType::Investment],
+    'bitpanda' => [BankingProvider::Bitpanda, AccountType::Investment],
+    'kraken' => [BankingProvider::Kraken, AccountType::Investment],
+    'coinbase' => [BankingProvider::Coinbase, AccountType::Investment],
+    'interactive brokers' => [BankingProvider::InteractiveBrokers, AccountType::Investment],
+    'wise' => [BankingProvider::Wise, AccountType::Checking],
+    'enable banking' => [BankingProvider::EnableBanking, AccountType::Checking],
 ]);
 
 it('maps credential inputs onto the encrypted connection columns', function () {

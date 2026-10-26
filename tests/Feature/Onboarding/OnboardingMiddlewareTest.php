@@ -2,15 +2,19 @@
 
 use App\Models\User;
 
-it('redirects non-onboarded user from dashboard to onboarding', function () {
+it('redirects non-onboarded user to onboarding', function (string $path) {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
 
-    $response = $this->actingAs($user)->get('/dashboard');
+    $response = $this->actingAs($user)->get($path);
 
     $response->assertRedirect('/onboarding');
-});
+})->with([
+    'dashboard' => '/dashboard',
+    'accounts list' => '/accounts',
+    'transactions' => '/transactions',
+]);
 
 it('allows onboarded user to access dashboard', function () {
     $user = User::factory()->onboarded()->create();
@@ -52,24 +56,4 @@ it('sets onboarded_at when completing onboarding', function () {
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue();
     expect($user->onboarded_at)->not->toBeNull();
-});
-
-it('redirects non-onboarded user from accounts list to onboarding', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $response = $this->actingAs($user)->get('/accounts');
-
-    $response->assertRedirect('/onboarding');
-});
-
-it('redirects non-onboarded user from transactions to onboarding', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $response = $this->actingAs($user)->get('/transactions');
-
-    $response->assertRedirect('/onboarding');
 });

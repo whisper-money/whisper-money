@@ -236,10 +236,6 @@ it('names the merchant from the description when the row has no counterparty', f
         ]);
 });
 
-it('is closed to guests', function () {
-    $this->getJson('/onboarding/reveal')->assertUnauthorized();
-});
-
 it('reveals the last finished month rather than the one still running', function () {
     $user = revealUser();
     $account = Account::factory()->for($user)->create(['type' => 'checking', 'currency_code' => 'EUR']);

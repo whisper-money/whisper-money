@@ -96,7 +96,7 @@ function drawnCardText(): string
     return trim(preg_replace('/\s+/u', ' ', strip_tags($body)) ?? '');
 }
 
-it('serves an earned medal in both shapes and both skins', function (string $format, string $theme): void {
+it('serves an earned medal in both shapes and both skins, at the sizes the networks want', function (string $format, string $theme, int $width, int $height): void {
     $user = medalOwner();
     earned($user, 'streaks.2');
 
@@ -104,25 +104,13 @@ it('serves an earned medal in both shapes and both skins', function (string $for
         ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => $format, 'theme' => $theme]))
         ->assertOk()
         ->assertHeader('content-type', 'image/png');
-})->with([
-    ['feed', 'light'],
-    ['feed', 'dark'],
-    ['story', 'light'],
-    ['story', 'dark'],
-]);
-
-it('draws the 4:5 and the 9:16 at the sizes the networks want', function (string $format, int $width, int $height): void {
-    $user = medalOwner();
-    earned($user, 'streaks.2');
-
-    test()->actingAs($user)
-        ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => $format, 'theme' => 'light']))
-        ->assertOk();
 
     expect(drawnCard())->toContain("width: {$width}px", "height: {$height}px");
 })->with([
-    ['feed', 1080, 1350],
-    ['story', 1080, 1920],
+    '4:5 light' => ['feed', 'light', 1080, 1350],
+    '4:5 dark' => ['feed', 'dark', 1080, 1350],
+    '9:16 light' => ['story', 'light', 1080, 1920],
+    '9:16 dark' => ['story', 'dark', 1080, 1920],
 ]);
 
 it('refuses a shape the medal card is not designed for', function (): void {
@@ -312,7 +300,7 @@ it('draws each cut once and serves the rest off the disk', function (): void {
     ), 2);
 });
 
-it('strikes the medal in the metal of its tier', function (string $key, string $core): void {
+it('strikes the medal in the metal of its tier', function (string $key, array $metals): void {
     $user = medalOwner();
     earned($user, $key);
 
@@ -320,29 +308,15 @@ it('strikes the medal in the metal of its tier', function (string $key, string $
         ->get(route('achievements.card', ['medal' => $key, 'format' => 'feed', 'theme' => 'light']))
         ->assertOk();
 
-    expect(drawnCard())->toContain($core);
+    expect(drawnCard())->toContain(...$metals);
 })->with([
-    // Copper, steel, gold — and obsidian, which is the only one that also has
-    // to carry a second metal for its crown.
-    ['transactions.1', 'oklch(0.60 0.13 38)'],
-    ['streaks.2', 'oklch(0.73 0.014 254)'],
-    ['streaks.3', 'oklch(0.79 0.155 86)'],
-    ['streaks.4', 'oklch(0.255 0.015 266)'],
+    'copper' => ['transactions.1', ['oklch(0.60 0.13 38)']],
+    'steel' => ['streaks.2', ['oklch(0.73 0.014 254)']],
+    'gold' => ['streaks.3', ['oklch(0.79 0.155 86)']],
+    // Obsidian is the only tier that also carries a second metal: the dark
+    // face and the gold crown, both in one drawing.
+    'obsidian with a gold crown' => ['streaks.4', ['oklch(0.255 0.015 266)', 'oklch(0.79 0.155 86)']],
 ]);
-
-it('gives obsidian a gold crown', function (): void {
-    $user = medalOwner();
-    earned($user, 'streaks.4');
-
-    test()->actingAs($user)
-        ->get(route('achievements.card', ['medal' => 'streaks.4', 'format' => 'feed', 'theme' => 'light']))
-        ->assertOk();
-
-    // Both metals in one drawing: the dark face and the gold it is crowned with.
-    expect(drawnCard())
-        ->toContain('oklch(0.255 0.015 266)')
-        ->toContain('oklch(0.79 0.155 86)');
-});
 
 it('can draw every pictogram the catalog asks for', function (): void {
     // A card cannot import the frontend's icon set, so it keeps its own copy of

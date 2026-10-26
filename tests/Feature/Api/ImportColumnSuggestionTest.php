@@ -402,10 +402,10 @@ describe('attempts and timeout', function () {
 });
 
 describe('failure reports', function () {
-    it('reports a run of exhausted attempts once per window, not once per file', function () {
+    it('reports a run of failed answers once per window, not once per file', function (int $status, array $body) {
         config()->set('ai_import_mapping.report_every_minutes', 15);
         Exceptions::fake();
-        Http::fake(['api.typesafe.ai/*' => Http::response([], 503)]);
+        Http::fake(['api.typesafe.ai/*' => Http::response($body, $status)]);
         $payload = ['kind' => 'transaction', 'columns' => bankExportColumns()];
 
         $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
@@ -417,18 +417,10 @@ describe('failure reports', function () {
         $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
 
         Exceptions::assertReportedCount(2);
-    });
-
-    it('throttles a rejected request the same way', function () {
-        Exceptions::fake();
-        Http::fake(['api.typesafe.ai/*' => Http::response(['error' => 'invalid key'], 401)]);
-        $payload = ['kind' => 'transaction', 'columns' => bankExportColumns()];
-
-        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
-        $this->postJson(route('api.import.column-suggestions'), $payload)->assertOk();
-
-        Exceptions::assertReportedCount(1);
-    });
+    })->with([
+        'exhausted attempts' => [503, []],
+        'a rejected request' => [401, ['error' => 'invalid key']],
+    ]);
 });
 
 describe('an unreadable answer', function () {
