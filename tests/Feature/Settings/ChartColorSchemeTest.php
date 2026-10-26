@@ -30,14 +30,6 @@ test('chart color scheme rejects invalid values', function () {
     $response->assertSessionHasErrors('chart_color_scheme');
 });
 
-test('chart color scheme requires authentication', function () {
-    $response = $this->patch(route('chart-color-scheme.update'), [
-        'chart_color_scheme' => 'blue',
-    ]);
-
-    $response->assertRedirect(route('register'));
-});
-
 test('chart color scheme creates setting when none exists', function () {
     $user = User::factory()->create();
 

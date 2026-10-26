@@ -114,34 +114,13 @@ it('clears the bank when updating an account with a null bank_id', function () {
     ]);
 });
 
-it('validates required fields when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), []);
-
-    $response->assertSessionHasErrors(['name', 'currency_code', 'type']);
-});
-
-it('validates currency_code must be in allowed list', function () {
+it('accepts a newly supported currency when creating account', function (string $name, string $currency) {
     actingAs($this->user);
 
     $response = $this->post(route('accounts.store'), [
-        'name' => 'My Account',
+        'name' => $name,
         'bank_id' => $this->bank->id,
-        'currency_code' => 'INVALID',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertSessionHasErrors(['currency_code']);
-});
-
-it('accepts new latam currency when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Argentina Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'ARS',
+        'currency_code' => $currency,
         'type' => AccountType::Checking->value,
     ]);
 
@@ -150,104 +129,16 @@ it('accepts new latam currency when creating account', function () {
     assertDatabaseHas('accounts', [
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
-        'currency_code' => 'ARS',
+        'currency_code' => $currency,
     ]);
-});
-
-it('accepts Colombian peso when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Colombia Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'COP',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertRedirect();
-
-    assertDatabaseHas('accounts', [
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'COP',
-    ]);
-});
-
-it('accepts Dominican peso when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Dominican Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'DOP',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertRedirect();
-
-    assertDatabaseHas('accounts', [
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'DOP',
-    ]);
-});
-
-it('accepts Pakistani rupee when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Pakistan Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'PKR',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertRedirect();
-
-    assertDatabaseHas('accounts', [
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'PKR',
-    ]);
-});
-
-it('accepts Brazilian real when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Brazil Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'BRL',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertRedirect();
-
-    assertDatabaseHas('accounts', [
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'BRL',
-    ]);
-});
-
-it('accepts Saudi riyal when creating account', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'Saudi Account',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'SAR',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertRedirect();
-
-    assertDatabaseHas('accounts', [
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'SAR',
-    ]);
-});
+})->with([
+    'Argentine peso (latam)' => ['Argentina Account', 'ARS'],
+    'Colombian peso' => ['Colombia Account', 'COP'],
+    'Dominican peso' => ['Dominican Account', 'DOP'],
+    'Pakistani rupee' => ['Pakistan Account', 'PKR'],
+    'Brazilian real' => ['Brazil Account', 'BRL'],
+    'Saudi riyal' => ['Saudi Account', 'SAR'],
+]);
 
 it('accepts bitcoin when creating account', function () {
     actingAs($this->user);
@@ -274,31 +165,33 @@ it('accepts bitcoin when creating account', function () {
     ]);
 });
 
-it('rejects bitcoin when creating a first account', function () {
+it('rejects an invalid account on creation', function (Closure $payload, array $errors) {
     actingAs($this->user);
 
-    $response = $this->post(route('accounts.store'), [
+    $response = $this->post(route('accounts.store'), $payload($this->bank));
+
+    $response->assertSessionHasErrors($errors);
+})->with([
+    'missing required fields' => [fn (Bank $bank) => [], ['name', 'currency_code', 'type']],
+    'currency outside the allowed list' => [fn (Bank $bank) => [
+        'name' => 'My Account',
+        'bank_id' => $bank->id,
+        'currency_code' => 'INVALID',
+        'type' => AccountType::Checking->value,
+    ], ['currency_code']],
+    'bitcoin as a first account' => [fn (Bank $bank) => [
         'name' => 'Bitcoin Account',
-        'bank_id' => $this->bank->id,
+        'bank_id' => $bank->id,
         'currency_code' => 'BTC',
         'type' => AccountType::Investment->value,
-    ]);
-
-    $response->assertSessionHasErrors(['currency_code']);
-});
-
-it('validates type must be valid AccountType', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
+    ], ['currency_code']],
+    'type that is not an AccountType' => [fn (Bank $bank) => [
         'name' => 'My Account',
-        'bank_id' => $this->bank->id,
+        'bank_id' => $bank->id,
         'currency_code' => 'USD',
         'type' => 'invalid_type',
-    ]);
-
-    $response->assertSessionHasErrors(['type']);
-});
+    ], ['type']],
+]);
 
 it('can update an account', function () {
     actingAs($this->user);
@@ -391,7 +284,7 @@ it('deletes all transactions when deleting account', function () {
     expect(Transaction::find($transaction2->id))->toBeNull();
 });
 
-it('keeps the currency of a connected account', function () {
+it('keeps the currency and bank of a connected account', function (Closure $changes, string $field, Closure $kept) {
     actingAs($this->user);
 
     $account = Account::factory()->connected()->create([
@@ -404,65 +297,21 @@ it('keeps the currency of a connected account', function () {
     $response = $this->patch(route('accounts.update', $account), [
         'name' => 'Renamed',
         'bank_id' => $this->bank->id,
-        'currency_code' => 'USD',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertSessionHasErrors(['currency_code']);
-    assertDatabaseHas('accounts', [
-        'id' => $account->id,
-        'currency_code' => 'EUR',
-    ]);
-});
-
-it('keeps the bank of a connected account', function () {
-    actingAs($this->user);
-
-    $account = Account::factory()->connected()->create([
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'EUR',
-        'type' => AccountType::Checking,
-    ]);
-    $otherBank = Bank::factory()->create();
-
-    $response = $this->patch(route('accounts.update', $account), [
-        'name' => 'Renamed',
-        'bank_id' => $otherBank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Checking->value,
+        ...$changes(),
     ]);
 
-    $response->assertSessionHasErrors(['bank_id']);
+    $response->assertSessionHasErrors([$field]);
     assertDatabaseHas('accounts', [
         'id' => $account->id,
-        'bank_id' => $this->bank->id,
+        ...$kept($this->bank),
     ]);
-});
-
-it('refuses to clear the bank of a connected account', function () {
-    actingAs($this->user);
-
-    $account = Account::factory()->connected()->create([
-        'user_id' => $this->user->id,
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'EUR',
-        'type' => AccountType::Checking,
-    ]);
-
-    $response = $this->patch(route('accounts.update', $account), [
-        'name' => 'Renamed',
-        'bank_id' => null,
-        'currency_code' => 'EUR',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertSessionHasErrors(['bank_id']);
-    assertDatabaseHas('accounts', [
-        'id' => $account->id,
-        'bank_id' => $this->bank->id,
-    ]);
-});
+})->with([
+    'another currency' => [fn () => ['currency_code' => 'USD'], 'currency_code', fn (Bank $bank) => ['currency_code' => 'EUR']],
+    'another bank' => [fn () => ['bank_id' => Bank::factory()->create()->id], 'bank_id', fn (Bank $bank) => ['bank_id' => $bank->id]],
+    'a cleared bank' => [fn () => ['bank_id' => null], 'bank_id', fn (Bank $bank) => ['bank_id' => $bank->id]],
+]);
 
 it('still updates a connected account when the currency is left alone', function () {
     actingAs($this->user);

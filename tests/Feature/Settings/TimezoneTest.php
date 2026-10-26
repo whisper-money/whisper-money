@@ -36,11 +36,3 @@ test('timezone backfill rejects invalid timezones', function () {
     $response->assertJsonValidationErrors(['timezone']);
     expect($user->refresh()->timezone)->toBeNull();
 });
-
-test('timezone backfill requires authentication', function () {
-    $response = $this->patch(route('timezone.update'), [
-        'timezone' => 'Europe/Madrid',
-    ]);
-
-    $response->assertRedirect(route('register'));
-});

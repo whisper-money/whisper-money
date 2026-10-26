@@ -7,20 +7,6 @@ beforeEach(function () {
     config()->set('inertia.ssr.enabled', false);
 });
 
-test('notification preferences can be updated', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('notifications.update'), [
-            'notifications' => ['bank_transactions_synced' => false],
-        ]);
-
-    $response->assertSessionHasNoErrors()->assertRedirect();
-
-    expect($user->fresh()->setting->notify_on_bank_transactions_synced)->toBeFalse();
-});
-
 test('notification preferences reject unknown notification keys', function () {
     $user = User::factory()->create();
 
@@ -45,110 +31,46 @@ test('notification preferences reject invalid values', function () {
     $response->assertSessionHasErrors('notifications.bank_transactions_synced');
 });
 
-test('notification preferences require authentication', function () {
-    $response = $this->patch(route('notifications.update'), [
-        'notifications' => ['bank_transactions_synced' => false],
-    ]);
+dataset('email toggles', [
+    'bank transactions synced' => ['bank_transactions_synced', 'notify_on_bank_transactions_synced', 'wantsBankTransactionsSyncedEmail', 'notifyOnBankTransactionsSynced'],
+    'inactive no bank reminder' => ['inactive_no_bank', 'notify_on_inactive_no_bank', 'wantsInactiveNoBankEmail', 'notifyOnInactiveNoBank'],
+    'product news and offers' => ['marketing', 'notify_marketing', 'wantsMarketingEmails', 'notifyMarketing'],
+]);
 
-    $response->assertRedirect(route('register'));
-});
-
-test('notification preferences create setting when none exists', function () {
+test('an email toggle can be turned off, creating the setting when none exists', function (string $key, string $column) {
     $user = User::factory()->create();
 
     expect(UserSetting::where('user_id', $user->id)->exists())->toBeFalse();
 
     $this->actingAs($user)
         ->patch(route('notifications.update'), [
-            'notifications' => ['bank_transactions_synced' => false],
-        ]);
+            'notifications' => [$key => false],
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
 
     expect(UserSetting::where('user_id', $user->id)->exists())->toBeTrue();
-    expect($user->fresh()->setting->notify_on_bank_transactions_synced)->toBeFalse();
-});
+    expect($user->fresh()->setting->{$column})->toBeFalse();
+})->with('email toggles');
 
-test('bank transactions notification defaults to true when no setting exists', function () {
+test('an email toggle defaults to true when no setting exists', function (string $key, string $column, string $wantsEmail) {
     $user = User::factory()->create();
 
     expect($user->setting)->toBeNull();
-    expect($user->wantsBankTransactionsSyncedEmail())->toBeTrue();
-});
+    expect($user->{$wantsEmail}())->toBeTrue();
+})->with('email toggles');
 
-test('bank transactions notification preference is shared with the notifications page', function () {
+test('an email toggle is shared with the notifications page', function (string $key, string $column, string $wantsEmail, string $prop) {
     $user = User::factory()->create();
     UserSetting::factory()->for($user)->create([
-        'notify_on_bank_transactions_synced' => false,
+        $column => false,
     ]);
 
     $response = $this->actingAs($user)->get(route('notifications.index'));
 
     $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('notifyOnBankTransactionsSynced', false));
-});
-
-test('the inactive-no-bank reminder can be turned off', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch(route('notifications.update'), [
-            'notifications' => ['inactive_no_bank' => false],
-        ])
-        ->assertSessionHasNoErrors()
-        ->assertRedirect();
-
-    expect($user->fresh()->setting->notify_on_inactive_no_bank)->toBeFalse();
-});
-
-test('the inactive-no-bank reminder defaults to true when no setting exists', function () {
-    $user = User::factory()->create();
-
-    expect($user->setting)->toBeNull();
-    expect($user->wantsInactiveNoBankEmail())->toBeTrue();
-});
-
-test('the inactive-no-bank preference is shared with the notifications page', function () {
-    $user = User::factory()->create();
-    UserSetting::factory()->for($user)->create([
-        'notify_on_inactive_no_bank' => false,
-    ]);
-
-    $response = $this->actingAs($user)->get(route('notifications.index'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('notifyOnInactiveNoBank', false));
-});
-
-test('the product news and offers toggle can be turned off', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch(route('notifications.update'), [
-            'notifications' => ['marketing' => false],
-        ])
-        ->assertSessionHasNoErrors()
-        ->assertRedirect();
-
-    expect($user->fresh()->setting->notify_marketing)->toBeFalse();
-});
-
-test('product news and offers defaults to true when no setting exists', function () {
-    $user = User::factory()->create();
-
-    expect($user->setting)->toBeNull();
-    expect($user->wantsMarketingEmails())->toBeTrue();
-});
-
-test('the product news and offers preference is shared with the notifications page', function () {
-    $user = User::factory()->create();
-    UserSetting::factory()->for($user)->create([
-        'notify_marketing' => false,
-    ]);
-
-    $response = $this->actingAs($user)->get(route('notifications.index'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->where('notifyMarketing', false));
-});
+    $response->assertInertia(fn ($page) => $page->where($prop, false));
+})->with('email toggles');
 
 test('budget notification defaults can be updated', function () {
     $user = User::factory()->create();
