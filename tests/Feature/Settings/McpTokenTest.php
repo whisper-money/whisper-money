@@ -23,46 +23,32 @@ it('renders the MCP settings page', function () {
         ->assertOk();
 });
 
-it('creates a read-only token and flashes the secret once', function () {
+it('creates a token for the scope picked and flashes the secret once', function (string $name, string $scope, array $abilities) {
     $user = User::factory()->create();
 
     actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Claude Desktop', 'scope' => 'read'])
+        ->post(route('mcp.tokens.store'), ['name' => $name, 'scope' => $scope])
         ->assertRedirect(route('mcp.index'))
         ->assertSessionHas('mcp_token');
 
     $token = $user->tokens()->first();
 
-    expect($token->name)->toBe('Claude Desktop');
-    expect($token->abilities)->toBe(['mcp:read']);
-});
+    expect($token->name)->toBe($name);
+    expect($token->abilities)->toBe($abilities);
+})->with([
+    'read-only' => ['Claude Desktop', 'read', ['mcp:read']],
+    'read & write' => ['Claude Code', 'read_write', ['mcp:read', 'mcp:write']],
+]);
 
-it('creates a read & write token carrying the mcp:write ability', function () {
-    $user = User::factory()->create();
-
-    actingAs($user)
-        ->post(route('mcp.tokens.store'), ['name' => 'Claude Code', 'scope' => 'read_write'])
-        ->assertRedirect(route('mcp.index'))
-        ->assertSessionHas('mcp_token');
-
-    expect($user->tokens()->first()->abilities)->toBe(['mcp:read', 'mcp:write']);
-});
-
-it('requires a token name', function () {
+it('rejects a token without a name or a valid scope', function (array $payload, string $field) {
     actingAs(User::factory()->create())
-        ->post(route('mcp.tokens.store'), ['name' => '', 'scope' => 'read'])
-        ->assertSessionHasErrors('name');
-});
-
-it('requires a valid scope', function () {
-    actingAs(User::factory()->create())
-        ->post(route('mcp.tokens.store'), ['name' => 'Bad', 'scope' => 'admin'])
-        ->assertSessionHasErrors('scope');
-
-    actingAs(User::factory()->create())
-        ->post(route('mcp.tokens.store'), ['name' => 'Missing'])
-        ->assertSessionHasErrors('scope');
-});
+        ->post(route('mcp.tokens.store'), $payload)
+        ->assertSessionHasErrors($field);
+})->with([
+    'empty name' => [['name' => '', 'scope' => 'read'], 'name'],
+    'unknown scope' => [['name' => 'Bad', 'scope' => 'admin'], 'scope'],
+    'missing scope' => [['name' => 'Missing'], 'scope'],
+]);
 
 it('lets a free account create a token (gating happens at request time)', function () {
     config(['subscriptions.enabled' => true]);

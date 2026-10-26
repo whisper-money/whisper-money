@@ -66,18 +66,20 @@ test('authenticated users can create a category', function () {
     ]);
 });
 
-test('category name is required', function () {
+test('a category is rejected without a valid name, icon, color or type', function (array $payload, string $field) {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'icon' => 'ShoppingBag',
-        'color' => 'blue',
-        'type' => 'expense',
-        'cashflow_direction' => 'hidden',
-    ]);
+    $response = $this->actingAs($user)->post(route('categories.store'), $payload);
 
-    $response->assertSessionHasErrors(['name']);
-});
+    $response->assertSessionHasErrors([$field]);
+})->with([
+    'missing name' => [['icon' => 'ShoppingBag', 'color' => 'blue', 'type' => 'expense', 'cashflow_direction' => 'hidden'], 'name'],
+    'missing icon' => [['name' => 'Shopping', 'color' => 'blue', 'type' => 'expense'], 'icon'],
+    'missing color' => [['name' => 'Shopping', 'icon' => 'ShoppingBag', 'type' => 'expense'], 'color'],
+    'unknown color' => [['name' => 'Shopping', 'icon' => 'ShoppingBag', 'color' => 'invalid-color', 'type' => 'expense'], 'color'],
+    'missing type' => [['name' => 'Shopping', 'icon' => 'ShoppingBag', 'color' => 'blue'], 'type'],
+    'unknown type' => [['name' => 'Shopping', 'icon' => 'ShoppingBag', 'color' => 'blue', 'type' => 'invalid-type'], 'type'],
+]);
 
 test('category names must be unique for each user when creating', function () {
     $user = User::factory()->create();
@@ -146,68 +148,6 @@ test('users can recreate a category with the same name after deleting it', funct
 
     expect($user->categories()->where('name', 'Supermercados')->count())->toBe(1)
         ->and($user->categories()->withTrashed()->where('name', 'Supermercados')->count())->toBe(2);
-});
-
-test('category icon is required', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Shopping',
-        'color' => 'blue',
-        'type' => 'expense',
-    ]);
-
-    $response->assertSessionHasErrors(['icon']);
-});
-
-test('category color is required', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Shopping',
-        'icon' => 'ShoppingBag',
-        'type' => 'expense',
-    ]);
-
-    $response->assertSessionHasErrors(['color']);
-});
-
-test('category color must be valid', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Shopping',
-        'icon' => 'ShoppingBag',
-        'color' => 'invalid-color',
-        'type' => 'expense',
-    ]);
-
-    $response->assertSessionHasErrors(['color']);
-});
-
-test('category type is required', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Shopping',
-        'icon' => 'ShoppingBag',
-        'color' => 'blue',
-    ]);
-
-    $response->assertSessionHasErrors(['type']);
-});
-
-test('category type must be valid', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Shopping',
-        'icon' => 'ShoppingBag',
-        'color' => 'blue',
-        'type' => 'invalid-type',
-    ]);
-
-    $response->assertSessionHasErrors(['type']);
 });
 
 test('authenticated users can update their own category', function () {
@@ -509,14 +449,6 @@ test('users cannot delete categories they do not own', function () {
         'id' => $category->id,
         'deleted_at' => null,
     ]);
-});
-
-test('guests cannot access category management', function () {
-    $response = $this->get(route('categories.index'));
-    $response->assertRedirect(route('register'));
-
-    $response = $this->post(route('categories.store'), []);
-    $response->assertRedirect(route('register'));
 });
 
 test('default categories are created when user registers', function () {

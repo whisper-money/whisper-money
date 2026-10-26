@@ -50,70 +50,20 @@ it('can create a new bank with logo', function () {
     expect($bank->logo)->not->toBeNull();
 });
 
-it('validates name is required', function () {
+it('rejects a bank without a name or with a logo outside the limits', function (Closure $payload, string $field) {
     actingAs($this->user);
 
-    $response = $this->postJson(route('banks.store'), []);
+    $response = $this->postJson(route('banks.store'), $payload());
 
     $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['name']);
-});
-
-it('validates logo must be an image', function () {
-    actingAs($this->user);
-
-    $file = UploadedFile::fake()->create('document.pdf', 100);
-
-    $response = $this->postJson(route('banks.store'), [
-        'name' => 'Test Bank',
-        'logo' => $file,
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['logo']);
-});
-
-it('validates logo dimensions must be square', function () {
-    actingAs($this->user);
-
-    $logo = UploadedFile::fake()->image('logo.png', 200, 100);
-
-    $response = $this->postJson(route('banks.store'), [
-        'name' => 'Test Bank',
-        'logo' => $logo,
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['logo']);
-});
-
-it('validates logo dimensions must not exceed 500px', function () {
-    actingAs($this->user);
-
-    $logo = UploadedFile::fake()->image('logo.png', 600, 600);
-
-    $response = $this->postJson(route('banks.store'), [
-        'name' => 'Test Bank',
-        'logo' => $logo,
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['logo']);
-});
-
-it('validates logo file size must not exceed 500KB', function () {
-    actingAs($this->user);
-
-    $logo = UploadedFile::fake()->image('logo.png', 100, 100)->size(600);
-
-    $response = $this->postJson(route('banks.store'), [
-        'name' => 'Test Bank',
-        'logo' => $logo,
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['logo']);
-});
+    $response->assertJsonValidationErrors([$field]);
+})->with([
+    'missing name' => [fn () => [], 'name'],
+    'logo that is not an image' => [fn () => ['name' => 'Test Bank', 'logo' => UploadedFile::fake()->create('document.pdf', 100)], 'logo'],
+    'logo that is not square' => [fn () => ['name' => 'Test Bank', 'logo' => UploadedFile::fake()->image('logo.png', 200, 100)], 'logo'],
+    'logo wider than 500px' => [fn () => ['name' => 'Test Bank', 'logo' => UploadedFile::fake()->image('logo.png', 600, 600)], 'logo'],
+    'logo heavier than 500KB' => [fn () => ['name' => 'Test Bank', 'logo' => UploadedFile::fake()->image('logo.png', 100, 100)->size(600)], 'logo'],
+]);
 
 it('requires authentication to create a bank', function () {
     $response = $this->postJson(route('banks.store'), [

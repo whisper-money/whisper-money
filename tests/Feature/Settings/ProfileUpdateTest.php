@@ -35,7 +35,7 @@ test('profile information can be updated', function () {
     expect($user->currency_code)->toBe('EUR');
 });
 
-test('profile accepts new latam primary currency', function () {
+test('profile accepts a newly supported primary currency', function (string $currency, array $extra) {
     $user = User::factory()->create();
 
     $response = $this
@@ -43,72 +43,21 @@ test('profile accepts new latam primary currency', function () {
         ->patch(route('profile.update'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'currency_code' => 'ARS',
+            'currency_code' => $currency,
+            ...$extra,
         ]);
 
     $response
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('account.edit'));
 
-    expect($user->refresh()->currency_code)->toBe('ARS');
-});
-
-test('profile accepts Pakistani rupee as primary currency', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'currency_code' => 'PKR',
-            'month_start_day' => 1,
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('account.edit'));
-
-    expect($user->refresh()->currency_code)->toBe('PKR');
-});
-
-test('profile accepts Brazilian real as primary currency', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'currency_code' => 'BRL',
-            'month_start_day' => 1,
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('account.edit'));
-
-    expect($user->refresh()->currency_code)->toBe('BRL');
-});
-
-test('profile accepts Saudi riyal as primary currency', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'currency_code' => 'SAR',
-            'month_start_day' => 1,
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('account.edit'));
-
-    expect($user->refresh()->currency_code)->toBe('SAR');
-});
+    expect($user->refresh()->currency_code)->toBe($currency);
+})->with([
+    'Argentine peso (latam)' => ['ARS', []],
+    'Pakistani rupee' => ['PKR', ['month_start_day' => 1]],
+    'Brazilian real' => ['BRL', ['month_start_day' => 1]],
+    'Saudi riyal' => ['SAR', ['month_start_day' => 1]],
+]);
 
 test('profile rejects bitcoin as primary currency', function () {
     $user = User::factory()->create();
@@ -184,60 +133,7 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('user with an active subscription cannot delete their account', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->create();
-
-    $user->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_active_delete_test',
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_delete_test',
-    ]);
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('delete-account.edit'))
-        ->delete(route('profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('subscription')
-        ->assertRedirect(route('delete-account.edit'));
-
-    expect(User::query()->find($user->id))->not->toBeNull();
-});
-
-test('user on a trial cannot delete their account', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->create();
-
-    $user->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_trialing_delete_test',
-        'stripe_status' => 'trialing',
-        'stripe_price' => 'price_delete_test',
-        'trial_ends_at' => now()->addDays(7),
-    ]);
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('delete-account.edit'))
-        ->delete(route('profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('subscription')
-        ->assertRedirect(route('delete-account.edit'));
-
-    expect(User::query()->find($user->id))->not->toBeNull();
-});
-
-test('user with a subscription Stripe can still collect on cannot delete their account', function (string $status) {
+test('user with a subscription Stripe can still collect on cannot delete their account', function (string $status, array $extra) {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->create();
@@ -247,6 +143,7 @@ test('user with a subscription Stripe can still collect on cannot delete their a
         'stripe_id' => "sub_{$status}_delete_test",
         'stripe_status' => $status,
         'stripe_price' => 'price_delete_test',
+        ...$extra,
     ]);
 
     $response = $this
@@ -261,7 +158,13 @@ test('user with a subscription Stripe can still collect on cannot delete their a
         ->assertRedirect(route('delete-account.edit'));
 
     expect(User::query()->find($user->id))->not->toBeNull();
-})->with(['past_due', 'unpaid', 'incomplete']);
+})->with([
+    'active' => ['active', []],
+    'on a trial' => ['trialing', fn () => ['trial_ends_at' => now()->addDays(7)]],
+    'past due' => ['past_due', []],
+    'unpaid' => ['unpaid', []],
+    'incomplete' => ['incomplete', []],
+]);
 
 test('user with a subscription Stripe cannot collect on can delete their account', function (string $status, bool $cancelled) {
     config(['subscriptions.enabled' => true]);

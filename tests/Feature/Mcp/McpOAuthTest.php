@@ -180,19 +180,15 @@ it('registers a native client with a loopback redirect on any port', function (s
     '127.0.0.1' => 'http://127.0.0.1:61234/callback',
 ]);
 
-it('still rejects a plain-http redirect that is not loopback', function () {
+it('rejects a DCR redirect URI outside the allowlist, plain-http or not', function (string $callback) {
     postJson('/oauth/register', [
         'client_name' => 'Evil',
-        'redirect_uris' => ['http://evil.example.com/callback'],
+        'redirect_uris' => [$callback],
     ])->assertStatus(400)->assertJson(['error' => 'invalid_redirect_uri']);
-});
-
-it('rejects a DCR redirect URI outside the allowlist', function () {
-    postJson('/oauth/register', [
-        'client_name' => 'Evil',
-        'redirect_uris' => ['https://evil.example.com/callback'],
-    ])->assertStatus(400)->assertJson(['error' => 'invalid_redirect_uri']);
-});
+})->with([
+    'plain-http host that is not loopback' => 'http://evil.example.com/callback',
+    'https host outside the allowlist' => 'https://evil.example.com/callback',
+]);
 
 /*
 |--------------------------------------------------------------------------
