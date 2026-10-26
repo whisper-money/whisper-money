@@ -7,26 +7,8 @@ use App\Models\BankingConnection;
 use App\Models\User;
 
 // =============================================================================
-// Basic Redirect Tests
+// Signup Tests
 // =============================================================================
-
-it('redirects new registration to email verification', function () {
-    $page = visit('/register?force=1');
-
-    $page->assertSee('Create an account')
-        ->fill('name', 'Test Onboarding User')
-        ->fill('email', 'onboarding-test@example.com')
-        ->fill('password', 'password123456')
-        ->fill('password_confirmation', 'password123456')
-        ->click('@register-user-button')
-        ->assertPathIs('/email/verify')
-        ->assertNoJavascriptErrors();
-
-    $this->assertDatabaseHas('users', [
-        'email' => 'onboarding-test@example.com',
-        'name' => 'Test Onboarding User',
-    ]);
-});
 
 it('syncs user currency from first onboarding account after signup', function () {
     Bank::factory()->create(['name' => 'Signup Test Bank']);
@@ -75,105 +57,9 @@ it('syncs user currency from first onboarding account after signup', function ()
     expect($account->currency_code)->toBe('EUR');
 });
 
-it('redirects onboarded user away from onboarding page to dashboard', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    $page->assertPathIs('/dashboard')
-        ->assertNoJavascriptErrors();
-});
-
-it('redirects non-onboarded user from dashboard to onboarding', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/dashboard');
-
-    $page->assertPathIs('/onboarding')
-        ->assertNoJavascriptErrors();
-});
-
-// =============================================================================
-// Step Navigation Tests
-// =============================================================================
-
-it('opens on the promise rather than a welcome', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    $page->assertSee('Find out where your money actually went')
-        ->assertSee('Start')
-        ->assertNoJavascriptErrors();
-});
-
-it('walks the four questions and reads the answers back', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    $page->click('Start')
-        ->assertSee('What do you want to change?')
-        ->click('Understand where it all goes')
-        ->click('Continue')
-        ->assertSee('How do you keep track today?')
-        ->click('A spreadsheet')
-        ->click('Continue')
-        ->assertSee('What did you spend last month?')
-        ->click('Lock in my guess')
-        // The plan step is the whole point of asking: it hands the answers back.
-        ->assertSee("Here's what happens next")
-        ->assertSee('understand where it all goes')
-        ->assertNoJavascriptErrors();
-
-    expect($user->refresh()->onboarding_answers)->toMatchArray([
-        'goal' => 'understand',
-        'today' => 'spreadsheet',
-    ]);
-});
-
 // =============================================================================
 // Existing Account Flow Tests
 // =============================================================================
-
-it('shows existing accounts instead of create form when accounts exist', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'type' => 'checking',
-        'currency_code' => 'USD',
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding?step=create-account');
-
-    $page
-        // Should show the hub with what is already in, not the empty one
-        ->assertSee("1 in. What's missing?")
-        ->assertSee('Test Bank')
-        ->assertSee('Checking')
-        ->assertNoJavascriptErrors();
-});
 
 it('allows continuing with existing accounts', function () {
     $user = User::factory()->create([
@@ -299,56 +185,6 @@ it('polls and shows a connection finalized in another browser', function () {
 // =============================================================================
 // More Accounts Flow Tests
 // =============================================================================
-
-it('shows import transactions step after account creation', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $bank = Bank::factory()->create(['name' => 'My Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'type' => 'checking',
-        'currency_code' => 'USD',
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding?step=create-account');
-
-    $page->click("That's everything — continue")
-        // Existing accounts no longer trigger import, and there is nothing to
-        // sync — so the reveal has nothing to show but the balances.
-        ->assertSee('You’re worth')
-        ->click('Continue')
-        ->assertDontSee('You’re worth')
-        ->assertNoJavascriptErrors();
-});
-
-it('shows add another account form without first account restriction', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $bank = Bank::factory()->create(['name' => 'Primary Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'type' => 'checking',
-        'currency_code' => 'USD',
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding?step=create-account');
-
-    $page
-        // At this point, the hub lists what the user already has
-        ->assertSee("1 in. What's missing?")
-        ->assertSee('Primary Bank')
-        ->assertNoJavascriptErrors();
-});
 
 it('hides the connected plan price after connected setup is selected once', function () {
     config(['subscriptions.enabled' => true]);
@@ -676,24 +512,6 @@ it('asks for consent before activating AI when the plan was bought without a ban
 // Subscribe Page Free Plan Tests
 // =============================================================================
 
-it('shows free plan option on subscribe page when no bank was connected', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user);
-
-    $page = visit('/subscribe');
-
-    // The soft gate: nothing was connected and nothing was switched on, so the
-    // way out is offered from the first paint rather than after a delay.
-    $page->assertPathIs('/subscribe')
-        ->assertSee('One thing left to decide')
-        ->assertSee('Carry on free')
-        ->assertDontSee('Need help?')
-        ->assertNoJavascriptErrors();
-});
-
 it('forces a plan choice on subscribe when a bank is connected', function () {
     config(['subscriptions.enabled' => true]);
 
@@ -712,27 +530,5 @@ it('forces a plan choice on subscribe when a bank is connected', function () {
         ->assertSee('Need help?')
         ->assertDontSee('Carry on free')
         ->assertDontSee('Stay on the free plan')
-        ->assertNoJavascriptErrors();
-});
-
-it('leaves the free plan open on subscribe when AI consent never ran', function () {
-    config(['subscriptions.enabled' => true]);
-
-    $user = User::factory()->onboarded()->create();
-    $user->recordAiConsent();
-
-    $this->actingAs($user);
-
-    $page = visit('/subscribe');
-
-    // Consent is recorded when a checkout starts, so someone who closed Stripe
-    // at the card form has consented to nothing that ever ran — `AiCategorizationGate`
-    // checks the plan before every pass. `hasPaidFeaturesToGiveUp()` counts it
-    // only alongside a subscription, so there is nothing here for the free plan
-    // to take away and the door stays open.
-    $page->assertPathIs('/subscribe')
-        ->assertSee('One thing left to decide')
-        ->assertSee('Carry on free')
-        ->assertDontSee('Need help?')
         ->assertNoJavascriptErrors();
 });

@@ -11,11 +11,13 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 /**
- * The two screens that close the redesign, at phone width.
+ * The screen that closes the onboarding, at phone width.
  *
- * Step 11 is reviewed on all three of these rather than on the diff: it is a
- * list built from what the user actually has, so the only way to see whether it
- * tells the truth is to walk three different users up to it.
+ * Step 11 is a list built from what the user actually has, so this walks the
+ * user who did all of it up to it: the one end-to-end check that the summary
+ * endpoint and the screen agree. The lines a smaller user must not be shown are
+ * pinned in step-complete.test.tsx, and the figures behind them in
+ * Feature/Onboarding/OnboardingTargetTest.php.
  */
 function closeUser(): User
 {
@@ -92,32 +94,7 @@ function closeYear(Account $account, int $months = 12): void
     }
 }
 
-it('captures the first target, built on the month the reveal read', function () {
-    $user = closeUser();
-    $account = closeAccount($user, 'Cuenta Nómina', connected: true);
-    closeSubscriptions($account);
-    closeYear($account);
-
-    actingAs($user);
-
-    visit('/onboarding?step=target')
-        ->resize(430, 932)
-        ->waitForText('Your first target', 10)
-        // Built on what they spend, set against what they guessed in step 4.
-        ->assertSee('€1,847')
-        ->assertSee('€1,200')
-        ->assertSee('200')
-        ->assertSee('In a year')
-        ->assertSee('€2,400')
-        ->assertSee('Warn me before I overspend')
-        ->assertSee('Set my target')
-        ->assertSee('Not yet')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'target-first')
-        ->assertNoJavascriptErrors();
-});
-
-it('captures the close for the user who did all of it', function () {
+it('closes on everything the user who did all of it has', function () {
     $user = closeUser();
     $account = closeAccount($user, 'Cuenta Nómina', connected: true);
     closeSubscriptions($account);
@@ -143,60 +120,5 @@ it('captures the close for the user who did all of it', function () {
         ->assertSee('You came in guessing')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ready-full')
-        ->assertNoJavascriptErrors();
-});
-
-/**
- * A file import, rules written, and the target declined. Neither the sync line
- * nor the target line may appear — the two claims this user has not earned.
- */
-it('captures the close with no bank behind it and no target set', function () {
-    $user = closeUser();
-    $account = closeAccount($user, 'Cuenta Nómina');
-    closeSubscriptions($account);
-    closeYear($account, months: 6);
-
-    AutomationRule::factory()->count(12)->for($user)->create();
-
-    actingAs($user);
-
-    visit('/onboarding?step=complete')
-        ->resize(430, 932)
-        ->waitForText('Your dashboard isn’t empty', 10)
-        ->assertSee('6 months of history')
-        ->assertSee('459 movements, 12 rules filing them')
-        ->assertSee('1 account')
-        ->assertDontSee('syncing daily')
-        ->assertDontSee('put aside')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'ready-file-only')
-        ->assertNoJavascriptErrors();
-});
-
-/**
- * One balance, typed in by hand, and nothing else. The list is one line long
- * and every other claim is one this screen is not allowed to make.
- */
-it('captures the close for the user who brought one balance', function () {
-    $user = closeUser();
-    Account::factory()->for($user)->create([
-        'name' => 'Plan de pensiones',
-        'type' => 'retirement',
-        'currency_code' => 'EUR',
-    ]);
-
-    actingAs($user);
-
-    visit('/onboarding?step=complete')
-        ->resize(430, 932)
-        ->waitForText('Your dashboard isn’t empty', 10)
-        ->assertSee('1 account')
-        ->assertDontSee('months of history')
-        ->assertDontSee('movements')
-        ->assertDontSee('sorted from now on')
-        ->assertDontSee('You came in guessing')
-        ->assertSee('the rest of this list fills itself in')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'ready-minimal')
         ->assertNoJavascriptErrors();
 });

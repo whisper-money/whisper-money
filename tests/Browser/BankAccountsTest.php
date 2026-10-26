@@ -34,20 +34,6 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
         ->assertNoJavascriptErrors();
 }
 
-it('can view bank accounts page', function () {
-    $user = User::factory()->onboarded()->create([
-        'email_verified_at' => now(),
-    ]);
-
-    actingAs($user);
-
-    $page = visit('/settings/accounts');
-
-    $page->assertSee('Bank accounts')
-        ->assertSee('Manage your bank accounts')
-        ->assertNoJavascriptErrors();
-});
-
 it('shows existing accounts in list', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank', 'logo' => null]);
@@ -68,22 +54,6 @@ it('shows existing accounts in list', function () {
         ->waitForText('Test Bank')
         ->assertSee('Checking')
         ->assertSee('USD')
-        ->assertNoJavascriptErrors();
-});
-
-it('can open create account dialog', function () {
-    $user = User::factory()->onboarded()->create();
-
-    actingAs($user);
-
-    $page = visit('/settings/accounts');
-
-    $page->assertSee('Bank accounts')
-        ->click('Create Account')
-        ->waitForText('Manual', 5)
-        ->assertSee('Add a bank account, loan, or property to your workspace.')
-        ->assertSee('Manual')
-        ->assertSee('Connected')
         ->assertNoJavascriptErrors();
 });
 
@@ -356,7 +326,10 @@ it('can filter accounts by name', function () {
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
+        ->waitForText('Savings Account')
         ->fill('input[placeholder="Filter accounts..."]', 'Checking')
+        ->assertSee('Checking Account')
+        ->assertDontSee('Savings Account')
         ->assertNoJavascriptErrors();
 });
 

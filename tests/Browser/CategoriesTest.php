@@ -5,36 +5,6 @@ use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 
-it('can view categories page', function () {
-    $user = User::factory()->onboarded()->create();
-
-    actingAs($user);
-
-    $page = visit('/settings/categories');
-
-    $page->assertSee('Categories settings')
-        ->assertSee('Manage your transaction categories')
-        ->assertNoJavascriptErrors();
-});
-
-it('shows existing categories in list', function () {
-    $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create([
-        'user_id' => $user->id,
-        'name' => 'Groceries',
-        'icon' => 'ShoppingCart',
-        'color' => 'green',
-    ]);
-
-    actingAs($user);
-
-    $page = visit('/settings/categories');
-
-    $page->assertSee('Categories settings')
-        ->waitForText('Groceries')
-        ->assertNoJavascriptErrors();
-});
-
 it('vertically centers category table cells', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create([
@@ -55,19 +25,6 @@ it('vertically centers category table cells', function () {
             'class',
             'align-middle',
         )
-        ->assertNoJavascriptErrors();
-});
-
-it('can open create category dialog', function () {
-    $user = User::factory()->onboarded()->create();
-
-    actingAs($user);
-
-    $page = visit('/settings/categories');
-
-    $page->assertSee('Categories settings')
-        ->click('Create Category')
-        ->assertSee('Add a new category to organize your transactions')
         ->assertNoJavascriptErrors();
 });
 

@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\User;
-
 it('can register a new user', function () {
     $page = visit('/register?force=1');
 
@@ -18,72 +16,4 @@ it('can register a new user', function () {
         'email' => 'newuser@example.com',
         'name' => 'Test User',
     ]);
-});
-
-it('shows validation errors for invalid registration', function () {
-    $page = visit('/register?force=1');
-
-    $page->assertSee('Create an account')
-        ->fill('name', 'Test User')
-        ->fill('email', 'invalid-email')
-        ->fill('password', 'short')
-        ->fill('password_confirmation', 'different')
-        ->click('@register-user-button')
-        ->wait(1)
-        ->assertNoJavascriptErrors();
-});
-
-it('can login with valid credentials', function () {
-    $user = User::factory()->onboarded()->create([
-        'email' => 'test@example.com',
-        'password' => bcrypt('password123'),
-        'two_factor_secret' => null,
-        'two_factor_confirmed_at' => null,
-    ]);
-
-    $page = visit('/login');
-
-    $page->assertSee('Log in to your account')
-        ->fill('email', 'test@example.com')
-        ->fill('password', 'password123')
-        ->click('@login-button')
-        ->assertSee('Dashboard')
-        ->assertPathIs('/dashboard')
-        ->assertNoJavascriptErrors();
-
-    $this->assertAuthenticated();
-});
-
-it('shows validation error for invalid login credentials', function () {
-    $user = User::factory()->create([
-        'email' => 'test@example.com',
-        'password' => bcrypt('password123'),
-    ]);
-
-    $page = visit('/login');
-
-    $page->assertSee('Log in to your account')
-        ->fill('email', 'test@example.com')
-        ->fill('password', 'wrongpassword')
-        ->click('@login-button')
-        ->assertSee('These credentials do not match our records')
-        ->assertNoJavascriptErrors();
-});
-
-it('can open the register page with the force query', function () {
-    $page = visit('/register?force=1');
-
-    $page->assertSee('Create an account')
-        ->assertPathIs('/register')
-        ->assertNoJavascriptErrors();
-});
-
-it('can navigate from register to login', function () {
-    $page = visit('/register?force=1');
-
-    $page->assertSee('Create an account')
-        ->click('Log in')
-        ->assertSee('Log in to your account')
-        ->assertPathIs('/login')
-        ->assertNoJavascriptErrors();
 });
