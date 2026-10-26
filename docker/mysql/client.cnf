@@ -1,0 +1,10 @@
+# Read by the `mysql` client (Debian's default-mysql-client, i.e. MariaDB) that
+# Laravel shells out to when it loads database/schema/mysql-schema.sql into an
+# empty database. MariaDB clients verify the server certificate by default and
+# fail on the self-signed one a stock MySQL 8 container ships with. The
+# connection is still encrypted, as with the MySQL client's default
+# ssl-mode=PREFERRED, but this also skips verification when MYSQL_ATTR_SSL_CA
+# is set (Laravel then passes --ssl-ca). PHP's PDO connection does not read
+# this file.
+[client]
+ssl-verify-server-cert = off
