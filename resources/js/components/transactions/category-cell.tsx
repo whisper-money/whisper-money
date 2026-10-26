@@ -19,7 +19,7 @@ import { type Category } from '@/types/category';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { type ReactElement, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface CategoryCellProps {
@@ -37,11 +37,6 @@ interface CategoryCellProps {
     withoutChevronIcon?: boolean;
     /** AI is currently categorizing this row in the background. */
     isCategorizing?: boolean;
-    /**
-     * Replaces the picker's default trigger; see `CategoryCombobox`. The
-     * `className` then only styles the "Categorizing…" state.
-     */
-    trigger?: ReactElement;
 }
 
 export function CategoryCell({
@@ -54,7 +49,6 @@ export function CategoryCell({
     className,
     withoutChevronIcon,
     isCategorizing,
-    trigger,
 }: CategoryCellProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const isMobile = useIsMobile();
@@ -234,7 +228,6 @@ export function CategoryCell({
                     showUncategorized={true}
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
-                    trigger={trigger}
                     uncategorizedIcon={
                         <span
                             aria-hidden

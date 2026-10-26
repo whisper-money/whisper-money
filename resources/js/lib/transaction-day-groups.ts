@@ -52,6 +52,27 @@ export function formatDayHeading(
     };
 }
 
+/**
+ * The short line above a day of the compact list: "Today · 26 Oct", or the
+ * weekday and the date. The year only shows outside the current one.
+ */
+export function formatDayBand(date: string, locale: string): string {
+    const day = toLocalDate(date);
+
+    if (!isValid(day)) {
+        return date;
+    }
+
+    const year = day.getFullYear() === new Date().getFullYear() ? '' : ' yyyy';
+    const name = isToday(day)
+        ? __('Today')
+        : isYesterday(day)
+          ? __('Yesterday')
+          : formatDate(day, 'EEEE', locale);
+
+    return `${name} · ${formatDate(day, `d MMM${year}`, locale)}`;
+}
+
 export function formatTransactionCount(count: number): string {
     return count === 1
         ? __('1 transaction')

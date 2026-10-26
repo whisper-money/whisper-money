@@ -1,13 +1,9 @@
 import { useLocale } from '@/hooks/use-locale';
-import {
-    useMobileSelectionMode,
-    useRowSelectionGesture,
-    type RowSelectionMode,
-} from '@/hooks/use-mobile-selection-mode';
+import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { reloadPage } from '@/lib/leave-page';
-import { getTransactionRowActions } from '@/lib/transaction-row-actions';
+import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -29,7 +25,6 @@ import { isWithinInterval, parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import {
     createElement,
-    Fragment,
     useCallback,
     useEffect,
     useMemo,
@@ -47,11 +42,12 @@ import {
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import {
     AlertDialog,
@@ -65,15 +61,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuLabel,
-    ContextMenuSeparator,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
-import { DataTable } from '@/components/ui/data-table';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -86,7 +74,6 @@ import {
     mergeReEvaluatedTransaction,
     reEvaluateTransactionRules,
 } from '@/lib/transaction-re-evaluation';
-import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -142,18 +129,10 @@ export function TransactionListSkeleton() {
     );
 }
 
-interface TransactionRowProps {
+interface TransactionRowProps extends TransactionRowActionHandlers {
     row: Row<ServerTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-    onEdit: (transaction: ServerTransaction) => void;
-    onDuplicate: (transaction: ServerTransaction) => void;
-    onReEvaluateRules: (transaction: ServerTransaction) => void;
-    onAutomate: (transaction: ServerTransaction) => void;
-    onDelete: (transaction: ServerTransaction) => void;
-    onSplit: (transaction: ServerTransaction) => void;
-    onUnsplit: (transaction: ServerTransaction) => void;
-    selectionMode: RowSelectionMode;
 }
 
 function TransactionRowComponent({
@@ -167,7 +146,6 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
-    selectionMode,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -182,20 +160,18 @@ function TransactionRowComponent({
         }
         onEdit(transaction);
     };
-    const gesture = useRowSelectionGesture(row, selectionMode, handleRowClick);
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            {/* A long press on the phone ticks the row, not this menu. */}
-            <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
+            <ContextMenuTrigger asChild>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className={cn('cursor-pointer', gesture.className)}
-                    {...gesture.handlers}
+                    className="cursor-pointer"
+                    onClick={handleRowClick}
                 >
                     {row
                         .getVisibleCells()
@@ -231,29 +207,16 @@ function TransactionRowComponent({
                         })}
                 </TableRow>
             </ContextMenuTrigger>
-            <ContextMenuContent>
-                <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
-                {getTransactionRowActions({
-                    transaction,
-                    onEdit,
-                    onDuplicate,
-                    onReEvaluateRules,
-                    onAutomate,
-                    onDelete,
-                    onSplit,
-                    onUnsplit,
-                }).map((action) => (
-                    <Fragment key={action.id}>
-                        {action.separated && <ContextMenuSeparator />}
-                        <ContextMenuItem
-                            onClick={action.onSelect}
-                            variant={action.variant}
-                        >
-                            {action.label}
-                        </ContextMenuItem>
-                    </Fragment>
-                ))}
-            </ContextMenuContent>
+            <TransactionRowContextMenuContent
+                transaction={transaction}
+                onEdit={onEdit}
+                onDuplicate={onDuplicate}
+                onReEvaluateRules={onReEvaluateRules}
+                onAutomate={onAutomate}
+                onDelete={onDelete}
+                onSplit={onSplit}
+                onUnsplit={onUnsplit}
+            />
         </ContextMenu>
     );
 }
@@ -823,14 +786,6 @@ export function TransactionList({
         },
     });
 
-    const dayHeaders = useTransactionDayHeaders({
-        table,
-        rowSelection,
-        transactions: displayedTransactions,
-        isGroupedByDay,
-        hasMoreRows: displayedCount < sortedTransactions.length,
-    });
-
     const loadMore = useCallback(() => {
         if (displayedCount < sortedTransactions.length && !isLoadingMore) {
             setIsLoadingMore(true);
@@ -1019,6 +974,19 @@ export function TransactionList({
         }
     }
 
+    const rowActions = useMemo<TransactionRowActionHandlers>(
+        () => ({
+            onEdit: setEditTransaction,
+            onDuplicate: setDuplicateTransaction,
+            onReEvaluateRules: handleReEvaluateRules,
+            onDelete: setDeleteTransaction,
+            onAutomate: openAutomateDialog,
+            onSplit: setSplitTransaction,
+            onUnsplit: setUnsplitTransaction,
+        }),
+        [handleReEvaluateRules, openAutomateDialog],
+    );
+
     const renderTransactionRow = useCallback(
         (
             row: Row<ServerTransaction>,
@@ -1031,18 +999,11 @@ export function TransactionList({
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
-                    onEdit={setEditTransaction}
-                    onDuplicate={setDuplicateTransaction}
-                    onReEvaluateRules={handleReEvaluateRules}
-                    onDelete={setDeleteTransaction}
-                    onAutomate={openAutomateDialog}
-                    onSplit={setSplitTransaction}
-                    onUnsplit={setUnsplitTransaction}
-                    selectionMode={selectionMode.forRows}
+                    {...rowActions}
                 />
             );
         },
-        [handleReEvaluateRules, openAutomateDialog, selectionMode.forRows],
+        [rowActions],
     );
 
     return (
@@ -1085,13 +1046,27 @@ export function TransactionList({
                     <TransactionListSkeleton />
                 ) : (
                     <>
-                        <DataTable
+                        <ResponsiveTransactionTable
                             table={table}
                             columns={columns}
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            {...dayHeaders}
+                            sorting={sorting}
+                            rowSelection={rowSelection}
+                            transactions={displayedTransactions}
+                            isGroupedByDay={isGroupedByDay}
+                            hasMoreRows={
+                                displayedCount < sortedTransactions.length
+                            }
+                            selectionMode={selectionMode.forRows}
+                            listRow={{
+                                categories,
+                                labels,
+                                hiddenLabelId,
+                                statementPayments,
+                            }}
+                            rowActions={rowActions}
                         />
 
                         <DataTablePagination

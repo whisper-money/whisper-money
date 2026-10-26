@@ -1,7 +1,6 @@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
-import { cn } from '@/lib/utils';
-import { type Row, type RowSelectionState } from '@tanstack/react-table';
+import { type RowSelectionState } from '@tanstack/react-table';
 import {
     type Dispatch,
     type MouseEvent,
@@ -42,9 +41,9 @@ export interface MobileSelectionMode extends RowSelectionMode {
 }
 
 /**
- * Selection on the phone. The checkbox column is always there, as on desktop,
- * and a long press on a row ticks it too. Once a row is ticked, a tap toggles a
- * row instead of opening it, until the selection is empty again.
+ * Selection on the phone, where the list is drawn as cards: a tap on a card's
+ * category circle or a long press on it ticks it. Once a row is ticked, a tap
+ * toggles a row instead of opening it, until the selection is empty again.
  */
 export function useMobileSelectionMode({
     rowSelection,
@@ -138,25 +137,17 @@ export function useMobileSelectionMode({
 }
 
 /**
- * What a table row needs to take part in selection on the phone: a long press
- * ticks it, and while rows are ticked a tap toggles the row where it would
- * otherwise open it.
- * Off the phone the row keeps its own click untouched.
+ * A long press that ticks a row on the phone and starts a selection. The
+ * finger lifting off it still fires a click, which `consumeLongPress` lets the
+ * caller tell apart from a tap. While rows are already being picked a press
+ * does nothing; callers only wire it up on the phone.
  */
-export function useRowSelectionGesture<TData>(
-    row: Row<TData>,
-    selection: RowSelectionMode,
-    onTap: (event: MouseEvent<HTMLTableRowElement>) => void,
-) {
+export function useLongPressSelect(rowId: string, selection: RowSelectionMode) {
     const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
     const origin = useRef<{ x: number; y: number } | null>(null);
     const longPressed = useRef(false);
 
     useEffect(() => () => clearTimeout(timer.current), []);
-
-    if (!selection.isMobile) {
-        return { className: undefined, handlers: { onClick: onTap } };
-    }
 
     function cancelPress() {
         clearTimeout(timer.current);
@@ -164,14 +155,8 @@ export function useRowSelectionGesture<TData>(
     }
 
     return {
-        // Inert cells while selecting: a tap on the category or the row's
-        // menu lands on the row and toggles it, rather than opening a picker.
-        className: cn(
-            'select-none [-webkit-touch-callout:none]',
-            selection.isActive && '[&>td>*]:pointer-events-none',
-        ),
         handlers: {
-            onPointerDown: (event: PointerEvent<HTMLTableRowElement>) => {
+            onPointerDown: (event: PointerEvent<Element>) => {
                 longPressed.current = false;
 
                 if (selection.isActive) {
@@ -182,10 +167,10 @@ export function useRowSelectionGesture<TData>(
                 clearTimeout(timer.current);
                 timer.current = setTimeout(() => {
                     longPressed.current = true;
-                    selection.enterWith(row.id);
+                    selection.enterWith(rowId);
                 }, LONG_PRESS_MS);
             },
-            onPointerMove: (event: PointerEvent<HTMLTableRowElement>) => {
+            onPointerMove: (event: PointerEvent<Element>) => {
                 if (
                     origin.current &&
                     Math.hypot(
@@ -199,24 +184,15 @@ export function useRowSelectionGesture<TData>(
             onPointerUp: cancelPress,
             onPointerCancel: cancelPress,
             onPointerLeave: cancelPress,
-            onContextMenu: (event: MouseEvent<HTMLTableRowElement>) =>
+            onContextMenu: (event: MouseEvent<Element>) =>
                 event.preventDefault(),
-            onClick: (event: MouseEvent<HTMLTableRowElement>) => {
-                // The finger lifting off a long press is not a tap.
-                if (longPressed.current) {
-                    longPressed.current = false;
+        },
+        /** Whether the click now arriving is the lift of a long press. */
+        consumeLongPress: () => {
+            const wasLongPress = longPressed.current;
+            longPressed.current = false;
 
-                    return;
-                }
-
-                if (selection.isActive) {
-                    selection.toggleRow(row.id);
-
-                    return;
-                }
-
-                onTap(event);
-            },
+            return wasLongPress;
         },
     };
 }

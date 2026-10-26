@@ -23,26 +23,10 @@ vi.mock('@inertiajs/react', () => ({
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
 
 // jsdom lays nothing out, so the real virtualizer would render no rows at all.
-vi.mock('@tanstack/react-virtual', () => ({
-    useVirtualizer: ({
-        count,
-        getItemKey,
-    }: {
-        count: number;
-        getItemKey: (index: number) => string;
-    }) => ({
-        getVirtualItems: () =>
-            Array.from({ length: count }, (_, index) => ({
-                index,
-                key: getItemKey(index),
-                start: index * 72,
-                end: (index + 1) * 72,
-                size: 72,
-                lane: 0,
-            })),
-        getTotalSize: () => count * 72,
-        measureElement: () => {},
-    }),
+vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    useVirtualizer: (await import('@/lib/virtualizer.fixture'))
+        .useEveryItemVirtualizer,
 }));
 
 const TRANSACTIONS = [

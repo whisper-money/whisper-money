@@ -202,9 +202,9 @@ it('runs the automation rules again for a single row from its actions menu', fun
 });
 
 /**
- * On the phone the checkbox column is always there, as on desktop. Once a row
- * is ticked (from its checkbox or a long press) taps toggle rows, and the
- * compact bar takes over until the selection is empty again.
+ * On the phone the list is drawn as a compact list. Once a row is ticked (from
+ * its category circle or a long press) taps toggle rows, and the compact bar takes
+ * over until the selection is empty again.
  */
 function visitTransactionsOnAPhone(): mixed
 {
@@ -214,16 +214,17 @@ function visitTransactionsOnAPhone(): mixed
         ->navigate('/transactions');
 }
 
-it('selects rows from their checkboxes and then by tapping them on a phone', function () {
+it('selects a row from its category circle and then by tapping rows on a phone', function () {
     $page = visitTransactionsOnAPhone();
 
     $page->assertSee('Weekly groceries market')
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
-        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->assertMissing('[aria-label="Select row"]')
+        ->click('[aria-label="Select Weekly groceries market"]')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '1 selected')
         // The bar takes the bottom nav's place rather than sitting over it.
         ->assertMissing('[data-test="mobile-nav"]')
-        ->click('tr:has-text("Coffee subscription") td:last-child')
+        ->click('[data-testid="transaction-list-row"]:has-text("Coffee subscription")')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '2 selected')
         // A tap toggles the row; it does not open the edit dialog.
         ->assertDontSee('Edit Transaction')
@@ -249,8 +250,8 @@ it('ticks a row on a long press and clears the selection from the menu on a phon
 
     $page->script(<<<'JS'
         (async () => {
-            const row = [...document.querySelectorAll('tr')]
-                .find((tr) => tr.textContent.includes('Weekly groceries market'));
+            const row = [...document.querySelectorAll('[data-testid="transaction-list-row"]')]
+                .find((row) => row.textContent.includes('Weekly groceries market'));
             const { x, y } = row.getBoundingClientRect();
             const init = { bubbles: true, pointerType: 'touch', clientX: x + 20, clientY: y + 10 };
             row.dispatchEvent(new PointerEvent('pointerdown', init));
@@ -277,8 +278,10 @@ it('ticks a row on a long press and clears the selection from the menu on a phon
 it('shrinks the bar to icons on one row when the content column is narrow', function () {
     $page = visit('/transactions')->resize(900, 800);
 
+    // Beside the sidebar there is no room for the table, so it is the compact list.
     $page->assertSee('Weekly groceries market')
-        ->click('tr:has-text("Weekly groceries market") [aria-label="Select row"]')
+        ->assertPresent('[data-testid="transaction-list-layout"][data-layout="list"]')
+        ->click('[aria-label="Select Weekly groceries market"]')
         ->assertPresent('[data-test="bulk-actions-bar"][data-compact]')
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
         ->assertVisible('[data-testid="bulk-select-all"]')

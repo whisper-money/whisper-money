@@ -276,12 +276,12 @@ describe('createTransactionColumns select checkboxes', () => {
         };
     }
 
-    it('keeps the desktop checkbox on the phone, only a size up', () => {
+    // Narrow lists switch to cards, which select from their category circle,
+    // so the table's checkbox has no phone-sized variant any more.
+    it('draws the same plain checkbox in the heading and the rows', () => {
         const { header, row } = renderSelectCheckboxes();
 
-        expect(row.className).toContain('max-md:size-5');
-        expect(row.className).not.toContain('rounded-full');
-        expect(row.className).not.toContain('max-md:border-2');
+        expect(row.className).not.toContain('max-md:');
         expect(header.className).toBe(row.className);
     });
 });
