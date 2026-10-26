@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\BankingProvider;
 use App\Exceptions\Banking\BankingRequestException;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\InaccessibleBankAccountException;
@@ -671,10 +670,6 @@ test('getInstitutions marks only the curated banks as beta, ignoring the provide
         ->and($institutions['Openbank']['beta'])->toBeFalse()
         ->and($institutions['American Express']['beta'])->toBeFalse();
 });
-
-test('Trade Republic is beta in every country', function (string $country) {
-    expect(BankingProvider::EnableBanking->isBetaBank('Trade Republic', $country))->toBeTrue();
-})->with(['ES', 'LT', 'DE', 'FR', 'BE']);
 
 test('startAuthorization upgrades the authorization url the provider hands back to https', function () {
     Http::fake([

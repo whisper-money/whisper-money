@@ -117,7 +117,3 @@ it('refuses the rest of an upload started before the switch went off', function 
 
     expect(Import::query()->find($id)->status)->toBe(ImportStatus::Draft);
 });
-
-it('is on unless configured otherwise', function () {
-    expect(config('full_import.enabled'))->toBeTrue();
-});

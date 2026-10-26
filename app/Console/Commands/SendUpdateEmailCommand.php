@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\View;
 use Laravel\Cashier\Cashier;
 
 class SendUpdateEmailCommand extends Command
@@ -50,10 +50,8 @@ class SendUpdateEmailCommand extends Command
             $identifier = $identifier.'_force_'.time();
         }
 
-        $viewPath = resource_path("views/mail/updates/{$viewName}.blade.php");
-
-        if (! File::exists($viewPath)) {
-            $this->error("View file not found: {$viewPath}");
+        if (! View::exists("mail.updates.{$viewName}")) {
+            $this->error("View not found: mail.updates.{$viewName}");
             $this->info("Please create the view at: resources/views/mail/updates/{$viewName}.blade.php");
 
             return self::FAILURE;

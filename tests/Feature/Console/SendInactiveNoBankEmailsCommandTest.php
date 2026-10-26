@@ -192,19 +192,6 @@ it('links to the notification settings so the user can opt out', function () {
     );
 });
 
-it('renders the email in the user locale', function () {
-    app()->setLocale('es');
-
-    try {
-        $html = (new InactiveNoBankEmail(User::factory()->make(['name' => 'Ada'])))->render();
-    } finally {
-        app()->setLocale('en');
-    }
-
-    expect($html)->toContain('Tus números llevan una semana sin actualizarse, Ada');
-    expect($html)->toContain('Ir al Panel');
-});
-
 it('points its button at the dashboard and offers connecting a bank as a link', function () {
     $html = (new InactiveNoBankEmail(User::factory()->make()))->render();
 

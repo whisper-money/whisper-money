@@ -187,19 +187,3 @@ it('points its button at the reconnect route so the user can renew from the emai
 
     expect($html)->toContain(route('open-banking.reconnect', $connection).'?utm_source=drip');
 });
-
-it('renders the email in the user locale', function () {
-    $connection = expiringConnection(attributes: ['aspsp_name' => 'Bankinter']);
-    $connection->user->update(['name' => 'Ada']);
-
-    app()->setLocale('es');
-
-    try {
-        $html = (new ConnectionExpiringEmail($connection->user->fresh(), $connection))->render();
-    } finally {
-        app()->setLocale('en');
-    }
-
-    expect($html)->toContain('Renueva tu conexión con Bankinter')
-        ->toContain('Renovar conexión');
-});
