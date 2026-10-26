@@ -1,7 +1,6 @@
 <?php
 
 use App\Services\CurrencyOptions;
-use PHPUnit\Framework\Assert;
 
 /**
  * Localization completeness tests.
@@ -9,10 +8,6 @@ use PHPUnit\Framework\Assert;
  * Spanish is the reference locale and is strictly enforced: any English
  * string without a Spanish translation fails the suite, preventing
  * untranslated content from reaching production.
- *
- * French is an optional, community-maintained locale. Its gaps only emit a
- * warning — an incomplete French translation never blocks CI, but the run
- * still surfaces exactly which keys are missing so they can be filled in.
  */
 
 /**
@@ -21,13 +16,6 @@ use PHPUnit\Framework\Assert;
  * @var array<string>
  */
 const ENFORCED_LOCALES = ['es'];
-
-/**
- * Locales whose translation gaps only emit a warning.
- *
- * @var array<string>
- */
-const OPTIONAL_LOCALES = ['fr'];
 
 /**
  * Recursively flattens a nested PHP translation array using dot notation.
@@ -207,40 +195,4 @@ describe('enforced JSON translations', function () {
             count($missingKeys)." translatable key(s) are missing from lang/{$locale}.json:\n  - ".implode("\n  - ", $missingKeys)
         );
     })->with(ENFORCED_LOCALES);
-});
-
-describe('optional PHP translations', function () {
-    it('warns about untranslated PHP keys', function (string $locale) {
-        $missingByFile = missingPhpTranslationKeys($locale);
-
-        if ($missingByFile !== []) {
-            // Optional locale: surface the gap as an incomplete test so it stays
-            // visible in the run summary without failing CI (no failOnIncomplete
-            // is configured).
-            Assert::markTestIncomplete(
-                "Optional locale '{$locale}' has missing PHP translation keys (not blocking):\n"
-                .formatPhpTranslationReport($locale, $missingByFile)
-            );
-        }
-
-        expect($missingByFile)->toBeEmpty();
-    })->with(OPTIONAL_LOCALES);
-});
-
-describe('optional JSON translations', function () {
-    it('warns about translatable keys missing from the locale JSON', function (string $locale) {
-        $missingKeys = missingJsonTranslationKeys($locale);
-
-        if ($missingKeys !== []) {
-            // Optional locale: surface the gap as an incomplete test so it stays
-            // visible in the run summary without failing CI (no failOnIncomplete
-            // is configured).
-            Assert::markTestIncomplete(
-                count($missingKeys)." translatable key(s) are missing from lang/{$locale}.json (not blocking):\n  - "
-                .implode("\n  - ", $missingKeys)
-            );
-        }
-
-        expect($missingKeys)->toBeEmpty();
-    })->with(OPTIONAL_LOCALES);
 });

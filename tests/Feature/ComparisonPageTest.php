@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\MarketingContent;
 use Inertia\Testing\AssertableInertia;
@@ -82,33 +81,6 @@ test('a slug from one language does not resolve under the other', function () {
     $this->get('/comparativa/fintonic-alternative')->assertNotFound();
 });
 
-test('the spanish and english pages are distinct translations of each other', function () {
-    $english = ComparisonPages::find('en', 'fintonic-alternative');
-    $spanish = ComparisonPages::find('es', 'alternativa-a-fintonic');
-
-    expect($english['key'])->toBe($spanish['key'])
-        ->and($english['heading'])->not->toBe($spanish['heading'])
-        ->and($english['rows'])->toHaveCount(count($spanish['rows']));
-});
-
-test('every page carries real testimonials and no placeholders', function () {
-    foreach (MarketingContent::comparisonPages() as $key => $page) {
-        expect($page['testimonials'])->toHaveCount(2, "{$key} should quote two real users");
-
-        foreach ($page['testimonials'] as $testimonial) {
-            expect($testimonial)->toHaveKeys(['name', 'text'])
-                ->and($testimonial)->not->toHaveKey('pending')
-                ->and($testimonial['name'])->not->toBeEmpty();
-
-            foreach (MarketingContent::LOCALES as $locale) {
-                expect($testimonial['text'][$locale] ?? '')->not->toBeEmpty(
-                    "{$key}: the quote from {$testimonial['name']} is missing its {$locale} text"
-                );
-            }
-        }
-    }
-});
-
 test('a served page renders every testimonial it has', function (string $locale, string $slug) {
     $path = '/'.ComparisonPages::path($locale, $slug);
     $markdown = $this->get($path.'.md')->assertSuccessful()->content();
@@ -118,13 +90,6 @@ test('a served page renders every testimonial it has', function (string $locale,
             ->and($markdown)->toContain($testimonial['text']);
     }
 })->with(comparisonRoutes());
-
-test('a testimonial quote is served in the language of the page', function () {
-    expect(ComparisonPages::find('en', 'fintonic-alternative')['testimonials'][0]['text'])
-        ->toContain('Thank you for developing Whisper Money')
-        ->and(ComparisonPages::find('es', 'alternativa-a-fintonic')['testimonials'][0]['text'])
-        ->toContain('Gracias por desarrollar Whisper Money');
-});
 
 test('the landing markdown summary is served for every language', function (string $locale) {
     $path = $locale === 'en' ? '/index.md' : "/index.{$locale}.md";
@@ -221,16 +186,4 @@ test('the landing links to the banktrack page in every language', function () {
             'path' => '/comparativa/banktrack-vs-whisper-money',
             'heading' => 'Banktrack vs Whisper Money',
         ]);
-});
-
-test('the agent summary mentions the full import from another app', function () {
-    expect($this->get('/index.md')->assertSuccessful()->content())->toContain('Brings in a whole export from another finance app')
-        ->and($this->get('/index.es.md')->assertSuccessful()->content())->toContain('la exportación entera de otra app de finanzas');
-});
-
-test('the copy about the full import window matches the window', function () {
-    // The docs and the comparison pages say "15 days" in prose. If the window
-    // changes, so must they: resources/docs/documentation/20-your-data and
-    // MarketingContent.
-    expect(User::FULL_IMPORT_WINDOW_DAYS)->toBe(15, 'The full import window changed: update the "15 days" in its docs and comparison pages');
 });

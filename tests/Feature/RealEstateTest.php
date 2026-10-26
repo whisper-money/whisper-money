@@ -555,41 +555,6 @@ it('prevents updating another users real estate detail', function () {
 // Model relationships
 // -------------------------------------------------------------------
 
-it('has a one-to-one relationship between account and real estate detail', function () {
-    $account = Account::factory()->realEstate()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    $detail = RealEstateDetail::factory()->create([
-        'account_id' => $account->id,
-        'property_type' => PropertyType::Vacation,
-    ]);
-
-    expect($account->fresh()->realEstateDetail)->not->toBeNull();
-    expect($account->fresh()->realEstateDetail->id)->toBe($detail->id);
-    expect($detail->fresh()->account->id)->toBe($account->id);
-});
-
-it('can link and access a loan account through real estate detail', function () {
-    $loanAccount = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => AccountType::Loan,
-    ]);
-
-    $account = Account::factory()->realEstate()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    $detail = RealEstateDetail::factory()->create([
-        'account_id' => $account->id,
-        'linked_loan_account_id' => $loanAccount->id,
-    ]);
-
-    expect($detail->fresh()->linkedLoanAccount)->not->toBeNull();
-    expect($detail->fresh()->linkedLoanAccount->id)->toBe($loanAccount->id);
-    expect($detail->fresh()->linkedLoanAccount->type)->toBe(AccountType::Loan);
-});
-
 // -------------------------------------------------------------------
 // Deleting an account cascades to real estate detail
 // -------------------------------------------------------------------

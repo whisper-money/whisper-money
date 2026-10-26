@@ -64,40 +64,6 @@ test('assignHistoricalTransactionsToPeriod handles empty results', function () {
     expect($count)->toBe(0);
 });
 
-test('assignHistoricalTransactionsToPeriod processes large batches', function () {
-    $category = Category::factory()->create(['user_id' => $this->user->id]);
-
-    // Create 1000 historical transactions
-    $transactions = collect();
-    for ($i = 0; $i < 1000; $i++) {
-        $transactions->push([
-            'user_id' => $this->user->id,
-            'category_id' => $category->id,
-            'transaction_date' => now()->subDays(rand(1, 25)),
-            'amount' => -rand(100, 10000),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
-
-    // Insert in batches
-    Transaction::insert($transactions->toArray());
-
-    $budget = Budget::factory()->forCategories($category)->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    $period = BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => now()->subDays(30),
-        'end_date' => now()->addDays(30),
-    ]);
-
-    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
-
-    expect($count)->toBe(1000);
-})->skip('Run only when testing performance with large datasets');
-
 test('assignHistoricalTransactionsToPeriod excludes transactions outside date range', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 

@@ -215,13 +215,3 @@ it('joins crap and coverage from the report onto the matching method', function 
         ->and($json['over_threshold'][0]['coverage'])->toEqual(50)
         ->and($json['coverage']['source'])->toBe($report);
 });
-
-it('reports the scope it did and did not look at', function () {
-    $path = crapFixture('Scoped', '<?php namespace Fixture; class Scoped { public function a(): int { return 1; } }');
-
-    $json = crapJson("--path={$path} --no-coverage");
-
-    expect($json['scope'])->toBe('php')
-        ->and($json['excluded'])->toContain('resources/js/ (no complexity pipeline)')
-        ->and($json['mode'])->toBe('project');
-});

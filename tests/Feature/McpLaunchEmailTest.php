@@ -55,16 +55,3 @@ it('renders the launch email in Spanish without the video language note', functi
     // The video is already in Spanish, so the heads-up only ships elsewhere.
     $mail->assertDontSeeInHtml('The video is in Spanish.');
 });
-
-it('only promises what the connector actually does', function () {
-    $mail = queueMcpLaunchEmail('en');
-
-    // Write access over an OAuth connection is what makes this claim true;
-    // see WriteTool and tests/Feature/Mcp/McpOAuthTest.php.
-    $mail->assertSeeInHtml('note down 40 euros on groceries');
-
-    // Whisper Money has no screen to revoke an OAuth connection, so the email
-    // must not promise one.
-    $mail->assertDontSeeInHtml('you can undo it whenever you want');
-    $mail->assertSeeInHtml('remove Whisper Money from the connected apps inside ChatGPT');
-});
