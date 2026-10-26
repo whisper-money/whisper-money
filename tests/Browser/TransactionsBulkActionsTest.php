@@ -214,6 +214,22 @@ function visitTransactionsOnAPhone(): mixed
         ->navigate('/transactions');
 }
 
+/**
+ * Waits out the phone drawer's half-second slide in. A tap aimed at one of its
+ * items while it is still moving can land on the overlay instead, which closes
+ * the drawer and lets the click fall through to whatever row is underneath.
+ */
+function waitForDrawerToSettle(mixed $page): void
+{
+    $page->script(<<<'JS'
+        Promise.allSettled(
+            document.getAnimations()
+                .filter((animation) => animation.effect?.target?.closest?.('[data-vaul-drawer], [data-vaul-overlay]'))
+                .map((animation) => animation.finished),
+        )
+    JS);
+}
+
 it('selects a row from its category circle and then by tapping rows on a phone', function () {
     $page = visitTransactionsOnAPhone();
 
@@ -229,8 +245,11 @@ it('selects a row from its category circle and then by tapping rows on a phone',
         // A tap toggles the row; it does not open the edit dialog.
         ->assertDontSee('Edit Transaction')
         ->click('[data-testid="bulk-category-trigger"]')
-        ->assertSee('Change category')
-        ->click('[cmdk-item]:has-text("Utilities")')
+        ->assertSee('Change category');
+
+    waitForDrawerToSettle($page);
+
+    $page->click('[data-vaul-drawer] [cmdk-item]:has-text("Utilities")')
         ->assertSee('Updated 2 transactions')
         // A bulk change that went through empties the selection.
         ->assertMissing('[data-test="mobile-bulk-actions-bar"]')
