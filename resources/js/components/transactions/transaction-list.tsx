@@ -37,6 +37,8 @@ export interface TransactionListProps {
     showActionsMenu?: boolean;
     headerActions?: ReactNode;
     maxHeight?: number;
+    /** Inside a card: keep the frame on a phone instead of running edge to edge. */
+    framedOnPhone?: boolean;
     hideColumns?: string[];
     onBalanceUpdated?: () => void;
     /**
@@ -63,6 +65,7 @@ export function TransactionList({
     showActionsMenu = true,
     headerActions,
     maxHeight,
+    framedOnPhone,
     hideColumns,
     onBalanceUpdated,
     onTransactionsChanged,
@@ -88,6 +91,7 @@ export function TransactionList({
             hiddenLabelId={hiddenLabelId}
             statementPayments={statementPayments}
             maxHeight={maxHeight}
+            framedOnPhone={framedOnPhone}
             onBalanceUpdated={onBalanceUpdated}
             onTransactionsChanged={onTransactionsChanged}
             showColumnPickerTextOnMobile

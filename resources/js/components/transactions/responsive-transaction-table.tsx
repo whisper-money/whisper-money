@@ -16,6 +16,7 @@ import {
 } from '@/hooks/use-mobile-selection-mode';
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
+import { cn } from '@/lib/utils';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
@@ -67,6 +68,13 @@ interface ResponsiveTransactionTableProps {
     selectionMode: RowSelectionMode;
     listRow: TransactionListRowOptions;
     rowActions: TransactionRowActionHandlers;
+    /**
+     * On a phone, run the compact list edge to edge out of the page's 24px
+     * side padding (`p-6`), with no frame: one hairline where it starts and
+     * the rows' own hairlines below. Leave it off where the list sits inside
+     * a card, whose padding is not the page's.
+     */
+    fullBleedOnPhone?: boolean;
 }
 
 /**
@@ -88,6 +96,7 @@ export function ResponsiveTransactionTable({
     selectionMode,
     listRow,
     rowActions,
+    fullBleedOnPhone = false,
 }: ResponsiveTransactionTableProps) {
     const [containerRef, width] = useElementWidth<HTMLDivElement>();
     const layout =
@@ -124,6 +133,7 @@ export function ResponsiveTransactionTable({
                     topRow={topRow}
                     listRow={listRow}
                     rowActions={rowActions}
+                    fullBleedOnPhone={fullBleedOnPhone}
                     {...dayHeaders}
                 />
             ) : (
@@ -152,6 +162,7 @@ function TransactionCompactList({
     topRow,
     listRow,
     rowActions,
+    fullBleedOnPhone,
     groupRowsBy,
     renderGroupHeader,
 }: Pick<
@@ -165,6 +176,7 @@ function TransactionCompactList({
     | 'topRow'
     | 'listRow'
     | 'rowActions'
+    | 'fullBleedOnPhone'
 > & {
     selectionActive: boolean;
     groupRowsBy?: (transaction: ServerTransaction) => string;
@@ -199,15 +211,29 @@ function TransactionCompactList({
                 <TransactionSortMenu table={table} sorting={sorting} />
             </div>
             {topRow && (
-                <div className="overflow-hidden rounded-md border">
+                <div
+                    className={cn(
+                        'overflow-hidden rounded-md border',
+                        fullBleedOnPhone &&
+                            'max-md:-mx-6 max-md:rounded-none max-md:border-x-0',
+                    )}
+                >
                     {topRow}
                 </div>
             )}
             <div
                 ref={scrollRef}
-                // Each row draws its hairline below; the last one would sit
-                // on the frame's border and double it.
-                className="overflow-hidden rounded-md border [&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0"
+                className={cn(
+                    'overflow-hidden rounded-md border',
+                    fullBleedOnPhone
+                        ? // Edge to edge on a phone: a hairline above, and the
+                          // last row keeps its own below, since no frame does.
+                          'max-md:-mx-6 max-md:rounded-none max-md:border-x-0 max-md:border-b-0 md:[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0'
+                        : // Each row draws its hairline below; the last one
+                          // would sit on the frame's border and double it.
+                          '[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0',
+                )}
+                data-full-bleed={fullBleedOnPhone || undefined}
                 style={maxHeight ? { maxHeight, overflowY: 'auto' } : undefined}
             >
                 {rows.length === 0 ? (

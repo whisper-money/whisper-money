@@ -88,6 +88,12 @@ interface TransactionTableProps {
     rowCellClassName?: string;
     /** Scrolls inside a box this tall instead of with the window. */
     maxHeight?: number;
+    /**
+     * The table sits inside a card rather than straight in the page's padded
+     * content, so on a phone its compact list keeps its frame instead of
+     * running edge to edge.
+     */
+    framedOnPhone?: boolean;
     /** Drawn above the first row, such as a banner. */
     topRow?: ReactNode;
     /** Beside "Load more" below the rows. */
@@ -127,6 +133,7 @@ export function TransactionTable({
     isNewRow,
     rowCellClassName,
     maxHeight,
+    framedOnPhone = false,
     topRow,
     footerActions,
     confirmBulkByTyping = false,
@@ -327,6 +334,7 @@ export function TransactionTable({
                             }}
                             rowActions={rowActions}
                             topRow={topRow}
+                            fullBleedOnPhone={!framedOnPhone}
                         />
 
                         <TransactionTableFooter
