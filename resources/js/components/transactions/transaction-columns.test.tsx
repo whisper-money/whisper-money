@@ -172,3 +172,42 @@ describe('createTransactionColumns statement payments', () => {
         ).not.toBeInTheDocument();
     });
 });
+
+describe('createTransactionColumns select checkboxes', () => {
+    function renderSelectCheckboxes() {
+        const select = buildColumns(false).find(
+            (column) => column.id === 'select',
+        );
+        const table = {
+            getIsAllPageRowsSelected: () => false,
+            getIsSomePageRowsSelected: () => false,
+            toggleAllPageRowsSelected: () => {},
+        };
+        const row = { getIsSelected: () => true, toggleSelected: () => {} };
+
+        render(
+            <>
+                {(select?.header as (context: unknown) => React.ReactNode)({
+                    table,
+                })}
+                {(select?.cell as (context: unknown) => React.ReactNode)({
+                    row,
+                })}
+            </>,
+        );
+
+        return {
+            header: screen.getByRole('checkbox', { name: 'Select all' }),
+            row: screen.getByRole('checkbox', { name: 'Select row' }),
+        };
+    }
+
+    it('keeps the desktop checkbox on the phone, only a size up', () => {
+        const { header, row } = renderSelectCheckboxes();
+
+        expect(row.className).toContain('max-md:size-5');
+        expect(row.className).not.toContain('rounded-full');
+        expect(row.className).not.toContain('max-md:border-2');
+        expect(header.className).toBe(row.className);
+    });
+});
