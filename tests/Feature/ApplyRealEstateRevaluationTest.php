@@ -12,23 +12,23 @@ beforeEach(function () {
 });
 
 // -------------------------------------------------------------------
-// Applying revaluation to accounts with positive percentage
+// Applying revaluation monthly (appreciation and depreciation)
 // -------------------------------------------------------------------
 
-it('applies positive annual revaluation monthly', function () {
+it('applies the annual revaluation monthly', function (float $percentage, int $previousBalance, int $expectedBalance) {
     $account = Account::factory()->realEstate()->create([
         'user_id' => $this->user->id,
     ]);
 
     RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => 6.00, // 6% annual compounded monthly
+        'revaluation_percentage' => $percentage,
     ]);
 
     AccountBalance::factory()->create([
         'account_id' => $account->id,
         'balance_date' => now()->subMonth()->toDateString(),
-        'balance' => 10000000, // 100,000.00
+        'balance' => $previousBalance,
     ]);
 
     artisan('real-estate:apply-revaluation')->assertSuccessful();
@@ -39,44 +39,16 @@ it('applies positive annual revaluation monthly', function () {
         ->first();
 
     expect($newBalance)->not->toBeNull();
+    expect($newBalance->balance)->toBe($expectedBalance);
+})->with([
     // 10,000,000 * (1 + 0.06)^(1/12) ≈ 10,048,676
-    expect($newBalance->balance)->toBe(10048676);
-});
-
-// -------------------------------------------------------------------
-// Applying revaluation with negative percentage (depreciation)
-// -------------------------------------------------------------------
-
-it('applies negative annual revaluation monthly', function () {
-    $account = Account::factory()->realEstate()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    RealEstateDetail::factory()->create([
-        'account_id' => $account->id,
-        'revaluation_percentage' => -12.00, // -12% annual compounded monthly
-    ]);
-
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->toDateString(),
-        'balance' => 20000000, // 200,000.00
-    ]);
-
-    artisan('real-estate:apply-revaluation')->assertSuccessful();
-
-    $newBalance = AccountBalance::query()
-        ->where('account_id', $account->id)
-        ->where('balance_date', now()->toDateString())
-        ->first();
-
-    expect($newBalance)->not->toBeNull();
+    'positive 6% on 100,000.00' => [6.00, 10000000, 10048676],
     // 20,000,000 * (1 - 0.12)^(1/12) ≈ 19,788,075
-    expect($newBalance->balance)->toBe(19788075);
-});
+    'negative 12% on 200,000.00' => [-12.00, 20000000, 19788075],
+]);
 
 // -------------------------------------------------------------------
-// Skipping accounts without balance
+// Skipping accounts with nothing to revalue
 // -------------------------------------------------------------------
 
 it('skips accounts that have no existing balance', function () {
@@ -96,18 +68,14 @@ it('skips accounts that have no existing balance', function () {
     expect(AccountBalance::where('account_id', $account->id)->count())->toBe(0);
 });
 
-// -------------------------------------------------------------------
-// Skipping accounts with null revaluation percentage
-// -------------------------------------------------------------------
-
-it('skips accounts with null revaluation percentage', function () {
+it('skips accounts without a revaluation percentage', function (?float $percentage) {
     $account = Account::factory()->realEstate()->create([
         'user_id' => $this->user->id,
     ]);
 
     RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => null,
+        'revaluation_percentage' => $percentage,
     ]);
 
     AccountBalance::factory()->create([
@@ -125,37 +93,10 @@ it('skips accounts with null revaluation percentage', function () {
             ->where('balance_date', now()->toDateString())
             ->exists()
     )->toBeFalse();
-});
-
-// -------------------------------------------------------------------
-// Skipping accounts with zero revaluation percentage
-// -------------------------------------------------------------------
-
-it('skips accounts with zero revaluation percentage', function () {
-    $account = Account::factory()->realEstate()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    RealEstateDetail::factory()->create([
-        'account_id' => $account->id,
-        'revaluation_percentage' => 0,
-    ]);
-
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->toDateString(),
-        'balance' => 10000000,
-    ]);
-
-    artisan('real-estate:apply-revaluation')->assertSuccessful();
-
-    expect(
-        AccountBalance::query()
-            ->where('account_id', $account->id)
-            ->where('balance_date', now()->toDateString())
-            ->exists()
-    )->toBeFalse();
-});
+})->with([
+    'null percentage' => [null],
+    'zero percentage' => [0.0],
+]);
 
 // -------------------------------------------------------------------
 // Uses the latest balance as the basis for revaluation

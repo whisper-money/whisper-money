@@ -20,27 +20,34 @@ function comparisonRoutes(): array
     return $routes;
 }
 
-test('every comparison page renders in its own language', function (string $locale, string $slug) {
-    $this->get('/'.ComparisonPages::path($locale, $slug))
-        ->assertSuccessful()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('comparison')
-            ->where('pageLocale', $locale)
-            ->where('page.slug', $slug)
-            ->has('page.rows', 4)
-            ->has('labels')
-        );
-})->with(comparisonRoutes());
-
-test('each page links every language with hreflang and a canonical', function (string $locale, string $slug) {
-    $this->get('/'.ComparisonPages::path($locale, $slug))
+test('every comparison page renders in its own language and links every language', function (string $locale, string $slug) {
+    $response = $this->get('/'.ComparisonPages::path($locale, $slug))
         ->assertSuccessful()
         ->assertInertia(function (AssertableInertia $page) use ($locale, $slug) {
+            $page->component('comparison')
+                ->where('pageLocale', $locale)
+                ->where('page.slug', $slug)
+                ->has('page.rows', 4)
+                ->has('labels');
+
+            // hreflang alternates for every language, and the page's own canonical
             $alternates = $page->toArray()['props']['alternates'];
 
             expect(array_keys($alternates))->toEqualCanonicalizing(MarketingContent::LOCALES)
                 ->and($alternates[$locale])->toBe(ComparisonPages::url($locale, $slug));
         });
+
+    // canonical and hreflang are declared as http headers too
+    $link = $response->headers->get('Link');
+    $canonical = ComparisonPages::url($locale, $slug);
+
+    expect($link)->toContain('<'.$canonical.'>; rel="canonical"')
+        ->and($link)->toContain('rel="alternate"; hreflang="x-default"')
+        ->and($link)->toContain('<'.$canonical.'.md>; rel="alternate"; type="text/markdown"');
+
+    foreach (ComparisonPages::alternates(ComparisonPages::find($locale, $slug)['key']) as $alternateLocale => $url) {
+        expect($link)->toContain('<'.$url.'>; rel="alternate"; hreflang="'.$alternateLocale.'"');
+    }
 })->with(comparisonRoutes());
 
 test('every comparison page has a markdown twin canonicalised to the html page', function (string $locale, string $slug) {
@@ -50,21 +57,10 @@ test('every comparison page has a markdown twin canonicalised to the html page',
         ->and($response->headers->get('Link'))->toBe('<'.ComparisonPages::url($locale, $slug).'>; rel="canonical"')
         ->and($response->content())->toStartWith('# ')
         ->and($response->content())->toContain('| --- | --- | --- |');
-})->with(comparisonRoutes());
 
-test('each page declares canonical and hreflang as http headers too', function (string $locale, string $slug) {
-    $link = $this->get('/'.ComparisonPages::path($locale, $slug))
-        ->assertSuccessful()
-        ->headers->get('Link');
-
-    $canonical = ComparisonPages::url($locale, $slug);
-
-    expect($link)->toContain('<'.$canonical.'>; rel="canonical"')
-        ->and($link)->toContain('rel="alternate"; hreflang="x-default"')
-        ->and($link)->toContain('<'.$canonical.'.md>; rel="alternate"; type="text/markdown"');
-
-    foreach (ComparisonPages::alternates(ComparisonPages::find($locale, $slug)['key']) as $alternateLocale => $url) {
-        expect($link)->toContain('<'.$url.'>; rel="alternate"; hreflang="'.$alternateLocale.'"');
+    foreach (ComparisonPages::find($locale, $slug)['testimonials'] as $testimonial) {
+        expect($response->content())->toContain($testimonial['name'])
+            ->and($response->content())->toContain($testimonial['text']);
     }
 })->with(comparisonRoutes());
 
@@ -80,16 +76,6 @@ test('a slug from one language does not resolve under the other', function () {
     $this->get('/compare/alternativa-a-fintonic')->assertNotFound();
     $this->get('/comparativa/fintonic-alternative')->assertNotFound();
 });
-
-test('a served page renders every testimonial it has', function (string $locale, string $slug) {
-    $path = '/'.ComparisonPages::path($locale, $slug);
-    $markdown = $this->get($path.'.md')->assertSuccessful()->content();
-
-    foreach (ComparisonPages::find($locale, $slug)['testimonials'] as $testimonial) {
-        expect($markdown)->toContain($testimonial['name'])
-            ->and($markdown)->toContain($testimonial['text']);
-    }
-})->with(comparisonRoutes());
 
 test('the landing markdown summary is served for every language', function (string $locale) {
     $path = $locale === 'en' ? '/index.md' : "/index.{$locale}.md";

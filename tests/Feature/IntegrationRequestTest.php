@@ -224,80 +224,32 @@ test('pending requests are only visible to their creator', function () {
         ->assertJsonCount(1, 'requests');
 });
 
-test('approved requests are visible to every user', function () {
-    IntegrationRequest::factory()->approved()->create();
-
-    $this->actingAs(User::factory()->create())
-        ->getJson('/integration-requests/data')
-        ->assertJsonCount(1, 'requests');
-});
-
-test('a user cannot vote on a pending request they do not own', function () {
-    $request = IntegrationRequest::factory()->create();
-
-    $this->actingAs(User::factory()->create())
-        ->postJson("/integration-requests/{$request->id}/vote")
-        ->assertNotFound();
-});
-
-test('the review command approves a pending request', function () {
-    $request = IntegrationRequest::factory()->create(['name' => 'Revolut']);
-
-    $this->artisan('integration-requests:review')
-        ->expectsChoice(
-            "Review \"{$request->name}\" ({$request->url})",
-            'approve',
-            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
-        )
-        ->assertSuccessful();
-
-    expect($request->fresh()->status)->toBe(IntegrationRequestStatus::Approved);
-});
-
-test('the review command rejects a pending request', function () {
-    $request = IntegrationRequest::factory()->create(['name' => 'Spam']);
-
-    $this->artisan('integration-requests:review')
-        ->expectsChoice(
-            "Review \"{$request->name}\" ({$request->url})",
-            'reject',
-            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
-        )
-        ->assertSuccessful();
-
-    expect($request->fresh()->status)->toBe(IntegrationRequestStatus::Rejected);
-});
-
-test('the review command reports when there is nothing to review', function () {
-    $this->artisan('integration-requests:review')
-        ->expectsOutput('No pending integration requests.')
-        ->assertSuccessful();
-});
-
-test('not doable requests are visible to everyone with their comment', function () {
-    IntegrationRequest::factory()->notDoable()->create([
-        'name' => 'Impossible Bank',
-        'comment' => 'They have no public API.',
-    ]);
+test('public requests are visible to every user with their status and comment', function (string $state, ?string $comment, IntegrationRequestStatus $status) {
+    IntegrationRequest::factory()->{$state}()->create(['comment' => $comment]);
 
     $this->actingAs(User::factory()->create())
         ->getJson('/integration-requests/data')
         ->assertOk()
         ->assertJsonCount(1, 'requests')
-        ->assertJsonPath('requests.0.status', 'not_doable')
-        ->assertJsonPath('requests.0.comment', 'They have no public API.');
-});
+        ->assertJsonPath('requests.0.status', $status->value)
+        ->assertJsonPath('requests.0.comment', $comment);
+})->with([
+    'approved' => ['approved', null, IntegrationRequestStatus::Approved],
+    'in progress, with its comment' => ['inProgress', 'Working on it.', IntegrationRequestStatus::InProgress],
+    'not doable, with its comment' => ['notDoable', 'They have no public API.', IntegrationRequestStatus::NotDoable],
+    'done, without a comment' => ['done', null, IntegrationRequestStatus::Done],
+]);
 
-test('not doable requests are listed after the rest', function () {
-    IntegrationRequest::factory()->notDoable()->create(['name' => 'Not doable']);
+test('closed requests are listed after the rest', function (string $state) {
+    IntegrationRequest::factory()->{$state}()->create(['name' => 'Closed']);
     $approved = IntegrationRequest::factory()->approved()->create(['name' => 'Approved']);
 
     $this->actingAs(User::factory()->create())
         ->getJson('/integration-requests/data')
         ->assertOk()
         ->assertJsonPath('requests.0.id', $approved->id)
-        ->assertJsonPath('requests.1.name', 'Not doable');
-});
+        ->assertJsonPath('requests.1.name', 'Closed');
+})->with(['not doable' => ['notDoable'], 'done' => ['done']]);
 
 test('rejected requests never appear in the list', function () {
     IntegrationRequest::factory()->rejected()->create();
@@ -308,33 +260,69 @@ test('rejected requests never appear in the list', function () {
         ->assertJsonCount(0, 'requests');
 });
 
-test('nobody can vote on a not doable request', function () {
-    $request = IntegrationRequest::factory()->notDoable()->create();
+test('nobody can vote on a closed request, not even its owner', function (string $state) {
+    $request = IntegrationRequest::factory()->{$state}()->create();
 
     $this->actingAs(User::factory()->create())
         ->postJson("/integration-requests/{$request->id}/vote")
         ->assertNotFound();
 
     $owner = User::factory()->create();
-    $ownRequest = IntegrationRequest::factory()->notDoable()->create(['user_id' => $owner->id]);
+    $ownRequest = IntegrationRequest::factory()->{$state}()->create(['user_id' => $owner->id]);
 
     $this->actingAs($owner)
         ->postJson("/integration-requests/{$ownRequest->id}/vote")
         ->assertNotFound();
-});
 
-test('a vote on a request later marked not doable cannot be removed', function () {
+    expect($request->votes()->count() + $ownRequest->votes()->count())->toBe(0);
+})->with(['not doable' => ['notDoable'], 'done' => ['done']]);
+
+test('a vote on a request later closed cannot be removed', function (IntegrationRequestStatus $status) {
     $user = User::factory()->create();
     $request = IntegrationRequest::factory()->approved()->create();
     $request->votes()->create(['user_id' => $user->id]);
 
-    $request->update(['status' => IntegrationRequestStatus::NotDoable]);
+    $request->update(['status' => $status]);
 
     $this->actingAs($user)
         ->deleteJson("/integration-requests/{$request->id}/vote")
         ->assertNotFound();
 
     expect($request->votes()->count())->toBe(1);
+})->with([
+    'not doable' => [IntegrationRequestStatus::NotDoable],
+    'done' => [IntegrationRequestStatus::Done],
+]);
+
+test('a user cannot vote on a pending request they do not own', function () {
+    $request = IntegrationRequest::factory()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/integration-requests/{$request->id}/vote")
+        ->assertNotFound();
+});
+
+test('the review command moves a pending request to the chosen status', function (string $name, string $choice, IntegrationRequestStatus $status) {
+    $request = IntegrationRequest::factory()->create(['name' => $name]);
+
+    $this->artisan('integration-requests:review')
+        ->expectsChoice(
+            "Review \"{$request->name}\" ({$request->url})",
+            $choice,
+            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
+        )
+        ->assertSuccessful();
+
+    expect($request->fresh()->status)->toBe($status);
+})->with([
+    'approve' => ['Revolut', 'approve', IntegrationRequestStatus::Approved],
+    'reject' => ['Spam', 'reject', IntegrationRequestStatus::Rejected],
+]);
+
+test('the review command reports when there is nothing to review', function () {
+    $this->artisan('integration-requests:review')
+        ->expectsOutput('No pending integration requests.')
+        ->assertSuccessful();
 });
 
 test('the review command marks a request as not doable with a comment', function () {
@@ -372,20 +360,6 @@ test('the review command with --all moves any request to a new status with a com
     expect($request->comment)->toBe('Building it now.');
 });
 
-test('in progress requests are visible to everyone with their comment', function () {
-    IntegrationRequest::factory()->inProgress()->create([
-        'name' => 'Soon Bank',
-        'comment' => 'Working on it.',
-    ]);
-
-    $this->actingAs(User::factory()->create())
-        ->getJson('/integration-requests/data')
-        ->assertOk()
-        ->assertJsonCount(1, 'requests')
-        ->assertJsonPath('requests.0.status', 'in_progress')
-        ->assertJsonPath('requests.0.comment', 'Working on it.');
-});
-
 test('a user can vote on an in progress request', function () {
     $request = IntegrationRequest::factory()->inProgress()->create();
 
@@ -396,50 +370,6 @@ test('a user can vote on an in progress request', function () {
     $this->assertDatabaseHas('integration_request_votes', [
         'integration_request_id' => $request->id,
     ]);
-});
-
-test('done requests are visible to everyone without a comment', function () {
-    IntegrationRequest::factory()->done()->create(['name' => 'Shipped Bank']);
-
-    $this->actingAs(User::factory()->create())
-        ->getJson('/integration-requests/data')
-        ->assertOk()
-        ->assertJsonCount(1, 'requests')
-        ->assertJsonPath('requests.0.status', 'done')
-        ->assertJsonPath('requests.0.comment', null);
-});
-
-test('done requests are listed after the rest', function () {
-    IntegrationRequest::factory()->done()->create(['name' => 'Done']);
-    $approved = IntegrationRequest::factory()->approved()->create(['name' => 'Approved']);
-
-    $this->actingAs(User::factory()->create())
-        ->getJson('/integration-requests/data')
-        ->assertOk()
-        ->assertJsonPath('requests.0.id', $approved->id)
-        ->assertJsonPath('requests.1.name', 'Done');
-});
-
-test('nobody can vote on a done request', function () {
-    $request = IntegrationRequest::factory()->done()->create();
-
-    $this->actingAs(User::factory()->create())
-        ->postJson("/integration-requests/{$request->id}/vote")
-        ->assertNotFound();
-});
-
-test('a vote on a request later marked done cannot be removed', function () {
-    $user = User::factory()->create();
-    $request = IntegrationRequest::factory()->approved()->create();
-    $request->votes()->create(['user_id' => $user->id]);
-
-    $request->update(['status' => IntegrationRequestStatus::Done]);
-
-    $this->actingAs($user)
-        ->deleteJson("/integration-requests/{$request->id}/vote")
-        ->assertNotFound();
-
-    expect($request->votes()->count())->toBe(1);
 });
 
 test('the review command marks a request as done and drops its comment', function () {

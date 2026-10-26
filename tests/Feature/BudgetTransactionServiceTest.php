@@ -105,6 +105,46 @@ test('assignHistoricalTransactionsToPeriod excludes transactions outside date ra
     expect($count)->toBe(1);
 });
 
+test('assignHistoricalTransactionsToPeriod skips soft deleted transactions', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $deletedTransaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -5000,
+    ]);
+
+    $deletedTransaction->delete();
+
+    $liveTransaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -3000,
+    ]);
+
+    $budget = Budget::factory()->forCategories($category)->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    expect($count)->toBe(1);
+    $this->assertDatabaseMissing('budget_transactions', [
+        'transaction_id' => $deletedTransaction->id,
+    ]);
+    $this->assertDatabaseHas('budget_transactions', [
+        'transaction_id' => $liveTransaction->id,
+    ]);
+});
+
 test('assignHistoricalTransactionsToPeriod works with category-based budgets', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
     $otherCategory = Category::factory()->create(['user_id' => $this->user->id]);
@@ -203,14 +243,14 @@ test('assignHistoricalTransactionsToPeriod works with transactions having multip
     expect($count)->toBe(1);
 });
 
-test('assignHistoricalTransactionsToPeriod stores negated transaction amount for expenses', function () {
+test('assignHistoricalTransactionsToPeriod stores the negated transaction amount', function (int $amount, int $expectedBudgetAmount) {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
         'transaction_date' => now()->subDays(5),
-        'amount' => -5000, // Expense (negative)
+        'amount' => $amount,
     ]);
 
     $budget = Budget::factory()->forCategories($category)->create([
@@ -227,35 +267,11 @@ test('assignHistoricalTransactionsToPeriod stores negated transaction amount for
 
     $budgetTransaction = $period->budgetTransactions()->first();
 
-    expect($budgetTransaction->amount)->toBe(5000); // -(-5000) = 5000, adds to spending
-});
-
-test('assignHistoricalTransactionsToPeriod stores refund as negative amount', function () {
-    $category = Category::factory()->create(['user_id' => $this->user->id]);
-
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'category_id' => $category->id,
-        'transaction_date' => now()->subDays(5),
-        'amount' => 1000, // Refund (positive)
-    ]);
-
-    $budget = Budget::factory()->forCategories($category)->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    $period = BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => now()->subDays(30),
-        'end_date' => now()->addDays(30),
-    ]);
-
-    $this->service->assignHistoricalTransactionsToPeriod($period);
-
-    $budgetTransaction = $period->budgetTransactions()->first();
-
-    expect($budgetTransaction->amount)->toBe(-1000); // -(+1000) = -1000, reduces spending
-});
+    expect($budgetTransaction->amount)->toBe($expectedBudgetAmount);
+})->with([
+    'expense adds to spending' => [-5000, 5000],
+    'refund reduces spending' => [1000, -1000],
+]);
 
 test('budget spending correctly reflects mix of expenses and refunds', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);

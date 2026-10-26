@@ -135,12 +135,15 @@ test('users can toggle dashboard visibility of their accounts', function () {
     expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
 });
 
-test('the hidden flag is required when toggling visibility', function () {
+test('the visibility and archive endpoints require their flag', function (string $routeName, string $flag) {
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
-    $this->patch(route('accounts.visibility', $account), [])
-        ->assertSessionHasErrors('hidden');
-});
+    $this->patch(route($routeName, $account), [])
+        ->assertSessionHasErrors($flag);
+})->with([
+    'toggling visibility' => ['accounts.visibility', 'hidden'],
+    'archiving' => ['accounts.archived', 'archived'],
+]);
 
 test('users cannot toggle visibility of accounts they do not own', function () {
     $other = Account::factory()->create([
@@ -243,13 +246,6 @@ test('unarchiving does not touch the bank connection', function () {
         ->assertRedirect();
 
     expect($account->fresh()->banking_connection_id)->toBe($connection->id);
-});
-
-test('the archived flag is required when archiving', function () {
-    $account = Account::factory()->create(['user_id' => $this->user->id]);
-
-    $this->patch(route('accounts.archived', $account), [])
-        ->assertSessionHasErrors('archived');
 });
 
 test('users cannot archive accounts they do not own', function () {

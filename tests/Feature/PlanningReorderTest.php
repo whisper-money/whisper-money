@@ -41,25 +41,18 @@ test('the planning list is served in the stored order', function () {
         );
 });
 
-test('users cannot reorder a budget they do not own', function () {
-    $other = Budget::factory()->create(['user_id' => User::factory()->create()->id]);
+test('users cannot reorder an item they do not own', function (string $model, string $type) {
+    $other = $model::factory()->create(['user_id' => User::factory()->create()->id]);
 
     $this->patch(route('planning.reorder'), ['items' => [
-        ['type' => 'budget', 'id' => $other->id],
+        ['type' => $type, 'id' => $other->id],
     ]])->assertSessionHasErrors('items.0.id');
 
     expect($other->fresh()->position)->toBeNull();
-});
-
-test('users cannot reorder a savings goal they do not own', function () {
-    $other = SavingsGoal::factory()->create(['user_id' => User::factory()->create()->id]);
-
-    $this->patch(route('planning.reorder'), ['items' => [
-        ['type' => 'goal', 'id' => $other->id],
-    ]])->assertSessionHasErrors('items.0.id');
-
-    expect($other->fresh()->position)->toBeNull();
-});
+})->with([
+    'budget' => [Budget::class, 'budget'],
+    'savings goal' => [SavingsGoal::class, 'goal'],
+]);
 
 test('an id has to exist in the table its own type names', function () {
     $budget = Budget::factory()->create(['user_id' => $this->user->id]);

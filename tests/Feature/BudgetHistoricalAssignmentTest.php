@@ -15,23 +15,6 @@ beforeEach(function () {
     $this->user = User::factory()->create(['onboarded_at' => now()]);
 });
 
-test('budget creation dispatches the historical assignment job', function () {
-    Queue::fake();
-
-    $category = Category::factory()->create(['user_id' => $this->user->id]);
-
-    $this->actingAs($this->user)->post('/budgets', [
-        'name' => 'Test Budget',
-        'period_type' => 'monthly',
-        'period_start_day' => 1,
-        'category_ids' => [$category->id],
-        'rollover_type' => 'reset',
-        'allocated_amount' => 100000,
-    ]);
-
-    Queue::assertPushed(AssignHistoricalTransactionsToBudget::class);
-});
-
 test('budget creation dispatches the historical assignment job for the current and previous periods', function () {
     Queue::fake();
 
@@ -252,40 +235,6 @@ test('transactions on boundary dates are assigned', function () {
 
     assertDatabaseHas('budget_transactions', [
         'transaction_id' => $endTransaction->id,
-    ]);
-});
-
-test('soft deleted transactions are not assigned', function () {
-    $category = Category::factory()->create(['user_id' => $this->user->id]);
-
-    // Create and soft delete a transaction within the current month period
-    $deletedTransaction = Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'category_id' => $category->id,
-        'transaction_date' => now()->startOfMonth(),
-        'amount' => -5000,
-    ]);
-
-    $deletedTransaction->delete();
-
-    // Create budget
-    $response = $this->actingAs($this->user)->post('/budgets', [
-        'name' => 'Soft Delete Budget',
-        'period_type' => 'monthly',
-        'period_start_day' => 1,
-        'category_ids' => [$category->id],
-        'rollover_type' => 'reset',
-        'allocated_amount' => 100000,
-    ]);
-
-    $response->assertRedirect();
-
-    // Process the queued job
-    $this->artisan('queue:work --once');
-
-    // Soft deleted transaction should NOT be assigned
-    $this->assertDatabaseMissing('budget_transactions', [
-        'transaction_id' => $deletedTransaction->id,
     ]);
 });
 

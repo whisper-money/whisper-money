@@ -49,7 +49,7 @@ test('does not overwrite an already-attributed subscription', function () {
     expect($subscription->fresh()->upsell_source)->toBe('accounts');
 });
 
-test('ignores an unknown upsell source value', function () {
+test('leaves the upsell source empty without a known value in the metadata', function (array $metadata) {
     $user = User::factory()->create();
     $subscription = $user->subscriptions()->create([
         'type' => 'default',
@@ -58,21 +58,10 @@ test('ignores an unknown upsell source value', function () {
         'stripe_price' => 'price_123',
     ]);
 
-    event(new WebhookHandled(subscriptionWebhookPayload('sub_upsell_789', ['upsell_source' => 'bogus'])));
+    event(new WebhookHandled(subscriptionWebhookPayload('sub_upsell_789', $metadata)));
 
     expect($subscription->fresh()->upsell_source)->toBeNull();
-});
-
-test('does nothing for subscriptions without upsell metadata', function () {
-    $user = User::factory()->create();
-    $subscription = $user->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_upsell_000',
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
-    event(new WebhookHandled(subscriptionWebhookPayload('sub_upsell_000', [])));
-
-    expect($subscription->fresh()->upsell_source)->toBeNull();
-});
+})->with([
+    'unknown upsell source value' => [['upsell_source' => 'bogus']],
+    'no upsell metadata' => [[]],
+]);
