@@ -448,32 +448,6 @@ it('validates linked_real_estate_account_id cannot be an already linked property
     $response->assertSessionHasErrors(['linked_real_estate_account_id']);
 });
 
-it('can create a loan account without loan details', function () {
-    actingAs($this->user);
-
-    $data = [
-        'name' => 'Simple Loan',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'USD',
-        'type' => AccountType::Loan->value,
-    ];
-
-    $response = $this->post(route('accounts.store'), $data);
-
-    $response->assertRedirect();
-
-    $account = Account::query()
-        ->where('user_id', $this->user->id)
-        ->where('name', 'Simple Loan')
-        ->first();
-
-    expect($account)->not->toBeNull();
-
-    assertDatabaseMissing('loan_details', [
-        'account_id' => $account->id,
-    ]);
-});
-
 it('validates loan fields when creating a loan account', function () {
     actingAs($this->user);
 
@@ -1205,7 +1179,7 @@ it('still takes a new loan that brings no detail fields at all', function () {
         'bank_id' => $this->bank->id,
         'currency_code' => 'USD',
         'type' => AccountType::Loan->value,
-    ])->assertSessionHasNoErrors();
+    ])->assertRedirect()->assertSessionHasNoErrors();
 
     $account = Account::where('user_id', $this->user->id)->sole();
 

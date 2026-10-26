@@ -43,38 +43,22 @@ it('queues the follow-up for a post-onboarding consent accepted two days ago', f
     );
 });
 
-it('skips consent given during onboarding', function () {
+it('does not queue the follow-up outside the two-days-after-a-deliberate-opt-in window', function (int $signedUpDaysAgo, int $acceptedDaysAgo) {
     Bus::fake();
 
+    userWithConsent($signedUpDaysAgo, $acceptedDaysAgo);
+
+    $this->artisan('email:ai-consent-follow-up')->assertSuccessful();
+
+    Bus::assertNotDispatched(SendAiConsentFollowUpEmailJob::class);
+})->with([
     // Signed up and consented the same day → onboarding, not a deliberate opt-in.
-    userWithConsent(signedUpDaysAgo: 2, acceptedDaysAgo: 2);
-
-    $this->artisan('email:ai-consent-follow-up')->assertSuccessful();
-
-    Bus::assertNotDispatched(SendAiConsentFollowUpEmailJob::class);
-});
-
-it('treats consent exactly three days after signup as onboarding', function () {
-    Bus::fake();
-
-    // accepted two days ago, signed up five days ago → exactly 3 days apart (not > 3).
-    userWithConsent(signedUpDaysAgo: 5, acceptedDaysAgo: 2);
-
-    $this->artisan('email:ai-consent-follow-up')->assertSuccessful();
-
-    Bus::assertNotDispatched(SendAiConsentFollowUpEmailJob::class);
-});
-
-it('does not queue when the consent was not accepted exactly two days ago', function () {
-    Bus::fake();
-
-    userWithConsent(signedUpDaysAgo: 10, acceptedDaysAgo: 1);
-    userWithConsent(signedUpDaysAgo: 10, acceptedDaysAgo: 3);
-
-    $this->artisan('email:ai-consent-follow-up')->assertSuccessful();
-
-    Bus::assertNotDispatched(SendAiConsentFollowUpEmailJob::class);
-});
+    'consent given during onboarding' => [2, 2],
+    // Accepted two days ago, signed up five days ago → exactly 3 days apart (not > 3).
+    'consent exactly three days after signup counts as onboarding' => [5, 2],
+    'consent accepted one day ago' => [10, 1],
+    'consent accepted three days ago' => [10, 3],
+]);
 
 it('skips revoked consent', function () {
     Bus::fake();

@@ -22,39 +22,18 @@ test('authenticated users can create a label', function () {
     ]);
 });
 
-test('label name is required', function () {
+test('label payload is validated', function (array $payload, string $invalidField) {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->postJson(route('labels.store'), [
-        'color' => 'blue',
-    ]);
+    $response = $this->actingAs($user)->postJson(route('labels.store'), $payload);
 
     $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['name']);
-});
-
-test('label color is required', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->postJson(route('labels.store'), [
-        'name' => 'Important',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['color']);
-});
-
-test('label color must be valid', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->postJson(route('labels.store'), [
-        'name' => 'Important',
-        'color' => 'invalid-color',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['color']);
-});
+    $response->assertJsonValidationErrors([$invalidField]);
+})->with([
+    'missing name' => [['color' => 'blue'], 'name'],
+    'missing color' => [['name' => 'Important'], 'color'],
+    'unknown color' => [['name' => 'Important', 'color' => 'invalid-color'], 'color'],
+]);
 
 test('label names are unique per user', function () {
     $user = User::factory()->create();

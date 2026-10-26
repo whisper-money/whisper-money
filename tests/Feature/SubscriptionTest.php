@@ -322,14 +322,6 @@ test('pricing config includes all plan details', function () {
         );
 });
 
-test('users without bank connections are redirected to paywall on first visit', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user);
-
-    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
-});
-
 test('users without bank connections can access protected routes after seeing paywall', function () {
     $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
 

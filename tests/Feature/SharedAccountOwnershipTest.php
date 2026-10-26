@@ -71,56 +71,26 @@ test('accounts are fully owned by default', function () {
         ->and($account->fresh()->ownership_applies_to_balance)->toBeFalse();
 });
 
-test('the cashflow summary endpoint counts only the owner share of a shared account', function () {
+test('the cashflow and dashboard endpoints count only the owner share of a shared account', function (string $endpoint, array $query, array $expectedJson) {
     sharedAccountWithTransactions($this->user, 50);
 
-    $response = $this->getJson('/api/cashflow/summary?'.http_build_query([
+    $response = $this->getJson($endpoint.'?'.http_build_query([
         'from' => now()->startOfMonth()->toDateString(),
         'to' => now()->endOfMonth()->toDateString(),
+        ...$query,
     ]));
 
     $response->assertOk();
-    expect($response->json('current.income'))->toBe(100000)
-        ->and($response->json('current.expense'))->toBe(40000)
-        ->and($response->json('current.net'))->toBe(60000);
-});
 
-test('the cashflow breakdown endpoint counts only the owner share of a shared account', function () {
-    sharedAccountWithTransactions($this->user, 50);
-
-    $response = $this->getJson('/api/cashflow/breakdown?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-        'type' => 'expense',
-    ]));
-
-    $response->assertOk();
-    expect($response->json('total'))->toBe(40000);
-});
-
-test('the dashboard monthly spending endpoint counts only the owner share of a shared account', function () {
-    sharedAccountWithTransactions($this->user, 50);
-
-    $response = $this->getJson('/api/dashboard/monthly-spending?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    expect($response->json('current'))->toBe(40000);
-});
-
-test('the dashboard top categories endpoint counts only the owner share of a shared account', function () {
-    sharedAccountWithTransactions($this->user, 50);
-
-    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    expect($response->json('0.amount'))->toBe(40000);
-});
+    foreach ($expectedJson as $path => $amount) {
+        expect($response->json($path))->toBe($amount);
+    }
+})->with([
+    'cashflow summary' => ['/api/cashflow/summary', [], ['current.income' => 100000, 'current.expense' => 40000, 'current.net' => 60000]],
+    'cashflow breakdown' => ['/api/cashflow/breakdown', ['type' => 'expense'], ['total' => 40000]],
+    'dashboard monthly spending' => ['/api/dashboard/monthly-spending', [], ['current' => 40000]],
+    'dashboard top categories' => ['/api/dashboard/top-categories', [], ['0.amount' => 40000]],
+]);
 
 test('the dashboard page cashflow summary counts only the owner share of a shared account', function () {
     sharedAccountWithTransactions($this->user, 50);
@@ -189,8 +159,8 @@ test('fully owned accounts are unaffected', function () {
         ->and($response->json('current.expense'))->toBe(80000);
 });
 
-test('net worth keeps the full balance when the share is limited to transactions', function () {
-    $account = sharedAccountWithTransactions($this->user, 50);
+test('net worth applies the owner share to the balance only when the account asks for it', function (bool $appliesToBalance, int $expectedNetWorth) {
+    $account = sharedAccountWithTransactions($this->user, 50, $appliesToBalance);
     AccountBalance::factory()->create([
         'account_id' => $account->id,
         'balance_date' => now(),
@@ -203,25 +173,11 @@ test('net worth keeps the full balance when the share is limited to transactions
     ]));
 
     $response->assertOk();
-    expect($response->json('current'))->toBe(300000);
-});
-
-test('net worth counts only the owner share when the account applies it to the balance', function () {
-    $account = sharedAccountWithTransactions($this->user, 50, appliesToBalance: true);
-    AccountBalance::factory()->create([
-        'account_id' => $account->id,
-        'balance_date' => now(),
-        'balance' => 300000,
-    ]);
-
-    $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
-        'to' => now()->endOfMonth()->toDateString(),
-    ]));
-
-    $response->assertOk();
-    expect($response->json('current'))->toBe(150000);
-});
+    expect($response->json('current'))->toBe($expectedNetWorth);
+})->with([
+    'share limited to transactions keeps the full balance' => [false, 300000],
+    'share applied to the balance' => [true, 150000],
+]);
 
 test('updating an account persists its ownership settings', function () {
     $bank = Bank::factory()->create();

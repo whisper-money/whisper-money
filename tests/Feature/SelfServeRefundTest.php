@@ -42,63 +42,32 @@ function payNowSubscriber(array $overrides = []): User
     return $user;
 }
 
-it('allows a self-refund inside the window for a pay-now subscriber', function () {
-    $user = payNowSubscriber();
+it('opens the self-refund window only for a pay-now subscriber inside it', function (array $overrides, array $config, bool $isOpen) {
+    config($config);
 
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeTrue();
-});
+    $user = payNowSubscriber($overrides);
 
-it('blocks a self-refund once the window has passed', function () {
-    $user = payNowSubscriber(['created_at' => now()->subDays(5)]);
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeFalse();
-});
-
-it('blocks a self-refund once already refunded', function () {
-    $user = payNowSubscriber(['refunded_at' => now()]);
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeFalse();
-});
-
-it('blocks a self-refund on a seeded demo subscription', function () {
-    $user = payNowSubscriber(['stripe_id' => 'sub_demo_'.fake()->uuid()]);
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeFalse();
-});
-
-it('blocks a self-refund for a subscriber who got a trial', function () {
-    $user = payNowSubscriber(['trial_ends_at' => now()->addDays(7)]);
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeFalse();
-});
-
-/**
- * A trial that has already run out still means the user was never charged at
- * signup, so there is nothing to give back — the date being in the past must
- * not read as "no trial".
- */
-it('blocks a self-refund for a subscriber whose trial already ended', function () {
-    $user = payNowSubscriber(['trial_ends_at' => now()->subDay()]);
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeFalse();
-});
-
-/**
- * The case the experiment left behind in production: users charged in full
- * while `SUBSCRIPTION_PAY_NOW` was on for their arm. Putting the trial back on
- * the plans must not retract the window they are still inside — their money is
- * already gone, and the button is the only way back.
- */
-it('keeps the refund window open for an upfront payer while the plans carry a trial', function () {
-    config([
-        'subscriptions.plans.monthly.trial_days' => 7,
-        'subscriptions.plans.yearly.trial_days' => 14,
-    ]);
-
-    $user = payNowSubscriber();
-
-    expect(app(RefundWindow::class)->isOpenFor($user))->toBeTrue();
-});
+    expect(app(RefundWindow::class)->isOpenFor($user))->toBe($isOpen);
+})->with([
+    'inside the window' => [[], [], true],
+    'window passed' => [fn () => ['created_at' => now()->subDays(5)], [], false],
+    'already refunded' => [fn () => ['refunded_at' => now()], [], false],
+    'seeded demo subscription' => [fn () => ['stripe_id' => 'sub_demo_'.fake()->uuid()], [], false],
+    'subscriber who got a trial' => [fn () => ['trial_ends_at' => now()->addDays(7)], [], false],
+    // A trial that has already run out still means the user was never charged at
+    // signup, so there is nothing to give back — the date being in the past must
+    // not read as "no trial".
+    'subscriber whose trial already ended' => [fn () => ['trial_ends_at' => now()->subDay()], [], false],
+    // The case the experiment left behind in production: users charged in full
+    // while `SUBSCRIPTION_PAY_NOW` was on for their arm. Putting the trial back on
+    // the plans must not retract the window they are still inside — their money is
+    // already gone, and the button is the only way back.
+    'upfront payer while the plans carry a trial' => [
+        [],
+        ['subscriptions.plans.monthly.trial_days' => 7, 'subscriptions.plans.yearly.trial_days' => 14],
+        true,
+    ],
+]);
 
 it('runs the refund action when eligible and reports it on the billing screen', function () {
     $user = payNowSubscriber();
