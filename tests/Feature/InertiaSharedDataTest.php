@@ -76,6 +76,7 @@ test('shared feature flags reflect the cashflow available flag per user', functi
     actingAs($user)->withoutVite()->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('features.cashflowAvailableFree', $active)
+            ->missing('features.real-estate')
         );
 })->with(['active' => true, 'inactive' => false]);
 
