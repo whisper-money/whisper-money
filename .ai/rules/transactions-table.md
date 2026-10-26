@@ -6,6 +6,8 @@ paths:
     - 'resources/js/components/transactions/transaction-table-row.tsx'
     - 'resources/js/components/transactions/transaction-row-dialogs.tsx'
     - 'resources/js/hooks/use-transaction-row-editing.ts'
+    - 'resources/js/hooks/use-transaction-bulk-actions.ts'
+    - 'resources/js/components/transactions/transaction-delete-dialogs.tsx'
 ---
 
 # The transactions table exists twice (being unified)
@@ -21,16 +23,21 @@ one table over several PRs. What a row does is already shared:
 - `TransactionRowDialogs`: the edit, duplicate, split, unsplit and automate
   dialogs, mounted once per table.
 - `TransactionTableRow`: the desktop row and its right-click menu.
+- `useTransactionBulkActions` (`resources/js/hooks/use-transaction-bulk-actions.ts`):
+  bulk category, labels, re-evaluate and delete, the single-row delete, and
+  what `BulkActionsBar` takes (`barProps`). "All matching filters" exists only
+  when the table passes `matchingFilters` (the server-paged `/transactions`).
+- `TransactionDeleteDialogs`: the delete confirmations; `/transactions` makes
+  the user type the count for a bulk delete (`confirmBulkByTyping`).
 - `getTransactionRowActions()` (`resources/js/lib/transaction-row-actions.ts`):
   the contents of both row menus. Add an action there, never inline.
 
 So a new row action goes into `TransactionRowActionHandlers`, the hook and,
 if it opens a dialog, `TransactionRowDialogs`; both tables pick it up.
 
-Still duplicated in both files until the remaining PRs land: the delete
-confirmation and the bulk handlers (category, labels, delete, re-evaluate),
-and the table shell (sorting, filters, load more). Anything added there has to
-be wired in **both** places; grep for the symbol you just added.
+Still duplicated in both files until the last PR lands: the table shell
+(data loading, sorting, filters, load more, day summaries). Anything added
+there has to be wired in **both** places; grep for the symbol you just added.
 
 Bitten before the split: split transactions were wired in `TransactionList`
 only, so the row menu on `/transactions` threw `onSplit is not a function`.

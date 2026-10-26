@@ -3,7 +3,7 @@
     "format": ["php", "typescript", "tsx"],
     "minLines": 8,
     "minTokens": 60,
-    "threshold": 5.3,
+    "threshold": 5.2,
     "reporters": ["console"],
     "ignore": [
         "**/resources/js/routes/**",

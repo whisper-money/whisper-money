@@ -1,12 +1,11 @@
 import { useInMemoryDaySummaries } from '@/hooks/use-day-summaries';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
-import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
+import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
 import { reloadPage } from '@/lib/leave-page';
-import { isSplitPart } from '@/lib/transaction-splits';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import {
@@ -28,36 +27,21 @@ import {
     useState,
     type ReactNode,
 } from 'react';
-import { toast } from 'sonner';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { TransactionDeleteDialogs } from '@/components/transactions/transaction-delete-dialogs';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { TransactionListSkeleton } from '@/components/transactions/transaction-list-skeleton';
 import { TransactionRowDialogs } from '@/components/transactions/transaction-row-dialogs';
 import { TransactionTableRow } from '@/components/transactions/transaction-table-row';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Spinner } from '@/components/ui/spinner';
-import { consoleDebug } from '@/lib/debug';
-import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
-import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
-import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
     type Account,
@@ -156,16 +140,19 @@ export function TransactionList({
         rowActions,
         updateTransaction,
         handleCategorized,
-        deleteTransaction,
-        setDeleteTransaction,
-        isReEvaluating,
-        setIsReEvaluating,
     } = editing;
-    const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
-    const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-    const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+    const bulk = useTransactionBulkActions({
+        rows: transactions,
+        setRows: setTransactions,
+        rowSelection,
+        setRowSelection,
+        categories,
+        labels,
+        accounts,
+        editing,
+        onBalanceUpdated,
+        onTransactionsChanged,
+    });
     const [displayedCount, setDisplayedCount] = useState(pageSize);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -228,8 +215,6 @@ export function TransactionList({
         setSearchMatchedIds(matchedIds);
         setIsSearching(false);
     }, [filters.searchText, transactions]);
-
-    const manualAccountIds = useBalanceOwningAccountIds(accounts);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
@@ -387,33 +372,6 @@ export function TransactionList({
             setColumnVisibility,
         });
 
-    async function handleBulkReEvaluateRules() {
-        const selectedIds = Object.keys(rowSelection);
-        consoleDebug('=== Re-evaluating rules for bulk transactions ===');
-        consoleDebug(`Selected ${selectedIds.length} transactions`);
-
-        if (selectedIds.length === 0) {
-            consoleDebug('❌ No transactions selected');
-            return;
-        }
-
-        setIsReEvaluating(true);
-
-        try {
-            const outcome = await reEvaluateTransactionRules({
-                transaction_ids: selectedIds,
-            });
-
-            // A queued job will still run, so the selection is handed off
-            // either way; keeping it would invite a duplicate job.
-            if (outcome !== 'failed') {
-                setRowSelection({});
-            }
-        } finally {
-            setIsReEvaluating(false);
-        }
-    }
-
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
             categories,
@@ -492,176 +450,6 @@ export function TransactionList({
     useEffect(() => {
         setDisplayedCount(pageSize);
     }, [filters, sorting, pageSize]);
-
-    async function handleDelete() {
-        if (!deleteTransaction) {
-            return;
-        }
-
-        setIsDeleting(true);
-        const balanceWasUpdated =
-            updateBalanceOnDelete &&
-            manualAccountIds.has(deleteTransaction.account_id);
-        try {
-            await transactionSyncService.delete(deleteTransaction.id, {
-                updateBalance: balanceWasUpdated,
-            });
-            if (balanceWasUpdated) {
-                onBalanceUpdated?.();
-            }
-            onTransactionsChanged?.();
-            setTransactions((previous) =>
-                previous.filter(
-                    (transaction) => transaction.id !== deleteTransaction.id,
-                ),
-            );
-            setDeleteTransaction(null);
-            setIsBulkDeleteMode(false);
-            setRowSelection({});
-        } catch (error) {
-            console.error('Failed to delete transaction:', error);
-        } finally {
-            setIsDeleting(false);
-        }
-    }
-
-    async function handleBulkCategoryChange(categoryId: number | null) {
-        const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0) {
-            return;
-        }
-
-        setIsBulkUpdating(true);
-        try {
-            await transactionSyncService.updateMany(selectedIds, {
-                category_id: categoryId,
-            });
-
-            const categoriesMap = new Map(
-                categories.map((category) => [category.id, category]),
-            );
-            const selectedCategory = categoryId
-                ? categoriesMap.get(categoryId) || null
-                : null;
-
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        return {
-                            ...transaction,
-                            category_id: categoryId,
-                            category: selectedCategory,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
-            onTransactionsChanged?.();
-
-            setRowSelection({});
-        } catch (error) {
-            console.error('Failed to update transactions:', error);
-        } finally {
-            setIsBulkUpdating(false);
-        }
-    }
-
-    async function handleBulkLabelsChange(labelIds: string[]) {
-        const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0) {
-            return;
-        }
-
-        setIsBulkUpdating(true);
-        try {
-            await transactionSyncService.updateMany(selectedIds, {
-                label_ids: labelIds,
-            });
-
-            setTransactions((previous) =>
-                applyBulkLabels(previous, selectedIds, labelIds, labels),
-            );
-
-            setRowSelection({});
-        } catch (error) {
-            console.error('Failed to update transactions with labels:', error);
-        } finally {
-            setIsBulkUpdating(false);
-        }
-    }
-
-    function handleBulkDeleteClick() {
-        const selectedIds = Object.keys(rowSelection);
-
-        if (selectedIds.length === 0) {
-            return;
-        }
-
-        // One part of a split cannot go on its own, and refusing the whole
-        // batch up front beats failing halfway through it.
-        const selectedSplitParts = filteredTransactions.filter(
-            (transaction) =>
-                selectedIds.includes(transaction.id.toString()) &&
-                isSplitPart(transaction),
-        );
-
-        if (selectedSplitParts.length > 0) {
-            toast.error(
-                __(
-                    ':count of the selected transactions are splits. Merge them back before deleting them.',
-                    { count: selectedSplitParts.length },
-                ),
-            );
-
-            return;
-        }
-
-        const firstSelectedTransaction = filteredTransactions.find(
-            (t) => t.id.toString() === selectedIds[0],
-        );
-
-        if (firstSelectedTransaction) {
-            setIsBulkDeleteMode(true);
-            setDeleteTransaction(firstSelectedTransaction);
-        }
-    }
-
-    async function handleBulkDelete() {
-        const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0) {
-            return;
-        }
-
-        setIsBulkDeleting(true);
-        const balanceMayHaveUpdated =
-            updateBalanceOnDelete &&
-            transactions.some(
-                (transaction) =>
-                    selectedIds.includes(transaction.id) &&
-                    manualAccountIds.has(transaction.account_id),
-            );
-        try {
-            await transactionSyncService.deleteMany(selectedIds, {
-                updateBalance: balanceMayHaveUpdated,
-            });
-            if (balanceMayHaveUpdated) {
-                onBalanceUpdated?.();
-            }
-            onTransactionsChanged?.();
-            setTransactions((previous) =>
-                previous.filter(
-                    (transaction) => !selectedIds.includes(transaction.id),
-                ),
-            );
-            setDeleteTransaction(null);
-            setIsBulkDeleteMode(false);
-            setRowSelection({});
-        } catch (error) {
-            console.error('Failed to delete transactions:', error);
-        } finally {
-            setIsBulkDeleting(false);
-        }
-    }
 
     const renderTransactionRow = useCallback(
         (
@@ -793,90 +581,14 @@ export function TransactionList({
                 onDuplicated={reloadPage}
             />
 
-            <AlertDialog
-                open={!!deleteTransaction}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setDeleteTransaction(null);
-                        setIsBulkDeleteMode(false);
-                        setUpdateBalanceOnDelete(true);
-                    }
-                }}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            {__('Delete Transaction')}
-
-                            {isBulkDeleteMode ? 's' : ''}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {isBulkDeleteMode
-                                ? `Are you sure you want to delete ${Object.keys(rowSelection).length} transactions? This action cannot be undone.`
-                                : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {(isBulkDeleteMode
-                        ? transactions.some(
-                              (transaction) =>
-                                  Object.keys(rowSelection).includes(
-                                      transaction.id,
-                                  ) &&
-                                  manualAccountIds.has(transaction.account_id),
-                          )
-                        : deleteTransaction !== null &&
-                          manualAccountIds.has(
-                              deleteTransaction.account_id,
-                          )) && (
-                        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
-                            <Checkbox
-                                checked={updateBalanceOnDelete}
-                                onCheckedChange={(checked) =>
-                                    setUpdateBalanceOnDelete(checked === true)
-                                }
-                                className="mt-0.5"
-                            />
-                            <span className="text-muted-foreground">
-                                {__(
-                                    'Update the current balance of the manual account to reflect this change.',
-                                )}
-                            </span>
-                        </label>
-                    )}
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            disabled={isDeleting || isBulkDeleting}
-                        >
-                            {__('Cancel')}
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={
-                                isBulkDeleteMode
-                                    ? handleBulkDelete
-                                    : handleDelete
-                            }
-                            disabled={isDeleting || isBulkDeleting}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            {isDeleting || isBulkDeleting
-                                ? 'Deleting...'
-                                : 'Delete'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <TransactionDeleteDialogs dialog={bulk.deleteDialog} />
 
             <BulkActionsBar
-                selectedCount={Object.keys(rowSelection).length}
+                {...bulk.barProps}
                 categories={categories}
                 labels={labels}
-                onCategoryChange={handleBulkCategoryChange}
-                onLabelsChange={handleBulkLabelsChange}
                 onLabelCreated={handleLabelCreated}
-                onDelete={handleBulkDeleteClick}
-                onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={selectionMode.clear}
-                isUpdating={isBulkUpdating || isReEvaluating}
                 selectionMode={selectionMode}
             />
         </>
