@@ -4132,5 +4132,6 @@
     "Select all visible": "Seleccionar todas las visibles",
     "Deselect all": "Deseleccionar todas",
     "Only visible": "Solo las visibles",
-    "Delete :count": "Eliminar :count"
+    "Delete :count": "Eliminar :count",
+    "Choose category": "Elegir categoría"
 }

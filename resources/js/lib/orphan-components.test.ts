@@ -24,11 +24,32 @@
  * - index.ts / index.tsx barrel files are skipped as standalone candidates.
  * - *.test.ts / *.test.tsx files are excluded from both candidates and
  *   consumers so test imports don't hide real orphans.
+ * - PENDING_WIRING lists components merged ahead of the change that uses
+ *   them. An entry fails the test once its file is imported or gone, so it
+ *   has to be removed rather than left to rot.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { dirname, extname, join, relative, resolve } from 'path';
 import { describe, expect, it } from 'vitest';
+
+// ---------------------------------------------------------------------------
+// Temporary exclusions
+// ---------------------------------------------------------------------------
+
+interface PendingWiring {
+    /** Relative to resources/js, e.g. "components/foo/bar.tsx". */
+    path: string;
+    /** The follow-up that imports it, and so must remove the entry. */
+    reason: string;
+}
+
+const PENDING_WIRING: readonly PendingWiring[] = [
+    {
+        path: 'components/transactions/transaction-card.tsx',
+        reason: 'Wired into both transaction tables by the follow-up task (responsive card layout), which must remove this entry.',
+    },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -128,6 +149,40 @@ for (const f of allComponentFiles) {
     }
 }
 
+function isImported(componentFile: string): boolean {
+    const componentDir = dirname(componentFile);
+
+    return consumers.some(({ path: consumerPath, content }) => {
+        // Check alias + relative import patterns for this consumer
+        const patterns = importStrings(componentFile, consumerPath);
+
+        // If the component sits inside a barrel directory, also accept
+        // an import of that directory (alias or relative)
+        if (barrelDirs.has(componentDir)) {
+            const barrelAlias = toAliasPath(
+                join(componentDir, 'index'),
+            ).replace(/\/index$/, '');
+            const relBarrel = relative(dirname(consumerPath), componentDir);
+            const relBarrelPath = relBarrel.startsWith('.')
+                ? relBarrel
+                : './' + relBarrel;
+
+            patterns.push(
+                `'${barrelAlias}'`,
+                `"${barrelAlias}"`,
+                `'${relBarrelPath}'`,
+                `"${relBarrelPath}"`,
+            );
+        }
+
+        return patterns.some((p) => content.includes(p));
+    });
+}
+
+const pendingWiringPaths = new Set(
+    PENDING_WIRING.map((entry) => join(jsRoot, entry.path)),
+);
+
 // ---------------------------------------------------------------------------
 // Test
 // ---------------------------------------------------------------------------
@@ -137,38 +192,11 @@ describe('Orphan component detection', () => {
         const orphans: string[] = [];
 
         for (const componentFile of candidateFiles) {
-            const componentDir = dirname(componentFile);
+            if (pendingWiringPaths.has(componentFile)) {
+                continue;
+            }
 
-            const isUsed = consumers.some(({ path: consumerPath, content }) => {
-                // Check alias + relative import patterns for this consumer
-                const patterns = importStrings(componentFile, consumerPath);
-
-                // If the component sits inside a barrel directory, also accept
-                // an import of that directory (alias or relative)
-                if (barrelDirs.has(componentDir)) {
-                    const barrelAlias = toAliasPath(
-                        join(componentDir, 'index'),
-                    ).replace(/\/index$/, '');
-                    const relBarrel = relative(
-                        dirname(consumerPath),
-                        componentDir,
-                    );
-                    const relBarrelPath = relBarrel.startsWith('.')
-                        ? relBarrel
-                        : './' + relBarrel;
-
-                    patterns.push(
-                        `'${barrelAlias}'`,
-                        `"${barrelAlias}"`,
-                        `'${relBarrelPath}'`,
-                        `"${relBarrelPath}"`,
-                    );
-                }
-
-                return patterns.some((p) => content.includes(p));
-            });
-
-            if (!isUsed) {
+            if (!isImported(componentFile)) {
                 orphans.push(toAliasPath(componentFile));
             }
         }
@@ -180,4 +208,20 @@ describe('Orphan component detection', () => {
             );
         }
     });
+
+    it.each(PENDING_WIRING)(
+        'keeps $path excluded only while it is still unwired',
+        ({ path }) => {
+            const componentFile = join(jsRoot, path);
+
+            expect(
+                existsSync(componentFile),
+                `${path} no longer exists: remove it from PENDING_WIRING.`,
+            ).toBe(true);
+            expect(
+                isImported(componentFile),
+                `${path} is imported now: remove it from PENDING_WIRING.`,
+            ).toBe(false);
+        },
+    );
 });
