@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Banking\BinanceBalanceSyncService;
 use App\Services\Banking\BinanceClient;
@@ -51,10 +52,15 @@ dataset('balance syncs', [
 ]);
 
 test('skips an account without an external_account_id', function (Closure $sync) {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create([
+    Http::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
         'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
         'external_account_id' => null,
+        'currency_code' => 'EUR',
     ]);
 
     $sync($account);

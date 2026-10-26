@@ -1199,6 +1199,31 @@ test('indexa capital sync only syncs balances, not transactions', function () {
 });
 
 /**
+ * An API-key connection, last synced yesterday, of an EUR user with one linked
+ * EUR account under the given external id.
+ *
+ * @param  string  $state  The BankingConnectionFactory state naming the provider.
+ * @param  array<string, mixed>  $attributes
+ */
+function apiKeyConnectionWithAccount(string $state, string $externalAccountId, array $attributes = []): BankingConnection
+{
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->{$state}()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        ...$attributes,
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => $externalAccountId,
+        'currency_code' => 'EUR',
+    ]);
+
+    return $connection;
+}
+
+/**
  * The balance-only providers whose connections are API keys rather than a
  * time-limited consent: the factory state, its account's external id, and
  * the faked responses of an uneventful sync.
@@ -1220,18 +1245,9 @@ dataset('balance-only api key syncs', [
 ]);
 
 test('api key connections do not expire', function (string $state, string $externalAccountId, Closure $responses) {
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    $connection = BankingConnection::factory()->{$state}()->create([
-        'user_id' => $user->id,
+    $connection = apiKeyConnectionWithAccount($state, $externalAccountId, [
         'status' => BankingConnectionStatus::Active,
         'valid_until' => now()->subDay(),
-        'last_synced_at' => now()->subDay(),
-    ]);
-    Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => $externalAccountId,
-        'currency_code' => 'EUR',
     ]);
 
     Http::fake($responses());
@@ -1247,17 +1263,7 @@ test('api key connections do not expire', function (string $state, string $exter
 test('api key syncs do not send email', function (string $state, string $externalAccountId, Closure $responses) {
     Mail::fake();
 
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    $connection = BankingConnection::factory()->{$state}()->create([
-        'user_id' => $user->id,
-        'last_synced_at' => now()->subDay(),
-    ]);
-    Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => $externalAccountId,
-        'currency_code' => 'EUR',
-    ]);
+    $connection = apiKeyConnectionWithAccount($state, $externalAccountId);
 
     Http::fake($responses());
 
@@ -1544,17 +1550,7 @@ dataset('api key auth failures', [
 test('a rejected api key fails the job on its first attempt and emails the user', function (string $state, string $externalAccountId, Closure $responses) {
     Mail::fake();
 
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    $connection = BankingConnection::factory()->{$state}()->create([
-        'user_id' => $user->id,
-        'last_synced_at' => now()->subDay(),
-    ]);
-    Account::factory()->connected()->create([
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => $externalAccountId,
-        'currency_code' => 'EUR',
-    ]);
+    $connection = apiKeyConnectionWithAccount($state, $externalAccountId);
 
     Http::fake($responses());
 
@@ -1577,8 +1573,8 @@ test('a rejected api key fails the job on its first attempt and emails the user'
         ->and($connection->error_message)->toContain('Authentication failed')
         ->and($connection->consecutive_sync_failures)->toBe(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1);
 
-    Mail::assertQueued(BankingConnectionAuthFailedEmail::class, function ($mail) use ($user, $connection) {
-        return $mail->hasTo($user->email)
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class, function ($mail) use ($connection) {
+        return $mail->hasTo($connection->user->email)
             && $mail->bankingConnection->id === $connection->id;
     });
 })->with('api key auth failures');

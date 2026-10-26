@@ -73,7 +73,7 @@ test('storing a transaction dated inside the balance history queues a rebuild', 
     );
 });
 
-test('storing a transaction the walk cannot be changed by queues nothing', function (Closure $scenario) {
+test('storing a transaction that cannot change the balance walk queues nothing', function (Closure $scenario) {
     Queue::fake();
 
     [$user, $account, $overrides] = $scenario();
