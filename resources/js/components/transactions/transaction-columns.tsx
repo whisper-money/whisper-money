@@ -22,6 +22,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { resolveTransactionLabels } from '@/lib/transaction-labels';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import {
@@ -281,10 +282,11 @@ export function createTransactionColumns({
                 const showLabels = columnVisibility.labels !== false;
                 const showNotes = columnVisibility.notes !== false;
 
-                const transactionLabels = (transaction.label_ids || [])
-                    .filter((id) => id !== hiddenLabelId)
-                    .map((id) => labels.find((l) => l.id === id))
-                    .filter(Boolean) as Label[];
+                const transactionLabels = resolveTransactionLabels(
+                    transaction,
+                    labels,
+                    hiddenLabelId,
+                );
 
                 const hasLabels = transactionLabels.length > 0;
                 const hasNotes = !!transaction.notes;

@@ -6,6 +6,7 @@ import { SplitOriginPopover } from '@/components/transactions/split-origin-popov
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { resolveTransactionLabels } from '@/lib/transaction-labels';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
 import {
@@ -76,10 +77,11 @@ export function TransactionCard({
     const category =
         categories.find((c) => c.id === transaction.category_id) ?? null;
 
-    const transactionLabels = (transaction.label_ids || [])
-        .filter((id) => id !== hiddenLabelId)
-        .map((id) => labels.find((l) => l.id === id))
-        .filter(Boolean) as Label[];
+    const transactionLabels = resolveTransactionLabels(
+        transaction,
+        labels,
+        hiddenLabelId,
+    );
 
     function handleCardClick() {
         if (selectionActive) {

@@ -7,7 +7,7 @@ import {
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { reloadPage } from '@/lib/leave-page';
-import { getTransactionRowActions } from '@/lib/transaction-row-actions';
+import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -29,7 +29,6 @@ import { isWithinInterval, parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import {
     createElement,
-    Fragment,
     useCallback,
     useEffect,
     useMemo,
@@ -52,6 +51,7 @@ import { TransactionActionsMenu } from '@/components/transactions/transaction-ac
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
 import {
     AlertDialog,
@@ -65,14 +65,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuLabel,
-    ContextMenuSeparator,
-    ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
@@ -142,17 +135,10 @@ export function TransactionListSkeleton() {
     );
 }
 
-interface TransactionRowProps {
+interface TransactionRowProps extends TransactionRowActionHandlers {
     row: Row<ServerTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-    onEdit: (transaction: ServerTransaction) => void;
-    onDuplicate: (transaction: ServerTransaction) => void;
-    onReEvaluateRules: (transaction: ServerTransaction) => void;
-    onAutomate: (transaction: ServerTransaction) => void;
-    onDelete: (transaction: ServerTransaction) => void;
-    onSplit: (transaction: ServerTransaction) => void;
-    onUnsplit: (transaction: ServerTransaction) => void;
     selectionMode: RowSelectionMode;
 }
 
@@ -231,29 +217,16 @@ function TransactionRowComponent({
                         })}
                 </TableRow>
             </ContextMenuTrigger>
-            <ContextMenuContent>
-                <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
-                {getTransactionRowActions({
-                    transaction,
-                    onEdit,
-                    onDuplicate,
-                    onReEvaluateRules,
-                    onAutomate,
-                    onDelete,
-                    onSplit,
-                    onUnsplit,
-                }).map((action) => (
-                    <Fragment key={action.id}>
-                        {action.separated && <ContextMenuSeparator />}
-                        <ContextMenuItem
-                            onClick={action.onSelect}
-                            variant={action.variant}
-                        >
-                            {action.label}
-                        </ContextMenuItem>
-                    </Fragment>
-                ))}
-            </ContextMenuContent>
+            <TransactionRowContextMenuContent
+                transaction={transaction}
+                onEdit={onEdit}
+                onDuplicate={onDuplicate}
+                onReEvaluateRules={onReEvaluateRules}
+                onAutomate={onAutomate}
+                onDelete={onDelete}
+                onSplit={onSplit}
+                onUnsplit={onUnsplit}
+            />
         </ContextMenu>
     );
 }
@@ -1019,6 +992,19 @@ export function TransactionList({
         }
     }
 
+    const rowActions = useMemo<TransactionRowActionHandlers>(
+        () => ({
+            onEdit: setEditTransaction,
+            onDuplicate: setDuplicateTransaction,
+            onReEvaluateRules: handleReEvaluateRules,
+            onDelete: setDeleteTransaction,
+            onAutomate: openAutomateDialog,
+            onSplit: setSplitTransaction,
+            onUnsplit: setUnsplitTransaction,
+        }),
+        [handleReEvaluateRules, openAutomateDialog],
+    );
+
     const renderTransactionRow = useCallback(
         (
             row: Row<ServerTransaction>,
@@ -1031,18 +1017,12 @@ export function TransactionList({
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
-                    onEdit={setEditTransaction}
-                    onDuplicate={setDuplicateTransaction}
-                    onReEvaluateRules={handleReEvaluateRules}
-                    onDelete={setDeleteTransaction}
-                    onAutomate={openAutomateDialog}
-                    onSplit={setSplitTransaction}
-                    onUnsplit={setUnsplitTransaction}
+                    {...rowActions}
                     selectionMode={selectionMode.forRows}
                 />
             );
         },
-        [handleReEvaluateRules, openAutomateDialog, selectionMode.forRows],
+        [rowActions, selectionMode.forRows],
     );
 
     return (

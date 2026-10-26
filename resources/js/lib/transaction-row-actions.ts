@@ -11,8 +11,8 @@ export interface TransactionRowAction {
     separated?: boolean;
 }
 
-interface TransactionRowActionsOptions {
-    transaction: ServerTransaction;
+/** What each row action calls, handed down by the page that owns the dialogs. */
+export interface TransactionRowActionHandlers {
     onEdit: (transaction: ServerTransaction) => void;
     onDuplicate: (transaction: ServerTransaction) => void;
     onReEvaluateRules: (transaction: ServerTransaction) => void;
@@ -20,6 +20,10 @@ interface TransactionRowActionsOptions {
     onDelete: (transaction: ServerTransaction) => void;
     onSplit: (transaction: ServerTransaction) => void;
     onUnsplit: (transaction: ServerTransaction) => void;
+}
+
+interface TransactionRowActionsOptions extends TransactionRowActionHandlers {
+    transaction: ServerTransaction;
 }
 
 /**
