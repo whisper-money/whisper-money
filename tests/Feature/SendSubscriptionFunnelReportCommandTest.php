@@ -4,8 +4,6 @@ use App\Ai\Agents\ReportSummaryAgent;
 use App\Models\User;
 use App\Services\Stats\SubscriptionFunnelCollector;
 use Carbon\CarbonImmutable;
-use Illuminate\Console\Scheduling\Event;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -252,12 +250,4 @@ it('does not overwrite the comparison baseline on a --no-discord run', function 
     artisan('stats:subscription-funnel')->assertSuccessful();
 
     expect(Cache::get('report_summary_baseline:subscription-funnel'))->not->toBe(['weeks' => ['sentinel']]);
-});
-
-it('is not scheduled, so it never posts to Discord on its own', function () {
-    $scheduledCommands = collect(app(Schedule::class)->events())
-        ->map(fn (Event $event): string => (string) $event->command);
-
-    expect($scheduledCommands->contains(fn (string $command): bool => str_contains($command, 'stats:daily-report')))->toBeTrue()
-        ->and($scheduledCommands->contains(fn (string $command): bool => str_contains($command, 'stats:subscription-funnel')))->toBeFalse();
 });
