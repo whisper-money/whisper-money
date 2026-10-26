@@ -16,6 +16,7 @@ import { useAmountsInUserCurrency } from '@/hooks/use-amounts-in-user-currency';
 import { useLocale } from '@/hooks/use-locale';
 import {
     type AmountInUserCurrency,
+    formatDayBand,
     formatDayHeading,
     formatTransactionCount,
     sumDayTotal,
@@ -63,7 +64,11 @@ function renderedColumnIds(table: Table<ServerTransaction>): string[] {
 function DayTotal({
     rows,
     amountInUserCurrency,
-}: Pick<TransactionDayHeaderProps, 'rows' | 'amountInUserCurrency'>) {
+    quiet = false,
+}: Pick<TransactionDayHeaderProps, 'rows' | 'amountInUserCurrency'> & {
+    /** Small, grey and signed, without the income highlight. */
+    quiet?: boolean;
+}) {
     const currencyCode = usePage<SharedData>().props.auth.user.currency_code;
     const total = sumDayTotal(
         rows.map((row) => row.original),
@@ -98,6 +103,18 @@ function DayTotal({
         );
     }
 
+    if (quiet) {
+        return (
+            <AmountDisplay
+                amountInCents={total.amount}
+                currencyCode={currencyCode}
+                showSign
+                monospace
+                className="text-xs text-neutral-600 dark:text-neutral-400"
+            />
+        );
+    }
+
     return (
         <AmountDisplay
             amountInCents={total.amount}
@@ -107,6 +124,54 @@ function DayTotal({
             weight="medium"
             monospace
         />
+    );
+}
+
+/** Ticks or unticks every loaded row of one day, keeping the rest as they are. */
+function setDaySelected(
+    table: Table<ServerTransaction>,
+    rows: Row<ServerTransaction>[],
+    checked: boolean,
+) {
+    table.setRowSelection((selection) => {
+        const next = { ...selection };
+
+        for (const row of rows) {
+            if (checked) {
+                next[row.id] = true;
+            } else {
+                delete next[row.id];
+            }
+        }
+
+        return next;
+    });
+}
+
+/** Which day it is and how many of its transactions are loaded. */
+function DayHeading({
+    date,
+    count,
+    isPartial,
+}: {
+    date: string;
+    count: number;
+    isPartial: boolean;
+}) {
+    const locale = useLocale();
+    const heading = formatDayHeading(date, locale);
+
+    return (
+        <>
+            <span className="font-semibold text-foreground">
+                {heading.name}
+            </span>
+            <span className="text-muted-foreground">{heading.date}</span>
+            <span className="text-xs text-muted-foreground">
+                · {formatTransactionCount(count)}
+                {isPartial && ` ${__('so far')}`}
+            </span>
+        </>
     );
 }
 
@@ -139,22 +204,6 @@ export function TransactionDayHeader({
     const selectedCount = rows.filter((row) => rowSelection[row.id]).length;
     const allSelected = selectedCount === rows.length;
 
-    function toggleDay(checked: boolean) {
-        table.setRowSelection((selection) => {
-            const next = { ...selection };
-
-            for (const row of rows) {
-                if (checked) {
-                    next[row.id] = true;
-                } else {
-                    delete next[row.id];
-                }
-            }
-
-            return next;
-        });
-    }
-
     const total = (
         <DayTotal rows={rows} amountInUserCurrency={amountInUserCurrency} />
     );
@@ -173,7 +222,9 @@ export function TransactionDayHeader({
                             (selectedCount > 0 && 'indeterminate')
                         }
                         className="ml-2"
-                        onCheckedChange={(value) => toggleDay(value === true)}
+                        onCheckedChange={(value) =>
+                            setDaySelected(table, rows, value === true)
+                        }
                         aria-label={__('Select every transaction of :day', {
                             day: heading.name,
                         })}
@@ -182,16 +233,11 @@ export function TransactionDayHeader({
             )}
             <TableCell colSpan={labelSpan} className="py-2 pl-2">
                 <div className="flex items-baseline gap-2 text-sm">
-                    <span className="font-semibold text-foreground">
-                        {heading.name}
-                    </span>
-                    <span className="text-muted-foreground">
-                        {heading.date}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                        · {formatTransactionCount(rows.length)}
-                        {isPartial && ` ${__('so far')}`}
-                    </span>
+                    <DayHeading
+                        date={date}
+                        count={rows.length}
+                        isPartial={isPartial}
+                    />
                     {amountIndex === -1 && (
                         <span className="ml-auto pr-2">{total}</span>
                     )}
@@ -207,13 +253,61 @@ export function TransactionDayHeader({
     );
 }
 
+/**
+ * The band above each day of the compact list: the day and its date on the
+ * left, its total on the right. While rows are being picked it offers to pick
+ * the whole day instead, since the rows carry no checkbox.
+ */
+export function TransactionDayBand({
+    table,
+    date,
+    rows,
+    rowSelection,
+    amountInUserCurrency,
+    selectionActive,
+    measureProps,
+}: Omit<TransactionDayHeaderProps, 'measureProps'> & {
+    selectionActive: boolean;
+    measureProps: DataTableMeasureProps;
+}) {
+    const locale = useLocale();
+    const allSelected = rows.every((row) => rowSelection[row.id]);
+
+    return (
+        <div
+            {...measureProps}
+            className="flex items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 pt-2.5 pb-1.5 dark:border-neutral-800 dark:bg-neutral-900"
+            data-testid="transaction-day-header"
+        >
+            <h3 className="min-w-0 truncate text-xs font-semibold tracking-[0.04em] text-neutral-600 uppercase dark:text-neutral-400">
+                {formatDayBand(date, locale)}
+            </h3>
+            {selectionActive ? (
+                <button
+                    type="button"
+                    className="shrink-0 rounded-sm text-xs font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setDaySelected(table, rows, !allSelected)}
+                >
+                    {allSelected ? __('Deselect day') : __('Select day')}
+                </button>
+            ) : (
+                <DayTotal
+                    rows={rows}
+                    amountInUserCurrency={amountInUserCurrency}
+                    quiet
+                />
+            )}
+        </div>
+    );
+}
+
 const groupByTransactionDate = (transaction: ServerTransaction): string =>
     transaction.transaction_date;
 
 /**
- * Everything a `DataTable` of transactions needs to draw its day headers, so
- * both tables wire them the same way. Leaves the table flat when it is not
- * grouped by day.
+ * Everything a list of transactions needs to draw its day headers, so both
+ * pages wire them the same way, as table rows or as bands of the compact list. Leaves the
+ * list flat when it is not grouped by day.
  */
 export function useTransactionDayHeaders({
     table,
@@ -221,6 +315,8 @@ export function useTransactionDayHeaders({
     transactions,
     isGroupedByDay,
     hasMoreRows,
+    layout,
+    selectionActive,
 }: {
     table: Table<ServerTransaction>;
     rowSelection: RowSelectionState;
@@ -229,6 +325,9 @@ export function useTransactionDayHeaders({
     isGroupedByDay: boolean;
     /** More rows exist beyond the loaded ones, so the last day may go on. */
     hasMoreRows: boolean;
+    layout: 'table' | 'list';
+    /** Rows are being picked, which the card headers answer to. */
+    selectionActive: boolean;
 }): {
     groupRowsBy?: (transaction: ServerTransaction) => string;
     renderGroupHeader: (
@@ -245,23 +344,34 @@ export function useTransactionDayHeaders({
         (
             group: DataTableRowGroup<ServerTransaction>,
             measureProps: DataTableMeasureProps,
-        ) => (
-            <TransactionDayHeader
-                table={table}
-                date={group.key}
-                rows={group.rows}
-                rowSelection={rowSelection}
-                amountInUserCurrency={amountInUserCurrency}
-                isPartial={hasMoreRows && group.key === lastLoadedDate}
-                measureProps={measureProps}
-            />
-        ),
+        ) => {
+            const props = {
+                table,
+                date: group.key,
+                rows: group.rows,
+                rowSelection,
+                amountInUserCurrency,
+                isPartial: hasMoreRows && group.key === lastLoadedDate,
+                measureProps,
+            };
+
+            return layout === 'list' ? (
+                <TransactionDayBand
+                    {...props}
+                    selectionActive={selectionActive}
+                />
+            ) : (
+                <TransactionDayHeader {...props} />
+            );
+        },
         [
             table,
             rowSelection,
             amountInUserCurrency,
             hasMoreRows,
             lastLoadedDate,
+            layout,
+            selectionActive,
         ],
     );
 

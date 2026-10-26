@@ -1,9 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
-import {
-    useMobileSelectionMode,
-    useRowSelectionGesture,
-    type RowSelectionMode,
-} from '@/hooks/use-mobile-selection-mode';
+import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
 import { reloadPage } from '@/lib/leave-page';
@@ -46,10 +42,10 @@ import {
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
 import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
@@ -66,7 +62,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -79,7 +74,6 @@ import {
     mergeReEvaluatedTransaction,
     reEvaluateTransactionRules,
 } from '@/lib/transaction-re-evaluation';
-import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -139,7 +133,6 @@ interface TransactionRowProps extends TransactionRowActionHandlers {
     row: Row<ServerTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-    selectionMode: RowSelectionMode;
 }
 
 function TransactionRowComponent({
@@ -153,7 +146,6 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
-    selectionMode,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -168,20 +160,18 @@ function TransactionRowComponent({
         }
         onEdit(transaction);
     };
-    const gesture = useRowSelectionGesture(row, selectionMode, handleRowClick);
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            {/* A long press on the phone ticks the row, not this menu. */}
-            <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
+            <ContextMenuTrigger asChild>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className={cn('cursor-pointer', gesture.className)}
-                    {...gesture.handlers}
+                    className="cursor-pointer"
+                    onClick={handleRowClick}
                 >
                     {row
                         .getVisibleCells()
@@ -796,14 +786,6 @@ export function TransactionList({
         },
     });
 
-    const dayHeaders = useTransactionDayHeaders({
-        table,
-        rowSelection,
-        transactions: displayedTransactions,
-        isGroupedByDay,
-        hasMoreRows: displayedCount < sortedTransactions.length,
-    });
-
     const loadMore = useCallback(() => {
         if (displayedCount < sortedTransactions.length && !isLoadingMore) {
             setIsLoadingMore(true);
@@ -1018,11 +1000,10 @@ export function TransactionList({
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
                     {...rowActions}
-                    selectionMode={selectionMode.forRows}
                 />
             );
         },
-        [rowActions, selectionMode.forRows],
+        [rowActions],
     );
 
     return (
@@ -1065,13 +1046,27 @@ export function TransactionList({
                     <TransactionListSkeleton />
                 ) : (
                     <>
-                        <DataTable
+                        <ResponsiveTransactionTable
                             table={table}
                             columns={columns}
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            {...dayHeaders}
+                            sorting={sorting}
+                            rowSelection={rowSelection}
+                            transactions={displayedTransactions}
+                            isGroupedByDay={isGroupedByDay}
+                            hasMoreRows={
+                                displayedCount < sortedTransactions.length
+                            }
+                            selectionMode={selectionMode.forRows}
+                            listRow={{
+                                categories,
+                                labels,
+                                hiddenLabelId,
+                                statementPayments,
+                            }}
+                            rowActions={rowActions}
                         />
 
                         <DataTablePagination

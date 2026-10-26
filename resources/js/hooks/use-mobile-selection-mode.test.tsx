@@ -1,12 +1,12 @@
-import { type Row, type RowSelectionState } from '@tanstack/react-table';
+import { type RowSelectionState } from '@tanstack/react-table';
 import { act, fireEvent, render, renderHook } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     LONG_PRESS_MS,
     type RowSelectionMode,
+    useLongPressSelect,
     useMobileSelectionMode,
-    useRowSelectionGesture,
 } from './use-mobile-selection-mode';
 
 const isMobile = vi.hoisted(() => ({ value: true }));
@@ -142,31 +142,31 @@ function selectionStub(
     };
 }
 
-function GestureRow({
+function PressableCard({
     selection,
     onTap,
 }: {
     selection: RowSelectionMode;
     onTap: () => void;
 }) {
-    const gesture = useRowSelectionGesture(
-        { id: 'row-1' } as Row<unknown>,
-        selection,
-        onTap,
-    );
+    const longPress = useLongPressSelect('row-1', selection);
 
     return (
-        <table>
-            <tbody>
-                <tr data-testid="row" {...gesture.handlers}>
-                    <td>Groceries</td>
-                </tr>
-            </tbody>
-        </table>
+        <div
+            data-testid="card"
+            {...longPress.handlers}
+            onClick={() => {
+                if (!longPress.consumeLongPress()) {
+                    onTap();
+                }
+            }}
+        >
+            Groceries
+        </div>
     );
 }
 
-describe('useRowSelectionGesture', () => {
+describe('useLongPressSelect', () => {
     beforeEach(() => {
         vi.useFakeTimers();
     });
@@ -179,14 +179,14 @@ describe('useRowSelectionGesture', () => {
         const selection = selectionStub();
         const onTap = vi.fn();
         const { getByTestId } = render(
-            <GestureRow selection={selection} onTap={onTap} />,
+            <PressableCard selection={selection} onTap={onTap} />,
         );
-        const row = getByTestId('row');
+        const card = getByTestId('card');
 
-        fireEvent.pointerDown(row, { clientX: 10, clientY: 10 });
+        fireEvent.pointerDown(card, { clientX: 10, clientY: 10 });
         act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
-        fireEvent.pointerUp(row);
-        fireEvent.click(row);
+        fireEvent.pointerUp(card);
+        fireEvent.click(card);
 
         expect(selection.enterWith).toHaveBeenCalledWith('row-1');
         expect(onTap).not.toHaveBeenCalled();
@@ -195,56 +195,42 @@ describe('useRowSelectionGesture', () => {
     it('lets a finger that scrolls away cancel the press', () => {
         const selection = selectionStub();
         const { getByTestId } = render(
-            <GestureRow selection={selection} onTap={vi.fn()} />,
+            <PressableCard selection={selection} onTap={vi.fn()} />,
         );
-        const row = getByTestId('row');
+        const card = getByTestId('card');
 
-        fireEvent.pointerDown(row, { clientX: 10, clientY: 10 });
-        fireEvent.pointerMove(row, { clientX: 10, clientY: 40 });
+        fireEvent.pointerDown(card, { clientX: 10, clientY: 10 });
+        fireEvent.pointerMove(card, { clientX: 10, clientY: 40 });
         act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
 
         expect(selection.enterWith).not.toHaveBeenCalled();
     });
 
-    it('opens the row on a short tap outside selection mode', () => {
+    it('treats a short press as a tap', () => {
         const selection = selectionStub();
         const onTap = vi.fn();
         const { getByTestId } = render(
-            <GestureRow selection={selection} onTap={onTap} />,
+            <PressableCard selection={selection} onTap={onTap} />,
         );
+        const card = getByTestId('card');
 
-        fireEvent.click(getByTestId('row'));
+        fireEvent.pointerDown(card, { clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(card);
+        fireEvent.click(card);
 
         expect(onTap).toHaveBeenCalledOnce();
-        expect(selection.toggleRow).not.toHaveBeenCalled();
+        expect(selection.enterWith).not.toHaveBeenCalled();
     });
 
-    it('toggles the row on a tap in selection mode', () => {
+    it('does not restart a selection while rows are already being picked', () => {
         const selection = selectionStub({ isActive: true });
-        const onTap = vi.fn();
         const { getByTestId } = render(
-            <GestureRow selection={selection} onTap={onTap} />,
+            <PressableCard selection={selection} onTap={vi.fn()} />,
         );
 
-        fireEvent.click(getByTestId('row'));
-
-        expect(selection.toggleRow).toHaveBeenCalledWith('row-1');
-        expect(onTap).not.toHaveBeenCalled();
-    });
-
-    it('leaves the row alone off the phone', () => {
-        const selection = selectionStub({ isMobile: false });
-        const onTap = vi.fn();
-        const { getByTestId } = render(
-            <GestureRow selection={selection} onTap={onTap} />,
-        );
-        const row = getByTestId('row');
-
-        fireEvent.pointerDown(row);
+        fireEvent.pointerDown(getByTestId('card'));
         act(() => vi.advanceTimersByTime(LONG_PRESS_MS));
-        fireEvent.click(row);
 
         expect(selection.enterWith).not.toHaveBeenCalled();
-        expect(onTap).toHaveBeenCalledOnce();
     });
 });

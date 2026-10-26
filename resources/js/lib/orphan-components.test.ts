@@ -44,12 +44,7 @@ interface PendingWiring {
     reason: string;
 }
 
-const PENDING_WIRING: readonly PendingWiring[] = [
-    {
-        path: 'components/transactions/transaction-card.tsx',
-        reason: 'Wired into both transaction tables by the follow-up task (responsive card layout), which must remove this entry.',
-    },
-];
+const PENDING_WIRING: readonly PendingWiring[] = [];
 
 // ---------------------------------------------------------------------------
 // Helpers

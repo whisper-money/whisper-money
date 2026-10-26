@@ -1,7 +1,6 @@
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
-import { cn } from '@/lib/utils';
-import { type Row, type RowSelectionState } from '@tanstack/react-table';
+import { type RowSelectionState } from '@tanstack/react-table';
 import {
     type Dispatch,
     type MouseEvent,
@@ -42,9 +41,9 @@ export interface MobileSelectionMode extends RowSelectionMode {
 }
 
 /**
- * Selection on the phone. The checkbox column is always there, as on desktop,
- * and a long press on a row ticks it too. Once a row is ticked, a tap toggles a
- * row instead of opening it, until the selection is empty again.
+ * Selection on the phone, where the list is drawn as cards: a tap on a card's
+ * category circle or a long press on it ticks it. Once a row is ticked, a tap
+ * toggles a row instead of opening it, until the selection is empty again.
  */
 export function useMobileSelectionMode({
     rowSelection,
@@ -194,49 +193,6 @@ export function useLongPressSelect(rowId: string, selection: RowSelectionMode) {
             longPressed.current = false;
 
             return wasLongPress;
-        },
-    };
-}
-
-/**
- * What a table row needs to take part in selection on the phone: a long press
- * ticks it, and while rows are ticked a tap toggles the row where it would
- * otherwise open it.
- * Off the phone the row keeps its own click untouched.
- */
-export function useRowSelectionGesture<TData>(
-    row: Row<TData>,
-    selection: RowSelectionMode,
-    onTap: (event: MouseEvent<HTMLTableRowElement>) => void,
-) {
-    const longPress = useLongPressSelect(row.id, selection);
-
-    if (!selection.isMobile) {
-        return { className: undefined, handlers: { onClick: onTap } };
-    }
-
-    return {
-        // Inert cells while selecting: a tap on the category or the row's
-        // menu lands on the row and toggles it, rather than opening a picker.
-        className: cn(
-            'select-none [-webkit-touch-callout:none]',
-            selection.isActive && '[&>td>*]:pointer-events-none',
-        ),
-        handlers: {
-            ...longPress.handlers,
-            onClick: (event: MouseEvent<HTMLTableRowElement>) => {
-                if (longPress.consumeLongPress()) {
-                    return;
-                }
-
-                if (selection.isActive) {
-                    selection.toggleRow(row.id);
-
-                    return;
-                }
-
-                onTap(event);
-            },
         },
     };
 }

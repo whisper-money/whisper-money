@@ -71,10 +71,14 @@ interface CreateColumnsOptions {
 }
 
 /**
- * The desktop checkbox, a size up on the phone with a finger-sized hit area.
+ * The columns a list of transactions can be sorted by, which the table offers
+ * from its headings and the card layout from its sort menu.
  */
-const selectCheckboxClassName =
-    'ml-2 max-md:relative max-md:size-5 max-md:after:absolute max-md:after:-inset-2.5 max-md:[&_svg]:size-4';
+export const SORTABLE_TRANSACTION_COLUMNS = [
+    'transaction_date',
+    'creditor_name',
+    'debtor_name',
+] as const;
 
 /**
  * A column heading that sorts on click. The sort direction comes in as a prop:
@@ -139,7 +143,7 @@ export function createTransactionColumns({
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    className={selectCheckboxClassName}
+                    className="ml-2"
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
@@ -150,7 +154,7 @@ export function createTransactionColumns({
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
-                    className={selectCheckboxClassName}
+                    className="ml-2"
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
                     aria-label={__('Select row')}

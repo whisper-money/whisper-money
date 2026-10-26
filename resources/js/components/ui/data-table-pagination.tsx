@@ -14,7 +14,7 @@ export function DataTablePagination({
     children,
 }: DataTablePaginationProps) {
     return (
-        <div className="flex items-center justify-end space-x-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
             {displayedCount && total && (
                 <div className="text-muted-foreground flex-1 text-sm">
                     {Math.min(total, displayedCount)} {__('of')} {total} {rowCountLabel}

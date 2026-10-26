@@ -1,10 +1,6 @@
 import { bulkUpdate as bulkUpdateTransactions } from '@/actions/App/Http/Controllers/TransactionController';
 import { useLocale } from '@/hooks/use-locale';
-import {
-    useMobileSelectionMode,
-    useRowSelectionGesture,
-    type RowSelectionMode,
-} from '@/hooks/use-mobile-selection-mode';
+import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
 import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
@@ -44,10 +40,10 @@ import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
@@ -66,7 +62,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import {
@@ -301,7 +296,6 @@ interface TransactionRowProps extends TransactionRowActionHandlers {
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
     isNew: boolean;
-    selectionMode: RowSelectionMode;
 }
 
 function TransactionRowComponent({
@@ -316,7 +310,6 @@ function TransactionRowComponent({
     onDelete,
     onSplit,
     onUnsplit,
-    selectionMode,
 }: TransactionRowProps) {
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -331,12 +324,10 @@ function TransactionRowComponent({
         }
         onEdit(transaction);
     };
-    const gesture = useRowSelectionGesture(row, selectionMode, handleRowClick);
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            {/* A long press on the phone ticks the row, not this menu. */}
-            <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
+            <ContextMenuTrigger asChild>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
@@ -345,10 +336,9 @@ function TransactionRowComponent({
                     data-index={virtualRow.index}
                     className={cn(
                         'cursor-pointer',
-                        gesture.className,
                         isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
                     )}
-                    {...gesture.handlers}
+                    onClick={handleRowClick}
                 >
                     {row
                         .getVisibleCells()
@@ -553,6 +543,19 @@ export default function Transactions({
     const [isNavigating, setIsNavigating] = useState(false);
 
     const selectOnlyVisible = useCallback(() => setIsSelectingAll(false), []);
+
+    // Unticking a row or a whole day means the user is narrowing down what
+    // they see, so a bulk action must no longer reach every matching row.
+    const tickedCount = Object.keys(rowSelection).length;
+    const [previousTickedCount, setPreviousTickedCount] = useState(tickedCount);
+
+    if (tickedCount !== previousTickedCount) {
+        setPreviousTickedCount(tickedCount);
+
+        if (tickedCount < previousTickedCount) {
+            setIsSelectingAll(false);
+        }
+    }
 
     const selectionMode = useMobileSelectionMode({
         rowSelection,
@@ -1084,14 +1087,6 @@ export default function Transactions({
         },
     });
 
-    const dayHeaders = useTransactionDayHeaders({
-        table,
-        rowSelection,
-        transactions: allTransactions,
-        isGroupedByDay,
-        hasMoreRows: nextCursor !== null,
-    });
-
     async function handleDelete() {
         if (!deleteTransaction) {
             return;
@@ -1358,11 +1353,10 @@ export default function Transactions({
                     rowVirtualizer={rowVirtualizer}
                     isNew={isNewSince(row.original, lastVisitAtMount)}
                     {...rowActions}
-                    selectionMode={selectionMode.forRows}
                 />
             );
         },
-        [rowActions, lastVisitAtMount, selectionMode.forRows],
+        [rowActions, lastVisitAtMount],
     );
 
     return (
@@ -1461,12 +1455,23 @@ export default function Transactions({
                         </div>
                     ) : (
                         <>
-                            <DataTable
+                            <ResponsiveTransactionTable
                                 table={table}
                                 columns={columns}
                                 emptyMessage={__('No transactions found.')}
                                 renderRow={renderTransactionRow}
-                                {...dayHeaders}
+                                sorting={sorting}
+                                rowSelection={rowSelection}
+                                transactions={allTransactions}
+                                isGroupedByDay={isGroupedByDay}
+                                hasMoreRows={nextCursor !== null}
+                                selectionMode={selectionMode.forRows}
+                                listRow={{
+                                    categories,
+                                    labels,
+                                    categorizingIds,
+                                }}
+                                rowActions={rowActions}
                                 topRow={
                                     showAiConsentBanner ? (
                                         <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">

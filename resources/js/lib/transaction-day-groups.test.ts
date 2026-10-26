@@ -1,6 +1,7 @@
 import { type Transaction } from '@/types/transaction';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    formatDayBand,
     formatDayHeading,
     formatTransactionCount,
     isSortedByDate,
@@ -24,6 +25,25 @@ describe('isSortedByDate', () => {
     it('does not group under any other sort', () => {
         expect(isSortedByDate([{ id: 'amount', desc: true }])).toBe(false);
         expect(isSortedByDate([])).toBe(false);
+    });
+});
+
+describe('formatDayBand', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-10-26T12:00:00'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('puts the day and a short date on one line', () => {
+        expect(formatDayBand('2026-10-26', 'es-ES')).toBe('Today · 26 oct');
+        expect(formatDayBand('2026-10-24', 'es-ES')).toBe('sábado · 24 oct');
+        expect(formatDayBand('2025-12-31', 'en-US')).toBe(
+            'Wednesday · Dec 31, 2025',
+        );
     });
 });
 
