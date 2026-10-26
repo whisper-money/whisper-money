@@ -14,7 +14,7 @@ class SetupMainUser extends Command
                             {user? : The UUID or email of the user}
                             {--path= : Directory to read the JSON files from (default: .local in the project root)}';
 
-    protected $description = 'Import user data from JSON files in the .local directory';
+    protected $description = 'Import user data from JSON files in the .local directory (or --path)';
 
     public function handle(): int
     {
@@ -34,7 +34,7 @@ class SetupMainUser extends Command
         $this->info("Found user: {$user->name} ({$user->email})");
         $this->newLine();
 
-        $localPath = $this->option('path') ?? base_path('.local');
+        $localPath = $this->option('path') ?: base_path('.local');
 
         if (! File::isDirectory($localPath)) {
             $this->warn("Directory not found: {$localPath}");
