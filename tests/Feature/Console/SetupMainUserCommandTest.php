@@ -198,3 +198,19 @@ it('imports data for existing user with existing categories', function () {
     expect($user->categories)->toHaveCount(2)
         ->and($user->categories->pluck('name')->toArray())->toContain('Existing Category', 'New Category');
 });
+
+it('skips a file that is not a JSON array and keeps importing the rest', function () {
+    $user = User::factory()->create();
+
+    File::put("{$this->localPath}/categories.json", '{not json');
+    File::put("{$this->localPath}/automated_rules.json", '"a string"');
+    File::put("{$this->localPath}/extra.json", '[]');
+
+    artisan('user:setup-main', ['user' => $user->id, '--path' => $this->localPath])
+        ->expectsOutputToContain('Failed to parse categories.json')
+        ->expectsOutputToContain('Invalid data format in automated_rules.json')
+        ->expectsOutputToContain('Skipping extra.json (no importer defined)')
+        ->assertSuccessful();
+
+    expect($user->automationRules()->count())->toBe(0);
+});

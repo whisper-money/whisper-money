@@ -58,36 +58,7 @@ class SetupMainUser extends Command
 
         $importOrder = ['categories.json', 'automated_rules.json'];
 
-        foreach ($importOrder as $fileName) {
-            $filePath = "{$localPath}/{$fileName}";
-
-            if (! File::exists($filePath)) {
-                continue;
-            }
-
-            $this->info("Processing {$fileName}...");
-
-            $content = File::get($filePath);
-            $data = json_decode($content, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->error("  ✗ Failed to parse {$fileName}: ".json_last_error_msg());
-
-                continue;
-            }
-
-            if (! is_array($data)) {
-                $this->error("  ✗ Invalid data format in {$fileName}");
-
-                continue;
-            }
-
-            if ($fileName === 'categories.json') {
-                $this->importCategories($user, $data);
-            } else {
-                $this->importAutomationRules($user, $data);
-            }
-        }
+        $this->importKnownFiles($user, $localPath, $importOrder);
 
         foreach ($jsonFiles as $filePath) {
             $fileName = basename($filePath);
@@ -96,20 +67,9 @@ class SetupMainUser extends Command
                 continue;
             }
 
-            $this->info("Processing {$fileName}...");
+            $data = $this->readJsonFile($filePath, $fileName);
 
-            $content = File::get($filePath);
-            $data = json_decode($content, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->error("  ✗ Failed to parse {$fileName}: ".json_last_error_msg());
-
-                continue;
-            }
-
-            if (! is_array($data)) {
-                $this->error("  ✗ Invalid data format in {$fileName}");
-
+            if ($data === null) {
                 continue;
             }
 
@@ -120,6 +80,62 @@ class SetupMainUser extends Command
         $this->info('✓ Main user setup completed successfully!');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Import the files there is an importer for, in the order they depend on
+     * each other.
+     *
+     * @param  list<string>  $importOrder
+     */
+    protected function importKnownFiles(User $user, string $localPath, array $importOrder): void
+    {
+        foreach ($importOrder as $fileName) {
+            $filePath = "{$localPath}/{$fileName}";
+
+            if (! File::exists($filePath)) {
+                continue;
+            }
+
+            $data = $this->readJsonFile($filePath, $fileName);
+
+            if ($data === null) {
+                continue;
+            }
+
+            if ($fileName === 'categories.json') {
+                $this->importCategories($user, $data);
+            } else {
+                $this->importAutomationRules($user, $data);
+            }
+        }
+    }
+
+    /**
+     * Decode one JSON file, reporting why it cannot be imported when it is not
+     * a JSON array.
+     *
+     * @return array<mixed>|null
+     */
+    protected function readJsonFile(string $filePath, string $fileName): ?array
+    {
+        $this->info("Processing {$fileName}...");
+
+        $data = json_decode(File::get($filePath), true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->error("  ✗ Failed to parse {$fileName}: ".json_last_error_msg());
+
+            return null;
+        }
+
+        if (! is_array($data)) {
+            $this->error("  ✗ Invalid data format in {$fileName}");
+
+            return null;
+        }
+
+        return $data;
     }
 
     protected function importCategories(User $user, array $data): void
