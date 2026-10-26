@@ -123,8 +123,8 @@ it('turns the target into the catch-all budget that holds it', function (bool $w
     // Only a target with a budget behind it may be reported by step 11.
     expect($user->fresh()->onboarding_answers)->toMatchArray(['target' => 20000]);
 })->with([
-    'with the warnings on' => true,
-    'leaving the warnings off when the toggle was turned off' => false,
+    'warnings on' => true,
+    'warnings off' => false,
 ]);
 
 // A reload, or a second run at the step, must not leave two budgets claiming

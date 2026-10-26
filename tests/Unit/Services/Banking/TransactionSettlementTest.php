@@ -14,7 +14,7 @@ test('a settled, unknown or absent status is reported as settled', function (?st
     'booked' => 'BOOK',
     'other' => 'OTHR',
     'absent' => null,
-    'lowercase, not mistaken for an unsettled one' => 'pdng',
+    'lowercase pending code' => 'pdng',
 ]);
 
 test('the un-posted card code is canonicalized to its settled form', function () {

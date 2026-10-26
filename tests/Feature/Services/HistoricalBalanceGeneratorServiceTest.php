@@ -46,7 +46,7 @@ it('generates a long series across multiple upsert batches without gaps or dupli
     'real estate' => [RealEstateBalanceGeneratorService::class, 'realEstate', 10000000, 16000000],
 ]);
 
-it('generates linearly interpolated balances from start date to today', function (string $service, string $accountState, int $opening, int $current, string $eachNextBalance) {
+it('generates linearly interpolated balances from start date to today', function (string $service, string $accountState, int $opening, int $current, bool $paidDown) {
     $this->travelTo(Carbon::parse('2026-03-15'));
 
     $account = Account::factory()->{$accountState}()->create([
@@ -68,11 +68,13 @@ it('generates linearly interpolated balances from start date to today', function
 
     // Values move steadily from the opening amount towards the current one.
     for ($i = 1; $i < $balances->count(); $i++) {
-        expect($balances[$i]->balance)->{$eachNextBalance}($balances[$i - 1]->balance);
+        $paidDown
+            ? expect($balances[$i]->balance)->toBeLessThanOrEqual($balances[$i - 1]->balance)
+            : expect($balances[$i]->balance)->toBeGreaterThanOrEqual($balances[$i - 1]->balance);
     }
 })->with([
-    'loan being paid down' => [LoanBalanceGeneratorService::class, 'loan', 15000000, 12000000, 'toBeLessThanOrEqual'],
-    'real estate gaining value' => [RealEstateBalanceGeneratorService::class, 'realEstate', 20000000, 24000000, 'toBeGreaterThanOrEqual'],
+    'loan being paid down' => [LoanBalanceGeneratorService::class, 'loan', 15000000, 12000000, true],
+    'real estate gaining value' => [RealEstateBalanceGeneratorService::class, 'realEstate', 20000000, 24000000, false],
 ]);
 
 it('creates a single balance when start date is today', function (string $service, string $accountState, int $amount) {

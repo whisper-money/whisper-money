@@ -94,8 +94,8 @@ it('opens on the step the query asks for, if it is a real one', function (string
             ->where('initialStep', $initialStep)
         );
 })->with([
-    'lands directly on the connections step for create-account' => ['create-account', 'create-account'],
-    'ignores an unknown step and falls back to the default flow' => ['not-a-real-step', null],
+    'a known step' => ['create-account', 'create-account'],
+    'an unknown step falls back to the default flow' => ['not-a-real-step', null],
 ]);
 
 // The batch is queued when the user leaves the AI suggestions step, so by the
