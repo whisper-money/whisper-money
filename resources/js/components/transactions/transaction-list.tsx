@@ -2,30 +2,26 @@ import { useInMemoryDaySummaries } from '@/hooks/use-day-summaries';
 import { useLocale } from '@/hooks/use-locale';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useBalanceOwningAccountIds } from '@/hooks/use-owns-balance-updates';
+import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionDayGrouping } from '@/hooks/use-transaction-day-grouping';
+import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
 import { reloadPage } from '@/lib/leave-page';
-import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import {
-    Cell,
     ColumnFiltersState,
-    flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
     Row,
     SortingState,
     useReactTable,
-    VisibilityState,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
-import axios from 'axios';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { ExternalLink } from 'lucide-react';
 import {
-    createElement,
     useCallback,
     useEffect,
     useMemo,
@@ -34,22 +30,15 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
-import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import {
-    AutomateCategorizationDialog,
-    type AutomateCategorizationCandidate,
-} from '@/components/automation-rules/automate-categorization-dialog';
-import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
-import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
-import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
-import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
-import { UnsplitTransactionDialog } from '@/components/transactions/unsplit-transaction-dialog';
+import { TransactionListSkeleton } from '@/components/transactions/transaction-list-skeleton';
+import { TransactionRowDialogs } from '@/components/transactions/transaction-row-dialogs';
+import { TransactionTableRow } from '@/components/transactions/transaction-table-row';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -62,19 +51,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { TableCell, TableRow } from '@/components/ui/table';
 import { consoleDebug } from '@/lib/debug';
-import { captureEvent } from '@/lib/posthog';
 import { applyBulkLabels } from '@/lib/transaction-bulk-labels';
-import {
-    mergeReEvaluatedTransaction,
-    reEvaluateTransactionRules,
-} from '@/lib/transaction-re-evaluation';
+import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -93,161 +75,7 @@ import {
 import { UUID } from '@/types/uuid';
 import { toMajorUnits } from '@/utils/currency';
 
-const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
-
-export function TransactionListSkeleton() {
-    return (
-        <div className="space-y-4">
-            <div className="overflow-hidden rounded-md border">
-                <div className="grid grid-cols-4 gap-4 border-b p-4">
-                    <Skeleton className="h-5 w-8" />
-                    <Skeleton className="h-5 w-24" />
-                    <Skeleton className="h-5 w-64" />
-                    <Skeleton className="h-5 w-20 justify-self-end" />
-                </div>
-                <div className="divide-y">
-                    <div className="bg-muted/50 px-4 py-2">
-                        <Skeleton className="h-4 w-32" />
-                    </div>
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <div key={index} className="grid grid-cols-4 gap-4 p-4">
-                            <Skeleton className="h-4 w-8" />
-                            <Skeleton className="h-4 w-28" />
-                            <div className="space-y-2">
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-3 w-48" />
-                            </div>
-                            <Skeleton className="h-4 w-20 justify-self-end" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="flex items-center justify-between">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-9 w-48" />
-            </div>
-        </div>
-    );
-}
-
-interface TransactionRowProps extends TransactionRowActionHandlers {
-    row: Row<ServerTransaction>;
-    virtualRow: VirtualItem;
-    rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
-}
-
-function TransactionRowComponent({
-    row,
-    virtualRow,
-    rowVirtualizer,
-    onEdit,
-    onDuplicate,
-    onReEvaluateRules,
-    onAutomate,
-    onDelete,
-    onSplit,
-    onUnsplit,
-}: TransactionRowProps) {
-    const transaction = row.original;
-    const [contextMenuOpen, setContextMenuOpen] = useState(false);
-
-    const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
-        const target = event.target as HTMLElement;
-        const isInteractive = target.closest(
-            'button, [role="checkbox"], [role="combobox"], [role="menuitem"], [role="option"], [cmdk-item], a, input, select, textarea, [data-radix-popper-content-wrapper]',
-        );
-        if (isInteractive) {
-            return;
-        }
-        onEdit(transaction);
-    };
-
-    return (
-        <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            <ContextMenuTrigger asChild>
-                <TableRow
-                    ref={rowVirtualizer.measureElement}
-                    data-state={
-                        (row.getIsSelected() || contextMenuOpen) && 'selected'
-                    }
-                    data-index={virtualRow.index}
-                    className="cursor-pointer"
-                    onClick={handleRowClick}
-                >
-                    {row
-                        .getVisibleCells()
-                        .filter((cell: Cell<ServerTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      isVirtual?: boolean;
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return !meta?.isVirtual;
-                        })
-                        .map((cell: Cell<ServerTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return (
-                                <TableCell
-                                    key={cell.id}
-                                    className={meta?.cellClassName}
-                                    style={meta?.cellStyle}
-                                >
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            );
-                        })}
-                </TableRow>
-            </ContextMenuTrigger>
-            <TransactionRowContextMenuContent
-                transaction={transaction}
-                onEdit={onEdit}
-                onDuplicate={onDuplicate}
-                onReEvaluateRules={onReEvaluateRules}
-                onAutomate={onAutomate}
-                onDelete={onDelete}
-                onSplit={onSplit}
-                onUnsplit={onUnsplit}
-            />
-        </ContextMenu>
-    );
-}
-
-function getInitialColumnVisibility(): VisibilityState {
-    const defaultVisibility = {
-        transaction_date: true,
-        account: true,
-        creditor_name: false,
-        debtor_name: false,
-        labels: true,
-        notes: false,
-    };
-    if (typeof window === 'undefined') {
-        return defaultVisibility;
-    }
-
-    try {
-        const stored = localStorage.getItem(COLUMN_VISIBILITY_KEY);
-        if (stored) {
-            return { ...defaultVisibility, ...JSON.parse(stored) };
-        }
-    } catch (error) {
-        console.error(
-            'Failed to load column visibility from localStorage:',
-            error,
-        );
-    }
-    return defaultVisibility;
-}
+const NO_LABELS: Label[] = [];
 
 export interface TransactionListProps {
     categories: Category[];
@@ -295,24 +123,6 @@ export function TransactionList({
     statementPayments,
 }: TransactionListProps) {
     const locale = useLocale();
-    const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
-
-    useEffect(() => {
-        setLabels(initialLabels ?? []);
-    }, [initialLabels]);
-
-    const handleLabelCreated = useCallback((label: Label) => {
-        setLabels((previousLabels) => {
-            const nextLabels = previousLabels.filter(
-                (existingLabel) => existingLabel.id !== label.id,
-            );
-
-            return [...nextLabels, label].sort((a, b) =>
-                a.name.localeCompare(b.name),
-            );
-        });
-    }, []);
-
     const [transactions, setTransactions] = useState<ServerTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(
         providedTransactions === undefined,
@@ -321,9 +131,7 @@ export function TransactionList({
         { id: 'transaction_date', desc: true },
     ]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-        getInitialColumnVisibility(),
-    );
+    const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState({});
     const [filters, setFilters] = useState<Filters>({
         dateFrom: null,
@@ -337,58 +145,29 @@ export function TransactionList({
         debtorName: '',
         searchText: '',
     });
-    const [editTransaction, setEditTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [duplicateTransaction, setDuplicateTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [deleteTransaction, setDeleteTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [splitTransaction, setSplitTransaction] =
-        useState<ServerTransaction | null>(null);
-    const [unsplitTransaction, setUnsplitTransaction] =
-        useState<ServerTransaction | null>(null);
+    const editing = useTransactionRowEditing({
+        initialLabels: initialLabels ?? NO_LABELS,
+        setRows: setTransactions,
+        onRowUpdated: onTransactionsChanged,
+    });
+    const {
+        labels,
+        handleLabelCreated,
+        rowActions,
+        updateTransaction,
+        handleCategorized,
+        deleteTransaction,
+        setDeleteTransaction,
+        isReEvaluating,
+        setIsReEvaluating,
+    } = editing;
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
     const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-    const [isReEvaluating, setIsReEvaluating] = useState(false);
-    const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
-    const [automateCandidate, setAutomateCandidate] =
-        useState<AutomateCategorizationCandidate | null>(null);
     const [displayedCount, setDisplayedCount] = useState(pageSize);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-    const updateTransaction = useCallback(
-        (updatedTransaction: ServerTransaction) => {
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (transaction.id !== updatedTransaction.id) {
-                        return transaction;
-                    }
-
-                    return {
-                        ...transaction,
-                        ...updatedTransaction,
-                        account:
-                            updatedTransaction.account === undefined
-                                ? transaction.account
-                                : updatedTransaction.account,
-                        bank:
-                            updatedTransaction.bank === undefined
-                                ? transaction.bank
-                                : updatedTransaction.bank,
-                        category:
-                            updatedTransaction.category === undefined
-                                ? (transaction.category ?? null)
-                                : updatedTransaction.category,
-                    };
-                }),
-            );
-            onTransactionsChanged?.();
-        },
-        [setTransactions, onTransactionsChanged],
-    );
 
     useEffect(() => {
         setIsLoading(true);
@@ -413,20 +192,6 @@ export function TransactionList({
             setIsLoading(false);
         }
     }, [providedTransactions]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                COLUMN_VISIBILITY_KEY,
-                JSON.stringify(columnVisibility),
-            );
-        } catch (error) {
-            console.error(
-                'Failed to save column visibility to localStorage:',
-                error,
-            );
-        }
-    }, [columnVisibility]);
 
     const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
         new Set(),
@@ -622,33 +387,6 @@ export function TransactionList({
             setColumnVisibility,
         });
 
-    const handleReEvaluateRules = useCallback(
-        async (transaction: ServerTransaction) => {
-            consoleDebug('=== Re-evaluating rules for single transaction ===');
-
-            setIsReEvaluating(true);
-            try {
-                const response = await axios.post<{
-                    data: ServerTransaction;
-                }>(reEvaluateSingle({ transaction: transaction.id }).url);
-
-                const updated = response.data.data;
-
-                updateTransaction(
-                    mergeReEvaluatedTransaction(transaction, updated),
-                );
-                consoleDebug('✓ UI state updated successfully');
-            } catch (error) {
-                consoleDebug('❌ Error during re-evaluation:', error);
-                console.error('Failed to re-evaluate rules:', error);
-            } finally {
-                setIsReEvaluating(false);
-                consoleDebug('=== Re-evaluation complete ===');
-            }
-        },
-        [updateTransaction],
-    );
-
     async function handleBulkReEvaluateRules() {
         const selectedIds = Object.keys(rowSelection);
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
@@ -676,53 +414,6 @@ export function TransactionList({
         }
     }
 
-    const showAutomatizeToast = useCallback(
-        (
-            transaction: ServerTransaction,
-            category: Category,
-            source: 'transaction_table' | 'edit_transaction_modal',
-        ) => {
-            const nextAutomateCandidate = { transaction, category };
-
-            setAutomateCandidate(nextAutomateCandidate);
-            toast.success(__('Transaction categorized'), {
-                closeButton: true,
-                duration: 12000,
-                action: {
-                    label: createElement(
-                        'span',
-                        {
-                            title: __(
-                                'Automatize the categorization of future transactions like this one',
-                            ),
-                        },
-                        __('Automatize'),
-                    ),
-                    onClick: () => {
-                        captureEvent(
-                            'automation_rule_toast_automatize_clicked',
-                            { source },
-                        );
-                        setAutomateCandidate(nextAutomateCandidate);
-                        setAutomateDialogOpen(true);
-                    },
-                },
-            });
-        },
-        [],
-    );
-
-    const openAutomateDialog = useCallback((transaction: ServerTransaction) => {
-        captureEvent('automation_rule_toast_automatize_clicked', {
-            source: 'row_menu',
-        });
-        setAutomateCandidate({
-            transaction,
-            category: transaction.category ?? null,
-        });
-        setAutomateDialogOpen(true);
-    }, []);
-
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
             categories,
@@ -730,15 +421,9 @@ export function TransactionList({
             banks,
             labels,
             locale,
-            onEdit: setEditTransaction,
-            onDuplicate: setDuplicateTransaction,
-            onDelete: setDeleteTransaction,
+            ...rowActions,
             onUpdate: updateTransaction,
-            onCategorized: showAutomatizeToast,
-            onReEvaluateRules: handleReEvaluateRules,
-            onAutomate: openAutomateDialog,
-            onSplit: setSplitTransaction,
-            onUnsplit: setUnsplitTransaction,
+            onCategorized: handleCategorized,
             isDateHidden: tableColumnVisibility.transaction_date === false,
             isGroupedByDay,
             hiddenLabelId,
@@ -760,10 +445,9 @@ export function TransactionList({
         categories,
         labels,
         locale,
+        rowActions,
         updateTransaction,
-        showAutomatizeToast,
-        handleReEvaluateRules,
-        openAutomateDialog,
+        handleCategorized,
         hideColumns,
         tableColumnVisibility,
         isGroupedByDay,
@@ -979,19 +663,6 @@ export function TransactionList({
         }
     }
 
-    const rowActions = useMemo<TransactionRowActionHandlers>(
-        () => ({
-            onEdit: setEditTransaction,
-            onDuplicate: setDuplicateTransaction,
-            onReEvaluateRules: handleReEvaluateRules,
-            onDelete: setDeleteTransaction,
-            onAutomate: openAutomateDialog,
-            onSplit: setSplitTransaction,
-            onUnsplit: setUnsplitTransaction,
-        }),
-        [handleReEvaluateRules, openAutomateDialog],
-    );
-
     const renderTransactionRow = useCallback(
         (
             row: Row<ServerTransaction>,
@@ -999,7 +670,7 @@ export function TransactionList({
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {
             return (
-                <TransactionRowComponent
+                <TransactionTableRow
                     key={row.id}
                     row={row}
                     virtualRow={virtualRow}
@@ -1113,63 +784,14 @@ export function TransactionList({
                 )}
             </div>
 
-            <EditTransactionDialog
-                transaction={editTransaction}
+            <TransactionRowDialogs
+                editing={editing}
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
-                labels={labels}
                 automationRules={automationRules}
-                open={!!editTransaction}
-                onOpenChange={(open) => !open && setEditTransaction(null)}
-                onSuccess={updateTransaction}
-                onCategorized={showAutomatizeToast}
-                onLabelCreated={handleLabelCreated}
-                onDelete={setDeleteTransaction}
-                onSplit={setSplitTransaction}
-                mode="edit"
+                onDuplicated={reloadPage}
             />
-
-            <SplitTransactionDialog
-                transaction={splitTransaction}
-                categories={categories}
-                labels={labels}
-                open={!!splitTransaction}
-                onOpenChange={(open) => !open && setSplitTransaction(null)}
-                onSuccess={reloadPage}
-                onLabelCreated={handleLabelCreated}
-            />
-
-            <UnsplitTransactionDialog
-                transaction={unsplitTransaction}
-                categories={categories}
-                onOpenChange={(open) => !open && setUnsplitTransaction(null)}
-                onSuccess={reloadPage}
-            />
-
-            <EditTransactionDialog
-                transaction={null}
-                categories={categories}
-                accounts={accounts}
-                banks={banks}
-                labels={labels}
-                automationRules={automationRules}
-                open={!!duplicateTransaction}
-                onOpenChange={(open) => !open && setDuplicateTransaction(null)}
-                onSuccess={reloadPage}
-                onLabelCreated={handleLabelCreated}
-                mode="create"
-                duplicateFrom={duplicateTransaction}
-            />
-
-            <AutomateCategorizationDialog
-                open={automateDialogOpen}
-                candidate={automateCandidate}
-                categories={categories}
-                onOpenChange={setAutomateDialogOpen}
-            />
-
-            <PostSaveApplyRulePrompt />
 
             <AlertDialog
                 open={!!deleteTransaction}

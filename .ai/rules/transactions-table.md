@@ -1,33 +1,36 @@
 ---
 paths:
-  - 'resources/js/pages/transactions/index.tsx'
-  - 'resources/js/components/transactions/transaction-list.tsx'
-  - 'resources/js/components/transactions/transaction-columns.tsx'
+    - 'resources/js/pages/transactions/index.tsx'
+    - 'resources/js/components/transactions/transaction-list.tsx'
+    - 'resources/js/components/transactions/transaction-columns.tsx'
+    - 'resources/js/components/transactions/transaction-table-row.tsx'
+    - 'resources/js/components/transactions/transaction-row-dialogs.tsx'
+    - 'resources/js/hooks/use-transaction-row-editing.ts'
 ---
 
-# The transactions table exists twice
+# The transactions table exists twice (being unified)
 
-`pages/transactions/index.tsx` does **not** use `TransactionList`. It keeps its
-own copy of the whole table: its own `TransactionRowComponent`, its own context
-menu, its own dialogs, its own bulk-delete handlers. `TransactionList` is what
-the account-detail and budget-detail pages use.
+`pages/transactions/index.tsx` does **not** use `TransactionList`, which is what
+the account, budget and savings-goal pages use. The two are being merged into
+one table over several PRs. What a row does is already shared:
 
-So anything added to a row has to be wired in **both** places, and the shared
-`createTransactionColumns()` options are only half the job:
+- `useTransactionRowEditing` (`resources/js/hooks/use-transaction-row-editing.ts`):
+  the transaction each row dialog is open for, the row action handlers
+  (`rowActions`), the in-place row update, single-row re-evaluate, the
+  automatize toast, and the labels the dialogs can create.
+- `TransactionRowDialogs`: the edit, duplicate, split, unsplit and automate
+  dialogs, mounted once per table.
+- `TransactionTableRow`: the desktop row and its right-click menu.
+- `getTransactionRowActions()` (`resources/js/lib/transaction-row-actions.ts`):
+  the contents of both row menus. Add an action there, never inline.
 
-1. the options passed to `createTransactionColumns()` (both call sites),
-2. the props of each page's own `TransactionRowComponent`, for the right-click menu,
-3. any dialog the action opens, mounted in each page's JSX,
-4. `EditTransactionDialog`, wired separately in each.
+So a new row action goes into `TransactionRowActionHandlers`, the hook and,
+if it opens a dialog, `TransactionRowDialogs`; both tables pick it up.
 
-Bitten while adding split transactions: the feature was wired in
-`TransactionList` only, so it worked on the account and budget pages while the
-row menu on `/transactions` threw `onSplit is not a function` — the one screen
-everybody actually uses.
+Still duplicated in both files until the remaining PRs land: the delete
+confirmation and the bulk handlers (category, labels, delete, re-evaluate),
+and the table shell (sorting, filters, load more). Anything added there has to
+be wired in **both** places; grep for the symbol you just added.
 
-Row **actions** are the exception, and the reason they are: the two menus render
-from `getTransactionRowActions()` (`resources/js/lib/transaction-row-actions.ts`)
-so their contents cannot drift. Add an action there, not inline in either menu.
-
-Untangling the duplication is worth its own PR. Until then, grep for the symbol
-you just added and make sure it appears in both files.
+Bitten before the split: split transactions were wired in `TransactionList`
+only, so the row menu on `/transactions` threw `onSplit is not a function`.

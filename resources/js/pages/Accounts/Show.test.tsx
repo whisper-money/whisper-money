@@ -126,6 +126,9 @@ vi.mock('@/components/transactions/transaction-list', () => ({
             </div>
         );
     },
+}));
+
+vi.mock('@/components/transactions/transaction-list-skeleton', () => ({
     TransactionListSkeleton: () => null,
 }));
 
