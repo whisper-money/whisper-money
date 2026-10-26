@@ -191,6 +191,25 @@ describe('TransactionCard', () => {
         expect(onToggleSelect).not.toHaveBeenCalled();
     });
 
+    it('opens the transaction from the keyboard through its description', () => {
+        const { onOpen } = renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Mercadona' }));
+
+        expect(onOpen).toHaveBeenCalledOnce();
+    });
+
+    it('takes the chips out of reach while selection is active', () => {
+        renderCard({ selectionActive: true });
+
+        expect(
+            screen.getByTestId('transaction-card-category').closest('[inert]'),
+        ).not.toBeNull();
+        expect(
+            screen.getByTestId('transaction-card-circle').closest('[inert]'),
+        ).toBeNull();
+    });
+
     it('toggles instead of opening while selection is active', () => {
         const { onToggleSelect, onOpen } = renderCard({
             selectionActive: true,

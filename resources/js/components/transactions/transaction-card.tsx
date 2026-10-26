@@ -110,6 +110,7 @@ export function TransactionCard({
             <SelectionCircle
                 category={category}
                 selected={selected}
+                isCategorizing={isCategorizing}
                 label={__('Select :description', {
                     description: transaction.description,
                 })}
@@ -120,10 +121,11 @@ export function TransactionCard({
             />
 
             <div
+                // While selecting, taps and keys on the chips reach the card
+                // and toggle it, rather than opening a picker.
+                inert={selectionActive}
                 className={cn(
                     'flex min-w-0 flex-1 flex-col gap-1',
-                    // While selecting, taps on the chips land on the card and
-                    // toggle it, rather than opening a picker.
                     selectionActive && 'pointer-events-none',
                 )}
             >
@@ -138,10 +140,16 @@ export function TransactionCard({
                                 />
                             </span>
                         )}
-                        <TransactionDescription
-                            text={transaction.description}
-                            className="truncate font-semibold"
-                        />
+                        {/* The card's keyboard entry point: the click bubbles to
+                            the card, which opens it. */}
+                        <button
+                            type="button"
+                            className="min-w-0 truncate rounded-sm text-left font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <TransactionDescription
+                                text={transaction.description}
+                            />
+                        </button>
                     </div>
                     <AmountDisplay
                         amountInCents={transaction.amount}
@@ -161,7 +169,7 @@ export function TransactionCard({
                                 name={transaction.bank?.name}
                                 className="size-4 shrink-0"
                             />
-                            <span className="shrink-0">
+                            <span className="min-w-0 truncate">
                                 {transaction.account.name}
                             </span>
                         </>
@@ -169,7 +177,7 @@ export function TransactionCard({
                     {transaction.notes && (
                         <>
                             {transaction.account && <span aria-hidden>·</span>}
-                            <span className="truncate text-muted-foreground/80">
+                            <span className="min-w-0 truncate text-muted-foreground/80">
                                 {transaction.notes}
                             </span>
                         </>
@@ -190,6 +198,7 @@ export function TransactionCard({
                             onUpdate={onUpdate}
                             onCategorized={onCategorized}
                             isCategorizing={isCategorizing}
+                            className="h-8"
                             trigger={<CategoryChip category={category} />}
                         />
                     </div>
@@ -203,11 +212,13 @@ export function TransactionCard({
 function SelectionCircle({
     category,
     selected,
+    isCategorizing,
     label,
     onClick,
 }: {
     category: Category | null;
     selected: boolean;
+    isCategorizing?: boolean;
     label: string;
     onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
@@ -231,6 +242,8 @@ function SelectionCircle({
                 >
                     <Check className="size-5" strokeWidth={3} />
                 </span>
+            ) : isCategorizing ? (
+                <span className={cn(circle, 'block animate-pulse bg-muted')} />
             ) : category ? (
                 <CategoryIcon
                     category={category}

@@ -37,7 +37,10 @@ interface CategoryCellProps {
     withoutChevronIcon?: boolean;
     /** AI is currently categorizing this row in the background. */
     isCategorizing?: boolean;
-    /** Replaces the picker's default trigger; see `CategoryCombobox`. */
+    /**
+     * Replaces the picker's default trigger; see `CategoryCombobox`. The
+     * `className` then only styles the "Categorizing…" state.
+     */
     trigger?: ReactElement;
 }
 
