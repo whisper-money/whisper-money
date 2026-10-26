@@ -254,9 +254,10 @@ it('does not overwrite the comparison baseline on a --no-discord run', function 
     expect(Cache::get('report_summary_baseline:subscription-funnel'))->not->toBe(['weeks' => ['sentinel']]);
 });
 
-it('is no longer scheduled, so the weekly Discord post stops', function () {
-    $isScheduled = collect(app(Schedule::class)->events())
-        ->contains(fn (Event $event): bool => str_contains((string) $event->command, 'stats:subscription-funnel'));
+it('is not scheduled, so it never posts to Discord on its own', function () {
+    $scheduledCommands = collect(app(Schedule::class)->events())
+        ->map(fn (Event $event): string => (string) $event->command);
 
-    expect($isScheduled)->toBeFalse();
+    expect($scheduledCommands->contains(fn (string $command): bool => str_contains($command, 'stats:daily-report')))->toBeTrue()
+        ->and($scheduledCommands->contains(fn (string $command): bool => str_contains($command, 'stats:subscription-funnel')))->toBeFalse();
 });
