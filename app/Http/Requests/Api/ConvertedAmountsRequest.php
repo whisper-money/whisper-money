@@ -11,7 +11,7 @@ class ConvertedAmountsRequest extends FormRequest
      * The most amounts one request converts: a few loaded pages of the
      * transactions table, which is the caller.
      */
-    public const MAX_ITEMS = 500;
+    private const MAX_ITEMS = 500;
 
     public function authorize(): bool
     {
