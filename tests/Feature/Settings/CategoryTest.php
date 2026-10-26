@@ -363,6 +363,108 @@ test('users can create savings and investment categories', function (string $typ
     CategoryType::Investment->value,
 ]);
 
+test('migration updates existing default saving and investment categories', function () {
+    $user = User::factory()->create();
+
+    $investments = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Investments',
+        'icon' => 'LineChart',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $savings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Savings',
+        'icon' => 'PiggyBank',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+    $legacyExpenseInvestment = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Other investments',
+        'icon' => 'TrendingUp',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $legacySpanishSavings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Ahorros',
+        'icon' => 'PiggyBank',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $customTransfer = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Investment transfer',
+        'icon' => 'LineChart',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
+
+    $migration = require database_path('migrations/2026_05_25_115100_update_default_saving_and_investment_category_types.php');
+    $migration->up();
+
+    expect($investments->refresh())
+        ->type->toBe(CategoryType::Investment)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($savings->refresh())
+        ->type->toBe(CategoryType::Savings)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacyExpenseInvestment->refresh())
+        ->type->toBe(CategoryType::Investment)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacySpanishSavings->refresh())
+        ->type->toBe(CategoryType::Savings)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($customTransfer->refresh())
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+});
+
+test('migration sets saving and investment categories to cashflow outflow', function () {
+    $user = User::factory()->create();
+
+    $savings = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Savings,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $investment = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Investment,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $transfer = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+    ]);
+    $expense = Category::factory()->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+
+    $migration = require database_path('migrations/2026_05_29_085835_update_saving_and_investment_category_cashflow_direction.php');
+    $migration->up();
+
+    expect($savings->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
+    expect($investment->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Outflow);
+    expect($transfer->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Inflow);
+    expect($expense->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+
+    $migration->down();
+
+    expect($savings->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+    expect($investment->refresh()->cashflow_direction)->toBe(CategoryCashflowDirection::Hidden);
+});
+
 test('users cannot update categories they do not own', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
