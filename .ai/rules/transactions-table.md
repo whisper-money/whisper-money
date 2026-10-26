@@ -12,6 +12,8 @@ paths:
     - 'resources/js/hooks/use-in-memory-transaction-source.ts'
     - 'resources/js/hooks/use-server-transaction-source.ts'
     - 'resources/js/types/transaction-table-source.ts'
+    - 'resources/js/components/transactions/responsive-transaction-table.tsx'
+    - 'resources/js/lib/phone-bleed.ts'
 ---
 
 # One transactions table, two data sources
@@ -50,6 +52,17 @@ the table as props (`renderToolbar` for the actions menu, export and the
   source it was handed.
 - **How rows are fetched, filtered, sorted or paged**: the source. A new kind of
   list implements `TransactionTableSource` rather than growing the table.
+
+## Edge to edge on a phone
+
+Below md the compact list (and its skeleton and `topRow`) runs edge to edge,
+like design A: `PHONE_BLEED` (`lib/phone-bleed.ts`) pulls it out of the page's
+24px side padding with `-mx-6`, so it assumes the table sits straight in a
+`p-6` page wrapper, as on /transactions and the account, budget and savings
+goal pages. A table inside a card, a dialog or anything padded otherwise passes
+`framedOnPhone` (the monthly savings goal view does). Edge to edge, a list
+never scrolls inside its own `maxHeight` box on a phone: with no gutter left,
+every swipe would scroll the list instead of the page.
 
 ## Day totals follow the server
 

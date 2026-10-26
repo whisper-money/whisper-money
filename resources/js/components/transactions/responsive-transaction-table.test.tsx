@@ -22,7 +22,9 @@ vi.mock('@/hooks/use-element-width', () => ({
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
 
-vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+let isPhone = false;
+
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => isPhone }));
 
 vi.mock('@inertiajs/react', () => ({
     router: { visit: vi.fn() },
@@ -103,8 +105,12 @@ const rowActions = {
 
 function TransactionsList({
     onSortingChange = () => {},
+    maxHeight,
+    framedOnPhone,
 }: {
     onSortingChange?: (sorting: SortingState) => void;
+    maxHeight?: number;
+    framedOnPhone?: boolean;
 }) {
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [sorting, setSorting] = useState<SortingState>([
@@ -162,6 +168,8 @@ function TransactionsList({
                 selectionMode={selectionMode}
                 listRow={{ categories: [], labels: [] }}
                 rowActions={rowActions}
+                maxHeight={maxHeight}
+                framedOnPhone={framedOnPhone}
             />
         </PrivacyModeProvider>
     );
@@ -177,6 +185,7 @@ function circleOf(description: string): HTMLElement {
 
 beforeEach(() => {
     listWidth = 600;
+    isPhone = false;
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-26T12:00:00'));
 });
@@ -194,6 +203,37 @@ describe('ResponsiveTransactionTable', () => {
 
         expect(screen.getAllByTestId('table-row')).toHaveLength(3);
         expect(listRows()).toHaveLength(0);
+    });
+
+    it('runs the compact list edge to edge on a phone unless it is framed', () => {
+        const { unmount } = render(<TransactionsList />);
+        const bled = screen.getByTestId('transaction-compact-list-rows');
+
+        expect(bled.className).toContain('max-md:-mx-6');
+        expect(bled.className).toContain('max-md:border-x-0');
+        unmount();
+
+        render(<TransactionsList framedOnPhone />);
+        const framed = screen.getByTestId('transaction-compact-list-rows');
+
+        expect(framed.className).not.toContain('max-md:');
+        expect(framed.className).toContain('rounded-md border');
+    });
+
+    it('lets an edge-to-edge list grow with the page on a phone instead of scrolling a box', () => {
+        isPhone = true;
+        const { unmount } = render(<TransactionsList maxHeight={600} />);
+
+        expect(
+            screen.getByTestId('transaction-compact-list-rows').style.maxHeight,
+        ).toBe('');
+        unmount();
+
+        render(<TransactionsList maxHeight={600} framedOnPhone />);
+
+        expect(
+            screen.getByTestId('transaction-compact-list-rows').style.maxHeight,
+        ).toBe('600px');
     });
 
     it('turns into the compact list under 56rem, grouped under the same days', () => {

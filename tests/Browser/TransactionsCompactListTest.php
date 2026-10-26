@@ -55,6 +55,45 @@ it('fits the compact list on a phone and sorts it from the menu above it', funct
         ->assertNoJavascriptErrors();
 });
 
+it('runs the compact list edge to edge on a phone and keeps its frame beside the sidebar', function () {
+    $frameOf = <<<'JS'
+        (() => {
+            const list = document.querySelector('[data-testid="transaction-compact-list-rows"]');
+            const rect = list.getBoundingClientRect();
+            const style = getComputedStyle(list);
+            return JSON.stringify({
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: window.innerWidth,
+                borderLeft: style.borderLeftWidth,
+                borderTop: style.borderTopWidth,
+                radius: style.borderTopLeftRadius,
+            });
+        })()
+    JS;
+
+    $page = visitTransactionListOnAPhone();
+    $page->assertSee('Weekly groceries market');
+
+    // A hairline where the list starts, nothing on the sides, no corners.
+    $phone = json_decode($page->script($frameOf), true);
+    expect($phone['left'])->toBe(0)
+        ->and($phone['right'])->toBe($phone['width'])
+        ->and($phone['borderLeft'])->toBe('0px')
+        ->and($phone['borderTop'])->toBe('1px')
+        ->and($phone['radius'])->toBe('0px');
+    $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth');
+
+    // Beside the sidebar the list is compact too, but stays in its frame.
+    $desktop = visit('/transactions')->resize(1024, 800);
+    $desktop->assertPresent('[data-testid="transaction-list-layout"][data-layout="list"]');
+
+    $framed = json_decode($desktop->script($frameOf), true);
+    expect($framed['left'])->toBeGreaterThan(0)
+        ->and($framed['borderLeft'])->toBe('1px')
+        ->and($framed['radius'])->not->toBe('0px');
+});
+
 it('ticks a whole day from its band once rows are being picked', function () {
     $page = visitTransactionListOnAPhone();
 

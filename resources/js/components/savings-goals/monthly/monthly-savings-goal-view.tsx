@@ -442,6 +442,7 @@ function Contributions({
                         pageSize={10}
                         showActionsMenu={false}
                         maxHeight={480}
+                        framedOnPhone
                         hiddenLabelId={savingsGoal.label_id ?? undefined}
                         hideColumns={isMobile ? MOBILE_HIDDEN_COLUMNS : []}
                     />
