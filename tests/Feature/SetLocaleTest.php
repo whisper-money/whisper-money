@@ -32,23 +32,15 @@ it('ignores an unsupported lang query parameter', function () {
     expect(resolveLocaleFor($request))->not->toBe('de');
 });
 
-it('detects French from the Accept-Language header', function () {
-    $request = Request::create('/', 'GET', server: ['HTTP_ACCEPT_LANGUAGE' => 'fr-FR,fr;q=0.9,en;q=0.8']);
+it('detects the locale from the Accept-Language header', function (string $acceptLanguage, string $expected) {
+    $request = Request::create('/', 'GET', server: ['HTTP_ACCEPT_LANGUAGE' => $acceptLanguage]);
 
-    expect(resolveLocaleFor($request))->toBe('fr');
-});
-
-it('detects Spanish from the Accept-Language header', function () {
-    $request = Request::create('/', 'GET', server: ['HTTP_ACCEPT_LANGUAGE' => 'es-ES,es;q=0.9']);
-
-    expect(resolveLocaleFor($request))->toBe('es');
-});
-
-it('falls back to English for an unrecognized Accept-Language header', function () {
-    $request = Request::create('/', 'GET', server: ['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9']);
-
-    expect(resolveLocaleFor($request))->toBe('en');
-});
+    expect(resolveLocaleFor($request))->toBe($expected);
+})->with([
+    'French' => ['fr-FR,fr;q=0.9,en;q=0.8', 'fr'],
+    'Spanish' => ['es-ES,es;q=0.9', 'es'],
+    'unrecognized falls back to English' => ['de-DE,de;q=0.9', 'en'],
+]);
 
 /**
  * Runs a request through the middleware as `$user` and hands back their row,
@@ -68,38 +60,32 @@ function formatLocaleAfter(User $user, ?string $acceptLanguage): ?string
     return $user->refresh()->format_locale;
 }
 
-it('pins the region the browser asks for onto a user who has none', function () {
-    $user = User::factory()->create(['locale' => 'es', 'format_locale' => null]);
-
-    expect(formatLocaleAfter($user, 'es-MX,es;q=0.9,en;q=0.8'))->toBe('es-MX');
-});
-
-it('reads the region rather than the language, even when the two disagree', function () {
-    // A reader who set the app to English on a British browser gets British
-    // amounts, not American ones: language and region are separate choices.
-    $user = User::factory()->create(['locale' => 'en', 'format_locale' => null]);
-
-    expect(formatLocaleAfter($user, 'en-GB,en;q=0.9'))->toBe('en-GB');
-});
-
-it('honours the quality the browser puts on each language', function () {
-    $user = User::factory()->create(['locale' => 'es', 'format_locale' => null]);
-
-    expect(formatLocaleAfter($user, 'en;q=0.5,es-AR;q=0.9'))->toBe('es-AR');
-});
-
-it('leaves a header with no region where the reader already was', function (string $locale, string $expected) {
+it('pins the region the browser asks for onto a user who has none', function (string $locale, ?string $acceptLanguage, string $expected) {
     $user = User::factory()->create(['locale' => $locale, 'format_locale' => null]);
 
-    expect(formatLocaleAfter($user, $locale))->toBe($expected);
-})->with([['es', 'es-ES'], ['en', 'en-US'], ['fr', 'fr-FR']]);
-
-it('takes the Latin American tag a browser sends instead of a country', function () {
+    expect(formatLocaleAfter($user, $acceptLanguage))->toBe($expected);
+})->with([
+    'country of the language' => ['es', 'es-MX,es;q=0.9,en;q=0.8', 'es-MX'],
+    // A reader who set the app to English on a British browser gets British
+    // amounts, not American ones: language and region are separate choices.
+    'region even when the language disagrees' => ['en', 'en-GB,en;q=0.9', 'en-GB'],
+    'highest quality language' => ['es', 'en;q=0.5,es-AR;q=0.9', 'es-AR'],
     // Chrome and Android send this for "Spanish (Latin America)", and reading
     // it as plain Spanish is what put Spain's separators on Mexican screens.
-    $user = User::factory()->create(['locale' => 'es', 'format_locale' => null]);
+    'Latin American tag instead of a country' => ['es', 'es-419,es;q=0.9', 'es-419'],
+    'language fallback for a region the app does not offer' => ['fr', 'nb-NO,nb;q=0.9', 'fr-FR'],
+    'language fallback without a header' => ['es', null, 'es-ES'],
+    'header without a region keeps Spanish' => ['es', 'es', 'es-ES'],
+    'header without a region keeps English' => ['en', 'en', 'en-US'],
+    'header without a region keeps French' => ['fr', 'fr', 'fr-FR'],
+]);
 
-    expect(formatLocaleAfter($user, 'es-419,es;q=0.9'))->toBe('es-419');
+it('never overwrites a region the reader already has', function () {
+    // The header is a guess and the stored value may be a deliberate choice, so
+    // signing in from a borrowed laptop must not rewrite it.
+    $user = User::factory()->create(['locale' => 'es', 'format_locale' => 'es-MX']);
+
+    expect(formatLocaleAfter($user, 'en-US,en;q=0.9'))->toBe('es-MX');
 });
 
 it('does not let a ?lang= override decide the region fallback', function () {
@@ -114,26 +100,6 @@ it('does not let a ?lang= override decide the region fallback', function () {
     app(SetLocale::class)->handle($request, fn () => new Response);
 
     expect($user->refresh()->format_locale)->toBe('es-ES');
-});
-
-it('falls back to the language when the header names a region the app does not offer', function () {
-    $user = User::factory()->create(['locale' => 'fr', 'format_locale' => null]);
-
-    expect(formatLocaleAfter($user, 'nb-NO,nb;q=0.9'))->toBe('fr-FR');
-});
-
-it('falls back to the language when there is no header at all', function () {
-    $user = User::factory()->create(['locale' => 'es', 'format_locale' => null]);
-
-    expect(formatLocaleAfter($user, null))->toBe('es-ES');
-});
-
-it('never overwrites a region the reader already has', function () {
-    // The header is a guess and the stored value may be a deliberate choice, so
-    // signing in from a borrowed laptop must not rewrite it.
-    $user = User::factory()->create(['locale' => 'es', 'format_locale' => 'es-MX']);
-
-    expect(formatLocaleAfter($user, 'en-US,en;q=0.9'))->toBe('es-MX');
 });
 
 it('reads a region for a signed-out visitor without storing anything', function () {

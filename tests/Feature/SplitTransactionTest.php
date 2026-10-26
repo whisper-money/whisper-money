@@ -168,42 +168,21 @@ it('gives every part the original description, source and date', function () {
         ->and($parts->pluck('transaction_date')->map->toDateString()->unique()->all())->toBe(['2026-08-22']);
 });
 
-it('refuses splits that do not add up to the original', function () {
+it('refuses splits that do not divide the original', function (array $splits) {
     $original = splittableTransaction(-5340);
 
     $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
-        'splits' => [['amount' => -3000], ['amount' => -1000]],
+        'splits' => $splits,
     ])->assertJsonValidationErrors('splits');
 
     expect(Transaction::query()->find($original->id))->not->toBeNull()
         ->and(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
-});
-
-it('refuses a part that moves money the other way', function () {
-    $original = splittableTransaction(-5340);
-
-    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
-        'splits' => [['amount' => -6340], ['amount' => 1000]],
-    ])->assertJsonValidationErrors('splits');
-});
-
-it('refuses fewer than two parts', function () {
-    $original = splittableTransaction(-5340);
-
-    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
-        'splits' => [['amount' => -5340]],
-    ])->assertJsonValidationErrors('splits');
-});
-
-it('refuses a part with no amount, even when the rest add up', function () {
-    $original = splittableTransaction(-5340);
-
-    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
-        'splits' => [['amount' => -5340], ['amount' => 0]],
-    ])->assertJsonValidationErrors('splits');
-
-    expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
-});
+})->with([
+    'parts that do not add up to the original' => [[['amount' => -3000], ['amount' => -1000]]],
+    'a part that moves money the other way' => [[['amount' => -6340], ['amount' => 1000]]],
+    'fewer than two parts' => [[['amount' => -5340]]],
+    'a part with no amount, even when the rest add up' => [[['amount' => -5340], ['amount' => 0]]],
+]);
 
 it('refuses splitting a part again', function () {
     $original = splittableTransaction();

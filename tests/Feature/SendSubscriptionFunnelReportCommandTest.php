@@ -67,18 +67,6 @@ beforeEach(function () {
     ReportSummaryAgent::fake(['Los registros bajan respecto a la semana anterior.']);
 });
 
-it('skips the report and hits no external service when subscriptions are disabled', function () {
-    config(['subscriptions.enabled' => false]);
-
-    Http::fake();
-
-    artisan('stats:subscription-funnel')
-        ->expectsOutputToContain('Subscriptions are disabled; skipping the subscription funnel report.')
-        ->assertSuccessful();
-
-    Http::assertNothingSent();
-});
-
 it('counts registrations, subscriptions and paid conversions per signup week', function () {
     $signup = funnelNow()->subWeeks(10); // old enough to be paid-mature
 

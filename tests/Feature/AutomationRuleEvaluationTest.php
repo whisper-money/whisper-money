@@ -24,67 +24,99 @@ beforeEach(function () {
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
 
-test('assigns category when "in" operator matches description', function () {
+test('assigns the rule category when the rule matches the transaction', function (array $rulesJson, array $attributes) {
     AutomationRule::factory()->create([
         'user_id' => $this->user->id,
         'priority' => 1,
-        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'rules_json' => $rulesJson,
         'action_category_id' => $this->category->id,
     ]);
 
     $transaction = Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'description' => 'Grocery Store Purchase',
-        'amount' => -5000,
+        ...$attributes,
     ]);
 
     app(AutomationRuleService::class)->applyRules($transaction);
 
     expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
+})->with([
+    '"in" on the description' => [
+        ['in' => ['grocery', ['var' => 'description']]],
+        ['description' => 'Grocery Store Purchase', 'amount' => -5000],
+    ],
+    '"in" on the creditor name' => [
+        ['in' => ['amazon', ['var' => 'creditor_name']]],
+        ['description' => 'Card payment', 'creditor_name' => 'Amazon EU', 'amount' => -5000],
+    ],
+    '"in" on the debtor name' => [
+        ['in' => ['payroll', ['var' => 'debtor_name']]],
+        ['description' => 'Incoming transfer', 'debtor_name' => 'Payroll GmbH', 'amount' => 500000],
+    ],
+    // "Does not contain" is how a user writes an exception, and a transaction whose
+    // creditor the bank never sent is one the exception should cover.
+    '"does not contain" with no creditor name' => [
+        ['!' => ['in' => ['amazon', ['var' => 'creditor_name']]]],
+        ['description' => 'Card payment', 'creditor_name' => null, 'amount' => -2000],
+    ],
+    'case-insensitive match' => [
+        ['in' => ['GROCERY', ['var' => 'description']]],
+        ['description' => 'grocery store', 'amount' => -3000],
+    ],
+    'bank_name field' => [
+        ['==' => [['var' => 'bank_name'], 'test bank']],
+        ['description' => 'Some Payment', 'amount' => -1000],
+    ],
+    'amount evaluated in dollars' => [
+        ['>' => [['var' => 'amount'], 50]],
+        ['description' => 'Salary', 'amount' => 10000],
+    ],
+    'compound "and"' => [
+        ['and' => [['in' => ['grocery', ['var' => 'description']]], ['<' => [['var' => 'amount'], 0]]]],
+        ['description' => 'Grocery Store', 'amount' => -5000],
+    ],
+    '"==" operator' => [
+        ['==' => [['var' => 'description'], 'salary payment']],
+        ['description' => 'Salary Payment', 'amount' => 100000],
+    ],
+    'whitespace normalized in the description' => [
+        ['in' => ['grocery store', ['var' => 'description']]],
+        ['description' => '  Grocery   Store  Purchase  ', 'amount' => -5000],
+    ],
+]);
 
-test('assigns category when rule matches creditor name', function () {
+test('leaves the transaction uncategorized when the rule does not match it', function (array $rulesJson, array $attributes) {
     AutomationRule::factory()->create([
         'user_id' => $this->user->id,
         'priority' => 1,
-        'rules_json' => ['in' => ['amazon', ['var' => 'creditor_name']]],
+        'rules_json' => $rulesJson,
         'action_category_id' => $this->category->id,
     ]);
 
     $transaction = Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'description' => 'Card payment',
-        'creditor_name' => 'Amazon EU',
-        'amount' => -5000,
+        ...$attributes,
     ]);
 
     app(AutomationRuleService::class)->applyRules($transaction);
 
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('assigns category when rule matches debtor name', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['payroll', ['var' => 'debtor_name']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Incoming transfer',
-        'debtor_name' => 'Payroll GmbH',
-        'amount' => 500000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
+    expect($transaction->fresh()->category_id)->toBeNull();
+})->with([
+    '"does not equal" skips the exact description it excludes' => [
+        ['!=' => [['var' => 'description'], 'salary payment']],
+        ['description' => 'Salary Payment', 'amount' => 100000, 'category_id' => null],
+    ],
+    'amount condition fails' => [
+        ['>' => [['var' => 'amount'], 200]],
+        ['description' => 'Small purchase', 'amount' => 5000, 'category_id' => null],
+    ],
+    'compound "and" with one failing condition' => [
+        ['and' => [['in' => ['grocery', ['var' => 'description']]], ['>' => [['var' => 'amount'], 0]]]],
+        ['description' => 'Grocery Store', 'amount' => -5000, 'category_id' => null],
+    ],
+]);
 
 test('matches an exception rule that excludes a second token', function () {
     AutomationRule::factory()->create([
@@ -117,50 +149,6 @@ test('matches an exception rule that excludes a second token', function () {
 
     expect($matching->fresh()->category_id)->toBe($this->category->id)
         ->and($excluded->fresh()->category_id)->toBeNull();
-});
-
-// "Does not contain" is how a user writes an exception, and a transaction whose
-// creditor the bank never sent is one the exception should cover.
-test('a "does not contain" rule matches a transaction with no creditor name', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['!' => ['in' => ['amazon', ['var' => 'creditor_name']]]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Card payment',
-        'creditor_name' => null,
-        'amount' => -2000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('a "does not equal" rule skips the exact description it excludes', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['!=' => [['var' => 'description'], 'salary payment']],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Salary Payment',
-        'amount' => 100000,
-        'category_id' => null,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBeNull();
 });
 
 test('assigns labels when rule matches', function () {
@@ -242,26 +230,6 @@ test('uses first-match-wins with priority ordering', function () {
     expect($transaction->fresh()->category_id)->toBe($categoryLow->id);
 });
 
-test('matches case-insensitively', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['GROCERY', ['var' => 'description']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'grocery store',
-        'amount' => -3000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
 test('does not apply rules from other users', function () {
     $otherUser = User::factory()->onboarded()->create();
 
@@ -277,67 +245,6 @@ test('does not apply rules from other users', function () {
         'account_id' => $this->account->id,
         'description' => 'Grocery Store',
         'amount' => -5000,
-        'category_id' => null,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBeNull();
-});
-
-test('matches bank_name field', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['==' => [['var' => 'bank_name'], 'test bank']],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Some Payment',
-        'amount' => -1000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('evaluates amount in dollars', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['>' => [['var' => 'amount'], 50]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Salary',
-        'amount' => 10000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('does not match when amount condition fails', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['>' => [['var' => 'amount'], 200]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Small purchase',
-        'amount' => 5000,
         'category_id' => null,
     ]);
 
@@ -367,97 +274,6 @@ test('does not fire TransactionUpdated when applying category', function () {
 
     expect($transaction->fresh()->category_id)->toBe($this->category->id);
     Event::assertNotDispatched(TransactionUpdated::class);
-});
-
-test('evaluates compound "and" rules', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => [
-            'and' => [
-                ['in' => ['grocery', ['var' => 'description']]],
-                ['<' => [['var' => 'amount'], 0]],
-            ],
-        ],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Grocery Store',
-        'amount' => -5000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('compound "and" rule does not match when one condition fails', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => [
-            'and' => [
-                ['in' => ['grocery', ['var' => 'description']]],
-                ['>' => [['var' => 'amount'], 0]],
-            ],
-        ],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Grocery Store',
-        'amount' => -5000,
-        'category_id' => null,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBeNull();
-});
-
-test('evaluates "==" operator', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['==' => [['var' => 'description'], 'salary payment']],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => 'Salary Payment',
-        'amount' => 100000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
-});
-
-test('normalizes whitespace in description', function () {
-    AutomationRule::factory()->create([
-        'user_id' => $this->user->id,
-        'priority' => 1,
-        'rules_json' => ['in' => ['grocery store', ['var' => 'description']]],
-        'action_category_id' => $this->category->id,
-    ]);
-
-    $transaction = Transaction::factory()->enableBanking()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'description' => '  Grocery   Store  Purchase  ',
-        'amount' => -5000,
-    ]);
-
-    app(AutomationRuleService::class)->applyRules($transaction);
-
-    expect($transaction->fresh()->category_id)->toBe($this->category->id);
 });
 
 test('applies automation rules via listener on TransactionCreated event', function () {

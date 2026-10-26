@@ -58,22 +58,36 @@ test('a user downloads their transactions as a csv file', function () {
         ->and($row)->toBe(['2026-03-14', 'Corner shop, "the good one"', '-12.50', 'EUR', 'Checking', 'Acme Bank', 'Groceries', 'Home, Shared', 'Weekly shop', 'Corner Shop SL', '']);
 });
 
-test('the export lists the newest transaction first', function () {
+test('the export follows the sort of the transactions page', function (array $transactions, array $payload, array $expectedDescriptions) {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Older', 'transaction_date' => '2026-01-01']);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Newer', 'transaction_date' => '2026-02-01']);
 
-    expect(array_column(exportedRows($user), 1))->toBe(['Description', 'Newer', 'Older']);
-});
+    foreach ($transactions as $attributes) {
+        Transaction::factory()->create(['user_id' => $user->id, ...$attributes]);
+    }
 
-test('the export follows the sort of the transactions page', function () {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Big', 'amount' => -9000]);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Small', 'amount' => -100]);
-
-    expect(array_column(exportedRows($user, ['sort' => 'amount']), 1))->toBe(['Description', 'Big', 'Small'])
-        ->and(array_column(exportedRows($user, ['sort' => '-amount']), 1))->toBe(['Description', 'Small', 'Big']);
-});
+    expect(array_column(exportedRows($user, $payload), 1))->toBe(['Description', ...$expectedDescriptions]);
+})->with([
+    'newest first by default' => [
+        [['description' => 'Older', 'transaction_date' => '2026-01-01'], ['description' => 'Newer', 'transaction_date' => '2026-02-01']],
+        [],
+        ['Newer', 'Older'],
+    ],
+    'amount ascending' => [
+        [['description' => 'Big', 'amount' => -9000], ['description' => 'Small', 'amount' => -100]],
+        ['sort' => 'amount'],
+        ['Big', 'Small'],
+    ],
+    'amount descending' => [
+        [['description' => 'Big', 'amount' => -9000], ['description' => 'Small', 'amount' => -100]],
+        ['sort' => '-amount'],
+        ['Small', 'Big'],
+    ],
+    'payee with blanks first' => [
+        [['description' => 'Named', 'creditor_name' => 'Acme'], ['description' => 'Blank', 'creditor_name' => null]],
+        ['sort' => 'creditor_name'],
+        ['Blank', 'Named'],
+    ],
+]);
 
 test('the export never includes another user\'s transactions', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
@@ -181,14 +195,6 @@ test('guests cannot count transactions', function () {
 test('the list sort refuses a column it does not know', function () {
     Transaction::query()->sortedForList('-id; drop table users');
 })->throws(InvalidArgumentException::class);
-
-test('an export follows a payee sort with blanks first', function () {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Named', 'creditor_name' => 'Acme']);
-    Transaction::factory()->create(['user_id' => $user->id, 'description' => 'Blank', 'creditor_name' => null]);
-
-    expect(array_column(exportedRows($user, ['sort' => 'creditor_name']), 1))->toBe(['Description', 'Blank', 'Named']);
-});
 
 test('the export keeps its own rate limit, apart from the api routes', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);

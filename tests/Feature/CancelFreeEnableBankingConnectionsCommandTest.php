@@ -45,76 +45,52 @@ test('revokes old enable banking connections for free users and keeps accounts m
     });
 });
 
-test('skips enable banking connections created less than six hours ago', function () {
+test('leaves connections it must not cancel alone', function (Closure $createConnection, string $expectedOutput) {
     config(['subscriptions.enabled' => true]);
     Mail::fake();
 
-    $user = User::factory()->create();
-    $connection = BankingConnection::factory()->for($user)->create([
-        'created_at' => now()->subHours(5),
-    ]);
+    $connection = $createConnection(User::factory()->create());
 
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldNotReceive('revokeSession');
     app()->instance(BankingProviderInterface::class, $mockProvider);
 
     artisan('banking:cancel-free-enablebanking')
-        ->expectsOutputToContain('No eligible Enable Banking connections found for free users.')
+        ->expectsOutputToContain($expectedOutput)
         ->assertSuccessful();
 
     expect($connection->fresh()->trashed())->toBeFalse();
     expect($connection->fresh()->status)->not->toBe(BankingConnectionStatus::Revoked);
     Mail::assertNothingOutgoing();
-});
+})->with([
+    'enable banking connection created less than six hours ago' => [
+        fn (User $user): BankingConnection => BankingConnection::factory()->for($user)->create([
+            'created_at' => now()->subHours(5),
+        ]),
+        'No eligible Enable Banking connections found for free users.',
+    ],
+    'subscribed user' => [
+        function (User $user): BankingConnection {
+            $user->subscriptions()->create([
+                'type' => 'default',
+                'stripe_id' => 'sub_test123',
+                'stripe_status' => 'active',
+                'stripe_price' => 'price_test123',
+            ]);
 
-test('skips subscribed users', function () {
-    config(['subscriptions.enabled' => true]);
-    Mail::fake();
-
-    $user = User::factory()->create();
-    $user->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_test123',
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_test123',
-    ]);
-
-    $connection = BankingConnection::factory()->for($user)->create([
-        'created_at' => now()->subHours(7),
-    ]);
-
-    $mockProvider = Mockery::mock(BankingProviderInterface::class);
-    $mockProvider->shouldNotReceive('revokeSession');
-    app()->instance(BankingProviderInterface::class, $mockProvider);
-
-    artisan('banking:cancel-free-enablebanking')
-        ->expectsOutputToContain('Revoked 0 Enable Banking connection(s). Skipped paid users: 1.')
-        ->assertSuccessful();
-
-    expect($connection->fresh()->trashed())->toBeFalse();
-    Mail::assertNothingOutgoing();
-});
-
-test('skips non enable banking providers', function () {
-    config(['subscriptions.enabled' => true]);
-    Mail::fake();
-
-    $user = User::factory()->create();
-    $connection = BankingConnection::factory()->for($user)->indexaCapital()->create([
-        'created_at' => now()->subHours(7),
-    ]);
-
-    $mockProvider = Mockery::mock(BankingProviderInterface::class);
-    $mockProvider->shouldNotReceive('revokeSession');
-    app()->instance(BankingProviderInterface::class, $mockProvider);
-
-    artisan('banking:cancel-free-enablebanking')
-        ->expectsOutputToContain('No eligible Enable Banking connections found for free users.')
-        ->assertSuccessful();
-
-    expect($connection->fresh()->trashed())->toBeFalse();
-    Mail::assertNothingOutgoing();
-});
+            return BankingConnection::factory()->for($user)->create([
+                'created_at' => now()->subHours(7),
+            ]);
+        },
+        'Revoked 0 Enable Banking connection(s). Skipped paid users: 1.',
+    ],
+    'non enable banking provider' => [
+        fn (User $user): BankingConnection => BankingConnection::factory()->for($user)->indexaCapital()->create([
+            'created_at' => now()->subHours(7),
+        ]),
+        'No eligible Enable Banking connections found for free users.',
+    ],
+]);
 
 test('continues disconnect when enable banking revoke fails', function () {
     config(['subscriptions.enabled' => true]);

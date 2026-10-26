@@ -13,90 +13,36 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-test('generatePeriod advances monthly periods to next month', function () {
-    Carbon::setTestNow(Carbon::parse('2026-06-02 09:00:00'));
+test('generatePeriod opens the window that follows the latest period, or the current one when there is none', function (string $now, BudgetPeriodType $periodType, ?array $latestPeriod, string $expectedStart, string $expectedEnd) {
+    Carbon::setTestNow(Carbon::parse($now));
 
     $user = User::factory()->create(['onboarded_at' => now()]);
     $budget = Budget::factory()->create([
         'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Monthly,
+        'period_type' => $periodType,
         'period_start_day' => 1,
     ]);
 
-    BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => '2026-05-01',
-        'end_date' => '2026-05-31',
-        'allocated_amount' => 10000,
-    ]);
-
-    $next = app(BudgetPeriodService::class)->generatePeriod($budget);
-
-    expect($next->start_date->toDateString())->toBe('2026-06-01');
-    expect($next->end_date->toDateString())->toBe('2026-06-30');
-});
-
-test('generatePeriod advances weekly periods to next week', function () {
-    Carbon::setTestNow(Carbon::parse('2026-05-12 09:00:00'));
-
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Weekly,
-        'period_start_day' => 1,
-    ]);
-
-    BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => '2026-05-04',
-        'end_date' => '2026-05-10',
-        'allocated_amount' => 10000,
-    ]);
-
-    $next = app(BudgetPeriodService::class)->generatePeriod($budget);
-
-    expect($next->start_date->toDateString())->toBe('2026-05-11');
-    expect($next->end_date->toDateString())->toBe('2026-05-17');
-});
-
-test('generatePeriod advances yearly periods to next year', function () {
-    Carbon::setTestNow(Carbon::parse('2026-06-02 09:00:00'));
-
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Yearly,
-        'period_start_day' => 1,
-    ]);
-
-    BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => '2025-01-01',
-        'end_date' => '2025-12-31',
-        'allocated_amount' => 10000,
-    ]);
-
-    $next = app(BudgetPeriodService::class)->generatePeriod($budget);
-
-    expect($next->start_date->toDateString())->toBe('2026-01-01');
-    expect($next->end_date->toDateString())->toBe('2026-12-31');
-});
-
-test('generatePeriod uses period_start_day snap when no prior periods exist', function () {
-    Carbon::setTestNow(Carbon::parse('2026-05-15 09:00:00'));
-
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Monthly,
-        'period_start_day' => 1,
-    ]);
+    if ($latestPeriod !== null) {
+        BudgetPeriod::factory()->create([
+            'budget_id' => $budget->id,
+            'start_date' => $latestPeriod[0],
+            'end_date' => $latestPeriod[1],
+            'allocated_amount' => 10000,
+        ]);
+    }
 
     $period = app(BudgetPeriodService::class)->generatePeriod($budget);
 
-    expect($period->start_date->toDateString())->toBe('2026-05-01');
-    expect($period->end_date->toDateString())->toBe('2026-05-31');
-});
+    expect($period->start_date->toDateString())->toBe($expectedStart);
+    expect($period->end_date->toDateString())->toBe($expectedEnd);
+})->with([
+    'monthly advances to next month' => ['2026-06-02 09:00:00', BudgetPeriodType::Monthly, ['2026-05-01', '2026-05-31'], '2026-06-01', '2026-06-30'],
+    'weekly advances to next week' => ['2026-05-12 09:00:00', BudgetPeriodType::Weekly, ['2026-05-04', '2026-05-10'], '2026-05-11', '2026-05-17'],
+    'yearly advances to next year' => ['2026-06-02 09:00:00', BudgetPeriodType::Yearly, ['2025-01-01', '2025-12-31'], '2026-01-01', '2026-12-31'],
+    'monthly without prior periods snaps to period_start_day' => ['2026-05-15 09:00:00', BudgetPeriodType::Monthly, null, '2026-05-01', '2026-05-31'],
+    'yearly without prior periods takes the current calendar year' => ['2026-05-15 09:00:00', BudgetPeriodType::Yearly, null, '2026-01-01', '2026-12-31'],
+]);
 
 test('generatePeriod is idempotent when a period already exists for the start date', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-15 09:00:00'));
@@ -120,22 +66,6 @@ test('generatePeriod is idempotent when a period already exists for the start da
     expect($period->id)->toBe($existing->id);
     expect($period->allocated_amount)->toBe(44500);
     expect(BudgetPeriod::where('budget_id', $budget->id)->count())->toBe(1);
-});
-
-test('generatePeriod creates current calendar year when yearly budget has no prior periods', function () {
-    Carbon::setTestNow(Carbon::parse('2026-05-15 09:00:00'));
-
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Yearly,
-        'period_start_day' => 1,
-    ]);
-
-    $period = app(BudgetPeriodService::class)->generatePeriod($budget);
-
-    expect($period->start_date->toDateString())->toBe('2026-01-01');
-    expect($period->end_date->toDateString())->toBe('2026-12-31');
 });
 
 test('calculatePeriodDates aligns quarterly periods to the calendar quarter', function (string $reference, string $expectedStart, string $expectedEnd) {

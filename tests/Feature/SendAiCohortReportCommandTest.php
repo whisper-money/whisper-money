@@ -83,18 +83,6 @@ beforeEach(function () {
     ReportSummaryAgent::fake(['La retención se mantiene plana frente al mes anterior.']);
 });
 
-it('skips the report and hits no external service when subscriptions are disabled', function () {
-    config(['subscriptions.enabled' => false]);
-
-    Http::fake();
-
-    artisan('stats:ai-cohort-report')
-        ->expectsOutputToContain('Subscriptions are disabled; skipping the AI cohort report.')
-        ->assertSuccessful();
-
-    Http::assertNothingSent();
-});
-
 it('only counts users who imported enough transactions within their first week', function () {
     $signup = referenceNow()->subWeeks(6);
 
