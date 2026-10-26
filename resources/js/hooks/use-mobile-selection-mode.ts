@@ -11,7 +11,6 @@ import {
     useEffect,
     useMemo,
     useRef,
-    useState,
 } from 'react';
 
 /** How long a row has to be held before it enters selection mode. */
@@ -24,9 +23,9 @@ const LONG_PRESS_TOLERANCE_PX = 10;
 export interface RowSelectionMode {
     /** Below the `md` breakpoint, where the phone's bar replaces the desktop one. */
     isMobile: boolean;
-    /** On the phone and selecting: rows toggle on tap and the bar is up. */
+    /** On the phone with rows ticked: taps toggle rows and the bar is up. */
     isActive: boolean;
-    /** Enters selection mode with this row as the only one selected. */
+    /** Starts a selection with this row as the only one ticked. */
     enterWith: (rowId: string) => void;
     toggleRow: (rowId: string) => void;
 }
@@ -34,13 +33,8 @@ export interface RowSelectionMode {
 export interface MobileSelectionMode extends RowSelectionMode {
     selectedCount: number;
     allVisibleSelected: boolean;
-    enter: () => void;
-    /** Leaves selection mode and clears the selection. */
-    exit: () => void;
     /** Clears the selection, "all matching filters" included. */
     clear: () => void;
-    /** Clears the selection but stays in selection mode. */
-    deselectAll: () => void;
     /** Selects every loaded row, or none when they all are already. */
     toggleAllVisible: () => void;
     /** What to hand each row, so ticking one does not re-render them all. */
@@ -48,13 +42,9 @@ export interface MobileSelectionMode extends RowSelectionMode {
 }
 
 /**
- * Selection on the phone, where there is no checkbox column to reach for: a
- * mode entered by long-pressing a row (or the toolbar's Select button), in
- * which a tap toggles a row instead of opening it.
- *
- * The mode survives the user unticking the last row, so the bar can say "Tap
- * to select", but ends when the selection is emptied from elsewhere: a bulk
- * action that went through, or a filter change.
+ * Selection on the phone. The checkbox column is always there, as on desktop,
+ * and a long press on a row ticks it too. Once a row is ticked, a tap toggles a
+ * row instead of opening it, until the selection is empty again.
  */
 export function useMobileSelectionMode({
     rowSelection,
@@ -71,31 +61,12 @@ export function useMobileSelectionMode({
 }): MobileSelectionMode {
     const isMobile = useIsMobile();
     const { trigger: haptic } = useWebHaptics();
-    const [isSelecting, setIsSelecting] = useState(false);
     const selectedCount = Object.keys(rowSelection).length;
     const latestSelection = useRef(rowSelection);
-    const previousCount = useRef(selectedCount);
-    const emptiedByUser = useRef(false);
 
     useEffect(() => {
         latestSelection.current = rowSelection;
     }, [rowSelection]);
-
-    useEffect(() => {
-        const emptiedElsewhere =
-            previousCount.current > 0 &&
-            selectedCount === 0 &&
-            !emptiedByUser.current;
-
-        // Off the phone the checkbox column takes over, so the mode must not
-        // be waiting there when the viewport shrinks again.
-        if (emptiedElsewhere || !isMobile) {
-            setIsSelecting(false);
-        }
-
-        previousCount.current = selectedCount;
-        emptiedByUser.current = false;
-    }, [selectedCount, isMobile]);
 
     const visibleRowIds = useMemo(
         () => rows.map((row) => row.id.toString()),
@@ -111,29 +82,13 @@ export function useMobileSelectionMode({
         onClear?.();
     }, [setRowSelection, onClear]);
 
-    const deselectAll = useCallback(() => {
-        // Only a change of count resets the flag, so it is raised only for one.
-        if (Object.keys(latestSelection.current).length > 0) {
-            emptiedByUser.current = true;
-        }
-        clear();
-    }, [clear]);
-
-    const enter = useCallback(() => setIsSelecting(true), []);
-
     const enterWith = useCallback(
         (rowId: string) => {
             void haptic('selection');
-            setIsSelecting(true);
             setRowSelection({ [rowId]: true });
         },
         [haptic, setRowSelection],
     );
-
-    const exit = useCallback(() => {
-        setIsSelecting(false);
-        clear();
-    }, [clear]);
 
     const toggleRow = useCallback(
         (rowId: string) => {
@@ -144,15 +99,15 @@ export function useMobileSelectionMode({
             } else if (Object.keys(rest).length > 0) {
                 setRowSelection(rest);
             } else {
-                deselectAll();
+                clear();
             }
         },
-        [deselectAll, setRowSelection],
+        [clear, setRowSelection],
     );
 
     const toggleAllVisible = useCallback(() => {
         if (allVisibleSelected) {
-            deselectAll();
+            clear();
 
             return;
         }
@@ -160,9 +115,9 @@ export function useMobileSelectionMode({
         setRowSelection(
             Object.fromEntries(visibleRowIds.map((rowId) => [rowId, true])),
         );
-    }, [allVisibleSelected, deselectAll, setRowSelection, visibleRowIds]);
+    }, [allVisibleSelected, clear, setRowSelection, visibleRowIds]);
 
-    const isActive = isMobile && isSelecting;
+    const isActive = isMobile && selectedCount > 0;
 
     const forRows = useMemo(
         () => ({ isMobile, isActive, enterWith, toggleRow }),
@@ -175,28 +130,17 @@ export function useMobileSelectionMode({
             forRows,
             selectedCount,
             allVisibleSelected,
-            enter,
-            exit,
             clear,
-            deselectAll,
             toggleAllVisible,
         }),
-        [
-            forRows,
-            selectedCount,
-            allVisibleSelected,
-            enter,
-            exit,
-            clear,
-            deselectAll,
-            toggleAllVisible,
-        ],
+        [forRows, selectedCount, allVisibleSelected, clear, toggleAllVisible],
     );
 }
 
 /**
- * What a table row needs to take part in selection mode: a long press enters
- * it, and once in it a tap toggles the row where it would otherwise open it.
+ * What a table row needs to take part in selection on the phone: a long press
+ * ticks it, and while rows are ticked a tap toggles the row where it would
+ * otherwise open it.
  * Off the phone the row keeps its own click untouched.
  */
 export function useRowSelectionGesture<TData>(

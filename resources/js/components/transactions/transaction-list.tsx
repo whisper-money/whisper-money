@@ -46,7 +46,6 @@ import {
 import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
-import { SelectionModeButton } from '@/components/transactions/selection-mode-button';
 import { SplitTransactionDialog } from '@/components/transactions/split-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
@@ -185,7 +184,7 @@ function TransactionRowComponent({
 
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-            {/* A long press on the phone enters selection mode, not this menu. */}
+            {/* A long press on the phone ticks the row, not this menu. */}
             <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
                 <TableRow
                     ref={rowVirtualizer.measureElement}
@@ -783,7 +782,6 @@ export function TransactionList({
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
             isDateHidden: columnVisibility.transaction_date === false,
-            showSelectColumnOnMobile: selectionMode.isActive,
             hiddenLabelId,
             statementPayments,
         });
@@ -809,7 +807,6 @@ export function TransactionList({
         openAutomateDialog,
         hideColumns,
         columnVisibility,
-        selectionMode.isActive,
         hiddenLabelId,
         statementPayments,
     ]);
@@ -1060,9 +1057,6 @@ export function TransactionList({
                     hideAccountFilter={hideAccountFilter}
                     actions={
                         <div className="flex flex-wrap justify-end gap-2">
-                            <SelectionModeButton
-                                selectionMode={selectionMode}
-                            />
                             {showActionsMenu && (
                                 <TransactionActionsMenu
                                     transactions={transactions}

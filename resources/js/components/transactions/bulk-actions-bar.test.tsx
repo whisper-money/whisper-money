@@ -244,10 +244,7 @@ function mobileSelection(
         forRows,
         selectedCount: 3,
         allVisibleSelected: false,
-        enter: vi.fn(),
-        exit: vi.fn(),
         clear: vi.fn(),
-        deselectAll: vi.fn(),
         toggleAllVisible: vi.fn(),
         ...overrides,
     };
@@ -287,23 +284,10 @@ describe('BulkActionsBar on the phone', () => {
         expect(onClear).not.toHaveBeenCalled();
     });
 
-    it('renders nothing outside selection mode, whatever is selected', () => {
+    it('renders nothing while no row is ticked', () => {
         renderBar({ selectionMode: mobileSelection({ isActive: false }) });
 
         expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-    });
-
-    it('stays up with nothing selected, its actions disabled', () => {
-        renderBar({
-            selectedCount: 0,
-            selectionMode: mobileSelection({ selectedCount: 0 }),
-        });
-
-        expect(screen.getByTestId('bulk-selected-count')).toHaveTextContent(
-            'Tap to select',
-        );
-        expect(screen.getByTestId('bulk-category-trigger')).toBeDisabled();
-        expect(screen.getByTestId('bulk-labels-trigger')).toBeDisabled();
     });
 
     it('opens the category picker as a drawer and applies the pick', async () => {
@@ -335,13 +319,13 @@ describe('BulkActionsBar on the phone', () => {
         openMoreActions();
         fireEvent.click(await screen.findByText('Select all matching filters'));
         openMoreActions();
-        fireEvent.click(await screen.findByText('Done'));
+        fireEvent.click(await screen.findByText('Clear selection'));
 
         expect(onReEvaluateRules).toHaveBeenCalledOnce();
         expect(onDelete).toHaveBeenCalledOnce();
         expect(onSelectAll).toHaveBeenCalledOnce();
         expect(selectionMode.toggleAllVisible).toHaveBeenCalledOnce();
-        expect(selectionMode.exit).toHaveBeenCalledOnce();
+        expect(selectionMode.clear).toHaveBeenCalledOnce();
     });
 
     it('disables delete while every matching row is selected', async () => {
@@ -369,7 +353,7 @@ describe('BulkActionsBar on the phone', () => {
 
         expect(onSelectOnlyVisible).toHaveBeenCalledOnce();
         // Drops "all matching filters" too, not just the loaded rows.
-        expect(selectionMode.deselectAll).toHaveBeenCalledOnce();
+        expect(selectionMode.clear).toHaveBeenCalledOnce();
         expect(selectionMode.toggleAllVisible).not.toHaveBeenCalled();
     });
 });

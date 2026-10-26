@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe('useMobileSelectionMode', () => {
-    it('enters with a single row selected', () => {
+    it('starts with a single row selected', () => {
         const { result } = renderSelectionMode();
 
         act(() => result.current.selection.enterWith('b'));
@@ -50,43 +50,32 @@ describe('useMobileSelectionMode', () => {
         expect(result.current.rowSelection).toEqual({ b: true });
     });
 
-    it('stays on when the user unticks the last row', () => {
+    it('turns on as soon as a row is ticked from its checkbox', () => {
         const { result } = renderSelectionMode();
-
-        act(() => result.current.selection.enterWith('a'));
-        act(() => result.current.selection.toggleRow('a'));
-
-        expect(result.current.rowSelection).toEqual({});
-        expect(result.current.selection.isActive).toBe(true);
-        expect(result.current.selection.selectedCount).toBe(0);
-    });
-
-    it('ends when the selection is emptied from elsewhere, e.g. a bulk action', () => {
-        const { result } = renderSelectionMode();
-
-        act(() => result.current.selection.enterWith('a'));
-        act(() => result.current.setRowSelection({}));
 
         expect(result.current.selection.isActive).toBe(false);
+
+        act(() => result.current.setRowSelection({ c: true }));
+
+        expect(result.current.selection.isActive).toBe(true);
+        expect(result.current.selection.selectedCount).toBe(1);
     });
 
-    it('clears what the page keeps when the user unticks the last row', () => {
+    it('turns off and clears what the page keeps when the last row is unticked', () => {
         const { result, onClear } = renderSelectionMode();
 
         act(() => result.current.selection.enterWith('a'));
         act(() => result.current.selection.toggleRow('a'));
 
+        expect(result.current.rowSelection).toEqual({});
+        expect(result.current.selection.isActive).toBe(false);
         expect(onClear).toHaveBeenCalledOnce();
     });
 
-    it('still ends on an outside clear after a tap that changed nothing', () => {
+    it('turns off when the selection is emptied from elsewhere, e.g. a bulk action', () => {
         const { result } = renderSelectionMode();
 
-        act(() => result.current.selection.enter());
-        // Nothing to clear: the count stays at 0, so the user flag must not
-        // be left raised for the next change.
-        act(() => result.current.selection.deselectAll());
-        act(() => result.current.selection.toggleRow('a'));
+        act(() => result.current.selection.enterWith('a'));
         act(() => result.current.setRowSelection({}));
 
         expect(result.current.selection.isActive).toBe(false);
@@ -102,11 +91,11 @@ describe('useMobileSelectionMode', () => {
         expect(result.current.selection.forRows).toBe(forRows);
     });
 
-    it('clears the selection on exit', () => {
+    it('clears the selection and what the page keeps', () => {
         const { result, onClear } = renderSelectionMode();
 
         act(() => result.current.selection.enterWith('a'));
-        act(() => result.current.selection.exit());
+        act(() => result.current.selection.clear());
 
         expect(onClear).toHaveBeenCalledOnce();
         expect(result.current.selection.isActive).toBe(false);
@@ -115,7 +104,6 @@ describe('useMobileSelectionMode', () => {
     it('selects every visible row, then none', () => {
         const { result } = renderSelectionMode();
 
-        act(() => result.current.selection.enter());
         act(() => result.current.selection.toggleAllVisible());
 
         expect(result.current.rowSelection).toEqual({
@@ -128,28 +116,16 @@ describe('useMobileSelectionMode', () => {
         act(() => result.current.selection.toggleAllVisible());
 
         expect(result.current.rowSelection).toEqual({});
-        expect(result.current.selection.isActive).toBe(true);
+        expect(result.current.selection.isActive).toBe(false);
     });
 
     it('is never active off the phone', () => {
         isMobile.value = false;
         const { result } = renderSelectionMode();
 
-        act(() => result.current.selection.enter());
+        act(() => result.current.selection.enterWith('a'));
 
         expect(result.current.selection.isMobile).toBe(false);
-        expect(result.current.selection.isActive).toBe(false);
-    });
-
-    it('ends when the viewport grows past the phone', () => {
-        const { result, rerender } = renderSelectionMode();
-
-        act(() => result.current.selection.enter());
-        isMobile.value = false;
-        rerender();
-        isMobile.value = true;
-        rerender();
-
         expect(result.current.selection.isActive).toBe(false);
     });
 });

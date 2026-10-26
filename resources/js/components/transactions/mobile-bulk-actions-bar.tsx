@@ -40,7 +40,7 @@ const MENU_ITEM_CLASS =
 
 /**
  * The phone's bulk-actions bar: one compact row pinned to the bottom while
- * selection mode is on, with Category and Labels opening their pickers as
+ * rows are ticked, with Category and Labels opening their pickers as
  * bottom drawers and the rest behind a ⋯ menu. No keyboard shortcuts here.
  */
 export function MobileBulkActionsBar({
@@ -62,14 +62,9 @@ export function MobileBulkActionsBar({
         return null;
     }
 
-    const hasSelection = selectedCount > 0 || isSelectingAll;
-    const actionsDisabled = !hasSelection || isUpdating;
     const countLabel = isSelectingAll
         ? __('All matching filters')
-        : hasSelection
-          ? `${selectedCount} ${__('selected')}`
-          : __('Tap to select');
-    const drawerDescription = hasSelection ? countLabel : undefined;
+        : `${selectedCount} ${__('selected')}`;
 
     function selectAllMatching() {
         if (!selectionMode.allVisibleSelected) {
@@ -87,10 +82,7 @@ export function MobileBulkActionsBar({
         >
             <span
                 role="status"
-                className={cn(
-                    'min-w-0 flex-1 truncate text-[15px] font-semibold',
-                    !hasSelection && 'font-medium text-primary-foreground/60',
-                )}
+                className="min-w-0 flex-1 truncate text-[15px] font-semibold"
                 data-testid="bulk-selected-count"
             >
                 {countLabel}
@@ -101,12 +93,12 @@ export function MobileBulkActionsBar({
                 onCategoryChange={onCategoryChange}
                 drawer={{
                     title: __('Change category'),
-                    description: drawerDescription,
+                    description: countLabel,
                 }}
                 trigger={
                     <Button
                         type="button"
-                        disabled={actionsDisabled}
+                        disabled={isUpdating}
                         className="h-11 gap-2 rounded-xl bg-primary-foreground px-3.5 font-semibold text-primary shadow-none hover:bg-primary-foreground/90 focus-visible:ring-primary-foreground/30"
                         data-testid="bulk-category-trigger"
                     >
@@ -122,13 +114,13 @@ export function MobileBulkActionsBar({
                 onLabelCreated={onLabelCreated}
                 drawer={{
                     title: __('Add labels'),
-                    description: drawerDescription,
+                    description: countLabel,
                 }}
                 trigger={
                     <Button
                         type="button"
                         size="icon"
-                        disabled={actionsDisabled}
+                        disabled={isUpdating}
                         aria-label={__('Labels')}
                         className={ICON_BUTTON_CLASS}
                         data-testid="bulk-labels-trigger"
@@ -163,7 +155,7 @@ export function MobileBulkActionsBar({
                         // loaded ones alone would leave the filter selected.
                         onSelect={() =>
                             isSelectingAll
-                                ? selectionMode.deselectAll()
+                                ? selectionMode.clear()
                                 : selectionMode.toggleAllVisible()
                         }
                     >
@@ -194,7 +186,7 @@ export function MobileBulkActionsBar({
                     <DropdownMenuSeparator className="mx-2 bg-primary-foreground/15" />
                     <DropdownMenuItem
                         className={MENU_ITEM_CLASS}
-                        disabled={actionsDisabled}
+                        disabled={isUpdating}
                         onSelect={() => onReEvaluateRules()}
                     >
                         <WandSparkles />
@@ -205,7 +197,7 @@ export function MobileBulkActionsBar({
                             MENU_ITEM_CLASS,
                             'text-red-300 focus:text-red-200 dark:text-red-700 dark:focus:text-red-800 [&_svg]:!text-current',
                         )}
-                        disabled={actionsDisabled || isSelectingAll}
+                        disabled={isUpdating || isSelectingAll}
                         onSelect={() => onDelete()}
                     >
                         <Trash2 />
@@ -216,10 +208,10 @@ export function MobileBulkActionsBar({
                     <DropdownMenuSeparator className="mx-2 bg-primary-foreground/15" />
                     <DropdownMenuItem
                         className={MENU_ITEM_CLASS}
-                        onSelect={() => selectionMode.exit()}
+                        onSelect={() => selectionMode.clear()}
                     >
                         <X />
-                        {__('Done')}
+                        {__('Clear selection')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
