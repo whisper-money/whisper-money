@@ -218,13 +218,17 @@ it('loads the next page of movements on demand', function () {
 it('reorders the list from the date column header', function () {
     $page = visit('/transactions');
 
-    // Newest first by default.
+    // Newest first by default, grouped by day: the first row is the header of
+    // the newest day and the first transaction sits right under it.
     $page->assertSee('Weekly groceries market')
-        ->assertSeeIn('tr[data-index="0"]', 'Weekly groceries market');
+        ->assertPresent('tr[data-index="0"][data-testid="transaction-day-header"]')
+        ->assertSeeIn('tr[data-index="1"]', 'Weekly groceries market');
 
+    // The Date column steps aside while grouped, so its sort button sits in
+    // the Category heading.
     $page->click('th button:has-text("Date")')
         ->assertQueryStringHas('sort', 'transaction_date')
-        ->assertSeeIn('tr[data-index="0"]', 'Gym membership fee')
+        ->assertSeeIn('tr[data-index="1"]', 'Gym membership fee')
         ->assertNoJavascriptErrors();
 });
 

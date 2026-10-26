@@ -1,6 +1,6 @@
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { ColumnDef } from '@tanstack/react-table';
+import { Column, ColumnDef } from '@tanstack/react-table';
 import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { Fragment } from 'react';
@@ -75,6 +75,39 @@ interface CreateColumnsOptions {
 const selectCheckboxClassName =
     'ml-2 max-md:relative max-md:size-5 max-md:after:absolute max-md:after:-inset-2.5 max-md:[&_svg]:size-4';
 
+/**
+ * A column heading that sorts on click. The sort direction comes in as a prop:
+ * read off the column, the React Compiler would memoize the arrow in place.
+ */
+function SortableHeader({
+    column,
+    sorted,
+    label,
+    className,
+}: {
+    column: Column<ServerTransaction>;
+    sorted: false | 'asc' | 'desc';
+    label: string;
+    className?: string;
+}) {
+    return (
+        <Button
+            variant="ghost"
+            className={className}
+            onClick={() => column.toggleSorting(sorted === 'asc')}
+        >
+            {label}
+            {sorted === 'desc' ? (
+                <ArrowDown className="h-3 w-3" />
+            ) : sorted === 'asc' ? (
+                <ArrowUp className="h-3 w-3" />
+            ) : (
+                <ArrowUpDown className="h-3 w-3 opacity-25" />
+            )}
+        </Button>
+    );
+}
+
 export function createTransactionColumns({
     categories,
     accounts,
@@ -133,26 +166,14 @@ export function createTransactionColumns({
                 label: __('Date'),
                 cellClassName: 'whitespace-normal',
             },
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        className="px-0"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === 'asc')
-                        }
-                    >
-                        {__('Date')}
-                        {column.getIsSorted() === 'desc' ? (
-                            <ArrowDown className="h-3 w-3" />
-                        ) : column.getIsSorted() === 'asc' ? (
-                            <ArrowUp className="h-3 w-3" />
-                        ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-25" />
-                        )}
-                    </Button>
-                );
-            },
+            header: ({ column }) => (
+                <SortableHeader
+                    column={column}
+                    sorted={column.getIsSorted()}
+                    label={__('Date')}
+                    className="px-0"
+                />
+            ),
             cell: ({ row }) => {
                 const date = parseISO(row.getValue('transaction_date'));
                 const currentYear = getYear(new Date());
@@ -177,7 +198,28 @@ export function createTransactionColumns({
                 label: __('Category'),
                 cellClassName: `${isDateHidden ? 'pl-2' : 'pl-0'} max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal`,
             },
-            header: () => __('Category'),
+            // The Date column steps aside while grouped by day, but the order
+            // it sets must stay reachable: its button moves in front of the
+            // Category heading, right above the day headers carrying the date.
+            header: ({ table }) => {
+                const dateColumn = table.getColumn('transaction_date');
+
+                if (!isGroupedByDay || !dateColumn) {
+                    return __('Category');
+                }
+
+                return (
+                    <div className="flex items-center gap-3">
+                        <SortableHeader
+                            column={dateColumn}
+                            sorted={dateColumn.getIsSorted()}
+                            label={__('Date')}
+                            className="px-0"
+                        />
+                        <span>{__('Category')}</span>
+                    </div>
+                );
+            },
             cell: ({ row }) => {
                 return (
                     <CategoryCell
@@ -298,25 +340,13 @@ export function createTransactionColumns({
                 label: __('Creditor'),
                 cellClassName: 'max-w-[180px] whitespace-normal',
             },
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === 'asc')
-                        }
-                    >
-                        {__('Creditor')}
-                        {column.getIsSorted() === 'desc' ? (
-                            <ArrowDown className="h-3 w-3" />
-                        ) : column.getIsSorted() === 'asc' ? (
-                            <ArrowUp className="h-3 w-3" />
-                        ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-25" />
-                        )}
-                    </Button>
-                );
-            },
+            header: ({ column }) => (
+                <SortableHeader
+                    column={column}
+                    sorted={column.getIsSorted()}
+                    label={__('Creditor')}
+                />
+            ),
             cell: ({ row }) => {
                 const creditorName = row.original.creditor_name;
 
@@ -334,25 +364,13 @@ export function createTransactionColumns({
                 label: __('Debtor'),
                 cellClassName: 'max-w-[180px] whitespace-normal',
             },
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === 'asc')
-                        }
-                    >
-                        {__('Debtor')}
-                        {column.getIsSorted() === 'desc' ? (
-                            <ArrowDown className="h-3 w-3" />
-                        ) : column.getIsSorted() === 'asc' ? (
-                            <ArrowUp className="h-3 w-3" />
-                        ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-25" />
-                        )}
-                    </Button>
-                );
-            },
+            header: ({ column }) => (
+                <SortableHeader
+                    column={column}
+                    sorted={column.getIsSorted()}
+                    label={__('Debtor')}
+                />
+            ),
             cell: ({ row }) => {
                 const debtorName = row.original.debtor_name;
 
