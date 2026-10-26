@@ -5,15 +5,15 @@ use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\User;
 
-test('command resets categories for a user by ID', function () {
-    $user = User::factory()->create();
-    Category::factory()->count(5)->create(['user_id' => $user->id]);
+test('command resets the categories of a user', function (string $identifiedBy, int $existing, string $deletedLine) {
+    $user = User::factory()->create(['email' => 'test@example.com']);
+    Category::factory()->count($existing)->create(['user_id' => $user->id]);
 
-    expect($user->categories()->count())->toBe(5);
+    expect($user->categories()->count())->toBe($existing);
 
-    $this->artisan('categories:reset', ['user' => $user->id])
-        ->expectsOutput("Resetting categories for user: {$user->name} ({$user->email})")
-        ->expectsOutput('Deleted 5 existing categories.')
+    $this->artisan('categories:reset', ['user' => $user->{$identifiedBy}])
+        ->expectsOutput("Resetting categories for user: {$user->name} (test@example.com)")
+        ->expectsOutput($deletedLine)
         ->expectsOutput('Created 64 default categories.')
         ->expectsOutput('✓ Categories reset successfully!')
         ->assertSuccessful();
@@ -31,47 +31,17 @@ test('command resets categories for a user by ID', function () {
     expect($user->categories()->where('name', 'From account of relatives')->first())
         ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
-});
+})->with([
+    'found by id' => ['id', 5, 'Deleted 5 existing categories.'],
+    'found by email' => ['email', 3, 'Deleted 3 existing categories.'],
+    'with no categories yet' => ['id', 0, 'No existing categories found.'],
+]);
 
-test('command resets categories for a user by email', function () {
-    $user = User::factory()->create(['email' => 'test@example.com']);
-    Category::factory()->count(3)->create(['user_id' => $user->id]);
-
-    expect($user->categories()->count())->toBe(3);
-
-    $this->artisan('categories:reset', ['user' => 'test@example.com'])
-        ->expectsOutput("Resetting categories for user: {$user->name} (test@example.com)")
-        ->expectsOutput('Deleted 3 existing categories.')
-        ->expectsOutput('Created 64 default categories.')
-        ->expectsOutput('✓ Categories reset successfully!')
-        ->assertSuccessful();
-
-    expect($user->fresh()->categories()->count())->toBe(64);
-});
-
-test('command works when user has no existing categories', function () {
-    $user = User::factory()->create();
-
-    expect($user->categories()->count())->toBe(0);
-
-    $this->artisan('categories:reset', ['user' => $user->id])
-        ->expectsOutput("Resetting categories for user: {$user->name} ({$user->email})")
-        ->expectsOutput('No existing categories found.')
-        ->expectsOutput('Created 64 default categories.')
-        ->expectsOutput('✓ Categories reset successfully!')
-        ->assertSuccessful();
-
-    expect($user->fresh()->categories()->count())->toBe(64);
-});
-
-test('command fails when user is not found by ID', function () {
-    $this->artisan('categories:reset', ['user' => 99999])
-        ->expectsOutput('User not found: 99999')
+test('command fails when the user is not found', function (int|string $identifier) {
+    $this->artisan('categories:reset', ['user' => $identifier])
+        ->expectsOutput("User not found: {$identifier}")
         ->assertFailed();
-});
-
-test('command fails when user is not found by email', function () {
-    $this->artisan('categories:reset', ['user' => 'nonexistent@example.com'])
-        ->expectsOutput('User not found: nonexistent@example.com')
-        ->assertFailed();
-});
+})->with([
+    'by id' => 99999,
+    'by email' => 'nonexistent@example.com',
+]);

@@ -37,35 +37,19 @@ test('all drip email jobs are dispatched when user registers', function () {
     });
 });
 
-test('welcome email job is dispatched with delay', function () {
+test('drip email job is dispatched with delay', function (string $job) {
     $user = User::factory()->create();
 
     event(new Registered($user));
 
-    Queue::assertPushed(SendWelcomeEmailJob::class, function ($job) {
-        return $job->delay !== null;
+    Queue::assertPushed($job, function ($pushed) {
+        return $pushed->delay !== null;
     });
-});
-
-test('onboarding reminder job is dispatched with delay', function () {
-    $user = User::factory()->create();
-
-    event(new Registered($user));
-
-    Queue::assertPushed(SendOnboardingReminderEmailJob::class, function ($job) {
-        return $job->delay !== null;
-    });
-});
-
-test('feedback email job is dispatched with delay', function () {
-    $user = User::factory()->create();
-
-    event(new Registered($user));
-
-    Queue::assertPushed(SendFeedbackEmailJob::class, function ($job) {
-        return $job->delay !== null;
-    });
-});
+})->with([
+    'welcome' => SendWelcomeEmailJob::class,
+    'onboarding reminder' => SendOnboardingReminderEmailJob::class,
+    'feedback' => SendFeedbackEmailJob::class,
+]);
 
 test('all jobs are dispatched to the emails queue', function () {
     $user = User::factory()->create();

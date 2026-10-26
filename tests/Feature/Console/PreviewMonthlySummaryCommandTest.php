@@ -181,37 +181,26 @@ it('never asks the model for a case that carries no analysis', function (): void
     Mail::assertSentCount(1);
 });
 
-it('falls back to the sample text when the model cannot be reached', function (): void {
+it('falls back to the sample text when the model has no analysis to give', function (Closure $draft): void {
+    Mail::fake();
+    $this->mock(AnalysisWriter::class, fn ($mock) => $draft($mock->shouldReceive('draft')));
+
+    $this->artisan('email:monthly-summary-preview', [
+        'email' => 'look@whisper.test',
+        '--source' => previewSource()->email,
+        '--type' => 'pro',
+        '--ai' => true,
+    ])->assertSuccessful();
+
+    Mail::assertSent(MonthlySummaryEmail::class, fn (MonthlySummaryEmail $mail): bool => str_contains((string) $mail->analysis, '[TEXTO DE MUESTRA]'));
+})->with([
     // A real send holds the report and comes back for an unreachable model, so
     // `draft()` hands the failure back rather than returning null. A preview has
     // nowhere to come back to: it says so and shows the sample.
-    Mail::fake();
-    $this->mock(AnalysisWriter::class, fn ($mock) => $mock->shouldReceive('draft')->andThrow(
+    'the model cannot be reached' => fn ($expectation) => $expectation->andThrow(
         new ConnectionException('cURL error 28: Operation timed out after 30002 milliseconds with 0 bytes received'),
-    ));
-
-    $this->artisan('email:monthly-summary-preview', [
-        'email' => 'look@whisper.test',
-        '--source' => previewSource()->email,
-        '--type' => 'pro',
-        '--ai' => true,
-    ])->assertSuccessful();
-
-    Mail::assertSent(MonthlySummaryEmail::class, fn (MonthlySummaryEmail $mail): bool => str_contains((string) $mail->analysis, '[TEXTO DE MUESTRA]'));
-});
-
-it('falls back to the sample text when the model gives up', function (): void {
+    ),
     // An empty analysis block reads exactly like the locked one, which would
     // send whoever is reviewing looking for a bug that is not there.
-    Mail::fake();
-    $this->mock(AnalysisWriter::class, fn ($mock) => $mock->shouldReceive('draft')->andReturnNull());
-
-    $this->artisan('email:monthly-summary-preview', [
-        'email' => 'look@whisper.test',
-        '--source' => previewSource()->email,
-        '--type' => 'pro',
-        '--ai' => true,
-    ])->assertSuccessful();
-
-    Mail::assertSent(MonthlySummaryEmail::class, fn (MonthlySummaryEmail $mail): bool => str_contains((string) $mail->analysis, '[TEXTO DE MUESTRA]'));
-});
+    'the model gives up' => fn ($expectation) => $expectation->andReturnNull(),
+]);

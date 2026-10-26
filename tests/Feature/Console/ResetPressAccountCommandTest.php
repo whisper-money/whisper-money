@@ -12,21 +12,18 @@ beforeEach(function () {
     ]]);
 });
 
-test('demo:reset --press fails when the press account is not configured', function () {
-    config(['app.press.email' => null]);
+test('demo:reset --press fails when the press account is not configured', function (array $config) {
+    config(['app.press.email' => null, ...$config]);
 
     $this->artisan('demo:reset --press')->assertFailed();
 
     expect(User::where('email', 'prensa@whisper.money')->exists())->toBeFalse();
-});
-
-test('demo:reset --press ignores DEMO_ENABLED', function () {
-    config(['app.demo.enabled' => false, 'app.press.email' => null]);
-
+})->with([
+    'demo setting left alone' => [[]],
     // Failing on the missing press config (rather than reporting the demo as
     // disabled) is what proves the demo switch is not consulted.
-    $this->artisan('demo:reset --press')->assertFailed();
-});
+    'demo disabled' => [['app.demo.enabled' => false]],
+]);
 
 test('demo:reset --press seeds a Spanish account that survives a re-run', function () {
     config(['subscriptions.enabled' => true]);

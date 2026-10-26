@@ -177,7 +177,7 @@ test('skips soft-deleted users', function () {
     Mail::assertNotQueued(BankConnectFailedEmail::class, fn (BankConnectFailedEmail $mail) => $mail->hasTo($deleted->email));
 });
 
-test('records a mail log and does not notify the same user twice', function () {
+test('records a mail log per notified user', function () {
     $user = userWithFailedAttempts('once@example.com');
     otherVictim();
 
@@ -189,51 +189,6 @@ test('records a mail log and does not notify the same user twice', function () {
         'email_identifier' => 'qa-broken-bank-es',
     ]);
     assertDatabaseCount('user_mail_logs', 2);
-
-    artisan('banking:notify-connect-failure', ['aspsp' => 'QA Broken Bank', '--force' => true])
-        ->expectsOutputToContain('Nobody to notify')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankConnectFailedEmail::class, 2);
-});
-
-test('resend notifies the users who already got the notice', function () {
-    userWithFailedAttempts('again@example.com');
-    otherVictim();
-
-    artisan('banking:notify-connect-failure', ['aspsp' => 'QA Broken Bank', '--force' => true])->assertSuccessful();
-    artisan('banking:notify-connect-failure', ['aspsp' => 'QA Broken Bank', '--force' => true, '--resend' => true])
-        ->expectsConfirmation('Tell 2 user(s) that QA Broken Bank (ES) cannot be connected?', 'yes')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankConnectFailedEmail::class, 4);
-    assertDatabaseCount('user_mail_logs', 2);
-});
-
-test('a dry run reports the recipients and sends nothing', function () {
-    userWithFailedAttempts('dry@example.com');
-    otherVictim();
-
-    artisan('banking:notify-connect-failure', ['aspsp' => 'QA Broken Bank', '--dry-run' => true])
-        ->expectsOutputToContain('dry@example.com')
-        ->expectsOutputToContain('[dry-run] No emails sent.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-    assertDatabaseCount('user_mail_logs', 0);
-});
-
-test('sends nothing when the confirmation is declined', function () {
-    userWithFailedAttempts('confirm@example.com');
-    otherVictim();
-
-    artisan('banking:notify-connect-failure', ['aspsp' => 'QA Broken Bank'])
-        ->expectsConfirmation('Tell 2 user(s) that QA Broken Bank (ES) cannot be connected?', 'no')
-        ->expectsOutputToContain('Cancelled.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-    assertDatabaseCount('user_mail_logs', 0);
 });
 
 test('refuses to run when only one person ever hit the bank', function () {

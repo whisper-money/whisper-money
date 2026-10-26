@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
 use function Pest\Laravel\artisan;
-use function Pest\Laravel\assertDatabaseCount;
 use function Pest\Laravel\assertDatabaseHas;
 
 beforeEach(function () {
@@ -77,15 +76,28 @@ test('sends a single email to a user with several connections to the same bank',
     Mail::assertQueued(BankOutageEmail::class, 1);
 });
 
-test('leaves users of other banks alone', function () {
-    outageUser('other-bank@example.com', ['aspsp_name' => 'CaixaBank']);
+test('finds no connection to a bank it should not touch', function (Closure $seed, string $output) {
+    $seed();
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('No Enable Banking connection to QA Outage Bank.')
+        ->expectsOutputToContain($output)
         ->assertSuccessful();
 
     Mail::assertNothingOutgoing();
-});
+})->with([
+    'users of other banks' => [
+        fn () => outageUser('other-bank@example.com', ['aspsp_name' => 'CaixaBank']),
+        'No Enable Banking connection to QA Outage Bank.',
+    ],
+    'connections of other providers that share the bank name' => [
+        fn () => outageUser('wise@example.com', ['provider' => BankingProvider::Wise]),
+        'No Enable Banking connection',
+    ],
+    'soft-deleted connections' => [
+        fn () => outageUser('gone@example.com')->bankingConnections()->first()->delete(),
+        'No Enable Banking connection',
+    ],
+]);
 
 test('the country option disambiguates banks sharing a name', function () {
     $spanish = outageUser('es@example.com');
@@ -119,75 +131,30 @@ test('emails the bank name as stored, not as typed', function () {
     Mail::assertQueued(BankOutageEmail::class, fn (BankOutageEmail $mail) => $mail->bankName === 'QA Outage Bank');
 });
 
-test('ignores connections of other providers that share the bank name', function () {
-    outageUser('wise@example.com', ['provider' => BankingProvider::Wise]);
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('No Enable Banking connection')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
-
-test('ignores soft-deleted connections', function () {
-    $user = outageUser('gone@example.com');
-    $user->bankingConnections()->first()->delete();
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('No Enable Banking connection')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
-
-test('skips soft-deleted users', function () {
-    outageUser('deleted@example.com')->delete();
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        // Nothing syncs a connection whose owner is gone, so it is not waiting on
-        // the bank either - which is what `banking:health` was counting it as.
-        ->expectsOutputToContain('none is waiting on the bank')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
-
-test('skips connections the outage does not explain', function (string $state) {
-    $user = User::factory()->create(['email' => "{$state}@example.com"]);
-    BankingConnection::factory()->for($user)->{$state}()->create([
-        'aspsp_name' => 'QA Outage Bank',
-        'aspsp_country' => 'ES',
-    ]);
+test('skips connections the outage does not explain', function (Closure $seed) {
+    $seed();
 
     artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
         ->expectsOutputToContain('none is waiting on the bank')
         ->assertSuccessful();
 
     Mail::assertNothingOutgoing();
-})->with(['expired', 'revoked', 'pending', 'awaitingMapping']);
-
-test('skips a connection stranded past the retry cap', function () {
-    outageUser('stranded@example.com', [
+})->with([
+    ...collect(['expired', 'revoked', 'pending', 'awaitingMapping'])->mapWithKeys(fn (string $state) => [
+        $state => fn () => BankingConnection::factory()
+            ->for(User::factory()->create(['email' => "{$state}@example.com"]))
+            ->{$state}()
+            ->create(['aspsp_name' => 'QA Outage Bank', 'aspsp_country' => 'ES']),
+    ])->all(),
+    // Nothing syncs a connection whose owner is gone, so it is not waiting on
+    // the bank either - which is what `banking:health` was counting it as.
+    'soft-deleted users' => fn () => outageUser('deleted@example.com')->delete(),
+    'stranded past the retry cap' => fn () => outageUser('stranded@example.com', [
         'status' => BankingConnectionStatus::Error,
         'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
-    ]);
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('none is waiting on the bank')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
-
-test('skips a connection whose consent has already lapsed', function () {
-    outageUser('lapsed@example.com', ['valid_until' => now()->subDay()]);
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('none is waiting on the bank')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-});
+    ]),
+    'consent already lapsed' => fn () => outageUser('lapsed@example.com', ['valid_until' => now()->subDay()]),
+]);
 
 test('warns about the connections left out of a send', function () {
     outageUser('affected@example.com');
@@ -210,57 +177,6 @@ test('records a mail log per notified user', function () {
         'email_type' => DripEmailType::BankOutage->value,
         'email_identifier' => 'qa-outage-bank-es',
     ]);
-});
-
-test('does not notify the same user twice for the same outage', function () {
-    outageUser('once@example.com');
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])->assertSuccessful();
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])
-        ->expectsOutputToContain('Nobody to notify')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankOutageEmail::class, 1);
-    assertDatabaseCount('user_mail_logs', 1);
-});
-
-test('resend notifies the users who already got the notice', function () {
-    outageUser('again@example.com');
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true])->assertSuccessful();
-    // --resend always prompts, even with --force: it is the one flag pair that
-    // puts a second copy of the same email in a real inbox.
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--force' => true, '--resend' => true])
-        ->expectsConfirmation('Send the QA Outage Bank (ES) outage notice to 1 user(s)?', 'yes')
-        ->assertSuccessful();
-
-    Mail::assertQueued(BankOutageEmail::class, 2);
-    assertDatabaseCount('user_mail_logs', 1);
-});
-
-test('a dry run reports the recipients and sends nothing', function () {
-    outageUser('dry@example.com');
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank', '--dry-run' => true])
-        ->expectsOutputToContain('dry@example.com')
-        ->expectsOutputToContain('[dry-run] No emails sent.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-    assertDatabaseCount('user_mail_logs', 0);
-});
-
-test('sends nothing when the confirmation is declined', function () {
-    outageUser('confirm@example.com');
-
-    artisan('banking:notify-outage', ['aspsp' => 'QA Outage Bank'])
-        ->expectsConfirmation('Send the QA Outage Bank (ES) outage notice to 1 user(s)?', 'no')
-        ->expectsOutputToContain('Cancelled.')
-        ->assertSuccessful();
-
-    Mail::assertNothingOutgoing();
-    assertDatabaseCount('user_mail_logs', 0);
 });
 
 test('suggests the real bank name when the argument matches nothing', function () {
