@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Transaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * How many transactions each day holds and what they add up to, for the day
@@ -52,11 +53,11 @@ class TransactionDayTotals
         // Only days holding another currency need a rate, so a reader who
         // keeps everything in one currency never reads the rates table here.
         $this->exchangeRateService->preloadRates($currency, $groups
-            ->reject(fn (object $group): bool => strcasecmp($group->currency_code, $currency) === 0)
-            ->map(fn (object $group): string => $this->dayOf($group)));
+            ->reject(fn (stdClass $group): bool => strcasecmp($group->currency_code, $currency) === 0)
+            ->map(fn (stdClass $group): string => $this->dayOf($group)));
 
         return $groups
-            ->groupBy(fn (object $group): string => $this->dayOf($group))
+            ->groupBy(fn (stdClass $group): string => $this->dayOf($group))
             ->map(fn (Collection $day, string $date): array => [
                 'count' => (int) $day->sum('transactions_count'),
                 'total' => $this->convertedTotal($day, $currency, $date),
@@ -65,7 +66,7 @@ class TransactionDayTotals
     }
 
     /**
-     * @param  Collection<int, object>  $day
+     * @param  Collection<int, stdClass>  $day
      */
     private function convertedTotal(Collection $day, string $currency, string $date): ?int
     {
@@ -87,7 +88,7 @@ class TransactionDayTotals
     /**
      * The group's day as `Y-m-d`, whichever way the driver hands the DATE back.
      */
-    private function dayOf(object $group): string
+    private function dayOf(stdClass $group): string
     {
         return substr((string) $group->transaction_date, 0, 10);
     }
