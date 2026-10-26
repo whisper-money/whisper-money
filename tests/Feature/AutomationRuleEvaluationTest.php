@@ -24,7 +24,7 @@ beforeEach(function () {
     $this->category = Category::factory()->create(['user_id' => $this->user->id]);
 });
 
-test('assigns the rule category only when the rule matches the transaction', function (array $rulesJson, array $attributes, bool $matches) {
+test('assigns the rule category when the rule matches the transaction', function (array $rulesJson, array $attributes) {
     AutomationRule::factory()->create([
         'user_id' => $this->user->id,
         'priority' => 1,
@@ -40,74 +40,81 @@ test('assigns the rule category only when the rule matches the transaction', fun
 
     app(AutomationRuleService::class)->applyRules($transaction);
 
-    expect($transaction->fresh()->category_id)->toBe($matches ? $this->category->id : null);
+    expect($transaction->fresh()->category_id)->toBe($this->category->id);
 })->with([
     '"in" on the description' => [
         ['in' => ['grocery', ['var' => 'description']]],
         ['description' => 'Grocery Store Purchase', 'amount' => -5000],
-        true,
     ],
     '"in" on the creditor name' => [
         ['in' => ['amazon', ['var' => 'creditor_name']]],
         ['description' => 'Card payment', 'creditor_name' => 'Amazon EU', 'amount' => -5000],
-        true,
     ],
     '"in" on the debtor name' => [
         ['in' => ['payroll', ['var' => 'debtor_name']]],
         ['description' => 'Incoming transfer', 'debtor_name' => 'Payroll GmbH', 'amount' => 500000],
-        true,
     ],
     // "Does not contain" is how a user writes an exception, and a transaction whose
     // creditor the bank never sent is one the exception should cover.
     '"does not contain" with no creditor name' => [
         ['!' => ['in' => ['amazon', ['var' => 'creditor_name']]]],
         ['description' => 'Card payment', 'creditor_name' => null, 'amount' => -2000],
-        true,
-    ],
-    '"does not equal" skips the exact description it excludes' => [
-        ['!=' => [['var' => 'description'], 'salary payment']],
-        ['description' => 'Salary Payment', 'amount' => 100000, 'category_id' => null],
-        false,
     ],
     'case-insensitive match' => [
         ['in' => ['GROCERY', ['var' => 'description']]],
         ['description' => 'grocery store', 'amount' => -3000],
-        true,
     ],
     'bank_name field' => [
         ['==' => [['var' => 'bank_name'], 'test bank']],
         ['description' => 'Some Payment', 'amount' => -1000],
-        true,
     ],
     'amount evaluated in dollars' => [
         ['>' => [['var' => 'amount'], 50]],
         ['description' => 'Salary', 'amount' => 10000],
-        true,
-    ],
-    'amount condition fails' => [
-        ['>' => [['var' => 'amount'], 200]],
-        ['description' => 'Small purchase', 'amount' => 5000, 'category_id' => null],
-        false,
     ],
     'compound "and"' => [
         ['and' => [['in' => ['grocery', ['var' => 'description']]], ['<' => [['var' => 'amount'], 0]]]],
         ['description' => 'Grocery Store', 'amount' => -5000],
-        true,
-    ],
-    'compound "and" with one failing condition' => [
-        ['and' => [['in' => ['grocery', ['var' => 'description']]], ['>' => [['var' => 'amount'], 0]]]],
-        ['description' => 'Grocery Store', 'amount' => -5000, 'category_id' => null],
-        false,
     ],
     '"==" operator' => [
         ['==' => [['var' => 'description'], 'salary payment']],
         ['description' => 'Salary Payment', 'amount' => 100000],
-        true,
     ],
     'whitespace normalized in the description' => [
         ['in' => ['grocery store', ['var' => 'description']]],
         ['description' => '  Grocery   Store  Purchase  ', 'amount' => -5000],
-        true,
+    ],
+]);
+
+test('leaves the transaction uncategorized when the rule does not match it', function (array $rulesJson, array $attributes) {
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => $rulesJson,
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        ...$attributes,
+    ]);
+
+    app(AutomationRuleService::class)->applyRules($transaction);
+
+    expect($transaction->fresh()->category_id)->toBeNull();
+})->with([
+    '"does not equal" skips the exact description it excludes' => [
+        ['!=' => [['var' => 'description'], 'salary payment']],
+        ['description' => 'Salary Payment', 'amount' => 100000, 'category_id' => null],
+    ],
+    'amount condition fails' => [
+        ['>' => [['var' => 'amount'], 200]],
+        ['description' => 'Small purchase', 'amount' => 5000, 'category_id' => null],
+    ],
+    'compound "and" with one failing condition' => [
+        ['and' => [['in' => ['grocery', ['var' => 'description']]], ['>' => [['var' => 'amount'], 0]]]],
+        ['description' => 'Grocery Store', 'amount' => -5000, 'category_id' => null],
     ],
 ]);
 

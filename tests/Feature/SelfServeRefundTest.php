@@ -49,6 +49,7 @@ it('opens the self-refund window only for a pay-now subscriber inside it', funct
 
     expect(app(RefundWindow::class)->isOpenFor($user))->toBe($isOpen);
 })->with([
+    // Rows that read the clock are closures so they resolve after beforeEach freezes it.
     'inside the window' => [[], [], true],
     'window passed' => [fn () => ['created_at' => now()->subDays(5)], [], false],
     'already refunded' => [fn () => ['refunded_at' => now()], [], false],

@@ -1009,10 +1009,10 @@ test('sankey places transfer, savings and investment categories on the side thei
 
         foreach (array_keys($categories) as $name) {
             if (array_key_exists($name, $expectedNodes)) {
-                expect($nodes->firstWhere('category.name', $name))->not->toBeNull();
-                expect($nodes->firstWhere('category.name', $name)['amount'])->toBe($expectedNodes[$name]);
+                expect($nodes->firstWhere('category.name', $name))->not->toBeNull("{$name} missing from {$side}");
+                expect($nodes->firstWhere('category.name', $name)['amount'])->toBe($expectedNodes[$name], "{$name} amount on {$side}");
             } else {
-                expect($nodes->pluck('category.name'))->not->toContain($name);
+                expect($nodes->pluck('category.name'))->not->toContain($name, "{$name} should not be on {$side}");
             }
         }
     }
