@@ -1,0 +1,8 @@
+# Read by the MariaDB `mysql` client Laravel shells out to when it loads
+# database/schema/mysql-schema.sql into an empty database. MariaDB clients
+# verify the server certificate by default and fail on the self-signed one a
+# stock MySQL 8 container ships with. The connection is still encrypted; this
+# only matches the MySQL client's default ssl-mode=PREFERRED. PHP's PDO
+# connection does not read this file.
+[client]
+ssl-verify-server-cert = off

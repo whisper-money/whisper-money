@@ -15,6 +15,11 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
+# MySQL client: Laravel shells out to it to load database/schema/mysql-schema.sql
+# when migrating an empty database
+RUN apt-get update && apt-get install -y --no-install-recommends default-mysql-client && rm -rf /var/lib/apt/lists/*
+COPY docker/mysql/client.cnf /etc/mysql/conf.d/whisper-client.cnf
+
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl sockets
 # Build redis from its GitHub release source so a PECL outage cannot block a build
 RUN docker-php-source extract \

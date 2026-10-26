@@ -47,6 +47,11 @@ ENV PATH="/usr/local/bun/bin:${PATH}"
 # Install memcached and redis servers
 RUN apt-get update && apt-get install -y memcached redis-server && rm -rf /var/lib/apt/lists/*
 
+# MySQL client: Laravel shells out to it to load database/schema/mysql-schema.sql
+# when migrating an empty database (fresh self-hosted install)
+RUN apt-get update && apt-get install -y --no-install-recommends default-mysql-client && rm -rf /var/lib/apt/lists/*
+COPY docker/mysql/client.cnf /etc/mysql/conf.d/whisper-client.cnf
+
 # Set working directory
 WORKDIR /app
 
