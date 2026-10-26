@@ -61,6 +61,12 @@ jobs:
           # pcov, not xdebug: the suite runs with coverage so the `crap` job can
           # report CRAP alongside complexity, and pcov costs far less.
           coverage: pcov
+          # pcov.directory must be set explicitly: left to autodetect it picks
+          # "src", which does not exist here, and every method silently reports
+          # zero coverage. It goes in php.ini rather than `php -d` because
+          # paratest workers are fresh PHP processes that never see the
+          # parent's `-d` flags, only the global ini.
+          ini-values: pcov.directory=app
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -75,13 +81,10 @@ jobs:
         # --parallel splits the suite across workers via paratest. Each
         # worker creates its own "testing_test_<N>" database; the mysql
         # service runs as root which has CREATE on *.* so this Just Works
-        # without extra grants. Performance suite is excluded because
-        # concurrent load skews its timing-based assertions.
-        #
-        # pcov.directory must be set explicitly: left to autodetect it picks
-        # "src", which does not exist here, and every method silently reports
-        # zero coverage.
-        run: php -d pcov.directory=app ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4 --coverage-crap4j=build/crap4j.xml
+        # without extra grants. The Performance suite is excluded because it
+        # runs as its own `performance-tests` job, a separate required check, so a
+        # query-count regression shows up under its own name.
+        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4 --coverage-crap4j=build/crap4j.xml
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql

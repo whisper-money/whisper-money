@@ -17,6 +17,10 @@ inputs:
     description: Coverage driver (xdebug, pcov, none)
     required: false
     default: 'none'
+  ini-values:
+    description: Comma-separated php.ini values, written to the global php.ini
+    required: false
+    default: ''
   composer-args:
     description: Extra args for `composer install` when running
     required: false
@@ -31,6 +35,7 @@ runs:
         php-version: ${{ inputs.php-version }}
         tools: ${{ inputs.tools }}
         coverage: ${{ inputs.coverage }}
+        ini-values: ${{ inputs.ini-values }}
 
     - name: Get composer cache directory
       id: composer-cache
