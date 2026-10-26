@@ -13,13 +13,12 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 /**
- * Step 8 at phone width, in each of the six states it can land in, plus the
- * step that follows it.
+ * Step 8 at phone width, in the states that need the server behind them, plus
+ * the step that follows it.
  *
- * Five of the six are the states nobody designs for — too little history, a run
- * that died, a year with no repeat merchant, a consent that was revoked — and
- * they are the reason this PR exists, so it is reviewed on these rather than on
- * the diff.
+ * A run that died, a year with no repeat merchant and a revoked consent are
+ * pinned in step-ai-suggestions-states.test.tsx, which renders them without a
+ * browser.
  */
 function aiUser(): User
 {
@@ -182,76 +181,6 @@ it('captures what a short file gets instead', function () {
         ->assertSee('Add more history first')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ai-not-eligible')
-        ->assertNoJavascriptErrors();
-});
-
-it('captures a run that died before it finished', function () {
-    $user = aiUser();
-    $user->recordAiConsent();
-    aYearOfMovements(aiAccount($user));
-
-    SuggestionRun::factory()->for($user)->create([
-        'status' => SuggestionRunStatus::Failed,
-        'merchants_considered' => 147,
-        'error' => 'The model timed out',
-    ]);
-
-    actingAs($user);
-
-    visit('/onboarding?step=ai-suggestions')
-        ->resize(430, 932)
-        ->waitForText('That didn’t finish', 10)
-        ->assertSee('903 movements, at your own pace, whenever')
-        ->assertSee('Try again')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'ai-failed')
-        ->assertNoJavascriptErrors();
-});
-
-it('captures a year with no merchant worth a rule', function () {
-    $user = aiUser();
-    $user->recordAiConsent();
-    oneOffs(aiAccount($user), 903);
-
-    SuggestionRun::factory()->for($user)->create([
-        'status' => SuggestionRunStatus::Empty,
-        'merchants_considered' => 903,
-        'suggestions_count' => 0,
-    ]);
-
-    actingAs($user);
-
-    visit('/onboarding?step=ai-suggestions')
-        ->resize(430, 932)
-        ->waitForText('Nothing worth a rule', 10)
-        ->assertSee('We read all 903')
-        // The claim the design made here — "847 of them got a category" — is
-        // not true at this point in the flow, and is gone.
-        ->assertSee('Nothing was changed')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'ai-empty')
-        ->assertNoJavascriptErrors();
-});
-
-it('captures the consent screen a returning user gets', function () {
-    $user = aiUser();
-    aYearOfMovements(aiAccount($user));
-
-    // Consented once, then switched it off: the screen has to say why it is
-    // asking a second time.
-    $user->recordAiConsent();
-    $user->revokeAiConsent();
-
-    actingAs($user);
-
-    visit('/onboarding?step=ai-suggestions')
-        ->resize(430, 932)
-        ->waitForText('Turn AI sorting back on?', 10)
-        ->assertSee('One line at a time, never the picture')
-        ->assertSee('903 movements')
-        ->assertSee('Leave it off')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'ai-re-consent')
         ->assertNoJavascriptErrors();
 });
 

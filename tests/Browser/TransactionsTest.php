@@ -9,40 +9,6 @@ use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 
-it('can view transactions page', function () {
-    $user = User::factory()->onboarded()->create();
-    Category::factory()->create(['user_id' => $user->id]);
-    Account::factory()->create(['user_id' => $user->id]);
-
-    actingAs($user);
-
-    $page = visit('/transactions');
-
-    $page->assertSee('Transactions')
-        ->assertSee('View and manage your transactions')
-        ->assertNoJavascriptErrors();
-});
-
-it('can open add transaction dialog', function () {
-    $user = User::factory()->onboarded()->create();
-    Category::factory()->create(['user_id' => $user->id]);
-    // Pinned: the factory picks a random type, and the add button is
-    // off for a user whose only account cannot hold a transaction.
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'type' => 'checking',
-    ]);
-
-    actingAs($user);
-
-    $page = visit('/transactions');
-
-    $page->assertSee('Transactions')
-        ->click('[data-testid="add-transaction-button"]')
-        ->assertSee('Create Transaction')
-        ->assertNoJavascriptErrors();
-});
-
 it('offers adding a transaction above the list, not in the app header', function () {
     $user = User::factory()->onboarded()->create();
     Account::factory()->create([
@@ -336,6 +302,8 @@ it('can delete a transaction from the actions menu', function () {
         ->click('button:has-text("Delete")')
         ->assertDontSee('Disposable transaction')
         ->assertNoJavascriptErrors();
+
+    $this->assertSoftDeleted($transaction);
 });
 
 it('keeps the account page up when a fifth year digit is typed into the date', function () {

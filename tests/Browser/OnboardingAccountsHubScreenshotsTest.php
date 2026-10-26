@@ -6,27 +6,9 @@ use App\Models\BankingConnection;
 use App\Models\User;
 
 /**
- * The two states step 6 has, captured at phone width. The step is one screen
- * that is returned to rather than a door chosen once, so both states are the
- * change — the PR is reviewed on what they look like rather than on the diff.
+ * Step 6 once something is in it, captured at phone width. The empty hub is
+ * asserted by OnboardingFlowTest's deep-link test.
  */
-it('captures the hub with nothing in it yet', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-        'currency_code' => 'EUR',
-    ]);
-
-    $this->actingAs($user);
-
-    visit('/onboarding?step=create-account')
-        ->resize(430, 932)
-        ->assertSee("Let's build the picture")
-        ->assertSee('Connect a bank')
-        ->assertSee('Add one myself')
-        ->screenshot(filename: 'onboarding-accounts-empty')
-        ->assertNoJavascriptErrors();
-});
-
 it('captures the hub asking for what the bank never returns', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,

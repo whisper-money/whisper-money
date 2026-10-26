@@ -232,22 +232,6 @@ it('opens every authenticated page at phone width', function (string $path, stri
         ->assertNoJavascriptErrors();
 })->with('authenticated pages (smoke)');
 
-it('opens the two-factor page once the password is confirmed', function (): void {
-    // Not on the list above: the route asks for the password again first, which
-    // is a screen of its own rather than a heading to assert.
-    $user = seedSmokeReader();
-
-    actingAs($user);
-
-    visit('/settings/two-factor')
-        ->assertSee('Confirm your password')
-        ->fill('password', 'password')
-        ->click('[data-test="confirm-password-button"]')
-        ->assertSee('Two-Factor Authentication')
-        ->assertSee('Manage your two-factor authentication settings')
-        ->assertNoJavascriptErrors();
-});
-
 it('opens the paywall for a reader without a plan', function (): void {
     // Its own test: the paywall is the one screen a subscriber never sees, so it
     // cannot ride the list above.

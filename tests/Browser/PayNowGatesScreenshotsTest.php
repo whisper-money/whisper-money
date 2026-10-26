@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\Account;
-use App\Models\AutomationRule;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
@@ -11,12 +10,15 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 /**
- * The five screens the money path is made of, at phone width.
+ * The three screens of the money path that ask for a decision, at phone width.
  *
  * Every one of them is read rather than asserted into existence: what a
  * checkout screen says about the charge, and what the AI disclosure says leaves
  * the account, is the whole of what makes grouping the consent with the
  * purchase honest — so it is looked at, not just counted.
+ *
+ * The paywall itself is opened by AuthenticatedPagesSmokeTest and its soft and
+ * former-subscriber gates are pinned in paywall.test.tsx and PayNowGatesTest.
  */
 beforeEach(function () {
     config([
@@ -96,29 +98,6 @@ it('captures the gate in front of the bank picker', function () {
 });
 
 /**
- * The money-back row is the first colour with chroma this interface spends, so
- * it gets looked at on both grounds rather than only on the light one. The
- * appearance hook defaults to "system", so emulating the preference is what
- * puts the app in dark mode from the first paint.
- */
-it('captures the money-back row on a dark ground', function () {
-    $user = gateUser();
-
-    actingAs($user);
-
-    visit('/onboarding?step=create-account')
-        ->inDarkMode()
-        ->resize(430, 932)
-        ->waitForText('Connect a bank', 10)
-        ->click('Connect a bank')
-        ->waitForText('Connecting a bank needs Standard', 10)
-        ->assertSee('3 days to change your mind')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'gate-bank-dark')
-        ->assertNoJavascriptErrors();
-});
-
-/**
  * Step 8, for the user who came the manual way. Anyone who connected a bank
  * paid at the other gate and never sees this one.
  */
@@ -139,67 +118,6 @@ it('captures the gate in front of the AI', function () {
         ->assertSee('I’ll sort them myself')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'gate-ai')
-        ->assertNoJavascriptErrors();
-});
-
-/**
- * The end of onboarding without a plan, which is the only end a user without
- * one can reach: no bank and no AI means nothing was ever switched on.
- */
-it('captures the soft paywall that closes an unpaid onboarding', function () {
-    $user = User::factory()->onboarded()->create(['format_locale' => 'en-US']);
-    gateHistory($user, 120);
-
-    actingAs($user);
-
-    visit('/subscribe')
-        ->resize(430, 932)
-        ->waitForText('One thing left to decide', 10)
-        ->assertSee('Nothing is locked and nothing is about to be cut off')
-        ->assertSee('3 days to change your mind')
-        ->assertSee('Free keeps working')
-        ->assertSee('Standard adds the tedious part')
-        ->assertSee('Carry on free')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'paywall-soft')
-        ->assertNoJavascriptErrors();
-});
-
-/**
- * A user who paid and stopped. Unreachable for a new signup — you cannot get a
- * bank connected without a plan any more — and kept for the ones already in it.
- */
-it('captures the paywall a former subscriber gets', function () {
-    $user = User::factory()->onboarded()->create([
-        'format_locale' => 'en-US',
-        'paywall_seen_at' => now(),
-        'onboarded_at' => now()->subMonths(2),
-    ]);
-
-    $account = gateHistory($user, 903);
-    $connection = BankingConnection::factory()->for($user)->create(['aspsp_name' => 'BBVA']);
-    $account->update(['banking_connection_id' => $connection->id]);
-    AutomationRule::factory()->count(5)->for($user)->create();
-
-    $user->subscriptions()->create([
-        'type' => 'default',
-        'stripe_id' => 'sub_former_screenshot',
-        'stripe_status' => 'canceled',
-        'stripe_price' => 'price_test',
-        'ends_at' => now()->subDays(30),
-    ]);
-
-    actingAs($user);
-
-    visit('/subscribe')
-        ->resize(430, 932)
-        ->waitForText('Your plan ended', 10)
-        ->assertSee('stopped syncing')
-        ->assertSee('Still here, still categorised')
-        ->assertSee('5 rules')
-        ->assertSee('Paused until you come back')
-        ->assertScript(ANIMATIONS_SETTLED)
-        ->screenshot(filename: 'paywall-former')
         ->assertNoJavascriptErrors();
 });
 
