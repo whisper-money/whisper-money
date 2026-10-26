@@ -6,8 +6,8 @@ use App\Models\BudgetPeriod;
 use App\Models\User;
 use Carbon\Carbon;
 
-test('getCurrentPeriod finds period on its last day regardless of time', function () {
-    Carbon::setTestNow(Carbon::parse('2026-01-31 15:30:00'));
+test('getCurrentPeriod finds period on its boundary days regardless of time', function (string $now) {
+    Carbon::setTestNow(Carbon::parse($now));
 
     $user = User::factory()->create(['onboarded_at' => now()]);
     $budget = Budget::factory()->create([
@@ -30,32 +30,10 @@ test('getCurrentPeriod finds period on its last day regardless of time', functio
     expect($currentPeriod->end_date->toDateString())->toBe('2026-01-31');
 
     Carbon::setTestNow();
-});
-
-test('getCurrentPeriod finds period on its first day regardless of time', function () {
-    Carbon::setTestNow(Carbon::parse('2026-01-01 23:59:59'));
-
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create([
-        'user_id' => $user->id,
-        'period_type' => BudgetPeriodType::Monthly,
-        'period_start_day' => 1,
-    ]);
-
-    BudgetPeriod::factory()->create([
-        'budget_id' => $budget->id,
-        'start_date' => '2026-01-01',
-        'end_date' => '2026-01-31',
-        'allocated_amount' => 100000,
-    ]);
-
-    $currentPeriod = $budget->getCurrentPeriod();
-
-    expect($currentPeriod)->not->toBeNull();
-    expect($currentPeriod->start_date->toDateString())->toBe('2026-01-01');
-
-    Carbon::setTestNow();
-});
+})->with([
+    'last day, afternoon' => ['2026-01-31 15:30:00'],
+    'first day, last second' => ['2026-01-01 23:59:59'],
+]);
 
 test('budget index loads current period on last day of period', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-31 18:00:00'));

@@ -115,20 +115,6 @@ test('cannot write the import config of another user account', function () use (
     ])->assertForbidden();
 });
 
-test('rejects an unknown config type', function () use ($transactionConfig) {
-    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
-        'type' => 'nonsense',
-        'config' => $transactionConfig,
-    ])->assertJsonValidationErrors('type');
-});
-
-test('rejects a config without a column mapping', function () {
-    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
-        'type' => 'transaction',
-        'config' => ['dateFormat' => 'YYYY-MM-DD'],
-    ])->assertJsonValidationErrors('config.columnMapping');
-});
-
 test('keeps whether the saved mapping is the AI suggestion', function (bool $aiSuggested) use ($transactionConfig) {
     $this->putJson("/api/accounts/{$this->account->id}/import-config", [
         'type' => 'transaction',
@@ -147,9 +133,12 @@ test('saves a config without the AI suggestion flag', function () use ($transact
     ])->assertOk()->assertJsonMissingPath('data.aiSuggested');
 });
 
-test('rejects a non-boolean AI suggestion flag', function () use ($transactionConfig) {
-    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
-        'type' => 'transaction',
-        'config' => [...$transactionConfig, 'aiSuggested' => 'maybe'],
-    ])->assertUnprocessable()->assertJsonValidationErrors('config.aiSuggested');
-});
+test('rejects an invalid config', function (array $payload, string $invalidField) {
+    $this->putJson("/api/accounts/{$this->account->id}/import-config", $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($invalidField);
+})->with([
+    'unknown config type' => [['type' => 'nonsense', 'config' => $transactionConfig], 'type'],
+    'config without a column mapping' => [['type' => 'transaction', 'config' => ['dateFormat' => 'YYYY-MM-DD']], 'config.columnMapping'],
+    'non-boolean AI suggestion flag' => [['type' => 'transaction', 'config' => [...$transactionConfig, 'aiSuggested' => 'maybe']], 'config.aiSuggested'],
+]);

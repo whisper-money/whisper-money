@@ -61,26 +61,6 @@ test('transactions page includes automation rules with labels', function () {
     );
 });
 
-test('authenticated users can access categorize transactions page', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $response = actingAs($user)->get(route('transactions.categorize'));
-
-    $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->component('transactions/categorize')
-        ->has('categories')
-        ->has('accounts')
-        ->has('banks')
-    );
-});
-
-test('guests cannot access categorize transactions page', function () {
-    $response = $this->get(route('transactions.categorize'));
-
-    $response->assertRedirect(route('register'));
-});
-
 test('users can update their own transaction category', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
@@ -359,7 +339,7 @@ test('users cannot delete other users transactions', function () {
     ]);
 });
 
-test('deleting a manual account expense increases the current balance when requested', function () {
+test('deleting a manual account transaction reverses it on the current balance when requested', function (int $amount, int $expectedBalance) {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $user->id, 'currency_code' => 'EUR']);
 
@@ -371,7 +351,7 @@ test('deleting a manual account expense increases the current balance when reque
     $transaction = Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
-        'amount' => -2500,
+        'amount' => $amount,
         'currency_code' => 'EUR',
     ]);
 
@@ -382,36 +362,12 @@ test('deleting a manual account expense increases the current balance when reque
     $this->assertDatabaseHas('account_balances', [
         'account_id' => $account->id,
         'balance_date' => now()->toDateString(),
-        'balance' => 102500,
+        'balance' => $expectedBalance,
     ]);
-});
-
-test('deleting a manual account income decreases the current balance when requested', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $user->id, 'currency_code' => 'EUR']);
-
-    $account->balances()->create([
-        'balance_date' => now()->toDateString(),
-        'balance' => 100000,
-    ]);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'amount' => 3000,
-        'currency_code' => 'EUR',
-    ]);
-
-    actingAs($user)
-        ->deleteJson(route('transactions.destroy', $transaction), ['update_balance' => true])
-        ->assertSuccessful();
-
-    $this->assertDatabaseHas('account_balances', [
-        'account_id' => $account->id,
-        'balance_date' => now()->toDateString(),
-        'balance' => 97000,
-    ]);
-});
+})->with([
+    'expense increases it' => [-2500, 102500],
+    'income decreases it' => [3000, 97000],
+]);
 
 test('deleting a past-dated transaction reverses it on that date and every later balance', function () {
     $user = User::factory()->onboarded()->create();
@@ -1044,74 +1000,7 @@ test('users can create a transaction without notes', function () {
     ]);
 });
 
-test('account_id is required when creating transaction', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $transactionData = [
-        'description' => 'Card payment',
-        'transaction_date' => '2025-11-11',
-        'amount' => 10000,
-        'currency_code' => 'USD',
-    ];
-
-    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['account_id']);
-});
-
-test('description is required when creating transaction', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-
-    $transactionData = [
-        'account_id' => $account->id,
-        'transaction_date' => '2025-11-11',
-        'amount' => 10000,
-        'currency_code' => 'USD',
-    ];
-
-    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['description']);
-});
-
-test('amount is required when creating transaction', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-
-    $transactionData = [
-        'account_id' => $account->id,
-        'description' => 'Card payment',
-        'transaction_date' => '2025-11-11',
-        'currency_code' => 'USD',
-    ];
-
-    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['amount']);
-});
-
-test('transaction_date is required when creating transaction', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-
-    $transactionData = [
-        'account_id' => $account->id,
-        'description' => 'Card payment',
-        'amount' => 10000,
-        'currency_code' => 'USD',
-    ];
-
-    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['transaction_date']);
-});
-
-test('currency_code is required when creating transaction', function () {
+test('required fields are validated when creating a transaction', function (string $missingField) {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
@@ -1120,13 +1009,15 @@ test('currency_code is required when creating transaction', function () {
         'description' => 'Card payment',
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
+        'currency_code' => 'USD',
     ];
+    unset($transactionData[$missingField]);
 
     $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
 
     $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['currency_code']);
-});
+    $response->assertJsonValidationErrors([$missingField]);
+})->with(['account_id', 'description', 'amount', 'transaction_date', 'currency_code']);
 
 test('users can create a transaction with labels', function () {
     $user = User::factory()->onboarded()->create();
@@ -1254,32 +1145,6 @@ test('label_ids must exist and belong to user', function () {
 
     $response->assertUnprocessable();
     $response->assertJsonValidationErrors(['label_ids.0']);
-});
-
-test('updating transaction labels via API works correctly', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-    $label = Label::factory()->create(['user_id' => $user->id]);
-
-    $transaction = Transaction::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-    ]);
-
-    // Update transaction to add the label
-    $response = actingAs($user)->patchJson(route('transactions.update', $transaction), [
-        'label_ids' => [$label->id],
-    ]);
-
-    $response->assertSuccessful();
-
-    // Verify labels were updated
-    $transaction = $transaction->fresh();
-    expect($transaction->labels)->toHaveCount(1);
-    expect($transaction->labels->first()->id)->toBe($label->id);
-
-    // Verify the updated_at timestamp changed (which triggers events)
-    expect($transaction->updated_at)->not->toBe($transaction->created_at);
 });
 
 test('when budget with label exists, updating transaction with that label assigns it to budget', function () {

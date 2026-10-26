@@ -10,21 +10,16 @@ test('user returns email for mail routing when valid', function () {
         ->toBe('valid@example.com');
 });
 
-test('user skips mail routing when email is malformed', function () {
+test('user skips mail routing when the email cannot be parsed', function (string $email) {
     $user = User::factory()->create();
-    $user->forceFill(['email' => 'not-an-email'])->saveQuietly();
+    $user->forceFill(['email' => $email])->saveQuietly();
 
     expect($user->routeNotificationForMail(new VerifyEmailNotification))
         ->toBeNull();
-});
-
-test('user skips mail routing when email has surrounding whitespace it cannot parse', function () {
-    $user = User::factory()->create();
-    $user->forceFill(['email' => ' '])->saveQuietly();
-
-    expect($user->routeNotificationForMail(new VerifyEmailNotification))
-        ->toBeNull();
-});
+})->with([
+    'malformed' => ['not-an-email'],
+    'only whitespace' => [' '],
+]);
 
 test('user trims valid email before routing', function () {
     $user = User::factory()->create();

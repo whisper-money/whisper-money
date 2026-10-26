@@ -59,73 +59,48 @@ function startCheckout(User $user, ?string $source): TestResponse
     return test()->actingAs($user)->get(route('subscribe.checkout', $query));
 }
 
-it('grants the AI consent the bank gate disclosed, with the purchase', function () {
-    $user = checkoutUser();
-    $user->shouldReceive('recordAiConsent')->once();
-
-    startCheckout($user, 'onboarding_bank')->assertRedirect();
-});
-
-it('grants it from the AI gate too', function () {
-    $user = checkoutUser();
-    $user->shouldReceive('recordAiConsent')->once();
-
-    startCheckout($user, 'onboarding_ai')->assertRedirect();
-});
-
 /**
  * The consent travels with the plan only where the screen that sold it said
- * what leaves the account. Everywhere else the user is asked on its own terms,
- * on the screen that asks.
+ * what leaves the account: the bank and AI gates, and the broker gate, which
+ * carries the same row. Everywhere else the user is asked on its own terms, on
+ * the screen that asks.
  */
-it('grants it from the broker gate, which carries the same row', function () {
+it('grants the AI consent the gate disclosed, with the purchase', function (string $source) {
     $user = checkoutUser();
     $user->shouldReceive('recordAiConsent')->once();
 
-    startCheckout($user, 'onboarding_broker')->assertRedirect();
-});
+    startCheckout($user, $source)->assertRedirect();
+})->with([
+    'bank gate' => ['onboarding_bank'],
+    'AI gate' => ['onboarding_ai'],
+    'broker gate' => ['onboarding_broker'],
+]);
 
-it('grants no consent from a checkout that disclosed nothing', function () {
+it('grants no consent from a checkout that disclosed nothing', function (?string $source) {
     $user = checkoutUser();
     $user->shouldNotReceive('recordAiConsent');
 
-    startCheckout($user, 'connections')->assertRedirect();
-});
-
-it('grants no consent from a checkout with no upsell point at all', function () {
-    $user = checkoutUser();
-    $user->shouldNotReceive('recordAiConsent');
-
-    startCheckout($user, null)->assertRedirect();
-});
-
-it('parks the bank picker to come back to, reopened', function () {
-    $user = checkoutUser();
-
-    startCheckout($user, 'onboarding_bank')
-        ->assertRedirect()
-        ->assertSessionHas(RETURN_KEY, ['step' => 'create-account', 'connect' => 'bank']);
-});
+    startCheckout($user, $source)->assertRedirect();
+})->with([
+    'connections upsell' => ['connections'],
+    'no upsell point at all' => [null],
+]);
 
 /**
  * Someone who reached for Indexa and paid for it used to come back in front of
  * a country list, because the broker gate reported itself as the bank one.
  */
-it('parks the broker picker when that is the gate that charged', function () {
+it('parks the step that charged to come back to', function (string $source, array $parkedStep) {
     $user = checkoutUser();
 
-    startCheckout($user, 'onboarding_broker')
+    startCheckout($user, $source)
         ->assertRedirect()
-        ->assertSessionHas(RETURN_KEY, ['step' => 'create-account', 'connect' => 'broker']);
-});
-
-it('parks the AI step to come back to', function () {
-    $user = checkoutUser();
-
-    startCheckout($user, 'onboarding_ai')
-        ->assertRedirect()
-        ->assertSessionHas(RETURN_KEY, ['step' => 'ai-suggestions']);
-});
+        ->assertSessionHas(RETURN_KEY, $parkedStep);
+})->with([
+    'bank picker, reopened' => ['onboarding_bank', ['step' => 'create-account', 'connect' => 'bank']],
+    'broker picker' => ['onboarding_broker', ['step' => 'create-account', 'connect' => 'broker']],
+    'AI step' => ['onboarding_ai', ['step' => 'ai-suggestions']],
+]);
 
 it('parks nothing for a checkout started outside the wizard', function () {
     $user = checkoutUser();
