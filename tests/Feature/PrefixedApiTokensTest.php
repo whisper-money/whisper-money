@@ -4,11 +4,11 @@ use App\Models\User;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 
-it('issues tokens prefixed by the surface their abilities belong to, without the id', function (array $abilities, string $prefix) {
+it('issues tokens prefixed by the surface their abilities belong to, with a checksum and without the id', function (array $abilities, string $prefix) {
     $token = User::factory()->create()->createToken('X', $abilities);
 
     expect($token->plainTextToken)
-        ->toMatch('/^'.$prefix.'[A-Za-z0-9]{40}$/')
+        ->toMatch('/^'.$prefix.'[A-Za-z0-9]{40}[0-9a-f]{8}$/')
         ->not->toContain('|');
     expect($token->accessToken->token)->toBe(hash('sha256', $token->plainTextToken));
 })->with([

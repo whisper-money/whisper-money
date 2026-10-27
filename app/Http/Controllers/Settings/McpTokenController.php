@@ -76,7 +76,7 @@ class McpTokenController extends Controller
 
     /**
      * Ensure the token belongs to the requesting user before mutating it, and
-     * that it is an MCP token: API tokens are managed from their own screen.
+     * that it is an MCP token: API tokens are not managed from this screen.
      */
     private function authorizeOwnership(Request $request, PersonalAccessToken $token): void
     {
@@ -86,7 +86,18 @@ class McpTokenController extends Controller
             403
         );
 
-        abort_unless(AccessTokenType::Mcp->matches($token->abilities ?? []), 404);
+        abort_unless($this->isMcpToken($token), 404);
+    }
+
+    /**
+     * Whether the token belongs on this screen: it carries `mcp:*` abilities,
+     * or the `*` wildcard, which also authenticates at `/mcp`.
+     */
+    private function isMcpToken(PersonalAccessToken $token): bool
+    {
+        $abilities = $token->abilities ?? [];
+
+        return AccessTokenType::Mcp->matches($abilities) || in_array('*', $abilities, true);
     }
 
     /**
@@ -97,11 +108,11 @@ class McpTokenController extends Controller
         return $request->user()->tokens()
             ->latest()
             ->get()
-            ->filter(fn (PersonalAccessToken $token): bool => AccessTokenType::Mcp->matches($token->abilities ?? []))
+            ->filter(fn (PersonalAccessToken $token): bool => $this->isMcpToken($token))
             ->map(fn (PersonalAccessToken $token): array => [
                 'id' => $token->id,
                 'name' => $token->name,
-                'scope' => in_array('mcp:write', $token->abilities ?? [], true) ? 'read_write' : 'read',
+                'scope' => $token->can('mcp:write') ? 'read_write' : 'read',
                 'created_at' => $token->created_at?->toIso8601String(),
                 'last_used_at' => $token->last_used_at?->toIso8601String(),
             ])

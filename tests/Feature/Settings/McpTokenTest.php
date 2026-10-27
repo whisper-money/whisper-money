@@ -101,16 +101,17 @@ it('rotates a token, replacing the secret but keeping the scope', function () {
     expect($tokens->first()->abilities)->toBe(['mcp:read']);
 });
 
-it('lists only MCP tokens, never API tokens', function () {
+it('lists MCP and wildcard tokens, never API tokens', function () {
     $user = User::factory()->create();
     $user->createToken('MCP', ['mcp:read']);
     $user->createToken('API', ['api:read']);
+    $user->createToken('Wildcard');
 
     actingAs($user)
         ->get(route('mcp.index'))
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('tokens', 1)
-            ->where('tokens.0.name', 'MCP'));
+            ->has('tokens', 2)
+            ->where('tokens', fn ($tokens): bool => collect($tokens)->pluck('scope', 'name')->sortKeys()->all() === ['MCP' => 'read', 'Wildcard' => 'read_write']));
 });
 
 it('cannot rotate or revoke an API token from the MCP screen', function (string $method, string $route) {
