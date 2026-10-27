@@ -51,7 +51,7 @@ describe('CORS', function () {
             ->getJson('/api/v1/spaces')
             ->assertOk()
             ->assertHeader('Access-Control-Allow-Origin', '*')
-            ->assertHeader('Access-Control-Expose-Headers', 'X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After, Idempotent-Replayed');
+            ->assertHeader('Access-Control-Expose-Headers', 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After, Idempotent-Replayed');
     });
 
     it('keeps the internal session API same-origin', function () {
@@ -90,6 +90,26 @@ describe('idempotency', function () {
         withHeaders($headers)->postJson('/api/v1/_test/echo', ['name' => 'Holidays'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('Idempotency-Key');
+    });
+
+    it('rejects a key reused against another query string', function () {
+        $headers = [...apiV1Bearer(User::factory()->create(), ['api:read', 'api:write']), 'Idempotency-Key' => 'create-1'];
+
+        withHeaders($headers)->postJson('/api/v1/_test/echo?space=a', ['name' => 'Trips'])->assertCreated();
+
+        withHeaders($headers)->postJson('/api/v1/_test/echo?space=b', ['name' => 'Trips'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('Idempotency-Key');
+    });
+
+    it('does not keep a failed response, so the client can fix the body and retry with the same key', function () {
+        $headers = [...apiV1Bearer(User::factory()->create(), ['api:read', 'api:write']), 'Idempotency-Key' => 'create-1'];
+
+        withHeaders($headers)->postJson('/api/v1/_test/echo', ['name' => 'Far too long a name'])->assertUnprocessable();
+
+        withHeaders($headers)->postJson('/api/v1/_test/echo', ['name' => 'Trips'])
+            ->assertCreated()
+            ->assertHeaderMissing('Idempotent-Replayed');
     });
 
     it('scopes keys to the user', function () {

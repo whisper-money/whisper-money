@@ -17,14 +17,16 @@ use Symfony\Component\HttpFoundation\Response;
  * Authenticates `/api/v1` with a bearer token only:
  *
  * - a Sanctum personal access token carrying `api:read`, plus `api:write`
- *   for the write methods;
+ *   for any method but GET, HEAD and OPTIONS;
  * - a Passport OAuth access token carrying the `api:use` scope (read and
  *   write, approved by the user on the consent screen).
  *
  * Sanctum and Passport both fall back to a first-party session or cookie and
  * hand back a TransientToken that passes every ability check. Those are
- * refused here, as are MCP credentials (`mcp:*` abilities, `mcp:use` scope)
- * and wildcard (`*`) tokens, so neither surface's tokens open the other.
+ * refused here, as are MCP credentials (a PAT without `api:read`, an OAuth
+ * token carrying `mcp:use`) and wildcard (`*`) tokens, so neither surface's
+ * tokens open the other. A PAT cannot carry both `api:*` and `mcp:*`
+ * abilities: AccessTokenType::fromAbilities() refuses to mint one.
  *
  * Implements AuthenticatesRequests so the router sorts it ahead of the
  * throttle, which keys its bucket on the authenticated user.
@@ -39,8 +41,12 @@ class AuthenticateApiRequest implements AuthenticatesRequests
 
     private const string McpOAuthScope = 'mcp:use';
 
-    /** @var list<string> */
-    private const array WriteMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    /**
+     * Methods a read-only token may use; any other method needs `api:write`.
+     *
+     * @var list<string>
+     */
+    private const array ReadMethods = ['GET', 'HEAD', 'OPTIONS'];
 
     public function __construct(private AuthFactory $auth) {}
 
@@ -96,7 +102,7 @@ class AuthenticateApiRequest implements AuthenticatesRequests
             throw ApiV1Exception::insufficientScope('This token cannot be used with the API. Create an API token in Settings → API.');
         }
 
-        if (in_array($request->method(), self::WriteMethods, true) && ! in_array(self::WriteAbility, $abilities, true)) {
+        if (! in_array($request->method(), self::ReadMethods, true) && ! in_array(self::WriteAbility, $abilities, true)) {
             throw ApiV1Exception::insufficientScope('This token is read-only. Create a read & write token to make changes.');
         }
     }

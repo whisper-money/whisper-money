@@ -614,14 +614,14 @@ function apiV1Bearer(User $user, array $abilities = ['api:read'], ?DateTimeInter
  * Register throwaway routes under the real `api-v1` middleware group, for the
  * cross-cutting behaviour (write abilities, idempotency, errors) no shipped
  * endpoint exercises yet: `POST /api/v1/_test/echo` answers 201 with the body
- * it got, `GET /api/v1/_test/space` names the space the request resolves to
+ * it got (a `name` over 10 characters is a 422), `GET /api/v1/_test/space` names the space the request resolves to
  * and `GET /api/v1/_test/boom` throws.
  */
 function registerApiV1TestRoutes(): void
 {
     Route::middleware('api-v1')->prefix('api/v1/_test')->name('api.v1._test.')->group(function (): void {
         Route::post('echo', fn (Illuminate\Http\Request $request) => response()->json([
-            'data' => ['id' => (string) Str::uuid(), ...$request->all()],
+            'data' => ['id' => (string) Str::uuid(), ...$request->validate(['name' => ['sometimes', 'string', 'max:10']])],
         ], 201))->name('echo');
         Route::get('space', fn (Illuminate\Http\Request $request) => (new class extends Controller
         {

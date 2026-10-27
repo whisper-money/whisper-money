@@ -17,7 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
  * with `Idempotent-Replayed: true`. Reusing the key for a different request
  * is a 422, and a retry racing the original still in flight is a 409.
  *
- * Server errors are not cached, so a retry after a 5xx runs again.
+ * Only successful responses are kept: a retry after a validation error or a
+ * 5xx runs again, so the client can fix the body without minting a new key.
  */
 class HandleIdempotencyKey
 {
@@ -40,7 +41,7 @@ class HandleIdempotencyKey
         }
 
         $cacheKey = 'api-v1:idempotency:'.$request->user()?->getAuthIdentifier().':'.hash('sha256', $key);
-        $fingerprint = hash('sha256', $request->method().' '.$request->path()."\n".$request->getContent());
+        $fingerprint = hash('sha256', $request->method().' '.$request->getRequestUri()."\n".$request->getContent());
 
         $lock = Cache::lock($cacheKey.':lock', 30);
 
@@ -57,7 +58,7 @@ class HandleIdempotencyKey
     }
 
     /**
-     * @param  array{fingerprint: string, status: int, content_type: ?string, body: string}|null  $stored
+     * @param  array{fingerprint: string, status: int, content_type: ?string, location: ?string, body: string}|null  $stored
      */
     private function replay(?array $stored, string $fingerprint): ?Response
     {
@@ -73,17 +74,19 @@ class HandleIdempotencyKey
 
         return new HttpResponse($stored['body'], $stored['status'], array_filter([
             'Content-Type' => $stored['content_type'],
+            'Location' => $stored['location'],
             'Idempotent-Replayed' => 'true',
         ]));
     }
 
     private function store(string $cacheKey, string $fingerprint, Response $response): Response
     {
-        if ($response->getStatusCode() < 500) {
+        if ($response->isSuccessful()) {
             Cache::put($cacheKey, [
                 'fingerprint' => $fingerprint,
                 'status' => $response->getStatusCode(),
                 'content_type' => $response->headers->get('Content-Type'),
+                'location' => $response->headers->get('Location'),
                 'body' => (string) $response->getContent(),
             ], self::TtlSeconds);
         }

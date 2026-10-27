@@ -28,6 +28,7 @@ return [
     'exposed_headers' => [
         'X-RateLimit-Limit',
         'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
         'Retry-After',
         'Idempotent-Replayed',
     ],
