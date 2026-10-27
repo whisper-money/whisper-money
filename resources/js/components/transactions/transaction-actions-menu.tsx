@@ -14,34 +14,72 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ICON_ONLY_BELOW_SM } from '@/lib/icon-only-below-sm';
+import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
+import { cn } from '@/lib/utils';
 
-import { type ServerTransaction } from '@/types/transaction';
+import {
+    type ServerTransaction,
+    type TransactionFilters,
+} from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { ChevronDown, Tags, WandSparkles } from 'lucide-react';
+import { BarChart3, ChevronDown, Tags, WandSparkles } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { AddTransactionButton } from './add-transaction-button';
+import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
 interface TransactionActionsMenuProps {
     transactions: ServerTransaction[];
     /** Whether the user owns an account a manual transaction can be filed in. */
     hasTransactionalAccounts: boolean;
     onReEvaluateComplete?: () => void;
+    /**
+     * Offer the analysis of the filtered rows. Off on /transactions, where the
+     * summary of a filtered list opens it instead.
+     */
+    showAnalysis?: boolean;
+    /** What the analysis reports on; needed with `showAnalysis`. */
+    filters?: TransactionFilters;
 }
 
 /**
  * The bar above the transactions table. Adding a transaction sits here, right
  * above the list it lands in; importing lives in the app header, so it is not
- * repeated here, and the analysis opens from the summary of a filtered list.
+ * repeated here.
  */
 export function TransactionActionsMenu({
     transactions,
     hasTransactionalAccounts,
     onReEvaluateComplete,
+    showAnalysis = false,
+    filters,
 }: TransactionActionsMenuProps) {
     const isMobile = useIsMobile();
+    const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState(false);
+    const [analysisHintOpen, setAnalysisHintOpen] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
+
+    const canAnalyze = filters !== undefined && hasActiveFilters(filters);
+
+    // A hint opened while the button was disabled must not outlive that
+    // state, or applying a filter would leave a stale tooltip on screen.
+    const [hintCanAnalyze, setHintCanAnalyze] = useState(canAnalyze);
+    if (hintCanAnalyze !== canAnalyze) {
+        setHintCanAnalyze(canAnalyze);
+        setAnalysisHintOpen(false);
+    }
+
+    const handleAnalysisClick = () => {
+        if (!canAnalyze) {
+            if (isMobile) {
+                setAnalysisHintOpen((open) => !open);
+            }
+            return;
+        }
+        setAnalysisDrawerOpen(true);
+    };
 
     const handleReEvaluateAll = async () => {
         setIsReEvaluating(true);
@@ -85,6 +123,44 @@ export function TransactionActionsMenu({
             />
 
             <ButtonGroup>
+                {showAnalysis && (
+                    <TooltipProvider>
+                        <Tooltip
+                            open={analysisHintOpen}
+                            onOpenChange={setAnalysisHintOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={cn(
+                                        ICON_ONLY_BELOW_SM.button,
+                                        !canAnalyze &&
+                                            'cursor-not-allowed opacity-50',
+                                    )}
+                                    aria-disabled={!canAnalyze}
+                                    aria-label={__('Analysis')}
+                                    onClick={handleAnalysisClick}
+                                >
+                                    <BarChart3 className="h-5 w-5" />
+                                    <span className={ICON_ONLY_BELOW_SM.label}>
+                                        {__('Analysis')}
+                                    </span>
+                                </Button>
+                            </TooltipTrigger>
+                            {/* Enabled, it only names the icon-only button. */}
+                            <TooltipContent
+                                className={canAnalyze ? 'sm:hidden' : undefined}
+                            >
+                                {canAnalyze
+                                    ? __('Analysis')
+                                    : __(
+                                          'Apply a filter to enable this button',
+                                      )}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+
                 {!isMobile && (
                     <TooltipProvider>
                         <Tooltip>
@@ -154,6 +230,14 @@ export function TransactionActionsMenu({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </ButtonGroup>
+
+            {showAnalysis && filters && (
+                <TransactionAnalysisDrawer
+                    open={analysisDrawerOpen}
+                    onOpenChange={setAnalysisDrawerOpen}
+                    filters={filters}
+                />
+            )}
         </div>
     );
 }

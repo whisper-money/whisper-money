@@ -325,6 +325,7 @@
     "Pick a category to see its monthly spending.": "Choisissez une catégorie pour voir vos dépenses mensuelles.",
     "No spending in the last 12 months.": "Aucune dépense au cours des 12 derniers mois.",
     "Analysis": "Analyse",
+    "Apply a filter to enable this button": "Appliquer un filtre pour activer ce bouton",
     "A breakdown of the transactions matching your current filters.": "Une répartition des transactions qui correspondent à vos filtres actuels.",
     "Could not load the analysis. Please try again.": "L'analyse n'a pas pu être chargée. Essayer à nouveau.",
     "No transactions match the current filters.": "Aucune transaction ne correspond aux filtres actuels.",
