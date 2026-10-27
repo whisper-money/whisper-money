@@ -56,10 +56,8 @@ export function TransactionFilters({
 
     if (!isMobile) {
         return (
-            <div className="flex flex-col gap-3">
-                {props.actions ? (
-                    <div className="flex justify-end">{props.actions}</div>
-                ) : null}
+            <div className="flex flex-col gap-4">
+                {props.actions}
                 <DesktopTransactionFilters
                     {...props}
                     hideAccountFilter={hideAccountFilter}
@@ -302,7 +300,10 @@ function MobileTransactionFilters({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => onFiltersChange(EMPTY_FILTERS)}
+                                onClick={() => {
+                                    text.clear();
+                                    onFiltersChange(EMPTY_FILTERS);
+                                }}
                                 className="h-9"
                             >
                                 <X className="mr-1 h-4 w-4" />

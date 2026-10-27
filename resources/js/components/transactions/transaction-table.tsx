@@ -70,9 +70,8 @@ interface TransactionTableProps {
     labels: Label[];
     automationRules: AutomationRule[];
     /**
-     * The page's actions over the list: menus, export, the column picker on a
-     * phone. Null for none, as on /transactions on desktop, where they sit in
-     * the page's header.
+     * The page's row over the filters: menus, export, the column picker on a
+     * phone. /transactions puts its title and actions there on desktop.
      */
     renderToolbar: (toolbar: TransactionTableToolbar) => ReactNode;
     /** Keep the column picker's text on narrow screens. */

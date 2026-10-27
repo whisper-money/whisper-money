@@ -60,14 +60,12 @@ describe('facetChips', () => {
         expect(chipsOf({ amountMin: 0 })).toEqual(['Type: Income']);
     });
 
-    it('adds the sizes typed on that side as an amount chip', () => {
+    it('folds the side into one amount chip once sizes are typed', () => {
         expect(chipsOf({ amountMin: -100, amountMax: -30 })).toEqual([
-            'Type: Expenses',
-            'Amount: 30 – 100',
+            'Amount: Expenses 30 – 100',
         ]);
         expect(chipsOf({ amountMin: 50, amountMax: null })).toEqual([
-            'Type: Income',
-            'Amount: ≥ 50',
+            'Amount: Income ≥ 50',
         ]);
     });
 
@@ -106,7 +104,7 @@ describe('facetChips', () => {
             'Label: Holiday',
             'Creditor: Amazon',
             'Debtor: Bob',
-            'Category: AI guesses only',
+            'Categorized by: AI',
             'Block: Variable expense',
         ]);
     });
@@ -118,20 +116,17 @@ describe('facetChips', () => {
             amountMax: -30,
             labelIds: ['lbl-1'],
         };
-        const [type, amount, label] = facetChips(filters, sources);
+        const [amount, label] = facetChips(filters, sources);
 
-        expect(type.remove(filters)).toEqual({
+        expect(amount.remove(filters)).toEqual({
             ...filters,
             amountMin: null,
             amountMax: null,
         });
-        // The side stays: every expense, whatever its size.
-        expect(amount.remove(filters)).toEqual({
-            ...filters,
-            amountMin: null,
-            amountMax: 0,
-        });
         expect(label.remove(filters)).toEqual({ ...filters, labelIds: [] });
+
+        const [type] = facetChips({ ...empty, amountMax: 0 }, sources);
+        expect(type.remove({ ...empty, amountMax: 0 })).toEqual(empty);
     });
 });
 
@@ -152,7 +147,7 @@ describe('withAmountType', () => {
 });
 
 describe('withoutFacets', () => {
-    it('clears every chip and the search, keeping the period', () => {
+    it('clears every chip, keeping the period and the search', () => {
         const dateFrom = toLocalDate('2026-10-01');
         const dateTo = toLocalDate('2026-10-31');
 
@@ -166,6 +161,6 @@ describe('withoutFacets', () => {
                 amountMax: 0,
                 cashflowBlock: 'variable',
             }),
-        ).toEqual({ ...empty, dateFrom, dateTo });
+        ).toEqual({ ...empty, dateFrom, dateTo, searchText: 'coffee' });
     });
 });

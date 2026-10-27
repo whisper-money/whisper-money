@@ -83,15 +83,21 @@ export function DesktopTransactionFilters({
         onLoad: onFiltersChange,
         enabled: enableSavedFilters,
     });
-    const [openChip, setOpenChip] = useState<string | null>(null);
+    const [openChip, setOpenChip] = useState<{
+        chip: FacetChip;
+        index: number;
+    } | null>(null);
 
-    const chips = facetChips(filters, {
-        categories,
-        accounts,
-        labels,
-        locale,
-        hideAccountFilter,
-    });
+    const chips = withOpenChip(
+        facetChips(filters, {
+            categories,
+            accounts,
+            labels,
+            locale,
+            hideAccountFilter,
+        }),
+        openChip,
+    );
 
     const editorProps: Omit<FacetEditorProps, 'facet'> = {
         filters,
@@ -133,13 +139,13 @@ export function DesktopTransactionFilters({
                     className="flex flex-wrap items-center gap-2"
                     data-testid="filter-chips"
                 >
-                    {chips.map((chip) => (
+                    {chips.map((chip, index) => (
                         <FilterChip
                             key={chip.id}
                             chip={chip}
-                            open={openChip === chip.id}
+                            open={openChip?.chip.id === chip.id}
                             onOpenChange={(open) =>
-                                setOpenChip(open ? chip.id : null)
+                                setOpenChip(open ? { chip, index } : null)
                             }
                             onRemove={() =>
                                 onFiltersChange(chip.remove(filters))
@@ -178,6 +184,24 @@ export function DesktopTransactionFilters({
     );
 }
 
+/**
+ * The chips, keeping the one whose editor is open where it was even once its
+ * filter is emptied (the last category unticked, the name deleted), so the
+ * editor stays open to pick another.
+ */
+function withOpenChip(
+    chips: FacetChip[],
+    open: { chip: FacetChip; index: number } | null,
+): FacetChip[] {
+    if (!open || chips.some((chip) => chip.id === open.chip.id)) {
+        return chips;
+    }
+
+    const emptied = { ...open.chip, value: '—' };
+
+    return [...chips.slice(0, open.index), emptied, ...chips.slice(open.index)];
+}
+
 /** The search box; "/" anywhere on the page puts the cursor in it. */
 function SearchField({
     value,
@@ -213,11 +237,13 @@ function SearchField({
     );
 }
 
-const FACET_MENU: {
+interface FacetMenuItem {
     facet: FilterFacet;
     label: () => string;
     icon: ComponentType<{ className?: string }>;
-}[] = [
+}
+
+const FACET_MENU: FacetMenuItem[] = [
     { facet: 'type', label: () => __('Type'), icon: ArrowLeftRight },
     { facet: 'amount', label: () => __('Amount'), icon: Coins },
     { facet: 'category', label: () => __('Category'), icon: Shapes },
@@ -240,8 +266,8 @@ const FACET_MENU: {
 function availableFacets(
     filters: TransactionFilters,
     hideAccountFilter: boolean,
-): FilterFacet[] {
-    return FACET_MENU.map(({ facet }) => facet).filter((facet) => {
+): FacetMenuItem[] {
+    return FACET_MENU.filter(({ facet }) => {
         if (facet === 'account') {
             return !hideAccountFilter;
         }
@@ -260,7 +286,7 @@ function AddFilterButton({
     facets,
     editorProps,
 }: {
-    facets: FilterFacet[];
+    facets: FacetMenuItem[];
     editorProps: Omit<FacetEditorProps, 'facet'>;
 }) {
     const [open, setOpen] = useState(false);
@@ -304,9 +330,7 @@ function AddFilterButton({
                     </div>
                 ) : (
                     <div role="menu" className="flex flex-col">
-                        {FACET_MENU.filter((item) =>
-                            facets.includes(item.facet),
-                        ).map(({ facet: item, label, icon: Icon }) => (
+                        {facets.map(({ facet: item, label, icon: Icon }) => (
                             <button
                                 key={item}
                                 type="button"

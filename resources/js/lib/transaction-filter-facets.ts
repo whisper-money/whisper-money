@@ -1,7 +1,6 @@
 import {
     type AmountDirection,
     fromSignedAmountRange,
-    type SignedAmountRange,
     toSignedAmountRange,
     withAmountDirection,
 } from '@/lib/amount-filter';
@@ -45,6 +44,12 @@ interface FacetChipSources {
     locale: string;
     hideAccountFilter?: boolean;
 }
+
+const withoutAmount = (filters: TransactionFilters): TransactionFilters => ({
+    ...filters,
+    amountMin: null,
+    amountMax: null,
+});
 
 /** Names shown in a chip before the rest is summed up as "+N". */
 const NAMES_IN_CHIP = 2;
@@ -94,17 +99,6 @@ function amountBoundsOf(filters: TransactionFilters): {
         min: input.direction !== null && input.min === 0 ? null : input.min,
         max: input.max,
     };
-}
-
-function sideOnly(direction: AmountDirection | null): SignedAmountRange {
-    if (direction === 'expense') {
-        return { amountMin: null, amountMax: 0 };
-    }
-    if (direction === 'income') {
-        return { amountMin: 0, amountMax: null };
-    }
-
-    return { amountMin: null, amountMax: null };
 }
 
 function boundsText(
@@ -162,28 +156,31 @@ export function facetChips(
     const type = amountTypeOf(filters);
     const bounds = amountBoundsOf(filters);
 
-    if (type !== null) {
+    const hasBounds = bounds.min !== null || bounds.max !== null;
+    const side = type === 'expense' ? __('Expenses') : __('Income');
+
+    // A side with sizes reads as one amount chip, "Expenses ≥ 50", since
+    // the sizes mean nothing without it: taking the side off takes them too.
+    if (type !== null && !hasBounds) {
         chips.push({
             id: 'type',
             facet: 'type',
             name: __('Type'),
-            value: type === 'expense' ? __('Expenses') : __('Income'),
-            remove: (current) => ({ ...current, ...sideOnly(null) }),
+            value: side,
+            remove: withoutAmount,
         });
     }
 
-    if (bounds.min !== null || bounds.max !== null) {
+    if (hasBounds) {
+        const range = boundsText(bounds.min, bounds.max, (value) =>
+            number.format(value),
+        );
         chips.push({
             id: 'amount',
             facet: 'amount',
             name: __('Amount'),
-            value: boundsText(bounds.min, bounds.max, (value) =>
-                number.format(value),
-            ),
-            remove: (current) => ({
-                ...current,
-                ...sideOnly(amountTypeOf(current)),
-            }),
+            value: type === null ? range : `${side} ${range}`,
+            remove: withoutAmount,
         });
     }
 
@@ -243,8 +240,8 @@ export function facetChips(
         chips.push({
             id: 'ai',
             facet: 'ai',
-            name: __('Category'),
-            value: __('AI guesses only'),
+            name: __('Categorized by'),
+            value: __('AI'),
             remove: (current) => ({ ...current, aiCategorizedOnly: false }),
         });
     }
@@ -263,8 +260,8 @@ export function facetChips(
 }
 
 /**
- * The filters with every chip and the search taken off. The period stays:
- * it is where the list is, not a filter on it.
+ * The filters with every chip taken off. The period and the search stay:
+ * they have controls of their own, outside the chips.
  */
 export function withoutFacets(filters: TransactionFilters): TransactionFilters {
     return {
@@ -276,7 +273,6 @@ export function withoutFacets(filters: TransactionFilters): TransactionFilters {
         labelIds: [],
         creditorName: '',
         debtorName: '',
-        searchText: '',
         aiCategorizedOnly: false,
         cashflowBlock: null,
     };

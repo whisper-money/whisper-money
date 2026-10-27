@@ -4160,5 +4160,7 @@
     "Q:quarter :year": "T:quarter :year",
     "Save as view": "Guardar como vista",
     "Saved views": "Vistas guardadas",
-    "Search transactions": "Buscar transacciones"
+    "Search transactions": "Buscar transacciones",
+    "Categorized by": "Categorizado por",
+    "AI": "IA"
 }

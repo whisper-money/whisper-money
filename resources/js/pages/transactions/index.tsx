@@ -105,17 +105,19 @@ export default function Transactions({
         [accounts],
     );
 
-    const exportOptions = {
+    // The labels come from the table, which knows the ones a dialog created
+    // since the page loaded.
+    const exportOptionsWith = (labels: Label[]) => ({
         params: source.queryParams,
         loadedIds: allTransactions.map((transaction) => transaction.id),
         hasMore: source.pagination.hasMore,
         filterChips: describeActiveFilters(filters, {
             categories,
             accounts,
-            labels: initialLabels,
+            labels,
             locale,
         }),
-    };
+    });
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -127,23 +129,7 @@ export default function Transactions({
                         title={__('Transactions')}
                         description={__('View and manage your transactions')}
                     />
-                ) : (
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h1 className="text-xl font-semibold tracking-tight">
-                            {__('Transactions')}
-                        </h1>
-                        <div className="ml-auto">
-                            <TransactionsHeaderActions
-                                transactions={allTransactions}
-                                hasTransactionalAccounts={
-                                    hasTransactionalAccounts
-                                }
-                                onReEvaluateComplete={refreshTransactions}
-                                exportOptions={exportOptions}
-                            />
-                        </div>
-                    </div>
-                )}
+                ) : null}
 
                 {/* One child, so the dialogs and the bulk bar it mounts after
                     the table never take part in the spacing above. */}
@@ -161,8 +147,11 @@ export default function Transactions({
                         rowCellClassName="pt-2.5 pb-2"
                         confirmBulkByTyping
                         announceBulkOutcome
-                        renderToolbar={({ columnPicker, clearSelection }) =>
-                            // On desktop the actions sit in the header above.
+                        renderToolbar={({
+                            columnPicker,
+                            labels,
+                            clearSelection,
+                        }) =>
                             isMobile ? (
                                 <div className="flex w-full flex-wrap items-center justify-between gap-2">
                                     <TransactionActionsMenu
@@ -178,12 +167,35 @@ export default function Transactions({
 
                                     <div className="ml-auto flex items-center gap-2">
                                         <TransactionExportButton
-                                            {...exportOptions}
+                                            {...exportOptionsWith(labels)}
                                         />
                                         {columnPicker}
                                     </div>
                                 </div>
-                            ) : null
+                            ) : (
+                                // On desktop the page's title heads the
+                                // filters, its actions beside it.
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <h1 className="text-xl font-semibold tracking-tight">
+                                        {__('Transactions')}
+                                    </h1>
+                                    <div className="ml-auto">
+                                        <TransactionsHeaderActions
+                                            transactions={allTransactions}
+                                            hasTransactionalAccounts={
+                                                hasTransactionalAccounts
+                                            }
+                                            onReEvaluateComplete={() => {
+                                                clearSelection();
+                                                refreshTransactions();
+                                            }}
+                                            exportOptions={exportOptionsWith(
+                                                labels,
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            )
                         }
                         aboveRows={
                             // Null is the server saying there is no filter

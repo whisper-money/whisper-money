@@ -29,6 +29,8 @@ export function useDebouncedTextFilters(
 ): {
     values: TextFilterValues;
     setValue: (filter: TextFilter, value: string) => void;
+    /** Empties the fields, dropping what is typed but not yet applied. */
+    clear: () => void;
 } {
     const [values, setValues] = useState(() => textValuesOf(filters));
     // The debounced push reads the filters as they are when it fires, so a
@@ -50,6 +52,10 @@ export function useDebouncedTextFilters(
         return () => clearTimeout(timer);
     }, [values]);
 
+    // The text last seen in the filters. When it moves, a change came from
+    // outside (or our own push landed) and the fields follow it; comparing
+    // against it rather than against the fields keeps a keystroke made since
+    // the last push from being overwritten on every render.
     const [applied, setApplied] = useState(() => textValuesOf(filters));
     const incoming = textValuesOf(filters);
     if (TEXT_FILTERS.some((key) => incoming[key] !== applied[key])) {
@@ -61,5 +67,7 @@ export function useDebouncedTextFilters(
         values,
         setValue: (filter, value) =>
             setValues((current) => ({ ...current, [filter]: value })),
+        clear: () =>
+            setValues({ searchText: '', creditorName: '', debtorName: '' }),
     };
 }

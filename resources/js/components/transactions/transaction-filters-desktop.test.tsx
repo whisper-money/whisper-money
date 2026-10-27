@@ -4,6 +4,7 @@ import { type TransactionFilters as FiltersType } from '@/types/transaction';
 import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import axios from 'axios';
+import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionFilters } from './transaction-filters';
 
@@ -222,12 +223,46 @@ describe('Desktop transaction filters', () => {
             labelIds: ['lbl-1'],
         });
 
+        // The period and the search have their own controls, and stay.
         fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
         expect(lastFilters(onFiltersChange)).toEqual({
             ...emptyFilters,
             dateFrom,
             dateTo,
+            searchText: 'coffee',
         });
+    });
+
+    it('keeps an emptied chip and its editor open to pick another', () => {
+        function Harness() {
+            const [filters, setFilters] = useState<FiltersType>({
+                ...emptyFilters,
+                categoryIds: ['groceries'],
+            });
+
+            return (
+                <TransactionFilters
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    categories={categories}
+                    labels={[]}
+                    accounts={accounts}
+                />
+            );
+        }
+        render(<Harness />);
+
+        fireEvent.click(screen.getByText('Groceries'));
+        fireEvent.click(screen.getByRole('option', { name: /Groceries/ }));
+
+        expect(screen.getByTestId('filter-chip-category').textContent).toBe(
+            'Category—',
+        );
+        fireEvent.click(screen.getByRole('option', { name: /Restaurants/ }));
+
+        expect(screen.getByTestId('filter-chip-category').textContent).toBe(
+            'CategoryRestaurants',
+        );
     });
 
     it('shows no chips row without a facet, the period and search aside', () => {
