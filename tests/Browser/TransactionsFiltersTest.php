@@ -315,3 +315,69 @@ it('captions the summary of a filtered set on a phone and opens its analysis fro
         ->assertPresent('[data-testid="analysis-drawer"]')
         ->assertNoJavascriptErrors();
 });
+
+it('filters from the phone sheet, reaching the list only on "See N transactions"', function () {
+    $page = visit('/transactions')->on()->iPhone14Pro()->navigate('/transactions');
+
+    $page->assertSee('Weekly groceries market')
+        ->assertMissing('[data-testid="filters-badge"]')
+        ->assertPresent('[data-testid="period-stepper"]')
+        ->click('[data-testid="open-filters-sheet"]')
+        ->click('[data-testid="transaction-filters-sheet"] button:has-text("Expenses")')
+        ->click('[data-testid="sheet-labels"] button:has-text("Labels")')
+        ->click('[data-testid="sheet-labels"] label:has-text("Holiday")')
+        // Counted for the draft, which has not reached the list yet.
+        ->assertSeeIn('[data-testid="apply-filters"]', 'See 2 transactions')
+        ->assertQueryStringMissing('label_ids')
+        ->click('[data-testid="apply-filters"]')
+        ->assertMissing('[data-testid="transaction-filters-sheet"]')
+        ->assertQueryStringHas('label_ids', $this->fixture->holiday->id)
+        ->assertQueryStringHas('amount_max', '0')
+        ->assertDontSee('Weekly groceries market')
+        // Type and label; the period has its own stepper.
+        ->assertSeeIn('[data-testid="filters-badge"]', '2')
+        ->assertSeeIn('[aria-label="Filter summary"]', '2 expenses · Holiday')
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
+        ->click('[aria-label="Filter summary"] button')
+        ->assertPresent('[data-testid="analysis-drawer"]')
+        ->assertNoJavascriptErrors();
+});
+
+it('drops the sheet draft on ✕ and keeps the page actions in the phone header', function () {
+    $page = visit('/transactions')->on()->iPhone14Pro()->navigate('/transactions');
+
+    $page->assertSee('Weekly groceries market')
+        // The search lines up with the framed list, 16px from the edge.
+        ->assertScript('Math.round(document.querySelector(\'[data-testid="transaction-search"]\').closest("label").getBoundingClientRect().left)', 16)
+        ->click('[data-testid="open-filters-sheet"]')
+        ->click('[data-testid="transaction-filters-sheet"] button:has-text("Income")')
+        ->click('[data-testid="transaction-filters-sheet"] [aria-label="Close"]')
+        ->assertMissing('[data-testid="transaction-filters-sheet"]')
+        ->assertQueryStringMissing('amount_min')
+        ->assertSee('Weekly groceries market')
+        ->click('[data-testid="transactions-header-actions"] [aria-label="More actions"]')
+        ->assertSee('Categorize')
+        ->assertSee('Update categories automatically')
+        ->click('[role="menuitem"]:has-text("Export CSV")')
+        ->assertSee('CSV downloaded')
+        ->assertNoJavascriptErrors();
+});
+
+it('leaves the accounts out of the phone sheet on an account page', function () {
+    $url = '/accounts/'.$this->fixture->savings->id;
+
+    $page = visit($url)->on()->iPhone14Pro()->navigate($url);
+
+    $page->assertSee('Electricity bill May')
+        ->click('[data-testid="open-filters-sheet"]')
+        ->assertPresent('[data-testid="sheet-categories"]')
+        ->assertMissing('[data-testid="sheet-accounts"]')
+        ->click('[data-testid="sheet-categories"] button:has-text("Categories")')
+        ->click('[data-testid="sheet-categories"] label:has-text("Utilities")')
+        // Counted in the browser, over the account's own rows.
+        ->assertSeeIn('[data-testid="apply-filters"]', 'See 2 transactions')
+        ->click('[data-testid="apply-filters"]')
+        ->assertSee('Electricity bill May')
+        ->assertDontSee('Hotel in Lisbon')
+        ->assertNoJavascriptErrors();
+});

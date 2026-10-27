@@ -54,6 +54,7 @@ function renderFilters(
             labels={[]}
             accounts={accounts}
             trailing={<button>columns</button>}
+            countMatching={vi.fn()}
             {...props}
         />,
     );
@@ -247,6 +248,7 @@ describe('Desktop transaction filters', () => {
                     categories={categories}
                     labels={[]}
                     accounts={accounts}
+                    countMatching={vi.fn()}
                 />
             );
         }

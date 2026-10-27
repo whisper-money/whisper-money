@@ -86,6 +86,7 @@ function source(
             loadsOnScroll: false,
         },
         reload: vi.fn(),
+        countMatching: vi.fn().mockResolvedValue(0),
         queryKey: 0,
         ...overrides,
     };

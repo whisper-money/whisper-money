@@ -3137,5 +3137,13 @@
     "Saved views": "Vues enregistrées",
     "Search transactions": "Rechercher des transactions",
     "Categorized by": "Catégorisé par",
-    "AI": "IA"
+    "AI": "IA",
+    "Reset": "Réinitialiser",
+    "Any": "Tous",
+    "See transactions": "Voir les transactions",
+    "See 1 transaction": "Voir 1 transaction",
+    "See :count transactions": "Voir :count transactions",
+    "Pick the filters, then apply them to the list.": "Choisissez les filtres, puis appliquez-les à la liste.",
+    "View all (:count)": "Tout voir (:count)",
+    "Nothing to pick yet.": "Rien à choisir pour l’instant."
 }

@@ -15,6 +15,7 @@ import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
+import { PHONE_INSET } from '@/lib/compact-list-style';
 import {
     type Account,
     type Bank,
@@ -280,32 +281,36 @@ export function TransactionTable({
     return (
         <>
             <div className="space-y-4">
-                <TransactionFiltersComponent
-                    filters={source.filters}
-                    onFiltersChange={source.onFiltersChange}
-                    categories={categories}
-                    labels={labels}
-                    accounts={accounts}
-                    hideAccountFilter={hideAccountFilter}
-                    enableSavedFilters={enableSavedFilters}
-                    actions={renderToolbar({
-                        columnPicker: isMobile ? (
-                            <DataTableViewOptions
-                                table={table}
-                                hideColumnTextOnMobile={
-                                    !showColumnPickerTextOnMobile
-                                }
-                            />
-                        ) : null,
-                        labels,
-                        clearSelection,
-                    })}
-                    trailing={
-                        isMobile ? null : (
-                            <DataTableViewOptions table={table} iconOnly />
-                        )
-                    }
-                />
+                {/* On a phone the filters line up with the inset list. */}
+                <div className={framedOnPhone ? undefined : PHONE_INSET}>
+                    <TransactionFiltersComponent
+                        filters={source.filters}
+                        onFiltersChange={source.onFiltersChange}
+                        categories={categories}
+                        labels={labels}
+                        accounts={accounts}
+                        hideAccountFilter={hideAccountFilter}
+                        enableSavedFilters={enableSavedFilters}
+                        countMatching={source.countMatching}
+                        actions={renderToolbar({
+                            columnPicker: isMobile ? (
+                                <DataTableViewOptions
+                                    table={table}
+                                    hideColumnTextOnMobile={
+                                        !showColumnPickerTextOnMobile
+                                    }
+                                />
+                            ) : null,
+                            labels,
+                            clearSelection,
+                        })}
+                        trailing={
+                            isMobile ? null : (
+                                <DataTableViewOptions table={table} iconOnly />
+                            )
+                        }
+                    />
+                </div>
 
                 {aboveRows}
 
