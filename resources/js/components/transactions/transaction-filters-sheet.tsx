@@ -35,6 +35,7 @@ import {
     CASHFLOW_BLOCK_LABELS,
     CASHFLOW_BLOCK_TONES,
     CASHFLOW_BLOCKS,
+    withoutDatelessCashflowBlock,
 } from '@/lib/cashflow-block';
 import {
     categorySelectionState,
@@ -44,6 +45,7 @@ import {
     amountTypeOf,
     facetChips,
     withAmountType,
+    withoutAmount,
     withoutFacets,
 } from '@/lib/transaction-filter-facets';
 import { periodLabel } from '@/lib/transaction-period';
@@ -53,8 +55,13 @@ import { type Category, getCategoryColorClasses } from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import * as Icons from 'lucide-react';
-import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import {
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    HelpCircle,
+    X,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 export interface TransactionFiltersSheetProps {
@@ -83,8 +90,8 @@ const COUNT_DEBOUNCE_MS = 300;
 
 /**
  * The phone's filters, full screen: one row per facet, edited as a draft that
- * only reaches the list when "See N transactions" applies it. ✕ (or the back
- * gesture) drops the draft; "Reset" empties it.
+ * only reaches the list when "See N transactions" applies it. ✕ (or Esc)
+ * drops the draft; "Reset" empties it.
  */
 export function TransactionFiltersSheet({
     open,
@@ -122,20 +129,36 @@ function FiltersDraft({
 }) {
     const locale = useLocale();
     const [draft, setDraft] = useState(filters);
+    // A saved view brings its own search; otherwise the search is typed
+    // outside the sheet and may have moved since it opened.
+    const [draftOwnsSearch, setDraftOwnsSearch] = useState(false);
     const [view, setView] = useState<'facets' | 'period'>('facets');
-    const count = useMatchingCount(draft, countMatching);
+    const target = draftOwnsSearch
+        ? draft
+        : { ...draft, searchText: filters.searchText };
+    const count = useMatchingCount(target, countMatching);
     const saved = useSavedFilters({
         filters: draft,
-        onLoad: setDraft,
+        onLoad: (loaded) => {
+            setDraft(loaded);
+            setDraftOwnsSearch(true);
+        },
         enabled: enableSavedFilters,
     });
 
     const update = (changes: Partial<TransactionFilters>) =>
         setDraft((current) => ({ ...current, ...changes }));
 
+    // A block only narrows a whole range, so it goes with either date.
+    const updatePeriod = (
+        range: Pick<TransactionFilters, 'dateFrom' | 'dateTo'>,
+    ) =>
+        setDraft((current) =>
+            withoutDatelessCashflowBlock({ ...current, ...range }),
+        );
+
     function apply() {
-        // The search is typed outside the sheet and may have moved since.
-        onApply({ ...draft, searchText: filters.searchText });
+        onApply(target);
         onClose();
     }
 
@@ -163,8 +186,10 @@ function FiltersDraft({
                     <PeriodFields
                         dateFrom={draft.dateFrom}
                         dateTo={draft.dateTo}
-                        onChange={update}
-                        onClear={() => update({ dateFrom: null, dateTo: null })}
+                        onChange={updatePeriod}
+                        onClear={() =>
+                            updatePeriod({ dateFrom: null, dateTo: null })
+                        }
                     />
                 </div>
                 <SheetFooterBar>
@@ -236,7 +261,16 @@ function FiltersDraft({
                 </button>
 
                 <SheetRow label={__('Type')} className="gap-4">
-                    <TypeSegments draft={draft} onChange={setDraft} />
+                    <TypeSegments
+                        value={amountTypeOf(draft)}
+                        onChange={(type) =>
+                            setDraft(
+                                type === null
+                                    ? withoutAmount(draft)
+                                    : withAmountType(draft, type),
+                            )
+                        }
+                    />
                 </SheetRow>
 
                 <SheetSection
@@ -384,14 +418,16 @@ function FiltersDraft({
                                     cashflowBlock:
                                         draft.cashflowBlock === block
                                             ? null
-                                            : (block as TransactionFilters['cashflowBlock']),
+                                            : block,
                                 })
                             }
                         />
                     </SheetSection>
                 ) : null}
 
-                <SheetRow label={__('AI guesses only')}>
+                {/* The whole row toggles, not only the switch. */}
+                <label className={cn(ROW, 'cursor-pointer')}>
+                    {__('AI guesses only')}
                     <AiSparkleIcon className="size-4 shrink-0" />
                     <SwitchButton
                         label={__('AI guesses only')}
@@ -400,7 +436,7 @@ function FiltersDraft({
                             update({ aiCategorizedOnly })
                         }
                     />
-                </SheetRow>
+                </label>
 
                 {enableSavedFilters && (
                     <SheetRow label={__('Saved views')}>
@@ -584,14 +620,12 @@ const TYPE_SEGMENTS: { value: AmountDirection | null; label: () => string }[] =
 
 /** All / Expenses / Income: the side of the amount range. */
 function TypeSegments({
-    draft,
+    value: type,
     onChange,
 }: {
-    draft: TransactionFilters;
-    onChange: (filters: TransactionFilters) => void;
+    value: AmountDirection | null;
+    onChange: (type: AmountDirection | null) => void;
 }) {
-    const type = amountTypeOf(draft);
-
     return (
         <div
             role="group"
@@ -603,15 +637,9 @@ function TypeSegments({
                     key={value ?? 'all'}
                     type="button"
                     aria-pressed={type === value}
-                    onClick={() =>
-                        onChange(
-                            value === null
-                                ? { ...draft, amountMin: null, amountMax: null }
-                                : withAmountType(draft, value),
-                        )
-                    }
+                    onClick={() => onChange(value)}
                     className={cn(
-                        'h-9 flex-1 rounded-lg text-sm text-muted-foreground transition-colors',
+                        'h-10 flex-1 rounded-lg text-sm text-muted-foreground transition-colors',
                         type === value &&
                             'bg-background font-medium text-foreground shadow-xs dark:bg-input/50',
                     )}
@@ -623,8 +651,8 @@ function TypeSegments({
     );
 }
 
-interface CheckOption {
-    id: string;
+interface CheckOption<Id extends string = string> {
+    id: Id;
     label: string;
     checked: boolean | 'indeterminate';
     leading?: ReactNode;
@@ -636,12 +664,12 @@ interface CheckOption {
  * A facet's values as 52px checkbox rows, the first few at once and the rest
  * behind "View all (N)".
  */
-function CheckOptions({
+function CheckOptions<Id extends string>({
     options,
     onToggle,
 }: {
-    options: CheckOption[];
-    onToggle: (id: string) => void;
+    options: CheckOption<Id>[];
+    onToggle: (id: Id) => void;
 }) {
     const [showAll, setShowAll] = useState(false);
     const shown = showAll ? options : options.slice(0, OPTIONS_SHOWN);
@@ -728,7 +756,7 @@ function CategoryOptions({
             checked: selectedSet.has(UNCATEGORIZED_CATEGORY_ID),
             leading: (
                 <OptionCircle className="bg-zinc-100 dark:bg-zinc-800">
-                    <Icons.HelpCircle className="size-3.5 text-zinc-500" />
+                    <HelpCircle className="size-3.5 text-zinc-500" />
                 </OptionCircle>
             ),
         },
@@ -791,8 +819,10 @@ function SwitchButton({
         >
             <span
                 className={cn(
-                    'absolute top-[3px] left-[3px] size-5 rounded-full bg-background shadow-xs transition-transform',
-                    checked && 'translate-x-[18px]',
+                    'absolute top-[3px] left-[3px] size-5 rounded-full shadow-xs transition-transform',
+                    checked
+                        ? 'translate-x-[18px] bg-primary-foreground'
+                        : 'bg-white',
                 )}
             />
         </button>

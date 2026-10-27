@@ -159,7 +159,7 @@ export default function Transactions({
                         renderToolbar={({ labels, clearSelection }) => (
                             // The page's title heads the filters, its actions
                             // beside it: icon buttons on a phone.
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <h1 className="text-[26px] font-semibold tracking-tight md:text-xl">
                                     {__('Transactions')}
                                 </h1>

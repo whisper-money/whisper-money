@@ -321,4 +321,38 @@ describe('TransactionFilters phone sheet', () => {
 
         expect(applied(onFiltersChange).creditorName).toBe('Mercadona');
     });
+
+    it('drops the cashflow block with the dates it narrows', () => {
+        const { onFiltersChange } = renderFilters({
+            ...october,
+            cashflowBlock: 'variable',
+        });
+        openSheet();
+
+        fireEvent.click(screen.getByTestId('sheet-period-row'));
+        fireEvent.click(screen.getByRole('button', { name: 'All dates' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+        fireEvent.click(screen.getByTestId('apply-filters'));
+
+        expect(applied(onFiltersChange)).toMatchObject({
+            dateFrom: null,
+            dateTo: null,
+            cashflowBlock: null,
+        });
+    });
+
+    it('toggles the AI guesses from anywhere on its row', () => {
+        const { onFiltersChange } = renderFilters();
+        const sheet = openSheet();
+
+        fireEvent.click(within(sheet).getByText('AI guesses only'));
+        expect(
+            within(sheet)
+                .getByRole('switch', { name: 'AI guesses only' })
+                .getAttribute('aria-checked'),
+        ).toBe('true');
+        fireEvent.click(screen.getByTestId('apply-filters'));
+
+        expect(applied(onFiltersChange).aiCategorizedOnly).toBe(true);
+    });
 });

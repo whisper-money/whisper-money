@@ -45,7 +45,10 @@ interface FacetChipSources {
     hideAccountFilter?: boolean;
 }
 
-const withoutAmount = (filters: TransactionFilters): TransactionFilters => ({
+/** The filters with no amount range: any side, any size. */
+export const withoutAmount = (
+    filters: TransactionFilters,
+): TransactionFilters => ({
     ...filters,
     amountMin: null,
     amountMax: null,
