@@ -59,6 +59,8 @@ class TransactionFilterSummary
     /**
      * Month by month over the window that ends in the filter's last month (or
      * this month without one), its own date range set aside for that window's.
+     * A cashflow block is then read over the whole window, the period that
+     * filter needs, rather than over the filter's own dates.
      *
      * @param  array<string, mixed>  $filters
      * @return list<array{month: string, total: ?int}>

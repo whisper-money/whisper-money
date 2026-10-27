@@ -22,6 +22,10 @@ interface TransactionFilterSummaryProps {
 /** Bars the phone's analysis row draws; the desktop button draws the whole trend. */
 const PHONE_TREND_BARS = 5;
 
+/** Three figures and the wider analysis button, for the card and its skeleton. */
+const DESKTOP_GRID =
+    'grid grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] rounded-xl';
+
 /**
  * What a filtered list adds up to (how many rows, their total and average)
  * and the way into the analysis of those same filters. One card of four cells
@@ -75,7 +79,7 @@ function DesktopSummary({ summary, onOpenAnalysis }: SummaryLayoutProps) {
     return (
         <section
             aria-label={__('Filter summary')}
-            className="grid grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] overflow-hidden rounded-xl border bg-card"
+            className={cn(DESKTOP_GRID, 'overflow-hidden border bg-card')}
         >
             <SummaryCell label={__('Transactions')}>
                 {summary.count}
@@ -97,7 +101,7 @@ function DesktopSummary({ summary, onOpenAnalysis }: SummaryLayoutProps) {
                 />
                 <span className="flex min-w-0 flex-col gap-px">
                     <span className="font-semibold">{__('View analysis')}</span>
-                    <span className="truncate text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                         {__('6-month trend and breakdown')}
                     </span>
                 </span>
@@ -257,7 +261,7 @@ function TransactionFilterSummarySkeleton({ isMobile }: { isMobile: boolean }) {
                 'overflow-hidden border bg-card',
                 isMobile
                     ? 'flex flex-col gap-2 rounded-[14px] px-3.5 py-3'
-                    : 'grid grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)] gap-6 rounded-xl px-[18px] py-3.5',
+                    : cn(DESKTOP_GRID, 'gap-6 px-[18px] py-3.5'),
             )}
         >
             {Array.from({ length: isMobile ? 2 : 4 }, (_, index) => (

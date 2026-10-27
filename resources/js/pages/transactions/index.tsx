@@ -167,9 +167,12 @@ export default function Transactions({
                             </div>
                         )}
                         aboveRows={
-                            hasActiveFilters(filters) ? (
+                            // Null is the server saying there is no filter
+                            // to sum up; while a query is on its way the
+                            // card waits for that query's own summary.
+                            hasActiveFilters(filters) &&
+                            (source.isLoading || filterSummary !== null) ? (
                                 <TransactionFilterSummary
-                                    // Stale while a new query is on its way.
                                     summary={
                                         source.isLoading
                                             ? undefined

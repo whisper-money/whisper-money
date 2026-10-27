@@ -205,3 +205,11 @@ test('the transactions page has no summary without a filter', function () {
         ->get(route('transactions.index'))
         ->assertInertia(fn ($page) => $page->where('filterSummary', null));
 });
+
+test('the AI-only toggle alone does not count as a filter to sum up', function () {
+    summaryTransaction('2025-11-12', -1500, attributes: ['category_source' => 'ai']);
+
+    actingAs($this->user)
+        ->get(route('transactions.index', ['category_source' => 'ai']))
+        ->assertInertia(fn ($page) => $page->where('filterSummary', null));
+});

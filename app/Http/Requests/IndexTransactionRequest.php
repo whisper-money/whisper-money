@@ -84,10 +84,12 @@ class IndexTransactionRequest extends FormRequest
     }
 
     /**
-     * Whether any filter narrows the list, the owner aside.
+     * Whether a filter the page counts as one narrows the list, as the page's
+     * `hasActiveFilters()` reads it: the owner aside, and the AI-only toggle
+     * too, which no saved filter keeps.
      */
     public function hasFilters(): bool
     {
-        return count($this->filters()) > 1;
+        return array_diff_key($this->filters(), array_flip(['user_id', 'category_source'])) !== [];
     }
 }
