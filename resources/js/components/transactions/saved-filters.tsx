@@ -253,18 +253,6 @@ export function useSavedFilters({
     };
 }
 
-/** The saved filters' menu and dialogs, for the toolbar beside the filters. */
-export function SavedFilters(props: SavedFiltersProps) {
-    const saved = useSavedFilters(props);
-
-    return (
-        <>
-            <SavedFiltersMenu saved={saved} />
-            <SavedFilterDialogs saved={saved} />
-        </>
-    );
-}
-
 /**
  * Loads, updates and deletes a saved filter. The trigger names the saved
  * filter in use; without one it is a bookmark icon, or "Saved views" with

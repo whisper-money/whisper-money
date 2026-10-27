@@ -47,6 +47,7 @@ interface AddTransactionButtonProps {
     /** Which surface the button sits on, for `transaction_created`. */
     origin?: TransactionCreateOrigin;
     testId?: string;
+    className?: string;
 }
 
 /**
@@ -59,6 +60,7 @@ export function AddTransactionButton({
     variant = 'default',
     origin = 'quick_add',
     testId = 'add-transaction-button',
+    className,
 }: AddTransactionButtonProps) {
     const { data, loading, load } = useTransactionDialogData();
     const [open, setOpen] = useState(false);
@@ -109,6 +111,7 @@ export function AddTransactionButton({
                                 ICON_ONLY_BELOW_SM.button,
                                 (isDisabled || loading) &&
                                     'cursor-not-allowed opacity-50',
+                                className,
                             )}
                             onClick={handleOpen}
                             aria-disabled={isDisabled || loading}

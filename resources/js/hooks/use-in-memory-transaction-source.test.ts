@@ -1,4 +1,4 @@
-import { type Transaction } from '@/types/transaction';
+import { type Transaction, type TransactionFilters } from '@/types/transaction';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInMemoryTransactionSource } from './use-in-memory-transaction-source';
@@ -160,5 +160,27 @@ describe('useInMemoryTransactionSource', () => {
 
         expect(result.current.rows).toHaveLength(1);
         expect(result.current.daySummaryOf('2026-10-01').count).toBe(3);
+    });
+
+    it('counts what a filter set would keep without applying it', async () => {
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({
+                transactions: ROWS,
+                accountId: 'checking',
+            }),
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        const count = (changes: Partial<TransactionFilters>) =>
+            result.current.countMatching(
+                { ...result.current.filters, ...changes },
+                new AbortController().signal,
+            );
+
+        // Scoped to its account: "c" is in savings.
+        await expect(count({})).resolves.toBe(2);
+        await expect(count({ searchText: 'coffee' })).resolves.toBe(1);
+        expect(result.current.rows).toHaveLength(2);
     });
 });

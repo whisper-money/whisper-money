@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/command';
 import {
     buildCategoryTree,
+    type CategoryNode,
     categorySelectionState,
     flattenCategoryTree,
     searchCategoryTree,
@@ -29,30 +30,23 @@ import { __ } from '@/utils/i18n';
 /** The category id the filters use for "no category". */
 export const UNCATEGORIZED_CATEGORY_ID = 'uncategorized';
 
-function toggleId<T>(ids: T[], id: T): T[] {
+/** The ids with `id` added, or taken out when it was there. */
+export function toggleId<T>(ids: T[], id: T): T[] {
     return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id];
 }
 
-interface CategoryFacetListProps {
-    categories: Category[];
-    selectedIds: string[];
-    onChange: (categoryIds: string[]) => void;
-}
-
 /**
- * The searchable category tree with a checkbox per category, plus
- * "Uncategorized". Selected branches sort first, as they were when the list
- * mounted, so ticking one never reshuffles the list under the cursor.
+ * The category tree flattened, parents before their children, with the
+ * branches selected when the list mounted sorted first: ticking one never
+ * reshuffles the list under the finger.
  */
-export function CategoryFacetList({
-    categories,
-    selectedIds,
-    onChange,
-}: CategoryFacetListProps) {
-    const [search, setSearch] = useState('');
+export function useSelectedFirstCategoryTree(
+    categories: Category[],
+    selectedIds: string[],
+): CategoryNode[] {
     const [orderSnapshot] = useState(() => new Set(selectedIds));
 
-    const categoryTree = useMemo(() => {
+    return useMemo(() => {
         // A branch sorts to the top when it (or a descendant) was selected.
         const branchSelected = new Set<string>();
         const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
@@ -76,6 +70,26 @@ export function CategoryFacetList({
 
         return flattenCategoryTree(buildCategoryTree(categories, compare));
     }, [categories, orderSnapshot]);
+}
+
+interface CategoryFacetListProps {
+    categories: Category[];
+    selectedIds: string[];
+    onChange: (categoryIds: string[]) => void;
+}
+
+/**
+ * The searchable category tree with a checkbox per category, plus
+ * "Uncategorized". Selected branches sort first, as they were when the list
+ * mounted, so ticking one never reshuffles the list under the cursor.
+ */
+export function CategoryFacetList({
+    categories,
+    selectedIds,
+    onChange,
+}: CategoryFacetListProps) {
+    const [search, setSearch] = useState('');
+    const categoryTree = useSelectedFirstCategoryTree(categories, selectedIds);
 
     const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
     const visibleTree = useMemo(

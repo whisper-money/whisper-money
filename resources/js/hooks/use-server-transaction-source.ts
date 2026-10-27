@@ -1,3 +1,4 @@
+import { summary as transactionsSummary } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { useServerDaySummaries } from '@/hooks/use-day-summaries';
 import {
@@ -13,11 +14,13 @@ import { serializeFilters } from '@/lib/transaction-filter-serialization';
 import {
     type TransactionFilters as Filters,
     type ServerTransaction,
+    type TransactionFilterSummary,
 } from '@/types/transaction';
 import { type TransactionTableSource } from '@/types/transaction-table-source';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /** The filters the server applied to the page it served. */
@@ -81,6 +84,21 @@ export function clientFiltersToQueryParams(
             ],
         ),
     );
+}
+
+/** How many transactions the server holds for a filter set, from its summary. */
+async function countMatching(
+    filters: Filters,
+    signal: AbortSignal,
+): Promise<number> {
+    const { data } = await axios.get<TransactionFilterSummary>(
+        transactionsSummary.url({
+            query: clientFiltersToQueryParams(filters),
+        }),
+        { signal },
+    );
+
+    return data.count;
 }
 
 function onlySearchChanged(next: Filters, current: Filters): boolean {
@@ -306,6 +324,7 @@ export function useServerTransactionSource({
         },
         reload,
         refreshRows: reload,
+        countMatching,
         queryKey,
         matchingFilters,
         queryParams: clientFiltersToQueryParams(filters),

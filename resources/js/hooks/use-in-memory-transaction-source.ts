@@ -116,6 +116,30 @@ function matchesFilters(
     return true;
 }
 
+/** The ids of the rows whose description or notes hold the search text. */
+function searchMatches(
+    transactions: ServerTransaction[],
+    searchText: string,
+): Set<string> {
+    const searchLower = searchText.toLowerCase();
+    const matchedIds = new Set<string>();
+
+    if (!searchLower) {
+        return matchedIds;
+    }
+
+    for (const tx of transactions) {
+        const description = (tx.description ?? '').toLowerCase();
+        const notes = (tx.notes ?? '').toLowerCase();
+
+        if (description.includes(searchLower) || notes.includes(searchLower)) {
+            matchedIds.add(tx.id);
+        }
+    }
+
+    return matchedIds;
+}
+
 /**
  * Newest first, the order the server lists them in: by date, then by id so
  * rows of one day keep one stable order.
@@ -185,28 +209,10 @@ export function useInMemoryTransactionSource({
         setTransactions(toServerRows(providedTransactions));
     }
 
-    const searchMatchedIds = useMemo(() => {
-        const searchLower = filters.searchText.toLowerCase();
-        const matchedIds = new Set<string>();
-
-        if (!searchLower) {
-            return matchedIds;
-        }
-
-        for (const tx of transactions) {
-            const description = (tx.description ?? '').toLowerCase();
-            const notes = (tx.notes ?? '').toLowerCase();
-
-            if (
-                description.includes(searchLower) ||
-                notes.includes(searchLower)
-            ) {
-                matchedIds.add(tx.id);
-            }
-        }
-
-        return matchedIds;
-    }, [filters.searchText, transactions]);
+    const searchMatchedIds = useMemo(
+        () => searchMatches(transactions, filters.searchText),
+        [filters.searchText, transactions],
+    );
 
     const filteredTransactions = useMemo(
         () =>
@@ -253,6 +259,17 @@ export function useInMemoryTransactionSource({
         setDisplayedCount(pageSize);
     }, [filters, pageSize]);
 
+    const countMatching = useCallback(
+        async (next: Filters) => {
+            const matchedIds = searchMatches(transactions, next.searchText);
+
+            return transactions.filter((transaction) =>
+                matchesFilters(transaction, next, accountId, matchedIds),
+            ).length;
+        },
+        [transactions, accountId],
+    );
+
     return {
         rows: displayedTransactions,
         heldRows: transactions,
@@ -271,6 +288,7 @@ export function useInMemoryTransactionSource({
             loadsOnScroll: false,
         },
         reload: reloadPage,
+        countMatching,
         queryKey: 0,
     };
 }

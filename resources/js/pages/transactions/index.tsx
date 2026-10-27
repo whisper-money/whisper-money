@@ -12,9 +12,6 @@ import { Head } from '@inertiajs/react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import HeadingSmall from '@/components/heading-small';
-import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
-import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilterSummary } from '@/components/transactions/transaction-filter-summary';
 import { TransactionsHeaderActions } from '@/components/transactions/transactions-header-actions';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -22,6 +19,7 @@ import { type CursorPaginatedResponse } from '@/lib/cursor-pagination';
 import { isNewSince } from '@/lib/new-transactions';
 import { type ServerDayTotal } from '@/lib/transaction-day-groups';
 import { describeActiveFilters } from '@/lib/transaction-filter-chips';
+import { facetChips } from '@/lib/transaction-filter-facets';
 import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 import { type BreadcrumbItem } from '@/types';
 import {
@@ -34,8 +32,26 @@ import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
     type TransactionFilterSummary as FilterSummary,
+    type TransactionFilters as Filters,
     type ServerTransaction,
 } from '@/types/transaction';
+
+/**
+ * The filters in a few words under the phone's summary: the search and each
+ * facet as its chip reads. The dates go without saying beside the list they
+ * head, and the side ("expenses") is already in the count before them.
+ */
+function summaryCaption(
+    filters: Filters,
+    sources: Parameters<typeof facetChips>[1],
+): string[] {
+    return [
+        ...(filters.searchText ? [`“${filters.searchText}”`] : []),
+        ...facetChips(filters, sources)
+            .filter((chip) => chip.facet !== 'type')
+            .map((chip) => chip.value),
+    ];
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -124,13 +140,6 @@ export default function Transactions({
             <Head title={__('Transactions')} />
 
             <div className="space-y-6 p-6">
-                {isMobile ? (
-                    <HeadingSmall
-                        title={__('Transactions')}
-                        description={__('View and manage your transactions')}
-                    />
-                ) : null}
-
                 {/* One child, so the dialogs and the bulk bar it mounts after
                     the table never take part in the spacing above. */}
                 <div>
@@ -147,14 +156,15 @@ export default function Transactions({
                         rowCellClassName="pt-2.5 pb-2"
                         confirmBulkByTyping
                         announceBulkOutcome
-                        renderToolbar={({
-                            columnPicker,
-                            labels,
-                            clearSelection,
-                        }) =>
-                            isMobile ? (
-                                <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                                    <TransactionActionsMenu
+                        renderToolbar={({ labels, clearSelection }) => (
+                            // The page's title heads the filters, its actions
+                            // beside it: icon buttons on a phone.
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="text-[26px] font-semibold tracking-tight md:text-xl">
+                                    {__('Transactions')}
+                                </h1>
+                                <div className="ml-auto">
+                                    <TransactionsHeaderActions
                                         transactions={allTransactions}
                                         hasTransactionalAccounts={
                                             hasTransactionalAccounts
@@ -163,40 +173,14 @@ export default function Transactions({
                                             clearSelection();
                                             refreshTransactions();
                                         }}
+                                        exportOptions={exportOptionsWith(
+                                            labels,
+                                        )}
+                                        compact={isMobile}
                                     />
-
-                                    <div className="ml-auto flex items-center gap-2">
-                                        <TransactionExportButton
-                                            {...exportOptionsWith(labels)}
-                                        />
-                                        {columnPicker}
-                                    </div>
                                 </div>
-                            ) : (
-                                // On desktop the page's title heads the
-                                // filters, its actions beside it.
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <h1 className="text-xl font-semibold tracking-tight">
-                                        {__('Transactions')}
-                                    </h1>
-                                    <div className="ml-auto">
-                                        <TransactionsHeaderActions
-                                            transactions={allTransactions}
-                                            hasTransactionalAccounts={
-                                                hasTransactionalAccounts
-                                            }
-                                            onReEvaluateComplete={() => {
-                                                clearSelection();
-                                                refreshTransactions();
-                                            }}
-                                            exportOptions={exportOptionsWith(
-                                                labels,
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            )
-                        }
+                            </div>
+                        )}
                         aboveRows={
                             // Null is the server saying there is no filter
                             // to sum up; while a query is on its way the
@@ -210,21 +194,12 @@ export default function Transactions({
                                             : (filterSummary ?? undefined)
                                     }
                                     filters={filters}
-                                    // The dates go without saying beside the
-                                    // list they head.
-                                    filterDescription={describeActiveFilters(
-                                        {
-                                            ...filters,
-                                            dateFrom: null,
-                                            dateTo: null,
-                                        },
-                                        {
-                                            categories,
-                                            accounts,
-                                            labels: initialLabels,
-                                            locale,
-                                        },
-                                    )}
+                                    filterDescription={summaryCaption(filters, {
+                                        categories,
+                                        accounts,
+                                        labels: initialLabels,
+                                        locale,
+                                    })}
                                 />
                             ) : null
                         }

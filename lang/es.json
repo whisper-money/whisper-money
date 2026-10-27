@@ -4162,5 +4162,13 @@
     "Saved views": "Vistas guardadas",
     "Search transactions": "Buscar transacciones",
     "Categorized by": "Categorizado por",
-    "AI": "IA"
+    "AI": "IA",
+    "Reset": "Restablecer",
+    "Any": "Cualquiera",
+    "See transactions": "Ver transacciones",
+    "See 1 transaction": "Ver 1 transacción",
+    "See :count transactions": "Ver :count transacciones",
+    "Pick the filters, then apply them to the list.": "Elige los filtros y aplícalos a la lista.",
+    "View all (:count)": "Ver todas (:count)",
+    "Nothing to pick yet.": "Todavía no hay nada que elegir."
 }

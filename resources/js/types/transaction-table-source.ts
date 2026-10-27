@@ -46,6 +46,14 @@ export interface TransactionTableSource {
      * those changes until the next visit rather than reloading the page.
      */
     refreshRows?: () => void;
+    /**
+     * How many rows a filter set would list, before it is applied: the phone's
+     * filters sheet counts what its "See N transactions" would show.
+     */
+    countMatching: (
+        filters: TransactionFilters,
+        signal: AbortSignal,
+    ) => Promise<number>;
     /** Changes when a new query replaces the rows, so the ticked rows go. */
     queryKey: number;
     /**

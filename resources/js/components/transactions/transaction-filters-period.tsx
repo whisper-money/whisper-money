@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { useLocale } from '@/hooks/use-locale';
 import { periodLabel, stepPeriod } from '@/lib/transaction-period';
+import { cn } from '@/lib/utils';
 import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import {
@@ -27,6 +28,21 @@ interface PeriodStepperProps extends DateRangeChange {
     onChange: (range: DateRangeChange) => void;
 }
 
+const STEPPER_LAYOUTS = {
+    /** A bordered control among the desktop toolbar's. */
+    toolbar: {
+        root: 'h-9 rounded-md border border-input bg-background shadow-xs dark:bg-input/30',
+        arrow: 'h-[34px]',
+        label: 'h-[34px] px-2',
+    },
+    /** The phone's full-width bar: 44px arrows at the ends, the period centred. */
+    bar: {
+        root: 'h-11 w-full',
+        arrow: 'size-11',
+        label: 'h-11 flex-1 px-2 text-[15px]',
+    },
+} as const;
+
 /**
  * ‹ [calendar] October 2026 › : the date filter as a period the arrows step
  * through, month by month (or by quarter, year, or the range's own length).
@@ -36,7 +52,9 @@ export function PeriodStepper({
     dateFrom,
     dateTo,
     onChange,
-}: PeriodStepperProps) {
+    layout = 'toolbar',
+}: PeriodStepperProps & { layout?: keyof typeof STEPPER_LAYOUTS }) {
+    const styles = STEPPER_LAYOUTS[layout];
     const locale = useLocale();
 
     function step(direction: -1 | 1) {
@@ -50,13 +68,13 @@ export function PeriodStepper({
 
     return (
         <div
-            className="flex h-9 items-center rounded-md border border-input bg-background shadow-xs dark:bg-input/30"
+            className={cn('flex items-center', styles.root)}
             data-testid="period-stepper"
         >
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-[34px] rounded-r-none"
+                className={cn('rounded-r-none', styles.arrow)}
                 aria-label={__('Previous period')}
                 disabled={!canStep}
                 onClick={() => step(-1)}
@@ -67,17 +85,19 @@ export function PeriodStepper({
                 <PopoverTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="h-[34px] rounded-none px-2"
+                        className={cn('rounded-none', styles.label)}
                         data-testid="period-stepper-label"
                     >
-                        <CalendarDays className="h-4 w-4" />
+                        {layout === 'toolbar' && (
+                            <CalendarDays className="h-4 w-4" />
+                        )}
                         {periodLabel(dateFrom, dateTo, locale)}
                         <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent
                     className="w-80"
-                    align="start"
+                    align={layout === 'bar' ? 'center' : 'start'}
                     data-testid="period-popover"
                 >
                     <PeriodFields
@@ -93,7 +113,7 @@ export function PeriodStepper({
             <Button
                 variant="ghost"
                 size="icon"
-                className="h-[34px] rounded-l-none"
+                className={cn('rounded-l-none', styles.arrow)}
                 aria-label={__('Next period')}
                 disabled={!canStep}
                 onClick={() => step(1)}

@@ -15,6 +15,11 @@ import { useState } from 'react';
 
 interface AmountFilterFieldsProps extends SignedAmountRange {
     onChange: (range: SignedAmountRange) => void;
+    /**
+     * Off where a type control beside the fields already picks the side (the
+     * phone's filters sheet): the sizes then go on the side last picked.
+     */
+    showDirection?: boolean;
 }
 
 const BOUNDS = [
@@ -49,6 +54,7 @@ export function AmountFilterFields({
     amountMin,
     amountMax,
     onChange,
+    showDirection = true,
 }: AmountFilterFieldsProps) {
     const [input, setInput] = useState<AmountFilterInput>(() =>
         fromSignedAmountRange({ amountMin, amountMax }, 'expense'),
@@ -85,38 +91,40 @@ export function AmountFilterFields({
 
     return (
         <div className="flex flex-col gap-2 pt-2">
-            <ToggleGroup
-                type="single"
-                variant="outline"
-                className="w-full"
-                value={input.direction ?? ''}
-                onValueChange={(value) => {
-                    if (value) {
-                        update(
-                            withAmountDirection(
-                                input,
-                                value as AmountDirection,
-                            ),
-                        );
-                    }
-                }}
-                aria-label={__('Amount type')}
-            >
-                <ToggleGroupItem
-                    value="expense"
-                    className="flex-1"
-                    data-testid="filter-amount-expense"
+            {showDirection && (
+                <ToggleGroup
+                    type="single"
+                    variant="outline"
+                    className="w-full"
+                    value={input.direction ?? ''}
+                    onValueChange={(value) => {
+                        if (value) {
+                            update(
+                                withAmountDirection(
+                                    input,
+                                    value as AmountDirection,
+                                ),
+                            );
+                        }
+                    }}
+                    aria-label={__('Amount type')}
                 >
-                    {__('Expense')}
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                    value="income"
-                    className="flex-1"
-                    data-testid="filter-amount-income"
-                >
-                    {__('Income')}
-                </ToggleGroupItem>
-            </ToggleGroup>
+                    <ToggleGroupItem
+                        value="expense"
+                        className="flex-1"
+                        data-testid="filter-amount-expense"
+                    >
+                        {__('Expense')}
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                        value="income"
+                        className="flex-1"
+                        data-testid="filter-amount-income"
+                    >
+                        {__('Income')}
+                    </ToggleGroupItem>
+                </ToggleGroup>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
                 {BOUNDS.map(({ bound, placeholder, label }) => (
