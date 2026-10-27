@@ -15,11 +15,14 @@ import { cn } from '@/lib/utils';
 interface DataTableViewOptionsProps<TData> {
     table: TableType<TData>;
     hideColumnTextOnMobile?: boolean
+    /** A ghost icon button, for the end of a toolbar. */
+    iconOnly?: boolean
 }
 
 export function DataTableViewOptions<TData>({
     table,
     hideColumnTextOnMobile = true,
+    iconOnly = false,
 }: DataTableViewOptionsProps<TData>) {
     const columns = table
         .getAllLeafColumns()
@@ -39,10 +42,16 @@ export function DataTableViewOptions<TData>({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
+                {iconOnly ? (
+                    <Button variant="ghost" size="icon" aria-label={__('Columns')}>
+                        <SlidersHorizontal className="h-4 w-4" />
+                    </Button>
+                ) : (
                 <Button variant="outline" className={cn('flex gap-2', { 'max-sm:size-9 max-sm:px-0': hideColumnTextOnMobile })} aria-label={__('Columns')}>
                     <span className={cn({ 'hidden sm:inline': hideColumnTextOnMobile })}>{__('Columns')}</span>
                     <SlidersHorizontal className="h-4 w-4" />
                 </Button>
+                )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
                 {columns.map((column) => {

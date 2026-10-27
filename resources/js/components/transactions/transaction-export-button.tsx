@@ -20,12 +20,18 @@ import {
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { Download } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    type ReactNode,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import { toast } from 'sonner';
 
 type ExportScope = 'loaded' | 'all';
 
-interface TransactionExportButtonProps {
+export interface TransactionExportButtonProps {
     params: TransactionExportParams;
     /** Ids of the rows the list holds right now, in its order. */
     loadedIds: string[];
@@ -46,41 +52,19 @@ interface ExportProgress {
  * straight away; one with more pages to load asks first whether to export
  * the rows on screen or everything the search and filters select.
  */
-export function TransactionExportButton({
-    params,
-    loadedIds,
-    hasMore,
-    filterChips,
-}: TransactionExportButtonProps) {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    // A fresh key per opening starts the dialog over: default option, count
-    // loading again, rather than one frame of the last visit's numbers.
-    const [dialogKey, setDialogKey] = useState(0);
-    const { start, cancel, progress } = useCsvDownload();
-    const isDirectDownloading = progress !== null && !dialogOpen;
-
-    async function handleClick() {
-        if (hasMore) {
-            setDialogKey((key) => key + 1);
-            setDialogOpen(true);
-            return;
-        }
-
-        await start({ params, total: loadedIds.length });
-    }
+export function TransactionExportButton(props: TransactionExportButtonProps) {
+    const exporter = useTransactionExport(props);
 
     return (
         <>
             <Button
                 variant="outline"
                 className="flex gap-2 max-sm:size-9 max-sm:px-0"
-                onClick={handleClick}
-                disabled={
-                    isDirectDownloading || (!hasMore && loadedIds.length === 0)
-                }
+                onClick={exporter.start}
+                disabled={exporter.disabled}
                 aria-label={__('Export CSV')}
             >
-                {isDirectDownloading ? (
+                {exporter.isDownloading ? (
                     <Spinner className="size-4" />
                 ) : (
                     <Download className="size-4" />
@@ -88,29 +72,69 @@ export function TransactionExportButton({
                 <span className="hidden sm:inline">{__('Export')}</span>
             </Button>
 
-            {hasMore ? (
-                <TransactionExportDialog
-                    key={dialogKey}
-                    open={dialogOpen}
-                    onOpenChange={(open) => {
-                        if (!open) {
-                            cancel();
-                        }
-                        setDialogOpen(open);
-                    }}
-                    params={params}
-                    loadedIds={loadedIds}
-                    chips={filterChips}
-                    progress={progress}
-                    onExport={async (ids, total) => {
-                        if (await start({ params, ids, total })) {
-                            setDialogOpen(false);
-                        }
-                    }}
-                />
-            ) : null}
+            {exporter.dialog}
         </>
     );
+}
+
+/**
+ * The CSV export behind any trigger, a button or a menu item: `start` runs
+ * it, `dialog` must be rendered for a list with more pages to ask about.
+ */
+export function useTransactionExport({
+    params,
+    loadedIds,
+    hasMore,
+    filterChips,
+}: TransactionExportButtonProps): {
+    start: () => void;
+    disabled: boolean;
+    isDownloading: boolean;
+    dialog: ReactNode;
+} {
+    const [dialogOpen, setDialogOpen] = useState(false);
+    // A fresh key per opening starts the dialog over: default option, count
+    // loading again, rather than one frame of the last visit's numbers.
+    const [dialogKey, setDialogKey] = useState(0);
+    const { start, cancel, progress } = useCsvDownload();
+    const isDirectDownloading = progress !== null && !dialogOpen;
+
+    function handleStart() {
+        if (hasMore) {
+            setDialogKey((key) => key + 1);
+            setDialogOpen(true);
+            return;
+        }
+
+        void start({ params, total: loadedIds.length });
+    }
+
+    return {
+        start: handleStart,
+        disabled: isDirectDownloading || (!hasMore && loadedIds.length === 0),
+        isDownloading: isDirectDownloading,
+        dialog: hasMore ? (
+            <TransactionExportDialog
+                key={dialogKey}
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        cancel();
+                    }
+                    setDialogOpen(open);
+                }}
+                params={params}
+                loadedIds={loadedIds}
+                chips={filterChips}
+                progress={progress}
+                onExport={async (ids, total) => {
+                    if (await start({ params, ids, total })) {
+                        setDialogOpen(false);
+                    }
+                }}
+            />
+        ) : null,
+    };
 }
 
 interface TransactionExportDialogProps {

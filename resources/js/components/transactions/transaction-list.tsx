@@ -95,28 +95,33 @@ export function TransactionList({
             onBalanceUpdated={onBalanceUpdated}
             onTransactionsChanged={onTransactionsChanged}
             showColumnPickerTextOnMobile
-            renderToolbar={({ columnPicker, clearSelection }) => (
-                <div className="flex flex-wrap justify-end gap-2">
-                    {showActionsMenu && (
-                        <TransactionActionsMenu
-                            transactions={source.heldRows}
-                            hasTransactionalAccounts={
-                                filterTransactionalAccounts(accounts).length > 0
-                            }
-                            onReEvaluateComplete={() => {
-                                clearSelection();
-                                setTimeout(() => {
-                                    reloadPage();
-                                }, 500);
-                            }}
-                            showAnalysis
-                            filters={source.filters}
-                        />
-                    )}
-                    {headerActions}
-                    {columnPicker}
-                </div>
-            )}
+            renderToolbar={({ columnPicker, clearSelection }) =>
+                // Nothing to show (a desktop page without the menu or extra
+                // actions) leaves no empty row above the filters.
+                !showActionsMenu && !headerActions && !columnPicker ? null : (
+                    <div className="flex flex-wrap justify-end gap-2">
+                        {showActionsMenu && (
+                            <TransactionActionsMenu
+                                transactions={source.heldRows}
+                                hasTransactionalAccounts={
+                                    filterTransactionalAccounts(accounts)
+                                        .length > 0
+                                }
+                                onReEvaluateComplete={() => {
+                                    clearSelection();
+                                    setTimeout(() => {
+                                        reloadPage();
+                                    }, 500);
+                                }}
+                                showAnalysis
+                                filters={source.filters}
+                            />
+                        )}
+                        {headerActions}
+                        {columnPicker}
+                    </div>
+                )
+            }
             footerActions={
                 accountId && (
                     <Button asChild variant="outline">

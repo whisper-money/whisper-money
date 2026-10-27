@@ -10,6 +10,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionFilters } from './transaction-filters';
 
+// The phone's "Filters" panel; the desktop chips toolbar has its own tests.
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true }));
+
 const accounts: Account[] = [
     {
         id: 'acc-1',

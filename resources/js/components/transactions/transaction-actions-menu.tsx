@@ -59,7 +59,8 @@ export function TransactionActionsMenu({
     const isMobile = useIsMobile();
     const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState(false);
     const [analysisHintOpen, setAnalysisHintOpen] = useState(false);
-    const [isReEvaluating, setIsReEvaluating] = useState(false);
+    const { reEvaluate, isReEvaluating } =
+        useReEvaluateRules(onReEvaluateComplete);
 
     const canAnalyze = filters !== undefined && hasActiveFilters(filters);
 
@@ -81,40 +82,8 @@ export function TransactionActionsMenu({
         setAnalysisDrawerOpen(true);
     };
 
-    const handleReEvaluateAll = async () => {
-        setIsReEvaluating(true);
-        try {
-            if ((await reEvaluateTransactionRules()) === 'done') {
-                onReEvaluateComplete?.();
-            }
-        } finally {
-            setIsReEvaluating(false);
-        }
-    };
-
-    const uncategorizedCount = transactions.filter(
-        (t) => !t.category_id,
-    ).length;
-
+    const uncategorizedCount = countUncategorized(transactions);
     const hasUncategorized = uncategorizedCount > 0;
-
-    const categorizeLabel = (
-        <>
-            {__('Categorize')}
-            {hasUncategorized && (
-                <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                    {uncategorizedCount}
-                </span>
-            )}
-        </>
-    );
-
-    const withCategorizeLink = (content: ReactNode) =>
-        hasUncategorized ? (
-            <Link href={categorize.url()}>{content}</Link>
-        ) : (
-            content
-        );
 
     return (
         <div className="flex items-center gap-2">
@@ -161,31 +130,7 @@ export function TransactionActionsMenu({
                     </TooltipProvider>
                 )}
 
-                {!isMobile && (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={
-                                        hasUncategorized
-                                            ? ''
-                                            : 'cursor-not-allowed opacity-50'
-                                    }
-                                    disabled={!hasUncategorized}
-                                    asChild={hasUncategorized}
-                                >
-                                    {withCategorizeLink(categorizeLabel)}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                {hasUncategorized
-                                    ? `Categorize ${uncategorizedCount} transactions`
-                                    : 'All transactions are categorized'}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
+                {!isMobile && <CategorizeButton transactions={transactions} />}
 
                 <DropdownMenu>
                     <TooltipProvider>
@@ -213,15 +158,18 @@ export function TransactionActionsMenu({
                                 asChild={hasUncategorized}
                             >
                                 {withCategorizeLink(
+                                    uncategorizedCount,
                                     <>
                                         <Tags className="mr-2 h-4 w-4" />
-                                        {categorizeLabel}
+                                        <CategorizeLabel
+                                            count={uncategorizedCount}
+                                        />
                                     </>,
                                 )}
                             </DropdownMenuItem>
                         )}
                         <DropdownMenuItem
-                            onClick={handleReEvaluateAll}
+                            onClick={reEvaluate}
                             disabled={isReEvaluating}
                         >
                             <WandSparkles className="mr-2 h-4 w-4" />
@@ -240,4 +188,89 @@ export function TransactionActionsMenu({
             )}
         </div>
     );
+}
+
+function countUncategorized(transactions: ServerTransaction[]): number {
+    return transactions.filter((transaction) => !transaction.category_id)
+        .length;
+}
+
+function CategorizeLabel({ count }: { count: number }) {
+    return (
+        <>
+            {__('Categorize')}
+            {count > 0 && (
+                <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {count}
+                </span>
+            )}
+        </>
+    );
+}
+
+function withCategorizeLink(count: number, content: ReactNode): ReactNode {
+    return count > 0 ? <Link href={categorize.url()}>{content}</Link> : content;
+}
+
+/**
+ * "Categorize" with how many of the listed transactions have no category,
+ * linking to the categorize page; disabled when there are none.
+ */
+export function CategorizeButton({
+    transactions,
+}: {
+    transactions: ServerTransaction[];
+}) {
+    const count = countUncategorized(transactions);
+    const hasUncategorized = count > 0;
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="outline"
+                        className={
+                            hasUncategorized
+                                ? ''
+                                : 'cursor-not-allowed opacity-50'
+                        }
+                        disabled={!hasUncategorized}
+                        asChild={hasUncategorized}
+                    >
+                        {withCategorizeLink(
+                            count,
+                            <CategorizeLabel count={count} />,
+                        )}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {hasUncategorized
+                        ? `Categorize ${count} transactions`
+                        : 'All transactions are categorized'}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+}
+
+/** Runs every rule over every transaction again, "Update categories automatically". */
+export function useReEvaluateRules(onComplete?: () => void): {
+    reEvaluate: () => Promise<void>;
+    isReEvaluating: boolean;
+} {
+    const [isReEvaluating, setIsReEvaluating] = useState(false);
+
+    async function reEvaluate() {
+        setIsReEvaluating(true);
+        try {
+            if ((await reEvaluateTransactionRules()) === 'done') {
+                onComplete?.();
+            }
+        } finally {
+            setIsReEvaluating(false);
+        }
+    }
+
+    return { reEvaluate, isReEvaluating };
 }

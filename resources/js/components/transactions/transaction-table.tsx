@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Spinner } from '@/components/ui/spinner';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { useStoredColumnVisibility } from '@/hooks/use-stored-column-visibility';
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
@@ -51,7 +52,10 @@ const NO_HIDDEN_COLUMNS: string[] = [];
 
 /** What the toolbar beside the filters can reach of the table. */
 export interface TransactionTableToolbar {
-    /** The picker for the table's columns, for the page to place. */
+    /**
+     * The picker for the table's columns, for the page to place on a phone.
+     * Null on desktop, where it closes the filters' toolbar.
+     */
     columnPicker: ReactNode;
     /** The labels, including any a dialog created since the page loaded. */
     labels: Label[];
@@ -65,7 +69,10 @@ interface TransactionTableProps {
     banks: Bank[];
     labels: Label[];
     automationRules: AutomationRule[];
-    /** What sits beside the filters: menus, export, the column picker. */
+    /**
+     * The page's row over the filters: menus, export, the column picker on a
+     * phone. /transactions puts its title and actions there on desktop.
+     */
     renderToolbar: (toolbar: TransactionTableToolbar) => ReactNode;
     /** Keep the column picker's text on narrow screens. */
     showColumnPickerTextOnMobile?: boolean;
@@ -144,6 +151,7 @@ export function TransactionTable({
     onBalanceUpdated,
     onTransactionsChanged,
 }: TransactionTableProps) {
+    const isMobile = useIsMobile();
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -281,17 +289,22 @@ export function TransactionTable({
                     hideAccountFilter={hideAccountFilter}
                     enableSavedFilters={enableSavedFilters}
                     actions={renderToolbar({
-                        columnPicker: (
+                        columnPicker: isMobile ? (
                             <DataTableViewOptions
                                 table={table}
                                 hideColumnTextOnMobile={
                                     !showColumnPickerTextOnMobile
                                 }
                             />
-                        ),
+                        ) : null,
                         labels,
                         clearSelection,
                     })}
+                    trailing={
+                        isMobile ? null : (
+                            <DataTableViewOptions table={table} iconOnly />
+                        )
+                    }
                 />
 
                 {aboveRows}

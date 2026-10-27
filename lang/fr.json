@@ -3125,5 +3125,17 @@
     ":count expenses": ":count dépenses",
     "1 income": "1 revenu",
     ":count incomes": ":count revenus",
-    "No exchange rate for some of these amounts": "Taux de change manquant pour certains de ces montants"
+    "No exchange rate for some of these amounts": "Taux de change manquant pour certains de ces montants",
+    "AI guesses only": "Suggestions de l'IA uniquement",
+    "All dates": "Toutes les dates",
+    "Cashflow block": "Bloc de trésorerie",
+    "Clear all": "Tout effacer",
+    "Counterparty": "Contrepartie",
+    "Label": "Étiquette",
+    "Q:quarter :year": "T:quarter :year",
+    "Save as view": "Enregistrer comme vue",
+    "Saved views": "Vues enregistrées",
+    "Search transactions": "Rechercher des transactions",
+    "Categorized by": "Catégorisé par",
+    "AI": "IA"
 }

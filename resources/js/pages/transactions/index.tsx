@@ -2,6 +2,7 @@ import { AiConsentBanner } from '@/components/transactions/ai-consent-banner';
 import { TransactionTable } from '@/components/transactions/transaction-table';
 import { useAiCategorizationConsent } from '@/hooks/use-ai-categorization-consent';
 import { useLocale } from '@/hooks/use-locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
     useServerTransactionSource,
     type AppliedFilters,
@@ -15,6 +16,7 @@ import HeadingSmall from '@/components/heading-small';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
 import { TransactionFilterSummary } from '@/components/transactions/transaction-filter-summary';
+import { TransactionsHeaderActions } from '@/components/transactions/transactions-header-actions';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { type CursorPaginatedResponse } from '@/lib/cursor-pagination';
 import { isNewSince } from '@/lib/new-transactions';
@@ -73,6 +75,7 @@ export default function Transactions({
     lastVisitAt,
 }: Props) {
     const locale = useLocale();
+    const isMobile = useIsMobile();
     const source = useServerTransactionSource({
         transactions: serverTransactions,
         dayTotals: initialDayTotals,
@@ -102,15 +105,31 @@ export default function Transactions({
         [accounts],
     );
 
+    // The labels come from the table, which knows the ones a dialog created
+    // since the page loaded.
+    const exportOptionsWith = (labels: Label[]) => ({
+        params: source.queryParams,
+        loadedIds: allTransactions.map((transaction) => transaction.id),
+        hasMore: source.pagination.hasMore,
+        filterChips: describeActiveFilters(filters, {
+            categories,
+            accounts,
+            labels,
+            locale,
+        }),
+    });
+
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Transactions')} />
 
             <div className="space-y-6 p-6">
-                <HeadingSmall
-                    title={__('Transactions')}
-                    description={__('View and manage your transactions')}
-                />
+                {isMobile ? (
+                    <HeadingSmall
+                        title={__('Transactions')}
+                        description={__('View and manage your transactions')}
+                    />
+                ) : null}
 
                 {/* One child, so the dialogs and the bulk bar it mounts after
                     the table never take part in the spacing above. */}
@@ -132,40 +151,52 @@ export default function Transactions({
                             columnPicker,
                             labels,
                             clearSelection,
-                        }) => (
-                            <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                                <TransactionActionsMenu
-                                    transactions={allTransactions}
-                                    hasTransactionalAccounts={
-                                        hasTransactionalAccounts
-                                    }
-                                    onReEvaluateComplete={() => {
-                                        clearSelection();
-                                        refreshTransactions();
-                                    }}
-                                />
-
-                                <div className="ml-auto flex items-center gap-2">
-                                    <TransactionExportButton
-                                        params={source.queryParams}
-                                        loadedIds={allTransactions.map(
-                                            (transaction) => transaction.id,
-                                        )}
-                                        hasMore={source.pagination.hasMore}
-                                        filterChips={describeActiveFilters(
-                                            filters,
-                                            {
-                                                categories,
-                                                accounts,
-                                                labels,
-                                                locale,
-                                            },
-                                        )}
+                        }) =>
+                            isMobile ? (
+                                <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                                    <TransactionActionsMenu
+                                        transactions={allTransactions}
+                                        hasTransactionalAccounts={
+                                            hasTransactionalAccounts
+                                        }
+                                        onReEvaluateComplete={() => {
+                                            clearSelection();
+                                            refreshTransactions();
+                                        }}
                                     />
-                                    {columnPicker}
+
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <TransactionExportButton
+                                            {...exportOptionsWith(labels)}
+                                        />
+                                        {columnPicker}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                // On desktop the page's title heads the
+                                // filters, its actions beside it.
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <h1 className="text-xl font-semibold tracking-tight">
+                                        {__('Transactions')}
+                                    </h1>
+                                    <div className="ml-auto">
+                                        <TransactionsHeaderActions
+                                            transactions={allTransactions}
+                                            hasTransactionalAccounts={
+                                                hasTransactionalAccounts
+                                            }
+                                            onReEvaluateComplete={() => {
+                                                clearSelection();
+                                                refreshTransactions();
+                                            }}
+                                            exportOptions={exportOptionsWith(
+                                                labels,
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        }
                         aboveRows={
                             // Null is the server saying there is no filter
                             // to sum up; while a query is on its way the

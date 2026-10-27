@@ -1,26 +1,20 @@
-import { formatLocalDate, toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import * as Icons from 'lucide-react';
 import { ChevronsUpDown, X } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
-import { BankLogo } from '@/components/bank-logo';
-import { LabelIcon } from '@/components/shared/label-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
 import { AmountFilterFields } from '@/components/transactions/transaction-filters-amount';
 import { CashflowBlockChip } from '@/components/transactions/transaction-filters-cashflow-block-chip';
-import { QuickPeriodButtons } from '@/components/transactions/transaction-filters-quick-periods';
+import { DesktopTransactionFilters } from '@/components/transactions/transaction-filters-desktop';
+import {
+    AccountFacetList,
+    CategoryFacetList,
+    LabelFacetList,
+} from '@/components/transactions/transaction-filters-facets';
+import { PeriodFields } from '@/components/transactions/transaction-filters-period';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-    Command,
-    CommandEmpty,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label as FormLabel } from '@/components/ui/label';
 import {
@@ -28,20 +22,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-    buildCategoryTree,
-    categorySelectionState,
-    flattenCategoryTree,
-    searchCategoryTree,
-    toggleCategorySelection,
-} from '@/lib/category-tree';
-import { cn } from '@/lib/utils';
+import { useDebouncedTextFilters } from '@/hooks/use-debounced-text-filters';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { type Account } from '@/types/account';
-import { type Category, getCategoryColorClasses } from '@/types/category';
-import { getLabelColorClasses, type Label } from '@/types/label';
+import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
-import { type UUID } from '@/types/uuid';
-import { CategoryIcon } from '../shared/category-combobox';
 
 interface TransactionFiltersProps {
     filters: FiltersType;
@@ -49,166 +35,80 @@ interface TransactionFiltersProps {
     categories: Category[];
     labels: Label[];
     accounts: Account[];
+    /** Below the filters on a phone: the page's toolbar. */
     actions?: ReactNode;
+    /** At the far end of the desktop toolbar, such as the column picker. */
+    trailing?: ReactNode;
     hideAccountFilter?: boolean;
     enableSavedFilters?: boolean;
 }
 
+/**
+ * The filters above a transactions list: the chips toolbar on desktop, the
+ * "Filters" panel on a phone.
+ */
 export function TransactionFilters({
+    hideAccountFilter = false,
+    enableSavedFilters = false,
+    ...props
+}: TransactionFiltersProps) {
+    const isMobile = useIsMobile();
+
+    if (!isMobile) {
+        return (
+            <div className="flex flex-col gap-4">
+                {props.actions}
+                <DesktopTransactionFilters
+                    {...props}
+                    hideAccountFilter={hideAccountFilter}
+                    enableSavedFilters={enableSavedFilters}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <MobileTransactionFilters
+            {...props}
+            hideAccountFilter={hideAccountFilter}
+            enableSavedFilters={enableSavedFilters}
+        />
+    );
+}
+
+const EMPTY_FILTERS: FiltersType = {
+    dateFrom: null,
+    dateTo: null,
+    amountMin: null,
+    amountMax: null,
+    categoryIds: [],
+    accountIds: [],
+    labelIds: [],
+    creditorName: '',
+    debtorName: '',
+    searchText: '',
+    aiCategorizedOnly: false,
+    cashflowBlock: null,
+};
+
+function MobileTransactionFilters({
     filters,
     onFiltersChange,
     categories,
     labels,
     accounts,
     actions,
-    hideAccountFilter = false,
-    enableSavedFilters = false,
-}: TransactionFiltersProps) {
+    hideAccountFilter,
+    enableSavedFilters,
+}: TransactionFiltersProps & {
+    hideAccountFilter: boolean;
+    enableSavedFilters: boolean;
+}) {
     const [isOpen, setIsOpen] = useState(false);
-    const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-    const [categorySearch, setCategorySearch] = useState('');
-    const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
-    const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
-    const [searchText, setSearchText] = useState(filters.searchText);
-    const [creditorName, setCreditorName] = useState(filters.creditorName);
-    const [debtorName, setDebtorName] = useState(filters.debtorName);
-    const isUncategorizedSelected = filters.categoryIds.includes(
-        UNCATEGORIZED_CATEGORY_ID,
-    );
+    const text = useDebouncedTextFilters(filters, onFiltersChange);
 
-    // Debounce text filter updates
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (
-                searchText !== filters.searchText ||
-                creditorName !== filters.creditorName ||
-                debtorName !== filters.debtorName
-            ) {
-                onFiltersChange({
-                    ...filters,
-                    searchText,
-                    creditorName,
-                    debtorName,
-                });
-            }
-        }, 300);
-
-        return () => clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchText, creditorName, debtorName]);
-
-    // Sync local state when filters change externally
-    useEffect(() => {
-        if (filters.searchText !== searchText) {
-            setSearchText(filters.searchText);
-        }
-        if (filters.creditorName !== creditorName) {
-            setCreditorName(filters.creditorName);
-        }
-        if (filters.debtorName !== debtorName) {
-            setDebtorName(filters.debtorName);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.searchText, filters.creditorName, filters.debtorName]);
-
-    // Snapshot of which categories were selected when the dropdown opened.
-    // Ordering uses this snapshot, so toggling while open never reshuffles the
-    // list under the cursor; it only re-sorts the next time it is opened.
-    const [categoryOrderSnapshot, setCategoryOrderSnapshot] = useState<
-        Set<string>
-    >(new Set());
-
-    const categoryTree = useMemo(() => {
-        // A branch sorts to the top when it (or a descendant) was selected.
-        const branchSelected = new Set<string>();
-        if (categoryOrderSnapshot.size > 0) {
-            const parentOf = new Map(
-                categories.map((c) => [c.id, c.parent_id]),
-            );
-            for (const id of categoryOrderSnapshot) {
-                let current: string | null | undefined = id;
-                let guard = 0;
-                while (current != null && guard++ < 10) {
-                    branchSelected.add(current);
-                    current = parentOf.get(current);
-                }
-            }
-        }
-
-        const compare = (a: Category, b: Category) => {
-            const aSelected = branchSelected.has(a.id);
-            const bSelected = branchSelected.has(b.id);
-            if (aSelected !== bSelected) {
-                return aSelected ? -1 : 1;
-            }
-            return a.name.localeCompare(b.name);
-        };
-
-        return flattenCategoryTree(buildCategoryTree(categories, compare));
-    }, [categories, categoryOrderSnapshot]);
-
-    const selectedCategorySet = useMemo(
-        () => new Set(filters.categoryIds),
-        [filters.categoryIds],
-    );
-
-    const visibleCategoryTree = useMemo(
-        () => searchCategoryTree(categoryTree, categorySearch),
-        [categoryTree, categorySearch],
-    );
-
-    const showUncategorizedRow =
-        categorySearch.trim() === '' ||
-        'uncategorized'.includes(categorySearch.trim().toLowerCase());
-    const hasCategoryResults =
-        visibleCategoryTree.length > 0 || showUncategorizedRow;
-
-    function handleCategoryToggle(categoryId: string) {
-        onFiltersChange({
-            ...filters,
-            categoryIds: toggleCategorySelection(
-                filters.categoryIds,
-                categoryId,
-                categories,
-            ),
-        });
-    }
-
-    function handleAccountToggle(accountId: UUID) {
-        const newAccountIds = filters.accountIds.includes(accountId)
-            ? filters.accountIds.filter((id) => id !== accountId)
-            : [...filters.accountIds, accountId];
-
-        onFiltersChange({ ...filters, accountIds: newAccountIds });
-    }
-
-    function handleLabelToggle(labelId: string) {
-        const newLabelIds = filters.labelIds.includes(labelId)
-            ? filters.labelIds.filter((id) => id !== labelId)
-            : [...filters.labelIds, labelId];
-
-        onFiltersChange({ ...filters, labelIds: newLabelIds });
-    }
-
-    function clearFilters() {
-        setSearchText('');
-        setCreditorName('');
-        setDebtorName('');
-        onFiltersChange({
-            dateFrom: null,
-            dateTo: null,
-            amountMin: null,
-            amountMax: null,
-            categoryIds: [],
-            accountIds: [],
-            labelIds: [],
-            creditorName: '',
-            debtorName: '',
-            searchText: '',
-            aiCategorizedOnly: false,
-            cashflowBlock: null,
-        });
-    }
+    const update = (changes: Partial<FiltersType>) =>
+        onFiltersChange({ ...filters, ...changes });
 
     const activeFilterCount =
         (filters.dateFrom ? 1 : 0) +
@@ -254,476 +154,82 @@ export function TransactionFilters({
                                     </h4>
                                 </div>
 
-                                <div className="space-y-2 md:hidden">
+                                <div className="space-y-2">
                                     <FormLabel>{__('Search')}</FormLabel>
                                     <Input
                                         placeholder={__(
                                             'Search description or notes...',
                                         )}
-                                        value={searchText}
+                                        value={text.values.searchText}
                                         onChange={(e) =>
-                                            setSearchText(e.target.value)
+                                            text.setValue(
+                                                'searchText',
+                                                e.target.value,
+                                            )
                                         }
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <FormLabel>{__('Date')}</FormLabel>
-                                        <QuickPeriodButtons
-                                            dateFrom={filters.dateFrom}
-                                            dateTo={filters.dateTo}
-                                            onChange={({ from, to }) =>
-                                                onFiltersChange({
-                                                    ...filters,
-                                                    dateFrom: from,
-                                                    dateTo: to,
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 pt-2">
-                                        <Input
-                                            type="date"
-                                            data-testid="filter-date-from"
-                                            value={
-                                                filters.dateFrom
-                                                    ? formatLocalDate(
-                                                          filters.dateFrom,
-                                                      )
-                                                    : ''
-                                            }
-                                            onChange={(e) =>
-                                                onFiltersChange({
-                                                    ...filters,
-                                                    dateFrom: e.target.value
-                                                        ? toLocalDate(
-                                                              e.target.value,
-                                                          )
-                                                        : null,
-                                                })
-                                            }
-                                            placeholder={__('From')}
-                                        />
-
-                                        <Input
-                                            type="date"
-                                            data-testid="filter-date-to"
-                                            value={
-                                                filters.dateTo
-                                                    ? formatLocalDate(
-                                                          filters.dateTo,
-                                                      )
-                                                    : ''
-                                            }
-                                            onChange={(e) =>
-                                                onFiltersChange({
-                                                    ...filters,
-                                                    dateTo: e.target.value
-                                                        ? toLocalDate(
-                                                              e.target.value,
-                                                          )
-                                                        : null,
-                                                })
-                                            }
-                                            placeholder={__('To')}
-                                        />
-                                    </div>
-                                </div>
+                                <PeriodFields
+                                    dateFrom={filters.dateFrom}
+                                    dateTo={filters.dateTo}
+                                    onChange={update}
+                                />
 
                                 <div className="space-y-2">
                                     <FormLabel>{__('Amount')}</FormLabel>
                                     <AmountFilterFields
                                         amountMin={filters.amountMin}
                                         amountMax={filters.amountMax}
-                                        onChange={(range) =>
-                                            onFiltersChange({
-                                                ...filters,
-                                                ...range,
-                                            })
-                                        }
+                                        onChange={update}
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <FormLabel>{__('Categories')}</FormLabel>
-                                    <div className="pt-2">
-                                        <Popover
-                                            open={categoryDropdownOpen}
-                                            onOpenChange={(open) => {
-                                                if (open) {
-                                                    setCategoryOrderSnapshot(
-                                                        new Set(
-                                                            filters.categoryIds,
-                                                        ),
-                                                    );
-                                                } else {
-                                                    setCategorySearch('');
-                                                }
-                                                setCategoryDropdownOpen(open);
-                                            }}
-                                        >
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className="w-full justify-between"
-                                                    data-testid="filter-categories"
-                                                >
-                                                    {filters.categoryIds
-                                                        .length > 0 ? (
-                                                        <span className="truncate">
-                                                            {
-                                                                filters
-                                                                    .categoryIds
-                                                                    .length
-                                                            }{' '}
-                                                            selected
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            {__(
-                                                                'Select categories...',
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                className="w-full p-0"
-                                                align="start"
-                                            >
-                                                <Command shouldFilter={false}>
-                                                    <CommandInput
-                                                        placeholder={__(
-                                                            'Search categories...',
-                                                        )}
-                                                        value={categorySearch}
-                                                        onValueChange={
-                                                            setCategorySearch
-                                                        }
-                                                    />
-                                                    <CommandList>
-                                                        {!hasCategoryResults && (
-                                                            <div className="py-6 text-center text-sm text-muted-foreground">
-                                                                {__(
-                                                                    'No category found.',
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        {showUncategorizedRow && (
-                                                            <CommandItem
-                                                                onSelect={() =>
-                                                                    handleCategoryToggle(
-                                                                        UNCATEGORIZED_CATEGORY_ID,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Checkbox
-                                                                    checked={
-                                                                        isUncategorizedSelected
-                                                                    }
-                                                                    className="pointer-events-none mr-1"
-                                                                />
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                                                        <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
-                                                                    </div>
-                                                                    {__(
-                                                                        'Uncategorized',
-                                                                    )}
-                                                                </div>
-                                                            </CommandItem>
-                                                        )}
-                                                        {visibleCategoryTree.map(
-                                                            (category) => {
-                                                                const state =
-                                                                    categorySelectionState(
-                                                                        category.id,
-                                                                        selectedCategorySet,
-                                                                        categories,
-                                                                    );
-                                                                const colorClasses =
-                                                                    getCategoryColorClasses(
-                                                                        category.color,
-                                                                    );
-                                                                return (
-                                                                    <CommandItem
-                                                                        key={
-                                                                            category.id
-                                                                        }
-                                                                        value={
-                                                                            category.id
-                                                                        }
-                                                                        onSelect={() =>
-                                                                            handleCategoryToggle(
-                                                                                category.id,
-                                                                            )
-                                                                        }
-                                                                        style={{
-                                                                            paddingLeft: `${0.5 + category.depth * 1.25}rem`,
-                                                                        }}
-                                                                    >
-                                                                        <Checkbox
-                                                                            checked={
-                                                                                state ===
-                                                                                'indeterminate'
-                                                                                    ? 'indeterminate'
-                                                                                    : state ===
-                                                                                      'checked'
-                                                                            }
-                                                                            className="pointer-events-none mr-1"
-                                                                        />
-                                                                        <div className="flex min-w-0 items-center gap-2">
-                                                                            <div
-                                                                                className={cn(
-                                                                                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
-                                                                                    colorClasses.bg,
-                                                                                )}
-                                                                            >
-                                                                                <CategoryIcon
-                                                                                    category={
-                                                                                        category
-                                                                                    }
-                                                                                    size={
-                                                                                        4
-                                                                                    }
-                                                                                />
-                                                                            </div>
-                                                                            <span className="truncate">
-                                                                                {
-                                                                                    category.name
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                );
-                                                            },
-                                                        )}
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </div>
+                                <FacetDropdown
+                                    label={__('Categories')}
+                                    placeholder={__('Select categories...')}
+                                    count={filters.categoryIds.length}
+                                    testId="filter-categories"
+                                >
+                                    <CategoryFacetList
+                                        categories={categories}
+                                        selectedIds={filters.categoryIds}
+                                        onChange={(categoryIds) =>
+                                            update({ categoryIds })
+                                        }
+                                    />
+                                </FacetDropdown>
 
-                                <div className="space-y-2">
-                                    <FormLabel>{__('Labels')}</FormLabel>
-                                    <div className="pt-2">
-                                        <Popover
-                                            open={labelDropdownOpen}
-                                            onOpenChange={setLabelDropdownOpen}
-                                        >
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className="w-full justify-between"
-                                                    data-testid="filter-labels"
-                                                >
-                                                    {filters.labelIds.length >
-                                                    0 ? (
-                                                        <span className="truncate">
-                                                            {
-                                                                filters.labelIds
-                                                                    .length
-                                                            }{' '}
-                                                            selected
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            {__(
-                                                                'Select labels...',
-                                                            )}
-                                                        </span>
-                                                    )}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent
-                                                className="w-full p-0"
-                                                align="start"
-                                            >
-                                                <Command>
-                                                    <CommandInput
-                                                        placeholder={__(
-                                                            'Search labels...',
-                                                        )}
-                                                    />
-                                                    <CommandList>
-                                                        <CommandEmpty>
-                                                            {__(
-                                                                'No labels found.',
-                                                            )}
-                                                        </CommandEmpty>
-                                                        {labels.map((label) => {
-                                                            const isSelected =
-                                                                filters.labelIds.includes(
-                                                                    label.id,
-                                                                );
-                                                            const colorClasses =
-                                                                getLabelColorClasses(
-                                                                    label.color,
-                                                                );
-                                                            return (
-                                                                <CommandItem
-                                                                    key={
-                                                                        label.id
-                                                                    }
-                                                                    onSelect={() =>
-                                                                        handleLabelToggle(
-                                                                            label.id,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Checkbox
-                                                                        checked={
-                                                                            isSelected
-                                                                        }
-                                                                        className="pointer-events-none mr-1"
-                                                                    />
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div
-                                                                            className={cn(
-                                                                                'flex h-5 w-5 items-center justify-center rounded-full',
-                                                                                colorClasses.bg,
-                                                                            )}
-                                                                        >
-                                                                            <LabelIcon
-                                                                                label={
-                                                                                    label
-                                                                                }
-                                                                                className={cn(
-                                                                                    'h-3 w-3',
-                                                                                    colorClasses.text,
-                                                                                )}
-                                                                            />
-                                                                        </div>
-                                                                        <span>
-                                                                            {
-                                                                                label.name
-                                                                            }
-                                                                        </span>
-                                                                    </div>
-                                                                </CommandItem>
-                                                            );
-                                                        })}
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </div>
+                                <FacetDropdown
+                                    label={__('Labels')}
+                                    placeholder={__('Select labels...')}
+                                    count={filters.labelIds.length}
+                                    testId="filter-labels"
+                                >
+                                    <LabelFacetList
+                                        labels={labels}
+                                        selectedIds={filters.labelIds}
+                                        onChange={(labelIds) =>
+                                            update({ labelIds })
+                                        }
+                                    />
+                                </FacetDropdown>
 
                                 {!hideAccountFilter && (
-                                    <div className="space-y-2">
-                                        <FormLabel>{__('Accounts')}</FormLabel>
-                                        <div className="pt-2">
-                                            <Popover
-                                                open={accountDropdownOpen}
-                                                onOpenChange={
-                                                    setAccountDropdownOpen
-                                                }
-                                            >
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        className="w-full justify-between"
-                                                        data-testid="filter-accounts"
-                                                    >
-                                                        {filters.accountIds
-                                                            .length > 0 ? (
-                                                            <span className="truncate">
-                                                                {
-                                                                    filters
-                                                                        .accountIds
-                                                                        .length
-                                                                }{' '}
-                                                                selected
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">
-                                                                {__(
-                                                                    'Select accounts...',
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent
-                                                    className="w-full p-0"
-                                                    align="start"
-                                                >
-                                                    <Command>
-                                                        <CommandInput
-                                                            placeholder={__(
-                                                                'Search accounts...',
-                                                            )}
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>
-                                                                {__(
-                                                                    'No accounts found.',
-                                                                )}
-                                                            </CommandEmpty>
-                                                            {accounts.map(
-                                                                (account) => {
-                                                                    const isSelected =
-                                                                        filters.accountIds.includes(
-                                                                            account.id,
-                                                                        );
-                                                                    return (
-                                                                        <CommandItem
-                                                                            key={
-                                                                                account.id
-                                                                            }
-                                                                            value={`${account.name} ${account.id}`}
-                                                                            onSelect={() =>
-                                                                                handleAccountToggle(
-                                                                                    account.id,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <Checkbox
-                                                                                checked={
-                                                                                    isSelected
-                                                                                }
-                                                                                className="pointer-events-none mr-1"
-                                                                            />
-                                                                            <div className="flex min-w-0 items-center gap-2">
-                                                                                <BankLogo
-                                                                                    src={
-                                                                                        account
-                                                                                            .bank
-                                                                                            ?.logo
-                                                                                    }
-                                                                                    name={
-                                                                                        account
-                                                                                            .bank
-                                                                                            ?.name
-                                                                                    }
-                                                                                    fallback="icon"
-                                                                                    className="h-5 w-5 shrink-0 rounded-full"
-                                                                                />
-                                                                                <span className="truncate">
-                                                                                    {
-                                                                                        account.name
-                                                                                    }
-                                                                                </span>
-                                                                            </div>
-                                                                        </CommandItem>
-                                                                    );
-                                                                },
-                                                            )}
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        </div>
-                                    </div>
+                                    <FacetDropdown
+                                        label={__('Accounts')}
+                                        placeholder={__('Select accounts...')}
+                                        count={filters.accountIds.length}
+                                        testId="filter-accounts"
+                                    >
+                                        <AccountFacetList
+                                            accounts={accounts}
+                                            selectedIds={filters.accountIds}
+                                            onChange={(accountIds) =>
+                                                update({ accountIds })
+                                            }
+                                        />
+                                    </FacetDropdown>
                                 )}
 
                                 <div className="space-y-2">
@@ -739,8 +245,7 @@ export function TransactionFilters({
                                             }
                                             className="flex cursor-pointer items-center gap-1 px-2 py-1"
                                             onClick={() =>
-                                                onFiltersChange({
-                                                    ...filters,
+                                                update({
                                                     aiCategorizedOnly:
                                                         !filters.aiCategorizedOnly,
                                                 })
@@ -758,16 +263,22 @@ export function TransactionFilters({
                                     </FormLabel>
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
-                                            value={creditorName}
+                                            value={text.values.creditorName}
                                             onChange={(e) =>
-                                                setCreditorName(e.target.value)
+                                                text.setValue(
+                                                    'creditorName',
+                                                    e.target.value,
+                                                )
                                             }
                                             placeholder={__('Creditor name')}
                                         />
                                         <Input
-                                            value={debtorName}
+                                            value={text.values.debtorName}
                                             onChange={(e) =>
-                                                setDebtorName(e.target.value)
+                                                text.setValue(
+                                                    'debtorName',
+                                                    e.target.value,
+                                                )
                                             }
                                             placeholder={__('Debtor name')}
                                         />
@@ -776,13 +287,6 @@ export function TransactionFilters({
                             </div>
                         </PopoverContent>
                     </Popover>
-
-                    <Input
-                        placeholder={__('Search description or notes...')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="hidden min-w-0 flex-1 md:block md:min-w-[350px]"
-                    />
 
                     <div className="ml-auto flex items-center gap-2">
                         {enableSavedFilters && (
@@ -796,7 +300,10 @@ export function TransactionFilters({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={clearFilters}
+                                onClick={() => {
+                                    text.clear();
+                                    onFiltersChange(EMPTY_FILTERS);
+                                }}
                                 className="h-9"
                             >
                                 <X className="mr-1 h-4 w-4" />
@@ -810,12 +317,7 @@ export function TransactionFilters({
                     <div className="flex flex-wrap items-center gap-2">
                         <CashflowBlockChip
                             block={filters.cashflowBlock}
-                            onRemove={() =>
-                                onFiltersChange({
-                                    ...filters,
-                                    cashflowBlock: null,
-                                })
-                            }
+                            onRemove={() => update({ cashflowBlock: null })}
                         />
                     </div>
                 ) : null}
@@ -826,4 +328,52 @@ export function TransactionFilters({
     );
 }
 
-const UNCATEGORIZED_CATEGORY_ID = 'uncategorized';
+/**
+ * A labelled "N selected" button in the phone's filters panel, opening a
+ * facet's searchable list.
+ */
+function FacetDropdown({
+    label,
+    placeholder,
+    count,
+    testId,
+    children,
+}: {
+    label: string;
+    placeholder: string;
+    count: number;
+    testId: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="space-y-2">
+            <FormLabel>{label}</FormLabel>
+            <div className="pt-2">
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between"
+                            data-testid={testId}
+                        >
+                            {count > 0 ? (
+                                <span className="truncate">
+                                    {__(':count selected', { count })}
+                                </span>
+                            ) : (
+                                <span className="text-muted-foreground">
+                                    {placeholder}
+                                </span>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                        {children}
+                    </PopoverContent>
+                </Popover>
+            </div>
+        </div>
+    );
+}
