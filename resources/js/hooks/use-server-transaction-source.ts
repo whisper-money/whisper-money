@@ -18,10 +18,9 @@ import { type TransactionTableSource } from '@/types/transaction-table-source';
 import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { type SortingState } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-/** The filters and sort the server applied to the page it served. */
+/** The filters the server applied to the page it served. */
 export interface AppliedFilters {
     date_from: string | null;
     date_to: string | null;
@@ -35,10 +34,7 @@ export interface AppliedFilters {
     category_source: string | null;
     search: string;
     cashflow_block: string | null;
-    sort: string;
 }
-
-const DEFAULT_SORT = '-transaction_date';
 
 function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
@@ -73,12 +69,11 @@ function clientFiltersToBackendFilters(
     };
 }
 
-/** The same filters, and the sort, as the page's URL query carries them. */
+/** The same filters, as the page's URL query carries them. */
 export function clientFiltersToQueryParams(
     filters: Filters,
-    sort: string,
 ): Record<string, string> {
-    const params = Object.fromEntries(
+    return Object.fromEntries(
         Object.entries(clientFiltersToBackendFilters(filters)).map(
             ([key, value]) => [
                 key,
@@ -86,12 +81,6 @@ export function clientFiltersToQueryParams(
             ],
         ),
     );
-
-    if (sort !== DEFAULT_SORT) {
-        params.sort = sort;
-    }
-
-    return params;
 }
 
 function onlySearchChanged(next: Filters, current: Filters): boolean {
@@ -128,8 +117,8 @@ function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
 }
 
 /**
- * A transactions table the server pages through: filters and sort live in the
- * URL and every change asks the server again, "load more" fetches the next
+ * A transactions table the server pages through, newest first: filters live in
+ * the URL and every change asks the server again, "load more" fetches the next
  * cursor page without touching the URL, and each day's count and total come
  * from the server, moved only by what the page changed since.
  */
@@ -185,20 +174,10 @@ export function useServerTransactionSource({
     const [filters, setFilters] = useState<Filters>(() =>
         serverToClientFilters(appliedFilters),
     );
-    const [sortParam, setSortParam] = useState(
-        appliedFilters.sort || DEFAULT_SORT,
-    );
 
     useEffect(() => {
         setFilters(serverToClientFilters(appliedFilters));
-        setSortParam(appliedFilters.sort || DEFAULT_SORT);
     }, [appliedFilters]);
-
-    const sorting = useMemo<SortingState>(() => {
-        const desc = sortParam.startsWith('-');
-        const column = sortParam.replace(/^-/, '');
-        return [{ id: column, desc }];
-    }, [sortParam]);
 
     const daySummaryOf = useServerDaySummaries({
         dayTotals: served.dayTotals,
@@ -209,13 +188,13 @@ export function useServerTransactionSource({
     const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const navigateWithFilters = useCallback(
-        (newFilters: Filters, newSort: string, debounceMs = 0) => {
+        (newFilters: Filters, debounceMs = 0) => {
             if (searchTimerRef.current) {
                 clearTimeout(searchTimerRef.current);
             }
 
             const doNavigate = () => {
-                const params = clientFiltersToQueryParams(newFilters, newSort);
+                const params = clientFiltersToQueryParams(newFilters);
                 setIsNavigating(true);
                 setQueryKey((key) => key + 1);
                 router.visit(transactionsIndex({ query: params }).url, {
@@ -243,26 +222,10 @@ export function useServerTransactionSource({
             // Debounce search, immediate for other filters
             navigateWithFilters(
                 newFilters,
-                sortParam,
                 onlySearchChanged(newFilters, filters) ? 300 : 0,
             );
         },
-        [filters, sortParam, navigateWithFilters],
-    );
-
-    const onSortingChange = useCallback(
-        (updater: SortingState | ((prev: SortingState) => SortingState)) => {
-            const newSorting =
-                typeof updater === 'function' ? updater(sorting) : updater;
-            if (newSorting.length === 0) {
-                return;
-            }
-            const { id, desc } = newSorting[0];
-            const newSort = desc ? `-${id}` : id;
-            setSortParam(newSort);
-            navigateWithFilters(filters, newSort);
-        },
-        [sorting, filters, navigateWithFilters],
+        [filters, navigateWithFilters],
     );
 
     // Refresh the transaction list from the server (resets accumulated pages)
@@ -282,7 +245,7 @@ export function useServerTransactionSource({
 
         setIsLoadingMore(true);
         try {
-            const params = clientFiltersToQueryParams(filters, sortParam);
+            const params = clientFiltersToQueryParams(filters);
             params.cursor = nextCursor;
             const url = transactionsIndex({ query: params }).url;
 
@@ -317,7 +280,7 @@ export function useServerTransactionSource({
         } finally {
             setIsLoadingMore(false);
         }
-    }, [nextCursor, isLoadingMore, filters, sortParam, component, version]);
+    }, [nextCursor, isLoadingMore, filters, component, version]);
 
     const matchingFilters = useMemo(
         () => clientFiltersToBackendFilters(filters),
@@ -331,9 +294,6 @@ export function useServerTransactionSource({
         isLoading: isNavigating,
         filters,
         onFiltersChange,
-        sorting,
-        onSortingChange,
-        manualSorting: true,
         daySummaryOf,
         pagination: {
             displayedCount: allTransactions.length,
@@ -347,6 +307,6 @@ export function useServerTransactionSource({
         refreshRows: reload,
         queryKey,
         matchingFilters,
-        queryParams: clientFiltersToQueryParams(filters, sortParam),
+        queryParams: clientFiltersToQueryParams(filters),
     };
 }

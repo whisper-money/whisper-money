@@ -342,9 +342,9 @@ function HistoryTable({
 }
 
 /**
- * On a phone the contributions keep the date, the description and the
- * amount: the amount is what the list is for, and the other columns push it
- * off the screen.
+ * On a phone the contributions keep the description and the amount, under
+ * their day headers: the amount is what the list is for, and the other
+ * columns push it off the screen.
  */
 const MOBILE_HIDDEN_COLUMNS = [
     'category_id',

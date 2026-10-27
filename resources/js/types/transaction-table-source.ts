@@ -3,7 +3,6 @@ import {
     type ServerTransaction,
     type TransactionFilters,
 } from '@/types/transaction';
-import { type OnChangeFn, type SortingState } from '@tanstack/react-table';
 import { type Dispatch, type SetStateAction } from 'react';
 
 /** The footer below a transactions table: how much it shows, and more. */
@@ -21,8 +20,8 @@ export interface TransactionTablePagination {
 }
 
 /**
- * Where a transactions table gets its rows, and how it filters, sorts, pages
- * and counts them. `/transactions` pages them from the server; the account,
+ * Where a transactions table gets its rows, newest first, and how it filters,
+ * pages and counts them. `/transactions` pages them from the server; the account,
  * budget and savings-goal pages hold all of theirs in memory.
  */
 export interface TransactionTableSource {
@@ -36,10 +35,6 @@ export interface TransactionTableSource {
     isLoading: boolean;
     filters: TransactionFilters;
     onFiltersChange: (filters: TransactionFilters) => void;
-    sorting: SortingState;
-    onSortingChange: OnChangeFn<SortingState>;
-    /** The source orders the rows itself, so the table must not re-sort them. */
-    manualSorting: boolean;
     daySummaryOf: DaySummaryOf;
     pagination: TransactionTablePagination;
     /** Fetches the rows again, after a change the source cannot apply itself. */

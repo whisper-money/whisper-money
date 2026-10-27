@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Enums\CashflowBlock;
-use App\Models\Transaction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -51,7 +50,6 @@ class IndexTransactionRequest extends FormRequest
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'category_source' => ['nullable', 'string', 'in:manual,rule,ai,bank'],
             'search' => ['nullable', 'string', 'max:200'],
-            'sort' => ['nullable', 'string', Rule::in(collect(Transaction::LIST_SORT_COLUMNS)->flatMap(fn (string $column) => [$column, '-'.$column]))],
             'cursor' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
         ];
@@ -83,22 +81,5 @@ class IndexTransactionRequest extends FormRequest
             'cashflow_block' => $validated['cashflow_block'] ?? null,
             'user_id' => $this->user()->id,
         ], fn ($value) => $value !== null);
-    }
-
-    /**
-     * The list's sort, a column name with a leading `-` for descending.
-     */
-    public function sort(): string
-    {
-        return $this->validated('sort') ?? '-transaction_date';
-    }
-
-    /**
-     * Whether the list is sorted by date, either way: the only order that
-     * draws day headers, mirrored by `isSortedByDate()` on the client.
-     */
-    public function isSortedByDate(): bool
-    {
-        return ltrim($this->sort(), '-') === 'transaction_date';
     }
 }

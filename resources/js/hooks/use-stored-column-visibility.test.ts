@@ -11,7 +11,7 @@ describe('useStoredColumnVisibility', () => {
         const { result } = renderHook(() => useStoredColumnVisibility());
 
         expect(result.current[0]).toMatchObject({
-            transaction_date: true,
+            account: true,
             notes: false,
         });
     });
@@ -21,7 +21,7 @@ describe('useStoredColumnVisibility', () => {
         const { result } = renderHook(() => useStoredColumnVisibility());
 
         expect(result.current[0]).toMatchObject({
-            transaction_date: true,
+            account: true,
             notes: true,
         });
 

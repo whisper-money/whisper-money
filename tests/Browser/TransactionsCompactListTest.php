@@ -41,17 +41,13 @@ it('draws the table on a wide screen and the compact list once the sidebar leave
         ->assertNoJavascriptErrors();
 });
 
-it('fits the compact list on a phone and sorts it from the menu above it', function () {
+it('fits the compact list on a phone, under a band per day and with no sort menu', function () {
     $page = visitTransactionListOnAPhone();
 
     $page->assertSee('Weekly groceries market')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
-        // Sorted by date, the rows sit under a band per day.
         ->assertPresent('[data-testid="transaction-day-header"]')
-        ->click('[data-testid="transaction-sort-menu"]')
-        ->click('[role="menuitemradio"]:has-text("Creditor")')
-        ->assertSeeIn('[data-testid="transaction-sort-menu"]', 'Creditor')
-        ->assertMissing('[data-testid="transaction-day-header"]')
+        ->assertDontSee('Sort by')
         ->assertNoJavascriptErrors();
 });
 

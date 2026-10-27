@@ -3112,8 +3112,5 @@
     "Select every transaction of :day": "Sélectionner toutes les transactions de :day",
     "1 transaction": "1 transaction",
     "Select day": "Sélectionner le jour",
-    "Deselect day": "Désélectionner le jour",
-    "Sort by": "Trier par",
-    "Ascending": "Croissant",
-    "Descending": "Décroissant"
+    "Deselect day": "Désélectionner le jour"
 }

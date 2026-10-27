@@ -28,7 +28,7 @@ test('index returns paginated transactions as Inertia props', function () {
         ->component('transactions/index')
         ->has('transactions.data', 3)
         ->has('appliedFilters')
-        ->where('appliedFilters.sort', '-transaction_date')
+        ->missing('appliedFilters.sort')
     );
 });
 
@@ -435,7 +435,7 @@ test('combined filters work', function () {
     );
 });
 
-test('sorts transactions', function (array $first, array $second, array $query, string $attribute, string|int $expectedFirst) {
+test('lists transactions newest first, whatever sort the URL asks for', function (array $first, array $second, array $query, string $attribute, string|int $expectedFirst) {
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
@@ -455,10 +455,11 @@ test('sorts transactions', function (array $first, array $second, array $query, 
         ->where("transactions.data.0.{$attribute}", $expectedFirst)
     );
 })->with([
-    'by date ascending' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], ['sort' => 'transaction_date'], 'transaction_date', '2025-01-01'],
-    'by date descending (default)' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], [], 'transaction_date', '2025-06-15'],
-    'by amount' => [['amount' => -10000], ['amount' => 5000], ['sort' => 'amount'], 'amount', -10000],
-    'by description' => [['description' => 'Zebra Store'], ['description' => 'Apple Store'], ['sort' => 'description'], 'description', 'Apple Store'],
+    'without a sort' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], [], 'transaction_date', '2025-06-15'],
+    'a bookmarked date ascending' => [['transaction_date' => '2025-01-01'], ['transaction_date' => '2025-06-15'], ['sort' => 'transaction_date'], 'transaction_date', '2025-06-15'],
+    'a bookmarked amount' => [['transaction_date' => '2025-06-15', 'amount' => 5000], ['transaction_date' => '2025-01-01', 'amount' => -10000], ['sort' => 'amount'], 'amount', 5000],
+    'a bookmarked payee' => [['transaction_date' => '2025-06-15', 'creditor_name' => 'Zed'], ['transaction_date' => '2025-01-01', 'creditor_name' => 'Amy'], ['sort' => 'creditor_name'], 'creditor_name', 'Zed'],
+    'a sort it never knew' => [['transaction_date' => '2025-06-15'], ['transaction_date' => '2025-01-01'], ['sort' => 'bogus'], 'transaction_date', '2025-06-15'],
 ]);
 
 test('cursor pagination returns correct results', function () {
@@ -537,13 +538,11 @@ test('applied filters are returned in response', function () {
     $response = actingAs($this->user)->get(route('transactions.index', [
         'search' => 'test',
         'date_from' => '2025-01-01',
-        'sort' => '-amount',
     ]));
 
     $response->assertInertia(fn ($page) => $page
         ->where('appliedFilters.search', 'test')
         ->where('appliedFilters.date_from', '2025-01-01')
-        ->where('appliedFilters.sort', '-amount')
     );
 });
 
@@ -571,48 +570,20 @@ test('filter by multiple categories including uncategorized', function () {
     );
 });
 
-test('paginates across pages when sorting by a nullable column with null values', function () {
-    Transaction::factory()->count(12)->create([
+test('keeps the rows of one day in one order across cursor pages', function () {
+    $sameDay = Transaction::factory()->count(15)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
-        'creditor_name' => null,
+        'transaction_date' => '2025-06-15',
     ]);
 
-    Transaction::factory()->count(5)->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'creditor_name' => 'ACME',
-    ]);
+    $firstPage = actingAs($this->user)->get(route('transactions.index', ['per_page' => 10]))
+        ->viewData('page')['props']['transactions'];
+    $secondPage = actingAs($this->user)->get($firstPage['next_page_url'])
+        ->viewData('page')['props']['transactions'];
 
-    $firstPage = actingAs($this->user)->get(route('transactions.index', [
-        'sort' => 'creditor_name',
-        'per_page' => 10,
-    ]));
-
-    $firstPage->assertSuccessful();
-
-    $nextPageUrl = $firstPage->getOriginalContent()->getData()['page']['props']['transactions']['next_page_url'];
-
-    expect($nextPageUrl)->not->toBeNull();
-
-    actingAs($this->user)->get($nextPageUrl)->assertSuccessful();
-});
-
-test('does not expose the sort alias attribute when sorting by a nullable column', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-        'creditor_name' => null,
-    ]);
-
-    $response = actingAs($this->user)->get(route('transactions.index', [
-        'sort' => 'creditor_name',
-    ]));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('transactions.data', 1)
-        ->missing('transactions.data.0.creditor_name_sort')
-    );
+    expect([...array_column($firstPage['data'], 'id'), ...array_column($secondPage['data'], 'id')])
+        ->toBe($sameDay->pluck('id')->sortDesc()->values()->all());
 });
 
 test('filter by amount compares each currency at its own scale', function () {

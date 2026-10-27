@@ -25,7 +25,7 @@ class TransactionExportController extends Controller
             ->with(TransactionCsvExporter::RELATIONS)
             ->applyFilters($request->filters())
             ->when($ids !== null, fn (Builder $query) => $query->whereIn('id', $ids))
-            ->sortedForList($request->sort())
+            ->sortedForList()
             ->lazy(500);
 
         return response()->streamDownload(function () use ($transactions, $exporter): void {

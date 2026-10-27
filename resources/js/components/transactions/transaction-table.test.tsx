@@ -66,9 +66,6 @@ function source(
         isLoading: false,
         filters: {} as TransactionTableSource['filters'],
         onFiltersChange: vi.fn(),
-        sorting: [{ id: 'transaction_date', desc: true }],
-        onSortingChange: vi.fn(),
-        manualSorting: true,
         daySummaryOf: () => ({ count: 0, total: { status: 'pending' } }),
         pagination: {
             displayedCount: 2,

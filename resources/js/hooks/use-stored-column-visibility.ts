@@ -4,7 +4,6 @@ import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
 
 const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
-    transaction_date: true,
     account: true,
     creditor_name: false,
     debtor_name: false,

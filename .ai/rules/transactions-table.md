@@ -25,12 +25,12 @@ table or compact list, the skeleton and the "load more" footer. Where the rows
 come from is a `TransactionTableSource` (`resources/js/types/transaction-table-source.ts`):
 
 - `useServerTransactionSource`: `/transactions` (`pages/transactions/index.tsx`).
-  Filters and sort live in the URL and every change asks the server again; "load
+  Filters live in the URL and every change asks the server again; "load
   more" fetches the next cursor page (and loads on scroll); day counts and totals
   come from the server (`dayTotals`), moved only by local edits. Only this source
   has `matchingFilters` ("all matching filters" bulk actions) and `refreshRows`.
 - `useInMemoryTransactionSource`: `TransactionList`, the account, budget and
-  savings-goal pages. Rows the page already holds, filtered, sorted and sliced in
+  savings-goal pages. Rows the page already holds, filtered, ordered and sliced in
   the browser, with day totals over every row the filters keep.
 
 The two pages are thin wrappers: a source, plus what only they show, passed to
@@ -50,8 +50,16 @@ the table as props (`renderToolbar` for the actions menu, export and the
 - **Anything every table does** (a column option, a footer control, selection):
   `TransactionTable`. A page-only difference is a prop, not a branch on which
   source it was handed.
-- **How rows are fetched, filtered, sorted or paged**: the source. A new kind of
+- **How rows are fetched, filtered, ordered or paged**: the source. A new kind of
   list implements `TransactionTableSource` rather than growing the table.
+
+## Always newest first, always by day
+
+There is no sort: every list reads newest first (`transaction_date` desc, then
+`id` desc, `sortedForList()` on the server, `compareNewestFirst` in memory) under
+a header per day, and has no Date column (the day headers carry the date). The
+server ignores a `sort` query param, so old bookmarks still load. Don't bring
+back sortable headings, a sort menu or a flat list without that being decided.
 
 ## Edge to edge on a phone
 
@@ -76,7 +84,7 @@ server's figure (`TransactionsMultiCurrencyDayTotalsTest`).
 `DataTable`, `useGroupedRowVirtualizer` and the compact list inside
 `ResponsiveTransactionTable` opt out (`'use no memo'`): they read the TanStack
 table and virtualizer, stable objects that change underneath. Hand table state
-to them as React state (`sorting`, `rowSelection`), as `TransactionTable` does,
+to them as React state (`rowSelection`), as `TransactionTable` does,
 not only through the table instance.
 
 `TransactionTable` itself is compiled, so it never hands the TanStack table to
