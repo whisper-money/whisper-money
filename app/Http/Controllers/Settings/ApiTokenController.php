@@ -88,11 +88,20 @@ class ApiTokenController extends Controller
 
         abort_unless($request->user()->canUseFeature(PlanFeature::ApiAccess), 403);
 
-        $expiresAt = $token->expires_at === null
-            ? null
-            : CarbonImmutable::now()->addSeconds((int) $token->created_at->diffInSeconds($token->expires_at));
+        return to_route('api-tokens.index')->with('api_token', $this->reissue($request, $token, $this->renewedExpiry($token)));
+    }
 
-        return to_route('api-tokens.index')->with('api_token', $this->reissue($request, $token, $expiresAt));
+    /**
+     * The expiry of a rotated token: the lifetime it was created with,
+     * counted from now, or none if it never expired.
+     */
+    private function renewedExpiry(PersonalAccessToken $token): ?CarbonImmutable
+    {
+        if ($token->expires_at === null) {
+            return null;
+        }
+
+        return CarbonImmutable::now()->addSeconds((int) $token->created_at->diffInSeconds($token->expires_at));
     }
 
     protected function tokenType(): AccessTokenType

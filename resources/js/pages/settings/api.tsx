@@ -147,7 +147,7 @@ export default function Api() {
                         <ProUpsellAlert
                             subscribeUrl={subscribeUrl}
                             description={__(
-                                'The API is available on a paid plan. Upgrade to create tokens.',
+                                'The API is available on a paid plan. Upgrade to create or rotate tokens; you can still revoke the ones you have.',
                             )}
                         />
                     )}
@@ -192,6 +192,7 @@ export default function Api() {
                                 tokens={tokens}
                                 rotateUrl={(id) => rotate(id).url}
                                 destroyUrl={(id) => destroy(id).url}
+                                showExpiry
                                 canRotate={auth.hasProPlan}
                             />
                         </CardContent>

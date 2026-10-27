@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { RefreshCw, Trash2, type LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface AccessTokenRow {
     id: number;
@@ -22,7 +23,7 @@ export interface AccessTokenRow {
     scope: TokenScope;
     created_at: string | null;
     last_used_at: string | null;
-    /** Only sent by screens whose tokens can expire. */
+    /** Sent by screens whose tokens can expire (see `showExpiry`). */
     expires_at?: string | null;
     expired?: boolean;
 }
@@ -82,18 +83,21 @@ function ConfirmTokenAction({
 
 /**
  * The user's tokens for one surface, each with its access, dates and the
- * rotate and revoke actions. `canRotate` hides rotating where the server
- * would refuse it; revoking is always offered.
+ * rotate and revoke actions. `showExpiry` adds each token's expiry, for
+ * screens whose tokens can expire; `canRotate` hides rotating where the server
+ * would refuse it, while revoking is always offered.
  */
 export function TokenList({
     tokens,
     rotateUrl,
     destroyUrl,
+    showExpiry = false,
     canRotate = true,
 }: {
     tokens: AccessTokenRow[];
     rotateUrl: (id: number) => string;
     destroyUrl: (id: number) => string;
+    showExpiry?: boolean;
     canRotate?: boolean;
 }) {
     if (tokens.length === 0) {
@@ -104,7 +108,13 @@ export function TokenList({
         );
     }
 
-    const visitOptions = { preserveScroll: true, preserveState: true };
+    // A refused rotation (the shared-account block) comes back as an error
+    // bag; say so instead of closing the dialog silently.
+    const visitOptions = {
+        preserveScroll: true,
+        preserveState: true,
+        onError: () => toast.error(__('Something went wrong.')),
+    };
 
     return (
         <ul className="divide-y">
@@ -130,14 +140,14 @@ export function TokenList({
                         <p className="text-xs text-muted-foreground">
                             {__('Created')}: {formatDate(token.created_at)} ·{' '}
                             {__('Last used')}: {formatDate(token.last_used_at)}
-                            {token.expires_at !== undefined && (
+                            {showExpiry && (
                                 <>
                                     {' '}
                                     ·{' '}
                                     {token.expired
                                         ? __('Expired')
                                         : __('Expires')}
-                                    : {formatDate(token.expires_at)}
+                                    : {formatDate(token.expires_at ?? null)}
                                 </>
                             )}
                         </p>

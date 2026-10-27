@@ -13,13 +13,13 @@ export function NewTokenAlert({ token }: { token: string }) {
         <Alert>
             <KeyRound className="h-4 w-4" />
             <AlertTitle>{__('Copy your new token now')}</AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="min-w-0">
                 <p className="mb-2">
                     {__(
                         'This is the only time you will see it, so copy it somewhere safe now.',
                     )}
                 </p>
-                <CopyableCode value={token} />
+                <CopyableCode value={token} className="w-full" />
             </AlertDescription>
         </Alert>
     );
