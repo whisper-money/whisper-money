@@ -21,7 +21,7 @@ class TransactionFilterSummary
     /**
      * How many months the trend covers, the filter's last month included.
      */
-    public const TREND_MONTHS = 6;
+    private const TREND_MONTHS = 6;
 
     public function __construct(private TransactionDayTotals $dayTotals) {}
 
