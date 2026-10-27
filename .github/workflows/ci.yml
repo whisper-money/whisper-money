@@ -5,10 +5,9 @@ on:
     branches:
       - develop
       - main
+  # Any base branch, so stacked PRs (each based on the previous PR's branch)
+  # get the same checks as a PR to main.
   pull_request:
-    branches:
-      - develop
-      - main
   workflow_dispatch:
     inputs:
       build_only:
