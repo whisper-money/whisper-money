@@ -13,7 +13,10 @@ paths:
     - 'resources/js/hooks/use-server-transaction-source.ts'
     - 'resources/js/types/transaction-table-source.ts'
     - 'resources/js/components/transactions/responsive-transaction-table.tsx'
-    - 'resources/js/lib/phone-bleed.ts'
+    - 'resources/js/lib/compact-list-style.ts'
+    - 'resources/js/components/transactions/transaction-list-row.tsx'
+    - 'resources/js/components/transactions/transaction-day-header.tsx'
+    - 'resources/js/components/transactions/transaction-list-skeleton.tsx'
 ---
 
 # One transactions table, two data sources
@@ -61,16 +64,25 @@ a header per day, and has no Date column (the day headers carry the date). The
 server ignores a `sort` query param, so old bookmarks still load. Don't bring
 back sortable headings, a sort menu or a flat list without that being decided.
 
-## Edge to edge on a phone
+## Framed 16px from the edges on a phone
 
-Below md the compact list (and its skeleton and `topRow`) runs edge to edge,
-like design A: `PHONE_BLEED` (`lib/phone-bleed.ts`) pulls it out of the page's
-24px side padding with `-mx-6`, so it assumes the table sits straight in a
-`p-6` page wrapper, as on /transactions and the account, budget and savings
-goal pages. A table inside a card, a dialog or anything padded otherwise passes
-`framedOnPhone` (the monthly savings goal view does). Edge to edge, a list
-never scrolls inside its own `maxHeight` box on a phone: with no gutter left,
-every swipe would scroll the list instead of the page.
+Below md the compact list is framed as design D draws it: 16px from the
+screen's edges, a 1px border, 8px top corners and no bottom border, since the
+list runs on with the page (the last row draws the closing hairline). The
+skeleton and `topRow` take the same inset. `PHONE_FRAME` / `PHONE_INSET`
+(`lib/compact-list-style.ts`) pull it 8px into the page's 24px side padding
+with `-mx-2`, so they assume the table sits straight in a `p-6` page wrapper,
+as on /transactions and the account, budget and savings goal pages. A table
+inside a card, a dialog or anything padded otherwise passes `framedOnPhone`
+(the monthly savings goal view does) and keeps a plain rounded box. This
+replaced the edge-to-edge list of #1209 on purpose: don't bring the bleed
+back. On a phone the list never scrolls inside its own `maxHeight` box: with
+only a 16px gutter left, nearly every swipe would scroll the list instead of
+the page.
+
+The list's colours and sizes are D's to the pixel (line height 1.4, the
+`COMPACT_LIST_MUTED_TEXT` grey for the secondary line, notes and day totals);
+check a change against the mockup at 390px, light and dark.
 
 ## Day totals follow the server
 

@@ -13,6 +13,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useLocale } from '@/hooks/use-locale';
+import { COMPACT_LIST_MUTED_TEXT } from '@/lib/compact-list-style';
 import {
     type DaySummary,
     type DaySummaryOf,
@@ -21,6 +22,7 @@ import {
     formatDayHeading,
     formatTransactionCount,
 } from '@/lib/transaction-day-groups';
+import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
@@ -65,7 +67,7 @@ function DayTotal({
     quiet = false,
 }: {
     total: DayTotalState;
-    /** Small, grey and signed, without the income highlight. */
+    /** Small, grey and signed, without the income highlight: the band's. */
     quiet?: boolean;
 }) {
     const currencyCode = usePage<SharedData>().props.auth.user.currency_code;
@@ -105,7 +107,7 @@ function DayTotal({
                 currencyCode={currencyCode}
                 showSign
                 monospace
-                className="text-xs text-neutral-600 dark:text-neutral-400"
+                className={cn('text-xs/[1.4]', COMPACT_LIST_MUTED_TEXT)}
             />
         );
     }
@@ -258,13 +260,13 @@ export function TransactionDayBand({
             className="flex items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 pt-2.5 pb-1.5 dark:border-neutral-800 dark:bg-neutral-900"
             data-testid="transaction-day-header"
         >
-            <h3 className="min-w-0 truncate text-xs font-semibold tracking-[0.04em] text-neutral-600 uppercase dark:text-neutral-400">
+            <h3 className="min-w-0 truncate text-xs/[1.4] font-semibold tracking-[0.04em] text-neutral-600 uppercase dark:text-neutral-400">
                 {formatDayBand(date, locale)}
             </h3>
             {selectionActive ? (
                 <button
                     type="button"
-                    className="shrink-0 rounded-sm text-xs font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                    className="shrink-0 rounded-sm text-xs/[1.4] font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setDaySelected(table, rows, !allSelected)}
                 >
                     {allSelected ? __('Deselect day') : __('Select day')}

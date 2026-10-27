@@ -87,8 +87,8 @@ interface TransactionTableProps {
     maxHeight?: number;
     /**
      * The table sits inside a card rather than straight in the page's padded
-     * content, so on a phone its compact list keeps its frame instead of
-     * running edge to edge.
+     * content, so on a phone its compact list keeps its plain frame instead of
+     * being pulled 16px from the screen's edges.
      */
     framedOnPhone?: boolean;
     /** Drawn above the first row, such as a banner. */
