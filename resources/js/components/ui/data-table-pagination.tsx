@@ -15,12 +15,12 @@ export function DataTablePagination({
 }: DataTablePaginationProps) {
     return (
         <div className="flex flex-wrap items-center justify-end gap-2">
-            {displayedCount && total && (
+            {!!displayedCount && !!total && (
                 <div className="text-muted-foreground flex-1 text-sm">
                     {Math.min(total, displayedCount)} {__('of')} {total} {rowCountLabel}
                 </div>
             )}
-            {displayedCount && total === undefined && (
+            {!!displayedCount && total === undefined && (
                 <div className="text-muted-foreground flex-1 text-sm">
                     {displayedCount} {rowCountLabel}
                 </div>
