@@ -36,6 +36,11 @@ come from is a `TransactionTableSource` (`resources/js/types/transaction-table-s
   savings-goal pages. Rows the page already holds, filtered, ordered and sliced in
   the browser, with day totals over every row the filters keep.
 
+Both answer `countMatching(filters, signal)`: how many rows a filter set
+would list before it is applied, for the phone's filters sheet ("See N
+transactions"). The server source asks `/api/transactions/summary`; the
+in-memory one counts its held rows.
+
 The two pages are thin wrappers: a source, plus what only they show, passed to
 the table as props (`renderToolbar` for the actions menu, export and the
 `columnPicker` it hands over; `topRow` for the AI consent banner, whose logic is
