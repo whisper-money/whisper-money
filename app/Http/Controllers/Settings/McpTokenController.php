@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\AccessTokenType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreMcpTokenRequest;
 use Illuminate\Http\RedirectResponse;
@@ -47,7 +48,7 @@ class McpTokenController extends Controller
     }
 
     /**
-     * Revoke (delete) a token the user owns.
+     * Revoke (delete) an MCP token the user owns.
      */
     public function destroy(Request $request, PersonalAccessToken $token): RedirectResponse
     {
@@ -59,8 +60,9 @@ class McpTokenController extends Controller
     }
 
     /**
-     * Rotate a token: revoke it and issue a fresh secret keeping the same name
-     * and scope, so a leaked token can be replaced without reconfiguring intent.
+     * Rotate an MCP token: revoke it and issue a fresh secret keeping the same
+     * name and abilities (and so the `wm_mcp_` prefix), so a leaked token can be
+     * replaced without reconfiguring intent.
      */
     public function rotate(Request $request, PersonalAccessToken $token): RedirectResponse
     {
@@ -73,7 +75,8 @@ class McpTokenController extends Controller
     }
 
     /**
-     * Ensure the token belongs to the requesting user before mutating it.
+     * Ensure the token belongs to the requesting user before mutating it, and
+     * that it is an MCP token: API tokens are managed from their own screen.
      */
     private function authorizeOwnership(Request $request, PersonalAccessToken $token): void
     {
@@ -82,6 +85,8 @@ class McpTokenController extends Controller
                 && $token->tokenable_type === $request->user()->getMorphClass(),
             403
         );
+
+        abort_unless(AccessTokenType::Mcp->matches($token->abilities ?? []), 404);
     }
 
     /**
@@ -92,6 +97,7 @@ class McpTokenController extends Controller
         return $request->user()->tokens()
             ->latest()
             ->get()
+            ->filter(fn (PersonalAccessToken $token): bool => AccessTokenType::Mcp->matches($token->abilities ?? []))
             ->map(fn (PersonalAccessToken $token): array => [
                 'id' => $token->id,
                 'name' => $token->name,
@@ -99,6 +105,7 @@ class McpTokenController extends Controller
                 'created_at' => $token->created_at?->toIso8601String(),
                 'last_used_at' => $token->last_used_at?->toIso8601String(),
             ])
+            ->values()
             ->all();
     }
 }
