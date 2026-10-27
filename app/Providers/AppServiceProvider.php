@@ -85,6 +85,13 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) $user->getAuthIdentifier());
         });
 
+        // The public API (`/api/v1`): 60 requests a minute per user, answered
+        // with X-RateLimit-Limit / X-RateLimit-Remaining (and Retry-After once
+        // exhausted). Authentication runs first, so there is always a user.
+        RateLimiter::for('api-v1', function (Request $request): Limit {
+            return Limit::perMinute(60)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
         // AI column-mapping suggestions are asked once per imported file, so 20
         // a minute per user is plenty. A named limiter keeps its own bucket: a
         // plain `throttle:20,1` would share (and double-count) the key of the

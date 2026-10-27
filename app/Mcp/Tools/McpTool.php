@@ -7,6 +7,7 @@ use App\Models\Label;
 use App\Models\McpToolCall;
 use App\Models\Space;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -127,31 +128,16 @@ abstract class McpTool extends Tool
     }
 
     /**
-     * The space a tool operates on: the optional `space` argument (validated
-     * against the spaces the user can access) or the user's personal space.
-     *
-     * Scoping is by `space_id` only, gated by membership (`accessibleSpaces`): a
-     * space is a shared tenant, so a member is meant to see every row in it. The
-     * security boundary is the membership check here, not a per-row `user_id`
-     * filter.
+     * The space a tool operates on: the optional `space` argument or the
+     * user's personal space (see SpaceResolver).
      */
     protected function resolveSpace(Request $request, User $user): Space
     {
-        $spaceId = $request->string('space')->toString();
-
-        if ($spaceId === '') {
-            return $user->personalSpace ?? $user->activeSpace();
-        }
-
-        $space = $user->accessibleSpaces()->firstWhere('id', $spaceId);
-
-        if ($space === null) {
-            throw ValidationException::withMessages([
-                'space' => "You do not have access to a space with id {$spaceId}. Call list_spaces to see valid ids.",
-            ]);
-        }
-
-        return $space;
+        return app(SpaceResolver::class)->resolve(
+            $user,
+            $request->string('space')->toString(),
+            'Call list_spaces to see valid ids.',
+        );
     }
 
     /**
