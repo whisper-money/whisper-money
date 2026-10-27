@@ -184,7 +184,8 @@ function smokePagePath(string $path, User $user): string
 
 dataset('authenticated pages (smoke)', [
     'dashboard' => ['/dashboard', 'Overview of your financial health'],
-    'transactions' => ['/transactions', 'View and manage your transactions'],
+    // The list itself: the page's heading reads differently on desktop and phone.
+    'transactions' => ['/transactions', 'Smoke weekly shop'],
     'categorize' => ['/transactions/categorize', 'Smoke uncategorized coffee'],
     'accounts' => ['/accounts', 'View and manage your bank accounts'],
     'account' => ['/accounts/{account}', 'Smoke Checking'],
