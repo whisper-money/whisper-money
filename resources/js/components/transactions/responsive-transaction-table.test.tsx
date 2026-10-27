@@ -99,13 +99,15 @@ const rowActions = {
 function TransactionsList({
     maxHeight,
     framedOnPhone,
+    data = TRANSACTIONS,
 }: {
     maxHeight?: number;
     framedOnPhone?: boolean;
+    data?: ServerTransaction[];
 }) {
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const table = useReactTable({
-        data: TRANSACTIONS,
+        data,
         columns: COLUMNS,
         getRowId: (row) => row.id,
         getCoreRowModel: getCoreRowModel(),
@@ -183,12 +185,14 @@ describe('ResponsiveTransactionTable', () => {
         expect(listRows()).toHaveLength(0);
     });
 
-    it('runs the compact list edge to edge on a phone unless it is framed', () => {
+    it('frames the compact list 16px from the edges on a phone, open at the bottom, unless it is in a card', () => {
         const { unmount } = render(<TransactionsList />);
-        const bled = screen.getByTestId('transaction-compact-list-rows');
+        const inset = screen.getByTestId('transaction-compact-list-rows');
 
-        expect(bled.className).toContain('max-md:-mx-6');
-        expect(bled.className).toContain('max-md:border-x-0');
+        expect(inset.className).toContain('max-md:-mx-2');
+        expect(inset.className).toContain('max-md:rounded-b-none');
+        expect(inset.className).toContain('max-md:border-b-0');
+        expect(inset.className).not.toContain('border-x-0');
         unmount();
 
         render(<TransactionsList framedOnPhone />);
@@ -198,7 +202,15 @@ describe('ResponsiveTransactionTable', () => {
         expect(framed.className).toContain('rounded-md border');
     });
 
-    it('lets an edge-to-edge list grow with the page on a phone instead of scrolling a box', () => {
+    it('closes an empty inset list with its own hairline on a phone', () => {
+        render(<TransactionsList data={[]} />);
+
+        expect(screen.getByText('No transactions found.').className).toContain(
+            'max-md:border-b',
+        );
+    });
+
+    it('lets the inset list grow with the page on a phone instead of scrolling a box', () => {
         isPhone = true;
         const { unmount } = render(<TransactionsList maxHeight={600} />);
 

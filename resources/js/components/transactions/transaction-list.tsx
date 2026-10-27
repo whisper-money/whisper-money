@@ -37,7 +37,7 @@ export interface TransactionListProps {
     showActionsMenu?: boolean;
     headerActions?: ReactNode;
     maxHeight?: number;
-    /** Inside a card: keep the frame on a phone instead of running edge to edge. */
+    /** Inside a card: keep the plain frame on a phone instead of design D's inset one. */
     framedOnPhone?: boolean;
     hideColumns?: string[];
     onBalanceUpdated?: () => void;

@@ -14,7 +14,7 @@ import {
     type RowSelectionMode,
     useLongPressSelect,
 } from '@/hooks/use-mobile-selection-mode';
-import { PHONE_BLEED } from '@/lib/phone-bleed';
+import { PHONE_FRAME, PHONE_INSET } from '@/lib/compact-list-style';
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
 import { cn } from '@/lib/utils';
@@ -40,8 +40,8 @@ const LIST_LAYOUT_BELOW_PX = 56 * 16; // 56rem at the 16px root size the app kee
 
 /**
  * Each row draws its hairline below; inside a frame the last one would sit on
- * the frame's border and double it. Edge to edge there is no bottom border, so
- * the last row keeps its own: the md-only twin.
+ * the frame's border and double it. On a phone the frame has no bottom border,
+ * so the last row keeps its own: the md-only twin.
  */
 const LAST_ROW_ON_FRAME =
     '[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0';
@@ -77,8 +77,9 @@ interface ResponsiveTransactionTableProps {
     listRow: TransactionListRowOptions;
     rowActions: TransactionRowActionHandlers;
     /**
-     * Keep the compact list's frame on a phone, for a list inside a card.
-     * Otherwise it runs edge to edge there (see `PHONE_BLEED`).
+     * Keep the compact list's plain frame on a phone, for a list inside a
+     * card. Otherwise it sits 16px from the screen's edges there, open at the
+     * bottom (see `PHONE_FRAME`).
      */
     framedOnPhone?: boolean;
 }
@@ -191,9 +192,9 @@ function TransactionCompactList({
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const rows = table.getRowModel().rows;
-    // Edge to edge on a phone, a box of its own height would leave no gutter
-    // to scroll the page by: every swipe would scroll the list instead. There
-    // the list grows with the page, as /transactions does everywhere.
+    // On a phone a box of its own height would leave only a 16px gutter to
+    // scroll the page by: nearly every swipe would scroll the list instead.
+    // There the list grows with the page, as /transactions does everywhere.
     const isPhone = useIsMobile();
     const boxHeight = isPhone && !framedOnPhone ? undefined : maxHeight;
     const { items, rowVirtualizer, virtualRows, paddingTop, paddingBottom } =
@@ -216,7 +217,7 @@ function TransactionCompactList({
                 <div
                     className={cn(
                         'overflow-hidden rounded-md border',
-                        !framedOnPhone && PHONE_BLEED,
+                        !framedOnPhone && PHONE_INSET,
                     )}
                 >
                     {topRow}
@@ -228,11 +229,7 @@ function TransactionCompactList({
                     'overflow-hidden rounded-md border',
                     framedOnPhone
                         ? LAST_ROW_ON_FRAME
-                        : [
-                              PHONE_BLEED,
-                              'max-md:border-b-0',
-                              MD_LAST_ROW_ON_FRAME,
-                          ],
+                        : [PHONE_FRAME, MD_LAST_ROW_ON_FRAME],
                 )}
                 data-testid="transaction-compact-list-rows"
                 style={
@@ -242,7 +239,13 @@ function TransactionCompactList({
                 }
             >
                 {rows.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
+                    <div
+                        className={cn(
+                            'p-6 text-center text-sm text-muted-foreground',
+                            // No row draws the closing hairline here.
+                            !framedOnPhone && 'max-md:border-b',
+                        )}
+                    >
                         {emptyMessage}
                     </div>
                 ) : (

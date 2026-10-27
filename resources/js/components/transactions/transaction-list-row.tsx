@@ -4,6 +4,7 @@ import { SplitOriginPopover } from '@/components/transactions/split-origin-popov
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { COMPACT_LIST_MUTED_TEXT, LIST_ROW } from '@/lib/compact-list-style';
 import { resolveTransactionLabels } from '@/lib/transaction-labels';
 import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
@@ -80,7 +81,8 @@ export function TransactionListRow({
             onClick={handleRowClick}
             data-selected={selected || undefined}
             className={cn(
-                'flex cursor-pointer items-start gap-3 border-b border-neutral-100 px-4 py-3 transition-colors select-none dark:border-neutral-800',
+                LIST_ROW,
+                'cursor-pointer leading-[1.4] transition-colors select-none',
                 selected
                     ? 'bg-primary/5 dark:bg-primary/10'
                     : 'hover:bg-muted/50',
@@ -143,11 +145,19 @@ export function TransactionListRow({
                         showSign
                         weight="medium"
                         monospace
-                        className="shrink-0 text-[15px]"
+                        // Cancels the px-1 `positive-highlight` gives every
+                        // amount for its income pill, so the figure lines up
+                        // with the row's edge; drop it with that variant.
+                        className="-mr-1 shrink-0 text-[15px]"
                     />
                 </div>
 
-                <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[13px] whitespace-nowrap text-muted-foreground">
+                <div
+                    className={cn(
+                        'flex min-w-0 items-center gap-1.5 overflow-hidden text-[13px] whitespace-nowrap',
+                        COMPACT_LIST_MUTED_TEXT,
+                    )}
+                >
                     <CategoryName
                         category={category}
                         isCategorizing={isCategorizing}
@@ -184,7 +194,12 @@ export function TransactionListRow({
                 )}
 
                 {transaction.notes && (
-                    <span className="truncate text-[13px] text-muted-foreground">
+                    <span
+                        className={cn(
+                            'truncate text-[13px]',
+                            COMPACT_LIST_MUTED_TEXT,
+                        )}
+                    >
                         {transaction.notes}
                     </span>
                 )}

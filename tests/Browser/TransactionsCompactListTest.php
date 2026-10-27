@@ -51,7 +51,7 @@ it('fits the compact list on a phone, under a band per day and with no sort menu
         ->assertNoJavascriptErrors();
 });
 
-it('runs the compact list edge to edge on a phone and keeps its frame beside the sidebar', function () {
+it('frames the compact list 16px from the edges on a phone and keeps its plain frame beside the sidebar', function () {
     $frameOf = <<<'JS'
         (() => {
             const list = document.querySelector('[data-testid="transaction-compact-list-rows"]');
@@ -59,11 +59,12 @@ it('runs the compact list edge to edge on a phone and keeps its frame beside the
             const style = getComputedStyle(list);
             return JSON.stringify({
                 left: Math.round(rect.left),
-                right: Math.round(rect.right),
-                width: window.innerWidth,
+                right: Math.round(window.innerWidth - rect.right),
                 borderLeft: style.borderLeftWidth,
                 borderTop: style.borderTopWidth,
-                radius: style.borderTopLeftRadius,
+                borderBottom: style.borderBottomWidth,
+                topRadius: style.borderTopLeftRadius,
+                bottomRadius: style.borderBottomLeftRadius,
             });
         })()
     JS;
@@ -71,24 +72,66 @@ it('runs the compact list edge to edge on a phone and keeps its frame beside the
     $page = visitTransactionListOnAPhone();
     $page->assertSee('Weekly groceries market');
 
-    // A hairline where the list starts, nothing on the sides, no corners.
-    $phone = json_decode($page->script($frameOf), true);
-    expect($phone['left'])->toBe(0)
-        ->and($phone['right'])->toBe($phone['width'])
-        ->and($phone['borderLeft'])->toBe('0px')
-        ->and($phone['borderTop'])->toBe('1px')
-        ->and($phone['radius'])->toBe('0px');
+    // Design D: 16px from either edge, 8px top corners, open at the bottom.
+    expect(json_decode($page->script($frameOf), true))->toBe([
+        'left' => 16,
+        'right' => 16,
+        'borderLeft' => '1px',
+        'borderTop' => '1px',
+        'borderBottom' => '0px',
+        'topRadius' => '8px',
+        'bottomRadius' => '0px',
+    ]);
     $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth');
 
-    // Beside the sidebar the list is compact too, but stays in its frame.
+    // Beside the sidebar the list is compact too, but in a plain rounded box.
     $desktop = visit('/transactions')->resize(1024, 800);
     $desktop->assertPresent('[data-testid="transaction-list-layout"][data-layout="list"]');
 
     $framed = json_decode($desktop->script($frameOf), true);
-    expect($framed['left'])->toBeGreaterThan(0)
+    expect($framed['left'])->toBeGreaterThan(16)
         ->and($framed['borderLeft'])->toBe('1px')
-        ->and($framed['radius'])->not->toBe('0px');
+        ->and($framed['borderBottom'])->toBe('1px')
+        ->and($framed['bottomRadius'])->toBe('8px');
 });
+
+it('draws the rows in design D\'s type and greys, light and dark', function (bool $dark) {
+    $styleOf = <<<'JS'
+        (() => {
+            const row = [...document.querySelectorAll('[data-testid="transaction-list-row"]')]
+                .find((el) => el.textContent.includes('Weekly groceries market'));
+            const band = document.querySelector('[data-testid="transaction-day-header"]');
+            const description = [...row.querySelectorAll('button')]
+                .find((el) => el.textContent === 'Weekly groceries market');
+            const detail = getComputedStyle(
+                [...row.querySelectorAll('div')].find((el) => el.textContent.startsWith('Groceries')),
+            );
+            const total = getComputedStyle(band.lastElementChild);
+            return JSON.stringify({
+                lineHeight: getComputedStyle(description).lineHeight,
+                detailColor: detail.color,
+                detailSize: detail.fontSize,
+                bandHeight: Math.round(band.getBoundingClientRect().height * 10) / 10,
+                totalColor: total.color,
+            });
+        })()
+    JS;
+
+    $page = visit('/transactions')->on()->iPhone14Pro();
+    if ($dark) {
+        $page = $page->inDarkMode();
+    }
+    $page = $page->navigate('/transactions')->assertSee('Weekly groceries market');
+
+    $grey = $dark ? 'rgb(168, 168, 168)' : 'rgb(99, 99, 99)';
+    expect(json_decode($page->script($styleOf), true))->toBe([
+        'lineHeight' => '21px',
+        'detailColor' => $grey,
+        'detailSize' => '13px',
+        'bandHeight' => 33.8,
+        'totalColor' => $grey,
+    ]);
+})->with(['light' => false, 'dark' => true]);
 
 it('ticks a whole day from its band once rows are being picked', function () {
     $page = visitTransactionListOnAPhone();

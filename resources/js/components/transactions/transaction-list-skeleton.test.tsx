@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { TransactionListSkeleton } from './transaction-list-skeleton';
@@ -19,5 +19,32 @@ describe('TransactionListSkeleton', () => {
         expect(
             container.querySelectorAll('[data-slot="skeleton"]').length,
         ).toBeGreaterThan(8);
+    });
+
+    it('draws the compact list on a phone, in the inset frame of the list, unless it is in a card', () => {
+        const { container, unmount } = render(<TransactionListSkeleton />);
+        const frame = container.querySelector('.rounded-md.border')!;
+
+        expect(frame.className).toContain('max-md:-mx-2');
+        expect(frame.className).toContain('max-md:rounded-b-none');
+        expect(
+            screen.getByTestId('transaction-skeleton-list').className,
+        ).toContain('md:hidden');
+        expect(
+            screen.getByTestId('transaction-skeleton-table').className,
+        ).toContain('max-md:hidden');
+        unmount();
+
+        const framed = render(<TransactionListSkeleton framedOnPhone />);
+
+        expect(
+            framed.container.querySelector('.rounded-md.border')!.className,
+        ).not.toContain('max-md:');
+        // Its frame has a bottom border, so the last row doesn't draw one.
+        expect(
+            framed.container.querySelector(
+                '[data-testid="transaction-skeleton-list"] > :last-child',
+            )!.className,
+        ).toContain('last:border-b-0');
     });
 });
