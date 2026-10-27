@@ -1,7 +1,4 @@
-import {
-    type ServerTransaction,
-    type TransactionFilters,
-} from '@/types/transaction';
+import { type ServerTransaction } from '@/types/transaction';
 import {
     act,
     fireEvent,
@@ -49,26 +46,7 @@ vi.mock('./add-transaction-button', () => ({
     ),
 }));
 
-vi.mock('./transaction-analysis-drawer', () => ({
-    TransactionAnalysisDrawer: ({ open }: { open: boolean }) =>
-        open ? <div data-testid="analysis-drawer" /> : null,
-}));
-
-const emptyFilters: TransactionFilters = {
-    dateFrom: null,
-    dateTo: null,
-    amountMin: null,
-    amountMax: null,
-    categoryIds: [],
-    accountIds: [],
-    labelIds: [],
-    creditorName: '',
-    debtorName: '',
-    searchText: '',
-};
-
 function renderMenu(
-    filters: TransactionFilters,
     transactions: ServerTransaction[] = [],
     hasTransactionalAccounts = true,
     onReEvaluateComplete?: () => void,
@@ -77,7 +55,6 @@ function renderMenu(
         <TransactionActionsMenu
             transactions={transactions}
             hasTransactionalAccounts={hasTransactionalAccounts}
-            filters={filters}
             onReEvaluateComplete={onReEvaluateComplete}
         />,
     );
@@ -107,116 +84,29 @@ beforeEach(() => {
     reEvaluateTransactionRules.mockReset();
 });
 
-describe('TransactionActionsMenu analysis button', () => {
-    it('is disabled when no filter is applied', () => {
-        renderMenu(emptyFilters);
-
-        expect(screen.getByText('Analysis').closest('button')).toHaveAttribute(
-            'aria-disabled',
-            'true',
-        );
-    });
-
-    it('opens the analysis drawer when a filter is applied and clicked', () => {
-        renderMenu({ ...emptyFilters, labelIds: ['label-1'] });
-
-        const button = screen.getByText('Analysis').closest('button')!;
-        expect(button).toHaveAttribute('aria-disabled', 'false');
-
-        fireEvent.click(button);
-        expect(screen.getByTestId('analysis-drawer')).toBeInTheDocument();
-    });
-
-    /**
-     * Below `sm` the label hides so the whole bar fits one line on a 320px
-     * phone; the button keeps its name for screen readers.
-     */
-    it('keeps its accessible name while the label hides below sm', () => {
-        renderMenu(emptyFilters);
-
-        const button = screen.getByRole('button', { name: 'Analysis' });
-
-        expect(within(button).getByText('Analysis')).toHaveClass(
-            'hidden',
-            'sm:inline',
-        );
-        expect(button).toHaveClass('w-9', 'sm:w-auto');
-    });
-
-    it('names itself in a tooltip, below sm only, once a filter enables it', async () => {
-        renderMenu({ ...emptyFilters, labelIds: ['label-1'] });
-
-        fireEvent.focus(screen.getByRole('button', { name: 'Analysis' }));
-
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(
-            'Analysis',
-        );
-        expect(
-            document.querySelector('[data-slot="tooltip-content"]'),
-        ).toHaveClass('sm:hidden');
-    });
-
-    it('drops the tapped hint once a filter enables the button', async () => {
-        isMobile = true;
-        const { rerender } = renderMenu(emptyFilters);
-
-        fireEvent.click(screen.getByRole('button', { name: 'Analysis' }));
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(
-            'Apply a filter to enable this button',
-        );
-
-        rerender(
-            <TransactionActionsMenu
-                transactions={[]}
-                hasTransactionalAccounts
-                filters={{ ...emptyFilters, labelIds: ['label-1'] }}
-            />,
-        );
-
-        await waitFor(() => {
-            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-        });
-    });
-
-    it('explains how to enable it while no filter is applied', async () => {
-        renderMenu(emptyFilters);
-
-        fireEvent.focus(screen.getByRole('button', { name: 'Analysis' }));
-
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(
-            'Apply a filter to enable this button',
-        );
-        expect(
-            document.querySelector('[data-slot="tooltip-content"]'),
-        ).not.toHaveClass('sm:hidden');
-    });
-});
-
 describe('TransactionActionsMenu action bar layout', () => {
-    it('shows add, analysis and categorize in that order on desktop', () => {
-        const { container } = renderMenu(emptyFilters, [uncategorized('t-1')]);
+    it('shows add and categorize in that order on desktop, with no analysis button', () => {
+        const { container } = renderMenu([uncategorized('t-1')]);
 
         expect(actionBarLabels(container)).toEqual([
             'Add transaction',
-            'Analysis',
             'Categorize1',
             'More actions',
         ]);
     });
 
     it('keeps the same order when every transaction is categorized', () => {
-        const { container } = renderMenu(emptyFilters);
+        const { container } = renderMenu();
 
         expect(actionBarLabels(container)).toEqual([
             'Add transaction',
-            'Analysis',
             'Categorize',
             'More actions',
         ]);
     });
 
     it('offers adding right above the list and leaves importing to the app header', async () => {
-        renderMenu(emptyFilters);
+        renderMenu();
 
         expect(
             screen.getByRole('button', { name: 'Add transaction' }),
@@ -229,7 +119,7 @@ describe('TransactionActionsMenu action bar layout', () => {
     });
 
     it('keeps adding off while the user owns no account to file one in', () => {
-        renderMenu(emptyFilters, [], false);
+        renderMenu([], false);
 
         expect(
             screen.getByRole('button', { name: 'Add transaction' }),
@@ -238,14 +128,13 @@ describe('TransactionActionsMenu action bar layout', () => {
 
     it('moves categorize to the dropdown on mobile', async () => {
         isMobile = true;
-        const { container } = renderMenu(emptyFilters, [
+        const { container } = renderMenu([
             uncategorized('t-1'),
             uncategorized('t-2'),
         ]);
 
         expect(actionBarLabels(container)).toEqual([
             'Add transaction',
-            'Analysis',
             'More actions',
         ]);
 
@@ -262,7 +151,7 @@ describe('TransactionActionsMenu action bar layout', () => {
 
     it('disables the categorize dropdown item when nothing is uncategorized', async () => {
         isMobile = true;
-        renderMenu(emptyFilters);
+        renderMenu();
 
         const menu = await openMoreActionsMenu();
         const categorizeItem = within(menu)
@@ -276,7 +165,7 @@ describe('TransactionActionsMenu action bar layout', () => {
 
 describe('TransactionActionsMenu update categories automatically', () => {
     async function clickUpdateCategories(onReEvaluateComplete: () => void) {
-        renderMenu(emptyFilters, [], true, onReEvaluateComplete);
+        renderMenu([], true, onReEvaluateComplete);
 
         const menu = await openMoreActionsMenu();
         fireEvent.click(

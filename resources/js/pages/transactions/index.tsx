@@ -14,11 +14,13 @@ import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Trans
 import HeadingSmall from '@/components/heading-small';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { TransactionExportButton } from '@/components/transactions/transaction-export-button';
+import { TransactionFilterSummary } from '@/components/transactions/transaction-filter-summary';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { type CursorPaginatedResponse } from '@/lib/cursor-pagination';
 import { isNewSince } from '@/lib/new-transactions';
 import { type ServerDayTotal } from '@/lib/transaction-day-groups';
 import { describeActiveFilters } from '@/lib/transaction-filter-chips';
+import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 import { type BreadcrumbItem } from '@/types';
 import {
     filterTransactionalAccounts,
@@ -28,7 +30,10 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { type ServerTransaction } from '@/types/transaction';
+import {
+    type TransactionFilterSummary as FilterSummary,
+    type ServerTransaction,
+} from '@/types/transaction';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -40,6 +45,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Props {
     transactions: CursorPaginatedResponse<ServerTransaction>;
     dayTotals: Record<string, ServerDayTotal>;
+    /** Deferred, and only sent while a filter is applied. */
+    filterSummary?: FilterSummary | null;
     appliedFilters: AppliedFilters;
     categories: Category[];
     accounts: Account[];
@@ -54,6 +61,7 @@ interface Props {
 export default function Transactions({
     transactions: serverTransactions,
     dayTotals: initialDayTotals,
+    filterSummary,
     appliedFilters,
     categories,
     accounts,
@@ -135,7 +143,6 @@ export default function Transactions({
                                         clearSelection();
                                         refreshTransactions();
                                     }}
-                                    filters={filters}
                                 />
 
                                 <div className="ml-auto flex items-center gap-2">
@@ -159,6 +166,34 @@ export default function Transactions({
                                 </div>
                             </div>
                         )}
+                        aboveRows={
+                            hasActiveFilters(filters) ? (
+                                <TransactionFilterSummary
+                                    // Stale while a new query is on its way.
+                                    summary={
+                                        source.isLoading
+                                            ? undefined
+                                            : (filterSummary ?? undefined)
+                                    }
+                                    filters={filters}
+                                    // The dates go without saying beside the
+                                    // list they head.
+                                    filterDescription={describeActiveFilters(
+                                        {
+                                            ...filters,
+                                            dateFrom: null,
+                                            dateTo: null,
+                                        },
+                                        {
+                                            categories,
+                                            accounts,
+                                            labels: initialLabels,
+                                            locale,
+                                        },
+                                    )}
+                                />
+                            ) : null
+                        }
                         topRow={
                             ai.showBanner ? (
                                 <AiConsentBanner

@@ -210,13 +210,15 @@ describe('useServerTransactionSource', () => {
         vi.unstubAllGlobals();
     });
 
-    it('reloads only the rows and day totals', () => {
+    it('reloads only the rows, the day totals and the filter summary', () => {
         const { result } = renderSource();
 
         act(() => result.current.reload());
 
         expect(reload).toHaveBeenCalledWith(
-            expect.objectContaining({ only: ['transactions', 'dayTotals'] }),
+            expect.objectContaining({
+                only: ['transactions', 'dayTotals', 'filterSummary'],
+            }),
         );
     });
 });

@@ -325,7 +325,6 @@
     "Pick a category to see its monthly spending.": "Choisissez une catégorie pour voir vos dépenses mensuelles.",
     "No spending in the last 12 months.": "Aucune dépense au cours des 12 derniers mois.",
     "Analysis": "Analyse",
-    "Apply a filter to enable this button": "Appliquer un filtre pour activer ce bouton",
     "A breakdown of the transactions matching your current filters.": "Une répartition des transactions qui correspondent à vos filtres actuels.",
     "Could not load the analysis. Please try again.": "L'analyse n'a pas pu être chargée. Essayer à nouveau.",
     "No transactions match the current filters.": "Aucune transaction ne correspond aux filtres actuels.",
@@ -3112,5 +3111,18 @@
     "Select every transaction of :day": "Sélectionner toutes les transactions de :day",
     "1 transaction": "1 transaction",
     "Select day": "Sélectionner le jour",
-    "Deselect day": "Désélectionner le jour"
+    "Deselect day": "Désélectionner le jour",
+    "Filter summary": "Résumé du filtre",
+    "Total spending": "Dépenses totales",
+    "Total income": "Revenus totaux",
+    "Average per transaction": "Moyenne par transaction",
+    "View analysis": "Voir l'analyse",
+    "6-month trend and breakdown": "Tendance sur 6 mois et répartition",
+    "trend and breakdown": "tendance et répartition",
+    "Average": "Moyenne",
+    "1 expense": "1 dépense",
+    ":count expenses": ":count dépenses",
+    "1 income": "1 revenu",
+    ":count incomes": ":count revenus",
+    "No exchange rate for some of these amounts": "Taux de change manquant pour certains de ces montants"
 }

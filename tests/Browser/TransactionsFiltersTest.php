@@ -7,8 +7,9 @@ use function Pest\Laravel\actingAs;
 
 /**
  * The transactions list beyond CRUD: the filter panel, the saved filters built
- * on top of it, paging, the order of the rows and the analysis drawer. Creating, editing,
- * deleting and searching a transaction live in TransactionsTest.
+ * on top of it, paging, the order of the rows, the summary of a filtered set
+ * and the analysis drawer. Creating, editing, deleting and searching a
+ * transaction live in TransactionsTest.
  *
  * The panel and each of its dropdowns is a layer of its own that covers the
  * toolbar underneath, so every test here opens and closes them one at a time
@@ -227,13 +228,14 @@ it('always lists newest first under day headers, even from a bookmarked sort', f
         ->assertNoJavascriptErrors();
 });
 
-it('opens the analysis drawer over the filtered set', function () {
+it('sums up the filtered set and opens its analysis from there', function () {
     $page = visit('/transactions');
 
-    $page->assertSee('Weekly groceries market');
+    // With no filter there is nothing to sum up, so no summary at all.
+    $page->assertSee('Weekly groceries market')
+        ->assertMissing('[aria-label="Filter summary"]')
+        ->assertDontSee('View analysis');
 
-    // The drawer reports on whatever the filters select, and its button stays
-    // inert until there is a filter to report on.
     openTransactionFilters($page)
         ->click('[data-testid="filter-labels"]')
         ->click('[cmdk-item]:has-text("Holiday")')
@@ -242,12 +244,29 @@ it('opens the analysis drawer over the filtered set', function () {
 
     dismissFilterDropdown($page);
     closeTransactionFilters($page)
-        ->click('Analysis')
+        // 120.00 and 34.00: two expenses, their total and their average.
+        ->assertSeeIn('[aria-label="Filter summary"]', 'Total spending')
+        ->assertSeeIn('[aria-label="Filter summary"]', '-$154.00')
+        ->assertSeeIn('[aria-label="Filter summary"]', '-$77.00')
+        ->click('View analysis')
         ->assertPresent('[data-testid="analysis-drawer"]')
         ->assertSee('Total spent')
-        // 120.00 and 34.00, over the five days the two movements span.
-        ->assertSee('$154.00')
+        // The same two movements, over the five days they span.
         ->assertSee('$30.80')
         ->assertSee('2 transactions')
+        ->assertNoJavascriptErrors();
+});
+
+it('captions the summary of a filtered set on a phone and opens its analysis from the row below', function () {
+    $url = '/transactions?label_ids='.$this->fixture->holiday->id;
+
+    $page = visit($url)->on()->iPhone14Pro()->navigate($url);
+
+    $page->assertSeeIn('[aria-label="Filter summary"]', '2 expenses · Holiday')
+        ->assertSeeIn('[aria-label="Filter summary"]', '-$154.00')
+        ->assertSeeIn('[aria-label="Filter summary"]', 'Average')
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
+        ->click('[aria-label="Filter summary"] button')
+        ->assertPresent('[data-testid="analysis-drawer"]')
         ->assertNoJavascriptErrors();
 });

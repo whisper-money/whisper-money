@@ -228,10 +228,11 @@ export function useServerTransactionSource({
         [filters, navigateWithFilters],
     );
 
-    // Refresh the transaction list from the server (resets accumulated pages)
+    // Refresh the transaction list from the server (resets accumulated pages),
+    // and the summary of what the filters match, which an edit can move.
     const reload = useCallback(() => {
         router.reload({
-            only: ['transactions', 'dayTotals'],
+            only: ['transactions', 'dayTotals', 'filterSummary'],
             onSuccess: (page) => replaceLoadedRows(page.props),
         });
     }, [replaceLoadedRows]);

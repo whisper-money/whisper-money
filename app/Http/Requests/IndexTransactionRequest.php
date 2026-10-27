@@ -82,4 +82,12 @@ class IndexTransactionRequest extends FormRequest
             'user_id' => $this->user()->id,
         ], fn ($value) => $value !== null);
     }
+
+    /**
+     * Whether any filter narrows the list, the owner aside.
+     */
+    public function hasFilters(): bool
+    {
+        return count($this->filters()) > 1;
+    }
 }
