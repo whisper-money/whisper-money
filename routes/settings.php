@@ -83,6 +83,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/mcp/tokens/{token}', [McpTokenController::class, 'destroy'])
         ->middleware('block-demo')
         ->name('mcp.tokens.destroy');
+    Route::delete('settings/mcp/apps/{client}', [McpTokenController::class, 'destroyApp'])
+        ->middleware('block-demo')
+        ->name('mcp.apps.destroy');
 
     // `block-shared`: the API refuses both shared accounts (EnsureApiAccess),
     // so neither may hold an API token.
@@ -96,6 +99,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/api/tokens/{token}', [ApiTokenController::class, 'destroy'])
         ->middleware('block-shared')
         ->name('api-tokens.destroy');
+    Route::delete('settings/api/apps/{client}', [ApiTokenController::class, 'destroyApp'])
+        ->middleware('block-shared')
+        ->name('api-tokens.apps.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 

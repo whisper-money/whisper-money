@@ -1,9 +1,14 @@
 import {
     index as apiIndex,
     destroy,
+    destroyApp,
     rotate,
     store,
 } from '@/actions/App/Http/Controllers/Settings/ApiTokenController';
+import {
+    ConnectedAppList,
+    type ConnectedAppRow,
+} from '@/components/access-tokens/connected-app-list';
 import { CopyableCode } from '@/components/access-tokens/copyable-code';
 import {
     CreateTokenForm,
@@ -46,6 +51,7 @@ type TokenExpiry = '30_days' | '90_days' | '1_year' | 'never';
 
 interface ApiPageProps {
     tokens: AccessTokenRow[];
+    connectedApps: ConnectedAppRow[];
     baseUrl: string;
     docsUrl: string;
     subscribeUrl: string;
@@ -123,9 +129,15 @@ function CreateApiTokenDialog({ disabled }: { disabled: boolean }) {
 }
 
 export default function Api() {
-    const { tokens, baseUrl, docsUrl, subscribeUrl, newToken, auth } = usePage<
-        SharedData & ApiPageProps
-    >().props;
+    const {
+        tokens,
+        connectedApps,
+        baseUrl,
+        docsUrl,
+        subscribeUrl,
+        newToken,
+        auth,
+    } = usePage<SharedData & ApiPageProps>().props;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -198,7 +210,14 @@ export default function Api() {
                         </CardContent>
                     </Card>
 
-                    {/* Connected apps (OAuth clients with the `api:use` scope) go here. */}
+                    <ConnectedAppList
+                        apps={connectedApps}
+                        description={__(
+                            'Apps you signed in to with your Whisper Money account. Revoke one to cut off its access.',
+                        )}
+                        destroyUrl={(id) => destroyApp(id).url}
+                        showLastUsed
+                    />
                 </div>
             </SettingsLayout>
         </AppLayout>

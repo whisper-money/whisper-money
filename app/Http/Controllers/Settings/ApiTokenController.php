@@ -6,6 +6,7 @@ use App\Enums\AccessTokenType;
 use App\Enums\PlanFeature;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Settings\Concerns\ManagesAccessTokens;
+use App\Http\Controllers\Settings\Concerns\ManagesConnectedApps;
 use App\Http\Requests\Settings\StoreApiTokenRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -20,10 +21,10 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class ApiTokenController extends Controller
 {
-    use ManagesAccessTokens;
+    use ManagesAccessTokens, ManagesConnectedApps;
 
     /**
-     * Show the API page: existing tokens, the base URL and the one-time
+     * Show the API page: existing tokens, the connected OAuth apps, the base URL and the one-time
      * plaintext secret when a token was just created or rotated. Hidden from
      * the shared demo and press accounts, which the API refuses anyway.
      */
@@ -32,6 +33,7 @@ class ApiTokenController extends Controller
         abort_if($request->user()->isRestrictedSharedAccount(), 404);
 
         return Inertia::render('settings/api', [
+            'connectedApps' => $this->connectedApps($request),
             'tokens' => $this->managedTokens($request)
                 ->map(fn (PersonalAccessToken $token): array => [
                     ...$this->tokenRow($token),

@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\OAuthScope;
 use App\Mcp\Servers\WhisperMoneyServer;
 use Laravel\Mcp\Facades\Mcp;
+use Laravel\Passport\Http\Middleware\CheckToken;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,6 +21,10 @@ use Laravel\Mcp\Facades\Mcp;
 |   discovery endpoints, the RFC 7591 DCR endpoint and the `mcp:use` Passport
 |   scope; the package's AddWwwAuthenticateHeader middleware then turns an
 |   unauthenticated request into the mandatory 401 bootstrap challenge.
+|
+| The same authorization server also serves the public API (`api:use`, see
+| App\Enums\OAuthScope): a token carries one scope or the other, never both,
+| and `/mcp/oauth` requires `mcp:use`, so an API app's token gets a 403 here.
 |
 | OAuth connections carry the single `mcp:use` scope and are trusted with
 | read and write: the user approved the connection on the consent screen, so
@@ -40,4 +46,4 @@ Mcp::web('/mcp', WhisperMoneyServer::class)
     ->middleware(['auth:sanctum', 'abilities:mcp:read', 'throttle:mcp']);
 
 Mcp::web('/mcp/oauth', WhisperMoneyServer::class)
-    ->middleware(['auth:api', 'throttle:mcp']);
+    ->middleware(['auth:api', CheckToken::using(OAuthScope::Mcp->value), 'throttle:mcp']);

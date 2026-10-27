@@ -28,15 +28,27 @@ export interface AccessTokenRow {
     expired?: boolean;
 }
 
-function formatDate(value: string | null): string {
+export function formatDate(value: string | null): string {
     return value ? new Date(value).toLocaleString() : __('Never');
 }
 
 /**
- * A token action that asks for confirmation first, since both rotating and
+ * Options for the visit a confirmed action makes. A refused one (the
+ * shared-account block, an expired token) comes back as an error bag; say why
+ * instead of closing the dialog silently.
+ */
+export const confirmedActionVisitOptions = {
+    preserveScroll: true,
+    preserveState: true,
+    onError: (errors: Record<string, string>) =>
+        toast.error(Object.values(errors)[0] ?? __('Something went wrong.')),
+};
+
+/**
+ * A token or app action that asks for confirmation first, since rotating and
  * revoking cut off whatever uses the current secret.
  */
-function ConfirmTokenAction({
+export function ConfirmTokenAction({
     icon: Icon,
     label,
     title,
@@ -108,17 +120,6 @@ export function TokenList({
         );
     }
 
-    // A refused rotation (the shared-account block, an expired token) comes
-    // back as an error bag; say why instead of closing the dialog silently.
-    const visitOptions = {
-        preserveScroll: true,
-        preserveState: true,
-        onError: (errors: Record<string, string>) =>
-            toast.error(
-                Object.values(errors)[0] ?? __('Something went wrong.'),
-            ),
-    };
-
     return (
         <ul className="divide-y">
             {tokens.map((token) => (
@@ -168,7 +169,7 @@ export function TokenList({
                                     router.post(
                                         rotateUrl(token.id),
                                         {},
-                                        visitOptions,
+                                        confirmedActionVisitOptions,
                                     )
                                 }
                             />
@@ -184,7 +185,7 @@ export function TokenList({
                             onConfirm={() =>
                                 router.delete(
                                     destroyUrl(token.id),
-                                    visitOptions,
+                                    confirmedActionVisitOptions,
                                 )
                             }
                         />

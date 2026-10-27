@@ -1,3 +1,4 @@
+import { type ConnectedAppRow } from '@/components/access-tokens/connected-app-list';
 import { type AccessTokenRow } from '@/components/access-tokens/token-list';
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
@@ -15,6 +16,7 @@ const page = vi.hoisted(() => ({
     props: {
         auth: { hasProPlan: true },
         tokens: [] as AccessTokenRow[],
+        connectedApps: [] as ConnectedAppRow[],
         baseUrl: 'https://whisper.money/api/v1',
         docsUrl: '/documentation',
         subscribeUrl: '/subscribe',
@@ -54,6 +56,7 @@ describe('API settings page', () => {
     beforeEach(() => {
         page.props.auth.hasProPlan = true;
         page.props.tokens = [];
+        page.props.connectedApps = [];
         page.props.newToken = null;
     });
 
@@ -107,5 +110,24 @@ describe('API settings page', () => {
         ).toBe(true);
         expect(screen.queryByRole('button', { name: 'Rotate' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Revoke' })).toBeTruthy();
+    });
+
+    it('lists the connected apps with when each was last used', () => {
+        page.props.connectedApps = [
+            {
+                id: 'client-1',
+                name: 'Budget Sync',
+                scopes: ['api:use'],
+                connected_at: '2026-10-01T00:00:00+00:00',
+                last_used_at: null,
+            },
+        ];
+
+        render(<ApiPage />);
+
+        expect(screen.getByText('Connected apps')).toBeTruthy();
+        expect(screen.getByText('Budget Sync')).toBeTruthy();
+        expect(screen.getByText('api:use')).toBeTruthy();
+        expect(screen.getByText(/Last used/)).toBeTruthy();
     });
 });

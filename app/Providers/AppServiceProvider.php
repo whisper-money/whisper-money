@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\OAuthScope;
+use App\Http\Controllers\OAuth\ApproveAuthorizationController;
+use App\Http\Controllers\OAuth\AuthorizationController;
 use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Responses\RegisterResponse;
+use App\Mcp\OAuthRegistrar;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
@@ -12,12 +16,19 @@ use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+use Laravel\Mcp\Server\Registrar;
+use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
+use Laravel\Passport\Http\Controllers\AuthorizationController as PassportAuthorizationController;
 use Laravel\Passport\Passport;
+use Laravel\Passport\Scope;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DiscordWebhook::class, function () {
             return new DiscordWebhook(config('services.discord.webhook_url'));
         });
+
+        // The OAuth server serves two surfaces (MCP, API): these add the scope
+        // rules and discovery metadata on top of Passport's and laravel/mcp's.
+        $this->app->singleton(Registrar::class, fn (): Registrar => new OAuthRegistrar);
+        $this->app->bind(PassportAuthorizationController::class, AuthorizationController::class);
+        $this->app->when(AuthorizationController::class)
+            ->needs(StatefulGuard::class)
+            ->give(fn () => Auth::guard(config('passport.guard')));
+        $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
 
         $this->app->bind(TransactionMatcher::class, UncategorizedTransactionMatcher::class);
         $this->app->bind(RuleSuggestionGenerator::class, LaravelAiRuleSuggestionGenerator::class);
@@ -116,8 +136,23 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier());
         });
 
-        // Render the OAuth consent screen (Claude Desktop / ChatGPT connecting
-        // to the MCP server) with our own on-brand Blade view.
-        Passport::authorizationView(fn (array $parameters) => response()->view('mcp.authorize', $parameters));
+        // `mcp:use` (MCP connectors) and `api:use` (third-party API apps). An
+        // authorization request naming no scope gets `mcp:use`, so a connector
+        // that never asked for one keeps reaching `/mcp/oauth`.
+        OAuthScope::register();
+        Passport::defaultScopes([OAuthScope::Mcp->value]);
+
+        // Render the OAuth consent screen (an MCP connector or an API app) with
+        // our own on-brand Blade view, worded for the scope it asks for.
+        Passport::authorizationView(function (array $parameters): HttpResponse {
+            $scope = OAuthScope::fromRequested(array_map(fn (Scope $scope): string => $scope->id, $parameters['scopes']));
+
+            return response()->view('oauth.authorize', [
+                ...$parameters,
+                'surface' => $scope,
+                'refusal' => $scope->approvalRefusalFor($parameters['user']),
+                'redirectHost' => parse_url((string) ($parameters['request']->query('redirect_uri') ?? $parameters['client']->redirect_uris[0] ?? ''), PHP_URL_HOST),
+            ]);
+        });
     }
 }
