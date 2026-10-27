@@ -99,13 +99,15 @@ const rowActions = {
 function TransactionsList({
     maxHeight,
     framedOnPhone,
+    data = TRANSACTIONS,
 }: {
     maxHeight?: number;
     framedOnPhone?: boolean;
+    data?: ServerTransaction[];
 }) {
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const table = useReactTable({
-        data: TRANSACTIONS,
+        data,
         columns: COLUMNS,
         getRowId: (row) => row.id,
         getCoreRowModel: getCoreRowModel(),
@@ -198,6 +200,14 @@ describe('ResponsiveTransactionTable', () => {
 
         expect(framed.className).not.toContain('max-md:');
         expect(framed.className).toContain('rounded-md border');
+    });
+
+    it('closes an empty inset list with its own hairline on a phone', () => {
+        render(<TransactionsList data={[]} />);
+
+        expect(screen.getByText('No transactions found.').className).toContain(
+            'max-md:border-b',
+        );
     });
 
     it('lets the inset list grow with the page on a phone instead of scrolling a box', () => {

@@ -40,5 +40,11 @@ describe('TransactionListSkeleton', () => {
         expect(
             framed.container.querySelector('.rounded-md.border')!.className,
         ).not.toContain('max-md:');
+        // Its frame has a bottom border, so the last row doesn't draw one.
+        expect(
+            framed.container.querySelector(
+                '[data-testid="transaction-skeleton-list"] > :last-child',
+            )!.className,
+        ).toContain('last:border-b-0');
     });
 });

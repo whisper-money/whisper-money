@@ -239,7 +239,13 @@ function TransactionCompactList({
                 }
             >
                 {rows.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
+                    <div
+                        className={cn(
+                            'p-6 text-center text-sm text-muted-foreground',
+                            // No row draws the closing hairline here.
+                            !framedOnPhone && 'max-md:border-b',
+                        )}
+                    >
                         {emptyMessage}
                     </div>
                 ) : (

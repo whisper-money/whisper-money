@@ -13,7 +13,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useLocale } from '@/hooks/use-locale';
-import { COMPACT_LIST_MUTED_TEXT } from '@/lib/compact-list-style';
+import { COMPACT_LIST_MUTED_TEXT, DAY_BAND } from '@/lib/compact-list-style';
 import {
     type DaySummary,
     type DaySummaryOf,
@@ -257,7 +257,7 @@ export function TransactionDayBand({
     return (
         <div
             {...measureProps}
-            className="flex items-baseline justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 pt-2.5 pb-1.5 dark:border-neutral-800 dark:bg-neutral-900"
+            className={cn(DAY_BAND, 'items-baseline')}
             data-testid="transaction-day-header"
         >
             <h3 className="min-w-0 truncate text-xs/[1.4] font-semibold tracking-[0.04em] text-neutral-600 uppercase dark:text-neutral-400">

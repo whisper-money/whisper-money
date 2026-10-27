@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { PHONE_FRAME } from '@/lib/compact-list-style';
+import { DAY_BAND, LIST_ROW, PHONE_FRAME } from '@/lib/compact-list-style';
 import { cn } from '@/lib/utils';
 
 /**
@@ -22,7 +22,7 @@ export function TransactionListSkeleton({
                 )}
             >
                 <TableShape />
-                <ListShape />
+                <ListShape framedOnPhone={framedOnPhone} />
             </div>
             <div className="flex items-center justify-between">
                 <Skeleton className="h-5 w-32" />
@@ -61,18 +61,21 @@ function TableShape() {
     );
 }
 
-/** A day band and its rows, at the sizes `TransactionListRow` draws them. */
-function ListShape() {
+/**
+ * A day band and its rows, as the compact list draws them. The last row draws
+ * the closing hairline only where the frame has no bottom border of its own.
+ */
+function ListShape({ framedOnPhone }: { framedOnPhone: boolean }) {
     return (
         <div className="md:hidden" data-testid="transaction-skeleton-list">
-            <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-4 pt-2.5 pb-1.5 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className={cn(DAY_BAND, 'items-center')}>
                 <Skeleton className="h-3.5 w-28" />
                 <Skeleton className="h-3.5 w-16" />
             </div>
             {Array.from({ length: 6 }).map((_, index) => (
                 <div
                     key={index}
-                    className="flex items-start gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800"
+                    className={cn(LIST_ROW, framedOnPhone && 'last:border-b-0')}
                 >
                     <Skeleton className="size-10 shrink-0 rounded-full" />
                     <div className="flex flex-1 flex-col gap-2 pt-0.5">

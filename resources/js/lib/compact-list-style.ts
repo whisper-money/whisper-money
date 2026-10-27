@@ -20,3 +20,11 @@ export const PHONE_FRAME = `${PHONE_INSET} max-md:rounded-b-none max-md:border-b
  * so it still reads on the grey day band.
  */
 export const COMPACT_LIST_MUTED_TEXT = 'text-[#636363] dark:text-[#a8a8a8]';
+
+/** A day's band in the compact list, and in the skeleton that stands in for it. */
+export const DAY_BAND =
+    'flex justify-between gap-2 border-b border-neutral-100 bg-neutral-50 px-4 pt-2.5 pb-1.5 dark:border-neutral-800 dark:bg-neutral-900';
+
+/** A row of the compact list, and of the skeleton that stands in for it. */
+export const LIST_ROW =
+    'flex items-start gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800';
