@@ -19,7 +19,8 @@ import { __ } from '@/utils/i18n';
 export type ShortcutScope =
     | 'global'
     | 'transaction-dialog'
-    | 'transaction-selection';
+    | 'transaction-selection'
+    | 'transaction-filters';
 
 export interface ShortcutDefinition {
     /** `mod+enter`, `shift+mod+k`, `n`… see `parseCombo`. */
@@ -86,6 +87,11 @@ export const SHORTCUTS = {
         keys: 'escape',
         scope: 'transaction-selection',
         description: () => __('Clear selection'),
+    },
+    'transaction-filters.focus-search': {
+        keys: '/',
+        scope: 'transaction-filters',
+        description: () => __('Search transactions'),
     },
 } satisfies Record<string, ShortcutDefinition>;
 

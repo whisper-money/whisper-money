@@ -48,6 +48,7 @@ import {
     Bookmark,
     BookmarkCheck,
     Check,
+    ChevronDown,
     Plus,
     Save,
     Trash2,
@@ -64,9 +65,21 @@ interface SavedFilter {
 interface SavedFiltersProps {
     filters: TransactionFilters;
     onLoad: (filters: TransactionFilters) => void;
+    /** Off, the saved filters are never fetched. */
+    enabled?: boolean;
 }
 
-export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
+export type SavedFiltersState = ReturnType<typeof useSavedFilters>;
+
+/**
+ * The user's saved filters, which of them the current filters are, and the
+ * save, update and delete actions with their dialogs' state.
+ */
+export function useSavedFilters({
+    filters,
+    onLoad,
+    enabled = true,
+}: SavedFiltersProps) {
     const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
     const [activeId, setActiveId] = useState<UUID | null>(null);
     const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -116,6 +129,10 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
     const isDirty = activeFilter !== null && matchingSaved === null;
 
     useEffect(() => {
+        if (!enabled) {
+            return;
+        }
+
         let active = true;
 
         axios
@@ -132,7 +149,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
         return () => {
             active = false;
         };
-    }, []);
+    }, [enabled]);
 
     function handleLoad(savedFilter: SavedFilter) {
         setActiveId(savedFilter.id);
@@ -214,110 +231,190 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
         }
     }
 
+    return {
+        savedFilters,
+        activeFilter,
+        matchingSaved,
+        isDirty,
+        canSave,
+        handleLoad,
+        handleUpdate,
+        handleSave,
+        handleDelete,
+        openSaveDialog: () => setSaveDialogOpen(true),
+        saveDialogOpen,
+        setSaveDialogOpen,
+        pendingDelete,
+        setPendingDelete,
+        pendingDeleteName: pendingDeleteName.current,
+        name,
+        setName,
+        isSaving,
+    };
+}
+
+/** The saved filters' menu and dialogs, for the toolbar beside the filters. */
+export function SavedFilters(props: SavedFiltersProps) {
+    const saved = useSavedFilters(props);
+
     return (
         <>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    {activeFilter ? (
-                        <Button
-                            variant="secondary"
-                            className="max-w-[200px]"
-                            aria-label={__('Saved filters')}
-                        >
-                            <BookmarkCheck className="mr-1 h-4 w-4 shrink-0" />
-                            <span className="truncate">
-                                {activeFilter.name}
-                            </span>
-                            {isDirty && (
-                                <span
-                                    className="ml-1 text-muted-foreground"
-                                    title={__('Unsaved changes')}
-                                >
-                                    •
-                                </span>
-                            )}
-                        </Button>
-                    ) : (
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            aria-label={__('Saved filters')}
-                        >
-                            <Bookmark className="h-4 w-4" />
-                        </Button>
-                    )}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                    <DropdownMenuLabel>{__('Saved filters')}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+            <SavedFiltersMenu saved={saved} />
+            <SavedFilterDialogs saved={saved} />
+        </>
+    );
+}
 
-                    {savedFilters.length === 0 ? (
-                        <div className="px-2 py-2 text-sm text-muted-foreground">
-                            {__('No saved filters yet')}
-                        </div>
-                    ) : (
-                        savedFilters.map((savedFilter) => (
-                            <DropdownMenuItem
-                                key={savedFilter.id}
-                                onSelect={() => handleLoad(savedFilter)}
-                                className="group justify-between gap-2"
+/**
+ * Loads, updates and deletes a saved filter. The trigger names the saved
+ * filter in use; without one it is a bookmark icon, or "Saved views" with
+ * `labelled`.
+ */
+export function SavedFiltersMenu({
+    saved,
+    labelled = false,
+}: {
+    saved: SavedFiltersState;
+    labelled?: boolean;
+}) {
+    const {
+        savedFilters,
+        activeFilter,
+        matchingSaved,
+        isDirty,
+        canSave,
+        handleLoad,
+        handleUpdate,
+        setSaveDialogOpen,
+        setPendingDelete,
+    } = saved;
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                {activeFilter ? (
+                    <Button
+                        variant="secondary"
+                        className="max-w-[200px]"
+                        aria-label={__('Saved filters')}
+                    >
+                        <BookmarkCheck className="mr-1 h-4 w-4 shrink-0" />
+                        <span className="truncate">{activeFilter.name}</span>
+                        {isDirty && (
+                            <span
+                                className="ml-1 text-muted-foreground"
+                                title={__('Unsaved changes')}
                             >
-                                <span className="flex min-w-0 items-center gap-2">
-                                    <Check
-                                        className={cn(
-                                            'h-3.5 w-3.5 shrink-0',
-                                            matchingSaved?.id === savedFilter.id
-                                                ? 'opacity-100'
-                                                : 'opacity-0',
-                                        )}
-                                    />
-                                    <span className="truncate">
-                                        {savedFilter.name}
-                                    </span>
-                                </span>
-                                <button
-                                    type="button"
-                                    aria-label={__('Delete saved filter')}
-                                    className="shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:text-destructive [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        setPendingDelete(savedFilter);
-                                    }}
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                            </DropdownMenuItem>
-                        ))
-                    )}
+                                •
+                            </span>
+                        )}
+                    </Button>
+                ) : labelled ? (
+                    <Button variant="ghost">
+                        <Bookmark className="h-4 w-4" />
+                        {__('Saved views')}
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                ) : (
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label={__('Saved filters')}
+                    >
+                        <Bookmark className="h-4 w-4" />
+                    </Button>
+                )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>{__('Saved filters')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
 
-                    <DropdownMenuSeparator />
-
-                    {isDirty && activeFilter && (
+                {savedFilters.length === 0 ? (
+                    <div className="px-2 py-2 text-sm text-muted-foreground">
+                        {__('No saved filters yet')}
+                    </div>
+                ) : (
+                    savedFilters.map((savedFilter) => (
                         <DropdownMenuItem
-                            onSelect={(event) => {
-                                event.preventDefault();
-                                handleUpdate(activeFilter);
-                            }}
+                            key={savedFilter.id}
+                            onSelect={() => handleLoad(savedFilter)}
+                            className="group justify-between gap-2"
                         >
-                            <Save className="mr-1 h-4 w-4" />
-                            {__('Update “:name”', { name: activeFilter.name })}
+                            <span className="flex min-w-0 items-center gap-2">
+                                <Check
+                                    className={cn(
+                                        'h-3.5 w-3.5 shrink-0',
+                                        matchingSaved?.id === savedFilter.id
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                    )}
+                                />
+                                <span className="truncate">
+                                    {savedFilter.name}
+                                </span>
+                            </span>
+                            <button
+                                type="button"
+                                aria-label={__('Delete saved filter')}
+                                className="shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:text-destructive [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setPendingDelete(savedFilter);
+                                }}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                         </DropdownMenuItem>
-                    )}
+                    ))
+                )}
 
+                <DropdownMenuSeparator />
+
+                {isDirty && activeFilter && (
                     <DropdownMenuItem
-                        disabled={!canSave}
                         onSelect={(event) => {
                             event.preventDefault();
-                            setSaveDialogOpen(true);
+                            handleUpdate(activeFilter);
                         }}
                     >
-                        <Plus className="mr-1 h-4 w-4" />
-                        {__('Save as new filter…')}
+                        <Save className="mr-1 h-4 w-4" />
+                        {__('Update “:name”', { name: activeFilter.name })}
                     </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                )}
 
+                <DropdownMenuItem
+                    disabled={!canSave}
+                    onSelect={(event) => {
+                        event.preventDefault();
+                        setSaveDialogOpen(true);
+                    }}
+                >
+                    <Plus className="mr-1 h-4 w-4" />
+                    {__('Save as new filter…')}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+/** Naming a new saved filter, and confirming one's deletion. */
+export function SavedFilterDialogs({ saved }: { saved: SavedFiltersState }) {
+    const {
+        saveDialogOpen,
+        setSaveDialogOpen,
+        name,
+        setName,
+        isSaving,
+        handleSave,
+        pendingDelete,
+        setPendingDelete,
+        pendingDeleteName,
+        handleDelete,
+    } = saved;
+
+    return (
+        <>
             <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -374,7 +471,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
                         <AlertDialogDescription>
                             {__(
                                 'Are you sure you want to delete “:name”? This action cannot be undone.',
-                                { name: pendingDeleteName.current },
+                                { name: pendingDeleteName },
                             )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
