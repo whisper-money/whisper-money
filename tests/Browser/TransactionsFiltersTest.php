@@ -266,6 +266,8 @@ it('captions the summary of a filtered set on a phone and opens its analysis fro
         ->assertSeeIn('[aria-label="Filter summary"]', '-$154.00')
         ->assertSeeIn('[aria-label="Filter summary"]', 'Average')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth')
+        // 16px from the screen's edges, as the framed list under it.
+        ->assertScript('Math.round(document.querySelector(\'[aria-label="Filter summary"]\').getBoundingClientRect().left)', 16)
         ->click('[aria-label="Filter summary"] button')
         ->assertPresent('[data-testid="analysis-drawer"]')
         ->assertNoJavascriptErrors();

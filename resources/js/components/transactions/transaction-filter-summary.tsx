@@ -1,6 +1,7 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PHONE_INSET } from '@/lib/compact-list-style';
 import { cn } from '@/lib/utils';
 import {
     type TransactionFilterSummary as Summary,
@@ -138,7 +139,11 @@ function PhoneSummary({
     return (
         <section
             aria-label={__('Filter summary')}
-            className="overflow-hidden rounded-[14px] border bg-card"
+            // As far from the screen's edges as the list below it.
+            className={cn(
+                PHONE_INSET,
+                'overflow-hidden rounded-[14px] border bg-card',
+            )}
         >
             <div className="flex items-end justify-between gap-3 px-3.5 py-3">
                 <span className="flex min-w-0 flex-col gap-px">
@@ -260,7 +265,10 @@ function TransactionFilterSummarySkeleton({ isMobile }: { isMobile: boolean }) {
             className={cn(
                 'overflow-hidden border bg-card',
                 isMobile
-                    ? 'flex flex-col gap-2 rounded-[14px] px-3.5 py-3'
+                    ? cn(
+                          PHONE_INSET,
+                          'flex flex-col gap-2 rounded-[14px] px-3.5 py-3',
+                      )
                     : cn(DESKTOP_GRID, 'gap-6 px-[18px] py-3.5'),
             )}
         >
