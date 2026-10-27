@@ -4137,5 +4137,18 @@
     "Some amounts of this day could not be converted to :currency": "Algunos importes de este día no se han podido convertir a :currency",
     "Select every transaction of :day": "Seleccionar todas las transacciones de :day",
     "Select day": "Seleccionar día",
-    "Deselect day": "Deseleccionar día"
+    "Deselect day": "Deseleccionar día",
+    "Filter summary": "Resumen del filtro",
+    "Total spending": "Gasto total",
+    "Total income": "Ingreso total",
+    "Average per transaction": "Media por transacción",
+    "View analysis": "Ver análisis",
+    "6-month trend and breakdown": "Tendencia de 6 meses y desglose",
+    "trend and breakdown": "tendencia y desglose",
+    "Average": "Media",
+    "1 expense": "1 gasto",
+    ":count expenses": ":count gastos",
+    "1 income": "1 ingreso",
+    ":count incomes": ":count ingresos",
+    "No exchange rate for some of these amounts": "Falta el tipo de cambio de algunos de estos importes"
 }

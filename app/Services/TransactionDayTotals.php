@@ -42,8 +42,19 @@ class TransactionDayTotals
             return [];
         }
 
+        return $this->forEveryDay($filtered->whereIn('transactions.transaction_date', $dates->all()), $currency);
+    }
+
+    /**
+     * The same figures for every day the query matches, as `forDays()` reads
+     * them, for a summary that adds those days up rather than showing them.
+     *
+     * @param  Builder<Transaction>  $filtered  A query with its filters, without order or eager loads
+     * @return array<string, array{count: int, total: ?int}>
+     */
+    public function forEveryDay(Builder $filtered, string $currency): array
+    {
         $groups = $filtered
-            ->whereIn('transactions.transaction_date', $dates->all())
             ->toBase()
             ->select('transactions.transaction_date', 'transactions.currency_code')
             ->selectRaw('count(*) as transactions_count, sum(transactions.amount) as amount_sum')

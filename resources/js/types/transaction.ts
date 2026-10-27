@@ -84,3 +84,19 @@ export interface TransactionFilters {
     /** Only arrives from a cashflow link; never picked from the filter menu. */
     cashflowBlock?: CashflowBlock | null;
 }
+
+/**
+ * What every transaction a filter set matches adds up to, in the user's
+ * currency (`TransactionFilterSummary` on the server). `total` and `average`
+ * are null when an amount has no rate to convert it with.
+ */
+export interface TransactionFilterSummary {
+    count: number;
+    total: number | null;
+    average: number | null;
+    /** All expenses, all income, or both (then `total` is the net). */
+    kind: 'expense' | 'income' | 'mixed';
+    currency: string;
+    /** The same filters month by month, oldest first, ending in the filter's last month. */
+    trend: { month: string; total: number | null }[];
+}

@@ -72,11 +72,13 @@ function renderMenu(
     transactions: ServerTransaction[] = [],
     hasTransactionalAccounts = true,
     onReEvaluateComplete?: () => void,
+    showAnalysis = true,
 ) {
     return render(
         <TransactionActionsMenu
             transactions={transactions}
             hasTransactionalAccounts={hasTransactionalAccounts}
+            showAnalysis={showAnalysis}
             filters={filters}
             onReEvaluateComplete={onReEvaluateComplete}
         />,
@@ -108,6 +110,25 @@ beforeEach(() => {
 });
 
 describe('TransactionActionsMenu analysis button', () => {
+    it('is left out unless the page asks for it, as /transactions does', () => {
+        const { container } = renderMenu(
+            { ...emptyFilters, labelIds: ['label-1'] },
+            [],
+            true,
+            undefined,
+            false,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Analysis' }),
+        ).not.toBeInTheDocument();
+        expect(actionBarLabels(container)).toEqual([
+            'Add transaction',
+            'Categorize',
+            'More actions',
+        ]);
+    });
+
     it('is disabled when no filter is applied', () => {
         renderMenu(emptyFilters);
 
@@ -169,6 +190,7 @@ describe('TransactionActionsMenu analysis button', () => {
             <TransactionActionsMenu
                 transactions={[]}
                 hasTransactionalAccounts
+                showAnalysis
                 filters={{ ...emptyFilters, labelIds: ['label-1'] }}
             />,
         );

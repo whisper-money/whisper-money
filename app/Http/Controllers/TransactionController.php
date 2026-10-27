@@ -19,6 +19,7 @@ use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\ManualBalanceAdjuster;
 use App\Services\TransactionDayTotals;
+use App\Services\TransactionFilterSummary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -31,7 +32,7 @@ class TransactionController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(IndexTransactionRequest $request, TransactionDayTotals $dayTotals): Response
+    public function index(IndexTransactionRequest $request, TransactionDayTotals $dayTotals, TransactionFilterSummary $filterSummary): Response
     {
         $user = $request->user();
         $validated = $request->validated();
@@ -111,6 +112,11 @@ class TransactionController extends Controller
                 $transactions->getCollection()->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString()),
                 $user->currency_code,
             ),
+            // Only a filtered list gets a summary, after the rows: it adds up
+            // every matching row, not the page served.
+            'filterSummary' => $request->hasFilters()
+                ? Inertia::defer(fn (): array => $filterSummary->summarize($request->filters(), $user->currency_code))
+                : null,
             'appliedFilters' => $appliedFilters,
             'categories' => $categories,
             'accounts' => $accounts,

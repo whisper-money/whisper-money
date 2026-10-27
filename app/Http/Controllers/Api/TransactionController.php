@@ -8,6 +8,7 @@ use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Transaction;
 use App\Services\TransactionDuplicateMatcher;
+use App\Services\TransactionFilterSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,18 @@ class TransactionController extends Controller
             ->count();
 
         return response()->json(['count' => $count]);
+    }
+
+    /**
+     * What the transactions matching the page's filters add up to: count,
+     * total and average in the user's currency, and the six-month trend. For
+     * a filter set that is not applied yet as much as for the one on screen.
+     */
+    public function summary(IndexTransactionRequest $request, TransactionFilterSummary $summary): JsonResponse
+    {
+        return response()
+            ->json($summary->summarize($request->filters(), $request->user()->currency_code))
+            ->header('Cache-Control', 'no-store, private');
     }
 
     /**
