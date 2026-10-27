@@ -1,4 +1,5 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { index as apiTokensIndex } from '@/actions/App/Http/Controllers/Settings/ApiTokenController';
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { index as fullImportIndex } from '@/actions/App/Http/Controllers/Settings/FullImportController';
@@ -78,6 +79,17 @@ const getNavItems = (
                   type: 'nav-item' as const,
                   title: 'AI Connector',
                   href: mcpIndex(),
+                  icon: null,
+              },
+          ]
+        : []),
+    // Both shared accounts: the API refuses them, so they get no tokens.
+    ...(!isSharedAccount
+        ? [
+              {
+                  type: 'nav-item' as const,
+                  title: 'API',
+                  href: apiTokensIndex(),
                   icon: null,
               },
           ]

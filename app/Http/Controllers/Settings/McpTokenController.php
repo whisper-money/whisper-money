@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Enums\AccessTokenType;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Settings\Concerns\ManagesAccessTokens;
 use App\Http\Requests\Settings\StoreMcpTokenRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,8 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class McpTokenController extends Controller
 {
+    use ManagesAccessTokens;
+
     /**
      * Show the MCP access page: existing tokens, connection details and the
      * one-time plaintext secret when a token was just created.
@@ -22,7 +25,9 @@ class McpTokenController extends Controller
         abort_if($request->user()->isRestrictedDemoAccount(), 404);
 
         return Inertia::render('settings/mcp', [
-            'tokens' => $this->tokensFor($request),
+            'tokens' => $this->managedTokens($request)
+                ->map(fn (PersonalAccessToken $token): array => $this->tokenRow($token))
+                ->all(),
             'serverUrl' => url('/mcp'),
             'oauthUrl' => url('/mcp/oauth'),
             'subscribeUrl' => route('subscribe'),
@@ -38,11 +43,10 @@ class McpTokenController extends Controller
      */
     public function store(StoreMcpTokenRequest $request): RedirectResponse
     {
-        $abilities = $request->validated('scope') === 'read_write'
-            ? ['mcp:read', 'mcp:write']
-            : ['mcp:read'];
-
-        $token = $request->user()->createToken($request->validated('name'), $abilities);
+        $token = $request->user()->createToken(
+            $request->validated('name'),
+            $this->abilitiesFor($request->validated('scope')),
+        );
 
         return to_route('mcp.index')->with('mcp_token', $token->plainTextToken);
     }
@@ -68,55 +72,23 @@ class McpTokenController extends Controller
     {
         $this->authorizeOwnership($request, $token);
 
-        $fresh = $request->user()->createToken($token->name, $token->abilities);
-        $token->delete();
-
-        return to_route('mcp.index')->with('mcp_token', $fresh->plainTextToken);
+        return to_route('mcp.index')->with('mcp_token', $this->reissue($request, $token));
     }
 
-    /**
-     * Ensure the token belongs to the requesting user before mutating it, and
-     * that it is an MCP token: API tokens are not managed from this screen.
-     */
-    private function authorizeOwnership(Request $request, PersonalAccessToken $token): void
+    protected function tokenType(): AccessTokenType
     {
-        abort_unless(
-            $token->tokenable_id === $request->user()->getKey()
-                && $token->tokenable_type === $request->user()->getMorphClass(),
-            403
-        );
-
-        abort_unless($this->isMcpToken($token), 404);
+        return AccessTokenType::Mcp;
     }
 
     /**
      * Whether the token belongs on this screen: it carries `mcp:*` abilities,
-     * or the `*` wildcard, which also authenticates at `/mcp`.
+     * or the `*` wildcard, which also authenticates at `/mcp`. API tokens are
+     * not managed from here.
      */
-    private function isMcpToken(PersonalAccessToken $token): bool
+    protected function managesToken(PersonalAccessToken $token): bool
     {
         $abilities = $token->abilities ?? [];
 
         return AccessTokenType::Mcp->matches($abilities) || in_array('*', $abilities, true);
-    }
-
-    /**
-     * @return list<array{id: int|string, name: string, scope: string, created_at: ?string, last_used_at: ?string}>
-     */
-    private function tokensFor(Request $request): array
-    {
-        return $request->user()->tokens()
-            ->latest()
-            ->get()
-            ->filter(fn (PersonalAccessToken $token): bool => $this->isMcpToken($token))
-            ->map(fn (PersonalAccessToken $token): array => [
-                'id' => $token->id,
-                'name' => $token->name,
-                'scope' => $token->can('mcp:write') ? 'read_write' : 'read',
-                'created_at' => $token->created_at?->toIso8601String(),
-                'last_used_at' => $token->last_used_at?->toIso8601String(),
-            ])
-            ->values()
-            ->all();
     }
 }
