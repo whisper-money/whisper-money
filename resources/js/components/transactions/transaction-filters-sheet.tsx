@@ -158,7 +158,8 @@ function FiltersDraft({
                     }
                     title={__('Period')}
                 />
-                <div className="flex-1 overflow-y-auto border-t px-5 py-4">
+                {/* The desktop's fields, at 44px for a finger. */}
+                <div className="flex-1 overflow-y-auto border-t px-5 py-4 [&_button]:h-11 [&_input]:h-11">
                     <PeriodFields
                         dateFrom={draft.dateFrom}
                         dateTo={draft.dateTo}
