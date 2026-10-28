@@ -39,7 +39,7 @@ class TransactionWriter
             'space_id' => $space->id,
             'account_id' => $account->id,
             'category_id' => $categoryId,
-            'category_source' => $categoryId === null ? null : CategorySource::Manual->value,
+            'category_source' => $categoryId === null ? null : CategorySource::Manual,
             'description' => (string) $fields['description'],
             'transaction_date' => (string) $fields['transaction_date'],
             'amount' => (int) $fields['amount'],

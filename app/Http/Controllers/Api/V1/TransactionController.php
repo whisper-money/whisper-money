@@ -10,7 +10,6 @@ use App\Http\Requests\Api\V1\SearchTransactionsRequest;
 use App\Http\Requests\Api\V1\StoreTransactionRequest;
 use App\Http\Requests\Api\V1\UpdateTransactionRequest;
 use App\Http\Resources\V1\TransactionResource;
-use App\Services\SpaceResolver;
 use App\Services\Transactions\TransactionSearch;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\WrittenTransaction;
@@ -28,7 +27,8 @@ class TransactionController extends Controller
      * List transactions
      *
      * The transactions in a space, the most recent day first, narrowed by any
-     * of the filters. Every member of a space sees all of its transactions. A
+     * of the filters. Every member of a space sees all of its transactions,
+     * but only the member who owns one can change or delete it. A
      * transaction that was split is not listed: its parts are, each with the
      * same `split_parent_id`. To find recurring charges, such as
      * subscriptions, search them and group the results by merchant and
@@ -64,11 +64,12 @@ class TransactionController extends Controller
      * bank-connected ones included: a sync never removes it. Nothing
      * deduplicates it against what the bank sends, so add only what the bank
      * will not sync, such as a cash payment or a transfer you made elsewhere.
-     * The response adds `balance_updated`, whether `update_balance` moved the
-     * account's balance snapshots.
+     * Any member of the space can add one to any of its accounts, and owns
+     * what they add. The response adds `balance_updated`, whether
+     * `update_balance` moved the account's balance snapshots.
      */
     #[ScopedToSpace]
-    public function store(StoreTransactionRequest $request, SpaceResolver $resolver): JsonResponse
+    public function store(StoreTransactionRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $space = $this->space($request);
@@ -76,7 +77,7 @@ class TransactionController extends Controller
         $written = $this->writer->create(
             $this->user($request),
             $space,
-            $resolver->accountOrFail($space, $validated['account_id']),
+            $this->account($request, $validated['account_id']),
             $validated,
             $validated['label_ids'] ?? [],
             $request->boolean('update_balance'),
@@ -89,6 +90,8 @@ class TransactionController extends Controller
      * Update a transaction
      *
      * Changes only the fields you send, and also sets or clears the category.
+     * Only the member of the space who owns the transaction can change it. The
+     * labels are not changed here.
      * The notes and the category can be changed on any transaction. The rest
      * (description, amount, date, currency, account and counterparty names)
      * only on one you recorded by hand that is not one part of a split: on
@@ -111,7 +114,7 @@ class TransactionController extends Controller
     /**
      * Delete a transaction
      *
-     * Deletes a transaction you recorded by hand. One that came from a bank or
+     * Deletes a transaction you recorded by hand and own. One that came from a bank or
      * an import cannot be deleted, and neither can one part of a split on its
      * own; both answer `422` with the error under `transaction`.
      *

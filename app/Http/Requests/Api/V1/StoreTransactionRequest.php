@@ -22,7 +22,7 @@ class StoreTransactionRequest extends FormRequest
             /**
              * The ids of the labels to tag the transaction with.
              */
-            'label_ids' => ['sometimes', 'array'],
+            'label_ids' => ['sometimes', 'array', 'max:100'],
             /**
              * @format uuid
              */

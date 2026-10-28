@@ -26,15 +26,16 @@ class DeleteTransactionRequest extends FormRequest
     }
 
     /**
-     * Refuse a transaction that came from a bank or import, or is one part of
-     * a split.
+     * Refuse unknown fields, and a transaction that came from a bank or
+     * import, or is one part of a split.
      *
      * @return array<int, callable(Validator): void>
      */
     public function after(): array
     {
-        return [fn (Validator $validator) => $this->addRefusals($validator, array_filter([
-            'transaction' => TransactionWriteRules::deletionError($this->transaction()),
-        ]))];
+        return [fn (Validator $validator) => $this->addRefusals($validator, [
+            ...$this->unknownFieldRefusals(),
+            ...array_filter(['transaction' => TransactionWriteRules::deletionError($this->transaction())]),
+        ])];
     }
 }

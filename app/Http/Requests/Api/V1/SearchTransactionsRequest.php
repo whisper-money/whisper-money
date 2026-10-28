@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Api\V1;
 
 use App\Http\Requests\Api\V1\Concerns\ChecksIdsInSpace;
+use App\Models\Account;
+use App\Models\Category;
 use App\Models\Label;
 use App\Services\Transactions\TransactionSearch;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,14 +32,14 @@ class SearchTransactionsRequest extends FormRequest
              *
              * @format uuid
              */
-            'account_id' => ['sometimes', 'string'],
+            'account_id' => ['sometimes', 'string', $this->inSpace(Account::class, 'an account')],
             /**
              * Only the transactions in this category.
              *
              * @format uuid
              */
-            'category_id' => ['sometimes', 'string'],
-            'label_ids' => ['sometimes', 'array'],
+            'category_id' => ['sometimes', 'string', $this->inSpace(Category::class, 'a category')],
+            'label_ids' => ['sometimes', 'array', 'max:100'],
             /**
              * Only the transactions tagged with any of these labels.
              *
