@@ -27,7 +27,7 @@ final class ApiReference
      */
     private const string Directory = '60-integrations/20-api';
 
-    public const string IndexFile = self::Directory.'/80-reference-en.md';
+    private const string IndexFile = self::GroupsDirectory.'-en.md';
 
     public const string GroupsDirectory = self::Directory.'/80-reference';
 
