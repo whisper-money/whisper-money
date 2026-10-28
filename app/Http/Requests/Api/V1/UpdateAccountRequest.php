@@ -69,16 +69,20 @@ class UpdateAccountRequest extends FormRequest
     }
 
     /**
-     * Refuse changing what the bank sync owns on a connected account.
+     * Refuse unknown fields, and changing what the bank sync owns on a
+     * connected account.
      *
      * @return array<int, callable(Validator): void>
      */
     public function after(): array
     {
         return [function (Validator $validator): void {
-            $errors = $this->accountRules()->syncOwnedFieldErrors($this->account(), $this->all(), $this->requestedType());
+            $errors = [
+                ...$this->unknownFieldRefusals(),
+                ...$this->accountRules()->syncOwnedFieldErrors($this->account(), $this->all(), $this->requestedType()),
+            ];
 
-            $this->addErrors($validator, $errors);
+            $this->addRefusals($validator, $errors);
         }];
     }
 

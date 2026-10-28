@@ -58,8 +58,8 @@ class StoreAccountRequest extends FormRequest
     }
 
     /**
-     * Refuse the fields that would make a bank-connected account, and a
-     * balance on a credit card.
+     * Refuse unknown fields, the ones that would make a bank-connected
+     * account, and a balance on a credit card.
      *
      * @return array<int, callable(Validator): void>
      */
@@ -68,11 +68,12 @@ class StoreAccountRequest extends FormRequest
         return [function (Validator $validator): void {
             $rules = $this->accountRules();
             $errors = [
+                ...$this->unknownFieldRefusals(),
                 ...$rules->connectionFieldErrors($this->all()),
                 ...$rules->creditCardBalanceErrors($this->all(), $this->requestedType()),
             ];
 
-            $this->addErrors($validator, $errors);
+            $this->addRefusals($validator, $errors);
         }];
     }
 }

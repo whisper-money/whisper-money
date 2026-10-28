@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Concerns;
 
-use App\Http\Controllers\Api\V1\Controller;
 use App\Models\Account;
+use App\Services\SpaceResolver;
 
 /**
  * For the `/api/v1/accounts/{account}` form requests whose rules depend on
@@ -16,7 +16,8 @@ trait ResolvesRouteAccount
 
     /**
      * Any member of the space may act on its accounts, so resolving the
-     * account is the whole check. A request that narrows it overrides this.
+     * account is the whole check. A request that narrows it (only the owner
+     * may edit an account) overrides this.
      */
     public function authorize(): bool
     {
@@ -27,9 +28,9 @@ trait ResolvesRouteAccount
 
     public function account(): Account
     {
-        return $this->routeAccount ??= Account::query()
-            ->forSpace(Controller::spaceOf($this))
-            ->findOrFail($this->route('account'));
+        $resolver = app(SpaceResolver::class);
+
+        return $this->routeAccount ??= $resolver->accountOrFail($resolver->forApiRequest($this), (string) $this->route('account'));
     }
 
     /**

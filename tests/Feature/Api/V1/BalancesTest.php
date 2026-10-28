@@ -105,9 +105,9 @@ describe('record', function () {
         $account = Account::factory()->withBalance()->create(['user_id' => $user->id]);
 
         withHeaders(apiV1Bearer($user, ['api:read', 'api:write']))
-            ->postJson("/api/v1/accounts/{$account->id}/balances", ['balance' => 'lots', 'balance_date' => '262004-08-10'])
+            ->postJson("/api/v1/accounts/{$account->id}/balances", ['balance' => 'lots', 'balance_date' => '262004-08-10', 'date' => '2026-01-31'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['balance', 'balance_date']);
+            ->assertJsonValidationErrors(['balance', 'balance_date', 'date']);
     });
 
     it('refuses a connected account and a credit card', function (string $state, string $reason) {

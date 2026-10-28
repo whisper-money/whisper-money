@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Http\Requests\Api\V1\Concerns\AddsRefusals;
 use App\Http\Requests\Api\V1\Concerns\ResolvesRouteAccount;
 use App\Services\Accounts\AccountBalanceRecorder;
 use Illuminate\Contracts\Validation\Validator;
@@ -9,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAccountBalanceRequest extends FormRequest
 {
-    use ResolvesRouteAccount;
+    use AddsRefusals, ResolvesRouteAccount;
 
     /**
      * @return array<string, array<mixed>>
@@ -41,7 +42,7 @@ class StoreAccountBalanceRequest extends FormRequest
     }
 
     /**
-     * Refuse a bank-connected account and a credit card, which take no
+     * Refuse unknown fields, and a bank-connected account and a credit card, which take no
      * manual balance.
      *
      * @return array<int, callable(Validator): void>
@@ -49,9 +50,10 @@ class StoreAccountBalanceRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            foreach (app(AccountBalanceRecorder::class)->unwritableErrors($this->account(), 'account') as $field => $message) {
-                $validator->errors()->add($field, $message);
-            }
+            $this->addRefusals($validator, [
+                ...$this->unknownFieldRefusals(),
+                ...AccountBalanceRecorder::unwritableErrors($this->account(), 'account'),
+            ]);
         }];
     }
 }

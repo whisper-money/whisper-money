@@ -15,6 +15,7 @@ use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 #[Group('Accounts', 'An account is a bookkeeping record of money held somewhere: a manual one you keep up to date yourself, or a bank-connected one the bank sync keeps up to date. Nothing here moves money; that happens at the bank.', weight: 20)]
 class AccountController extends Controller
@@ -70,7 +71,9 @@ class AccountController extends Controller
             $this->space($request)->id,
         );
 
-        return (new AccountResource($account))->response()->setStatusCode(201);
+        // Refreshed so the columns the database defaults (the ownership share)
+        // come back filled in.
+        return (new AccountResource($account->refresh()))->response()->setStatusCode(201);
     }
 
     /**
@@ -80,7 +83,10 @@ class AccountController extends Controller
      * them; on a bank-connected one only the name, the type (among
      * `checking`, `credit_card`, `savings` and `others`) and the ownership
      * fields, since its currency and bank come from the bank. Only the
-     * account's owner can edit it, not the other members of its space.
+     * account's owner can edit it, not the other members of its space. A loan
+     * with no details yet needs `annual_interest_rate`, `loan_term_months` and
+     * `original_amount` together; sending only some of them is a `422` and
+     * nothing in the request is saved.
      *
      * Changing a loan or a property to another type keeps its details and any
      * mortgage link on file but stops using them. Archiving, hiding and
@@ -93,11 +99,11 @@ class AccountController extends Controller
     {
         $model = $request->account();
 
-        // Any other field sent along is saved even when the loan details
-        // cannot be created yet.
-        AccountWriteRules::throwIfAny(AccountWriteRules::missingLoanFieldErrors(
+        // A loan whose details cannot be created yet is refused whole: the
+        // transaction rolls back whatever else the request changed.
+        DB::transaction(fn () => AccountWriteRules::throwIfAny(AccountWriteRules::missingLoanFieldErrors(
             $this->accountWriteService->update($model, $request->validated()),
-        ));
+        )));
 
         return new AccountResource($model->refresh());
     }

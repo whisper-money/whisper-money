@@ -27,23 +27,7 @@ abstract class Controller extends BaseController
      */
     protected function space(Request $request): Space
     {
-        return self::spaceOf($request);
-    }
-
-    /**
-     * Controller::space() for the form requests, which resolve the route's
-     * object before the controller runs.
-     */
-    public static function spaceOf(Request $request): Space
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return app(SpaceResolver::class)->resolve(
-            $user,
-            $request->string('space')->toString(),
-            'List the valid ids with GET /api/v1/spaces.',
-        );
+        return app(SpaceResolver::class)->forApiRequest($request);
     }
 
     /**
@@ -52,6 +36,6 @@ abstract class Controller extends BaseController
      */
     protected function account(Request $request, string $id): Account
     {
-        return Account::query()->forSpace($this->space($request))->findOrFail($id);
+        return app(SpaceResolver::class)->accountOrFail($this->space($request), $id);
     }
 }

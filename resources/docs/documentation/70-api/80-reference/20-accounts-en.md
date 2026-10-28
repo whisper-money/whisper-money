@@ -39,7 +39,8 @@ The accounts in a space, newest first, archived ones included. Every member of a
 | `data[].bank.id` | string |  |
 | `data[].bank.name` | string |  |
 | `data[].is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data[].ownership_percentage` | integer | Your share of the account, 1 to 100. Below 100 only that slice counts in your figures. |
+| `data[].owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
+| `data[].ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data[].ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data[].credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
 | `data[].credit_card_detail.statement_closing_date` | string or null |  |
@@ -107,6 +108,7 @@ curl https://whisper.money/api/v1/accounts \
                 "name": "BBVA"
             },
             "is_connected": false,
+            "owned": true,
             "ownership_percentage": 100,
             "ownership_applies_to_balance": true,
             "credit_card_detail": null,
@@ -189,7 +191,8 @@ Opens a manual account of any type, optionally with today's balance. A loan or a
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.ownership_percentage` | integer | Your share of the account, 1 to 100. Below 100 only that slice counts in your figures. |
+| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
+| `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
 | `data.credit_card_detail.statement_closing_date` | string or null |  |
@@ -262,6 +265,7 @@ curl -X POST https://whisper.money/api/v1/accounts \
             "name": "BBVA"
         },
         "is_connected": false,
+        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,
@@ -313,7 +317,8 @@ curl -X POST https://whisper.money/api/v1/accounts \
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.ownership_percentage` | integer | Your share of the account, 1 to 100. Below 100 only that slice counts in your figures. |
+| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
+| `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
 | `data.credit_card_detail.statement_closing_date` | string or null |  |
@@ -379,6 +384,7 @@ curl https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 
             "name": "BBVA"
         },
         "is_connected": false,
+        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,
@@ -404,7 +410,7 @@ curl https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 
 
 `PATCH /api/v1/accounts/{account}`
 
-Changes only the fields you send. On a manual account that is all of them; on a bank-connected one only the name, the type (among `checking`, `credit_card`, `savings` and `others`) and the ownership fields, since its currency and bank come from the bank. Only the account's owner can edit it, not the other members of its space. Changing a loan or a property to another type keeps its details and any mortgage link on file but stops using them. Archiving, hiding and deleting an account happen in the app.
+Changes only the fields you send. On a manual account that is all of them; on a bank-connected one only the name, the type (among `checking`, `credit_card`, `savings` and `others`) and the ownership fields, since its currency and bank come from the bank. Only the account's owner can edit it, not the other members of its space. A loan with no details yet needs `annual_interest_rate`, `loan_term_months` and `original_amount` together; sending only some of them is a `422` and nothing in the request is saved. Changing a loan or a property to another type keeps its details and any mortgage link on file but stops using them. Archiving, hiding and deleting an account happen in the app.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -459,7 +465,8 @@ Changes only the fields you send. On a manual account that is all of them; on a 
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.ownership_percentage` | integer | Your share of the account, 1 to 100. Below 100 only that slice counts in your figures. |
+| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
+| `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
 | `data.credit_card_detail.statement_closing_date` | string or null |  |
@@ -530,6 +537,7 @@ curl -X PATCH https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c
             "name": "BBVA"
         },
         "is_connected": false,
+        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,

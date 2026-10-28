@@ -5,7 +5,6 @@ namespace App\Http\Requests\Api\V1\Concerns;
 use App\Enums\AccountType;
 use App\Models\User;
 use App\Services\Accounts\AccountWriteRules;
-use Illuminate\Contracts\Validation\Validator;
 
 /**
  * What the account create and update requests share: the AccountWriteRules
@@ -14,6 +13,8 @@ use Illuminate\Contracts\Validation\Validator;
  */
 trait ValidatesAccountWrites
 {
+    use AddsRefusals;
+
     protected function accountRules(): AccountWriteRules
     {
         /** @var User|null $user */
@@ -28,16 +29,6 @@ trait ValidatesAccountWrites
     protected function requestedType(): ?AccountType
     {
         return AccountType::tryFrom($this->string('type')->toString());
-    }
-
-    /**
-     * @param  array<string, string>  $errors  from one of the AccountWriteRules refusals
-     */
-    protected function addErrors(Validator $validator, array $errors): void
-    {
-        foreach ($errors as $field => $message) {
-            $validator->errors()->add($field, $message);
-        }
     }
 
     /**

@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Account;
 use App\Models\Space;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -36,5 +38,26 @@ class SpaceResolver
         }
 
         return $space;
+    }
+
+    /**
+     * The space a `/api/v1` request operates on, for its controllers and form
+     * requests alike.
+     */
+    public function forApiRequest(Request $request): Space
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->resolve($user, $request->string('space')->toString(), 'List the valid ids with GET /api/v1/spaces.');
+    }
+
+    /**
+     * An account in $space: one in another space, or someone else's, is a
+     * ModelNotFoundException like one that does not exist.
+     */
+    public function accountOrFail(Space $space, string $id): Account
+    {
+        return Account::query()->forSpace($space)->findOrFail($id);
     }
 }

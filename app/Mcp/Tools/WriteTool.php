@@ -141,7 +141,7 @@ abstract class WriteTool extends McpTool
     {
         $account = $this->accountInSpace($request, $space, $key);
 
-        AccountWriteRules::throwIfAny(app(AccountBalanceRecorder::class)->unwritableErrors($account, $key));
+        AccountWriteRules::throwIfAny(AccountBalanceRecorder::unwritableErrors($account, $key));
 
         return $account;
     }

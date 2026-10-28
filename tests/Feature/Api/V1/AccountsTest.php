@@ -49,6 +49,7 @@ describe('list', function () {
                 'currency' => $older->currency_code,
                 'bank' => ['id' => $bank->id, 'name' => 'BBVA'],
                 'is_connected' => false,
+                'owned' => true,
                 'ownership_percentage' => 100,
                 'ownership_applies_to_balance' => $older->fresh()->ownership_applies_to_balance,
                 'credit_card_detail' => null,
@@ -71,7 +72,8 @@ describe('list', function () {
             ->getJson('/api/v1/accounts?space='.$space->id)
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $theirs->id);
+            ->assertJsonPath('data.0.id', $theirs->id)
+            ->assertJsonPath('data.0.owned', false);
     });
 
     it('refuses a space the user cannot access', function () {
@@ -176,6 +178,8 @@ describe('create', function () {
             ->assertJsonPath('data.type', 'savings')
             ->assertJsonPath('data.currency', 'EUR')
             ->assertJsonPath('data.is_connected', false)
+            ->assertJsonPath('data.ownership_percentage', 100)
+            ->assertJsonPath('data.owned', true)
             ->assertJsonPath('data.space_id', $user->personalSpace->id);
 
         $account = $user->accounts()->sole();
@@ -322,7 +326,7 @@ describe('update', function () {
             ->assertJsonValidationErrors(['ownership_percentage', 'type']);
     });
 
-    it('reports the loan fields still missing, keeping the rest of the edit', function () {
+    it('refuses partial loan details whole, saving nothing', function () {
         $user = User::factory()->create();
         $loan = Account::factory()->loan()->create(['user_id' => $user->id, 'name' => 'Loan']);
 
@@ -331,8 +335,21 @@ describe('update', function () {
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['loan_term_months', 'original_amount']);
 
-        expect($loan->fresh()->name)->toBe('Car loan')
+        expect($loan->fresh()->name)->toBe('Loan')
             ->and($loan->fresh()->loanDetail)->toBeNull();
+    });
+
+    it('refuses a field it does not take instead of ignoring it', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+
+        withHeaders(accountsWriter($user))
+            ->patchJson('/api/v1/accounts/'.$account->id, ['currency' => 'USD', 'space' => $user->personalSpace->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['currency' => 'does not take'])
+            ->assertJsonMissingValidationErrors('space');
+
+        expect($account->fresh()->currency_code)->toBe('EUR');
     });
 
     it('refuses an account owned by another member of the space', function () {

@@ -34,7 +34,7 @@ class AccountBalanceRecorder
      *
      * @return array<string, string>
      */
-    public function unwritableErrors(Account $account, string $key): array
+    public static function unwritableErrors(Account $account, string $key): array
     {
         if ($account->isConnected()) {
             return [$key => 'That account is connected to a bank, so its balances come from the sync and a manual snapshot would be overwritten. Only non-connected (manual) accounts accept balances.'];
