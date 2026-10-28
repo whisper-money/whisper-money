@@ -2,6 +2,7 @@
 
 use App\Enums\CashflowBlock;
 use App\Enums\CategoryType;
+use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Jobs\RebuildCatchAllBudgetPeriods;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
@@ -112,6 +113,38 @@ test('creating a catch-all budget does not queue a catch-all rebuild', function 
     yearlyCatchAll($this->user);
 
     Queue::assertNotPushed(RebuildCatchAllBudgetPeriods::class);
+});
+
+test('budgets of different periods tracking the same categories each count the expense', function () {
+    $catchAll = yearlyCatchAll($this->user);
+    $garage = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $rent = expense($this->user, $this->category, '2026-10-01', -80000);
+    $parking = expense($this->user, $garage, '2026-10-02', -9000);
+
+    $monthly = createBudget($this->user, 'monthly', categoryIds: [$this->category->id, $garage->id]);
+    $yearly = createBudget($this->user, 'yearly', categoryIds: [$this->category->id, $garage->id]);
+
+    expect(budgetTransactionIds($monthly))->toEqualCanonicalizing([$rent->id, $parking->id])
+        ->and(budgetTransactionIds($yearly))->toEqualCanonicalizing([$rent->id, $parking->id])
+        ->and($yearly->getCurrentPeriod()->processing_historical)->toBeFalse()
+        ->and(periodTransactionIds($catchAll))->toBe([]);
+
+    // A new expense lands in both as well.
+    $later = expense($this->user, $garage, '2026-10-10');
+    app(BudgetTransactionService::class)->assignTransaction($later);
+
+    expect(budgetTransactionIds($monthly))->toContain($later->id)
+        ->and(budgetTransactionIds($yearly))->toContain($later->id)
+        ->and(periodTransactionIds($catchAll))->toBe([]);
+});
+
+test('budget backfills skip the queue the bank syncs fill', function () {
+    Queue::fake();
+
+    createBudget($this->user, 'yearly', categoryIds: [$this->category->id]);
+
+    Queue::assertPushedOn('budgets', AssignHistoricalTransactionsToBudget::class);
+    Queue::assertPushedOn('budgets', RebuildCatchAllBudgetPeriods::class);
 });
 
 test('deleting a budget hands its expenses back to the catch-all', function () {
