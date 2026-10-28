@@ -62,6 +62,17 @@ function renderedColumnIds(table: Table<ServerTransaction>): string[] {
         .map((column) => column.id);
 }
 
+/**
+ * The day total fades behind the rows it adds up, without its income
+ * highlight, and comes back in full while the day's header is hovered.
+ */
+const DAY_TOTAL_FADED =
+    'opacity-30 transition-[opacity,background-color] duration-200 group-hover/day:opacity-100';
+
+/** The income highlight the faded total gets back on hover. */
+const DAY_TOTAL_HOVER_HIGHLIGHT =
+    'group-hover/day:bg-green-100/70 dark:group-hover/day:bg-green-900';
+
 function DayTotal({
     total,
     quiet = false,
@@ -117,9 +128,12 @@ function DayTotal({
             amountInCents={total.amount}
             currencyCode={currencyCode}
             variant="positive-highlight"
-            highlightPositive={total.amount >= 0}
             weight="medium"
             monospace
+            className={cn(
+                DAY_TOTAL_FADED,
+                total.amount >= 0 && DAY_TOTAL_HOVER_HIGHLIGHT,
+            )}
         />
     );
 }
@@ -196,7 +210,7 @@ export function TransactionDayHeader({
     return (
         <TableRow
             {...measureProps}
-            className="bg-muted/50 hover:bg-muted/50 dark:bg-muted/30 dark:hover:bg-muted/30"
+            className="group/day bg-muted/50 hover:bg-muted/50 dark:bg-muted/30 dark:hover:bg-muted/30"
             data-testid="transaction-day-header"
         >
             {hasSelectColumn && (
