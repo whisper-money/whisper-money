@@ -2,21 +2,16 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\AccountType;
 use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
-use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
-use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
-use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
-use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
 use App\Models\AutomationRule;
 use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalService;
+use App\Services\SavingsGoals\SavingsGoalWriteRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -25,7 +20,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Create a savings goal: one-off (a total, optionally by a date) or monthly (an amount or share of income each month). Monthly can auto-tag a savings account\'s past and future transfers.')]
 class CreateSavingsGoal extends WriteTool
 {
-    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesSavingsGoalWrites;
+    use PresentsSavingsGoals;
 
     /**
      * @return array<string, mixed>
@@ -50,21 +45,17 @@ class CreateSavingsGoal extends WriteTool
     protected function write(Request $request, User $user): Response
     {
         $kind = SavingsGoalKind::tryFrom($request->string('kind')->toString());
-        [$otherKindRules, $messages] = $kind === null ? [[], []] : $this->otherKindFieldRules($kind);
+        [$rules, $messages] = app(SavingsGoalWriteRules::class)->forCreate($user, $kind);
 
         $validated = $request->validate([
-            'name' => $this->savingsGoalNameRules($user->id, creating: true),
-            'kind' => ['required', Rule::enum(SavingsGoalKind::class)],
-            ...$otherKindRules,
+            ...$rules,
             ...($kind === SavingsGoalKind::Monthly ? [
-                ...$this->monthlyTargetRules(creating: true),
                 // Null leaves the rule out; an empty string is a request for
                 // one with no account, refused rather than dropped.
                 'auto_tag_account_id' => ['nullable', 'filled', 'uuid'],
-            ] : $this->oneOffTargetRules(creating: true)),
+            ] : []),
         ], [
             ...$messages,
-            ...$this->amountLimitMessages($this->reportingCurrency($user)),
             'auto_tag_account_id.filled' => 'auto_tag_account_id is empty. Pass the id of a savings account in the goal\'s space (list_accounts), or leave it out to create the goal without an automation rule.',
         ]);
 
@@ -106,28 +97,19 @@ class CreateSavingsGoal extends WriteTool
     }
 
     /**
-     * An account of the goal's space, where its rule and label live, and only
-     * a savings one: on any other type an incoming transfer would count
-     * against the goal rather than towards it.
+     * An account of the goal's space, where its rule and label live, that can
+     * feed the goal's auto-tag rule.
      */
     private function assertSavingsAccount(Request $request, Space $space): void
     {
-        $account = $this->accountInSpace($request, $space, 'auto_tag_account_id');
+        $refusal = app(SavingsGoalWriteRules::class)->autoTagAccountRefusal(
+            $this->accountInSpace($request, $space, 'auto_tag_account_id'),
+            'Call list_accounts and pick one of type savings.',
+            'link contributions with label_transaction.',
+        );
 
-        if ($account->type !== AccountType::Savings) {
-            throw ValidationException::withMessages([
-                'auto_tag_account_id' => "Account {$account->id} is not a savings account. Call list_accounts and pick one of type savings.",
-            ]);
-        }
-
-        // Rules stop at the first match: a second goal on the same account
-        // would never see a transfer.
-        $owner = SavingsGoal::autoTaggingAccount($account->id);
-
-        if ($owner !== null) {
-            throw ValidationException::withMessages([
-                'auto_tag_account_id' => "Account {$account->id} already feeds the running monthly goal \"{$owner->name}\" ({$owner->id}). Pick another savings account, or leave auto_tag_account_id out and link contributions with label_transaction.",
-            ]);
+        if ($refusal !== null) {
+            throw ValidationException::withMessages(['auto_tag_account_id' => $refusal]);
         }
     }
 }

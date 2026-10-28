@@ -3,16 +3,20 @@
 namespace App\Services;
 
 use App\Enums\BudgetExpenseType;
+use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Jobs\RebuildCatchAllBudgetPeriods;
 use App\Models\Budget;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 /**
- * Creating and editing a budget, shared by the web controller and the MCP tools
- * so both surfaces seed periods, backfill history and move the allocated amount
- * the same way.
+ * Creating and editing a budget, shared by the web controller, the MCP tools
+ * and `/api/v1/budgets` so every surface seeds periods, backfills history and
+ * moves the allocated amount the same way. The MCP tools and the API also
+ * validate with the rules and refusals here.
  */
 class BudgetService
 {
@@ -20,6 +24,70 @@ class BudgetService
         private readonly BudgetPeriodService $periods,
         private readonly BudgetTransactionService $transactions,
     ) {}
+
+    /**
+     * The plain fields of a new budget. The categories and labels it tracks
+     * are each caller's to check, naming the valid ids its own way.
+     *
+     * @param  BudgetPeriodType|null  $periodType  the period sent, which sets the range of `period_start_day`; null while it is not a valid one
+     * @return array<string, array<mixed>>
+     */
+    public static function createRules(?BudgetPeriodType $periodType): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'allocated_amount' => ['required', 'integer', 'min:0'],
+            'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
+            'rollover_type' => ['required', Rule::enum(RolloverType::class)],
+            // The field means a day of the week for weekly periods and a day of
+            // the month for the rest, so its range depends on period_type.
+            'period_start_day' => ['sometimes', 'nullable', 'integer', ...($periodType?->startDayRules() ?? [])],
+            'is_catch_all' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * What an edit may change. The period length, start day, rollover and
+     * tracked categories stay as created: budgets are calculated historically,
+     * so reshaping their periods afterwards would leave overlapping ones
+     * counting the same transaction twice. The web edit dialog locks these
+     * fields for the same reason.
+     *
+     * @return array<string, array<mixed>>
+     */
+    public static function updateRules(): array
+    {
+        return [
+            'name' => ['sometimes', 'string', 'max:255'],
+            'allocated_amount' => ['sometimes', 'integer', 'min:0'],
+        ];
+    }
+
+    /**
+     * Why a new budget cannot track what it was given, keyed by field. A
+     * budget needs something to watch: either explicit categories or labels,
+     * or the single catch-all budget that absorbs whatever the others leave
+     * behind.
+     *
+     * The web form checks the same two rules (StoreBudgetRequest), with
+     * wording aimed at someone looking at the create dialog.
+     *
+     * @param  array<int, string>  $categoryIds
+     * @param  array<int, string>  $labelIds
+     * @return array<string, string>
+     */
+    public static function trackingRefusals(User $user, bool $isCatchAll, array $categoryIds, array $labelIds): array
+    {
+        if (! $isCatchAll && $categoryIds === [] && $labelIds === []) {
+            return ['category_ids' => 'Pass at least one category or label to track, or set is_catch_all to true.'];
+        }
+
+        if ($isCatchAll && $user->budgets()->notArchived()->where('is_catch_all', true)->exists()) {
+            return ['is_catch_all' => 'This account already has a catch-all budget.'];
+        }
+
+        return [];
+    }
 
     /**
      * Create a budget with its current and previous period, then backfill both

@@ -60,23 +60,36 @@ final class OpenApiDocument
      */
     public function typeLabel(array $schema): string
     {
+        $schema = $this->withoutNullAlternative($schema);
+        $isReference = isset($schema['$ref']) && is_string($schema['$ref']);
+
+        if (! $isReference && isset($schema['enum']) && is_array($schema['enum'])) {
+            return implode(' | ', array_map(fn (mixed $value): string => (string) json_encode($value), $schema['enum']));
+        }
+
+        if (! $isReference && $this->type($schema) === 'array') {
+            return 'array of '.$this->typeLabel(is_array($schema['items'] ?? null) ? $schema['items'] : []);
+        }
+
+        $label = $this->singleTypeLabel($schema);
+
+        return $this->isNullable($schema) ? "{$label} or null" : $label;
+    }
+
+    /**
+     * A referenced schema's name, or the type with its format.
+     *
+     * @param  Schema  $schema
+     */
+    private function singleTypeLabel(array $schema): string
+    {
         if (isset($schema['$ref']) && is_string($schema['$ref'])) {
             return Str::afterLast($schema['$ref'], '/');
         }
 
-        if (isset($schema['enum']) && is_array($schema['enum'])) {
-            return implode(' | ', array_map(fn (mixed $value): string => (string) json_encode($value), $schema['enum']));
-        }
-
         $type = $this->type($schema);
 
-        if ($type === 'array') {
-            return 'array of '.$this->typeLabel(is_array($schema['items'] ?? null) ? $schema['items'] : []);
-        }
-
-        $label = isset($schema['format']) && is_string($schema['format']) ? "{$type} ({$schema['format']})" : $type;
-
-        return $this->isNullable($schema) ? "{$label} or null" : $label;
+        return isset($schema['format']) && is_string($schema['format']) ? "{$type} ({$schema['format']})" : $type;
     }
 
     /**
@@ -118,7 +131,7 @@ final class OpenApiDocument
      */
     public function example(array $schema): mixed
     {
-        $resolved = $this->resolve($schema);
+        $resolved = $this->resolve($this->withoutNullAlternative($schema));
 
         if (array_key_exists('example', $resolved)) {
             return $resolved['example'];
@@ -175,6 +188,7 @@ final class OpenApiDocument
      */
     public function description(array $schema): string
     {
+        $schema = $this->withoutNullAlternative($schema);
         $description = $schema['description'] ?? $this->resolve($schema)['description'] ?? '';
 
         return is_string($description) ? trim((string) preg_replace('/\s+/', ' ', $description)) : '';
@@ -186,7 +200,7 @@ final class OpenApiDocument
      */
     private function nestedFields(array $schema, string $path): array
     {
-        $resolved = $this->resolve($schema);
+        $resolved = $this->resolve($this->withoutNullAlternative($schema));
 
         if ($this->type($resolved) === 'array' && is_array($resolved['items'] ?? null)) {
             return $this->fields($resolved['items'], $path.'[].');
@@ -252,6 +266,27 @@ final class OpenApiDocument
      */
     private function isNullable(array $schema): bool
     {
-        return is_array($schema['type'] ?? null) && in_array('null', $schema['type'], true);
+        return ($schema['nullable'] ?? false) === true
+            || (is_array($schema['type'] ?? null) && in_array('null', $schema['type'], true));
+    }
+
+    /**
+     * `anyOf: [<schema>, {"type": "null"}]`, the way the spec writes a
+     * nullable reference, as that schema marked `nullable`. Any other schema
+     * is returned as it is.
+     *
+     * @param  Schema  $schema
+     * @return Schema
+     */
+    private function withoutNullAlternative(array $schema): array
+    {
+        $alternatives = is_array($schema['anyOf'] ?? null) ? $schema['anyOf'] : [];
+        $others = array_values(array_filter($alternatives, fn (mixed $alternative): bool => ! is_array($alternative) || ($alternative['type'] ?? null) !== 'null'));
+
+        if (count($alternatives) !== 2 || count($others) !== 1 || ! is_array($others[0])) {
+            return $schema;
+        }
+
+        return [...Arr::except($schema, 'anyOf'), ...$others[0], 'nullable' => true];
     }
 }

@@ -29,17 +29,10 @@ class UpdateBudget extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'allocated_amount' => ['sometimes', 'integer', 'min:0'],
-        ]);
+        $request->validate(BudgetService::updateRules());
 
         $budget = $this->budgetOfUser($request, $user);
 
-        // The period length, start day and rollover stay as created: budgets are
-        // calculated historically, so reshaping their periods afterwards would
-        // leave overlapping ones counting the same transaction twice. The web
-        // edit dialog locks these fields for the same reason.
         app(BudgetService::class)->update(
             $budget,
             $request->has('name') ? ['name' => $request->string('name')->toString()] : [],

@@ -85,3 +85,26 @@ An automation rule gives a category, labels and a note to the transactions that 
 | [`PATCH /api/v1/automation-rules/{automation_rule}`](/documentation/api/reference/automation-rules#update-an-automation-rule) | Update an automation rule |
 | [`DELETE /api/v1/automation-rules/{automation_rule}`](/documentation/api/reference/automation-rules#delete-an-automation-rule) | Delete an automation rule |
 | [`POST /api/v1/automation-rules/{automation_rule}/apply`](/documentation/api/reference/automation-rules#apply-an-automation-rule-to-existing-transactions) | Apply an automation rule to existing transactions |
+
+## Budgets
+
+A budget is a spending limit per period over some of your categories and labels. Budgets cover your whole account, not a space, and only ever track your own categories and labels. Amounts are in the minor units of your account's currency, given as `currency`. A budget's period length, start day, rollover and what it tracks are fixed once it is created: to change them, delete the budget and create it again.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/budgets`](/documentation/api/reference/budgets#list-budgets) | List budgets |
+| [`POST /api/v1/budgets`](/documentation/api/reference/budgets#create-a-budget) | Create a budget |
+| [`GET /api/v1/budgets/{budget}`](/documentation/api/reference/budgets#retrieve-a-budget) | Retrieve a budget |
+| [`PATCH /api/v1/budgets/{budget}`](/documentation/api/reference/budgets#update-a-budget) | Update a budget |
+| [`DELETE /api/v1/budgets/{budget}`](/documentation/api/reference/budgets#delete-a-budget) | Delete a budget |
+
+## Savings goals
+
+A savings goal is tracked through a label: its contributions are the transactions tagged with it. A `one_off` goal saves towards a total, optionally by a date. A `monthly` goal starts over every calendar month with a target that is a fixed `amount` or an `income_rate`, a share of the average income of the three previous complete months, frozen when the month opens. A goal's kind is fixed once created. Archiving and deleting goals happen in the Whisper Money app.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/savings-goals`](/documentation/api/reference/savings-goals#list-savings-goals) | List savings goals |
+| [`POST /api/v1/savings-goals`](/documentation/api/reference/savings-goals#create-a-savings-goal) | Create a savings goal |
+| [`GET /api/v1/savings-goals/{savings_goal}`](/documentation/api/reference/savings-goals#retrieve-a-savings-goal) | Retrieve a savings goal |
+| [`PATCH /api/v1/savings-goals/{savings_goal}`](/documentation/api/reference/savings-goals#update-a-savings-goal) | Update a savings goal |
