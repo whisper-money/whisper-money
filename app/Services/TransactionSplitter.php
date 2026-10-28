@@ -10,8 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Splitting a transaction into parts, and putting it back together. Every
- * caller — the web dialog and the MCP tools — comes through here, so the
- * invariants live in one place.
+ * caller — the web dialog, the MCP tools and `/api/v1` — comes through here,
+ * so the invariants live in one place.
  *
  * The original row never goes away: it is soft-deleted, which drops it out of
  * every list, every total and every budget in one move, while keeping the
@@ -23,6 +23,24 @@ class TransactionSplitter
     public const MAX_PARTS = 20;
 
     /**
+     * The shape of a split request, shared by the `split_transaction` MCP tool
+     * and `POST /api/v1/transactions/{id}/split`. Each caller adds its own
+     * check that the category and label ids are in the space.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function partRules(): array
+    {
+        return [
+            'splits' => ['required', 'array', 'min:2', 'max:'.self::MAX_PARTS],
+            'splits.*.amount' => ['required', 'integer'],
+            'splits.*.category_id' => ['nullable', 'string'],
+            'splits.*.label_ids' => ['nullable', 'array'],
+            'splits.*.label_ids.*' => ['required', 'string'],
+        ];
+    }
+
+    /**
      * Replace a transaction with its parts.
      *
      * @param  list<array<string, mixed>>  $parts
@@ -32,7 +50,8 @@ class TransactionSplitter
      */
     public function split(Transaction $transaction, array $parts): Collection
     {
-        $this->assertPartsAddUp($transaction, $parts);
+        self::throwIfError('transaction_id', self::splitPartError($transaction));
+        self::throwIfError('splits', self::partsError($transaction, $parts));
 
         $created = DB::transaction(fn (): ?Collection => $this->replaceWithParts($transaction, $parts));
 
@@ -53,13 +72,10 @@ class TransactionSplitter
      */
     public function merge(Transaction $part): Transaction
     {
-        $original = $part->splitParent()->withTrashed()->first();
+        self::throwIfError('transaction_id', self::mergeError($part));
 
-        if ($original === null) {
-            throw ValidationException::withMessages([
-                'transaction_id' => 'That transaction is not part of a split, so there is nothing to merge.',
-            ]);
-        }
+        /** @var Transaction $original */
+        $original = $part->splitParent()->withTrashed()->first();
 
         DB::transaction(function () use ($original): void {
             // Soft-deleting each part fires the model event that takes it back
@@ -73,49 +89,66 @@ class TransactionSplitter
     }
 
     /**
-     * The two invariants that keep a split honest: the parts add up to the
+     * Why the transaction cannot be split, or null when it can: a part of a
+     * split is not split again.
+     */
+    public static function splitPartError(Transaction $transaction): ?string
+    {
+        return $transaction->isSplitPart()
+            ? 'That transaction is already one part of a split. Merge the split back before splitting again.'
+            : null;
+    }
+
+    /**
+     * Why $parts cannot replace the transaction, or null when they can. These
+     * are the two invariants that keep a split honest: the parts add up to the
      * original, and every part moves money the same way it did. Amounts are
      * typed unsigned in the UI and given the original's sign there, so this is
      * what makes both true for every other caller.
      *
      * @param  list<array<string, mixed>>  $parts
-     *
-     * @throws ValidationException
      */
-    private function assertPartsAddUp(Transaction $transaction, array $parts): void
+    public static function partsError(Transaction $transaction, array $parts): ?string
     {
-        if ($transaction->isSplitPart()) {
-            throw ValidationException::withMessages([
-                'transaction_id' => 'That transaction is already one part of a split. Merge the split back before splitting again.',
-            ]);
-        }
-
         if (count($parts) < 2 || count($parts) > self::MAX_PARTS) {
-            throw ValidationException::withMessages([
-                'splits' => 'A split needs between 2 and '.self::MAX_PARTS.' parts.',
-            ]);
+            return 'A split needs between 2 and '.self::MAX_PARTS.' parts.';
         }
 
         $amounts = array_map(static fn (array $part): int => (int) ($part['amount'] ?? 0), $parts);
 
         if (in_array(0, $amounts, true)) {
-            throw ValidationException::withMessages([
-                'splits' => 'Every part of a split needs an amount.',
-            ]);
+            return 'Every part of a split needs an amount.';
         }
 
         if (array_sum($amounts) !== $transaction->amount) {
-            throw ValidationException::withMessages([
-                'splits' => 'The parts must add up to the original amount of '.$transaction->amount.' (in minor units).',
-            ]);
+            return 'The parts must add up to the original amount of '.$transaction->amount.' (in minor units).';
         }
 
         $movesTheSameWay = static fn (int $amount): bool => ($amount > 0) === ($transaction->amount > 0);
 
-        if (count(array_filter($amounts, $movesTheSameWay)) !== count($amounts)) {
-            throw ValidationException::withMessages([
-                'splits' => 'Every part must move money the same way as the original.',
-            ]);
+        return count(array_filter($amounts, $movesTheSameWay)) === count($amounts)
+            ? null
+            : 'Every part must move money the same way as the original.';
+    }
+
+    /**
+     * Why $part cannot be merged back, or null when it can: only a part of a
+     * split has an original to go back to.
+     */
+    public static function mergeError(Transaction $part): ?string
+    {
+        return $part->splitParent()->withTrashed()->exists()
+            ? null
+            : 'That transaction is not part of a split, so there is nothing to merge.';
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private static function throwIfError(string $field, ?string $error): void
+    {
+        if ($error !== null) {
+            throw ValidationException::withMessages([$field => $error]);
         }
     }
 

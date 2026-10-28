@@ -2,8 +2,8 @@
 
 namespace App\Mcp\Tools;
 
-use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\User;
+use App\Services\Transactions\TransactionLabeler;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -37,20 +37,12 @@ class LabelTransaction extends WriteTool
             return Response::error('Provide add_label_ids and/or remove_label_ids (arrays of label ids).');
         }
 
-        if ($add->isNotEmpty()) {
-            $transaction->labels()->syncWithoutDetaching($add->pluck('id')->all());
-        }
+        $transaction = app(TransactionLabeler::class)->change(
+            $transaction,
+            $add->pluck('id')->all(),
+            $remove->pluck('id')->all(),
+        );
 
-        if ($remove->isNotEmpty()) {
-            $transaction->labels()->detach($remove->pluck('id')->all());
-        }
-
-        // Pivot writes fire no model event, so nothing would re-derive which
-        // budgets now track this transaction by label. Silently: relabelling an
-        // existing transaction is not new spending, and removing a label would
-        // otherwise announce a months-old expense as new in the catch-all budget.
-        ReassignTransactionsToBudgets::dispatch([$transaction->id], notify: false);
-
-        return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
+        return $this->json(['transaction' => $this->presentTransaction($transaction)]);
     }
 }

@@ -40,13 +40,7 @@ class SplitTransaction extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $transaction = $this->transactionInSpace($request, $space);
 
-        $request->validate([
-            'splits' => ['required', 'array', 'min:2', 'max:'.TransactionSplitter::MAX_PARTS],
-            'splits.*.amount' => ['required', 'integer'],
-            'splits.*.category_id' => ['nullable', 'string'],
-            'splits.*.label_ids' => ['nullable', 'array'],
-            'splits.*.label_ids.*' => ['required', 'string'],
-        ]);
+        $request->validate(TransactionSplitter::partRules());
 
         $parts = app(TransactionSplitter::class)
             ->split($transaction, $this->partsFromRequest($request, $space));
