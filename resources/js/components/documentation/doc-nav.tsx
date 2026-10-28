@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { type DocumentationNavItem } from '@/types/documentation';
 import { Link } from '@inertiajs/react';
 import { ChevronRightIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 type Props = {
     items: DocumentationNavItem[];
@@ -117,13 +117,26 @@ function SectionItem({
 }
 
 /**
+ * Closes the section above: a page that follows a section on the same level is
+ * not one of its pages, but without a break it reads as the section's last ones.
+ */
+function SectionEnd() {
+    return (
+        <div
+            role="separator"
+            className="mt-4 mb-2 border-t border-[#e3e3e0] dark:border-[#3E3E3A]"
+        />
+    );
+}
+
+/**
  * The documentation tree. Recursive, so the depth of the sidebar is whatever
  * depth the files are nested to.
  */
 export default function DocNav({ items, onNavigate }: Props) {
     return (
         <>
-            {items.map((item) =>
+            {items.map((item, index) =>
                 item.type === 'section' ? (
                     <SectionItem
                         key={item.key}
@@ -131,11 +144,10 @@ export default function DocNav({ items, onNavigate }: Props) {
                         onNavigate={onNavigate}
                     />
                 ) : (
-                    <PageItem
-                        key={item.key}
-                        item={item}
-                        onNavigate={onNavigate}
-                    />
+                    <Fragment key={item.key}>
+                        {items[index - 1]?.type === 'section' && <SectionEnd />}
+                        <PageItem item={item} onNavigate={onNavigate} />
+                    </Fragment>
                 ),
             )}
         </>
