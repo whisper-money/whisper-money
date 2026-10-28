@@ -30,11 +30,16 @@ class RebuildCatchAllBudgetPeriods implements ShouldQueue
 
     public int $backoff = 10;
 
+    /**
+     * On the backfills' queue: the catch-all page spins while this runs too.
+     */
     public function __construct(
         public string $userId,
         public string $from,
         public string $to,
-    ) {}
+    ) {
+        $this->onQueue(AssignHistoricalTransactionsToBudget::QUEUE);
+    }
 
     public function retryUntil(): Carbon
     {

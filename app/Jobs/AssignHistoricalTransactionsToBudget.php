@@ -14,6 +14,11 @@ class AssignHistoricalTransactionsToBudget implements ShouldQueue
     use Queueable;
 
     /**
+     * The queue budget backfills run on, see docker/supervisor/supervisord.conf.
+     */
+    public const string QUEUE = 'budgets';
+
+    /**
      * The number of times the job may be attempted.
      */
     public int $tries = 3;
@@ -24,12 +29,16 @@ class AssignHistoricalTransactionsToBudget implements ShouldQueue
     public int $backoff = 10;
 
     /**
-     * Create a new job instance.
+     * Queued on `budgets`, which the workers take before `default`: the budget
+     * page shows a spinner until this runs, so it must not wait behind a
+     * scheduled bank sync burst.
      */
     public function __construct(
         public Budget $budget,
         public BudgetPeriod $period
-    ) {}
+    ) {
+        $this->onQueue(self::QUEUE);
+    }
 
     /**
      * Execute the job.
