@@ -80,6 +80,8 @@ final class ApiReference
             '',
             self::Notice,
             '',
+            '<!-- title es: Referencia de la API -->',
+            '',
             'Read [Authentication](/documentation/api/authentication) first, and [Errors](/documentation/api/errors) for what any endpoint can answer besides its own response.',
             '',
             self::TokenNote,

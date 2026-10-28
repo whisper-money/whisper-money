@@ -1,4 +1,4 @@
-# Changelog
+# Registro de cambios
 
 Cada cambio de la API que pueda afectar a tu código, del más reciente al más antiguo.
 
