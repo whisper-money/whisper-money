@@ -2,9 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\TransactionSource;
 use App\Models\User;
-use App\Services\ManualBalanceAdjuster;
+use App\Services\Transactions\TransactionWriter;
+use App\Services\Transactions\TransactionWriteRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -32,18 +32,13 @@ class DeleteTransaction extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $transaction = $this->transactionInSpace($request, $space);
 
-        if ($transaction->source !== TransactionSource::ManuallyCreated) {
-            return Response::error('Only manually-created transactions can be deleted. This one came from a bank or import.');
+        $deletionError = TransactionWriteRules::deletionError($transaction);
+
+        if ($deletionError !== null) {
+            return Response::error($deletionError);
         }
 
-        if ($transaction->isSplitPart()) {
-            return Response::error('This transaction is one part of a split, so deleting it on its own would leave the rest no longer adding up. Merge the split back first.');
-        }
-
-        $balanceUpdated = $request->boolean('update_balance')
-            && app(ManualBalanceAdjuster::class)->reverseDeletedTransaction($transaction);
-
-        $transaction->delete();
+        $balanceUpdated = app(TransactionWriter::class)->delete($transaction, $request->boolean('update_balance'));
 
         return $this->json([
             'deleted' => true,

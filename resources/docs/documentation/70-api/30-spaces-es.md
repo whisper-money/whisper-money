@@ -42,7 +42,8 @@ Un id al que no tienes acceso responde `422`, con el error en `space`. La
 de cada endpoint que lo acepta.
 
 El id de un objeto también se busca en ese espacio. Para leer o cambiar una
-cuenta de un espacio compartido, envía el id de ese espacio junto a ella: sin
-él, la cuenta se busca en tu espacio personal y responde `404`.
+cuenta o una transacción de un espacio compartido, envía el id de ese espacio
+junto a ella: sin él, el objeto se busca en tu espacio personal y responde
+`404`.
 
 La analítica cubre toda tu cuenta y no un solo espacio, igual que en la app.

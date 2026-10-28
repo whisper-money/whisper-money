@@ -40,8 +40,8 @@ An id you have no access to answers `422`, with the error under `space`. The
 [reference](/documentation/api/reference) lists `space` among the parameters of
 every endpoint that takes it.
 
-An object's id is looked up in that space too. To read or change an account of
-a shared space, send that space's id along with it: without it, the account is
-looked for in your personal space and answers `404`.
+An object's id is looked up in that space too. To read or change an account or a
+transaction of a shared space, send that space's id along with it: without it,
+the object is looked for in your personal space and answers `404`.
 
 Analytics cover your whole account rather than one space, as they do in the app.

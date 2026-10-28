@@ -1,0 +1,518 @@
+# Transactions
+
+A transaction is money that moved in or out of an account: synced from the bank, imported from a file or recorded by hand. Whisper Money only keeps the books: recording a transaction moves no money. Amounts are signed, in the minor units of the transaction's own currency: negative for an expense, positive for income.
+
+<!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
+
+{{TOC}}
+
+## List transactions
+
+`GET /api/v1/transactions`
+
+The transactions in a space, the most recent day first, narrowed by any of the filters. Every member of a space sees all of its transactions. A transaction that was split is not listed: its parts are, each with the same `split_parent_id`. To find recurring charges, such as subscriptions, search them and group the results by merchant and cadence.
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `query` | query | string | No | Free text matched against the description and the creditor and debtor names. |
+| `account_id` | query | string (uuid) | No | Only the transactions of this account. |
+| `category_id` | query | string (uuid) | No | Only the transactions in this category. |
+| `label_ids[]` | query | array of string (uuid) | No | Only the transactions tagged with any of these labels. |
+| `from` | query | string (date) | No | The earliest transaction date, inclusive. |
+| `to` | query | string (date) | No | The latest transaction date, inclusive. |
+| `min_amount` | query | integer | No | The smallest signed amount, in minor units. `-5000` keeps all income and the expenses of up to 5000 minor units. |
+| `max_amount` | query | integer | No | The largest signed amount, in minor units. `0` keeps expenses only. |
+| `limit` | query | integer | No | How many objects to return, between 1 and 100. |
+| `starting_after` | query | string (uuid) | No | An object id: return the page that follows it. Pass the last id of the previous page. |
+| `ending_before` | query | string (uuid) | No | An object id: return the page that precedes it. Pass the first id of the next page. Cannot be combined with `starting_after`. |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | array of Transaction |  |
+| `data[].id` | string (uuid) | The transaction's id. |
+| `data[].space_id` | string (uuid) or null | The id of the space the transaction is in, its account's. |
+| `data[].account` | object | The account the transaction is on: its id and name. |
+| `data[].account.id` | string |  |
+| `data[].account.name` | string |  |
+| `data[].transaction_date` | string (date) | The day the transaction happened. |
+| `data[].description` | string | What the transaction was for. |
+| `data[].amount` | integer | The signed amount, in the minor units of `currency`: negative for an expense, positive for income. |
+| `data[].currency` | string | The ISO 4217 currency the amount is in. |
+| `data[].category` | object or null | The category, if one is set: its id and name. |
+| `data[].category.id` | string |  |
+| `data[].category.name` | string |  |
+| `data[].category_source` | "manual" \| "rule" \| "ai" \| "bank" \| null | Who set the category: `manual` (you), `rule` (an automation rule), `ai` (the automatic categorization) or `bank`. `null` while there is none. |
+| `data[].labels` | array of object | The labels the transaction is tagged with: their ids and names. |
+| `data[].labels[].id` | string |  |
+| `data[].labels[].name` | string |  |
+| `data[].source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data[].creditor_name` | string or null | Who was paid, or `null`. |
+| `data[].debtor_name` | string or null | Who paid, or `null`. |
+| `data[].notes` | string or null | Free-text notes, or `null`. |
+| `data[].split_parent_id` | string (uuid) or null | Set when this transaction is one part of a split, otherwise `null`. Every part of the same split carries the same value. The split original is out of every list, and a part cannot be deleted or have its core fields changed on its own. |
+| `data[].created_at` | string (date-time) or null | When the transaction was recorded in Whisper Money. |
+| `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
+
+#### Example request
+
+```bash
+curl https://whisper.money/api/v1/transactions \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": [
+        {
+            "id": "0199a3f8-4c5d-7e6f-8a9b-0c1d2e3f4a5b",
+            "space_id": "0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60",
+            "account": {
+                "id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+                "name": "Main checking"
+            },
+            "transaction_date": "2026-01-31",
+            "description": "Groceries at the market",
+            "amount": -4250,
+            "currency": "EUR",
+            "category": {
+                "id": "0199a3f5-7a8b-7c9d-8e0f-1a2b3c4d5e6f",
+                "name": "Groceries"
+            },
+            "category_source": "manual",
+            "labels": [
+                {
+                    "id": "0199a3f7-3b4c-7d5e-8f6a-7b8c9d0e1f2a",
+                    "name": "Holidays"
+                }
+            ],
+            "source": "manually_created",
+            "creditor_name": "Fresh Market",
+            "debtor_name": null,
+            "notes": null,
+            "split_parent_id": null,
+            "created_at": "2026-01-31T18:12:00+00:00"
+        }
+    ],
+    "has_more": true
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `422` | The request failed validation. |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Create a transaction
+
+`POST /api/v1/transactions`
+
+Records a transaction by hand on any account of the space, bank-connected ones included: a sync never removes it. Nothing deduplicates it against what the bank sends, so add only what the bank will not sync, such as a cash payment or a transfer you made elsewhere. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
+
+**Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+| `Idempotency-Key` | header | string | No | Any unique string up to 255 characters. Retrying with the same key within 24 hours returns the first response instead of repeating the request. |
+
+#### Request body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | string (uuid) | Yes | The id of the account the transaction is on. Any account of the space, bank-connected ones included: a sync never removes a transaction you added by hand. |
+| `description` | string | Yes | What the transaction was for. |
+| `amount` | integer | Yes | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
+| `transaction_date` | string (date) | Yes | The day the transaction happened. |
+| `currency_code` | string | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
+| `category_id` | string (uuid) or null | No | The id of the category, or `null` for none. Setting it marks the category as assigned by you, so the automatic categorization leaves it alone. |
+| `creditor_name` | string or null | No | Who was paid, or `null`. |
+| `debtor_name` | string or null | No | Who paid, or `null`. |
+| `notes` | string or null | No | Free-text notes, or `null`. |
+| `update_balance` | boolean | No | Whether to move the account's balance snapshots by what this write changes. Has no effect on a bank-connected account, whose balances come from the bank, or on a credit card, which has a credit limit instead of a balance; `balance_updated` in the response says whether they moved. Defaults to `false`. |
+| `label_ids` | array of string (uuid) | No | The ids of the labels to tag the transaction with. |
+
+#### Response
+
+`201`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | Transaction |  |
+| `data.id` | string (uuid) | The transaction's id. |
+| `data.space_id` | string (uuid) or null | The id of the space the transaction is in, its account's. |
+| `data.account` | object | The account the transaction is on: its id and name. |
+| `data.account.id` | string |  |
+| `data.account.name` | string |  |
+| `data.transaction_date` | string (date) | The day the transaction happened. |
+| `data.description` | string | What the transaction was for. |
+| `data.amount` | integer | The signed amount, in the minor units of `currency`: negative for an expense, positive for income. |
+| `data.currency` | string | The ISO 4217 currency the amount is in. |
+| `data.category` | object or null | The category, if one is set: its id and name. |
+| `data.category.id` | string |  |
+| `data.category.name` | string |  |
+| `data.category_source` | "manual" \| "rule" \| "ai" \| "bank" \| null | Who set the category: `manual` (you), `rule` (an automation rule), `ai` (the automatic categorization) or `bank`. `null` while there is none. |
+| `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
+| `data.labels[].id` | string |  |
+| `data.labels[].name` | string |  |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.creditor_name` | string or null | Who was paid, or `null`. |
+| `data.debtor_name` | string or null | Who paid, or `null`. |
+| `data.notes` | string or null | Free-text notes, or `null`. |
+| `data.split_parent_id` | string (uuid) or null | Set when this transaction is one part of a split, otherwise `null`. Every part of the same split carries the same value. The split original is out of every list, and a part cannot be deleted or have its core fields changed on its own. |
+| `data.created_at` | string (date-time) or null | When the transaction was recorded in Whisper Money. |
+| `balance_updated` | boolean | Whether `update_balance` moved the account's balance snapshots. |
+
+#### Example request
+
+```bash
+curl -X POST https://whisper.money/api/v1/transactions \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+    "description": "Groceries at the market",
+    "amount": -4250,
+    "transaction_date": "2026-01-31",
+    "currency_code": "EUR",
+    "creditor_name": "Fresh Market"
+}'
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "id": "0199a3f8-4c5d-7e6f-8a9b-0c1d2e3f4a5b",
+        "space_id": "0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60",
+        "account": {
+            "id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+            "name": "Main checking"
+        },
+        "transaction_date": "2026-01-31",
+        "description": "Groceries at the market",
+        "amount": -4250,
+        "currency": "EUR",
+        "category": {
+            "id": "0199a3f5-7a8b-7c9d-8e0f-1a2b3c4d5e6f",
+            "name": "Groceries"
+        },
+        "category_source": "manual",
+        "labels": [
+            {
+                "id": "0199a3f7-3b4c-7d5e-8f6a-7b8c9d0e1f2a",
+                "name": "Holidays"
+            }
+        ],
+        "source": "manually_created",
+        "creditor_name": "Fresh Market",
+        "debtor_name": null,
+        "notes": null,
+        "split_parent_id": null,
+        "created_at": "2026-01-31T18:12:00+00:00"
+    },
+    "balance_updated": true
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `409` | A request with the same `Idempotency-Key` is still being processed. |
+| `422` | The request failed validation. |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Retrieve a transaction
+
+`GET /api/v1/transactions/{transaction}`
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `transaction` | path | string (uuid) | Yes | The transaction's id. |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | Transaction |  |
+| `data.id` | string (uuid) | The transaction's id. |
+| `data.space_id` | string (uuid) or null | The id of the space the transaction is in, its account's. |
+| `data.account` | object | The account the transaction is on: its id and name. |
+| `data.account.id` | string |  |
+| `data.account.name` | string |  |
+| `data.transaction_date` | string (date) | The day the transaction happened. |
+| `data.description` | string | What the transaction was for. |
+| `data.amount` | integer | The signed amount, in the minor units of `currency`: negative for an expense, positive for income. |
+| `data.currency` | string | The ISO 4217 currency the amount is in. |
+| `data.category` | object or null | The category, if one is set: its id and name. |
+| `data.category.id` | string |  |
+| `data.category.name` | string |  |
+| `data.category_source` | "manual" \| "rule" \| "ai" \| "bank" \| null | Who set the category: `manual` (you), `rule` (an automation rule), `ai` (the automatic categorization) or `bank`. `null` while there is none. |
+| `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
+| `data.labels[].id` | string |  |
+| `data.labels[].name` | string |  |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.creditor_name` | string or null | Who was paid, or `null`. |
+| `data.debtor_name` | string or null | Who paid, or `null`. |
+| `data.notes` | string or null | Free-text notes, or `null`. |
+| `data.split_parent_id` | string (uuid) or null | Set when this transaction is one part of a split, otherwise `null`. Every part of the same split carries the same value. The split original is out of every list, and a part cannot be deleted or have its core fields changed on its own. |
+| `data.created_at` | string (date-time) or null | When the transaction was recorded in Whisper Money. |
+
+#### Example request
+
+```bash
+curl https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "id": "0199a3f8-4c5d-7e6f-8a9b-0c1d2e3f4a5b",
+        "space_id": "0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60",
+        "account": {
+            "id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+            "name": "Main checking"
+        },
+        "transaction_date": "2026-01-31",
+        "description": "Groceries at the market",
+        "amount": -4250,
+        "currency": "EUR",
+        "category": {
+            "id": "0199a3f5-7a8b-7c9d-8e0f-1a2b3c4d5e6f",
+            "name": "Groceries"
+        },
+        "category_source": "manual",
+        "labels": [
+            {
+                "id": "0199a3f7-3b4c-7d5e-8f6a-7b8c9d0e1f2a",
+                "name": "Holidays"
+            }
+        ],
+        "source": "manually_created",
+        "creditor_name": "Fresh Market",
+        "debtor_name": null,
+        "notes": null,
+        "split_parent_id": null,
+        "created_at": "2026-01-31T18:12:00+00:00"
+    }
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `404` | No object with that id exists, or it belongs to someone else. |
+| `422` | The request failed validation. |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Update a transaction
+
+`PATCH /api/v1/transactions/{transaction}`
+
+Changes only the fields you send, and also sets or clears the category. The notes and the category can be changed on any transaction. The rest (description, amount, date, currency, account and counterparty names) only on one you recorded by hand that is not one part of a split: on any other, sending them is a `422` and nothing is saved. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
+
+**Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `transaction` | path | string (uuid) | Yes | The transaction's id. |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+
+#### Request body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | string (uuid) | No | The id of the account the transaction is on. Any account of the space, bank-connected ones included: a sync never removes a transaction you added by hand. |
+| `description` | string | No | What the transaction was for. |
+| `amount` | integer | No | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
+| `transaction_date` | string (date) | No | The day the transaction happened. |
+| `currency_code` | string | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
+| `category_id` | string (uuid) or null | No | The id of the category, or `null` for none. Setting it marks the category as assigned by you, so the automatic categorization leaves it alone. |
+| `creditor_name` | string or null | No | Who was paid, or `null`. |
+| `debtor_name` | string or null | No | Who paid, or `null`. |
+| `notes` | string or null | No | Free-text notes, or `null`. |
+| `update_balance` | boolean | No | Whether to move the account's balance snapshots by what this write changes. Has no effect on a bank-connected account, whose balances come from the bank, or on a credit card, which has a credit limit instead of a balance; `balance_updated` in the response says whether they moved. Defaults to `false`. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | Transaction |  |
+| `data.id` | string (uuid) | The transaction's id. |
+| `data.space_id` | string (uuid) or null | The id of the space the transaction is in, its account's. |
+| `data.account` | object | The account the transaction is on: its id and name. |
+| `data.account.id` | string |  |
+| `data.account.name` | string |  |
+| `data.transaction_date` | string (date) | The day the transaction happened. |
+| `data.description` | string | What the transaction was for. |
+| `data.amount` | integer | The signed amount, in the minor units of `currency`: negative for an expense, positive for income. |
+| `data.currency` | string | The ISO 4217 currency the amount is in. |
+| `data.category` | object or null | The category, if one is set: its id and name. |
+| `data.category.id` | string |  |
+| `data.category.name` | string |  |
+| `data.category_source` | "manual" \| "rule" \| "ai" \| "bank" \| null | Who set the category: `manual` (you), `rule` (an automation rule), `ai` (the automatic categorization) or `bank`. `null` while there is none. |
+| `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
+| `data.labels[].id` | string |  |
+| `data.labels[].name` | string |  |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.creditor_name` | string or null | Who was paid, or `null`. |
+| `data.debtor_name` | string or null | Who paid, or `null`. |
+| `data.notes` | string or null | Free-text notes, or `null`. |
+| `data.split_parent_id` | string (uuid) or null | Set when this transaction is one part of a split, otherwise `null`. Every part of the same split carries the same value. The split original is out of every list, and a part cannot be deleted or have its core fields changed on its own. |
+| `data.created_at` | string (date-time) or null | When the transaction was recorded in Whisper Money. |
+| `balance_updated` | boolean | Whether `update_balance` moved the account's balance snapshots. |
+
+#### Example request
+
+```bash
+curl -X PATCH https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "account_id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+    "description": "Groceries at the market",
+    "amount": -4250,
+    "transaction_date": "2026-01-31",
+    "currency_code": "EUR",
+    "creditor_name": "Fresh Market"
+}'
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "id": "0199a3f8-4c5d-7e6f-8a9b-0c1d2e3f4a5b",
+        "space_id": "0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60",
+        "account": {
+            "id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+            "name": "Main checking"
+        },
+        "transaction_date": "2026-01-31",
+        "description": "Groceries at the market",
+        "amount": -4250,
+        "currency": "EUR",
+        "category": {
+            "id": "0199a3f5-7a8b-7c9d-8e0f-1a2b3c4d5e6f",
+            "name": "Groceries"
+        },
+        "category_source": "manual",
+        "labels": [
+            {
+                "id": "0199a3f7-3b4c-7d5e-8f6a-7b8c9d0e1f2a",
+                "name": "Holidays"
+            }
+        ],
+        "source": "manually_created",
+        "creditor_name": "Fresh Market",
+        "debtor_name": null,
+        "notes": null,
+        "split_parent_id": null,
+        "created_at": "2026-01-31T18:12:00+00:00"
+    },
+    "balance_updated": true
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `404` | No object with that id exists, or it belongs to someone else. |
+| `422` | The request failed validation. |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Delete a transaction
+
+`DELETE /api/v1/transactions/{transaction}`
+
+Deletes a transaction you recorded by hand. One that came from a bank or an import cannot be deleted, and neither can one part of a split on its own; both answer `422` with the error under `transaction`.
+
+**Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `transaction` | path | string (uuid) | Yes | The transaction's id. |
+| `update_balance` | query | boolean | No | Whether to take the transaction back out of the account's balance snapshots. Has no effect on a bank-connected account or a credit card; `balance_updated` in the response says whether they moved. Defaults to `false`. |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string (uuid) | The deleted transaction's id. |
+| `deleted` | boolean | Always `true`. |
+| `balance_updated` | boolean | Whether `update_balance` took the transaction back out of the account's balance snapshots. |
+
+#### Example request
+
+```bash
+curl -X DELETE https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "id": "0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60",
+    "deleted": true,
+    "balance_updated": true
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `404` | No object with that id exists, or it belongs to someone else. |
+| `422` | The request failed validation. |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

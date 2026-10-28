@@ -2,12 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\CategorySource;
-use App\Enums\TransactionSource;
-use App\Models\Transaction;
 use App\Models\User;
-use App\Rules\StorableDate;
-use App\Services\ManualBalanceAdjuster;
+use App\Services\Transactions\TransactionWriter;
+use App\Services\Transactions\TransactionWriteRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -39,16 +36,7 @@ class CreateTransaction extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'account_id' => ['required', 'string'],
-            'description' => ['required', 'string'],
-            'amount' => ['required', 'integer'],
-            'transaction_date' => ['required', 'date', new StorableDate],
-            'currency_code' => ['sometimes', 'string', 'size:3'],
-            'notes' => ['sometimes', 'nullable', 'string'],
-            'creditor_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'debtor_name' => ['sometimes', 'nullable', 'string', 'max:255'],
-        ]);
+        $request->validate(TransactionWriteRules::createRules());
 
         $space = $this->resolveSpace($request, $user);
         $account = $this->accountInSpace($request, $space);
@@ -58,38 +46,18 @@ class CreateTransaction extends WriteTool
             ? $this->categoryInSpace($request, $space)->id
             : null;
 
-        $transaction = new Transaction([
-            'user_id' => $user->id,
-            'space_id' => $space->id,
-            'account_id' => $account->id,
-            'category_id' => $categoryId,
-            'category_source' => $categoryId === null ? null : CategorySource::Manual->value,
-            'description' => $request->string('description')->toString(),
-            'transaction_date' => $request->string('transaction_date')->toString(),
-            'amount' => $request->integer('amount'),
-            'currency_code' => $request->filled('currency_code')
-                ? mb_strtoupper($request->string('currency_code')->toString())
-                : $account->currency_code,
-            'notes' => $request->filled('notes') ? $request->string('notes')->toString() : null,
-            'creditor_name' => $request->filled('creditor_name') ? $request->string('creditor_name')->toString() : null,
-            'debtor_name' => $request->filled('debtor_name') ? $request->string('debtor_name')->toString() : null,
-            'source' => TransactionSource::ManuallyCreated->value,
-        ]);
-        $transaction->save();
-
-        if ($labels->isNotEmpty()) {
-            $transaction->labels()->sync($labels->pluck('id')->all());
-        }
-
-        // The adjuster no-ops on a connected account, whose balances belong to
-        // the bank sync. Report what it actually did, otherwise the agent tells
-        // the user a balance moved when it did not.
-        $balanceUpdated = $request->boolean('update_balance')
-            && app(ManualBalanceAdjuster::class)->applyCreatedTransaction($transaction->load('account'));
+        $written = app(TransactionWriter::class)->create(
+            $user,
+            $space,
+            $account,
+            [...$request->all(), 'category_id' => $categoryId],
+            $labels->modelKeys(),
+            $request->boolean('update_balance'),
+        );
 
         return $this->json([
-            'transaction' => $this->presentTransaction($transaction),
-            'balance_updated' => $balanceUpdated,
+            'transaction' => $this->presentTransaction($written->transaction),
+            'balance_updated' => $written->balanceUpdated,
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Transactions\TransactionSearch;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -39,8 +40,7 @@ class SearchTransactions extends McpTool
     protected function respond(Request $request, User $user): Response
     {
         $request->validate([
-            'from' => ['sometimes', 'date'],
-            'to' => ['sometimes', 'date'],
+            ...TransactionSearch::rules(),
             'limit' => ['sometimes', 'integer', 'min:1', 'max:200'],
         ]);
 
@@ -48,23 +48,9 @@ class SearchTransactions extends McpTool
 
         $labels = $this->labelsInSpace($request, $space, 'label_ids');
 
-        $transactions = Transaction::query()
-            ->forSpace($space)
+        $transactions = app(TransactionSearch::class)
+            ->query($space, [...$request->all(), 'label_ids' => $labels->modelKeys()])
             ->with(['account:id,name', 'category:id,name,type', 'labels:id,name'])
-            ->when($request->string('query')->toString() !== '', function ($query) use ($request): void {
-                $term = '%'.$request->string('query')->toString().'%';
-                $query->where(function ($q) use ($term): void {
-                    $q->where('description', 'like', $term)
-                        ->orWhere('creditor_name', 'like', $term)
-                        ->orWhere('debtor_name', 'like', $term);
-                });
-            })
-            ->when($request->string('account_id')->toString() !== '', fn ($query) => $query->where('account_id', $request->string('account_id')->toString()))
-            ->when($request->string('category_id')->toString() !== '', fn ($query) => $query->where('category_id', $request->string('category_id')->toString()))
-            ->when($labels->isNotEmpty(), fn ($query) => $query->whereHas('labels', fn ($q) => $q->whereIn('labels.id', $labels->pluck('id')->all())))
-            ->transactionDateWithin($request->string('from')->toString(), $request->string('to')->toString())
-            ->when($request->has('min_amount'), fn ($query) => $query->where('amount', '>=', $request->integer('min_amount')))
-            ->when($request->has('max_amount'), fn ($query) => $query->where('amount', '<=', $request->integer('max_amount')))
             ->orderByDesc('transaction_date')
             ->limit($request->integer('limit', 50))
             ->get()
