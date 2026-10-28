@@ -19,6 +19,9 @@ use Laravel\Mcp\Server\Registrar;
 class OAuthRegistrar extends Registrar
 {
     /**
+     * Called by `Mcp::oauthRoutes()`. Registers every scope, not just
+     * `mcp:use`, merging like the parent does.
+     *
      * @return array<string, string>
      */
     public static function ensureMcpScope(): array
@@ -42,7 +45,8 @@ class OAuthRegistrar extends Registrar
      */
     protected static function protectedResourceMetadata(string $path): array
     {
-        $scope = str_starts_with(ltrim($path, '/'), 'api/v1') ? OAuthScope::Api : OAuthScope::Mcp;
+        $path = trim($path, '/');
+        $scope = $path === 'api/v1' || str_starts_with($path, 'api/v1/') ? OAuthScope::Api : OAuthScope::Mcp;
 
         return [
             ...parent::protectedResourceMetadata($path),

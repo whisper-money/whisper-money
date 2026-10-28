@@ -7,6 +7,7 @@ use App\Enums\OAuthScope;
 use App\Http\Controllers\OAuth\ApproveAuthorizationController;
 use App\Http\Controllers\OAuth\AuthorizationController;
 use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
+use App\Http\Responses\OAuthConsentResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Mcp\OAuthRegistrar;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
@@ -18,7 +19,6 @@ use App\Services\Discord\DiscordWebhook;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -28,7 +28,6 @@ use Laravel\Mcp\Server\Registrar;
 use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
 use Laravel\Passport\Http\Controllers\AuthorizationController as PassportAuthorizationController;
 use Laravel\Passport\Passport;
-use Laravel\Passport\Scope;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -64,6 +63,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(AuthorizationController::class)
             ->needs(StatefulGuard::class)
             ->give(fn () => Auth::guard(config('passport.guard')));
+
+        // The device-code grant approves through Passport's own controllers,
+        // which skip the scope rules above. No client uses it; keep it off.
+        Passport::$deviceCodeGrantEnabled = false;
         $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
 
         $this->app->bind(TransactionMatcher::class, UncategorizedTransactionMatcher::class);
@@ -144,15 +147,6 @@ class AppServiceProvider extends ServiceProvider
 
         // Render the OAuth consent screen (an MCP connector or an API app) with
         // our own on-brand Blade view, worded for the scope it asks for.
-        Passport::authorizationView(function (array $parameters): HttpResponse {
-            $scope = OAuthScope::fromRequested(array_map(fn (Scope $scope): string => $scope->id, $parameters['scopes']));
-
-            return response()->view('oauth.authorize', [
-                ...$parameters,
-                'surface' => $scope,
-                'refusal' => $scope->approvalRefusalFor($parameters['user']),
-                'redirectHost' => parse_url((string) ($parameters['request']->query('redirect_uri') ?? $parameters['client']->redirect_uris[0] ?? ''), PHP_URL_HOST),
-            ]);
-        });
+        Passport::authorizationView(fn (array $parameters) => app(OAuthConsentResponse::class)($parameters));
     }
 }

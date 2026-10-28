@@ -78,19 +78,28 @@ enum OAuthScope: string
      * they may. Matches the `/api/v1` gate (EnsureApiAccess): the shared demo
      * and press accounts never can, and anyone else needs the API plan
      * feature. MCP connections are not gated here; each tool checks the plan.
-     *
-     * @return 'shared_account'|'plan_required'|null
      */
-    public function approvalRefusalFor(User $user): ?string
+    public function approvalRefusalFor(User $user): ?OAuthApprovalRefusal
     {
         if ($this !== self::Api) {
             return null;
         }
 
         if ($user->isRestrictedSharedAccount()) {
-            return 'shared_account';
+            return OAuthApprovalRefusal::SharedAccount;
         }
 
-        return $user->canUseFeature(PlanFeature::ApiAccess) ? null : 'plan_required';
+        return $user->canUseFeature(PlanFeature::ApiAccess) ? null : OAuthApprovalRefusal::PlanRequired;
+    }
+
+    /**
+     * The scope's name as the settings screens show it.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Mcp => __('AI Connector'),
+            self::Api => __('API'),
+        };
     }
 }

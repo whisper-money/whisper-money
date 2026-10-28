@@ -47,7 +47,8 @@ describe('MCP settings page', () => {
             {
                 id: 'client-1',
                 name: 'My ChatGPT',
-                scopes: ['mcp:use'],
+                redirect: 'https://chatgpt.com',
+                scopes: ['AI Connector'],
                 connected_at: '2026-10-01T00:00:00+00:00',
                 last_used_at: null,
             },

@@ -38,7 +38,7 @@ function connectAgain(Client $client): void
         ->replicate()->forceFill(['id' => Str::random(80), 'access_token_id' => $copy->id])->save();
 }
 
-it('lists each screen\'s connected apps only', function (string $route, string $scope, string $listed, string $hidden) {
+it('lists each screen\'s connected apps only', function (string $route, string $scope, string $label, string $listed) {
     $user = User::factory()->create();
     connectApp($user, 'Budget Sync', 'api:use');
     connectApp($user, 'Claude', 'mcp:use');
@@ -48,11 +48,12 @@ it('lists each screen\'s connected apps only', function (string $route, string $
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('connectedApps', 1)
             ->where('connectedApps.0.name', $listed)
-            ->where('connectedApps.0.scopes', [$scope])
+            ->where('connectedApps.0.scopes', [$label])
+            ->where('connectedApps.0.redirect', 'https://claude.ai')
             ->whereNot('connectedApps.0.connected_at', null));
 })->with([
-    'Settings → API' => ['api-tokens.index', 'api:use', 'Budget Sync', 'Claude'],
-    'Settings → AI Connector' => ['mcp.index', 'mcp:use', 'Claude', 'Budget Sync'],
+    'Settings → API' => ['api-tokens.index', 'api:use', 'API', 'Budget Sync'],
+    'Settings → AI Connector' => ['mcp.index', 'mcp:use', 'AI Connector', 'Claude'],
 ]);
 
 it('groups an app\'s tokens into one row and shows when the API last saw it', function () {
@@ -120,13 +121,13 @@ it('revokes only the screen\'s own scope from an app connected to both', functio
         ->assertUnauthorized();
 });
 
-it('404s an app the user has not connected to this screen', function () {
+it('never touches another user\'s app or another screen\'s scope', function () {
     $user = User::factory()->create();
     [$othersClient] = connectApp(User::factory()->create(), 'Someone else\'s app', 'api:use');
     [$mcpClient] = connectApp($user, 'Claude', 'mcp:use');
 
-    actingAs($user)->delete(route('api-tokens.apps.destroy', $othersClient->id))->assertNotFound();
-    actingAs($user)->delete(route('api-tokens.apps.destroy', $mcpClient->id))->assertNotFound();
+    actingAs($user)->delete(route('api-tokens.apps.destroy', $othersClient->id))->assertRedirect();
+    actingAs($user)->delete(route('api-tokens.apps.destroy', $mcpClient->id))->assertRedirect();
 
     expect(Token::query()->where('revoked', true)->exists())->toBeFalse();
 });

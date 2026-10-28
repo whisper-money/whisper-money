@@ -76,10 +76,10 @@
             <!-- Content -->
             <div class="flex flex-col gap-4 p-6 pt-0">
                 <!-- Where the user is sent back: the one thing an app cannot fake -->
-                @if($redirectHost)
-                    <div class="rounded-lg border p-4 bg-muted/50 text-center" data-test="redirect-host">
+                @if($redirectTarget)
+                    <div class="rounded-lg border p-4 bg-muted/50 text-center" data-test="redirect-target">
                         <p class="text-sm text-muted-foreground mb-1">{{ __('After you approve, you are sent to') }}</p>
-                        <p class="text-lg font-semibold break-all">{{ $redirectHost }}</p>
+                        <p class="text-lg font-semibold break-all">{{ $redirectTarget }}</p>
                     </div>
                 @endif
 
@@ -87,7 +87,11 @@
                 <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200" role="note">
                     <p class="text-sm font-medium">{{ __('Unverified app') }}</p>
                     <p class="text-sm mt-1">
-                        {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust :domain.', ['domain' => $redirectHost ?: $client->name]) }}
+                        @if($redirectTarget)
+                            {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust :domain.', ['domain' => $redirectTarget]) }}
+                        @else
+                            {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust it.') }}
+                        @endif
                     </p>
                 </div>
 
@@ -138,18 +142,15 @@
                 </div>
 
                 <!-- Why this account cannot approve (API only) -->
-                @if($refusal === 'shared_account')
-                    <div class="rounded-lg border border-destructive/40 bg-destructive/10 p-4" role="alert" data-test="refusal">
-                        <p class="text-sm font-medium">{{ __('This account cannot connect apps to the API') }}</p>
-                        <p class="text-sm text-muted-foreground mt-1">{{ __('Shared demo and press accounts cannot use the Whisper Money API.') }}</p>
-                    </div>
-                @elseif($refusal === 'plan_required')
+                @if($refusal)
                     <div class="rounded-lg border p-4 bg-muted/50" role="alert" data-test="refusal">
-                        <p class="text-sm font-medium">{{ __('The API is available on a paid plan') }}</p>
-                        <p class="text-sm text-muted-foreground mt-1">{{ __('Upgrade your plan to connect apps to your account, then come back and try again.') }}</p>
-                        <a href="{{ route('subscribe') }}" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
-                            {{ __('See plans') }}
-                        </a>
+                        <p class="text-sm font-medium">{{ $refusal->title() }}</p>
+                        <p class="text-sm text-muted-foreground mt-1">{{ $refusal->message() }}</p>
+                        @if($refusal === \App\Enums\OAuthApprovalRefusal::PlanRequired)
+                            <a href="{{ route('subscribe') }}" target="_blank" rel="noopener" class="mt-3 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                                {{ __('See plans') }}
+                            </a>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -171,7 +172,7 @@
                     </button>
                 </form>
 
-                @if($refusal === null)
+                @unless($refusal)
                     <!-- Approve Form -->
                     <form method="POST" action="{{ route('passport.authorizations.approve') }}" class="flex-1" id="authorizeForm">
                         @csrf
@@ -187,7 +188,7 @@
                             </svg>
                         </button>
                     </form>
-                @endif
+                @endunless
             </div>
         </div>
     </div>

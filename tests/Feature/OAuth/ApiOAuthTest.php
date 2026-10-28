@@ -2,14 +2,28 @@
 
 use App\Enums\OAuthScope;
 use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Laravel\Mcp\Server\Registrar;
+use Laravel\Passport\Client;
 use Laravel\Passport\Passport;
 use Laravel\Passport\Token;
 
 use function Pest\Laravel\get;
 use function Pest\Laravel\postJson;
 use function Pest\Laravel\withHeaders;
+
+/**
+ * A first-party client, approved without showing the consent screen.
+ */
+class FirstPartyClient extends Client
+{
+    public function skipsAuthorization(Authenticatable $user, array $scopes): bool
+    {
+        return true;
+    }
+}
 
 /**
  * A `tools/call` for list_spaces at `/mcp/oauth` with the bearer token.
@@ -125,7 +139,7 @@ describe('consent screen', function () {
             ->assertOk()
             ->assertSee($expected, false)
             ->assertDontSee($unexpected, false)
-            ->assertSee('claude.ai', false)
+            ->assertSee('https://claude.ai', false)
             ->assertSee('Unverified app', false)
             ->assertSee('read and write access to your finances', false)
             ->assertSee('id="authorizeForm"', false);
@@ -142,6 +156,13 @@ describe('consent screen', function () {
         requestOAuthConsent($user, oauthClient('Budget Sync'), ['api:use'], $challenge)
             ->assertOk()
             ->assertSee('App no verificada', false);
+    });
+});
+
+describe('device authorization', function () {
+    it('is not offered, since it would skip the scope rules', function () {
+        expect(Route::has('passport.device'))->toBeFalse()
+            ->and(Route::has('passport.device.authorizations.approve'))->toBeFalse();
     });
 });
 
@@ -206,6 +227,20 @@ describe('who may approve api:use', function () {
         requestOAuthConsent($user, $client, ['api:use'], $challenge)
             ->assertOk()
             ->assertSee('The API is available on a paid plan', false);
+    });
+
+    it('refuses a client that skips the consent screen when the user may not approve', function () {
+        Passport::useClientModel(FirstPartyClient::class);
+        $client = oauthClient();
+        [, $challenge] = pkcePair();
+
+        $response = requestOAuthConsent(User::factory()->create(), $client, ['api:use'], $challenge)->assertRedirect();
+
+        expect(oauthRedirectQuery($response))
+            ->toMatchArray(['error' => 'access_denied'])
+            ->not->toHaveKey('code');
+
+        Passport::useClientModel(Client::class);
     });
 
     it('re-approves an earlier grant silently while the plan holds', function () {

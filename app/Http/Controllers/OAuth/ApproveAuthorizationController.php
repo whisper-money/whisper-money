@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\OAuth;
 
-use App\Enums\OAuthScope;
 use App\Http\Controllers\OAuth\Concerns\GuardsOAuthScopes;
 use Illuminate\Http\Request;
 use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
@@ -14,6 +13,10 @@ use Symfony\Component\HttpFoundation\Response;
  * hides the approve button from a user who may not approve the request; this
  * refuses the approval itself, so posting the form by hand gets the client an
  * `access_denied` instead of a code.
+ *
+ * The body repeats Passport's approve() rather than calling it: reading the
+ * request pulls it out of the session, so the parent could not read it again.
+ * Keep it in step with Passport on upgrades.
  */
 class ApproveAuthorizationController extends PassportApproveAuthorizationController
 {
@@ -23,9 +26,7 @@ class ApproveAuthorizationController extends PassportApproveAuthorizationControl
     {
         $authRequest = $this->getAuthRequestFromSession($request);
 
-        if (OAuthScope::fromRequested($this->requestedScopeIds($authRequest))->approvalRefusalFor($request->user()) !== null) {
-            $this->failAuthorization($authRequest, 'access_denied', 'This account cannot authorize apps to use the Whisper Money API.');
-        }
+        $this->ensureUserMayApprove($authRequest, $request->user());
 
         $authRequest->setAuthorizationApproved(true);
 

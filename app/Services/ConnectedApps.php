@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Enums\OAuthScope;
 use App\Models\ApiRequest;
 use App\Models\User;
+use App\Support\RedirectTarget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\AuthCode;
+use Laravel\Passport\Client;
 use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
 
@@ -21,10 +24,12 @@ use Laravel\Passport\Token;
 class ConnectedApps
 {
     /**
-     * One row per client. `last_used_at` is only known for the API, which
-     * records the client of every request; MCP tool calls do not.
+     * One row per client, with where it redirects (its name is whatever its
+     * registrant chose, so the redirect is what tells two apps apart) and its
+     * scopes by name. `last_used_at` is only known for the API, which records
+     * the client of every request; MCP tool calls do not.
      *
-     * @return list<array{id: string, name: string, scopes: list<string>, connected_at: ?string, last_used_at: ?string}>
+     * @return list<array{id: string, name: string, redirect: ?string, scopes: list<string>, connected_at: ?string, last_used_at: ?string}>
      */
     public function for(User $user, OAuthScope $scope): array
     {
@@ -35,8 +40,11 @@ class ConnectedApps
             ->groupBy('client_id')
             ->map(fn (Collection $clientTokens, string $clientId): array => [
                 'id' => $clientId,
-                'name' => $clientTokens->first()->client?->name ?? $clientId,
-                'scopes' => $clientTokens->pluck('scopes')->flatten()->unique()->values()->all(),
+                'name' => $clientTokens->first()->client?->name ?? __('Deleted app'),
+                'redirect' => $this->redirectOf($clientTokens->first()->client),
+                'scopes' => $clientTokens->pluck('scopes')->flatten()->unique()
+                    ->map(fn (string $id): string => OAuthScope::tryFrom($id)?->label() ?? $id)
+                    ->values()->all(),
                 'connected_at' => $clientTokens->first()->created_at?->toIso8601String(),
                 'last_used_at' => $lastUsed[$clientId] ?? null,
             ])
@@ -53,12 +61,21 @@ class ConnectedApps
      */
     public function revoke(User $user, OAuthScope $scope, string $clientId): int
     {
-        $tokenIds = $this->held(Token::class, $user, $scope)->where('client_id', $clientId)->pluck('id');
+        return DB::transaction(function () use ($user, $scope, $clientId): int {
+            $tokenIds = $this->held(Token::class, $user, $scope)->where('client_id', $clientId)->lockForUpdate()->pluck('id');
 
-        RefreshToken::query()->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
-        $this->held(AuthCode::class, $user, $scope)->where('client_id', $clientId)->update(['revoked' => true]);
+            RefreshToken::query()->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
+            $this->held(AuthCode::class, $user, $scope)->where('client_id', $clientId)->update(['revoked' => true]);
 
-        return Token::query()->whereIn('id', $tokenIds)->update(['revoked' => true]);
+            return Token::query()->whereIn('id', $tokenIds)->update(['revoked' => true]);
+        });
+    }
+
+    private function redirectOf(?Client $client): ?string
+    {
+        $redirectUri = $client?->redirect_uris[0] ?? null;
+
+        return $redirectUri === null ? null : RedirectTarget::display($redirectUri);
     }
 
     /**

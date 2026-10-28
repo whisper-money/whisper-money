@@ -117,7 +117,8 @@ describe('API settings page', () => {
             {
                 id: 'client-1',
                 name: 'Budget Sync',
-                scopes: ['api:use'],
+                redirect: 'http://localhost:53682',
+                scopes: ['API'],
                 connected_at: '2026-10-01T00:00:00+00:00',
                 last_used_at: null,
             },
@@ -127,7 +128,7 @@ describe('API settings page', () => {
 
         expect(screen.getByText('Connected apps')).toBeTruthy();
         expect(screen.getByText('Budget Sync')).toBeTruthy();
-        expect(screen.getByText('api:use')).toBeTruthy();
+        expect(screen.getByText('http://localhost:53682')).toBeTruthy();
         expect(screen.getByText(/Last used/)).toBeTruthy();
     });
 });

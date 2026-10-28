@@ -12,7 +12,8 @@ function app(overrides: Partial<ConnectedAppRow> = {}): ConnectedAppRow {
     return {
         id: 'client-1',
         name: 'Claude',
-        scopes: ['mcp:use'],
+        redirect: 'https://chatgpt.com',
+        scopes: ['AI Connector'],
         connected_at: '2026-10-01T00:00:00+00:00',
         last_used_at: '2026-10-20T00:00:00+00:00',
         ...overrides,
@@ -45,7 +46,8 @@ describe('ConnectedAppList', () => {
 
         expect(screen.getByText('Claude')).toBeTruthy();
         expect(screen.getByText('ChatGPT')).toBeTruthy();
-        expect(screen.getAllByText('mcp:use')).toHaveLength(2);
+        expect(screen.getAllByText('AI Connector')).toHaveLength(2);
+        expect(screen.getAllByText('https://chatgpt.com')).toHaveLength(2);
         expect(screen.getAllByText(/Connected/).length).toBeGreaterThan(0);
         expect(screen.queryByText(/Last used/)).toBeNull();
     });

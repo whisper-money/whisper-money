@@ -2,7 +2,7 @@ import {
     ConfirmTokenAction,
     confirmedActionVisitOptions,
     formatDate,
-} from '@/components/access-tokens/token-list';
+} from '@/components/access-tokens/confirm-action';
 import { Badge } from '@/components/ui/badge';
 import {
     Card,
@@ -18,14 +18,16 @@ import { Trash2 } from 'lucide-react';
 export interface ConnectedAppRow {
     id: string;
     name: string;
+    /** Where the app sends the user back: what tells two same-named apps apart. */
+    redirect: string | null;
     scopes: string[];
     connected_at: string | null;
     last_used_at: string | null;
 }
 
 /**
- * The OAuth apps connected to one surface (MCP or API), each with its scopes,
- * dates and a revoke action that disconnects it. `showLastUsed` is for
+ * The OAuth apps connected to one surface (MCP or API), each with where it
+ * redirects, its scopes, dates and a revoke action that disconnects it. `showLastUsed` is for
  * screens whose server knows when an app last used its access.
  */
 export function ConnectedAppList({
@@ -71,6 +73,11 @@ export function ConnectedAppList({
                                             </Badge>
                                         ))}
                                     </div>
+                                    {app.redirect && (
+                                        <p className="text-xs break-all text-muted-foreground">
+                                            {app.redirect}
+                                        </p>
+                                    )}
                                     <p className="text-xs text-muted-foreground">
                                         {__('Connected')}:{' '}
                                         {formatDate(app.connected_at)}
