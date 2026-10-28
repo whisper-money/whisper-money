@@ -63,11 +63,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->when(AuthorizationController::class)
             ->needs(StatefulGuard::class)
             ->give(fn () => Auth::guard(config('passport.guard')));
+        $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
 
         // The device-code grant approves through Passport's own controllers,
         // which skip the scope rules above. No client uses it; keep it off.
         Passport::$deviceCodeGrantEnabled = false;
-        $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
 
         $this->app->bind(TransactionMatcher::class, UncategorizedTransactionMatcher::class);
         $this->app->bind(RuleSuggestionGenerator::class, LaravelAiRuleSuggestionGenerator::class);
