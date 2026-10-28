@@ -7,6 +7,7 @@ use App\Models\AutomationRule;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Services\AutomationRules\RuleApplication;
+use App\Services\AutomationRules\RuleApplicationStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Cache;
@@ -103,18 +104,18 @@ class AutomationRuleApplier
         $total = count($matchingIds);
 
         if ($dryRun) {
-            return new RuleApplication('preview', $rule->id, $total, $this->sample($matchingIds, $space));
+            return new RuleApplication(RuleApplicationStatus::Preview, $rule->id, $total, $this->sample($matchingIds, $space));
         }
 
         if ($total > self::SYNC_THRESHOLD) {
             $this->queue($rule, $matchingIds, $onlyUncategorized, $space);
 
-            return new RuleApplication('queued', $rule->id, $total);
+            return new RuleApplication(RuleApplicationStatus::Queued, $rule->id, $total);
         }
 
         $result = $this->applyNow($rule, $matchingIds, $onlyUncategorized, $space);
 
-        return new RuleApplication('done', $rule->id, $total, applied: $result['applied'], updated: $result['updated']);
+        return new RuleApplication(RuleApplicationStatus::Done, $rule->id, $total, applied: $result['applied'], updated: $result['updated']);
     }
 
     /**

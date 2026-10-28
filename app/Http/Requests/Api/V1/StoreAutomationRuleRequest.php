@@ -15,6 +15,6 @@ class StoreAutomationRuleRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->automationRuleFields(AutomationRuleWriter::createRules(), 'required');
+        return $this->automationRuleFields(AutomationRuleWriter::createRules(), 'present');
     }
 }

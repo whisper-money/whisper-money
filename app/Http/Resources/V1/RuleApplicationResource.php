@@ -3,7 +3,9 @@
 namespace App\Http\Resources\V1;
 
 use App\Services\AutomationRules\RuleApplication;
+use App\Services\AutomationRules\RuleApplicationStatus;
 use Dedoc\Scramble\Attributes\SchemaName;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,7 +31,7 @@ class RuleApplicationResource extends JsonResource
              *
              * @example preview
              */
-            'status' => $this->status,
+            'status' => $this->status->value,
             /**
              * The rule's id.
              *
@@ -49,17 +51,27 @@ class RuleApplicationResource extends JsonResource
              */
             'sample' => TransactionResource::collection($this->sample),
             /**
-             * When `done`, how many matches the rule went over; `0` otherwise.
+             * When `done`, how many matches the rule went over; `null` otherwise.
              *
-             * @example 0
+             * @example null
              */
             'applied' => $this->applied,
             /**
-             * When `done`, how many of them it changed: one that already had the rule's category, labels and note is applied but not updated. `0` otherwise.
+             * When `done`, how many of them it changed: one that already had the rule's category, labels and note is applied but not updated. `null` otherwise.
              *
-             * @example 0
+             * @example null
              */
             'updated' => $this->updated,
         ];
+    }
+
+    /**
+     * A run handed to the queue is still in progress: `202 Accepted`.
+     */
+    public function withResponse(Request $request, JsonResponse $response): void
+    {
+        if ($this->status === RuleApplicationStatus::Queued) {
+            $response->setStatusCode(202);
+        }
     }
 }

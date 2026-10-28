@@ -458,8 +458,8 @@ describe('apply', function () {
             ->assertJsonCount(2, 'data.sample')
             ->assertJsonPath('data.sample.*.description', ['Grocery Store', 'Grocery Store'])
             ->assertJsonPath('data.sample.0.amount', -1_000)
-            ->assertJsonPath('data.applied', 0)
-            ->assertJsonPath('data.updated', 0);
+            ->assertJsonPath('data.applied', null)
+            ->assertJsonPath('data.updated', null);
 
         expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
     });
@@ -559,5 +559,38 @@ describe('apply', function () {
             ->assertJsonPath('code', 'insufficient_scope');
 
         expect(Transaction::query()->where('user_id', $user->id)->whereNotNull('category_id')->count())->toBe(0);
+    });
+});
+
+describe('conditions as sent', function () {
+    it('keeps the spaces and empty strings of the condition values', function () {
+        $user = User::factory()->create();
+        $conditions = ['and' => [['in' => [' bar ', ['var' => 'description']]], ['!=' => [['var' => 'notes'], '']]]];
+
+        withHeaders(rulesWriter($user))
+            ->postJson('/api/v1/automation-rules', [
+                'title' => '  Bar  ',
+                'priority' => 1,
+                'conditions' => $conditions,
+                'action_category_id' => Category::factory()->create(['user_id' => $user->id])->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.title', 'Bar')
+            ->assertJsonPath('data.conditions', $conditions);
+    });
+
+    it('refuses an empty conditions object and a priority the column cannot hold', function () {
+        $user = User::factory()->create();
+
+        withHeaders(rulesWriter($user))
+            ->postJson('/api/v1/automation-rules', [
+                'title' => 'Bar',
+                'priority' => 3_000_000_000,
+                'conditions' => (object) [],
+                'action_category_id' => Category::factory()->create(['user_id' => $user->id])->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.conditions.0', 'conditions must be a non-empty JsonLogic object.')
+            ->assertJsonValidationErrors('priority');
     });
 });

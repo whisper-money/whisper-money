@@ -22,13 +22,18 @@ use Illuminate\Validation\ValidationException;
 class AutomationRuleWriter
 {
     /**
+     * The largest value the `priority` column holds.
+     */
+    private const int MaxPriority = 2_147_483_647;
+
+    /**
      * @return array<string, array<mixed>>
      */
     public static function createRules(): array
     {
         return [
             'title' => ['required', 'string', 'max:'.AutomationRule::MAX_TITLE_LENGTH],
-            'priority' => ['required', 'integer', 'min:0'],
+            'priority' => ['required', 'integer', 'min:0', 'max:'.self::MaxPriority],
             'action_note' => ['sometimes', 'nullable', 'string'],
         ];
     }
@@ -47,12 +52,12 @@ class AutomationRuleWriter
     }
 
     /**
-     * @param  array{title: string, priority: int, rules_json: array<string, mixed>, action_category_id: ?string, action_note: ?string}  $attributes
+     * @param  array{title: string, priority: int, rules_json: array<string, mixed>, action_category_id?: ?string, action_note?: ?string}  $attributes
      * @param  list<string>  $labelIds
      */
     public function create(User $user, Space $space, array $attributes, array $labelIds): AutomationRule
     {
-        if ($attributes['action_category_id'] === null && $labelIds === []) {
+        if (($attributes['action_category_id'] ?? null) === null && $labelIds === []) {
             throw ValidationException::withMessages([
                 'action_category_id' => 'At least one action is required: pass action_category_id and/or action_label_ids.',
             ]);

@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleApplier;
+use App\Services\AutomationRules\RuleApplicationStatus;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -40,7 +41,7 @@ class ApplyAutomationRule extends WriteTool
         $total = $application->total;
 
         return $this->json(match ($application->status) {
-            'preview' => [
+            RuleApplicationStatus::Preview => [
                 'dry_run' => true,
                 'automation_rule_id' => $application->automationRuleId,
                 'total_matches' => $total,
@@ -51,13 +52,13 @@ class ApplyAutomationRule extends WriteTool
                     ? 'Nothing matched, so there is nothing to apply. Widen the rule with update_automation_rule, or set only_uncategorized false to include transactions that already have a category.'
                     : "Nothing was changed. Call apply_automation_rule again with dry_run false to apply the rule to all {$total} matching transactions.",
             ],
-            'queued' => [
+            RuleApplicationStatus::Queued => [
                 'status' => 'queued',
                 'automation_rule_id' => $application->automationRuleId,
                 'total' => $total,
                 'message' => 'Too many transactions to apply inline, so this finishes in the background over the next few minutes. There is no progress tool: call apply_automation_rule with dry_run true again to see what the rule still matches.',
             ],
-            default => [
+            RuleApplicationStatus::Done => [
                 'status' => 'done',
                 'automation_rule_id' => $application->automationRuleId,
                 'total' => $total,

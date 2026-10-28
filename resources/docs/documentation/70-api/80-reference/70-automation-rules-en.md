@@ -521,7 +521,7 @@ curl -X DELETE https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-
 
 `POST /api/v1/automation-rules/{automation_rule}/apply`
 
-Runs the rule over the transactions already in the space, which it otherwise never touches. By default this is a preview (`dry_run: true`): it answers `status: preview` with how many transactions match and the first 20 of them, newest first, and changes nothing. With `dry_run: false` it **overwrites your data**: every match gets the rule's category (replacing the one it had when `only_uncategorized` is `false`), its labels added and its note appended. It cannot be undone. Up to 100 matches are applied right away and answer `200` with `status: done`; more are applied in the background over the next few minutes and answer `202` with `status: queued`. There is no progress endpoint: preview again to see what the rule still matches. Only the member of the space who created the rule can apply it.
+Runs the rule over the transactions already in the space, which it otherwise never touches. By default this is a preview (`dry_run: true`): it answers `status: preview` with how many transactions match and the first 20 of them, newest first, and changes nothing. With `dry_run: false` it **overwrites your data**: every match gets the rule's category (replacing the one it had when `only_uncategorized` is `false`), its labels added and its note appended. It cannot be undone. Up to 100 matches are applied right away and answer `200` with `status: done`; more are applied in the background over the next few minutes and answer `202` with `status: queued`. There is no progress endpoint: preview again to see what the rule still matches. Previewing and applying both need a write token, and only the member of the space who created the rule can do either. The matches are worked out once and reused for up to 15 minutes, so the apply that follows a preview goes over the transactions that preview reported; editing the rule starts over.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -573,8 +573,8 @@ Runs the rule over the transactions already in the space, which it otherwise nev
 | `data.sample[].notes` | string or null | Free-text notes, or `null`. |
 | `data.sample[].split_parent_id` | string (uuid) or null | Set when this transaction is one part of a split, otherwise `null`. Every part of the same split carries the same value. The split original is out of every list, and a part cannot be deleted or have its core fields changed on its own. |
 | `data.sample[].created_at` | string (date-time) or null | When the transaction was recorded in Whisper Money. |
-| `data.applied` | integer | When `done`, how many matches the rule went over; `0` otherwise. |
-| `data.updated` | integer | When `done`, how many of them it changed: one that already had the rule's category, labels and note is applied but not updated. `0` otherwise. |
+| `data.applied` | integer or null | When `done`, how many matches the rule went over; `null` otherwise. |
+| `data.updated` | integer or null | When `done`, how many of them it changed: one that already had the rule's category, labels and note is applied but not updated. `null` otherwise. |
 
 #### Example request
 
@@ -626,8 +626,8 @@ curl -X POST https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a
                 "created_at": "2026-01-31T18:12:00+00:00"
             }
         ],
-        "applied": 0,
-        "updated": 0
+        "applied": null,
+        "updated": null
     }
 }
 ```

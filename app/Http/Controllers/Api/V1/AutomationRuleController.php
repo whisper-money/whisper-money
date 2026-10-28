@@ -65,15 +65,12 @@ class AutomationRuleController extends Controller
     #[ScopedToSpace]
     public function store(StoreAutomationRuleRequest $request): JsonResponse
     {
-        $attributes = $request->ruleAttributes();
-
-        $rule = $this->writer->create($this->user($request), $this->space($request), [
-            'title' => $attributes['title'],
-            'priority' => $attributes['priority'],
-            'rules_json' => $attributes['rules_json'],
-            'action_category_id' => $attributes['action_category_id'] ?? null,
-            'action_note' => $attributes['action_note'] ?? null,
-        ], $request->labelIds() ?? []);
+        $rule = $this->writer->create(
+            $this->user($request),
+            $this->space($request),
+            $request->ruleAttributes(),
+            $request->labelIds() ?? [],
+        );
 
         return (new AutomationRuleResource($rule->refresh()))->response()->setStatusCode(201);
     }
@@ -143,22 +140,21 @@ class AutomationRuleController extends Controller
      * Up to 100 matches are applied right away and answer `200` with
      * `status: done`; more are applied in the background over the next few
      * minutes and answer `202` with `status: queued`. There is no progress
-     * endpoint: preview again to see what the rule still matches. Only the
-     * member of the space who created the rule can apply it.
+     * endpoint: preview again to see what the rule still matches.
+     *
+     * Previewing and applying both need a write token, and only the member of
+     * the space who created the rule can do either. The matches are worked
+     * out once and reused for up to 15 minutes, so the apply that follows a
+     * preview goes over the transactions that preview reported; editing the
+     * rule starts over.
      *
      * @param  string  $automation_rule  The rule's id.
      */
     #[ScopedToSpace]
-    public function apply(ApplyAutomationRuleRequest $request, string $automation_rule, AutomationRuleApplier $applier): JsonResponse
+    public function apply(ApplyAutomationRuleRequest $request, string $automation_rule, AutomationRuleApplier $applier): RuleApplicationResource
     {
-        $application = $applier->applyInSpace($request->automationRule(), $this->space($request), $request->dryRun(), $request->onlyUncategorized());
-
-        $resource = new RuleApplicationResource($application);
-
-        if ($application->status === 'queued') {
-            return $resource->response()->setStatusCode(202);
-        }
-
-        return $resource->response();
+        return new RuleApplicationResource(
+            $applier->applyInSpace($request->automationRule(), $this->space($request), $request->dryRun(), $request->onlyUncategorized()),
+        );
     }
 }

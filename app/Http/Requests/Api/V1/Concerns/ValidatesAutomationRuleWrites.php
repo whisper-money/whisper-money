@@ -21,7 +21,7 @@ trait ValidatesAutomationRuleWrites
 
     /**
      * @param  array<string, array<mixed>>  $rules  the AutomationRuleWriter rules for the write
-     * @param  string  $presence  `required` on create, `sometimes` on update
+     * @param  string  $presence  `present` on create, `sometimes` on update: an empty object is RuleConditions' to refuse
      * @return array<string, array<mixed>>
      */
     protected function automationRuleFields(array $rules, string $presence): array
@@ -97,6 +97,21 @@ trait ValidatesAutomationRuleWrites
     public function labelIds(): ?array
     {
         return $this->has('action_label_ids') ? array_values($this->validated('action_label_ids')) : null;
+    }
+
+    /**
+     * Read the conditions as sent. The global TrimStrings and
+     * ConvertEmptyStringsToNull middleware would otherwise rewrite the values
+     * they compare against (`" netflix "`, `""`), so a rule would match
+     * something else than the same conditions sent through the MCP.
+     */
+    protected function prepareForValidation(): void
+    {
+        $sent = json_decode($this->getContent(), true);
+
+        if (is_array($sent) && array_key_exists('conditions', $sent)) {
+            $this->merge(['conditions' => $sent['conditions']]);
+        }
     }
 
     private function validConditions(string $attribute, mixed $value, Closure $fail): void

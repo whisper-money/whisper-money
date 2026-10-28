@@ -13,19 +13,18 @@ use Illuminate\Database\Eloquent\Collection;
 final readonly class RuleApplication
 {
     /**
-     * @param  'preview'|'done'|'queued'  $status
      * @param  string  $automationRuleId  the rule that was applied
      * @param  int  $total  how many transactions the rule matched
      * @param  Collection<int, Transaction>  $sample  a preview's first matches, newest first
-     * @param  int  $applied  the transactions an inline run went over
-     * @param  int  $updated  the ones it changed: a row that already carried the rule's category and labels is applied but not updated
+     * @param  int|null  $applied  the transactions an inline run went over, null unless it is done
+     * @param  int|null  $updated  the ones it changed, null unless it is done: a row that already carried the rule's category and labels is applied but not updated
      */
     public function __construct(
-        public string $status,
+        public RuleApplicationStatus $status,
         public string $automationRuleId,
         public int $total,
         public Collection $sample = new Collection,
-        public int $applied = 0,
-        public int $updated = 0,
+        public ?int $applied = null,
+        public ?int $updated = null,
     ) {}
 }
