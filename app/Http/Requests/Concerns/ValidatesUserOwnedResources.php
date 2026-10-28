@@ -13,7 +13,7 @@ trait ValidatesUserOwnedResources
      */
     protected function userOwned(string $table): Exists
     {
-        return Rule::exists($table, 'id')->where('user_id', $this->user()->id);
+        return Rule::exists($table, 'id')->where('user_id', $this->user()?->id);
     }
 
     /**

@@ -13,3 +13,23 @@ A space holds a set of accounts and everything recorded on them. Every user has 
 | Endpoint | What it does |
 | --- | --- |
 | [`GET /api/v1/spaces`](/documentation/api/reference/spaces#list-spaces) | List spaces |
+
+## Accounts
+
+An account is a bookkeeping record of money held somewhere: a manual one you keep up to date yourself, or a bank-connected one the bank sync keeps up to date. Nothing here moves money; that happens at the bank.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/accounts`](/documentation/api/reference/accounts#list-accounts) | List accounts |
+| [`POST /api/v1/accounts`](/documentation/api/reference/accounts#create-an-account) | Create an account |
+| [`GET /api/v1/accounts/{account}`](/documentation/api/reference/accounts#retrieve-an-account) | Retrieve an account |
+| [`PATCH /api/v1/accounts/{account}`](/documentation/api/reference/accounts#update-an-account) | Update an account |
+
+## Balances
+
+A balance is a snapshot of what an account held at the end of one day, in the account currency's minor units. A bank-connected account gets its balances from the bank sync; you record those of a manual account yourself. A credit card has no balance: it has a credit limit, and what is in use of it comes from its transactions.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/accounts/{account}/balances`](/documentation/api/reference/balances#list-an-accounts-balances) | List an account's balances |
+| [`POST /api/v1/accounts/{account}/balances`](/documentation/api/reference/balances#record-a-balance) | Record a balance |

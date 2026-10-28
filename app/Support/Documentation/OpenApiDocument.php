@@ -136,6 +136,41 @@ final class OpenApiDocument
     }
 
     /**
+     * An example request body: its required fields and the optional ones that
+     * carry an example of their own. A body with fields for several cases (an
+     * account of any type) would otherwise show them all at once.
+     *
+     * @param  Schema  $schema
+     */
+    public function requestExample(array $schema): mixed
+    {
+        $resolved = $this->resolve($schema);
+
+        if (array_key_exists('example', $resolved) || $this->type($resolved) !== 'object') {
+            return $this->example($schema);
+        }
+
+        $required = is_array($resolved['required'] ?? null) ? $resolved['required'] : [];
+
+        return array_filter(
+            $this->objectExample($resolved),
+            fn (string $name): bool => in_array($name, $required, true)
+                || $this->hasOwnExample(is_array($resolved['properties'][$name] ?? null) ? $resolved['properties'][$name] : []),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * @param  Schema  $schema
+     */
+    private function hasOwnExample(array $schema): bool
+    {
+        $resolved = $this->resolve($schema);
+
+        return array_key_exists('example', $resolved) || ! empty($resolved['examples']);
+    }
+
+    /**
      * @param  Schema  $schema
      */
     public function description(array $schema): string

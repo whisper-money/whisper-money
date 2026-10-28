@@ -3,13 +3,11 @@
 namespace App\Mcp\Tools;
 
 use App\Enums\AccountType;
-use App\Mcp\Tools\Concerns\PresentsAccounts;
-use App\Mcp\Tools\Concerns\ValidatesAccountWrites;
+use App\Mcp\Tools\Concerns\WritesAccounts;
 use App\Models\User;
+use App\Services\Accounts\AccountWriteRules;
 use App\Services\AccountWriteService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -17,17 +15,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 #[Description('Create a manual account of any type, optionally with today\'s balance. Loans and properties take their own details. Bank-connected accounts cannot be created here: the user connects those in the app.')]
 class CreateAccount extends WriteTool
 {
-    use PresentsAccounts, ValidatesAccountWrites;
-
-    /**
-     * Fields that would point the new account at a bank connection. Only the
-     * provider consent flow in the app may do that, so an agent reaching for
-     * one is told where the real thing lives instead of getting an account that
-     * looks connected and never syncs.
-     *
-     * @var list<string>
-     */
-    private const CONNECTION_FIELDS = ['banking_connection_id', 'external_account_id', 'is_connected'];
+    use WritesAccounts;
 
     /**
      * @return array<string, mixed>
@@ -41,26 +29,23 @@ class CreateAccount extends WriteTool
             'bank_id' => $schema->string()->description('Optional id of the bank this account is held at, for its name and logo. It does not connect anything.'),
             'balance' => $schema->integer()->description('Optional balance today, in the currency\'s minor units. On a loan or a property it is also what the generated balance history ends at. Refused on a credit card, which takes a credit_limit instead.'),
             'linked_real_estate_account_id' => $schema->string()->description('loan only: id of the real_estate account this loan is the mortgage of. The property must not already be linked to a loan.'),
-            ...$this->detailSchema($schema),
-            'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
+            ...$this->sharedSchema($schema),
         ];
     }
 
     protected function write(Request $request, User $user): Response
     {
-        $this->refuseConnectedAccount($request);
-        $this->buildRulesFor($user);
+        $rules = new AccountWriteRules($user);
+        AccountWriteRules::throwIfAny($rules->connectionFieldErrors($request->all()));
 
-        $type = $this->validatedType($request);
-        $this->refuseCreditCardBalance($request, $type);
+        // The type has to be resolved before the rest of the rules, because
+        // which detail fields are even accepted depends on it.
+        $request->validate($rules->typeRule(required: true));
+        $type = $request->enum('type', AccountType::class);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string'],
-            'bank_id' => ['nullable', 'exists:banks,id'],
-            'currency_code' => ['required', 'string', Rule::in($this->allowedCurrencyCodes($user))],
-            'balance' => ['nullable', 'integer'],
-            ...$this->detailRules($type, creating: true),
-        ]);
+        AccountWriteRules::throwIfAny($rules->creditCardBalanceErrors($request->all(), $type));
+
+        $validated = $request->validate($rules->createRules($type));
 
         $space = $this->resolveSpace($request, $user);
 
@@ -71,44 +56,5 @@ class CreateAccount extends WriteTool
         );
 
         return $this->json(['account' => $this->presentAccount($account, $user)]);
-    }
-
-    /**
-     * The type has to be resolved before the rest of the rules, because which
-     * detail fields are even accepted depends on it.
-     */
-    private function validatedType(Request $request): AccountType
-    {
-        $request->validate($this->typeRule(required: true));
-
-        return $request->enum('type', AccountType::class);
-    }
-
-    /**
-     * A credit card has no balance: what is in use of it comes from its
-     * transactions. Telling the agent beats storing a figure nothing reads.
-     */
-    private function refuseCreditCardBalance(Request $request, AccountType $type): void
-    {
-        if (! $request->has('balance') || $type->hasBalance()) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'balance' => 'A credit card has no balance: leave balance out and send credit_limit instead. What is in use of the card is worked out from its transactions.',
-        ]);
-    }
-
-    private function refuseConnectedAccount(Request $request): void
-    {
-        foreach (self::CONNECTION_FIELDS as $field) {
-            if (! $request->has($field)) {
-                continue;
-            }
-
-            throw ValidationException::withMessages([
-                $field => 'A bank-connected account cannot be created from here: it is born from the bank\'s consent flow, which only the user can go through in the Whisper Money app. Create a manual account instead, or ask the user to connect the bank themselves.',
-            ]);
-        }
     }
 }

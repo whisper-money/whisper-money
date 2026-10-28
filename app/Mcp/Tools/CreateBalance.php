@@ -2,9 +2,8 @@
 
 namespace App\Mcp\Tools;
 
-use App\Models\AccountBalance;
 use App\Models\User;
-use App\Rules\StorableDate;
+use App\Services\Accounts\AccountBalanceRecorder;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -31,27 +30,17 @@ class CreateBalance extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'balance' => ['required', 'integer'],
-            'balance_date' => ['sometimes', 'date', new StorableDate],
-            'invested_amount' => ['sometimes', 'nullable', 'integer'],
-        ]);
+        $recorder = app(AccountBalanceRecorder::class);
+        $request->validate($recorder->rules());
 
         $space = $this->resolveSpace($request, $user);
         $account = $this->balanceWritableAccount($request, $space);
 
-        $balanceDate = $request->filled('balance_date')
-            ? $request->string('balance_date')->toString()
-            : now()->toDateString();
-
-        $balance = AccountBalance::updateOrCreate(
-            ['account_id' => $account->id, 'balance_date' => $balanceDate],
-            [
-                'balance' => $request->integer('balance'),
-                ...$request->filled('invested_amount')
-                    ? ['invested_amount' => $request->integer('invested_amount')]
-                    : [],
-            ],
+        $balance = $recorder->record(
+            $account,
+            $request->integer('balance'),
+            $this->nullableString($request, 'balance_date'),
+            $request->filled('invested_amount') ? $request->integer('invested_amount') : null,
         );
 
         return $this->json([

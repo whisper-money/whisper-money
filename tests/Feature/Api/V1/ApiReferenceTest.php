@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\Documentation\ApiReference;
+use App\Support\Documentation\OpenApiDocument;
 use Illuminate\Support\Facades\File;
 
 it('keeps the committed API reference in step with the code', function () {
@@ -102,4 +103,19 @@ it('lists the English-only reference in llms.txt under English alone', function 
     expect((string) $spanish)
         ->toContain(route('documentation.markdown', ['slug' => 'api/authentication', 'lang' => 'es']))
         ->not->toContain(route('documentation.markdown', ['slug' => 'api/reference', 'lang' => 'es']));
+});
+
+it('shows only the required fields and those with an example of their own in an example request', function () {
+    $body = (new OpenApiDocument([]))->requestExample([
+        'type' => 'object',
+        'required' => ['name'],
+        'properties' => [
+            'name' => ['type' => 'string', 'examples' => ['Main checking']],
+            'type' => ['type' => 'string'],
+            'balance' => ['type' => 'integer', 'example' => 125000],
+            'credit_limit' => ['type' => 'integer'],
+        ],
+    ]);
+
+    expect($body)->toBe(['name' => 'Main checking', 'balance' => 125000]);
 });

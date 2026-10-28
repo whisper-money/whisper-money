@@ -2,7 +2,6 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\AccountType;
 use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Account;
 use App\Models\AutomationRule;
@@ -12,6 +11,8 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Accounts\AccountBalanceRecorder;
+use App\Services\Accounts\AccountWriteRules;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -140,17 +141,7 @@ abstract class WriteTool extends McpTool
     {
         $account = $this->accountInSpace($request, $space, $key);
 
-        if ($account->isConnected()) {
-            throw ValidationException::withMessages([
-                $key => 'That account is connected to a bank, so its balances come from the sync and a manual snapshot would be overwritten. Only non-connected (manual) accounts accept balances.',
-            ]);
-        }
-
-        if (! $account->type->hasBalance()) {
-            throw ValidationException::withMessages([
-                $key => AccountType::NO_BALANCE_MESSAGE,
-            ]);
-        }
+        AccountWriteRules::throwIfAny(app(AccountBalanceRecorder::class)->unwritableErrors($account, $key));
 
         return $account;
     }

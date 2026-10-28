@@ -40,7 +40,7 @@ final class SharedComponents
         ],
         403 => [
             'name' => 'Forbidden',
-            'description' => 'The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`).',
+            'description' => 'The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`).',
             'code' => 'insufficient_scope',
             'message' => 'This token is read-only. Create a read & write token to make changes.',
         ],

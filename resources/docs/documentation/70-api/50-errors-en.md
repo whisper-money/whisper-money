@@ -42,6 +42,7 @@ first message, and every invalid field with its messages under `errors`.
 | `401`  | `unauthenticated`         | No bearer token, or one that is unknown, expired or revoked.                                                    |
 | `403`  | `insufficient_scope`      | The token cannot do this: a read-only token on a write, or an AI Connector token.                               |
 | `403`  | `plan_required`           | The account has no paid plan. The body adds `subscribe_url`.                                                    |
+| `403`  | `not_account_owner`       | The account belongs to another member of the space: they can all read it, but only its owner can edit it.       |
 | `403`  | `shared_account`          | The shared demo accounts cannot use the API.                                                                    |
 | `404`  | `not_found`               | No object with that id, or the endpoint does not exist.                                                         |
 | `405`  | `method_not_allowed`      | The endpoint exists, but not with that HTTP method.                                                             |

@@ -73,6 +73,7 @@ describe('conventions for later endpoints', function () {
             Route::get('fixtures', [DocumentedFixtureController::class, 'index']);
             Route::post('fixtures', [DocumentedFixtureController::class, 'store']);
             Route::delete('fixtures/{fixture}', [DocumentedFixtureController::class, 'destroy']);
+            Route::delete('uuid-fixtures/{fixture}', [DocumentedFixtureController::class, 'destroy'])->whereUuid('fixture');
         });
     });
 
@@ -107,5 +108,13 @@ describe('conventions for later endpoints', function () {
         expect($operation['x-token-ability'])->toBe('api:write')
             ->and($operation['responses'][404])->toBe(['$ref' => '#/components/responses/NotFound'])
             ->and(collect($operation['parameters'])->pluck('name'))->not->toContain('Idempotency-Key');
+    });
+
+    it('documents a path parameter constrained to a uuid as one', function () {
+        $paths = generatedSpec()['paths'];
+        $parameter = fn (string $path): array => collect($paths[$path]['delete']['parameters'])->firstWhere('name', 'fixture');
+
+        expect($parameter('/uuid-fixtures/{fixture}')['schema'])->toBe(['type' => 'string', 'format' => 'uuid'])
+            ->and($parameter('/fixtures/{fixture}')['schema'])->toBe(['type' => 'string']);
     });
 });

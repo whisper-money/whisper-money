@@ -201,7 +201,7 @@ final class ApiReference
 
         if ($body !== null) {
             $command[] = '-H "Content-Type: application/json"';
-            $command[] = "-d '".$this->json($this->document->example($body))."'";
+            $command[] = "-d '".$this->json($this->document->requestExample($body))."'";
         }
 
         return ['', '#### Example request', '', '```bash', implode(" \\\n  ", $command), '```'];

@@ -42,6 +42,7 @@ Laravel: el primer mensaje, y cada campo no válido con sus mensajes en `errors`
 | `401`  | `unauthenticated`         | No hay token bearer, o es desconocido, ha caducado o se ha revocado.                                                   |
 | `403`  | `insufficient_scope`      | El token no puede hacer esto: un token de solo lectura en una escritura, o un token del Conector de IA.                |
 | `403`  | `plan_required`           | La cuenta no tiene plan de pago. El cuerpo añade `subscribe_url`.                                                      |
+| `403`  | `not_account_owner`       | La cuenta es de otro miembro del espacio: todos pueden leerla, pero solo su propietario puede editarla.                |
 | `403`  | `shared_account`          | Las cuentas de demostración compartidas no pueden usar la API.                                                         |
 | `404`  | `not_found`               | No hay ningún objeto con ese id, o el endpoint no existe.                                                              |
 | `405`  | `method_not_allowed`      | El endpoint existe, pero no con ese método HTTP.                                                                       |
