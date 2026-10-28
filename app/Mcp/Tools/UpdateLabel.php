@@ -3,11 +3,9 @@
 namespace App\Mcp\Tools;
 
 use App\Enums\LabelColor;
-use App\Models\Label;
 use App\Models\User;
+use App\Services\Labels\LabelWriter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -30,37 +28,12 @@ class UpdateLabel extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'color' => ['sometimes', Rule::enum(LabelColor::class)],
-        ]);
+        $request->validate(LabelWriter::updateRules());
 
         $space = $this->resolveSpace($request, $user);
         $label = $this->labelInSpace($request, $space);
 
-        if ($request->has('name')) {
-            $name = $request->string('name')->toString();
-
-            $exists = Label::query()
-                ->forSpace($space)
-                ->where('name', $name)
-                ->whereKeyNot($label->id)
-                ->exists();
-
-            if ($exists) {
-                throw ValidationException::withMessages([
-                    'name' => 'A label with that name already exists.',
-                ]);
-            }
-
-            $label->name = $name;
-        }
-
-        if ($request->has('color')) {
-            $label->color = $request->string('color')->toString();
-        }
-
-        $label->save();
+        $label = app(LabelWriter::class)->update($label, $space, $request->only(['name', 'color']));
 
         return $this->json(['label' => $this->presentLabel($label)]);
     }

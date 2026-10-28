@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Account;
+use App\Models\Category;
+use App\Models\Label;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -86,5 +89,17 @@ class SpaceResolver
         $user = $request->user();
 
         return $this->ownedInSpace($query, $user, $this->forApiRequest($request));
+    }
+    /**
+     * A category or label in $space, the same way as accountOrFail().
+     *
+     * @template TModel of Category|Label
+     *
+     * @param  class-string<TModel>  $model
+     * @return TModel
+     */
+    public function inSpaceOrFail(string $model, Space $space, string $id): Category|Label
+    {
+        return $model::query()->forSpace($space)->findOrFail($id);
     }
 }

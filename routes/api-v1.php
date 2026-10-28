@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AccountBalanceController;
 use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\SpaceController;
 use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -38,4 +40,20 @@ Route::whereUuid('transaction')->group(function (): void {
     Route::put('transactions/{transaction}/labels', [TransactionController::class, 'labels'])->name('transactions.labels.update');
     Route::post('transactions/{transaction}/split', [TransactionController::class, 'split'])->name('transactions.split');
     Route::post('transactions/{transaction}/merge-splits', [TransactionController::class, 'mergeSplits'])->name('transactions.merge-splits');
+});
+
+Route::whereUuid('category')->group(function (): void {
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::patch('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+});
+
+Route::whereUuid('label')->group(function (): void {
+    Route::get('labels', [LabelController::class, 'index'])->name('labels.index');
+    Route::post('labels', [LabelController::class, 'store'])->name('labels.store');
+    Route::get('labels/{label}', [LabelController::class, 'show'])->name('labels.show');
+    Route::patch('labels/{label}', [LabelController::class, 'update'])->name('labels.update');
+    Route::delete('labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
 });

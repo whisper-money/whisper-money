@@ -48,3 +48,27 @@ A transaction is money that moved in or out of an account: synced from the bank,
 | [`PUT /api/v1/transactions/{transaction}/labels`](/documentation/api/reference/transactions#replace-the-labels-of-a-transaction) | Replace the labels of a transaction |
 | [`POST /api/v1/transactions/{transaction}/split`](/documentation/api/reference/transactions#split-a-transaction) | Split a transaction |
 | [`POST /api/v1/transactions/{transaction}/merge-splits`](/documentation/api/reference/transactions#merge-a-split-back) | Merge a split back |
+
+## Categories
+
+A category says what a transaction was for. Each transaction has at most one. Categories form a tree up to 3 levels deep through `parent_id`, and a whole tree shares its root's type and cashflow direction. A budget that tracks a parent category also tracks its children.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/categories`](/documentation/api/reference/categories#list-categories) | List categories |
+| [`POST /api/v1/categories`](/documentation/api/reference/categories#create-a-category) | Create a category |
+| [`GET /api/v1/categories/{category}`](/documentation/api/reference/categories#retrieve-a-category) | Retrieve a category |
+| [`PATCH /api/v1/categories/{category}`](/documentation/api/reference/categories#update-a-category) | Update a category |
+| [`DELETE /api/v1/categories/{category}`](/documentation/api/reference/categories#delete-a-category) | Delete a category |
+
+## Labels
+
+A label is a free tag: a transaction can carry any number of them next to its single category. Labels are also how a savings goal counts its contributions, and budgets and automation rules can use them. Names are unique within a space.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/labels`](/documentation/api/reference/labels#list-labels) | List labels |
+| [`POST /api/v1/labels`](/documentation/api/reference/labels#create-a-label) | Create a label |
+| [`GET /api/v1/labels/{label}`](/documentation/api/reference/labels#retrieve-a-label) | Retrieve a label |
+| [`PATCH /api/v1/labels/{label}`](/documentation/api/reference/labels#update-a-label) | Update a label |
+| [`DELETE /api/v1/labels/{label}`](/documentation/api/reference/labels#delete-a-label) | Delete a label |
