@@ -10,7 +10,7 @@ A label is a free tag: a transaction can carry any number of them next to its si
 
 `GET /api/v1/labels`
 
-The labels in a space, newest first, the ones that back a savings goal included. Every member of a space sees all of its labels.
+The labels in a space, newest first, the ones that track a savings goal included. Every member of a space sees all of its labels.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -216,7 +216,7 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
 
 `PATCH /api/v1/labels/{label}`
 
-Changes only the fields you send. Only the member of the space who created the label can change it.
+Changes only the fields you send. Only the member of the space who created the label can change it. The label of a savings goal (`source: saving_goal`) carries the goal's name, so renaming it is a `422`; its color can still be changed.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -290,7 +290,7 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
 
 `DELETE /api/v1/labels/{label}`
 
-Deletes the label and takes it off every transaction that carried it. Only the member of the space who created it can delete it.
+Deletes the label; the transactions that carried it no longer show it. Only the member of the space who created it can delete it. The label of a savings goal (`source: saving_goal`) is how the goal counts its contributions, so it cannot be deleted on its own: that answers `422` with the error under `label`.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 

@@ -100,12 +100,12 @@ A root category takes the `type` you send, and its cashflow direction follows fr
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `name` | string | Yes | The category's name, unique among its siblings: two categories can share a name only under different parents. |
+| `name` | string | Yes | The category's name, unique among its siblings: two categories can share a name only under different parents. Your categories at one level of the tree also need different names across all your spaces. |
 | `icon` | string | Yes | The name of the icon the app shows for it, a Lucide icon name. |
 | `color` | CategoryColor | Yes | The category's color. |
 | `type` | CategoryType | Yes | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. Ignored on a child, which always takes its parent's type. |
 | `cashflow_direction` | CategoryCashflowDirection | No | How the category's transactions count in the cashflow. Only a root `transfer` category keeps the one you send: a `savings` or `investment` root is always `outflow`, any other root `hidden`, and a child takes its parent's. |
-| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
+| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one you created: a tree stays with the member who built it. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
 
 #### Response
 
@@ -255,12 +255,12 @@ Changes only the fields you send. Only the member of the space who created the c
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `name` | string | No | The category's name, unique among its siblings: two categories can share a name only under different parents. |
+| `name` | string | No | The category's name, unique among its siblings: two categories can share a name only under different parents. Your categories at one level of the tree also need different names across all your spaces. |
 | `icon` | string | No | The name of the icon the app shows for it, a Lucide icon name. |
 | `color` | CategoryColor | No | The category's color. |
 | `type` | CategoryType | No | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. Ignored on a child, which always takes its parent's type. |
 | `cashflow_direction` | CategoryCashflowDirection | No | How the category's transactions count in the cashflow. Only a root `transfer` category keeps the one you send: a `savings` or `investment` root is always `outflow`, any other root `hidden`, and a child takes its parent's. |
-| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
+| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one you created: a tree stays with the member who built it. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
 
 #### Response
 

@@ -307,6 +307,20 @@ describe('ownership', function () {
 
         expect($theirs->fresh()->name)->toBe('Theirs');
     });
+
+    it('refuses to nest a category under one another member created', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedCategorySpace($member, $owner);
+        $theirs = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+
+        withHeaders(categoriesWriter($member))
+            ->postJson('/api/v1/categories', ['space' => $space->id, 'name' => 'Mine', 'icon' => 'Home', 'color' => 'red', 'type' => 'expense', 'parent_id' => $theirs->id])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.parent_id.0', 'The parent id is a category another member of the space created. Nest it under one of your own.');
+
+        expect($member->categories()->count())->toBe(0);
+    });
 });
 
 describe('delete', function () {

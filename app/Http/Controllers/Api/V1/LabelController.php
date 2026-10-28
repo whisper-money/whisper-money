@@ -24,7 +24,7 @@ class LabelController extends Controller
     /**
      * List labels
      *
-     * The labels in a space, newest first, the ones that back a savings goal
+     * The labels in a space, newest first, the ones that track a savings goal
      * included. Every member of a space sees all of its labels.
      */
     #[ScopedToSpace]
@@ -73,7 +73,9 @@ class LabelController extends Controller
      * Update a label
      *
      * Changes only the fields you send. Only the member of the space who
-     * created the label can change it.
+     * created the label can change it. The label of a savings goal
+     * (`source: saving_goal`) carries the goal's name, so renaming it is a
+     * `422`; its color can still be changed.
      *
      * @param  string  $label  The label's id.
      */
@@ -86,8 +88,11 @@ class LabelController extends Controller
     /**
      * Delete a label
      *
-     * Deletes the label and takes it off every transaction that carried it.
-     * Only the member of the space who created it can delete it.
+     * Deletes the label; the transactions that carried it no longer show it.
+     * Only the member of the space who created it can delete it. The label of
+     * a savings goal (`source: saving_goal`) is how the goal counts its
+     * contributions, so it cannot be deleted on its own: that answers `422`
+     * with the error under `label`.
      *
      * @param  string  $label  The label's id.
      */

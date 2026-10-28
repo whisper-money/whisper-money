@@ -3,10 +3,10 @@
 namespace App\Services\Labels;
 
 use App\Enums\LabelColor;
+use App\Enums\LabelSource;
 use App\Models\Label;
 use App\Models\Space;
 use App\Models\User;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -43,16 +43,43 @@ class LabelWriter
         );
     }
 
+    /**
+     * Why the label cannot be renamed or deleted, keyed by the field at
+     * fault, or nothing when it can. The label of a savings goal is how the
+     * goal counts its contributions and carries the goal's name, so it is
+     * managed through the goal; changing its color is fine.
+     *
+     * @param  list<string>  $sent  the fields the write carries
+     * @return array<string, string>
+     */
+    public static function savingsGoalLabelErrors(Label $label, array $sent, bool $deleting): array
+    {
+        if ($label->source !== LabelSource::SavingsGoal) {
+            return [];
+        }
+
+        if ($deleting) {
+            return ['label' => 'This label tracks a savings goal\'s contributions, so it can only go away with the goal.'];
+        }
+
+        return in_array('name', $sent, true)
+            ? ['name' => 'This label carries the name of the savings goal it tracks, so it is renamed with the goal. Its color can still be changed.']
+            : [];
+    }
+
     public function create(User $user, Space $space, string $name, string $color): Label
     {
         $this->assertNameFree($space, $name, null);
 
-        return $this->save(new Label([
+        $label = new Label([
             'user_id' => $user->id,
             'space_id' => $space->id,
             'name' => $name,
             'color' => $color,
-        ]));
+        ]);
+        $label->save();
+
+        return $label;
     }
 
     /**
@@ -72,7 +99,9 @@ class LabelWriter
             $label->color = (string) $changes['color'];
         }
 
-        return $this->save($label);
+        $label->save();
+
+        return $label;
     }
 
     private function assertNameFree(Space $space, string $name, ?string $ignoreId): void
@@ -86,21 +115,5 @@ class LabelWriter
         if ($taken) {
             throw ValidationException::withMessages(['name' => self::NameTakenMessage]);
         }
-    }
-
-    /**
-     * The database keeps a name unique per owner across all their spaces, so
-     * a clash the space-scoped check cannot see is refused the same way
-     * instead of failing.
-     */
-    private function save(Label $label): Label
-    {
-        try {
-            $label->save();
-        } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['name' => self::NameTakenMessage]);
-        }
-
-        return $label;
     }
 }

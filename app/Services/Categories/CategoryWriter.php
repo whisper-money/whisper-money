@@ -11,6 +11,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Services\CategoryTree;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -80,7 +81,7 @@ class CategoryWriter
             'icon' => (string) $attributes['icon'],
             'color' => (string) $attributes['color'],
             'type' => $type->value,
-            'cashflow_direction' => self::cashflowDirectionFor($type, $parent, $attributes['cashflow_direction'] ?? null)->value,
+            'cashflow_direction' => self::cashflowDirectionFor($type, $parent, isset($attributes['cashflow_direction']) ? (string) $attributes['cashflow_direction'] : null)->value,
             'parent_id' => $parent?->id,
         ]);
 
@@ -106,24 +107,28 @@ class CategoryWriter
         }
 
         $type = $parent !== null ? $parent->type : (CategoryType::tryFrom((string) ($changes['type'] ?? '')) ?? $category->type);
-        $requestedDirection = filled($changes['cashflow_direction'] ?? null) ? $changes['cashflow_direction'] : $category->cashflow_direction->value;
+        $requestedDirection = filled($changes['cashflow_direction'] ?? null) ? (string) $changes['cashflow_direction'] : $category->cashflow_direction->value;
         $name = (string) ($changes['name'] ?? $category->name);
 
         $this->assertNameFree($space, $name, $parent?->id, $category->id);
 
-        $category->fill([
-            'name' => $name,
-            'icon' => $changes['icon'] ?? $category->icon,
-            'color' => $changes['color'] ?? $category->color,
-            'type' => $type->value,
-            'cashflow_direction' => self::cashflowDirectionFor($type, $parent, $requestedDirection)->value,
-            'parent_id' => $parent?->id,
-        ]);
-        $this->save($category);
+        // The row and its subtree change together: a failed re-type of the
+        // descendants must not leave a tree of mixed types behind.
+        return DB::transaction(function () use ($category, $changes, $type, $requestedDirection, $name, $parent): Category {
+            $category->fill([
+                'name' => $name,
+                'icon' => $changes['icon'] ?? $category->icon,
+                'color' => $changes['color'] ?? $category->color,
+                'type' => $type->value,
+                'cashflow_direction' => self::cashflowDirectionFor($type, $parent, $requestedDirection)->value,
+                'parent_id' => $parent?->id,
+            ]);
+            $this->save($category);
 
-        $this->tree->syncDescendantTypes($category);
+            $this->tree->syncDescendantTypes($category);
 
-        return $category->refresh();
+            return $category->refresh();
+        });
     }
 
     /**
@@ -133,12 +138,17 @@ class CategoryWriter
      */
     public function delete(Category $category, CategoryDeletionStrategy $strategy): void
     {
+        DB::transaction(fn () => match ($strategy) {
+            CategoryDeletionStrategy::Cascade => $this->tree->deleteSubtree($category),
+            CategoryDeletionStrategy::Promote => $this->detachChildrenAndDelete($category, null),
+            CategoryDeletionStrategy::Reparent => $this->detachChildrenAndDelete($category, $category->parent_id),
+        });
+    }
+
+    private function detachChildrenAndDelete(Category $category, ?string $newParentId): void
+    {
         try {
-            match ($strategy) {
-                CategoryDeletionStrategy::Cascade => $this->tree->deleteSubtree($category),
-                CategoryDeletionStrategy::Promote => $this->tree->detachChildrenAndDelete($category, null),
-                CategoryDeletionStrategy::Reparent => $this->tree->detachChildrenAndDelete($category, $category->parent_id),
-            };
+            $this->tree->detachChildrenAndDelete($category, $newParentId);
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages([
                 'strategy' => 'A category with the same name already exists at the destination level. Rename it first.',
@@ -152,7 +162,7 @@ class CategoryWriter
      * count as an outflow, transfers keep the requested direction, everything
      * else is hidden).
      */
-    private static function cashflowDirectionFor(CategoryType $type, ?Category $parent, mixed $requested): CategoryCashflowDirection
+    private static function cashflowDirectionFor(CategoryType $type, ?Category $parent, ?string $requested): CategoryCashflowDirection
     {
         if ($parent !== null) {
             return $parent->cashflow_direction;
@@ -211,15 +221,15 @@ class CategoryWriter
 
     /**
      * The database keeps a name unique per owner and level across all their
-     * spaces, so a clash the space-scoped check cannot see is refused the
-     * same way instead of failing.
+     * spaces, so a clash the space-scoped check cannot see is refused instead
+     * of failing.
      */
     private function save(Category $category): Category
     {
         try {
             $category->save();
         } catch (UniqueConstraintViolationException) {
-            throw ValidationException::withMessages(['name' => self::NameTakenMessage]);
+            throw ValidationException::withMessages(['name' => 'You already have a category with that name at this level in another space.']);
         }
 
         return $category;

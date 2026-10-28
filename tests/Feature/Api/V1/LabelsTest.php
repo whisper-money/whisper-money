@@ -206,6 +206,31 @@ describe('update', function () {
     });
 });
 
+describe('savings goal labels', function () {
+    it('lets the color of a goal label change but not its name, and refuses to delete it', function () {
+        $user = User::factory()->create();
+        $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'New car', 'color' => 'blue', 'source' => LabelSource::SavingsGoal]);
+        $headers = labelsWriter($user);
+
+        withHeaders($headers)
+            ->patchJson('/api/v1/labels/'.$label->id, ['color' => 'green'])
+            ->assertOk()
+            ->assertJsonPath('data.color', 'green');
+
+        withHeaders($headers)
+            ->patchJson('/api/v1/labels/'.$label->id, ['name' => 'Old car'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        withHeaders($headers)
+            ->deleteJson('/api/v1/labels/'.$label->id)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('label');
+
+        expect($label->fresh())->name->toBe('New car')->deleted_at->toBeNull();
+    });
+});
+
 describe('ownership', function () {
     it('lets a member read another member\'s label but not change or delete it', function () {
         $member = User::factory()->create();
