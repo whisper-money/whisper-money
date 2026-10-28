@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CashflowBlock;
+use App\Enums\CategoryType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,6 +27,8 @@ class BulkReEvaluateRulesRequest extends FormRequest
             'filters.amount_max' => ['nullable', 'numeric'],
             'filters.category_ids' => ['nullable', 'array'],
             'filters.category_ids.*' => ['string'],
+            'filters.category_types' => ['nullable', 'array'],
+            'filters.category_types.*' => [Rule::enum(CategoryType::class)],
             'filters.account_ids' => ['nullable', 'array'],
             'filters.account_ids.*' => ['string', 'uuid'],
             'filters.label_ids' => ['nullable', 'array'],

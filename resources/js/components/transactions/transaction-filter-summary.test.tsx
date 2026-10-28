@@ -41,6 +41,7 @@ const filters: TransactionFilters = {
     amountMin: null,
     amountMax: null,
     categoryIds: ['groceries'],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',

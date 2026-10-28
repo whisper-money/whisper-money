@@ -1,5 +1,6 @@
 import { useInMemoryDaySummaries } from '@/hooks/use-day-summaries';
 import { reloadPage } from '@/lib/leave-page';
+import { type Category, type CategoryType } from '@/types/category';
 import {
     type TransactionFilters as Filters,
     type ServerTransaction,
@@ -36,6 +37,7 @@ function matchesFilters(
     filters: Filters,
     accountId: UUID | undefined,
     searchMatchedIds: Set<string>,
+    typeByCategoryId: Map<UUID, CategoryType>,
 ): boolean {
     // When scoped to a single account, drop rows that were reassigned to
     // another account (e.g. via inline edit). The list no longer
@@ -85,6 +87,15 @@ function matchesFilters(
         !filters.categoryIds.includes(transaction.category_id || -1)
     ) {
         return false;
+    }
+
+    if (filters.categoryTypes.length > 0) {
+        const type = transaction.category_id
+            ? typeByCategoryId.get(transaction.category_id)
+            : undefined;
+        if (!type || !filters.categoryTypes.includes(type)) {
+            return false;
+        }
     }
 
     if (
@@ -172,11 +183,14 @@ function compareNewestFirst(
  */
 export function useInMemoryTransactionSource({
     transactions: providedTransactions,
+    categories,
     accountId,
     pageSize = 25,
 }: {
     /** The rows, as the page received them; undefined while they load. */
     transactions?: Transaction[];
+    /** Where the category type filter reads each row's type from. */
+    categories: Pick<Category, 'id' | 'type'>[];
     /** Keeps the list to one account, the filter for it hidden. */
     accountId?: UUID;
     pageSize?: number;
@@ -190,6 +204,7 @@ export function useInMemoryTransactionSource({
         amountMin: null,
         amountMax: null,
         categoryIds: [],
+        categoryTypes: [],
         accountIds: accountId ? [accountId] : [],
         labelIds: [],
         creditorName: '',
@@ -214,6 +229,12 @@ export function useInMemoryTransactionSource({
         [filters.searchText, transactions],
     );
 
+    const typeByCategoryId = useMemo(
+        () =>
+            new Map(categories.map((category) => [category.id, category.type])),
+        [categories],
+    );
+
     const filteredTransactions = useMemo(
         () =>
             transactions.filter((transaction) =>
@@ -222,9 +243,10 @@ export function useInMemoryTransactionSource({
                     filters,
                     accountId,
                     searchMatchedIds,
+                    typeByCategoryId,
                 ),
             ),
-        [transactions, filters, accountId, searchMatchedIds],
+        [transactions, filters, accountId, searchMatchedIds, typeByCategoryId],
     );
 
     const orderedTransactions = useMemo(
@@ -264,10 +286,16 @@ export function useInMemoryTransactionSource({
             const matchedIds = searchMatches(transactions, next.searchText);
 
             return transactions.filter((transaction) =>
-                matchesFilters(transaction, next, accountId, matchedIds),
+                matchesFilters(
+                    transaction,
+                    next,
+                    accountId,
+                    matchedIds,
+                    typeByCategoryId,
+                ),
             ).length;
         },
-        [transactions, accountId],
+        [transactions, accountId, typeByCategoryId],
     );
 
     return {

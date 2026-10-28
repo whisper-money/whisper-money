@@ -6,7 +6,7 @@ import {
 } from '@/lib/amount-filter';
 import { CASHFLOW_BLOCK_LABELS } from '@/lib/cashflow-block';
 import { type Account } from '@/types/account';
-import { type Category } from '@/types/category';
+import { type Category, getCategoryTypeLabel } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
@@ -19,6 +19,7 @@ import { __ } from '@/utils/i18n';
 export type FilterFacet =
     | 'type'
     | 'amount'
+    | 'categoryType'
     | 'category'
     | 'account'
     | 'label'
@@ -187,6 +188,16 @@ export function facetChips(
         });
     }
 
+    if (filters.categoryTypes.length > 0) {
+        chips.push({
+            id: 'categoryType',
+            facet: 'categoryType',
+            name: __('Category type'),
+            value: namesText(filters.categoryTypes.map(getCategoryTypeLabel)),
+            remove: (current) => ({ ...current, categoryTypes: [] }),
+        });
+    }
+
     if (filters.categoryIds.length > 0) {
         chips.push({
             id: 'category',
@@ -272,6 +283,7 @@ export function withoutFacets(filters: TransactionFilters): TransactionFilters {
         amountMin: null,
         amountMax: null,
         categoryIds: [],
+        categoryTypes: [],
         accountIds: [],
         labelIds: [],
         creditorName: '',

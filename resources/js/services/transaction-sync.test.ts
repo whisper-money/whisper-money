@@ -87,6 +87,7 @@ describe.each([
             amountMin: null,
             amountMax: null,
             categoryIds: [],
+            categoryTypes: [],
             accountIds: [],
             labelIds: [],
             creditorName: '',

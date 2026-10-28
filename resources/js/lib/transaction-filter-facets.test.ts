@@ -14,6 +14,7 @@ const empty: TransactionFilters = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',
@@ -82,6 +83,18 @@ describe('facetChips', () => {
         expect(
             chipsOf({ categoryIds: ['groceries', 'restaurants', 'fuel'] }),
         ).toEqual(['Category: Groceries, Restaurants +1']);
+    });
+
+    it('names the picked category types before the categories', () => {
+        expect(
+            chipsOf({
+                categoryIds: ['groceries'],
+                categoryTypes: ['expense', 'savings', 'investment'],
+            }),
+        ).toEqual([
+            'Category type: Expense, Savings +1',
+            'Category: Groceries',
+        ]);
     });
 
     it('leaves the accounts out on a page already narrowed to one', () => {
@@ -158,6 +171,7 @@ describe('withoutFacets', () => {
                 dateTo,
                 searchText: 'coffee',
                 categoryIds: ['groceries'],
+                categoryTypes: ['savings'],
                 amountMax: 0,
                 cashflowBlock: 'variable',
             }),

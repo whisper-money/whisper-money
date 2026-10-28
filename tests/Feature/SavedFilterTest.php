@@ -87,6 +87,7 @@ test('stores a saved filter for the current user', function () {
         'filters' => [
             'label_ids' => ['11111111-1111-1111-1111-111111111111'],
             'category_ids' => ['food'],
+            'category_types' => ['expense', 'savings'],
             'date_from' => '2026-01-01',
         ],
     ];
@@ -95,6 +96,7 @@ test('stores a saved filter for the current user', function () {
 
     expect($response->json('data.name'))->toBe('Trip to Japan');
     expect($response->json('data.filters.category_ids'))->toBe(['food']);
+    expect($response->json('data.filters.category_types'))->toBe(['expense', 'savings']);
 
     $this->assertDatabaseHas('saved_filters', [
         'user_id' => $this->user->id,
@@ -116,6 +118,13 @@ test('rejects a filter date that is not a plain Y-m-d date', function () {
     $this->patchJson("/api/saved-filters/{$savedFilter->id}", [
         'filters' => ['date_to' => '2026-06-15T00:00:00Z'],
     ])->assertJsonValidationErrors('filters.date_to');
+});
+
+test('rejects a category type that does not exist', function () {
+    $this->postJson('/api/saved-filters', [
+        'name' => 'Gifts',
+        'filters' => ['category_types' => ['gifts']],
+    ])->assertJsonValidationErrors('filters.category_types.0');
 });
 
 test('name is required and unique per user', function () {

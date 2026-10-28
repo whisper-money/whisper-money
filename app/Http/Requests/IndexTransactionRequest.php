@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CashflowBlock;
+use App\Enums\CategoryType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,7 +16,7 @@ class IndexTransactionRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $fields = ['category_ids', 'account_ids', 'label_ids'];
+        $fields = ['category_ids', 'category_types', 'account_ids', 'label_ids'];
 
         foreach ($fields as $field) {
             $value = $this->input($field);
@@ -42,6 +43,8 @@ class IndexTransactionRequest extends FormRequest
             'amount_max' => ['nullable', 'numeric'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['string'],
+            'category_types' => ['nullable', 'array'],
+            'category_types.*' => [Rule::enum(CategoryType::class)],
             'account_ids' => ['nullable', 'array'],
             'account_ids.*' => ['string', 'uuid'],
             'label_ids' => ['nullable', 'array'],
@@ -72,6 +75,7 @@ class IndexTransactionRequest extends FormRequest
             'amount_min' => $validated['amount_min'] ?? null,
             'amount_max' => $validated['amount_max'] ?? null,
             'category_ids' => $validated['category_ids'] ?? null,
+            'category_types' => $validated['category_types'] ?? null,
             'account_ids' => $validated['account_ids'] ?? null,
             'label_ids' => $validated['label_ids'] ?? null,
             'creditor_name' => $validated['creditor_name'] ?? null,

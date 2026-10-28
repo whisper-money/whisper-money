@@ -2,7 +2,13 @@ import { type Account } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
 import { formatLocalDate, toLocalDate } from '@/utils/date';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    within,
+} from '@testing-library/react';
 import axios from 'axios';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,6 +38,7 @@ const emptyFilters: FiltersType = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',
@@ -157,6 +164,7 @@ describe('Desktop transaction filters', () => {
         ).toEqual([
             'Type',
             'Amount',
+            'Category type',
             'Category',
             'Label',
             'Counterparty',
@@ -170,6 +178,24 @@ describe('Desktop transaction filters', () => {
             amountMin: null,
             amountMax: 0,
         });
+    });
+
+    it('picks several category types and shows them in one chip', () => {
+        const onFiltersChange = renderFilters();
+
+        fireEvent.click(screen.getByTestId('add-filter-button'));
+        fireEvent.click(
+            screen.getByRole('menuitem', { name: 'Category type' }),
+        );
+        fireEvent.click(screen.getByRole('option', { name: 'Savings' }));
+
+        expect(lastFilters(onFiltersChange).categoryTypes).toEqual(['savings']);
+
+        cleanup();
+        renderFilters({ categoryTypes: ['expense', 'savings'] });
+        expect(screen.getByTestId('filter-chip-categoryType').textContent).toBe(
+            'Category typeExpense, Savings',
+        );
     });
 
     it('offers the cashflow block only over a whole date range', () => {

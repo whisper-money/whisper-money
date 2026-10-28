@@ -13,6 +13,7 @@ const NO_FILTERS: TransactionFilters = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',
@@ -92,6 +93,33 @@ describe('the cashflow block in saved and analysed filters', () => {
             filtersFingerprint(
                 serializeFilters({ ...october, cashflowBlock: 'fixed' }),
             ),
+        );
+    });
+});
+
+describe('the category types in saved and analysed filters', () => {
+    it('round trips', () => {
+        const serialized = serializeFilters({
+            ...NO_FILTERS,
+            categoryTypes: ['expense', 'savings'],
+        });
+
+        expect(serialized.category_types).toEqual(['expense', 'savings']);
+        expect(deserializeFilters(serialized).categoryTypes).toEqual([
+            'expense',
+            'savings',
+        ]);
+    });
+
+    it('compares regardless of the order they were picked in', () => {
+        expect(
+            filtersFingerprint({ category_types: ['savings', 'expense'] }),
+        ).toBe(filtersFingerprint({ category_types: ['expense', 'savings'] }));
+    });
+
+    it('keeps the fingerprint of a filter saved before they existed', () => {
+        expect(filtersFingerprint({ category_types: [] })).toBe(
+            filtersFingerprint({}),
         );
     });
 });

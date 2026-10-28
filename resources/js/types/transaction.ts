@@ -1,5 +1,5 @@
 import { type Account, type Bank } from './account';
-import { type Category } from './category';
+import { type Category, type CategoryType } from './category';
 import { type Label } from './label';
 import { UUID } from './uuid';
 
@@ -75,6 +75,8 @@ export interface TransactionFilters {
     amountMin: number | null;
     amountMax: number | null;
     categoryIds: UUID[];
+    /** Rows whose category has one of these types; uncategorized rows never match. */
+    categoryTypes: CategoryType[];
     accountIds: UUID[];
     labelIds: UUID[];
     creditorName: string;

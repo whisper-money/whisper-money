@@ -42,6 +42,7 @@ const emptyFilters: FiltersType = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',
@@ -273,6 +274,30 @@ describe('TransactionFilters phone sheet', () => {
             within(crowded).getByRole('button', { name: 'View all (9)' }),
         );
         expect(within(crowded).getAllByRole('checkbox')).toHaveLength(9);
+    });
+
+    it('picks several category types, applied together', () => {
+        const { onFiltersChange } = renderFilters();
+        const sheet = openSheet();
+
+        fireEvent.click(within(sheet).getByText('Category type'));
+        fireEvent.click(
+            within(sheet).getByRole('checkbox', { name: 'Expense' }),
+        );
+        fireEvent.click(
+            within(sheet).getByRole('checkbox', { name: 'Savings' }),
+        );
+        expect(
+            within(screen.getByTestId('sheet-category-types')).getByText(
+                'Expense, Savings',
+            ),
+        ).toBeTruthy();
+
+        fireEvent.click(screen.getByTestId('apply-filters'));
+        expect(applied(onFiltersChange).categoryTypes).toEqual([
+            'expense',
+            'savings',
+        ]);
     });
 
     it('picks an account, and has no accounts row where the page is one', () => {

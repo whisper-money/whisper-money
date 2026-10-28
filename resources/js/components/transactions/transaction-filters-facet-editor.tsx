@@ -2,6 +2,7 @@ import { AmountFilterFields } from '@/components/transactions/transaction-filter
 import {
     AccountFacetList,
     CategoryFacetList,
+    CategoryTypeFacetList,
     LabelFacetList,
 } from '@/components/transactions/transaction-filters-facets';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -47,7 +48,12 @@ export interface FacetEditorProps {
 }
 
 /** Facets whose editor is a searchable list, drawn edge to edge. */
-const LIST_FACETS: FilterFacet[] = ['category', 'label', 'account'];
+const LIST_FACETS: FilterFacet[] = [
+    'categoryType',
+    'category',
+    'label',
+    'account',
+];
 
 /** Whether the facet's editor is a list drawn edge to edge. */
 export function isListFacet(facet: FilterFacet): boolean {
@@ -106,6 +112,13 @@ export function FacetEditor({
                         onChange={update}
                     />
                 </div>
+            );
+        case 'categoryType':
+            return (
+                <CategoryTypeFacetList
+                    selectedTypes={filters.categoryTypes}
+                    onChange={(categoryTypes) => update({ categoryTypes })}
+                />
             );
         case 'category':
             return (
