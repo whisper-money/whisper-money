@@ -196,7 +196,10 @@ final class ApiReference
     private function exampleRequest(array $endpoint): array
     {
         $operation = $endpoint['operation'];
-        $command = ['curl'.($endpoint['method'] === 'GET' ? '' : ' -X '.$endpoint['method']).' '.self::BaseUrl.$this->examplePath($endpoint), '-H "Authorization: Bearer $WHISPER_MONEY_TOKEN"'];
+        $url = self::BaseUrl.$this->examplePath($endpoint);
+        // Quoted once it has a query string, or the shell reads its `&`.
+        $url = str_contains($url, '?') ? '"'.$url.'"' : $url;
+        $command = ['curl'.($endpoint['method'] === 'GET' ? '' : ' -X '.$endpoint['method']).' '.$url, '-H "Authorization: Bearer $WHISPER_MONEY_TOKEN"'];
         $body = $this->jsonSchema($operation['requestBody'] ?? null);
 
         if ($body !== null) {
@@ -331,23 +334,39 @@ final class ApiReference
     }
 
     /**
-     * The path with each `{parameter}` filled with its example value.
+     * The path with each `{parameter}` filled with its example value, and the
+     * required query parameters appended with theirs, so the example request
+     * is one that works.
      *
      * @param  Endpoint  $endpoint
      */
     private function examplePath(array $endpoint): string
     {
         $path = Str::after($endpoint['path'], '/api/v1');
+        $query = [];
 
         foreach ($endpoint['operation']['parameters'] ?? [] as $parameter) {
             $parameter = $this->document->resolve($parameter);
+            $in = $parameter['in'] ?? null;
 
-            if (($parameter['in'] ?? null) === 'path') {
-                $path = str_replace('{'.$parameter['name'].'}', (string) $this->document->example(is_array($parameter['schema'] ?? null) ? $parameter['schema'] : []), $path);
+            if ($in === 'path') {
+                $path = str_replace('{'.$parameter['name'].'}', $this->parameterExample($parameter), $path);
+            } elseif ($in === 'query' && ($parameter['required'] ?? false) === true) {
+                $query[$parameter['name']] = $this->parameterExample($parameter);
             }
         }
 
-        return $path;
+        return $query === [] ? $path : $path.'?'.http_build_query($query);
+    }
+
+    /**
+     * A parameter's own example, or its schema's.
+     *
+     * @param  array<string, mixed>  $parameter
+     */
+    private function parameterExample(array $parameter): string
+    {
+        return (string) ($parameter['example'] ?? $this->document->example(is_array($parameter['schema'] ?? null) ? $parameter['schema'] : []));
     }
 
     /**
