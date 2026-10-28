@@ -1,7 +1,6 @@
 import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal } from 'lucide-react';
-import { Fragment } from 'react';
 
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
@@ -9,15 +8,12 @@ import { CategoryCell } from '@/components/transactions/category-cell';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import { TransactionDescription } from '@/components/transactions/transaction-description';
+import { TransactionRowDropdownMenuContent } from '@/components/transactions/transaction-row-dropdown-menu';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { resolveTransactionLabels } from '@/lib/transaction-labels';
@@ -316,11 +312,9 @@ export function createTransactionColumns({
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>
-                                    {__('Actions')}
-                                </DropdownMenuLabel>
-                                {getTransactionRowActions({
+                            <TransactionRowDropdownMenuContent
+                                align="end"
+                                actions={getTransactionRowActions({
                                     transaction,
                                     onEdit,
                                     onDuplicate,
@@ -329,20 +323,8 @@ export function createTransactionColumns({
                                     onDelete,
                                     onSplit,
                                     onUnsplit,
-                                }).map((action) => (
-                                    <Fragment key={action.id}>
-                                        {action.separated && (
-                                            <DropdownMenuSeparator />
-                                        )}
-                                        <DropdownMenuItem
-                                            variant={action.variant}
-                                            onClick={action.onSelect}
-                                        >
-                                            {action.label}
-                                        </DropdownMenuItem>
-                                    </Fragment>
-                                ))}
-                            </DropdownMenuContent>
+                                })}
+                            />
                         </DropdownMenu>
                     </div>
                 );

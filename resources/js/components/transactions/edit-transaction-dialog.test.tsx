@@ -170,6 +170,16 @@ vi.mock('@/components/ui/dialog', () => ({
     ),
 }));
 
+function openMoreActions() {
+    fireEvent.pointerDown(
+        screen.getByRole('button', { name: 'More actions' }),
+        {
+            button: 0,
+            ctrlKey: false,
+        },
+    );
+}
+
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
         globalThis.ResizeObserver = class {
@@ -709,6 +719,115 @@ describe('EditTransactionDialog', () => {
 
         expect(onOpenChange).toHaveBeenCalledWith(false);
         expect(onSplit).toHaveBeenCalledWith(manualTransaction);
+    });
+
+    function rowActionHandlers() {
+        return {
+            onEdit: vi.fn(),
+            onDuplicate: vi.fn(),
+            onReEvaluateRules: vi.fn(),
+            onAutomate: vi.fn(),
+            onDelete: vi.fn(),
+            onSplit: vi.fn(),
+            onUnsplit: vi.fn(),
+        };
+    }
+
+    function renderWithRowActions(
+        transaction: ServerTransaction,
+        rowActions = rowActionHandlers(),
+        onOpenChange = vi.fn(),
+    ) {
+        render(
+            <EditTransactionDialog
+                transaction={transaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={onOpenChange}
+                onSuccess={vi.fn()}
+                rowActions={rowActions}
+                mode="edit"
+            />,
+        );
+    }
+
+    async function moreActionsLabels() {
+        openMoreActions();
+
+        return (await screen.findAllByRole('menuitem')).map(
+            (item) => item.textContent,
+        );
+    }
+
+    it('offers the row menu actions, edit aside, in the More actions menu', async () => {
+        renderWithRowActions(manualTransaction);
+
+        expect(await moreActionsLabels()).toEqual([
+            'Duplicate',
+            'Split',
+            'Re-evaluate rules',
+            'Automatize categorization',
+            'Delete',
+        ]);
+    });
+
+    it('follows the row menu on a split part: no duplicate, split or delete, but merge back', async () => {
+        renderWithRowActions({
+            ...manualTransaction,
+            split_parent_id: 'parent-1',
+        });
+
+        expect(await moreActionsLabels()).toEqual([
+            'Re-evaluate rules',
+            'Automatize categorization',
+            'Merge the split back',
+        ]);
+    });
+
+    it.each([
+        ['Duplicate', 'onDuplicate'],
+        ['Split', 'onSplit'],
+        ['Re-evaluate rules', 'onReEvaluateRules'],
+        ['Automatize categorization', 'onAutomate'],
+        ['Delete', 'onDelete'],
+    ] as const)(
+        'closes the dialog and calls the %s handler from the More actions menu',
+        async (label, handler) => {
+            const rowActions = rowActionHandlers();
+            const onOpenChange = vi.fn();
+
+            renderWithRowActions(manualTransaction, rowActions, onOpenChange);
+            openMoreActions();
+            fireEvent.click(
+                await screen.findByRole('menuitem', { name: label }),
+            );
+
+            expect(onOpenChange).toHaveBeenCalledWith(false);
+            expect(rowActions[handler]).toHaveBeenCalledWith(manualTransaction);
+        },
+    );
+
+    it('hides the More actions menu without row actions', () => {
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'More actions' }),
+        ).not.toBeInTheDocument();
     });
 
     it('hides the Delete button when no onDelete handler is provided', () => {
