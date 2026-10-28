@@ -40,7 +40,7 @@ class ConnectedApps
             ->groupBy('client_id')
             ->map(fn (Collection $clientTokens, string $clientId): array => [
                 'id' => $clientId,
-                'name' => $clientTokens->first()->client?->name ?? __('Deleted app'),
+                'name' => $clientTokens->first()->client->name ?? __('Deleted app'),
                 'redirect' => $this->redirectOf($clientTokens->first()->client),
                 'scopes' => $clientTokens->pluck('scopes')->flatten()->unique()
                     ->map(fn (string $id): string => OAuthScope::tryFrom($id)?->label() ?? $id)
@@ -62,10 +62,10 @@ class ConnectedApps
     public function revoke(User $user, OAuthScope $scope, string $clientId): int
     {
         return DB::transaction(function () use ($user, $scope, $clientId): int {
-            $tokenIds = $this->held(Token::class, $user, $scope)->where('client_id', $clientId)->lockForUpdate()->pluck('id');
+            $tokenIds = $this->held(Token::query(), $user, $scope)->where('client_id', $clientId)->lockForUpdate()->pluck('id');
 
             RefreshToken::query()->whereIn('access_token_id', $tokenIds)->update(['revoked' => true]);
-            $this->held(AuthCode::class, $user, $scope)->where('client_id', $clientId)->update(['revoked' => true]);
+            $this->held(AuthCode::query(), $user, $scope)->where('client_id', $clientId)->update(['revoked' => true]);
 
             return Token::query()->whereIn('id', $tokenIds)->update(['revoked' => true]);
         });
@@ -73,7 +73,7 @@ class ConnectedApps
 
     private function redirectOf(?Client $client): ?string
     {
-        $redirectUri = $client?->redirect_uris[0] ?? null;
+        $redirectUri = $client?->getAttribute('redirect_uris')[0] ?? null;
 
         return $redirectUri === null ? null : RedirectTarget::display($redirectUri);
     }
@@ -85,7 +85,7 @@ class ConnectedApps
      */
     private function liveTokens(User $user, OAuthScope $scope): Builder
     {
-        return $this->held(Token::class, $user, $scope)
+        return $this->held(Token::query(), $user, $scope)
             ->where(fn (Builder $query) => $query
                 ->where('expires_at', '>', now())
                 ->orWhereHas('refreshToken', fn (Builder $refresh) => $refresh
@@ -94,17 +94,17 @@ class ConnectedApps
     }
 
     /**
-     * The user's unrevoked tokens or codes of the given Passport model that
-     * carry the scope.
+     * Narrow a query on Passport's tokens or codes to the user's unrevoked
+     * ones carrying the scope.
      *
      * @template TModel of Token|AuthCode
      *
-     * @param  class-string<TModel>  $model
+     * @param  Builder<TModel>  $query
      * @return Builder<TModel>
      */
-    private function held(string $model, User $user, OAuthScope $scope): Builder
+    private function held(Builder $query, User $user, OAuthScope $scope): Builder
     {
-        return $model::query()
+        return $query
             ->where('user_id', $user->getKey())
             ->where('revoked', false)
             ->whereJsonContains('scopes', $scope->value);

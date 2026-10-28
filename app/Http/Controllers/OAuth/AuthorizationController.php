@@ -4,6 +4,7 @@ namespace App\Http\Controllers\OAuth;
 
 use App\Enums\OAuthScope;
 use App\Http\Controllers\OAuth\Concerns\GuardsOAuthScopes;
+use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Laravel\Passport\Client;
 use Laravel\Passport\Http\Controllers\AuthorizationController as PassportAuthorizationController;
@@ -50,7 +51,8 @@ class AuthorizationController extends PassportAuthorizationController
     {
         $scopeIds = array_map(fn (Scope $scope): string => $scope->id, $scopes);
 
-        return OAuthScope::fromRequested($scopeIds)->approvalRefusalFor($user) === null
+        return $user instanceof User
+            && OAuthScope::fromRequested($scopeIds)->approvalRefusalFor($user) === null
             && parent::hasGrantedScopes($user, $client, $scopes);
     }
 
