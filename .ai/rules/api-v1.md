@@ -9,7 +9,7 @@ paths:
 # Public API v1
 
 ## The spec documents itself from the code: write for it
-Scramble (`dedoc/scramble`) builds the OpenAPI spec of every route in the `api-v1` middleware group, and `php artisan api:docs` turns that spec into the reference pages under `resources/docs/documentation/70-api/80-reference*`. A test (`tests/Feature/Api/V1/ApiReferenceTest.php`) fails when the committed pages differ from what the code generates, so **run `php artisan api:docs` and commit its output after touching any v1 controller or resource**. Never edit those pages by hand.
+Scramble (`dedoc/scramble`) builds the OpenAPI spec of every route in the `api-v1` middleware group, and `php artisan api:docs` turns that spec into the reference pages under `resources/docs/documentation/60-integrations/20-api/80-reference*`. A test (`tests/Feature/Api/V1/ApiReferenceTest.php`) fails when the committed pages differ from what the code generates, so **run `php artisan api:docs` and commit its output after touching any v1 controller or resource**. Never edit those pages by hand.
 
 Per endpoint, only describe what the controller itself does:
 
@@ -25,7 +25,7 @@ Never document these by hand: `OperationConventions` (`app/Http/ApiV1/Documentat
 - `#[ScopedToSpace]` on a method that calls `$this->space($request)`: the `space` parameter and its 422;
 - `#[Paginated(AccountResource::class)]` on a method that answers through `CursorPaginator::paginate()`: `limit` / `starting_after` / `ending_before`, the `{data, has_more}` envelope and the 400.
 
-Errors all come from `ErrorRenderer`, so a new error `code` thrown through `ApiV1Exception` belongs in `SharedComponents` (if it is a new status) and in the Errors guide (`70-api/50-errors-{en,es}.md`).
+Errors all come from `ErrorRenderer`, so a new error `code` thrown through `ApiV1Exception` belongs in `SharedComponents` (if it is a new status) and in the Errors guide (`60-integrations/20-api/50-errors-{en,es}.md`).
 
 ## The spec route is outside the group on purpose
 `GET /api/v1/openapi.json` is registered in `bootstrap/app.php`, not in `routes/api-v1.php`, so it is public and unthrottled. It serves Scramble's cache, which `php artisan scramble:cache` fills on deploy (`docker/entrypoint.sh`). Scramble's own UI and JSON routes stay off (`Scramble::ignoreDefaultRoutes()` in `ApiDocumentationServiceProvider`).

@@ -10,8 +10,8 @@ use Dedoc\Scramble\OpenApiVersion;
 | Scramble generates the `/api/v1` spec from the code. Only the JSON is
 | public, at `GET /api/v1/openapi.json`; Scramble's own UI and JSON routes
 | are never registered (see ApiDocumentationServiceProvider). The reference
-| pages under resources/docs/documentation/70-api/ are generated from the
-| same spec by `php artisan api:docs`.
+| pages under resources/docs/documentation/60-integrations/20-api/ are
+| generated from the same spec by `php artisan api:docs`.
 |
 */
 

@@ -25,9 +25,9 @@ final class ApiReference
      * Where the pages go, relative to the documentation root: the reference
      * index is the `api/reference` page and each group a page nested under it.
      */
-    private const string Directory = '70-api';
+    private const string Directory = '60-integrations/20-api';
 
-    private const string IndexFile = self::Directory.'/80-reference-en.md';
+    public const string IndexFile = self::Directory.'/80-reference-en.md';
 
     public const string GroupsDirectory = self::Directory.'/80-reference';
 

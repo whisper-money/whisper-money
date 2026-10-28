@@ -1,0 +1,2 @@
+- en: Integrations
+- es: Integraciones

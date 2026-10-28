@@ -10,7 +10,7 @@ it('keeps the committed API reference in step with the code', function () {
 
     $committed = collect(File::allFiles($root.'/'.ApiReference::GroupsDirectory))
         ->map(fn (SplFileInfo $file): string => ApiReference::GroupsDirectory.'/'.$file->getRelativePathname())
-        ->push('70-api/80-reference-en.md')
+        ->push(ApiReference::IndexFile)
         ->sort()
         ->values()
         ->all();
@@ -33,7 +33,7 @@ it('writes the reference pages, replacing groups that no longer exist', function
     $this->artisan('api:docs')->assertSuccessful();
 
     expect(File::exists($root.'/'.ApiReference::GroupsDirectory.'/90-gone-en.md'))->toBeFalse()
-        ->and(File::get($root.'/'.'70-api/80-reference-en.md'))->toContain('[`GET /api/v1/spaces`](/documentation/api/reference/spaces#list-spaces)')
+        ->and(File::get($root.'/'.ApiReference::IndexFile))->toContain('[`GET /api/v1/spaces`](/documentation/api/reference/spaces#list-spaces)')
         ->and(File::get($root.'/'.ApiReference::GroupsDirectory.'/10-spaces-en.md'))
         ->toContain('## List spaces')
         ->toContain('`GET /api/v1/spaces`')
