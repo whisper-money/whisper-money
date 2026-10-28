@@ -8,13 +8,16 @@ use App\Services\BudgetTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class AssignHistoricalTransactionsToBudget implements ShouldQueue
 {
     use Queueable;
 
     /**
-     * The queue budget backfills run on, see docker/supervisor/supervisord.conf.
+     * The queue budget backfills run on, which the workers take before
+     * `default` (docker/supervisor/supervisord.conf). Keep it for work a user
+     * is waiting on: anything bulk queued here would stall the bank syncs.
      */
     public const string QUEUE = 'budgets';
 
@@ -29,9 +32,7 @@ class AssignHistoricalTransactionsToBudget implements ShouldQueue
     public int $backoff = 10;
 
     /**
-     * Queued on `budgets`, which the workers take before `default`: the budget
-     * page shows a spinner until this runs, so it must not wait behind a
-     * scheduled bank sync burst.
+     * The budget page shows a spinner until this runs.
      */
     public function __construct(
         public Budget $budget,
@@ -63,5 +64,15 @@ class AssignHistoricalTransactionsToBudget implements ShouldQueue
             'budget_period_id' => $this->period->id,
             'user_id' => $this->budget->user_id,
         ]);
+    }
+
+    /**
+     * Out of tries, clear the flag anyway: left set, the budget page would
+     * spin on this period forever. What it shows may be incomplete, which
+     * beats never showing anything.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        BudgetPeriod::query()->whereKey($this->period->id)->update(['processing_historical' => false]);
     }
 }

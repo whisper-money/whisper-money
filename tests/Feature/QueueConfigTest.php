@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\AssignHistoricalTransactionsToBudget;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -38,4 +39,16 @@ test('every queued job timeout stays below the database queue retry_after', func
         [],
         'These jobs have a $timeout >= retry_after ('.$retryAfter.'s); raise DB_QUEUE_RETRY_AFTER above the longest job timeout.'
     );
+});
+
+/**
+ * A job on a queue no production worker reads is never run, and a budget
+ * backfill nobody runs leaves the budget page spinning for good.
+ */
+test('a production worker reads the budget backfill queue', function () {
+    $workerQueues = Str::of(File::get(base_path('docker/supervisor/supervisord.conf')))
+        ->matchAll('/queue:work \S+ --queue=(\S+)/')
+        ->flatMap(fn (string $queues): array => explode(',', $queues));
+
+    expect($workerQueues)->toContain(AssignHistoricalTransactionsToBudget::QUEUE);
 });

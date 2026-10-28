@@ -1,11 +1,13 @@
 <?php
 
 use App\Jobs\AssignHistoricalTransactionsToBudget;
+use App\Models\Budget;
 use App\Models\BudgetTransaction;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetPeriodService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Queue;
 
@@ -396,4 +398,16 @@ test('a biweekly budget counts a spend in its previous period once, not twice', 
     expect($rows)->toBe(1);
 
     Carbon::setTestNow();
+});
+
+test('a backfill out of tries stops the budget page spinning', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $budget = Budget::factory()->create(['user_id' => $this->user->id]);
+    $budget->categories()->attach($category);
+    $period = app(BudgetPeriodService::class)->generatePeriod($budget, 100000, null, true);
+
+    // A fresh instance, as the queue builds one to call failed().
+    (new AssignHistoricalTransactionsToBudget($budget, $period))->failed(new RuntimeException('Deadlock'));
+
+    expect($period->fresh()->processing_historical)->toBeFalse();
 });
