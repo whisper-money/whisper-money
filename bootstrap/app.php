@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\ApiV1\ErrorRenderer;
+use App\Http\Controllers\Api\V1\OpenApiController;
 use App\Http\Middleware\ApiV1\AuthenticateApiRequest;
 use App\Http\Middleware\ApiV1\EnsureApiAccess;
 use App\Http\Middleware\ApiV1\HandleIdempotencyKey;
@@ -39,11 +40,16 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         // The public API: stateless, bearer-only, outside the `web` group the
-        // internal `/api/*` routes run under.
-        then: fn () => Route::middleware('api-v1')
-            ->prefix('api/v1')
-            ->name('api.v1.')
-            ->group(base_path('routes/api-v1.php')),
+        // internal `/api/*` routes run under. Its OpenAPI spec is public, so
+        // it stays out of the `api-v1` group and its bearer auth.
+        then: function (): void {
+            Route::get('api/v1/openapi.json', OpenApiController::class)->name('api.v1.openapi');
+
+            Route::middleware('api-v1')
+                ->prefix('api/v1')
+                ->name('api.v1.')
+                ->group(base_path('routes/api-v1.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn (Request $request) => app(AuthEntryPointService::class)->guestRedirectRoute($request));

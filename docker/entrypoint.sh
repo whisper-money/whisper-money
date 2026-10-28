@@ -99,6 +99,10 @@ php artisan route:cache
 php artisan view:cache
 php artisan event:cache
 
+# The OpenAPI spec served at /api/v1/openapi.json, generated once per deploy
+echo "Caching the API spec..."
+php artisan scramble:cache
+
 # Create storage link (harmless if already exists)
 echo "Creating storage link..."
 php artisan storage:link 2>/dev/null || true

@@ -48,11 +48,12 @@ class DocumentationController extends Controller
         $levels = $this->tocLevels();
         $rendered = DocumentationMarkdown::render(File::get($page['file']), $levels);
         $languages = $this->languageLinks($page['slug'], $locale);
+        $contentLocale = in_array($locale, $page['locales'], true) ? $locale : $this->fallbackLocale();
 
         $response = Inertia::render('documentation/show', [
             'document' => [
                 'slug' => $page['slug'],
-                'locale' => $locale,
+                'locale' => $contentLocale,
                 'title' => $page['title'],
                 'description' => $page['description'],
                 'html' => $rendered['html'],
@@ -65,9 +66,11 @@ class DocumentationController extends Controller
             'languages' => $languages,
         ])->toResponse($request);
 
+        // A page not translated into this language is the English one: that
+        // is its canonical, and it has no alternate in a language it lacks.
         $response->headers->set('Link', ComparisonController::seoLinks(
-            $this->pageUrl($page['slug'], $locale),
-            $this->alternates($page['slug']),
+            $this->pageUrl($page['slug'], $contentLocale),
+            $this->alternates($page['slug'], $page['locales']),
             $this->pageUrl($page['slug'], $locale, markdown: true),
         ), false);
 
@@ -117,7 +120,7 @@ class DocumentationController extends Controller
     }
 
     /**
-     * @return array{type: 'page', slug: string, order: int, title: string, description: string, file: string, children: list<mixed>}
+     * @return array{type: 'page', slug: string, order: int, title: string, description: string, file: string, locales: list<string>, children: list<mixed>}
      */
     private function page(DocumentationTree $tree, ?string $slug): array
     {
@@ -296,11 +299,13 @@ class DocumentationController extends Controller
     }
 
     /**
+     * @param  list<string>  $pageLocales  the languages the page is written in
      * @return array<string, string>
      */
-    private function alternates(string $slug): array
+    private function alternates(string $slug, array $pageLocales): array
     {
         return collect($this->supportedLocales())
+            ->only($pageLocales)
             ->map(fn (string $label, string $locale): string => $this->pageUrl($slug, $locale))
             ->all();
     }

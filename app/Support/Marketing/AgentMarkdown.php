@@ -82,6 +82,30 @@ final class AgentMarkdown
     }
 
     /**
+     * The public API: its guides and endpoint reference (the `api` pages of
+     * the documentation, read from the tree like the rest) and the OpenAPI
+     * spec, for an agent asked to write a client.
+     *
+     * @return list<string>
+     */
+    private static function apiIndex(): array
+    {
+        $lines = [
+            '## API',
+            '',
+            '- [OpenAPI spec]('.route('api.v1.openapi').'): the whole REST API (`/api/v1`) as an OpenAPI 3.1 document. No token needed.',
+        ];
+
+        foreach (DocumentationTree::for('en')->pages() as $page) {
+            if ($page['slug'] === 'api' || str_starts_with($page['slug'], 'api/')) {
+                $lines[] = '- ['.$page['title'].']('.route('documentation.markdown', ['slug' => $page['slug'], 'lang' => 'en']).'): '.$page['description'];
+            }
+        }
+
+        return [...$lines, ''];
+    }
+
+    /**
      * The documentation, page by page, in every language it is written in. The
      * tree comes from the files, so a page added to the docs shows up here
      * without anyone remembering to list it.
@@ -253,6 +277,7 @@ final class AgentMarkdown
 
         return implode("\n", [
             ...$lines,
+            ...self::apiIndex(),
             ...self::documentationIndex(),
             '## Notes',
             '',

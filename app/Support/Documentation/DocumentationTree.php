@@ -27,7 +27,7 @@ use Illuminate\Support\Str;
  * `-en.md` is not published, and a language we have no file for falls back to
  * English.
  *
- * @phpstan-type PageNode array{type: 'page', slug: string, order: int, title: string, description: string, file: string, children: list<mixed>}
+ * @phpstan-type PageNode array{type: 'page', slug: string, order: int, title: string, description: string, file: string, locales: list<string>, children: list<mixed>}
  * @phpstan-type SectionNode array{type: 'section', id: string, order: int, title: string, children: list<mixed>}
  */
 final class DocumentationTree
@@ -129,6 +129,7 @@ final class DocumentationTree
                 'order' => $group['order'],
                 ...$this->metadata($file),
                 'file' => $file,
+                'locales' => self::sortedLocales($group['files']),
                 'children' => $children === null ? [] : $this->scan($children, $slug.'/'),
             ];
         }
@@ -297,6 +298,18 @@ final class DocumentationTree
     private static function order(string $prefix): int
     {
         return $prefix === '' ? PHP_INT_MAX : (int) $prefix;
+    }
+
+    /**
+     * @param  array<string, string>  $files
+     * @return list<string>
+     */
+    private static function sortedLocales(array $files): array
+    {
+        $locales = array_keys($files);
+        sort($locales);
+
+        return $locales;
     }
 
     private static function normalizeLocale(string $locale): string

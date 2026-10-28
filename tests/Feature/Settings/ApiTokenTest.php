@@ -19,7 +19,7 @@ it('renders the API page with the base URL', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('settings/api')
             ->where('baseUrl', url('/api/v1'))
-            ->where('docsUrl', route('documentation.index'))
+            ->where('docsUrl', route('documentation.show', ['slug' => 'api']))
             ->where('newToken', null)
             ->has('tokens', 0));
 });

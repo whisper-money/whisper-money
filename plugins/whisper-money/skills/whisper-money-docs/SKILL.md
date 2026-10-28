@@ -1,6 +1,6 @@
 ---
 name: whisper-money-docs
-description: Read Whisper Money's product documentation before answering how the app works — how accounts, transactions, imports, categories, labels, automation rules, cashflow or budgets behave, what a feature does or does not do, how to connect an AI assistant to it, pricing, privacy and which banks connect. Use when the user asks a "how does Whisper Money…" or "can Whisper Money…" question instead of answering from memory.
+description: Read Whisper Money's product documentation before answering how the app works — how accounts, transactions, imports, categories, labels, automation rules, cashflow or budgets behave, what a feature does or does not do, how to connect an AI assistant to it, how to use its REST API, pricing, privacy and which banks connect. Use when the user asks a "how does Whisper Money…" or "can Whisper Money…" question instead of answering from memory.
 ---
 
 # Whisper Money documentation
@@ -38,8 +38,16 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | Achievements, medals, visit streak | `achievements` |
 | Monthly summary, report email | `monthly-summary` |
 | AI Connector, MCP, connecting Claude or ChatGPT | `ai-connector` |
+| REST API: overview, base URL, first request | `api` |
+| API tokens, OAuth apps, scopes | `api/authentication` |
+| API amounts, spaces, pagination, errors, rate limits, idempotency | `api/amounts-and-currencies`, `api/spaces`, `api/pagination`, `api/errors`, `api/rate-limits`, `api/idempotency` |
+| API endpoint reference (English only) | `api/reference` |
 
 Add `?lang=es` for Spanish: `https://whisper.money/documentation/budgets.md?lang=es`.
+
+The API is also described as an OpenAPI 3.1 document at
+`https://whisper.money/api/v1/openapi.json`. Read it when you need exact
+request or response fields.
 
 ## Anything else
 

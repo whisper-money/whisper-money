@@ -42,7 +42,7 @@ class ApiTokenController extends Controller
                 ])
                 ->all(),
             'baseUrl' => url('/api/v1'),
-            'docsUrl' => route('documentation.index'),
+            'docsUrl' => route('documentation.show', ['slug' => 'api']),
             'subscribeUrl' => route('subscribe'),
             'newToken' => $request->session()->get('api_token'),
         ]);
