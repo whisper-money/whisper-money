@@ -560,6 +560,7 @@ class Transaction extends Model
             ->when(isset($filters['amount_min']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_min'], '>='))
             ->when(isset($filters['amount_max']), fn (Builder $q) => $this->applyAmountFilter($q, (float) $filters['amount_max'], '<='))
             ->when(! empty($filters['account_ids']), fn (Builder $q) => $q->whereIn('account_id', $filters['account_ids']))
+            ->when(! empty($filters['category_types']), fn (Builder $q) => $q->whereHas('category', fn (Builder $category) => $category->whereIn('type', $filters['category_types'])))
             ->when(! empty($filters['category_source']), fn (Builder $q) => $q->where('category_source', $filters['category_source']))
             ->when(! empty($filters['creditor_name']), fn (Builder $q) => $q->where('creditor_name', 'LIKE', '%'.$filters['creditor_name'].'%'))
             ->when(! empty($filters['debtor_name']), fn (Builder $q) => $q->where('debtor_name', 'LIKE', '%'.$filters['debtor_name'].'%'))

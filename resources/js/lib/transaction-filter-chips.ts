@@ -1,6 +1,6 @@
 import { CASHFLOW_BLOCK_LABELS } from '@/lib/cashflow-block';
 import { type Account } from '@/types/account';
-import { type Category } from '@/types/category';
+import { type Category, getCategoryTypeLabel } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
@@ -30,6 +30,7 @@ export function describeActiveFilters(
         filters.searchText ? `“${filters.searchText}”` : null,
         rangeChip(filters.dateFrom, filters.dateTo, date),
         rangeChip(filters.amountMin, filters.amountMax, String),
+        ...filters.categoryTypes.map(getCategoryTypeLabel),
         ...namesOf(filters.categoryIds, categories),
         ...namesOf(filters.accountIds, accounts),
         ...namesOf(filters.labelIds, labels),

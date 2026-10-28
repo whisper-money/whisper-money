@@ -60,6 +60,7 @@ const emptyFilters: TransactionFilters = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',

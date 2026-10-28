@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Label;
@@ -239,6 +240,64 @@ test('filter by uncategorized', function () {
         ->has('transactions.data', 1)
         ->where('transactions.data.0.category_id', null)
     );
+});
+
+test('filter by category type keeps only the rows whose category has one of those types', function () {
+    $categoryOfType = fn (CategoryType $type) => Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => $type,
+    ]);
+    $groceries = $categoryOfType(CategoryType::Expense);
+    $piggyBank = $categoryOfType(CategoryType::Savings);
+    $salary = $categoryOfType(CategoryType::Income);
+
+    foreach ([$groceries->id, $piggyBank->id, $salary->id, null] as $categoryId) {
+        Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'category_id' => $categoryId,
+        ]);
+    }
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_types' => 'expense,savings',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 2)
+        ->where('appliedFilters.category_types', ['expense', 'savings'])
+        ->where('transactions.data', fn ($rows) => collect($rows)->pluck('category_id')->sort()->values()->all()
+            === collect([$groceries->id, $piggyBank->id])->sort()->values()->all())
+    );
+});
+
+test('category type and category filters must both match', function () {
+    $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $salary = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income]);
+
+    foreach ([$groceries, $salary] as $category) {
+        Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'category_id' => $category->id,
+        ]);
+    }
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_types' => 'expense',
+        'category_ids' => $groceries->id.','.$salary->id,
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.category_id', $groceries->id)
+    );
+});
+
+test('rejects a category type that does not exist', function () {
+    actingAs($this->user)
+        ->get(route('transactions.index', ['category_types' => 'expense,gifts']))
+        ->assertSessionHasErrors('category_types.1');
 });
 
 test('filter by account', function () {

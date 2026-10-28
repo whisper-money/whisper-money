@@ -22,7 +22,13 @@ import {
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
-import { type Category, getCategoryColorClasses } from '@/types/category';
+import {
+    type Category,
+    CATEGORY_TYPES,
+    type CategoryType,
+    getCategoryColorClasses,
+    getCategoryTypeLabel,
+} from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
@@ -177,6 +183,37 @@ export function CategoryFacetList({
                         </CommandItem>
                     );
                 })}
+            </CommandList>
+        </Command>
+    );
+}
+
+interface CategoryTypeFacetListProps {
+    selectedTypes: CategoryType[];
+    onChange: (categoryTypes: CategoryType[]) => void;
+}
+
+/** The five category types with a checkbox each: every category of a kind at once. */
+export function CategoryTypeFacetList({
+    selectedTypes,
+    onChange,
+}: CategoryTypeFacetListProps) {
+    return (
+        <Command>
+            <CommandList>
+                {CATEGORY_TYPES.map((type) => (
+                    <CommandItem
+                        key={type}
+                        value={type}
+                        onSelect={() => onChange(toggleId(selectedTypes, type))}
+                    >
+                        <Checkbox
+                            checked={selectedTypes.includes(type)}
+                            className="pointer-events-none mr-1"
+                        />
+                        {getCategoryTypeLabel(type)}
+                    </CommandItem>
+                ))}
             </CommandList>
         </Command>
     );

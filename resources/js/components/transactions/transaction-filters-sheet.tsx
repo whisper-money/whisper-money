@@ -51,7 +51,12 @@ import {
 import { periodLabel } from '@/lib/transaction-period';
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
-import { type Category, getCategoryColorClasses } from '@/types/category';
+import {
+    type Category,
+    CATEGORY_TYPES,
+    getCategoryColorClasses,
+    getCategoryTypeLabel,
+} from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
@@ -272,6 +277,28 @@ function FiltersDraft({
                         }
                     />
                 </SheetRow>
+
+                <SheetSection
+                    label={__('Category type')}
+                    value={chipValue('categoryType') ?? __('Any')}
+                    testId="sheet-category-types"
+                >
+                    <CheckOptions
+                        options={CATEGORY_TYPES.map((type) => ({
+                            id: type,
+                            label: getCategoryTypeLabel(type),
+                            checked: draft.categoryTypes.includes(type),
+                        }))}
+                        onToggle={(type) =>
+                            update({
+                                categoryTypes: toggleId(
+                                    draft.categoryTypes,
+                                    type,
+                                ),
+                            })
+                        }
+                    />
+                </SheetSection>
 
                 <SheetSection
                     label={__('Categories')}

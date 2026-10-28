@@ -67,6 +67,7 @@ class TransactionController extends Controller
             'amount_min' => isset($validated['amount_min']) ? (float) $validated['amount_min'] : null,
             'amount_max' => isset($validated['amount_max']) ? (float) $validated['amount_max'] : null,
             'category_ids' => $validated['category_ids'] ?? [],
+            'category_types' => $validated['category_types'] ?? [],
             'account_ids' => $validated['account_ids'] ?? [],
             'label_ids' => $validated['label_ids'] ?? [],
             'creditor_name' => $validated['creditor_name'] ?? '',

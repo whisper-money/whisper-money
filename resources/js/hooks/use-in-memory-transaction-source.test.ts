@@ -1,3 +1,4 @@
+import { type Category } from '@/types/category';
 import { type Transaction, type TransactionFilters } from '@/types/transaction';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,8 @@ function transaction(
     } as unknown as Transaction;
 }
 
+const NO_CATEGORIES: Pick<Category, 'id' | 'type'>[] = [];
+
 const ROWS = [
     transaction('a', { transaction_date: '2026-10-03', creditor_name: 'Zed' }),
     transaction('b', {
@@ -54,7 +57,11 @@ describe('useInMemoryTransactionSource', () => {
 
     it('draws the newest rows first, a page at a time', async () => {
         const { result } = renderHook(() =>
-            useInMemoryTransactionSource({ transactions: ROWS, pageSize: 2 }),
+            useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
+                transactions: ROWS,
+                pageSize: 2,
+            }),
         );
 
         await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -80,7 +87,10 @@ describe('useInMemoryTransactionSource', () => {
 
     it('holds the rows from the first render, so it never draws empty first', () => {
         const { result } = renderHook(() =>
-            useInMemoryTransactionSource({ transactions: ROWS }),
+            useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
+                transactions: ROWS,
+            }),
         );
 
         expect(result.current.isLoading).toBe(false);
@@ -90,7 +100,10 @@ describe('useInMemoryTransactionSource', () => {
     it('takes the rows the page hands over next', () => {
         const { result, rerender } = renderHook(
             ({ transactions }) =>
-                useInMemoryTransactionSource({ transactions }),
+                useInMemoryTransactionSource({
+                    categories: NO_CATEGORIES,
+                    transactions,
+                }),
             { initialProps: { transactions: ROWS } },
         );
 
@@ -102,6 +115,7 @@ describe('useInMemoryTransactionSource', () => {
     it('keeps an account page to its account', async () => {
         const { result } = renderHook(() =>
             useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
                 transactions: ROWS,
                 accountId: 'checking',
             }),
@@ -116,7 +130,10 @@ describe('useInMemoryTransactionSource', () => {
     it('orders the rows of one day by id, newest first, as the server does', () => {
         const sameDay = ['0b', '0c', '0a'].map((id) => transaction(id));
         const { result } = renderHook(() =>
-            useInMemoryTransactionSource({ transactions: sameDay }),
+            useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
+                transactions: sameDay,
+            }),
         );
 
         expect(result.current.rows.map((row) => row.id)).toEqual([
@@ -128,7 +145,11 @@ describe('useInMemoryTransactionSource', () => {
 
     it('searches in the browser, back to the first page', async () => {
         const { result } = renderHook(() =>
-            useInMemoryTransactionSource({ transactions: ROWS, pageSize: 1 }),
+            useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
+                transactions: ROWS,
+                pageSize: 1,
+            }),
         );
         await waitFor(() => expect(result.current.isLoading).toBe(false));
         act(() => result.current.pagination.loadMore());
@@ -151,6 +172,7 @@ describe('useInMemoryTransactionSource', () => {
         const sameDay = [transaction('a'), transaction('b'), transaction('c')];
         const { result } = renderHook(() =>
             useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
                 transactions: sameDay,
                 pageSize: 1,
             }),
@@ -165,6 +187,7 @@ describe('useInMemoryTransactionSource', () => {
     it('counts what a filter set would keep without applying it', async () => {
         const { result } = renderHook(() =>
             useInMemoryTransactionSource({
+                categories: NO_CATEGORIES,
                 transactions: ROWS,
                 accountId: 'checking',
             }),
@@ -182,5 +205,38 @@ describe('useInMemoryTransactionSource', () => {
         await expect(count({})).resolves.toBe(2);
         await expect(count({ searchText: 'coffee' })).resolves.toBe(1);
         expect(result.current.rows).toHaveLength(2);
+    });
+
+    it('keeps only the rows whose category has a picked type', async () => {
+        const categories: Pick<Category, 'id' | 'type'>[] = [
+            { id: 'groceries', type: 'expense' },
+            { id: 'piggy-bank', type: 'savings' },
+            { id: 'salary', type: 'income' },
+        ];
+        const rows = [
+            transaction('food', { category_id: 'groceries' }),
+            transaction('saved', { category_id: 'piggy-bank' }),
+            transaction('paid', { category_id: 'salary' }),
+            transaction('unsorted'),
+        ];
+        const { result } = renderHook(() =>
+            useInMemoryTransactionSource({ categories, transactions: rows }),
+        );
+
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        act(() =>
+            result.current.onFiltersChange({
+                ...result.current.filters,
+                categoryTypes: ['expense', 'savings'],
+            }),
+        );
+
+        await waitFor(() =>
+            expect(result.current.rows.map((row) => row.id).sort()).toEqual([
+                'food',
+                'saved',
+            ]),
+        );
     });
 });

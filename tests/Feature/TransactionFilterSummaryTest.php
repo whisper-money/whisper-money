@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\ExchangeRate;
@@ -53,6 +54,19 @@ test('it counts, adds up and averages every transaction the filters match', func
         ->average->toBe(-1000)
         ->kind->toBe('expense')
         ->currency->toBe('EUR');
+});
+
+test('it adds up only the category types asked for', function () {
+    $savings = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Savings]);
+    $this->groceries->update(['type' => CategoryType::Expense]);
+
+    summaryTransaction('2025-11-12', -1500);
+    summaryTransaction('2025-11-11', -4000, attributes: ['category_id' => $savings->id]);
+    summaryTransaction('2025-11-10', -9900, attributes: ['category_id' => null]);
+
+    expect(filterSummaryFor(['category_types' => 'savings']))
+        ->count->toBe(1)
+        ->total->toBe(-4000);
 });
 
 test('it covers every matching row, not only the first page', function () {

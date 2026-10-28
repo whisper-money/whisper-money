@@ -2,6 +2,7 @@ import {
     cashflowBlockFromParam,
     cashflowBlockParam,
 } from '@/lib/cashflow-block';
+import { type CategoryType } from '@/types/category';
 import {
     type CashflowBlock,
     type TransactionFilters,
@@ -15,6 +16,7 @@ export interface SerializedFilters {
     amount_min?: number;
     amount_max?: number;
     category_ids?: string[];
+    category_types?: CategoryType[];
     account_ids?: string[];
     label_ids?: string[];
     creditor_name?: string;
@@ -42,6 +44,9 @@ export function serializeFilters(
     }
     if (filters.categoryIds.length > 0) {
         result.category_ids = filters.categoryIds;
+    }
+    if (filters.categoryTypes.length > 0) {
+        result.category_types = filters.categoryTypes;
     }
     if (filters.accountIds.length > 0) {
         result.account_ids = filters.accountIds;
@@ -75,6 +80,7 @@ export function deserializeFilters(
         amountMin: data.amount_min ?? null,
         amountMax: data.amount_max ?? null,
         categoryIds: data.category_ids ?? [],
+        categoryTypes: data.category_types ?? [],
         accountIds: data.account_ids ?? [],
         labelIds: data.label_ids ?? [],
         creditorName: data.creditor_name ?? '',
@@ -105,8 +111,11 @@ export function filtersFingerprint(filters: SerializedFilters): string {
         creditor_name: filters.creditor_name ?? '',
         debtor_name: filters.debtor_name ?? '',
         search: filters.search ?? '',
-        // Only when set, so fingerprints saved before blocks existed (they
-        // key browser overrides) stay the same.
+        // Only when set, so fingerprints saved before blocks and category
+        // types existed (they key browser overrides) stay the same.
+        ...(filters.category_types?.length
+            ? { category_types: [...filters.category_types].sort() }
+            : {}),
         ...(filters.cashflow_block
             ? { cashflow_block: filters.cashflow_block }
             : {}),

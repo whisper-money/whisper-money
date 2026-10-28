@@ -39,6 +39,7 @@ import {
     ChevronLeft,
     Coins,
     Landmark,
+    Layers,
     LayoutGrid,
     Plus,
     Search,
@@ -246,6 +247,11 @@ interface FacetMenuItem {
 const FACET_MENU: FacetMenuItem[] = [
     { facet: 'type', label: () => __('Type'), icon: ArrowLeftRight },
     { facet: 'amount', label: () => __('Amount'), icon: Coins },
+    {
+        facet: 'categoryType',
+        label: () => __('Category type'),
+        icon: Layers,
+    },
     { facet: 'category', label: () => __('Category'), icon: Shapes },
     { facet: 'account', label: () => __('Account'), icon: Landmark },
     { facet: 'label', label: () => __('Label'), icon: Tags },

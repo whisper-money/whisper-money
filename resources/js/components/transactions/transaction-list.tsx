@@ -74,6 +74,7 @@ export function TransactionList({
 }: TransactionListProps) {
     const source = useInMemoryTransactionSource({
         transactions,
+        categories,
         accountId,
         pageSize,
     });

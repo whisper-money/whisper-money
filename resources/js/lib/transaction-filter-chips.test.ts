@@ -8,6 +8,7 @@ const none: TransactionFilters = {
     amountMin: null,
     amountMax: null,
     categoryIds: [],
+    categoryTypes: [],
     accountIds: [],
     labelIds: [],
     creditorName: '',
