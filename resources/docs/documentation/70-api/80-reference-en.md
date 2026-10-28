@@ -72,3 +72,16 @@ A label is a free tag: a transaction can carry any number of them next to its si
 | [`GET /api/v1/labels/{label}`](/documentation/api/reference/labels#retrieve-a-label) | Retrieve a label |
 | [`PATCH /api/v1/labels/{label}`](/documentation/api/reference/labels#update-a-label) | Update a label |
 | [`DELETE /api/v1/labels/{label}`](/documentation/api/reference/labels#delete-a-label) | Delete a label |
+
+## Automation rules
+
+An automation rule gives a category, labels and a note to the transactions that meet its conditions. Rules are evaluated in `priority` order, lowest first, and a new transaction gets the actions of the first rule it matches and no other. A rule only runs on transactions created after it: run it over the ones already there with the apply endpoint.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/automation-rules`](/documentation/api/reference/automation-rules#list-automation-rules) | List automation rules |
+| [`POST /api/v1/automation-rules`](/documentation/api/reference/automation-rules#create-an-automation-rule) | Create an automation rule |
+| [`GET /api/v1/automation-rules/{automation_rule}`](/documentation/api/reference/automation-rules#retrieve-an-automation-rule) | Retrieve an automation rule |
+| [`PATCH /api/v1/automation-rules/{automation_rule}`](/documentation/api/reference/automation-rules#update-an-automation-rule) | Update an automation rule |
+| [`DELETE /api/v1/automation-rules/{automation_rule}`](/documentation/api/reference/automation-rules#delete-an-automation-rule) | Delete an automation rule |
+| [`POST /api/v1/automation-rules/{automation_rule}/apply`](/documentation/api/reference/automation-rules#apply-an-automation-rule-to-existing-transactions) | Apply an automation rule to existing transactions |
