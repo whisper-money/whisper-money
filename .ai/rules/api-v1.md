@@ -7,7 +7,7 @@ paths:
 # Public API v1
 
 ## The spec documents itself from the code: write for it
-Scramble (`dedoc/scramble`) builds the OpenAPI spec of every route in the `api-v1` middleware group, and `php artisan api:docs` turns that spec into the reference pages under `resources/docs/documentation/70-api/80-reference*`. A test (`tests/Feature/ApiV1/ApiReferenceTest.php`) fails when the committed pages differ from what the code generates, so **run `php artisan api:docs` and commit its output after touching any v1 controller or resource**. Never edit those pages by hand.
+Scramble (`dedoc/scramble`) builds the OpenAPI spec of every route in the `api-v1` middleware group, and `php artisan api:docs` turns that spec into the reference pages under `resources/docs/documentation/70-api/80-reference*`. A test (`tests/Feature/Api/V1/ApiReferenceTest.php`) fails when the committed pages differ from what the code generates, so **run `php artisan api:docs` and commit its output after touching any v1 controller or resource**. Never edit those pages by hand.
 
 Per endpoint, only describe what the controller itself does:
 

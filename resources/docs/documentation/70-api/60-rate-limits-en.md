@@ -7,8 +7,7 @@ Each user can make 60 requests a minute, across all of their tokens and connecte
 ## The limit
 
 The limit is per user, not per token: three scripts with three tokens share the
-same 60 requests a minute. Every authenticated response tells you where you
-stand:
+same 60 requests a minute. Responses tell you where you stand:
 
 | Header                  | Meaning                              |
 | ----------------------- | ------------------------------------ |

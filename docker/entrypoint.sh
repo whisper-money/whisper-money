@@ -99,9 +99,11 @@ php artisan route:cache
 php artisan view:cache
 php artisan event:cache
 
-# The OpenAPI spec served at /api/v1/openapi.json, generated once per deploy
+# The OpenAPI spec served at /api/v1/openapi.json, generated once per deploy.
+# Without the cache the endpoint generates it on each request, so a failure
+# here is worth a warning, not a failed boot.
 echo "Caching the API spec..."
-php artisan scramble:cache
+php artisan scramble:cache || echo "WARNING: could not cache the API spec; /api/v1/openapi.json will generate it per request"
 
 # Create storage link (harmless if already exists)
 echo "Creating storage link..."

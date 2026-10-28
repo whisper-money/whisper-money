@@ -25,7 +25,8 @@ curl -X POST https://whisper.money/api/v1/transactions \
 ```
 
 La cabecera es opcional, funciona en cualquier `POST` y se ignora en los demás
-métodos. `PATCH`, `PUT` y `DELETE` ya se pueden repetir sin riesgo.
+métodos. `PATCH` y `PUT` ya se pueden repetir sin riesgo, y repetir un `DELETE` solo
+responde `404` la segunda vez.
 
 ## Qué pasa al reintentar
 

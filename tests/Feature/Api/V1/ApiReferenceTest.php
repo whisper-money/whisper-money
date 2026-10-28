@@ -95,3 +95,11 @@ it('points agents at the API docs and the spec from llms.txt', function () {
         ->toContain(route('documentation.markdown', ['slug' => 'api/authentication', 'lang' => 'en']))
         ->toContain(route('documentation.markdown', ['slug' => 'api/reference', 'lang' => 'en']));
 });
+
+it('lists the English-only reference in llms.txt under English alone', function () {
+    $spanish = str($this->get(route('llms'))->assertOk()->getContent())->after('## Documentación (español)')->before('## Notes');
+
+    expect((string) $spanish)
+        ->toContain(route('documentation.markdown', ['slug' => 'api/authentication', 'lang' => 'es']))
+        ->not->toContain(route('documentation.markdown', ['slug' => 'api/reference', 'lang' => 'es']));
+});

@@ -228,15 +228,15 @@ final class ApiReference
      */
     private function errors(array $operation): array
     {
-        $lines = ['', '#### Errors', '', '| Status | When |', '| --- | --- |'];
+        $rows = [];
 
         foreach ($operation['responses'] ?? [] as $status => $response) {
             if ((int) $status >= 400) {
-                $lines[] = '| `'.$status.'` | '.$this->cell($this->document->description($this->document->resolve(is_array($response) ? $response : []))).' |';
+                $rows[] = '| `'.$status.'` | '.$this->cell($this->document->description($this->document->resolve(is_array($response) ? $response : []))).' |';
             }
         }
 
-        return count($lines) > 5 ? $lines : [];
+        return $rows === [] ? [] : ['', '#### Errors', '', '| Status | When |', '| --- | --- |', ...$rows];
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\ApiV1\Documentation;
 
+use App\Http\Middleware\ApiV1\AuthenticateApiRequest;
 use Dedoc\Scramble\Extensions\OperationExtension;
 use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\MediaType;
@@ -38,9 +39,7 @@ class OperationConventions extends OperationExtension
     public function handle(Operation $operation, RouteInfo $routeInfo): void
     {
         $components = $this->openApiTransformer->getComponents();
-        $isWrite = ! in_array(strtoupper($operation->method), ['GET', 'HEAD', 'OPTIONS'], true);
-
-        $operation->setExtensionProperty('token-ability', $isWrite ? 'api:write' : 'api:read');
+        $operation->setExtensionProperty('token-ability', AuthenticateApiRequest::requiredAbility($operation->method));
 
         $paginated = $this->attribute($routeInfo, Paginated::class);
 
@@ -151,7 +150,7 @@ class OperationConventions extends OperationExtension
 
     private function status(Response|Reference $response): int|string|null
     {
-        $resolved = $response instanceof Reference ? rescue(fn (): mixed => $response->resolve(), report: false) : $response;
+        $resolved = $response instanceof Reference ? $response->resolve() : $response;
 
         return $resolved instanceof Response ? $resolved->code : null;
     }

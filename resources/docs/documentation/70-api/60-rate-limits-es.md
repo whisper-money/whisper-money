@@ -7,8 +7,7 @@ Cada usuario puede hacer 60 peticiones por minuto, sumando todos sus tokens y ap
 ## El límite
 
 El límite es por usuario, no por token: tres scripts con tres tokens comparten
-las mismas 60 peticiones por minuto. Cada respuesta autenticada te dice cómo
-vas:
+las mismas 60 peticiones por minuto. Las respuestas te dicen cómo vas:
 
 | Cabecera                | Significado                                   |
 | ----------------------- | --------------------------------------------- |

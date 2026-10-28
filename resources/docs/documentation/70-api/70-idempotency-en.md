@@ -25,7 +25,8 @@ curl -X POST https://whisper.money/api/v1/transactions \
 ```
 
 The header is optional, works on every `POST`, and is ignored on other methods.
-`PATCH`, `PUT` and `DELETE` are safe to repeat already.
+`PATCH` and `PUT` are safe to repeat already, and repeating a `DELETE`
+only answers `404` the second time.
 
 ## What happens on a retry
 

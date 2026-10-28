@@ -17,7 +17,6 @@ function generatedSpec(): array
 it('serves the spec without a token, outside the api-v1 middleware', function () {
     $response = $this->getJson('/api/v1/openapi.json')
         ->assertOk()
-        ->assertHeaderMissing('X-RateLimit-Limit')
         ->assertJsonPath('info.title', 'Whisper Money API')
         ->assertJsonPath('info.version', 'v1');
 

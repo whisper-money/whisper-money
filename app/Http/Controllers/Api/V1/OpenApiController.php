@@ -10,7 +10,8 @@ use Illuminate\Http\JsonResponse;
 /**
  * `GET /api/v1/openapi.json`: the OpenAPI spec of the public API, open to
  * anyone. Registered outside the `api-v1` group (see bootstrap/app.php), so
- * it needs no token and counts against no one's rate limit.
+ * it needs no token and counts against no one's rate limit (it has a per-IP
+ * one of its own).
  *
  * Served from the cache `php artisan scramble:cache` fills on deploy, and
  * generated on the fly when that cache is empty.

@@ -133,6 +133,11 @@ final class AgentMarkdown
             ];
 
             foreach ($pages as $page) {
+                // The English-only pages (the API reference) are listed once, in English.
+                if (! in_array($locale, $page['locales'], true)) {
+                    continue;
+                }
+
                 $url = route('documentation.show', ['slug' => $page['slug'], 'lang' => $locale]);
                 $markdown = route('documentation.markdown', ['slug' => $page['slug'], 'lang' => $locale]);
 

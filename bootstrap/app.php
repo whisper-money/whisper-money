@@ -41,9 +41,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         // The public API: stateless, bearer-only, outside the `web` group the
         // internal `/api/*` routes run under. Its OpenAPI spec is public, so
-        // it stays out of the `api-v1` group and its bearer auth.
+        // it stays out of the `api-v1` group and its bearer auth, throttled
+        // per IP instead.
         then: function (): void {
-            Route::get('api/v1/openapi.json', OpenApiController::class)->name('api.v1.openapi');
+            Route::get('api/v1/openapi.json', OpenApiController::class)
+                ->middleware('throttle:60,1')
+                ->name('api.v1.openapi');
 
             Route::middleware('api-v1')
                 ->prefix('api/v1')
