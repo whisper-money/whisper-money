@@ -44,19 +44,19 @@ export function PlanningCard({
 }: Props) {
     return (
         // min-w-0 all the way down: a long name without spaces truncates
-        // instead of widening the card past its grid column. flex-1 sizes the
-        // title column from the row, not from its content: the truncating
-        // title counts as zero wide there, so a content-sized column shrank to
-        // the description line and cut even short names.
+        // instead of widening the card past its grid column.
         <Card className={cn('min-w-0', dimmed && 'opacity-60')}>
             <CardHeader>
                 <div className="flex items-start justify-between gap-2">
+                    {/* flex-1: a truncating title adds no width to a column
+                        sized by its content, so that column shrank to the
+                        description line and cut even short names. */}
                     <div className="min-w-0 flex-1 space-y-1">
                         <CardTitle className="text-xl">
                             <Link
                                 href={href}
                                 title={title}
-                                className="-my-1 -ml-1.5 block max-w-full truncate rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                className="-my-1 -ml-1.5 block w-fit max-w-full truncate rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 {title}
                             </Link>

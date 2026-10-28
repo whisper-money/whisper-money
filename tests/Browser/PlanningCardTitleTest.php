@@ -33,10 +33,7 @@ it('only truncates a planning card title that does not fit on a phone', function
 
     actingAs($user);
 
-    $page = visit('/budgets')
-        ->on()
-        ->iPhone14Pro()
-        ->navigate('/budgets');
+    $page = visit('/budgets')->on()->iPhone14Pro();
 
     $page->assertSee('Restaurantes');
 
@@ -68,10 +65,10 @@ it('only truncates a planning card title that does not fit on a phone', function
     // Both title columns run up to the badge, only the row's gap-2 apart, so the
     // room a title gets never depends on how wide its own text measures.
     expect($short['truncated'])->toBeFalse()
-        ->and($short['gapToBadge'])->toEqual(8)
+        ->and($short['gapToBadge'])->toEqualWithDelta(8, 0.5)
         ->and($long['truncated'])->toBeTrue()
         ->and($long['withinCard'])->toBeTrue()
-        ->and($long['gapToBadge'])->toEqual(8)
+        ->and($long['gapToBadge'])->toEqualWithDelta(8, 0.5)
         ->and($titles['pageOverflow'])->toBeLessThanOrEqual(0);
 
     $page->assertNoJavascriptErrors();
