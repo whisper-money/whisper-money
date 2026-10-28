@@ -1,4 +1,5 @@
 import { AutomationRuleForm } from '@/components/automation-rules/automation-rule-form';
+import { AutomationRulePicker } from '@/components/automation-rules/automation-rule-picker';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -19,7 +20,7 @@ import type { Label } from '@/types/label';
 import type { ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { ArrowLeft, FilePlus2, ListPlus } from 'lucide-react';
+import { FilePlus2, ListPlus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 export interface AutomateCategorizationCandidate {
@@ -186,42 +187,14 @@ export function AutomateCategorizationDialog({
                 )}
 
                 {step === 'select-rule' && (
-                    <div className="space-y-3">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => setStep('choose')}
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            {__('Back')}
-                        </Button>
-                        <div className="max-h-80 space-y-2 overflow-y-auto">
-                            {rules.map((rule) => (
-                                <Button
-                                    key={rule.id}
-                                    type="button"
-                                    variant="outline"
-                                    className="h-auto w-full justify-start p-3 text-left"
-                                    onClick={() => {
-                                        setSelectedRule(rule);
-                                        setStep('edit');
-                                    }}
-                                >
-                                    <span>
-                                        <span className="block font-medium">
-                                            {rule.title}
-                                        </span>
-                                        <span className="block text-sm text-muted-foreground">
-                                            {rule.category?.name ??
-                                                __('No category set')}
-                                        </span>
-                                    </span>
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
+                    <AutomationRulePicker
+                        rules={rules}
+                        onBack={() => setStep('choose')}
+                        onSelect={(rule) => {
+                            setSelectedRule(rule);
+                            setStep('edit');
+                        }}
+                    />
                 )}
 
                 {step === 'create' && (
