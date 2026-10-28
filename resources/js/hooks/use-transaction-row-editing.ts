@@ -157,16 +157,22 @@ export function useTransactionRowEditing({
         [],
     );
 
-    const openAutomateDialog = useCallback((transaction: ServerTransaction) => {
-        captureEvent('automation_rule_toast_automatize_clicked', {
-            source: 'row_menu',
-        });
-        setAutomateCandidate({
-            transaction,
-            category: transaction.category ?? null,
-        });
-        setAutomateDialogOpen(true);
-    }, []);
+    const openAutomateDialog = useCallback(
+        (
+            transaction: ServerTransaction,
+            source: 'row_menu' | 'edit_dialog' = 'row_menu',
+        ) => {
+            captureEvent('automation_rule_toast_automatize_clicked', {
+                source,
+            });
+            setAutomateCandidate({
+                transaction,
+                category: transaction.category ?? null,
+            });
+            setAutomateDialogOpen(true);
+        },
+        [],
+    );
 
     const rowActions = useMemo<TransactionRowActionHandlers>(
         () => ({
@@ -174,17 +180,28 @@ export function useTransactionRowEditing({
             onDuplicate: setDuplicateTransaction,
             onReEvaluateRules: handleReEvaluateRules,
             onDelete: setDeleteTransaction,
-            onAutomate: openAutomateDialog,
+            onAutomate: (transaction) => openAutomateDialog(transaction),
             onSplit: setSplitTransaction,
             onUnsplit: setUnsplitTransaction,
         }),
         [handleReEvaluateRules, openAutomateDialog],
     );
 
+    /** The same actions, offered from the edit dialog's own menu. */
+    const dialogRowActions = useMemo<TransactionRowActionHandlers>(
+        () => ({
+            ...rowActions,
+            onAutomate: (transaction) =>
+                openAutomateDialog(transaction, 'edit_dialog'),
+        }),
+        [rowActions, openAutomateDialog],
+    );
+
     return {
         labels,
         handleLabelCreated,
         rowActions,
+        dialogRowActions,
         updateTransaction,
         handleCategorized,
         editTransaction,

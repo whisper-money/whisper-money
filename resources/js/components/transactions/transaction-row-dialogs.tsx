@@ -50,6 +50,7 @@ export function TransactionRowDialogs({
                 onLabelCreated={editing.handleLabelCreated}
                 onDelete={editing.setDeleteTransaction}
                 onSplit={editing.setSplitTransaction}
+                rowActions={editing.dialogRowActions}
                 mode="edit"
             />
 

@@ -159,6 +159,25 @@ it('opens the edit dialog on a tap while no row is picked', function () {
         ->assertNoJavascriptErrors();
 });
 
+it('duplicates a row and automates its categorization from the edit dialog on a phone', function () {
+    $page = visitTransactionListOnAPhone();
+
+    $page->click('[data-testid="transaction-list-row"]:has-text("Weekly groceries market")')
+        ->assertSee('Edit Transaction')
+        ->click('[data-testid="transaction-more-actions"]')
+        ->click('[role="menuitem"]:has-text("Duplicate")')
+        ->assertSee('Add Transaction')
+        ->assertValue('#description', 'Weekly groceries market')
+        ->assertDontSee('Edit Transaction')
+        ->keys('#description', ['Escape'])
+        ->click('[data-testid="transaction-list-row"]:has-text("Weekly groceries market")')
+        ->click('[data-testid="transaction-more-actions"]')
+        ->click('[role="menuitem"]:has-text("Automatize categorization")')
+        ->assertSee('so future transactions with this description are categorized automatically')
+        ->assertDontSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+});
+
 it('loads the next page of rows with the button below them', function () {
     $this->fixture->addOlderMovements(52);
 
