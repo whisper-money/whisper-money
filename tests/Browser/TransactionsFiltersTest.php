@@ -34,7 +34,7 @@ beforeEach(function () {
 function addTransactionFilter($page, string $facet)
 {
     return $page->click('[data-testid="add-filter-button"]')
-        ->click('[data-testid="add-filter-popover"] [role="menuitem"]:has-text("'.$facet.'")');
+        ->click('[data-testid="add-filter-popover"] [role="menuitem"]:text-is("'.$facet.'")');
 }
 
 /** Close whichever filter popover is open by clicking the page's title. */
@@ -143,6 +143,27 @@ it('narrows the list by account, category, label and type with chips', function 
         ->click('[cmdk-item]:has-text("Commute")')
         ->assertSee('Monthly train pass')
         ->assertDontSee('Hotel in Lisbon')
+        ->assertNoJavascriptErrors();
+});
+
+it('narrows the list to the picked category types, leaving uncategorized rows out', function () {
+    $page = visit('/transactions');
+
+    addTransactionFilter($page, 'Category type')
+        ->click('[cmdk-item]:has-text("Income")')
+        ->assertQueryStringHas('category_types', 'income')
+        ->assertSee('Salary payment May')
+        ->assertDontSee('Weekly groceries market');
+
+    // A second type widens it: every expense joins the income.
+    $page->click('[cmdk-item]:has-text("Expense")')
+        ->assertSee('Weekly groceries market')
+        ->assertSee('Salary payment May');
+
+    closeFilterPopover($page)
+        ->assertSeeIn('[data-testid="filter-chip-categoryType"]', 'Income, Expense')
+        ->click('[aria-label="Remove the Category type filter"]')
+        ->assertMissing('[data-testid="filter-chips"]')
         ->assertNoJavascriptErrors();
 });
 
