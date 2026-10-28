@@ -171,6 +171,29 @@ describe('TransactionDayHeader', () => {
         expect(dayHeaders()[1]).toHaveTextContent('€3,000.00');
     });
 
+    it('fades the day total and brings it back while the header is hovered', () => {
+        render(<TransactionsTable />);
+
+        expect(dayHeaders()[0]).toHaveClass('group/day');
+
+        const spending = within(dayHeaders()[0]).getByText('-€20.00')
+            .parentElement as HTMLElement;
+        const income = within(dayHeaders()[1]).getByText('€3,000.00')
+            .parentElement as HTMLElement;
+
+        for (const total of [spending, income]) {
+            expect(total).toHaveClass(
+                'opacity-30',
+                'bg-transparent',
+                'group-hover/day:opacity-100',
+            );
+            expect(total).not.toHaveClass('bg-green-100/70');
+        }
+
+        expect(income).toHaveClass('group-hover/day:bg-green-100/70');
+        expect(spending).not.toHaveClass('group-hover/day:bg-green-100/70');
+    });
+
     it('spans one column less once the Date column is hidden', () => {
         render(
             <TransactionsTable
