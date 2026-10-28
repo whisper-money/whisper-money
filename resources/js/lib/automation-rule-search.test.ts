@@ -17,6 +17,7 @@ const rules = [
     rule('GF · Whisper Money', 'GF · Servicios financieros digitales'),
     rule('Café de la esquina', 'Bares y cafeterías'),
     rule('Sin categoría'),
+    rule('Яндекс Такси', 'Транспорт'),
 ];
 
 describe('searchAutomationRules', () => {
@@ -42,6 +43,17 @@ describe('searchAutomationRules', () => {
 
     it('ignores punctuation between words', () => {
         expect(searchAutomationRules(rules, 'aa dia')).toEqual([rules[0]]);
+    });
+
+    it('matches letters outside the Latin alphabet', () => {
+        expect(searchAutomationRules(rules, 'такси')).toEqual([rules[4]]);
+        expect(searchAutomationRules(rules, 'транспорт')).toEqual([rules[4]]);
+    });
+
+    it('matches the title of a rule without a category', () => {
+        expect(searchAutomationRules(rules, 'sin categoria')).toEqual([
+            rules[3],
+        ]);
     });
 
     it('returns nothing when no title or category matches', () => {

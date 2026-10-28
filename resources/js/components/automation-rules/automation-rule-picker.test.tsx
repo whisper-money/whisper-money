@@ -92,7 +92,9 @@ describe('AutomationRulePicker', () => {
 
         search('netflix');
         expect(screen.getByText('No rules found.')).toBeInTheDocument();
-        expect(screen.queryAllByRole('button', { name: /·/ })).toHaveLength(0);
+        for (const rule of rules) {
+            expect(screen.queryByText(rule.title)).not.toBeInTheDocument();
+        }
     });
 
     it('picks the clicked rule', () => {
