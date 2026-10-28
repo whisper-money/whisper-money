@@ -3,10 +3,11 @@
 namespace App\Http\Resources\V1;
 
 use App\Models\SavingsGoal;
-use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPresenter;
 use Dedoc\Scramble\Attributes\SchemaName;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -21,14 +22,37 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class SavingsGoalResource extends JsonResource
 {
     /**
+     * The goal as SavingsGoalPresenter shapes it, when a list worked out the
+     * whole page at once.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $row = null;
+
+    /**
+     * A page of goals, their stats read in one batch.
+     *
+     * @param  mixed  $resource
+     */
+    public static function collection($resource): AnonymousResourceCollection
+    {
+        $collection = parent::collection($resource);
+        $goals = $collection->collection->map(fn (self $goal): mixed => $goal->resource)->whereInstanceOf(SavingsGoal::class)->values();
+        $rows = app(SavingsGoalPresenter::class)->many(new EloquentCollection($goals->all()));
+
+        $collection->collection->each(function (self $goal) use ($rows): void {
+            $goal->row = $rows[$goal->resource->id];
+        });
+
+        return $collection;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        /** @var User $user */
-        $user = $request->user();
-
-        $row = app(SavingsGoalPresenter::class)->one($this->resource);
+        $row = $this->row ?? app(SavingsGoalPresenter::class)->one($this->resource);
 
         return [
             /**
@@ -68,11 +92,11 @@ class SavingsGoalResource extends JsonResource
              */
             'label_id' => $this->label_id,
             /**
-             * The currency of the goal's amounts: your account's currency, as an ISO 4217 code.
+             * The currency of the goal's amounts: the currency of the account of the member who created it, as an ISO 4217 code.
              *
              * @example EUR
              */
-            'currency' => $user->currency_code ?? 'USD',
+            'currency' => $this->user->currency_code ?? 'USD',
             /**
              * One-off goals: the total to reach. `null` on a monthly goal.
              *

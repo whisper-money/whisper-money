@@ -61,7 +61,7 @@ class StoreBudgetRequest extends FormRequest
              */
             'expense_type' => ['sometimes', Rule::enum(BudgetExpenseType::class)],
             /**
-             * Track every expense category no other budget tracks, instead of `category_ids` and `label_ids`. An account has at most one catch-all budget.
+             * Track every expense category no other budget tracks. A catch-all budget takes no `category_ids` or `label_ids`, and an account has at most one.
              *
              * @example false
              */
@@ -139,8 +139,13 @@ class StoreBudgetRequest extends FormRequest
             /** @var User $user */
             $user = $this->user();
 
+            $isCatchAll = $this->boolean('is_catch_all');
+            $categoryIds = (array) $this->input('category_ids', []);
+            $labelIds = (array) $this->input('label_ids', []);
+
             $this->addRefusals($validator, [
-                ...BudgetService::trackingRefusals($user, $this->boolean('is_catch_all'), (array) $this->input('category_ids', []), (array) $this->input('label_ids', [])),
+                ...BudgetService::trackingRefusals($user, $isCatchAll, $categoryIds, $labelIds),
+                ...($isCatchAll && ($categoryIds !== [] || $labelIds !== []) ? ['is_catch_all' => 'A catch-all budget tracks every expense category no other budget tracks: leave category_ids and label_ids out.'] : []),
                 ...$this->unknownFieldRefusals(),
             ]);
         }];

@@ -22,7 +22,11 @@ class BudgetPeriodResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $spent = $this->spentAmount();
+        // Summed by the query when a list eager loaded it (withSum), null when
+        // the period has no transactions.
+        $spent = array_key_exists('budget_transactions_sum_amount', $this->resource->getAttributes())
+            ? (int) $this->budget_transactions_sum_amount
+            : $this->spentAmount();
 
         return [
             /**

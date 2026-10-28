@@ -11,6 +11,7 @@ use App\Http\Resources\V1\BudgetResource;
 use App\Models\Budget;
 use App\Services\BudgetService;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -30,7 +31,11 @@ class BudgetController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         return CursorPaginator::paginate(
-            Budget::query()->whereBelongsTo($this->user($request))->notArchived()->with(['categories:id,name', 'labels:id,name']),
+            Budget::query()->whereBelongsTo($this->user($request))->notArchived()->with([
+                'categories:id,name',
+                'labels:id,name',
+                'currentPeriods' => fn (Relation $periods) => $periods->withSum('budgetTransactions', 'amount'),
+            ]),
             $request,
             [['created_at', 'desc'], ['id', 'desc']],
             BudgetResource::class,

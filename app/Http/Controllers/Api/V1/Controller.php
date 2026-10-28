@@ -90,6 +90,6 @@ abstract class Controller extends BaseController
      */
     protected function budget(Request $request, string $id): Budget
     {
-        return Budget::query()->whereBelongsTo($this->user($request))->findOrFail($id);
+        return Budget::ownedByOrFail($this->user($request), $id);
     }
 }

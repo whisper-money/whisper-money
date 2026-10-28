@@ -52,8 +52,9 @@ class StoreSavingsGoalRequest extends FormRequest
 
     private function feedableAccount(string $attribute, mixed $value, Closure $fail): void
     {
+        $resolver = app(SpaceResolver::class);
         $refusal = app(SavingsGoalWriteRules::class)->autoTagAccountRefusal(
-            app(SpaceResolver::class)->accountOrFail(app(SpaceResolver::class)->forApiRequest($this), (string) $value),
+            $resolver->accountOrFail($resolver->forApiRequest($this), (string) $value),
             'Pick an account of type savings from GET /api/v1/accounts.',
             'tag contributions to the goal with its label.',
         );

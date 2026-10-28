@@ -27,7 +27,10 @@ trait ResolvesRouteBudget
 
     public function budget(): Budget
     {
-        return $this->routeBudget ??= Budget::query()->whereBelongsTo($this->user())->findOrFail((string) $this->route('budget'));
+        /** @var User $user */
+        $user = $this->user();
+
+        return $this->routeBudget ??= Budget::ownedByOrFail($user, (string) $this->route('budget'));
     }
 
     protected function failedAuthorization(): never

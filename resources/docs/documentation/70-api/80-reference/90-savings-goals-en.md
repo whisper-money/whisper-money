@@ -35,7 +35,7 @@ The goals of a space, newest first, archived ones included. Every member of a sp
 | `data[].name` | string | The goal's name, which is also the name of its label. |
 | `data[].kind` | "one_off" \| "monthly" | `one_off` to reach a total once, `monthly` to save towards a target every calendar month. Fixed once created. |
 | `data[].label_id` | string (uuid) or null | The id of the goal's label. A transaction counts towards the goal once it carries this label: set it with `PUT /api/v1/transactions/{id}/labels`. |
-| `data[].currency` | string | The currency of the goal's amounts: your account's currency, as an ISO 4217 code. |
+| `data[].currency` | string | The currency of the goal's amounts: the currency of the account of the member who created it, as an ISO 4217 code. |
 | `data[].target_amount` | integer or null | One-off goals: the total to reach. `null` on a monthly goal. |
 | `data[].initial_amount` | integer or null | One-off goals: what was already saved when the goal was created. `null` on a monthly goal. |
 | `data[].target_date` | string (date) or null | One-off goals: the day to reach the total by, or `null` for none. |
@@ -197,7 +197,7 @@ Creates the goal in the space, with a label of the same name to tag its contribu
 | `data.name` | string | The goal's name, which is also the name of its label. |
 | `data.kind` | "one_off" \| "monthly" | `one_off` to reach a total once, `monthly` to save towards a target every calendar month. Fixed once created. |
 | `data.label_id` | string (uuid) or null | The id of the goal's label. A transaction counts towards the goal once it carries this label: set it with `PUT /api/v1/transactions/{id}/labels`. |
-| `data.currency` | string | The currency of the goal's amounts: your account's currency, as an ISO 4217 code. |
+| `data.currency` | string | The currency of the goal's amounts: the currency of the account of the member who created it, as an ISO 4217 code. |
 | `data.target_amount` | integer or null | One-off goals: the total to reach. `null` on a monthly goal. |
 | `data.initial_amount` | integer or null | One-off goals: what was already saved when the goal was created. `null` on a monthly goal. |
 | `data.target_date` | string (date) or null | One-off goals: the day to reach the total by, or `null` for none. |
@@ -350,7 +350,7 @@ curl -X POST https://whisper.money/api/v1/savings-goals \
 | `data.name` | string | The goal's name, which is also the name of its label. |
 | `data.kind` | "one_off" \| "monthly" | `one_off` to reach a total once, `monthly` to save towards a target every calendar month. Fixed once created. |
 | `data.label_id` | string (uuid) or null | The id of the goal's label. A transaction counts towards the goal once it carries this label: set it with `PUT /api/v1/transactions/{id}/labels`. |
-| `data.currency` | string | The currency of the goal's amounts: your account's currency, as an ISO 4217 code. |
+| `data.currency` | string | The currency of the goal's amounts: the currency of the account of the member who created it, as an ISO 4217 code. |
 | `data.target_amount` | integer or null | One-off goals: the total to reach. `null` on a monthly goal. |
 | `data.initial_amount` | integer or null | One-off goals: what was already saved when the goal was created. `null` on a monthly goal. |
 | `data.target_date` | string (date) or null | One-off goals: the day to reach the total by, or `null` for none. |
@@ -506,7 +506,7 @@ Changes only the fields you send, and only the fields of the goal's kind: the ot
 | `data.name` | string | The goal's name, which is also the name of its label. |
 | `data.kind` | "one_off" \| "monthly" | `one_off` to reach a total once, `monthly` to save towards a target every calendar month. Fixed once created. |
 | `data.label_id` | string (uuid) or null | The id of the goal's label. A transaction counts towards the goal once it carries this label: set it with `PUT /api/v1/transactions/{id}/labels`. |
-| `data.currency` | string | The currency of the goal's amounts: your account's currency, as an ISO 4217 code. |
+| `data.currency` | string | The currency of the goal's amounts: the currency of the account of the member who created it, as an ISO 4217 code. |
 | `data.target_amount` | integer or null | One-off goals: the total to reach. `null` on a monthly goal. |
 | `data.initial_amount` | integer or null | One-off goals: what was already saved when the goal was created. `null` on a monthly goal. |
 | `data.target_date` | string (date) or null | One-off goals: the day to reach the total by, or `null` for none. |

@@ -5,6 +5,7 @@ namespace App\Services\SavingsGoals;
 use App\Enums\SavingsGoalKind;
 use App\Models\SavingsGoal;
 use App\Models\Space;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * The savings goal row the savings goal MCP tools return and
@@ -26,13 +27,26 @@ class SavingsGoalPresenter
      */
     public function all(Space $space): array
     {
-        [$monthly, $oneOff] = SavingsGoal::query()->forSpace($space)->listed()->get()
-            ->partition(fn (SavingsGoal $goal): bool => $goal->isMonthly());
+        return array_values($this->many(SavingsGoal::query()->forSpace($space)->listed()->get()));
+    }
 
-        return array_map(
-            $this->row(...),
-            [...SavingsGoal::withStats($oneOff), ...$this->monthlyStats->present($monthly)],
-        );
+    /**
+     * Goals already loaded with their labels, keyed by id, one-off ones first:
+     * the stats of all of them are read in one batch rather than goal by goal.
+     *
+     * @param  Collection<int, SavingsGoal>  $goals
+     * @return array<string, array<string, mixed>>
+     */
+    public function many(Collection $goals): array
+    {
+        [$monthly, $oneOff] = $goals->partition(fn (SavingsGoal $goal): bool => $goal->isMonthly());
+        $rows = [];
+
+        foreach ([...SavingsGoal::withStats($oneOff), ...$this->monthlyStats->present($monthly)] as $row) {
+            $rows[$row['id']] = $this->row($row);
+        }
+
+        return $rows;
     }
 
     /**

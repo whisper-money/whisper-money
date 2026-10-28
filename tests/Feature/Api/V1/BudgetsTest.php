@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\withHeaders;
@@ -30,7 +31,7 @@ function budgetUser(): User
  */
 function groceriesBudget(User $user, array $attributes = []): Budget
 {
-    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => $attributes['name'] ?? 'Groceries']);
     $budget = Budget::factory()->monthly()->forCategories($category)->create([
         'user_id' => $user->id,
         'name' => 'Groceries',
@@ -112,6 +113,27 @@ describe('list', function () {
                 'created_at' => '2026-01-15T09:30:00+00:00',
                 'updated_at' => '2026-01-20T18:05:00+00:00',
             ]);
+    });
+
+    it('reads a page of budgets in the same number of queries however many it holds', function () {
+        $user = budgetUser();
+        $headers = apiV1Bearer($user);
+        $queriesFor = function () use ($headers): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            withHeaders($headers)->getJson('/api/v1/budgets')->assertOk();
+
+            return count(DB::getQueryLog());
+        };
+
+        groceriesBudget($user);
+        // The first request also resolves the token.
+        $queriesFor();
+        $one = $queriesFor();
+        groceriesBudget($user, ['name' => 'Rent']);
+        groceriesBudget($user, ['name' => 'Leisure']);
+
+        expect($queriesFor())->toBe($one);
     });
 
     it('pages through the budgets with a cursor', function () {
@@ -222,6 +244,7 @@ describe('create', function () {
         'someone else\'s category' => [fn (User $user) => newBudget($user, ['category_ids' => [Category::factory()->create()->id]]), 'category_ids.0', 'The category_ids.0 is not one of your categories. A budget can only track your own categories.'],
         'someone else\'s label' => [fn (User $user) => newBudget($user, ['label_ids' => [Label::factory()->create()->id]]), 'label_ids.0'],
         'unknown field' => [fn (User $user) => newBudget($user, ['limit' => 100]), 'limit', 'This endpoint does not take a limit field.'],
+        'catch-all with categories' => [fn (User $user) => newBudget($user, ['is_catch_all' => true]), 'is_catch_all', 'A catch-all budget tracks every expense category no other budget tracks: leave category_ids and label_ids out.'],
     ]);
 
     it('refuses a read-only token', function () {

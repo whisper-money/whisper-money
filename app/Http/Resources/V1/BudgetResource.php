@@ -121,9 +121,13 @@ class BudgetResource extends JsonResource
         ];
     }
 
+    /**
+     * The period covering today, read from the `currentPeriods` a list eager
+     * loads, with its spend summed, when it did.
+     */
     private function currentPeriod(): ?BudgetPeriodResource
     {
-        $period = $this->getCurrentPeriod();
+        $period = $this->resource->loadMissing('currentPeriods')->currentPeriods->first();
 
         return $period === null ? null : new BudgetPeriodResource($period);
     }

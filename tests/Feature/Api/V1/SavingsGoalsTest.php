@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\SavingsGoals\SavingsGoalService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 use function Pest\Laravel\withHeaders;
@@ -112,6 +113,31 @@ describe('list', function () {
         ]);
     });
 
+    it('reads a page of goals in the same number of database queries however many it holds', function () {
+        $user = goalUser();
+        $headers = apiV1Bearer($user);
+        $queriesFor = function () use ($headers): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            withHeaders($headers)->getJson('/api/v1/savings-goals')->assertOk();
+
+            // The cache table aside: a monthly goal reads its income target
+            // from the cache.
+            return collect(DB::getQueryLog())->reject(fn (array $query): bool => str_contains($query['query'], '`cache`'))->count();
+        };
+
+        apiMonthlyGoal($user);
+        SavingsGoal::factory()->create(['user_id' => $user->id]);
+        // The first request also resolves the token.
+        $queriesFor();
+        $two = $queriesFor();
+        apiMonthlyGoal($user);
+        apiMonthlyGoal($user);
+        SavingsGoal::factory()->count(2)->create(['user_id' => $user->id]);
+
+        expect($queriesFor())->toBe($two);
+    });
+
     it('pages through the goals with a cursor', function () {
         $user = goalUser();
         $goals = collect(range(1, 3))->map(fn (int $day) => SavingsGoal::factory()->create(['user_id' => $user->id, 'created_at' => "2026-03-0{$day} 10:00:00"]))->reverse()->values();
@@ -133,7 +159,7 @@ describe('list', function () {
     });
 
     it('lists a shared space when asked, and refuses one the user cannot access', function () {
-        $user = goalUser();
+        $user = User::factory()->create(['currency_code' => 'USD']);
         $owner = goalUser();
         $space = sharedGoalSpace($user, $owner);
         $theirs = SavingsGoal::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
@@ -141,7 +167,8 @@ describe('list', function () {
 
         withHeaders($headers)->getJson("/api/v1/savings-goals?space={$space->id}")
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id]);
+            ->assertJsonPath('data.*.id', [$theirs->id])
+            ->assertJsonPath('data.0.currency', 'EUR');
 
         withHeaders($headers)->getJson('/api/v1/savings-goals?space='.Space::factory()->create()->id)
             ->assertUnprocessable()

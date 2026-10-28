@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property Carbon $start_date
  * @property Carbon $end_date
+ * @property int|string|null $budget_transactions_sum_amount the spend, when a query summed it with withSum()
  */
 class BudgetPeriod extends Model
 {
