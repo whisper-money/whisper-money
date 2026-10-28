@@ -22,6 +22,8 @@ class TransactionSplitter
 {
     public const MAX_PARTS = 20;
 
+    private const string NotASplitPart = 'That transaction is not part of a split, so there is nothing to merge.';
+
     /**
      * The shape of a split request, shared by the `split_transaction` MCP tool
      * and `POST /api/v1/transactions/{id}/split`. Each caller adds its own
@@ -72,10 +74,11 @@ class TransactionSplitter
      */
     public function merge(Transaction $part): Transaction
     {
-        self::throwIfError('transaction_id', self::mergeError($part));
-
-        /** @var Transaction $original */
         $original = $part->splitParent()->withTrashed()->first();
+
+        if ($original === null) {
+            throw ValidationException::withMessages(['transaction_id' => self::NotASplitPart]);
+        }
 
         DB::transaction(function () use ($original): void {
             // Soft-deleting each part fires the model event that takes it back
@@ -137,9 +140,7 @@ class TransactionSplitter
      */
     public static function mergeError(Transaction $part): ?string
     {
-        return $part->splitParent()->withTrashed()->exists()
-            ? null
-            : 'That transaction is not part of a split, so there is nothing to merge.';
+        return $part->splitParent()->withTrashed()->exists() ? null : self::NotASplitPart;
     }
 
     /**

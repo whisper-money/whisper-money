@@ -709,6 +709,13 @@ describe('labels', function () {
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['label_ids.0' => 'is not a label in this space']);
 
+        $label = Label::factory()->create(['user_id' => $user->id]);
+
+        withHeaders($headers)
+            ->putJson('/api/v1/transactions/'.$transaction->id.'/labels', ['label_ids' => [$label->id, mb_strtoupper($label->id)]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['label_ids.1' => 'duplicate']);
+
         withHeaders($headers)
             ->putJson('/api/v1/transactions/'.$transaction->id.'/labels', ['add_label_ids' => []])
             ->assertUnprocessable()
@@ -759,7 +766,7 @@ describe('split', function () {
 
         withHeaders($headers)
             ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
-                ['amount' => -3000, 'category_id' => $category->id, 'label_ids' => [$label->id]],
+                ['amount' => -3000, 'category_id' => $category->id, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
                 ['amount' => -2000],
             ]])
             ->assertCreated()

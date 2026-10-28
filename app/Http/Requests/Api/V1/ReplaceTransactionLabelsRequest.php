@@ -28,7 +28,7 @@ class ReplaceTransactionLabelsRequest extends FormRequest
             /**
              * @format uuid
              */
-            'label_ids.*' => ['string', 'distinct', $this->inSpace(Label::class, 'a label')],
+            'label_ids.*' => ['string', 'distinct:ignore_case', $this->inSpace(Label::class, 'a label')],
         ];
     }
 

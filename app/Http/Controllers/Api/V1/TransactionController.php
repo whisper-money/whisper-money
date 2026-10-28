@@ -177,7 +177,9 @@ class TransactionController extends Controller
      * each part carries a `split_parent_id` shared with its siblings. A part
      * cannot be split again, deleted on its own, or have its amount, date or
      * account changed; categorizing, labelling and editing its notes work as
-     * usual. Answers the parts, in the order they were sent.
+     * usual. Splitting a part again answers `422` with the error under
+     * `transaction`, and the original's id answers `404` once it is split.
+     * Answers the parts, in the order they were sent.
      *
      * @param  string  $transaction  The transaction's id.
      */
@@ -195,8 +197,10 @@ class TransactionController extends Controller
      * Puts back the transaction a split came from, with the category it had
      * before, and deletes every part along with the category, labels and
      * notes set on them. Pass the id of any one of the parts; one that is not
-     * part of a split answers `422` with the error under `transaction`.
-     * Answers the original transaction.
+     * part of a split answers `422` with the error under `transaction`, and
+     * the original's own id answers `404`: it is out of every list until the
+     * merge. Answers the original transaction, under its id from before the
+     * split.
      *
      * @param  string  $transaction  The id of any part of the split.
      */

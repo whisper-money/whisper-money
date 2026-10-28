@@ -76,7 +76,9 @@ class SplitTransactionRequest extends FormRequest
     }
 
     /**
-     * The validated parts, in the shape TransactionSplitter takes.
+     * The parts as sent, in the shape TransactionSplitter takes. Only read
+     * once they passed the rules. A label id sent twice in a part, in any
+     * case, is kept once.
      *
      * @return list<array{amount: int, category_id: ?string, label_ids: list<string>}>
      */
@@ -86,7 +88,7 @@ class SplitTransactionRequest extends FormRequest
             ->map(fn (array $part): array => [
                 'amount' => (int) $part['amount'],
                 'category_id' => $part['category_id'] ?? null,
-                'label_ids' => array_values($part['label_ids'] ?? []),
+                'label_ids' => array_values(array_unique(array_map(mb_strtolower(...), $part['label_ids'] ?? []))),
             ])
             ->values()
             ->all();

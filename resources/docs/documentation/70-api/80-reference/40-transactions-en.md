@@ -631,7 +631,7 @@ curl -X PUT https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f
 
 `POST /api/v1/transactions/{transaction}/split`
 
-Replaces a transaction that covered several things with 2 to 20 parts, each with its own amount, category and labels. Works on bank and imported transactions too. The parts must add up to the original exactly and all move money the same way. From then on the parts are what exists: the original is out of every list and every total, and each part carries a `split_parent_id` shared with its siblings. A part cannot be split again, deleted on its own, or have its amount, date or account changed; categorizing, labelling and editing its notes work as usual. Answers the parts, in the order they were sent.
+Replaces a transaction that covered several things with 2 to 20 parts, each with its own amount, category and labels. Works on bank and imported transactions too. The parts must add up to the original exactly and all move money the same way. From then on the parts are what exists: the original is out of every list and every total, and each part carries a `split_parent_id` shared with its siblings. A part cannot be split again, deleted on its own, or have its amount, date or account changed; categorizing, labelling and editing its notes work as usual. Splitting a part again answers `422` with the error under `transaction`, and the original's id answers `404` once it is split. Answers the parts, in the order they were sent.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -758,7 +758,7 @@ curl -X POST https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2
 
 `POST /api/v1/transactions/{transaction}/merge-splits`
 
-Puts back the transaction a split came from, with the category it had before, and deletes every part along with the category, labels and notes set on them. Pass the id of any one of the parts; one that is not part of a split answers `422` with the error under `transaction`. Answers the original transaction.
+Puts back the transaction a split came from, with the category it had before, and deletes every part along with the category, labels and notes set on them. Pass the id of any one of the parts; one that is not part of a split answers `422` with the error under `transaction`, and the original's own id answers `404`: it is out of every list until the merge. Answers the original transaction, under its id from before the split.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
