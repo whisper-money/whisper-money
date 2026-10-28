@@ -17,7 +17,7 @@ class RuleConditions
      *
      * @var list<string>
      */
-    public const array SupportedOperators = ['and', 'or', '!', '==', '!=', '>', '>=', '<', '<=', 'in', 'var'];
+    private const array SupportedOperators = ['and', 'or', '!', '==', '!=', '>', '>=', '<', '<=', 'in', 'var'];
 
     /**
      * The variables a transaction is evaluated against. A typo here is the other
@@ -26,7 +26,7 @@ class RuleConditions
      *
      * @var list<string>
      */
-    public const array SupportedVariables = ['description', 'notes', 'creditor_name', 'debtor_name', 'account_name', 'bank_name', 'category', 'transaction_date', 'amount'];
+    private const array SupportedVariables = ['description', 'notes', 'creditor_name', 'debtor_name', 'account_name', 'bank_name', 'category', 'transaction_date', 'amount'];
 
     /**
      * The format, for the MCP schema and the API reference alike, so an agent

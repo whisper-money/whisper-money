@@ -36,7 +36,7 @@ class AutomationRuleApplier
      * separately: the sample is only there to sanity check what the rule caught
      * before committing to it.
      */
-    public const SAMPLE_SIZE = 20;
+    private const SAMPLE_SIZE = 20;
 
     private const MATCHES_CACHE_TTL_MINUTES = 15;
 
