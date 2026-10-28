@@ -4,6 +4,8 @@ A budget is a spending limit per period over some of your categories and labels.
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
+The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.
+
 {{TOC}}
 
 ## List budgets
@@ -18,9 +20,9 @@ Your budgets, newest first, each with the period in progress. Archived budgets a
 
 | Name | In | Type | Required | Description |
 | --- | --- | --- | --- | --- |
-| `limit` | query | integer | No | How many objects to return, between 1 and 100. |
-| `starting_after` | query | string (uuid) | No | An object id: return the page that follows it. Pass the last id of the previous page. |
-| `ending_before` | query | string (uuid) | No | An object id: return the page that precedes it. Pass the first id of the next page. Cannot be combined with `starting_after`. |
+| `limit` | query | integer | No | How many objects to return, between 1 and 100. Defaults to 25. |
+| `starting_after` | query | string (uuid) | No | An object id: return the page that follows it. Pass the last id of the page you have. |
+| `ending_before` | query | string (uuid) | No | An object id: return the page that precedes it. Pass the first id of the page you have. Cannot be combined with `starting_after`. |
 
 #### Response
 

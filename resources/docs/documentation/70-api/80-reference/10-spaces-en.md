@@ -4,6 +4,8 @@ A space holds a set of accounts and everything recorded on them. Every user has 
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
+The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.
+
 {{TOC}}
 
 ## List spaces

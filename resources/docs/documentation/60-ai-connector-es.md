@@ -45,6 +45,11 @@ Whisper Money expone 37 de esas preguntas y acciones, llamadas herramientas: 12
 que leen tus datos y 25 que los modifican. El asistente elige las que necesita
 por su cuenta; tú escribes en lenguaje normal.
 
+Si prefieres escribir código en vez de chatear, usa la [API](/documentation/api).
+Llega a los mismos datos por HTTP, para tus propios scripts y apps, con sus
+propios tokens: un token del Conector de IA no sirve en la API, y uno de la API
+tampoco sirve aquí.
+
 ## Qué le puedes pedir
 
 <div class="cards-wrapper">

@@ -54,6 +54,10 @@ permiso necesita:
 - **write**: todo lo que crea, edita o borra. Un token de solo lectura responde
   `403` con el código `insufficient_scope`.
 
+Por dentro, un token de solo lectura lleva el permiso `api:read`, y uno de
+lectura y escritura `api:read` y `api:write`. Un token OAuth lleva el permiso
+`api:use` (su scope de OAuth), que cubre los dos.
+
 ## Apps OAuth
 
 Una app hecha por otra persona no debería pedirte que pegues un token. Se conecta

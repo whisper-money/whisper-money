@@ -4,6 +4,8 @@ A transaction is money that moved in or out of an account: synced from the bank,
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
+The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.
+
 {{TOC}}
 
 ## List transactions
@@ -26,9 +28,9 @@ Your transactions in a space, the most recent day first, narrowed by any of the 
 | `to` | query | string (date) | No | The latest transaction date, inclusive. |
 | `min_amount` | query | integer | No | The smallest signed amount, in minor units. `-5000` keeps all income and the expenses of up to 5000 minor units. |
 | `max_amount` | query | integer | No | The largest signed amount, in minor units. `0` keeps expenses only. |
-| `limit` | query | integer | No | How many objects to return, between 1 and 100. |
-| `starting_after` | query | string (uuid) | No | An object id: return the page that follows it. Pass the last id of the previous page. |
-| `ending_before` | query | string (uuid) | No | An object id: return the page that precedes it. Pass the first id of the next page. Cannot be combined with `starting_after`. |
+| `limit` | query | integer | No | How many objects to return, between 1 and 100. Defaults to 25. |
+| `starting_after` | query | string (uuid) | No | An object id: return the page that follows it. Pass the last id of the page you have. |
+| `ending_before` | query | string (uuid) | No | An object id: return the page that precedes it. Pass the first id of the page you have. Cannot be combined with `starting_after`. |
 | `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
 
 #### Response

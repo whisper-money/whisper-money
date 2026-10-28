@@ -169,16 +169,16 @@ final class MarketingContent
                     'Categoriza con reglas de automatización propias y, de forma opcional y con consentimiento explícito, con IA que aprende de tus correcciones.',
                     'Presupuestos por categoría con periodo semanal, quincenal, mensual, trimestral o anual, arrastre del sobrante y avisos.',
                     'Patrimonio neto, flujo de caja mensual y multidivisa con 33 monedas.',
-                    'Acceso por MCP para consultar tus finanzas desde un asistente, en el plan de pago.',
+                    'Acceso por MCP para consultar tus finanzas desde un asistente, y una API REST para tus propios scripts y apps, las dos en el plan de pago.',
                 ],
                 'Qué no hace' => [
                     'No intermedia préstamos, seguros ni ningún producto financiero, y no muestra publicidad.',
                     'No vende tus datos ni los comparte con anunciantes.',
                     'No cifra los datos en reposo: el modelo es almacenamiento en claro en base de datos propia. Lo que se puede comprobar es el código, que es público.',
-                    'No tiene un botón de exportación en la interfaz. La vía para sacar los datos de forma programática es el acceso por MCP, en el plan de pago.',
+                    'No tiene un botón de exportación en la interfaz. La vía para sacar los datos de forma programática es la API REST o el acceso por MCP, en el plan de pago.',
                 ],
                 'Precio' => [
-                    'Hay un plan gratuito permanente y un plan de pago en euros. Las cuentas conectadas, las sugerencias con IA y el acceso por MCP requieren el plan de pago. La tarifa vigente está publicada en la página de precios.',
+                    'Hay un plan gratuito permanente y un plan de pago en euros. Las cuentas conectadas, las sugerencias con IA, el acceso por MCP y la API requieren el plan de pago. La tarifa vigente está publicada en la página de precios.',
                 ],
                 'Plataformas e idiomas' => [
                     'Aplicación web en cualquier navegador, instalable como app en iPhone y Android. Interfaz en español, inglés y francés.',
@@ -196,16 +196,16 @@ final class MarketingContent
                     'Categorises with your own automation rules and, optionally and only with explicit consent, with AI that learns from your corrections.',
                     'Category budgets on a weekly, biweekly, monthly, quarterly or yearly period, with rollover and alerts.',
                     'Net worth, monthly cash flow and multi-currency support across 33 currencies.',
-                    'MCP access, on the paid plan, so an assistant can answer questions about your finances.',
+                    'MCP access, so an assistant can answer questions about your finances, and a REST API for your own scripts and apps, both on the paid plan.',
                 ],
                 'What it does not do' => [
                     'It does not intermediate loans, insurance or any financial product, and it shows no ads.',
                     'It does not sell your data or share it with advertisers.',
                     'It does not encrypt data at rest: the model is plaintext storage in our own database. What you can verify instead is the code, which is public.',
-                    'It has no export button in the interface. The way to pull your data out programmatically is MCP access, on the paid plan.',
+                    'It has no export button in the interface. The way to pull your data out programmatically is the REST API or MCP access, on the paid plan.',
                 ],
                 'Pricing' => [
-                    'There is a permanent free plan and a paid plan billed in euros. Connected accounts, AI suggestions and MCP access need the paid plan. The current rate is published on the pricing page.',
+                    'There is a permanent free plan and a paid plan billed in euros. Connected accounts, AI suggestions, MCP access and the API need the paid plan. The current rate is published on the pricing page.',
                 ],
                 'Platforms and languages' => [
                     'A web app in any browser, installable as an app on iPhone and Android. Interface in English, Spanish and French.',

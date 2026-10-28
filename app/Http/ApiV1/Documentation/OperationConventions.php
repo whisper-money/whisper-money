@@ -68,14 +68,14 @@ class OperationConventions extends OperationExtension
     {
         $operation->addParameters([
             Parameter::make('limit', 'query')
-                ->description('How many objects to return, between 1 and 100.')
+                ->description('How many objects to return, between 1 and 100. Defaults to 25.')
                 ->setSchema(Schema::fromType((new IntegerType)->default(25)))
                 ->example(25),
             Parameter::make('starting_after', 'query')
-                ->description('An object id: return the page that follows it. Pass the last id of the previous page.')
+                ->description('An object id: return the page that follows it. Pass the last id of the page you have.')
                 ->setSchema(Schema::fromType((new StringType)->format('uuid'))),
             Parameter::make('ending_before', 'query')
-                ->description('An object id: return the page that precedes it. Pass the first id of the next page. Cannot be combined with `starting_after`.')
+                ->description('An object id: return the page that precedes it. Pass the first id of the page you have. Cannot be combined with `starting_after`.')
                 ->setSchema(Schema::fromType((new StringType)->format('uuid'))),
         ]);
 
