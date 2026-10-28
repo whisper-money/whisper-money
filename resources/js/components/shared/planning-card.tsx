@@ -48,12 +48,15 @@ export function PlanningCard({
         <Card className={cn('min-w-0', dimmed && 'opacity-60')}>
             <CardHeader>
                 <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 space-y-1">
+                    {/* flex-1: a truncating title adds no width to a column
+                        sized by its content, so that column shrank to the
+                        description line and cut even short names. */}
+                    <div className="min-w-0 flex-1 space-y-1">
                         <CardTitle className="text-xl">
                             <Link
                                 href={href}
                                 title={title}
-                                className="-my-1 -ml-1.5 block max-w-full truncate rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                className="-my-1 -ml-1.5 block w-fit max-w-full truncate rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 {title}
                             </Link>
