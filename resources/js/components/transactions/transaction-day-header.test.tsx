@@ -184,7 +184,6 @@ describe('TransactionDayHeader', () => {
         for (const total of [spending, income]) {
             expect(total).toHaveClass(
                 'opacity-30',
-                'bg-transparent',
                 'group-hover/day:opacity-100',
             );
             expect(total).not.toHaveClass('bg-green-100/70');

@@ -63,13 +63,13 @@ function renderedColumnIds(table: Table<ServerTransaction>): string[] {
 }
 
 /**
- * The day total recedes behind the rows it adds up, without its income
+ * The day total fades behind the rows it adds up, without its income
  * highlight, and comes back in full while the day's header is hovered.
  */
-const DAY_TOTAL_RECEDED =
-    'bg-transparent opacity-30 duration-200 group-hover/day:opacity-100 dark:bg-transparent';
+const DAY_TOTAL_FADED =
+    'opacity-30 transition-[opacity,background-color] duration-200 group-hover/day:opacity-100';
 
-/** The income highlight the receded total gets back on hover. */
+/** The income highlight the faded total gets back on hover. */
 const DAY_TOTAL_HOVER_HIGHLIGHT =
     'group-hover/day:bg-green-100/70 dark:group-hover/day:bg-green-900';
 
@@ -123,19 +123,16 @@ function DayTotal({
         );
     }
 
-    const highlightPositive = total.amount >= 0;
-
     return (
         <AmountDisplay
             amountInCents={total.amount}
             currencyCode={currencyCode}
             variant="positive-highlight"
-            highlightPositive={highlightPositive}
             weight="medium"
             monospace
             className={cn(
-                DAY_TOTAL_RECEDED,
-                highlightPositive && DAY_TOTAL_HOVER_HIGHLIGHT,
+                DAY_TOTAL_FADED,
+                total.amount >= 0 && DAY_TOTAL_HOVER_HIGHLIGHT,
             )}
         />
     );
