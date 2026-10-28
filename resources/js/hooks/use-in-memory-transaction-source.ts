@@ -37,7 +37,7 @@ function matchesFilters(
     filters: Filters,
     accountId: UUID | undefined,
     searchMatchedIds: Set<string>,
-    categoryTypes: Map<UUID, CategoryType>,
+    typeByCategoryId: Map<UUID, CategoryType>,
 ): boolean {
     // When scoped to a single account, drop rows that were reassigned to
     // another account (e.g. via inline edit). The list no longer
@@ -91,7 +91,7 @@ function matchesFilters(
 
     if (filters.categoryTypes.length > 0) {
         const type = transaction.category_id
-            ? categoryTypes.get(transaction.category_id)
+            ? typeByCategoryId.get(transaction.category_id)
             : undefined;
         if (!type || !filters.categoryTypes.includes(type)) {
             return false;
@@ -229,7 +229,7 @@ export function useInMemoryTransactionSource({
         [filters.searchText, transactions],
     );
 
-    const categoryTypes = useMemo(
+    const typeByCategoryId = useMemo(
         () =>
             new Map(categories.map((category) => [category.id, category.type])),
         [categories],
@@ -243,10 +243,10 @@ export function useInMemoryTransactionSource({
                     filters,
                     accountId,
                     searchMatchedIds,
-                    categoryTypes,
+                    typeByCategoryId,
                 ),
             ),
-        [transactions, filters, accountId, searchMatchedIds, categoryTypes],
+        [transactions, filters, accountId, searchMatchedIds, typeByCategoryId],
     );
 
     const orderedTransactions = useMemo(
@@ -291,11 +291,11 @@ export function useInMemoryTransactionSource({
                     next,
                     accountId,
                     matchedIds,
-                    categoryTypes,
+                    typeByCategoryId,
                 ),
             ).length;
         },
-        [transactions, accountId, categoryTypes],
+        [transactions, accountId, typeByCategoryId],
     );
 
     return {
