@@ -30,7 +30,7 @@ class DashboardAnalyticsController extends Controller
     {
         $validated = $request->validate(PeriodComparator::rules());
 
-        return response()->json($this->netWorth->compared($request->user(), PeriodComparator::fromRequest($validated)));
+        return response()->json($this->netWorth->totals($request->user(), PeriodComparator::fromRequest($validated)));
     }
 
     public function monthlySpending(Request $request)

@@ -61,7 +61,7 @@ class CashflowResource extends JsonResource
                  */
                 'total_income' => $sankey['total_income'],
                 /**
-                 * What `expense_categories` adds up to.
+                 * What `expense_categories` adds up to. Savings, investments and outflow transfers are in it, so it is not `summary.current.expense`.
                  *
                  * @var int
                  *
@@ -70,7 +70,7 @@ class CashflowResource extends JsonResource
                 'total_expense' => $sankey['total_expense'],
             ],
             /**
-             * Income, expense and net per calendar month the range touches, oldest first, at most the last 24 months. Counted like `current`: savings, investments and transfers left out.
+             * Income, expense and net per calendar month the range touches, oldest first. Counted like `current`: savings, investments and transfers left out.
              *
              * @var list<array{month: string, income: int, expense: int, net: int}>
              *

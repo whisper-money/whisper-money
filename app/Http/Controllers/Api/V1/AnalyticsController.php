@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Requests\Api\V1\AnalyticsRangeRequest;
+use App\Http\Requests\Api\V1\CashflowRequest;
 use App\Http\Requests\Api\V1\NetWorthRequest;
 use App\Http\Requests\Api\V1\SpendingByCategoryRequest;
 use App\Http\Resources\V1\CashflowResource;
@@ -23,9 +23,9 @@ class AnalyticsController extends Controller
      * against the previous period, your expenses split by the budgets that
      * track them (fixed, variable and general), what your budgets still
      * reserve, where the money came from and went by category, and the
-     * monthly trend.
+     * monthly trend. The range can touch at most 24 calendar months.
      */
-    public function cashflow(AnalyticsRangeRequest $request, CashflowAnalyticsService $cashflow): CashflowResource
+    public function cashflow(CashflowRequest $request, CashflowAnalyticsService $cashflow): CashflowResource
     {
         $period = $request->period();
 
@@ -37,18 +37,17 @@ class AnalyticsController extends Controller
      *
      * Your net worth at the end of a date range against the end of the
      * previous period, and every account's balance over the range, monthly or
-     * daily.
+     * daily. A monthly range can touch at most 120 calendar months, a daily
+     * one cover at most 366 days.
      */
     public function netWorth(NetWorthRequest $request, NetWorthAnalyticsService $netWorth): NetWorthResource
     {
         $user = $this->user($request);
         $period = $request->period();
-        $daily = $request->daily();
 
         return new NetWorthResource([
-            'granularity' => $daily ? 'daily' : 'monthly',
-            'compared' => $netWorth->compared($user, $period),
-            'evolution' => $netWorth->evolution($user, $period->from, $period->to, $daily),
+            ...$netWorth->forRange($user, $period, $request->daily()),
+            'counted_account_ids' => $netWorth->countedAccountIds($user, $period->to),
         ]);
     }
 
@@ -58,7 +57,8 @@ class AnalyticsController extends Controller
      * Your expenses in a date range by top-level category, each with its
      * subcategories rolled into it. Pass `parent_category_id` to drill into a
      * category: its children come back instead, plus a row for what was booked
-     * to the category itself (`is_direct`).
+     * to the category itself (`is_direct`). The range can touch at most 120
+     * calendar months.
      */
     public function spendingByCategory(SpendingByCategoryRequest $request, CategorySpendingService $spending): SpendingByCategoryResource
     {

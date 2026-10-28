@@ -18,7 +18,7 @@ class SpendingByCategoryRequest extends AnalyticsRangeRequest
              *
              * @format uuid
              */
-            'parent_category_id' => ['sometimes', 'uuid', Rule::exists('categories', 'id')->where('user_id', $this->user()?->getAuthIdentifier())->whereNull('deleted_at')],
+            'parent_category_id' => ['nullable', 'uuid', Rule::exists('categories', 'id')->where('user_id', $this->user()?->getAuthIdentifier())->whereNull('deleted_at')],
         ];
     }
 

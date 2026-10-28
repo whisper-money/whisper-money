@@ -31,7 +31,7 @@ class NetWorthPointResource extends JsonResource
              */
             'period' => $point['month'] ?? $point['date'],
             /**
-             * One entry per account in `accounts`, in the same order: `balance` in `currency`; `original_balance` and `original_currency` the account's own figure when its currency is another one, `null` otherwise; `invested_amount` what was put into an investment or retirement account, `null` for other types or when not recorded.
+             * One entry per account in `accounts`, in the same order: `balance` in `currency`, a loan's as the positive amount owed; `original_balance` and `original_currency` the account's own figure when its currency is another one, `null` otherwise; `invested_amount` what was put into an investment or retirement account on a monthly point, `null` for other types, on daily points or when not recorded.
              *
              * @var list<array{account_id: string, balance: int, original_balance: int|null, original_currency: string|null, invested_amount: int|null}>
              *

@@ -34,15 +34,13 @@ class GetNetWorth extends McpTool
             'granularity' => ['sometimes', 'in:monthly,daily'],
         ]);
 
-        $netWorth = app(NetWorthAnalyticsService::class);
-        $period = PeriodComparator::fromRequest($validated);
-        $daily = $request->string('granularity')->toString() === 'daily';
-
         return $this->json([
             'currency' => $this->reportingCurrency($user),
-            'granularity' => $daily ? 'daily' : 'monthly',
-            'current' => $netWorth->compared($user, $period),
-            'evolution' => $netWorth->evolution($user, $period->from, $period->to, $daily),
+            ...app(NetWorthAnalyticsService::class)->forRange(
+                $user,
+                PeriodComparator::fromRequest($validated),
+                ($validated['granularity'] ?? null) === 'daily',
+            ),
         ]);
     }
 }

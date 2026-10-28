@@ -32,9 +32,17 @@ class SpendingByCategoryResource extends JsonResource
              */
             'currency' => $user->currency_code ?? 'USD',
             /**
-             * The expense categories with spending in the range, each with its subcategories rolled into it. Only the ones whose spending is above zero: a category that refunds took below zero is left out, and so are uncategorized transactions. Not sorted.
+             * What `categories` adds up to.
+             *
+             * @var int
+             *
+             * @example 105345
              */
-            'categories' => CategoryAmountResource::collection($this->resource),
+            'total' => $this->resource->sum('amount'),
+            /**
+             * The expense categories with spending in the range, largest first, each with its subcategories rolled into it. Only the ones whose spending is above zero: a category that refunds took below zero is left out, and so are uncategorized transactions, so `total` can be above the cashflow's `expense` for the same range.
+             */
+            'categories' => CategoryAmountResource::collection($this->resource->sortByDesc('amount')->values()),
         ];
     }
 }

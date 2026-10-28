@@ -10,7 +10,7 @@ Figures rolled up from your transactions and balances over a date range: cashflo
 
 `GET /api/v1/analytics/cashflow`
 
-The cashflow of a date range: income, expenses, savings and investments against the previous period, your expenses split by the budgets that track them (fixed, variable and general), what your budgets still reserve, where the money came from and went by category, and the monthly trend.
+The cashflow of a date range: income, expenses, savings and investments against the previous period, your expenses split by the budgets that track them (fixed, variable and general), what your budgets still reserve, where the money came from and went by category, and the monthly trend. The range can touch at most 24 calendar months.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -92,8 +92,8 @@ The cashflow of a date range: income, expenses, savings and investments against 
 | `data.sankey.expense_categories[].has_children` | boolean | Whether the category has subcategories to drill into. |
 | `data.sankey.expense_categories[].is_direct` | boolean | When drilling into a category, `true` on the row for the transactions booked to that category itself rather than to one of its children. |
 | `data.sankey.total_income` | integer | What `income_categories` adds up to. |
-| `data.sankey.total_expense` | integer | What `expense_categories` adds up to. |
-| `data.trend` | array of object | Income, expense and net per calendar month the range touches, oldest first, at most the last 24 months. Counted like `current`: savings, investments and transfers left out. |
+| `data.sankey.total_expense` | integer | What `expense_categories` adds up to. Savings, investments and outflow transfers are in it, so it is not `summary.current.expense`. |
+| `data.trend` | array of object | Income, expense and net per calendar month the range touches, oldest first. Counted like `current`: savings, investments and transfers left out. |
 | `data.trend[].month` | string |  |
 | `data.trend[].income` | integer |  |
 | `data.trend[].expense` | integer |  |
@@ -217,7 +217,7 @@ curl "https://whisper.money/api/v1/analytics/cashflow?from=2026-10-01&to=2026-10
 
 `GET /api/v1/analytics/net-worth`
 
-Your net worth at the end of a date range against the end of the previous period, and every account's balance over the range, monthly or daily.
+Your net worth at the end of a date range against the end of the previous period, and every account's balance over the range, monthly or daily. A monthly range can touch at most 120 calendar months, a daily one cover at most 366 days.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -238,16 +238,17 @@ Your net worth at the end of a date range against the end of the previous period
 | `data` | NetWorth |  |
 | `data.currency` | string | The currency of every amount: your account's currency, as an ISO 4217 code. Balances in another currency are converted at each day's exchange rate. |
 | `data.granularity` | "monthly" \| "daily" | `monthly` or `daily`, as requested. |
-| `data.net_worth` | integer | Your net worth on `to`: the balances of your accounts added up, a loan or credit card debt counting against it. Loans and real estate only count when your net worth settings include them. |
+| `data.net_worth` | integer | Your net worth on `to`: the balances of the accounts with `counts_in_net_worth`, converted to `currency`, a loan's debt counting against it. Credit cards are never part of it, and loans and real estate only when your net worth settings include them. |
 | `data.previous_net_worth` | integer | Your net worth at the end of the previous period: the same number of days right before `from`, or the same number of whole months when the range is whole months. |
-| `data.accounts` | array of object | Every account the evolution covers, archived ones and the ones left out of `net_worth` included: its id, name, type and own currency. |
+| `data.accounts` | array of object | Every account the evolution covers, archived ones and the ones left out of `net_worth` included: its id, name, type, own currency, and whether it is part of `net_worth`. |
 | `data.accounts[].id` | string |  |
 | `data.accounts[].name` | string |  |
 | `data.accounts[].type` | string |  |
 | `data.accounts[].currency` | string |  |
-| `data.evolution` | array of NetWorthPoint | One point per month (at its last day) or per day of the range, oldest first, with each account's balance on it. |
+| `data.accounts[].counts_in_net_worth` | boolean |  |
+| `data.evolution` | array of NetWorthPoint | One point per month the range touches, at the month's last day even when `to` falls before it, or one per day of the range; oldest first, with each account's balance on it. |
 | `data.evolution[].period` | string | The month (`2026-10`) or, with `daily` granularity, the day (`2026-10-15`). |
-| `data.evolution[].balances` | array of object | One entry per account in `accounts`, in the same order: `balance` in `currency`; `original_balance` and `original_currency` the account's own figure when its currency is another one, `null` otherwise; `invested_amount` what was put into an investment or retirement account, `null` for other types or when not recorded. |
+| `data.evolution[].balances` | array of object | One entry per account in `accounts`, in the same order: `balance` in `currency`, a loan's as the positive amount owed; `original_balance` and `original_currency` the account's own figure when its currency is another one, `null` otherwise; `invested_amount` what was put into an investment or retirement account on a monthly point, `null` for other types, on daily points or when not recorded. |
 | `data.evolution[].balances[].account_id` | string |  |
 | `data.evolution[].balances[].balance` | integer |  |
 | `data.evolution[].balances[].original_balance` | integer or null |  |
@@ -275,7 +276,8 @@ curl "https://whisper.money/api/v1/analytics/net-worth?from=2026-10-01&to=2026-1
                 "id": "0199a3f2-8b1c-7d4e-9f5a-1b2c3d4e5f60",
                 "name": "Main checking",
                 "type": "checking",
-                "currency": "EUR"
+                "currency": "EUR",
+                "counts_in_net_worth": true
             }
         ],
         "evolution": [
@@ -309,7 +311,7 @@ curl "https://whisper.money/api/v1/analytics/net-worth?from=2026-10-01&to=2026-1
 
 `GET /api/v1/analytics/spending-by-category`
 
-Your expenses in a date range by top-level category, each with its subcategories rolled into it. Pass `parent_category_id` to drill into a category: its children come back instead, plus a row for what was booked to the category itself (`is_direct`).
+Your expenses in a date range by top-level category, each with its subcategories rolled into it. Pass `parent_category_id` to drill into a category: its children come back instead, plus a row for what was booked to the category itself (`is_direct`). The range can touch at most 120 calendar months.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -319,7 +321,7 @@ Your expenses in a date range by top-level category, each with its subcategories
 | --- | --- | --- | --- | --- |
 | `from` | query | string (date) | Yes | The first day of the range, inclusive. |
 | `to` | query | string (date) | Yes | The last day of the range, inclusive. Not before `from`. |
-| `parent_category_id` | query | string (uuid) | No | Drill into one of your categories: its children are returned instead of the top-level categories. |
+| `parent_category_id` | query | string (uuid) or null | No | Drill into one of your categories: its children are returned instead of the top-level categories. |
 
 #### Response
 
@@ -329,7 +331,8 @@ Your expenses in a date range by top-level category, each with its subcategories
 | --- | --- | --- |
 | `data` | SpendingByCategory |  |
 | `data.currency` | string | The currency of every amount: your account's currency, as an ISO 4217 code. |
-| `data.categories` | array of CategoryAmount | The expense categories with spending in the range, each with its subcategories rolled into it. Only the ones whose spending is above zero: a category that refunds took below zero is left out, and so are uncategorized transactions. Not sorted. |
+| `data.total` | integer | What `categories` adds up to. |
+| `data.categories` | array of CategoryAmount | The expense categories with spending in the range, largest first, each with its subcategories rolled into it. Only the ones whose spending is above zero: a category that refunds took below zero is left out, and so are uncategorized transactions, so `total` can be above the cashflow's `expense` for the same range. |
 | `data.categories[].category_id` | string (uuid) or null | The category's id, or `null` for the row that gathers the transactions with no category. |
 | `data.categories[].name` | string or null | The category's name. The row with no category is `Unknown Income` or `Unknown Expense`. On the cashflow's top level, a category whose net crossed to the other side says so: `Groceries (refund)`, `Savings (withdrawal)`, `Salary (reversal)`. |
 | `data.categories[].type` | string or null | The category's type: `income`, `expense`, `savings`, `investment` or `transfer`. |
@@ -352,6 +355,7 @@ curl "https://whisper.money/api/v1/analytics/spending-by-category?from=2026-10-0
 {
     "data": {
         "currency": "EUR",
+        "total": 105345,
         "categories": [
             {
                 "category_id": "0199a3f5-2b3c-7d4e-8f5a-6b7c8d9e0f12",

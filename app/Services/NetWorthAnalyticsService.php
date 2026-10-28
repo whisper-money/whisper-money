@@ -21,13 +21,28 @@ class NetWorthAnalyticsService
     ) {}
 
     /**
+     * The net worth against the previous period and every account's balance
+     * over the period, monthly or, when $daily, daily.
+     *
+     * @return array{granularity: 'daily'|'monthly', current: array{current: int, previous: int, currency_code: string}, evolution: array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}}
+     */
+    public function forRange(User $user, PeriodComparator $period, bool $daily): array
+    {
+        return [
+            'granularity' => $daily ? 'daily' : 'monthly',
+            'current' => $this->totals($user, $period),
+            'evolution' => $this->evolution($user, $period->from, $period->to, $daily),
+        ];
+    }
+
+    /**
      * The net worth on the period's last day and on the previous period's, in
      * the user's currency. The account types the user keeps out of the net
      * worth (loans and real estate, unless included) do not count.
      *
      * @return array{current: int, previous: int, currency_code: string}
      */
-    public function compared(User $user, PeriodComparator $period): array
+    public function totals(User $user, PeriodComparator $period): array
     {
         $previousPeriod = $period->previous();
         $userCurrency = $user->currency_code;
@@ -50,6 +65,25 @@ class NetWorthAnalyticsService
             'previous' => $this->netWorthCalculator->at($accounts, $lookup, $previousPeriod->to, $userCurrency, $excludedTypes),
             'currency_code' => $userCurrency,
         ];
+    }
+
+    /**
+     * The ids of the accounts that make up the net worth on $date: the ones
+     * of a type that counts and the user has not left out, not yet archived.
+     *
+     * @return list<string>
+     */
+    public function countedAccountIds(User $user, Carbon $date): array
+    {
+        $excludedTypes = $this->netWorthCalculator->excludedTypesFor($user);
+
+        return Account::query()
+            ->where('user_id', $user->id)
+            ->get()
+            ->filter(fn (Account $account): bool => $this->netWorthCalculator->countsOn($account, $excludedTypes, $date))
+            ->pluck('id')
+            ->values()
+            ->all();
     }
 
     /**

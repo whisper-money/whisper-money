@@ -136,8 +136,8 @@ describe('net worth', function () {
             ->assertJsonPath('data.granularity', 'monthly')
             ->assertJsonPath('data.net_worth', 160_000)
             ->assertJsonPath('data.accounts', [
-                ['id' => $checking->id, 'name' => 'Main', 'type' => 'checking', 'currency' => 'EUR'],
-                ['id' => $broker->id, 'name' => 'Broker', 'type' => 'investment', 'currency' => 'USD'],
+                ['id' => $checking->id, 'name' => 'Main', 'type' => 'checking', 'currency' => 'EUR', 'counts_in_net_worth' => true],
+                ['id' => $broker->id, 'name' => 'Broker', 'type' => 'investment', 'currency' => 'USD', 'counts_in_net_worth' => true],
             ])
             ->assertJsonPath('data.evolution.0.period', '2026-09')
             ->assertJsonPath('data.evolution.1.period', '2026-10');
@@ -146,6 +146,20 @@ describe('net worth', function () {
             ['account_id' => $checking->id, 'balance' => 120_000, 'original_balance' => null, 'original_currency' => null, 'invested_amount' => null],
             ['account_id' => $broker->id, 'balance' => 40_000, 'original_balance' => 50_000, 'original_currency' => 'USD', 'invested_amount' => 40_000],
         ]);
+    });
+
+    it('flags the accounts the net worth leaves out', function () {
+        $user = User::factory()->create(['currency_code' => 'EUR']);
+        $loan = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Loan]);
+        $card = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::CreditCard]);
+
+        $accounts = withHeaders(apiV1Bearer($user))
+            ->getJson('/api/v1/analytics/net-worth'.OCTOBER)
+            ->assertOk()
+            ->json('data.accounts');
+
+        expect(collect($accounts)->pluck('counts_in_net_worth', 'id')->all())
+            ->toBe([$loan->id => false, $card->id => false]);
     });
 
     it('reads one point per day with daily granularity', function () {
@@ -181,8 +195,14 @@ describe('spending by category', function () {
             ->assertOk()
             ->assertJsonPath('data.currency', 'EUR');
 
-        expect(collect($top->json('data.categories'))->pluck('amount', 'category_id')->all())
-            ->toEqualCanonicalizing([$food->id => 15_345, $rent->id => 90_000]);
+        expect($top->json('data.total'))->toBe(105_345)
+            ->and(collect($top->json('data.categories'))->pluck('amount', 'category_id')->all())
+            ->toBe([$rent->id => 90_000, $food->id => 15_345]);
+
+        withHeaders($headers)
+            ->getJson('/api/v1/analytics/spending-by-category'.OCTOBER.'&parent_category_id=')
+            ->assertOk()
+            ->assertJsonPath('data.total', 105_345);
 
         $drilled = withHeaders($headers)
             ->getJson('/api/v1/analytics/spending-by-category'.OCTOBER.'&parent_category_id='.$food->id)
@@ -210,6 +230,28 @@ it('refuses a missing or reversed range on every analytics endpoint', function (
     'no to' => ['?from=2026-10-01', 'to'],
     'not a date' => ['?from=yesterday-ish&to=2026-10-31', 'from'],
     'to before from' => ['?from=2026-10-31&to=2026-10-01', 'to'],
+    'not a calendar date' => ['?from=2026-10-01T10:00:00&to=2026-10-31', 'from'],
+    'over ten years' => ['?from=2016-10-01&to=2026-10-31', 'to'],
+]);
+
+it('refuses a range longer than the endpoint reports on', function (string $endpoint, string $query, string $message) {
+    withHeaders(apiV1Bearer(User::factory()->create()))
+        ->getJson("/api/v1/analytics/{$endpoint}{$query}")
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.to.0', $message);
+})->with([
+    'cashflow over 24 months' => ['cashflow', '?from=2024-10-28&to=2026-10-28', 'The range can touch at most 24 calendar months.'],
+    'a daily net worth over a year' => ['net-worth', '?from=2025-01-01&to=2026-10-31&granularity=daily', 'A daily net worth can cover at most 366 days. Ask for monthly granularity for a longer range.'],
+]);
+
+it('takes the longest range each endpoint reports on', function (string $endpoint, string $query) {
+    withHeaders(apiV1Bearer(User::factory()->create()))
+        ->getJson("/api/v1/analytics/{$endpoint}{$query}")
+        ->assertOk();
+})->with([
+    'cashflow over 24 months' => ['cashflow', '?from=2024-11-01&to=2026-10-31'],
+    'a daily net worth over a year' => ['net-worth', '?from=2025-10-31&to=2026-10-31&granularity=daily'],
+    'a monthly net worth over ten years' => ['net-worth', '?from=2016-11-01&to=2026-10-31'],
 ]);
 
 it('refuses an unknown net worth granularity', function () {
