@@ -1,6 +1,7 @@
 import type { BankingConnection } from '@/types/banking';
 import { describe, expect, it } from 'vitest';
 import {
+    activeConnectionForBank,
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
     isExpiringSoon,
@@ -129,5 +130,40 @@ describe('isExpiringSoon', () => {
                 connection({ status: 'error', valid_until: inDays(2) }),
             ),
         ).toBe(false);
+    });
+});
+
+describe('activeConnectionForBank', () => {
+    it('returns the active EnableBanking connection to the bank', () => {
+        const active = connection({ aspsp_name: 'BBVA', status: 'active' });
+
+        expect(
+            activeConnectionForBank(
+                [connection({ aspsp_name: 'Bankinter' }), active],
+                'BBVA',
+            ),
+        ).toBe(active);
+    });
+
+    it('ignores connections that have no accounts screen yet or are not EnableBanking', () => {
+        expect(
+            activeConnectionForBank(
+                [
+                    connection({
+                        aspsp_name: 'BBVA',
+                        status: 'awaiting_mapping',
+                    }),
+                    connection({ aspsp_name: 'BBVA', status: 'expired' }),
+                    connection({ aspsp_name: 'BBVA', provider: 'binance' }),
+                ],
+                'BBVA',
+            ),
+        ).toBeUndefined();
+    });
+
+    it('returns nothing without a selected bank', () => {
+        expect(
+            activeConnectionForBank([connection()], undefined),
+        ).toBeUndefined();
     });
 });

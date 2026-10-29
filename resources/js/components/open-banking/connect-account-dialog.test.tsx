@@ -13,6 +13,9 @@ const pageProps = { features: {}, locale: 'es', openBankingEnabled: true };
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: pageProps }),
+    Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+        <a href={href}>{children}</a>
+    ),
 }));
 
 vi.mock('@/utils/i18n', () => ({
@@ -172,6 +175,45 @@ describe('ConnectAccountDialog', () => {
 
         fireEvent.click(screen.getByRole('checkbox'));
         expect(connect).toBeEnabled();
+    });
+
+    it('points another account from the same login to the existing connection', async () => {
+        const existing = liveBbvaConnection();
+        await reachBankStep([existing]);
+
+        fireEvent.click(screen.getByRole('button', { name: /BBVA/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            screen.getByText(/To add another account from that login, use/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Manage Accounts' }),
+        ).toHaveAttribute(
+            'href',
+            expect.stringContaining(`/connections/${existing.id}/accounts`),
+        );
+        expect(
+            screen.getByText(
+                "Only continue if you are signing in with a different login, like a partner's.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('names Manage Accounts without a link while the connection awaits mapping', async () => {
+        await reachBankStep([
+            { ...liveBbvaConnection(), status: 'awaiting_mapping' },
+        ]);
+
+        fireEvent.click(screen.getByRole('button', { name: /BBVA/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            screen.getByText(/To add another account from that login, use/),
+        ).toHaveTextContent('Manage Accounts');
+        expect(
+            screen.queryByRole('link', { name: 'Manage Accounts' }),
+        ).not.toBeInTheDocument();
     });
 
     it('requires every provider credential before connecting', async () => {
