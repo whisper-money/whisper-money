@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\BankingProviderInterface;
+use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Responses\RegisterResponse;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
@@ -83,6 +84,21 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute($user->isRestrictedSharedAccount() ? 600 : 60)
                 ->by((string) $user->getAuthIdentifier());
+        });
+
+        // The public API (`/api/v1`): 60 requests a minute per user, answered
+        // with X-RateLimit-Limit / X-RateLimit-Remaining (and Retry-After once
+        // exhausted). Authentication runs first, so there is always a user.
+        RateLimiter::for('api-v1', function (Request $request): Limit {
+            return Limit::perMinute(60)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
+        // Ahead of authentication, every `/api/v1` request is also counted
+        // per IP, so bogus tokens cannot be sprayed unchecked. 120 a minute is
+        // two users' full budget: room for a household or an office behind
+        // one NAT, still a hard cap for a script guessing tokens.
+        RateLimiter::for(ThrottleApiRequestsByIp::Limiter, function (Request $request): Limit {
+            return Limit::perMinute(120)->by((string) $request->ip());
         });
 
         // AI column-mapping suggestions are asked once per imported file, so 20
