@@ -41,7 +41,8 @@ Individual pages follow `https://whisper.money/documentation/{slug}.md`:
 | REST API: overview, base URL, first request | `api` |
 | API tokens, OAuth apps, scopes | `api/authentication` |
 | API amounts, spaces, pagination, errors, rate limits, idempotency | `api/amounts-and-currencies`, `api/spaces`, `api/pagination`, `api/errors`, `api/rate-limits`, `api/idempotency` |
-| API endpoint reference (English only) | `api/reference` |
+| API endpoint reference (English only), one page per resource | `api/reference`, `api/reference/{resource}` (e.g. `api/reference/transactions`) |
+| API changelog | `api/changelog` |
 
 Add `?lang=es` for Spanish: `https://whisper.money/documentation/budgets.md?lang=es`.
 

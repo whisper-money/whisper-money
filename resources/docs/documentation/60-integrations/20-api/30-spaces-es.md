@@ -7,8 +7,9 @@ Tus datos se organizan en espacios: tu espacio personal y cualquier espacio que 
 ## Qué es un espacio
 
 Un espacio agrupa un conjunto de cuentas y todo lo que se registra en ellas:
-transacciones, categorías, etiquetas, presupuestos. Todo el mundo tiene un
-espacio personal, y un espacio se puede compartir con otras personas.
+transacciones, categorías, etiquetas, reglas de automatización y objetivos de
+ahorro. Todo el mundo tiene un espacio personal, y un espacio se puede compartir
+con otras personas.
 
 La API te da exactamente lo mismo que la app: tus propios datos. En un espacio
 compartido, solo lees y cambias las cuentas, transacciones, categorías,
@@ -35,15 +36,18 @@ En un `GET`, envíalo en la query string:
 GET /api/v1/accounts?space=0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60
 ```
 
-En un `POST` o `PATCH`, envíalo en la query string o en el cuerpo JSON.
+En un `POST`, `PATCH`, `PUT` o `DELETE`, envíalo en la query string o en el
+cuerpo JSON.
 
 Un id al que no tienes acceso responde `422`, con el error en `space`. La
 [referencia](/documentation/api/reference) incluye `space` entre los parámetros
 de cada endpoint que lo acepta.
 
 El id de un objeto también se busca en ese espacio. Para leer o cambiar una
-cuenta, una transacción, una categoría o una etiqueta de un espacio compartido, envía el id de ese espacio
-junto a ella: sin él, el objeto se busca en tu espacio personal y responde
-`404`.
+cuenta, una transacción, una categoría, una etiqueta, una regla de automatización
+o un objetivo de ahorro de un espacio compartido, envía el id de ese espacio
+junto a él: sin él, el objeto se busca en tu espacio personal y responde `404`.
 
-La analítica cubre toda tu cuenta y no un solo espacio, igual que en la app.
+Los presupuestos, la analítica y las medallas ignoran `space`: cubren toda tu
+cuenta y no un solo espacio, igual que en la app. Enviarlo igualmente no da
+error, pero no cambia nada.

@@ -21,7 +21,12 @@ curl -X POST https://whisper.money/api/v1/transactions \
   -H "Authorization: Bearer $WHISPER_MONEY_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: 9b2f4c1e-5d3a-4e7b-8c6d-0a1b2c3d4e5f" \
-  -d '{"description": "Café"}'
+  -d '{
+    "account_id": "0199a3f4-1d2e-7c3b-8a4f-5e6d7c8b9a01",
+    "description": "Café",
+    "amount": -250,
+    "transaction_date": "2026-01-31"
+}'
 ```
 
 La cabecera es opcional, funciona en cualquier `POST` y se ignora en los demás

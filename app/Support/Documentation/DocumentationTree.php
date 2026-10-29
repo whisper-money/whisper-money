@@ -27,6 +27,10 @@ use Illuminate\Support\Str;
  * `-en.md` is not published, and a language we have no file for falls back to
  * English.
  *
+ * A page kept only in English can still be named in another language in the
+ * navigation with `<!-- title es: Referencia de la API -->`: the label is
+ * translated, the page is not.
+ *
  * @phpstan-type PageNode array{type: 'page', slug: string, order: int, title: string, description: string, file: string, locales: list<string>, children: list<mixed>}
  * @phpstan-type SectionNode array{type: 'section', id: string, order: int, title: string, children: list<mixed>}
  */
@@ -45,6 +49,11 @@ final class DocumentationTree
      * `- en: Your data`, or `en: Your data`, inside a section.md.
      */
     private const SECTION_TITLE_PATTERN = '/^\s*[-*]?\s*([a-z]{2}(?:[-_][a-z]{2})?)\s*:\s*(.+?)\s*$/i';
+
+    /**
+     * `<!-- title es: Referencia de la API -->`, inside a page.
+     */
+    private const PAGE_TITLE_PATTERN = '/^<!--\s*title\s+([a-z]{2}(?:[-_][a-z]{2})?)\s*:\s*(.+?)\s*-->$/im';
 
     /** @var list<PageNode|SectionNode>|null */
     private ?array $nodes = null;
@@ -231,7 +240,8 @@ final class DocumentationTree
      */
     private function metadata(string $file): array
     {
-        $lines = preg_split('/\R/', File::get($file)) ?: [];
+        $contents = File::get($file);
+        $lines = preg_split('/\R/', $contents) ?: [];
         $title = '';
         $description = '';
 
@@ -253,7 +263,24 @@ final class DocumentationTree
             }
         }
 
-        return ['title' => $title, 'description' => $description];
+        return ['title' => $this->localizedTitle($contents) ?? $title, 'description' => $description];
+    }
+
+    /**
+     * The name a page gives itself in this language when its heading is in
+     * another one.
+     */
+    private function localizedTitle(string $contents): ?string
+    {
+        preg_match_all(self::PAGE_TITLE_PATTERN, $contents, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as [, $locale, $title]) {
+            if (self::normalizeLocale($locale) === $this->locale) {
+                return $title;
+            }
+        }
+
+        return null;
     }
 
     /**

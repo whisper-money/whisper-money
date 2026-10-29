@@ -55,6 +55,13 @@ The answer is your spaces, wrapped in `data`:
 }
 ```
 
+The rest of the examples in these pages read the token from an environment
+variable, so set it once in your shell:
+
+```bash
+export WHISPER_MONEY_TOKEN=wm_api_your_token_here
+```
+
 ## How it behaves
 
 These pages describe what every endpoint has in common. Read them once before

@@ -4,6 +4,8 @@ Figures rolled up from your transactions and balances over a date range: cashflo
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
+The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.
+
 {{TOC}}
 
 ## Retrieve the cashflow

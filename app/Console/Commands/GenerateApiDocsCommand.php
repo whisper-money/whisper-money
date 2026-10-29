@@ -10,7 +10,7 @@ class GenerateApiDocsCommand extends Command
 {
     protected $signature = 'api:docs';
 
-    protected $description = 'Write the API reference pages (resources/docs/documentation/70-api) from the OpenAPI spec';
+    protected $description = 'Write the API reference pages (resources/docs/documentation/60-integrations/20-api) from the OpenAPI spec';
 
     public function handle(): int
     {

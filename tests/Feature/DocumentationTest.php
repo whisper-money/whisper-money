@@ -259,6 +259,54 @@ it('serves the full import pages in both languages, with Banktrack nested under 
     ['es', 'Importar desde otra app', 'Importar desde Banktrack'],
 ]);
 
+it('keeps the AI Connector and API pages at their slugs inside the Integrations section', function (string $locale, string $section, string $slug, string $title) {
+    $this->get(route('documentation.show', ['slug' => $slug, 'lang' => $locale]))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('document.slug', $slug)
+                ->where('document.title', $title)
+                ->where('navigation.5.type', 'section')
+                ->where('navigation.5.title', $section)
+                ->where('navigation.5.expanded', true)
+                ->where('navigation.5.children.0.slug', 'ai-connector')
+                ->where('navigation.5.children.1.slug', 'api')
+        );
+
+    $this->get("/documentation/{$slug}.md?lang={$locale}")
+        ->assertOk()
+        ->assertSee('# '.$title, false);
+})->with([
+    ['en', 'Integrations', 'ai-connector', 'AI Connector'],
+    ['es', 'Integraciones', 'ai-connector', 'Conector de IA'],
+    ['en', 'Integrations', 'api', 'API'],
+    ['es', 'Integraciones', 'api', 'API'],
+    ['en', 'Integrations', 'api/authentication', 'Authentication'],
+    ['es', 'Integraciones', 'api/authentication', 'Autenticación'],
+    ['en', 'Integrations', 'api/reference', 'API reference'],
+    ['en', 'Integrations', 'api/reference/transactions', 'Transactions'],
+    ['en', 'Integrations', 'api/changelog', 'Changelog'],
+    ['es', 'Integraciones', 'api/changelog', 'Registro de cambios'],
+]);
+
+it('names the English-only API reference in the reader\'s language without translating it', function (string $locale, string $reference, string $changelog) {
+    $this->get(route('documentation.show', ['slug' => 'api/reference', 'lang' => $locale]))
+        ->assertOk()
+        ->assertInertia(
+            fn (AssertableInertia $page) => $page
+                ->where('document.title', $reference)
+                ->where('document.locale', 'en')
+                ->where('document.html', fn (string $html): bool => str_contains($html, 'API reference</h1>') && ! str_contains($html, 'title es:'))
+                ->where('navigation.5.children.1.children.7.slug', 'api/reference')
+                ->where('navigation.5.children.1.children.7.title', $reference)
+                ->where('navigation.5.children.1.children.8.slug', 'api/changelog')
+                ->where('navigation.5.children.1.children.8.title', $changelog)
+        );
+})->with([
+    ['en', 'API reference', 'Changelog'],
+    ['es', 'Referencia de la API', 'Registro de cambios'],
+]);
+
 it('redirects a page that has moved under another page, in html and in markdown', function () {
     $this->get('/documentation/imports')
         ->assertMovedPermanently()

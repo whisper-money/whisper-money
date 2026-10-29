@@ -4,6 +4,8 @@ A medal (an achievement) records a milestone you reached: a visit or saving stre
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
+The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.
+
 {{TOC}}
 
 ## List achievements

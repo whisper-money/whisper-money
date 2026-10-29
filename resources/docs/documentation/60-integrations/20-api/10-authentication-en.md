@@ -53,6 +53,10 @@ scope it needs:
 - **write**: anything that creates, edits or deletes. A read-only token answers
   `403` with the code `insufficient_scope`.
 
+Under the hood a read-only token carries the ability `api:read`, and a read &
+write token `api:read` and `api:write`. An OAuth token carries the scope
+`api:use`, which covers both.
+
 ## OAuth apps
 
 An app made by someone else should not ask you to paste a token. It connects

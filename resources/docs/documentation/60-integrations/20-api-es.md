@@ -56,6 +56,13 @@ La respuesta son tus espacios, dentro de `data`:
 }
 ```
 
+El resto de ejemplos de estas páginas leen el token de una variable de entorno,
+así que defínela una vez en tu terminal:
+
+```bash
+export WHISPER_MONEY_TOKEN=wm_api_tu_token
+```
+
 ## Cómo se comporta
 
 Estas páginas describen lo que todos los endpoints tienen en común. Léelas una

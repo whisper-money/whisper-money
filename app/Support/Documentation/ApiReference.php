@@ -25,9 +25,9 @@ final class ApiReference
      * Where the pages go, relative to the documentation root: the reference
      * index is the `api/reference` page and each group a page nested under it.
      */
-    private const string Directory = '70-api';
+    private const string Directory = '60-integrations/20-api';
 
-    private const string IndexFile = self::Directory.'/80-reference-en.md';
+    private const string IndexFile = self::GroupsDirectory.'-en.md';
 
     public const string GroupsDirectory = self::Directory.'/80-reference';
 
@@ -38,6 +38,12 @@ final class ApiReference
     private const string BaseUrl = 'https://whisper.money/api/v1';
 
     private const string Notice = '<!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->';
+
+    /**
+     * The example requests send `$WHISPER_MONEY_TOKEN`, so every page says
+     * where it comes from for a reader who lands on it from a search.
+     */
+    private const string TokenNote = 'The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `export WHISPER_MONEY_TOKEN=wm_api_your_token_here` before pasting them.';
 
     public function __construct(private readonly OpenApiDocument $document) {}
 
@@ -74,7 +80,11 @@ final class ApiReference
             '',
             self::Notice,
             '',
+            '<!-- title es: Referencia de la API -->',
+            '',
             'Read [Authentication](/documentation/api/authentication) first, and [Errors](/documentation/api/errors) for what any endpoint can answer besides its own response.',
+            '',
+            self::TokenNote,
         ];
 
         foreach ($this->groups() as $group) {
@@ -93,7 +103,7 @@ final class ApiReference
      */
     private function groupPage(array $group): string
     {
-        $lines = ['# '.$group['name'], '', $group['description'], '', self::Notice, '', '{{TOC}}'];
+        $lines = ['# '.$group['name'], '', $group['description'], '', self::Notice, '', self::TokenNote, '', '{{TOC}}'];
 
         foreach ($group['endpoints'] as $endpoint) {
             $lines = [...$lines, '', ...$this->endpoint($endpoint)];
