@@ -8,7 +8,12 @@ Your data is organised in spaces: your personal space and any space someone shar
 
 A space holds a set of accounts and everything recorded on them: transactions,
 categories, labels, budgets. Everyone has a personal space, and a space can be
-shared with other people, who then see and edit everything in it.
+shared with other people.
+
+The API gives you exactly what the app gives you: your own data. In a space you
+share, you read and change only the accounts, transactions, categories, labels,
+rules and goals you created, and every id you send must point at one of yours.
+Another member's object answers `404`, exactly like one that does not exist.
 
 List the spaces you can reach, with their ids:
 

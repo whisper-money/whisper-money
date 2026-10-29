@@ -8,8 +8,13 @@ Tus datos se organizan en espacios: tu espacio personal y cualquier espacio que 
 
 Un espacio agrupa un conjunto de cuentas y todo lo que se registra en ellas:
 transacciones, categorías, etiquetas, presupuestos. Todo el mundo tiene un
-espacio personal, y un espacio se puede compartir con otras personas, que
-entonces ven y editan todo lo que contiene.
+espacio personal, y un espacio se puede compartir con otras personas.
+
+La API te da exactamente lo mismo que la app: tus propios datos. En un espacio
+compartido, solo lees y cambias las cuentas, transacciones, categorías,
+etiquetas, reglas y objetivos que has creado tú, y cada id que envías debe ser
+de uno de los tuyos. Un objeto de otro miembro responde `404`, igual que uno que
+no existe.
 
 Lista los espacios a los que tienes acceso, con sus ids:
 

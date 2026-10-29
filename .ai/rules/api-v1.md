@@ -2,6 +2,8 @@
 paths:
   - 'app/Http/Controllers/Api/V1/**'
   - 'app/Http/Resources/V1/**'
+  - 'app/Http/Requests/Api/V1/**'
+  - 'app/Services/SpaceResolver.php'
 ---
 
 # Public API v1
@@ -27,3 +29,6 @@ Errors all come from `ErrorRenderer`, so a new error `code` thrown through `ApiV
 
 ## The spec route is outside the group on purpose
 `GET /api/v1/openapi.json` is registered in `bootstrap/app.php`, not in `routes/api-v1.php`, so it is public and unthrottled. It serves Scramble's cache, which `php artisan scramble:cache` fills on deploy (`docker/entrypoint.sh`). Scramble's own UI and JSON routes stay off (`Scramble::ignoreDefaultRoutes()` in `ApiDocumentationServiceProvider`).
+
+## Permissions mirror the web app: own rows only
+The web app is the source of truth for who may read and change what, and it only ever shows a user their own rows (`user_id`), even inside a shared space. The API (and the MCP server) must enforce exactly that: every list, show and search returns the caller's own rows within the resolved space; every write and every id sent in a body or filter (`account_id`, `category_id`, `label_ids`, `parent_id`, …) must point at one of the caller's rows. Another member's row is a `404`, like one that does not exist. Look rows up through `SpaceResolver`'s owner-aware methods, never with a bare `forSpace()`, and keep the policy as a second check where a request already calls it. Before widening anything here, change the web app first.
