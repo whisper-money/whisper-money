@@ -67,21 +67,21 @@ class StoreBudgetRequest extends FormRequest
              */
             'is_catch_all' => $rules['is_catch_all'],
             /**
-             * The ids of the categories to track, each one of your own. Tracking a parent also tracks its children. A budget needs at least one category or label, unless it is the catch-all.
+             * The ids of the categories to track, each one of your own, 100 at most. Tracking a parent also tracks its children. A budget needs at least one category or label, unless it is the catch-all.
              *
              * @example ["0199a3f5-2b3c-7d4e-8f5a-6b7c8d9e0f12"]
              */
-            'category_ids' => ['sometimes', 'array'],
+            'category_ids' => ['sometimes', 'array', 'max:100'],
             /**
              * @format uuid
              */
             'category_ids.*' => ['string', 'distinct', $this->userOwned('categories')],
             /**
-             * The ids of the labels to track, each one of your own.
+             * The ids of the labels to track, each one of your own, 100 at most.
              *
              * @example ["0199a3f6-3c4d-7e5f-9a6b-7c8d9e0f1a23"]
              */
-            'label_ids' => ['sometimes', 'array'],
+            'label_ids' => ['sometimes', 'array', 'max:100'],
             /**
              * @format uuid
              */

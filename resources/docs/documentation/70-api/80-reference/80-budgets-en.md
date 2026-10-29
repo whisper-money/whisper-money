@@ -144,8 +144,8 @@ The budget needs at least one category or label to track, or `is_catch_all: true
 | `period_start_day` | integer or null | No | The day a period starts: the day of the month (1–31) for a monthly budget, the day of the week (0 is Sunday, 6 Saturday) for a weekly or biweekly one. Quarterly and yearly budgets follow the calendar and ignore it. |
 | `expense_type` | BudgetExpenseType | No | `fixed` for spending that repeats at the same amount every period (rent, subscriptions), `variable` (the default) for spending you can adjust. A catch-all budget is always `variable`. |
 | `is_catch_all` | boolean | No | Track every expense category no other budget tracks. A catch-all budget takes no `category_ids` or `label_ids`, and an account has at most one. |
-| `category_ids` | array of string (uuid) | No | The ids of the categories to track, each one of your own. Tracking a parent also tracks its children. A budget needs at least one category or label, unless it is the catch-all. |
-| `label_ids` | array of string (uuid) | No | The ids of the labels to track, each one of your own. |
+| `category_ids` | array of string (uuid) | No | The ids of the categories to track, each one of your own, 100 at most. Tracking a parent also tracks its children. A budget needs at least one category or label, unless it is the catch-all. |
+| `label_ids` | array of string (uuid) | No | The ids of the labels to track, each one of your own, 100 at most. |
 
 #### Response
 

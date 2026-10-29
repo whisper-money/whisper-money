@@ -26,6 +26,13 @@ class Budget extends Model
 {
     use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * The largest limit, in minor units, a budget period may have: the same
+     * ceiling as a savings goal's amounts, so carried-over sums stay well
+     * inside the integers a browser holds exactly.
+     */
+    public const MAX_ALLOCATED_AMOUNT = SavingsGoal::MAX_AMOUNT;
+
     protected $fillable = [
         'user_id',
         'space_id',

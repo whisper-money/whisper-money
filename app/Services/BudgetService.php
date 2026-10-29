@@ -36,7 +36,7 @@ class BudgetService
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'allocated_amount' => ['required', 'integer', 'min:0'],
+            'allocated_amount' => ['required', 'integer', 'min:0', 'max:'.Budget::MAX_ALLOCATED_AMOUNT],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
             // The field means a day of the week for weekly periods and a day of
@@ -59,7 +59,7 @@ class BudgetService
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'allocated_amount' => ['sometimes', 'integer', 'min:0'],
+            'allocated_amount' => ['sometimes', 'integer', 'min:0', 'max:'.Budget::MAX_ALLOCATED_AMOUNT],
         ];
     }
 

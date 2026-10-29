@@ -237,6 +237,12 @@ describe('create', function () {
         'nothing to track' => [fn (User $user) => newBudget($user, ['category_ids' => []]), 'category_ids', 'Pass at least one category or label to track, or set is_catch_all to true.'],
         'missing limit' => [fn (User $user) => newBudget($user, ['allocated_amount' => null]), 'allocated_amount'],
         'negative limit' => [fn (User $user) => newBudget($user, ['allocated_amount' => -1]), 'allocated_amount'],
+        'limit over the maximum' => [fn (User $user) => newBudget($user, ['allocated_amount' => Budget::MAX_ALLOCATED_AMOUNT + 1]), 'allocated_amount'],
+        'name too long' => [fn (User $user) => newBudget($user, ['name' => str_repeat('a', 256)]), 'name'],
+        'too many categories' => [fn (User $user) => newBudget($user, ['category_ids' => array_map(fn (int $i): string => "id-{$i}", range(1, 101))]), 'category_ids'],
+        'too many labels' => [fn (User $user) => newBudget($user, ['label_ids' => array_map(fn (int $i): string => "id-{$i}", range(1, 101))]), 'label_ids'],
+        'repeated category' => [fn (User $user) => newBudget($user, ['category_ids' => array_fill(0, 2, Category::factory()->create(['user_id' => $user->id])->id)]), 'category_ids.0'],
+        'repeated label' => [fn (User $user) => newBudget($user, ['label_ids' => array_fill(0, 2, Label::factory()->create(['user_id' => $user->id])->id)]), 'label_ids.0'],
         'unknown period' => [fn (User $user) => newBudget($user, ['period_type' => 'daily']), 'period_type'],
         'weekday out of range' => [fn (User $user) => newBudget($user, ['period_type' => 'weekly', 'period_start_day' => 7]), 'period_start_day'],
         'day of month zero' => [fn (User $user) => newBudget($user, ['period_start_day' => 0]), 'period_start_day'],
@@ -307,6 +313,21 @@ describe('update', function () {
         ['is_catch_all', true],
         ['category_ids', []],
         ['label_ids', []],
+    ]);
+
+    it('refuses an invalid name or limit', function (array $body, string $field) {
+        $user = budgetUser();
+        $budget = groceriesBudget($user);
+
+        withHeaders(budgetsWriter($user))
+            ->patchJson("/api/v1/budgets/{$budget->id}", $body)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors($field);
+
+        expect($budget->fresh()->name)->toBe('Groceries');
+    })->with([
+        'limit over the maximum' => [['allocated_amount' => Budget::MAX_ALLOCATED_AMOUNT + 1], 'allocated_amount'],
+        'name too long' => [['name' => str_repeat('a', 256)], 'name'],
     ]);
 
     it('refuses an archived budget, someone else\'s and a read-only token', function () {
