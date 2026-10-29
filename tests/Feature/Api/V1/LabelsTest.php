@@ -229,6 +229,18 @@ describe('savings goal labels', function () {
 
         expect($label->fresh())->name->toBe('New car')->deleted_at->toBeNull();
     });
+
+    it('refuses renaming a goal label through the query string', function () {
+        $user = User::factory()->create();
+        $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'New car', 'color' => 'blue', 'source' => LabelSource::SavingsGoal]);
+
+        withHeaders(labelsWriter($user))
+            ->patchJson('/api/v1/labels/'.$label->id.'?name=Old%20car', [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('name');
+
+        expect($label->fresh()->name)->toBe('New car');
+    });
 });
 
 describe('ownership', function () {

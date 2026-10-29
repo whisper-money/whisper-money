@@ -178,6 +178,25 @@ describe('create', function () {
         expect($user->categories()->count())->toBe(1);
     });
 
+    it('refuses a name or icon longer than its column', function () {
+        $user = User::factory()->create();
+        $category = Category::factory()->create(['user_id' => $user->id, 'icon' => 'Plane']);
+        $headers = categoriesWriter($user);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/categories', ['name' => str_repeat('a', 256), 'icon' => str_repeat('a', 256), 'color' => 'red', 'type' => 'expense'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name', 'icon']);
+
+        withHeaders($headers)
+            ->patchJson('/api/v1/categories/'.$category->id, ['icon' => str_repeat('a', 256)])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('icon');
+
+        expect($user->categories()->count())->toBe(1)
+            ->and($category->fresh()->icon)->toBe('Plane');
+    });
+
     it('refuses nesting deeper than 3 levels', function () {
         $user = User::factory()->create();
         $root = Category::factory()->create(['user_id' => $user->id]);

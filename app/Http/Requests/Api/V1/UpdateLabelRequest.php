@@ -30,7 +30,7 @@ class UpdateLabelRequest extends FormRequest
     {
         return [fn (Validator $validator) => $this->addRefusals($validator, [
             ...$this->unknownFieldRefusals(),
-            ...LabelWriter::savingsGoalLabelErrors($this->label(), $this->getInputSource()->keys(), deleting: false),
+            ...LabelWriter::savingsGoalLabelErrors($this->label(), $this->sentFields(), deleting: false),
         ])];
     }
 

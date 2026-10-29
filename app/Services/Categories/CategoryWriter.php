@@ -37,7 +37,7 @@ class CategoryWriter
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'icon' => ['required', 'string'],
+            'icon' => ['required', 'string', 'max:255'],
             'color' => ['required', Rule::enum(CategoryColor::class)],
             'type' => ['required', Rule::enum(CategoryType::class)],
             'cashflow_direction' => ['sometimes', Rule::enum(CategoryCashflowDirection::class)],
