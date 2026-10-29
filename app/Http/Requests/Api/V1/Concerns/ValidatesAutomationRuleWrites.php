@@ -12,7 +12,7 @@ use Illuminate\Contracts\Validation\Validator;
  * What the automation rule create and update requests share: the
  * AutomationRuleWriter rules and the RuleConditions checks the MCP tools
  * validate with too, and the category and labels the rule applies, checked to
- * be in the request's space. The conditions come as a JSON object, never as
+ * be the caller's own in the request's space. The conditions come as a JSON object, never as
  * the JSON-encoded string the MCP also accepts.
  */
 trait ValidatesAutomationRuleWrites
@@ -48,13 +48,13 @@ trait ValidatesAutomationRuleWrites
              */
             'conditions' => ['bail', $presence, $this->validConditions(...)],
             /**
-             * The id of the category to give the matching transactions, or `null` for none. A rule needs a category, labels or both.
+             * The id of the category to give the matching transactions, one of your categories in the space, or `null` for none. A rule needs a category, labels or both.
              *
              * @format uuid
              */
             'action_category_id' => ['sometimes', 'nullable', 'string', $this->inSpace(Category::class, 'a category')],
             /**
-             * The ids of the labels to add to the matching transactions, each a label of the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all.
+             * The ids of the labels to add to the matching transactions, each one of your labels in the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all.
              *
              * @example ["0199a3f6-3c4d-7e5f-9a6b-7c8d9e0f1a23"]
              */

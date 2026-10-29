@@ -27,15 +27,16 @@ class AutomationRuleController extends Controller
     /**
      * List automation rules
      *
-     * The rules in a space in the order they are evaluated: `priority`
-     * ascending, then `title`. Every member of a space sees all of its rules.
+     * Your rules in a space in the order they are evaluated: `priority`
+     * ascending, then `title`. As in the app, another member's rules are not
+     * listed.
      */
     #[ScopedToSpace]
     #[Paginated(AutomationRuleResource::class)]
     public function index(Request $request): AnonymousResourceCollection
     {
         return CursorPaginator::paginate(
-            AutomationRule::query()->forSpace($this->space($request))->with('labels:id'),
+            $this->owned($request, AutomationRule::query())->with('labels:id'),
             $request,
             [['priority', 'asc'], ['title', 'asc'], ['id', 'asc']],
             AutomationRuleResource::class,
@@ -81,8 +82,7 @@ class AutomationRuleController extends Controller
      * Changes only the fields you send. `conditions` and `action_label_ids`
      * replace the rule's whole set. The rule must keep at least one action, a
      * category or labels: leaving it without one is a `422` under
-     * `action_category_id`. Only the member of the space who created the rule
-     * can change it. The transactions it already touched keep what it gave
+     * `action_category_id`. The transactions it already touched keep what it gave
      * them.
      *
      * @param  string  $automation_rule  The rule's id.
@@ -101,8 +101,7 @@ class AutomationRuleController extends Controller
      * Delete an automation rule
      *
      * The rule stops running on new transactions. The transactions it already
-     * categorized or labelled keep their category and labels. Only the member
-     * of the space who created the rule can delete it.
+     * categorized or labelled keep their category and labels.
      *
      * @param  string  $automation_rule  The rule's id.
      */
@@ -142,8 +141,8 @@ class AutomationRuleController extends Controller
      * minutes and answer `202` with `status: queued`. There is no progress
      * endpoint: preview again to see what the rule still matches.
      *
-     * Previewing and applying both need a write token, and only the member of
-     * the space who created the rule can do either. The matches are worked
+     * Previewing and applying both need a write token, and both only reach
+     * your own transactions. The matches are worked
      * out once and reused for up to 15 minutes, so the apply that follows a
      * preview goes over the transactions that preview reported; editing the
      * rule starts over.

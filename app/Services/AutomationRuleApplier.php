@@ -104,7 +104,7 @@ class AutomationRuleApplier
         $total = count($matchingIds);
 
         if ($dryRun) {
-            return new RuleApplication(RuleApplicationStatus::Preview, $rule->id, $total, $this->sample($matchingIds, $space));
+            return new RuleApplication(RuleApplicationStatus::Preview, $rule->id, $total, $this->sample($rule, $matchingIds, $space));
         }
 
         if ($total > self::SYNC_THRESHOLD) {
@@ -174,7 +174,7 @@ class AutomationRuleApplier
      * @param  array<int, string>  $matchingIds
      * @return EloquentCollection<int, Transaction>
      */
-    private function sample(array $matchingIds, Space $space): EloquentCollection
+    private function sample(AutomationRule $rule, array $matchingIds, Space $space): EloquentCollection
     {
         $ids = array_slice($matchingIds, 0, self::SAMPLE_SIZE);
 
@@ -182,10 +182,11 @@ class AutomationRuleApplier
             return new EloquentCollection;
         }
 
-        // Re-scoped to the space even though the ids already come from a
-        // space-scoped match, so this stays safe to read on its own.
+        // Re-scoped to the rule owner's rows of the space even though the ids
+        // already come from such a match, so this stays safe to read on its own.
         return Transaction::query()
             ->forSpace($space)
+            ->where('user_id', $rule->user_id)
             ->whereIn('id', $ids)
             ->with(['account:id,name', 'category:id,name', 'labels:id,name'])
             ->orderByDesc('transaction_date')

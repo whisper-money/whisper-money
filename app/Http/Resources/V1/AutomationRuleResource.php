@@ -3,7 +3,6 @@
 namespace App\Http\Resources\V1;
 
 use App\Models\AutomationRule;
-use App\Models\User;
 use App\Services\AutomationRules\RuleConditions;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
@@ -23,9 +22,6 @@ class AutomationRuleResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var User $user */
-        $user = $request->user();
-
         $this->resource->loadMissing('labels:id');
 
         return [
@@ -93,10 +89,6 @@ class AutomationRuleResource extends JsonResource
              * @example user
              */
             'origin' => $this->origin->value,
-            /**
-             * Whether you created the rule. Every member of its space reads it, but only the one who created it can change, apply or delete it.
-             */
-            'owned' => $this->user_id === $user->id,
             /**
              * When the rule was created.
              *

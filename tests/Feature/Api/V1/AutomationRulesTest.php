@@ -139,7 +139,6 @@ describe('list', function () {
                 'action_label_ids' => [$label->id],
                 'action_note' => 'Weekly shop',
                 'origin' => 'user',
-                'owned' => true,
                 'created_at' => '2026-01-15T09:30:00+00:00',
                 'updated_at' => '2026-01-20T18:05:00+00:00',
             ]);
@@ -159,19 +158,19 @@ describe('list', function () {
             ->and($response->json('data.1.conditions'))->toBe(groceryConditions());
     });
 
-    it('lists a shared space when asked, and refuses one the user cannot access', function () {
+    it('lists only your own rules of a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedRuleSpace($user, $owner);
-        $theirs = AutomationRule::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        AutomationRule::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $mine = AutomationRule::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
         AutomationRule::factory()->create(['user_id' => $user->id]);
         $headers = apiV1Bearer($user);
 
         withHeaders($headers)
             ->getJson('/api/v1/automation-rules?space='.$space->id)
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id])
-            ->assertJsonPath('data.0.owned', false);
+            ->assertJsonPath('data.*.id', [$mine->id]);
 
         withHeaders($headers)
             ->getJson('/api/v1/automation-rules?space='.Space::factory()->create()->id)
@@ -443,7 +442,7 @@ describe('update', function () {
 });
 
 describe('ownership', function () {
-    it('lets a member read another member\'s rule but not change, apply or delete it', function () {
+    it('answers 404 for another member\'s rule of a shared space, on read, write, preview and apply', function () {
         $member = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedRuleSpace($member, $owner);
@@ -453,25 +452,48 @@ describe('ownership', function () {
 
         withHeaders($headers)
             ->getJson('/api/v1/automation-rules/'.$theirs->id.$query)
-            ->assertOk();
+            ->assertNotFound();
 
         withHeaders($headers)
             ->patchJson('/api/v1/automation-rules/'.$theirs->id.$query, ['title' => 'Mine'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_automation_rule_owner')
-            ->assertJsonPath('message', "Automation rule {$theirs->id} belongs to another member of the space, so only they can change or delete it. You can still read it.");
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
+
+        withHeaders($headers)
+            ->postJson('/api/v1/automation-rules/'.$theirs->id.'/apply'.$query, ['dry_run' => true])
+            ->assertNotFound();
 
         withHeaders($headers)
             ->postJson('/api/v1/automation-rules/'.$theirs->id.'/apply'.$query, ['dry_run' => false])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_automation_rule_owner');
+            ->assertNotFound();
 
         withHeaders($headers)
             ->deleteJson('/api/v1/automation-rules/'.$theirs->id.$query)
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_automation_rule_owner');
+            ->assertNotFound();
 
         expect($theirs->fresh()->title)->toBe('Theirs');
+    });
+
+    it('refuses another member\'s category and labels as the rule\'s actions', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedRuleSpace($member, $owner);
+        $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+
+        withHeaders(rulesWriter($member))
+            ->postJson('/api/v1/automation-rules', [
+                'space' => $space->id,
+                'title' => 'Groceries',
+                'priority' => 1,
+                'conditions' => groceryConditions(),
+                'action_category_id' => $theirCategory->id,
+                'action_label_ids' => [$theirLabel->id],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['action_category_id' => 'of yours', 'action_label_ids.0' => 'of yours']);
+
+        expect($member->automationRules()->count())->toBe(0);
     });
 });
 

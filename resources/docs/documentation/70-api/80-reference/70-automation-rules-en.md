@@ -10,7 +10,7 @@ An automation rule gives a category, labels and a note to the transactions that 
 
 `GET /api/v1/automation-rules`
 
-The rules in a space in the order they are evaluated: `priority` ascending, then `title`. Every member of a space sees all of its rules.
+Your rules in a space in the order they are evaluated: `priority` ascending, then `title`. As in the app, another member's rules are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -39,7 +39,6 @@ The rules in a space in the order they are evaluated: `priority` ascending, then
 | `data[].action_label_ids` | array of string | The ids of the labels the rule adds to the matching transactions. |
 | `data[].action_note` | string or null | The note the rule appends to the matching transactions' notes, or `null` for none. |
 | `data[].origin` | "user" \| "ai" \| "correction" | Who made the rule: `user` for one made by hand (in the app, the AI connector or this API), `ai` for one Whisper Money's AI categorization learned, and `correction` for one it learned from your own recategorizations. |
-| `data[].owned` | boolean | Whether you created the rule. Every member of its space reads it, but only the one who created it can change, apply or delete it. |
 | `data[].created_at` | string (date-time) or null | When the rule was created. |
 | `data[].updated_at` | string (date-time) or null | When the rule was last changed. |
 | `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
@@ -87,7 +86,6 @@ curl https://whisper.money/api/v1/automation-rules \
             ],
             "action_note": "Weekly shop",
             "origin": "user",
-            "owned": true,
             "created_at": "2026-01-15T09:30:00+00:00",
             "updated_at": "2026-01-20T18:05:00+00:00"
         }
@@ -102,7 +100,7 @@ curl https://whisper.money/api/v1/automation-rules \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -128,8 +126,8 @@ The rule needs at least one action: `action_category_id`, `action_label_ids` or 
 | `title` | string | Yes | The rule's name. |
 | `priority` | integer | Yes | The order the rule is evaluated in, lowest first. A new transaction gets the actions of the first rule it matches, and no other. |
 | `conditions` | object | Yes | The conditions a transaction must meet, as one JsonLogic object. Amounts in here are in MAJOR units (`12.50`), unlike every other amount in the API, and signed: an expense is negative. Text is compared lowercased, so write values in lowercase. Only these operators are accepted: `and`, `or`, `!`, `==`, `!=`, `>`, `>=`, `<`, `<=`, `in` and `var`; and only these variables: `description`, `notes`, `creditor_name`, `debtor_name`, `account_name`, `bank_name`, `category`, `transaction_date` (`YYYY-MM-DD`) and `amount`. "Contains" is `{"in": ["netflix", {"var": "description"}]}`, a negation wraps a condition in `!`, and `and` / `or` take a list and nest freely. "Is not" and "does not contain" also match a transaction whose field is empty. |
-| `action_category_id` | string (uuid) or null | No | The id of the category to give the matching transactions, or `null` for none. A rule needs a category, labels or both. |
-| `action_label_ids` | array of string (uuid) | No | The ids of the labels to add to the matching transactions, each a label of the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all. |
+| `action_category_id` | string (uuid) or null | No | The id of the category to give the matching transactions, one of your categories in the space, or `null` for none. A rule needs a category, labels or both. |
+| `action_label_ids` | array of string (uuid) | No | The ids of the labels to add to the matching transactions, each one of your labels in the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all. |
 | `action_note` | string or null | No | A note to append to the matching transactions' notes, or `null` for none. |
 
 #### Response
@@ -148,7 +146,6 @@ The rule needs at least one action: `action_category_id`, `action_label_ids` or 
 | `data.action_label_ids` | array of string | The ids of the labels the rule adds to the matching transactions. |
 | `data.action_note` | string or null | The note the rule appends to the matching transactions' notes, or `null` for none. |
 | `data.origin` | "user" \| "ai" \| "correction" | Who made the rule: `user` for one made by hand (in the app, the AI connector or this API), `ai` for one Whisper Money's AI categorization learned, and `correction` for one it learned from your own recategorizations. |
-| `data.owned` | boolean | Whether you created the rule. Every member of its space reads it, but only the one who created it can change, apply or delete it. |
 | `data.created_at` | string (date-time) or null | When the rule was created. |
 | `data.updated_at` | string (date-time) or null | When the rule was last changed. |
 
@@ -223,7 +220,6 @@ curl -X POST https://whisper.money/api/v1/automation-rules \
         ],
         "action_note": "Weekly shop",
         "origin": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00",
         "updated_at": "2026-01-20T18:05:00+00:00"
     }
@@ -236,7 +232,7 @@ curl -X POST https://whisper.money/api/v1/automation-rules \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -270,7 +266,6 @@ curl -X POST https://whisper.money/api/v1/automation-rules \
 | `data.action_label_ids` | array of string | The ids of the labels the rule adds to the matching transactions. |
 | `data.action_note` | string or null | The note the rule appends to the matching transactions' notes, or `null` for none. |
 | `data.origin` | "user" \| "ai" \| "correction" | Who made the rule: `user` for one made by hand (in the app, the AI connector or this API), `ai` for one Whisper Money's AI categorization learned, and `correction` for one it learned from your own recategorizations. |
-| `data.owned` | boolean | Whether you created the rule. Every member of its space reads it, but only the one who created it can change, apply or delete it. |
 | `data.created_at` | string (date-time) or null | When the rule was created. |
 | `data.updated_at` | string (date-time) or null | When the rule was last changed. |
 
@@ -316,7 +311,6 @@ curl https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a8e-2f5c1
         ],
         "action_note": "Weekly shop",
         "origin": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00",
         "updated_at": "2026-01-20T18:05:00+00:00"
     }
@@ -328,7 +322,7 @@ curl https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a8e-2f5c1
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -337,7 +331,7 @@ curl https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a8e-2f5c1
 
 `PATCH /api/v1/automation-rules/{automation_rule}`
 
-Changes only the fields you send. `conditions` and `action_label_ids` replace the rule's whole set. The rule must keep at least one action, a category or labels: leaving it without one is a `422` under `action_category_id`. Only the member of the space who created the rule can change it. The transactions it already touched keep what it gave them.
+Changes only the fields you send. `conditions` and `action_label_ids` replace the rule's whole set. The rule must keep at least one action, a category or labels: leaving it without one is a `422` under `action_category_id`. The transactions it already touched keep what it gave them.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -355,8 +349,8 @@ Changes only the fields you send. `conditions` and `action_label_ids` replace th
 | `title` | string | No | The rule's name. |
 | `priority` | integer | No | The order the rule is evaluated in, lowest first. A new transaction gets the actions of the first rule it matches, and no other. |
 | `conditions` | object | No | The conditions a transaction must meet, as one JsonLogic object. Amounts in here are in MAJOR units (`12.50`), unlike every other amount in the API, and signed: an expense is negative. Text is compared lowercased, so write values in lowercase. Only these operators are accepted: `and`, `or`, `!`, `==`, `!=`, `>`, `>=`, `<`, `<=`, `in` and `var`; and only these variables: `description`, `notes`, `creditor_name`, `debtor_name`, `account_name`, `bank_name`, `category`, `transaction_date` (`YYYY-MM-DD`) and `amount`. "Contains" is `{"in": ["netflix", {"var": "description"}]}`, a negation wraps a condition in `!`, and `and` / `or` take a list and nest freely. "Is not" and "does not contain" also match a transaction whose field is empty. |
-| `action_category_id` | string (uuid) or null | No | The id of the category to give the matching transactions, or `null` for none. A rule needs a category, labels or both. |
-| `action_label_ids` | array of string (uuid) | No | The ids of the labels to add to the matching transactions, each a label of the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all. |
+| `action_category_id` | string (uuid) or null | No | The id of the category to give the matching transactions, one of your categories in the space, or `null` for none. A rule needs a category, labels or both. |
+| `action_label_ids` | array of string (uuid) | No | The ids of the labels to add to the matching transactions, each one of your labels in the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all. |
 | `action_note` | string or null | No | A note to append to the matching transactions' notes, or `null` for none. |
 
 #### Response
@@ -375,7 +369,6 @@ Changes only the fields you send. `conditions` and `action_label_ids` replace th
 | `data.action_label_ids` | array of string | The ids of the labels the rule adds to the matching transactions. |
 | `data.action_note` | string or null | The note the rule appends to the matching transactions' notes, or `null` for none. |
 | `data.origin` | "user" \| "ai" \| "correction" | Who made the rule: `user` for one made by hand (in the app, the AI connector or this API), `ai` for one Whisper Money's AI categorization learned, and `correction` for one it learned from your own recategorizations. |
-| `data.owned` | boolean | Whether you created the rule. Every member of its space reads it, but only the one who created it can change, apply or delete it. |
 | `data.created_at` | string (date-time) or null | When the rule was created. |
 | `data.updated_at` | string (date-time) or null | When the rule was last changed. |
 
@@ -450,7 +443,6 @@ curl -X PATCH https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9
         ],
         "action_note": "Weekly shop",
         "origin": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00",
         "updated_at": "2026-01-20T18:05:00+00:00"
     }
@@ -462,7 +454,7 @@ curl -X PATCH https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -471,7 +463,7 @@ curl -X PATCH https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9
 
 `DELETE /api/v1/automation-rules/{automation_rule}`
 
-The rule stops running on new transactions. The transactions it already categorized or labelled keep their category and labels. Only the member of the space who created the rule can delete it.
+The rule stops running on new transactions. The transactions it already categorized or labelled keep their category and labels.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -512,7 +504,7 @@ curl -X DELETE https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -521,7 +513,7 @@ curl -X DELETE https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-
 
 `POST /api/v1/automation-rules/{automation_rule}/apply`
 
-Runs the rule over the transactions already in the space, which it otherwise never touches. By default this is a preview (`dry_run: true`): it answers `status: preview` with how many transactions match and the first 20 of them, newest first, and changes nothing. With `dry_run: false` it **overwrites your data**: every match gets the rule's category (replacing the one it had when `only_uncategorized` is `false`), its labels added and its note appended. It cannot be undone. Up to 100 matches are applied right away and answer `200` with `status: done`; more are applied in the background over the next few minutes and answer `202` with `status: queued`. There is no progress endpoint: preview again to see what the rule still matches. Previewing and applying both need a write token, and only the member of the space who created the rule can do either. The matches are worked out once and reused for up to 15 minutes, so the apply that follows a preview goes over the transactions that preview reported; editing the rule starts over.
+Runs the rule over the transactions already in the space, which it otherwise never touches. By default this is a preview (`dry_run: true`): it answers `status: preview` with how many transactions match and the first 20 of them, newest first, and changes nothing. With `dry_run: false` it **overwrites your data**: every match gets the rule's category (replacing the one it had when `only_uncategorized` is `false`), its labels added and its note appended. It cannot be undone. Up to 100 matches are applied right away and answer `200` with `status: done`; more are applied in the background over the next few minutes and answer `202` with `status: queued`. There is no progress endpoint: preview again to see what the rule still matches. Previewing and applying both need a write token, and both only reach your own transactions. The matches are worked out once and reused for up to 15 minutes, so the apply that follows a preview goes over the transactions that preview reported; editing the rule starts over.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -567,7 +559,7 @@ Runs the rule over the transactions already in the space, which it otherwise nev
 | `data.sample[].labels` | array of object | The labels the transaction is tagged with: their ids and names. |
 | `data.sample[].labels[].id` | string |  |
 | `data.sample[].labels[].name` | string |  |
-| `data.sample[].source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.sample[].source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted. |
 | `data.sample[].creditor_name` | string or null | Who was paid, or `null`. |
 | `data.sample[].debtor_name` | string or null | Who paid, or `null`. |
 | `data.sample[].notes` | string or null | Free-text notes, or `null`. |
@@ -638,7 +630,7 @@ curl -X POST https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |

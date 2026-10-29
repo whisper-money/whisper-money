@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\Tools\Concerns\PresentsAutomationRules;
 use App\Models\AutomationRule;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -31,8 +32,7 @@ class ListAutomationRules extends McpTool
     {
         $space = $this->resolveSpace($request, $user);
 
-        $rules = AutomationRule::query()
-            ->forSpace($space)
+        $rules = app(SpaceResolver::class)->ownedInSpace(AutomationRule::query(), $user, $space)
             ->with('labels:id,name')
             ->orderBy('priority')
             ->orderBy('title')
