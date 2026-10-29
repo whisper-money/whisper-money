@@ -2,8 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Models\User;
+use App\Services\CashflowAnalyticsService;
+use App\Services\PeriodComparator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -27,19 +28,11 @@ class GetCashflow extends McpTool
 
     protected function respond(Request $request, User $user): Response
     {
-        $request->validate([
-            'from' => ['required', 'date'],
-            'to' => ['required', 'date'],
-        ]);
-
-        $controller = app(CashflowAnalyticsController::class);
-        $range = ['from' => $request->string('from')->toString(), 'to' => $request->string('to')->toString()];
+        $period = PeriodComparator::fromRequest($request->validate(PeriodComparator::rules()));
 
         return $this->json([
             'currency' => $this->reportingCurrency($user),
-            'summary' => $this->callController($controller, 'summary', $user, $range),
-            'sankey' => $this->callController($controller, 'sankey', $user, $range),
-            'trend' => $this->callController($controller, 'trend', $user, $range),
+            ...app(CashflowAnalyticsService::class)->forRange($user, $period->from, $period->to),
         ]);
     }
 }

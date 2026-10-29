@@ -45,6 +45,21 @@ class PeriodComparator
                $this->to->isLastOfMonth();
     }
 
+    /**
+     * The validation rules of a `from`/`to` range, both required dates. The
+     * analytics endpoints, MCP tools and public API all take their range
+     * through these.
+     *
+     * @return array{from: list<string>, to: list<string>}
+     */
+    public static function rules(): array
+    {
+        return [
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date'],
+        ];
+    }
+
     public static function fromRequest(array $validated): self
     {
         return new self(

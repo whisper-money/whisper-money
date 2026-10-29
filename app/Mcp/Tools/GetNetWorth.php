@@ -2,8 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Models\User;
+use App\Services\NetWorthAnalyticsService;
+use App\Services\PeriodComparator;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -28,25 +29,17 @@ class GetNetWorth extends McpTool
 
     protected function respond(Request $request, User $user): Response
     {
-        $request->validate([
-            'from' => ['required', 'date'],
-            'to' => ['required', 'date'],
+        $validated = $request->validate([
+            ...PeriodComparator::rules(),
             'granularity' => ['sometimes', 'in:monthly,daily'],
         ]);
 
-        $controller = app(DashboardAnalyticsController::class);
-        $range = ['from' => $request->string('from')->toString(), 'to' => $request->string('to')->toString()];
-        $daily = $request->string('granularity')->toString() === 'daily';
-
         return $this->json([
             'currency' => $this->reportingCurrency($user),
-            'granularity' => $daily ? 'daily' : 'monthly',
-            'current' => $this->callController($controller, 'netWorth', $user, $range),
-            'evolution' => $this->callController(
-                $controller,
-                $daily ? 'netWorthDailyEvolution' : 'netWorthEvolution',
+            ...app(NetWorthAnalyticsService::class)->forRange(
                 $user,
-                $range,
+                PeriodComparator::fromRequest($validated),
+                ($validated['granularity'] ?? null) === 'daily',
             ),
         ]);
     }

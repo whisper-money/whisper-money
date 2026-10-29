@@ -23,3 +23,6 @@ A row shape returned by more than one tool lives in `app/Mcp/Tools/Concerns/Pres
 
 ## Permissions mirror the web app: own rows only
 Like the public API (see `api-v1.md`), every tool reads, changes and accepts ids of only the caller's own rows (`user_id`) in the resolved space; another member's row is refused like one that does not exist. The web app is the source of truth: never let a tool reach further than the matching web screen. Resolve ids through `WriteTool::modelInSpace()` / `McpTool::labelsInSpace()` and list through `SpaceResolver::ownedInSpace()`, never a bare `forSpace()`.
+
+## Analytics tools read services, never controllers
+`get_cashflow`, `get_net_worth` and `spending_by_category` share their maths with the web screens and `/api/v1/analytics/*` through `CashflowAnalyticsService`, `NetWorthAnalyticsService` and `CategorySpendingService`. There is no way left to call a controller from a tool (`McpTool::callController()` is gone): put new figures in the service and call it from all three. `McpToolsTest` asserts the tools' JSON is exactly what the internal `/api/cashflow/*` and `/api/dashboard/*` endpoints return, so a figure added to one side only fails there.

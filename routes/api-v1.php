@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AccountBalanceController;
 use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\AchievementController;
+use App\Http\Controllers\Api\V1\AnalyticsController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -84,3 +86,9 @@ Route::whereUuid('savings_goal')->group(function (): void {
     Route::get('savings-goals/{savings_goal}', [SavingsGoalController::class, 'show'])->name('savings-goals.show');
     Route::patch('savings-goals/{savings_goal}', [SavingsGoalController::class, 'update'])->name('savings-goals.update');
 });
+
+Route::get('analytics/cashflow', [AnalyticsController::class, 'cashflow'])->name('analytics.cashflow');
+Route::get('analytics/net-worth', [AnalyticsController::class, 'netWorth'])->name('analytics.net-worth');
+Route::get('analytics/spending-by-category', [AnalyticsController::class, 'spendingByCategory'])->name('analytics.spending-by-category');
+
+Route::get('achievements', [AchievementController::class, 'index'])->name('achievements.index');

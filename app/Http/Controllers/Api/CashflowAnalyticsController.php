@@ -2,64 +2,28 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\MonthlySavingsTotalsRequest;
-use App\Models\Category;
-use App\Models\Transaction;
-use App\Services\CashflowAggregate;
-use App\Services\CashflowAggregateQuery;
-use App\Services\CashflowBudgetReserveService;
-use App\Services\CashflowSummaryService;
-use App\Services\CategoryTree;
+use App\Services\CashflowAnalyticsService;
 use App\Services\PeriodComparator;
 use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
-/**
- * @phpstan-type BreakdownRow array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}
- */
 class CashflowAnalyticsController extends Controller
 {
-    private const MAX_TREND_MONTHS = 24;
-
     public function __construct(
-        private CashflowAggregateQuery $aggregates,
-        private CategoryTree $tree,
-        private CashflowSummaryService $summaries,
-        private CashflowBudgetReserveService $budgetReserve,
+        private CashflowAnalyticsService $cashflow,
         private MonthlySavingsGoalTotals $monthlySavings,
     ) {}
 
     public function summary(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'from' => 'required|date',
-            'to' => 'required|date',
-        ]);
+        $validated = $request->validate(PeriodComparator::rules());
 
-        $period = PeriodComparator::fromRequest($validated);
-        $previousPeriod = $period->previous();
-        $user = $request->user();
-
-        $summaries = $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod);
-        $summaries['current'] = [
-            ...$summaries['current'],
-            ...$this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']),
-        ];
-        // Only the split: what budgets still reserve is about today, which a
-        // past period has nothing to say about.
-        $summaries['previous'] = [
-            ...$summaries['previous'],
-            ...$this->budgetReserve->expenseSplit($user->id, $user->currency_code, $previousPeriod, $summaries['previous']['expense']),
-        ];
-
-        return $this->cashflowJson($summaries);
+        return $this->cashflowJson($this->cashflow->summary($request->user(), PeriodComparator::fromRequest($validated)));
     }
 
     public function sankey(Request $request): JsonResponse
@@ -70,33 +34,21 @@ class CashflowAnalyticsController extends Controller
             'parent' => 'nullable|uuid',
         ]);
 
-        $from = Carbon::parse($validated['from']);
-        $to = Carbon::parse($validated['to']);
-        $user = $request->user();
-        $drillParentId = $validated['parent'] ?? null;
-
-        // Split by the sign of each category's net, not by its type: a refund
-        // booked to an expense category nets positive and crosses over to the
-        // income side rather than dropping out of the chart.
-        [$incomeCategories, $expenseCategories] = $this->sankeyColumns($user->id, $user->currency_code, $from, $to, $drillParentId);
-
-        return $this->cashflowJson([
-            'income_categories' => $incomeCategories,
-            'expense_categories' => $expenseCategories,
-            'total_income' => array_sum(array_column($incomeCategories, 'amount')),
-            'total_expense' => array_sum(array_column($expenseCategories, 'amount')),
-        ]);
+        return $this->cashflowJson($this->cashflow->sankey(
+            $request->user(),
+            Carbon::parse($validated['from']),
+            Carbon::parse($validated['to']),
+            $validated['parent'] ?? null,
+        ));
     }
 
     public function trend(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'months' => 'nullable|integer|min:1|max:'.self::MAX_TREND_MONTHS,
+            'months' => 'nullable|integer|min:1|max:'.CashflowAnalyticsService::MAX_TREND_MONTHS,
             'from' => 'nullable|date',
             'to' => 'nullable|date',
         ]);
-
-        $user = $request->user();
 
         if (isset($validated['from'], $validated['to'])) {
             $start = Carbon::parse($validated['from'])->startOfMonth();
@@ -109,38 +61,8 @@ class CashflowAnalyticsController extends Controller
             $start = $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
         }
 
-        // Bound the window to the most recent MAX_TREND_MONTHS months so an
-        // unbounded from/to range cannot make the month loop below iterate
-        // indefinitely and exhaust the request timeout.
-        $earliestStart = $end->copy()->subMonthsNoOverflow(self::MAX_TREND_MONTHS - 1)->startOfMonth();
-
-        if ($start->lt($earliestStart)) {
-            $start = $earliestStart;
-        }
-
-        $monthlyTotals = $this->getMonthlyTrendTotals($user->id, $user->currency_code, $start, $end);
-
-        $data = [];
-        $current = $start->copy();
-
-        while ($current->lte($end)) {
-            $monthKey = $current->format('Y-m');
-            $totals = $monthlyTotals->get($monthKey);
-            $income = (int) ($totals['income'] ?? 0);
-            $expense = (int) ($totals['expense'] ?? 0);
-
-            $data[] = [
-                'month' => $monthKey,
-                'income' => $income,
-                'expense' => $expense,
-                'net' => $income - $expense,
-            ];
-
-            $current->addMonth();
-        }
-
         return $this->cashflowJson([
-            'data' => $data,
+            'data' => $this->cashflow->trend($request->user(), $start, $end),
         ]);
     }
 
@@ -153,39 +75,12 @@ class CashflowAnalyticsController extends Controller
             'parent' => 'nullable|uuid',
         ]);
 
-        $period = PeriodComparator::fromRequest($validated);
-        $previousPeriod = $period->previous();
-        $user = $request->user();
-        $drillParentId = $validated['parent'] ?? null;
-
-        $categoryType = $validated['type'] === 'income' ? CategoryType::Income : CategoryType::Expense;
-
-        $current = $this->getCategoryBreakdown($user->id, $user->currency_code, $period->from, $period->to, $categoryType, $drillParentId);
-        $previous = $this->getCategoryBreakdown($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType, $drillParentId);
-
-        $currentTotal = $current->sum('amount');
-        $previousTotal = $previous->sum('amount');
-
-        // Add percentage and previous amount to current
-        $currentWithPercentage = $current->map(function ($item) use ($currentTotal, $previous) {
-            $previousAmount = $previous->firstWhere('category_id', $item['category_id'])['amount'] ?? 0;
-
-            return [
-                'category' => $item['category'],
-                'category_id' => $item['category_id'],
-                'amount' => $item['amount'],
-                'percentage' => $currentTotal > 0 ? round(($item['amount'] / $currentTotal) * 100, 1) : 0,
-                'previous_amount' => $previousAmount,
-                'has_children' => $item['has_children'] ?? false,
-                'is_direct' => $item['is_direct'] ?? false,
-            ];
-        })->sortByDesc('amount')->values();
-
-        return $this->cashflowJson([
-            'data' => $currentWithPercentage,
-            'total' => $currentTotal,
-            'previous_total' => $previousTotal,
-        ]);
+        return $this->cashflowJson($this->cashflow->breakdown(
+            $request->user(),
+            PeriodComparator::fromRequest($validated),
+            $validated['type'] === 'income' ? CategoryType::Income : CategoryType::Expense,
+            $validated['parent'] ?? null,
+        ));
     }
 
     /**
@@ -204,267 +99,5 @@ class CashflowAnalyticsController extends Controller
         return response()
             ->json($data)
             ->header('Cache-Control', 'no-store, private');
-    }
-
-    /**
-     * The sankey's two columns. Every cashflow category is netted once and then
-     * lands on whichever side its net points at, so nothing is dropped for
-     * ending up on the "wrong" side.
-     *
-     * @return array{0: array<int, BreakdownRow>, 1: array<int, BreakdownRow>}
-     */
-    private function sankeyColumns(string $userId, string $userCurrency, Carbon $from, Carbon $to, ?string $drillParentId): array
-    {
-        $aggregates = $this->aggregatesForPeriod($userId, $userCurrency, $from, $to);
-
-        $netted = $this->netAmountsByCategory(
-            $aggregates,
-            fn (Transaction $transaction): bool => $this->cashflowSideOf($transaction->category) !== null,
-        );
-
-        // Signed amounts all the way through the roll-up, so a parent nets its
-        // children against each other before it picks a side.
-        $rolledUp = $this->tree->rollUp($netted->values()->all(), $userId, $drillParentId);
-
-        return [
-            $this->sankeyColumn($rolledUp, CategoryType::Income, $aggregates, $drillParentId),
-            $this->sankeyColumn($rolledUp, CategoryType::Expense, $aggregates, $drillParentId),
-        ];
-    }
-
-    /**
-     * One sankey column: the rolled-up rows whose net points at $side, as
-     * positive flows. A sankey cannot draw a negative flow, so at the top level
-     * a category that crossed over says so in its label instead.
-     *
-     * A drilled-down child keeps its own name: the chart shows it as an offset
-     * against the parent it was netted into, whose label already states the
-     * side, and the money coming back is not necessarily a refund.
-     *
-     * @param  array<int, BreakdownRow>  $rolledUp
-     * @param  Collection<int, CashflowAggregate>  $aggregates
-     * @return array<int, BreakdownRow>
-     */
-    private function sankeyColumn(array $rolledUp, CategoryType $side, Collection $aggregates, ?string $drillParentId): array
-    {
-        $rows = array_values(array_map(
-            fn (array $row): array => [
-                ...$row,
-                'amount' => abs($row['amount']),
-                'category' => $drillParentId === null ? $this->labelCrossover($row['category'], $side) : $row['category'],
-            ],
-            array_filter($rolledUp, fn (array $row): bool => $this->amountMatchesSide($row['amount'], $side)),
-        ));
-
-        return $this->appendUncategorized($rows, $aggregates, $side, $drillParentId);
-    }
-
-    /**
-     * Income and expense per month, keyed by YYYY-MM. Signed, so a refund
-     * lowers the month's expense bar instead of being dropped from it; an
-     * uncategorized row counts on the side its own sign points at.
-     *
-     * @return Collection<string, array{income: int, expense: int}>
-     */
-    private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
-    {
-        return $this->aggregates
-            ->aggregateByMonth($this->ownedWithin($userId, $from, $to), $userCurrency)
-            ->map(fn (Collection $aggregates): array => [
-                'income' => $this->trendTotal($aggregates, CategoryType::Income),
-                'expense' => $this->trendTotal($aggregates, CategoryType::Expense),
-            ]);
-    }
-
-    /**
-     * One side of a trend month. Set-aside legs need no skipping here: neither
-     * side counts a savings or investment row.
-     *
-     * @param  Collection<int, CashflowAggregate>  $aggregates
-     */
-    private function trendTotal(Collection $aggregates, CategoryType $side): int
-    {
-        return $aggregates
-            ->filter(fn (CashflowAggregate $aggregate): bool => $this->trendSideOf($aggregate->transaction) === $side)
-            ->sum(fn (CashflowAggregate $aggregate): int => $aggregate->transaction->category_id === null
-                ? abs($aggregate->amount)
-                : $this->orientToSide($aggregate->amount, $side));
-    }
-
-    /**
-     * The trend bar a row adds to: the cashflow side the transaction sits on,
-     * if any.
-     */
-    private function trendSideOf(Transaction $transaction): ?CategoryType
-    {
-        return match (true) {
-            $transaction->isIncomeSide() => CategoryType::Income,
-            $transaction->isExpenseSide() => CategoryType::Expense,
-            default => null,
-        };
-    }
-
-    private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type, ?string $drillParentId = null): Collection
-    {
-        $aggregates = $this->aggregatesForPeriod($userId, $userCurrency, $from, $to);
-
-        $categorized = $this->netAmountsByCategory(
-            $aggregates,
-            fn (Transaction $transaction): bool => $transaction->categoryType() === $type,
-        );
-
-        // The list keeps every category on its own side and shows the signed
-        // net, so a refund reads as a negative row instead of vanishing.
-        $rolledUp = array_map(
-            fn (array $item): array => [...$item, 'amount' => $this->orientToSide($item['amount'], $type)],
-            $this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId),
-        );
-
-        return collect($this->appendUncategorized($rolledUp, $aggregates, $type, $drillParentId));
-    }
-
-    /**
-     * Every transaction in the window, added up in SQL into groups the callers
-     * classify like single rows. Savings and investment rows on a savings,
-     * investment or retirement account are left out: the leg on the other
-     * account already counts that money.
-     *
-     * @return Collection<int, CashflowAggregate>
-     */
-    private function aggregatesForPeriod(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
-    {
-        return $this->aggregates
-            ->aggregate($this->ownedWithin($userId, $from, $to), $userCurrency)
-            ->reject(fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->isSetAsideAccountLeg())
-            ->values();
-    }
-
-    /**
-     * @return Builder<Transaction>
-     */
-    private function ownedWithin(string $userId, Carbon $from, Carbon $to): Builder
-    {
-        return Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to]);
-    }
-
-    /**
-     * Nets the groups whose transaction $belongsToSide selects into one row per
-     * category, keeping the sign of the net: a category is worth what it nets
-     * to, and it is the caller that decides what a net on the "wrong" side
-     * means.
-     *
-     * @param  Collection<int, CashflowAggregate>  $aggregates
-     * @param  callable(Transaction): bool  $belongsToSide
-     * @return Collection<string, array{category_id: string, category: Category, amount: int}>
-     */
-    private function netAmountsByCategory(Collection $aggregates, callable $belongsToSide): Collection
-    {
-        return $aggregates
-            ->filter(fn (CashflowAggregate $aggregate): bool => $belongsToSide($aggregate->transaction))
-            ->groupBy(fn (CashflowAggregate $aggregate): string => (string) $aggregate->transaction->category_id)
-            ->map(fn (Collection $categoryAggregates): array => [
-                'category_id' => $categoryAggregates->first()->transaction->category_id,
-                'category' => $categoryAggregates->first()->transaction->category,
-                'amount' => CashflowAggregate::total($categoryAggregates),
-            ]);
-    }
-
-    /**
-     * The cashflow side a category belongs to before anything is netted.
-     * Savings and investments are money leaving the cashflow, so they sit on
-     * the expense side; a transfer follows its configured direction. Anything
-     * else — a hidden transfer, no category at all — is on neither side.
-     */
-    private function cashflowSideOf(?Category $category): ?CategoryType
-    {
-        return match ($category?->type) {
-            CategoryType::Income => CategoryType::Income,
-            CategoryType::Expense, CategoryType::Savings, CategoryType::Investment => CategoryType::Expense,
-            CategoryType::Transfer => match ($category->cashflow_direction) {
-                CategoryCashflowDirection::Inflow => CategoryType::Income,
-                CategoryCashflowDirection::Outflow => CategoryType::Expense,
-                default => null,
-            },
-            default => null,
-        };
-    }
-
-    /**
-     * Renames a category that ended up on the opposite side of the one it
-     * belongs to, so the sankey can state the crossover in words instead of
-     * drawing a flow backwards.
-     */
-    private function labelCrossover(?Category $category, CategoryType $side): ?Category
-    {
-        $naturalSide = $this->cashflowSideOf($category);
-
-        if ($naturalSide === null || $naturalSide === $side) {
-            return $category;
-        }
-
-        return (clone $category)->forceFill([
-            'name' => match (true) {
-                $side === CategoryType::Expense => __(':name (reversal)', ['name' => $category->name]),
-                $category->type->isSetAside() => __(':name (withdrawal)', ['name' => $category->name]),
-                default => __(':name (refund)', ['name' => $category->name]),
-            },
-        ]);
-    }
-
-    /**
-     * Appends the transactions with no category as a single synthetic row. Only
-     * at the top level: a drilled-down parent has no uncategorized children.
-     *
-     * Split by the sign of each transaction rather than netted, unlike every
-     * categorized row: with no category there is nothing for a refund to net
-     * against, and folding unrelated inflows and outflows into one bucket
-     * would invent an offset nobody booked. So an uncategorized refund stays
-     * its own "Unknown Income".
-     *
-     * @param  array<int, BreakdownRow>  $rolledUp
-     * @param  Collection<int, CashflowAggregate>  $aggregates
-     * @return array<int, BreakdownRow>
-     */
-    private function appendUncategorized(array $rolledUp, Collection $aggregates, CategoryType $type, ?string $drillParentId): array
-    {
-        $total = CashflowAggregate::total($aggregates->filter(
-            fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->category_id === null
-                && $this->amountMatchesSide($aggregate->transaction->amount, $type),
-        ));
-
-        if ($drillParentId === null && $total != 0) {
-            $rolledUp[] = [
-                'category_id' => null,
-                'category' => (new Category)->forceFill([
-                    'id' => null,
-                    'name' => $type === CategoryType::Income ? __('Unknown Income') : __('Unknown Expense'),
-                    'type' => $type,
-                    'color' => 'gray',
-                    'icon' => 'HelpCircle',
-                ]),
-                'amount' => abs($total),
-                'has_children' => false,
-                'is_direct' => false,
-            ];
-        }
-
-        return $rolledUp;
-    }
-
-    /**
-     * A signed net as the given side reads it: positive means the money moved
-     * the way that side expects (earned on the income side, spent on the
-     * expense side), negative means it came back.
-     */
-    private function orientToSide(int $amount, CategoryType $type): int
-    {
-        return $type === CategoryType::Income ? $amount : -$amount;
-    }
-
-    private function amountMatchesSide(int $amount, CategoryType $type): bool
-    {
-        return $this->orientToSide($amount, $type) > 0;
     }
 }

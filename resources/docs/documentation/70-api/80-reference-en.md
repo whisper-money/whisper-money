@@ -108,3 +108,21 @@ A savings goal is tracked through a label: its contributions are the transaction
 | [`POST /api/v1/savings-goals`](/documentation/api/reference/savings-goals#create-a-savings-goal) | Create a savings goal |
 | [`GET /api/v1/savings-goals/{savings_goal}`](/documentation/api/reference/savings-goals#retrieve-a-savings-goal) | Retrieve a savings goal |
 | [`PATCH /api/v1/savings-goals/{savings_goal}`](/documentation/api/reference/savings-goals#update-a-savings-goal) | Update a savings goal |
+
+## Analytics
+
+Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category. They cover your whole account, not a space, and every amount is in the minor units of your account's currency, given as `currency`.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/analytics/cashflow`](/documentation/api/reference/analytics#retrieve-the-cashflow) | Retrieve the cashflow |
+| [`GET /api/v1/analytics/net-worth`](/documentation/api/reference/analytics#retrieve-the-net-worth) | Retrieve the net worth |
+| [`GET /api/v1/analytics/spending-by-category`](/documentation/api/reference/analytics#retrieve-spending-by-category) | Retrieve spending by category |
+
+## Achievements
+
+A medal (an achievement) records a milestone you reached: a visit or saving streak, a net worth or savings rate level, transactions recorded, data kept tidy. Medals cover your whole account, not a space.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/achievements`](/documentation/api/reference/achievements#list-achievements) | List achievements |

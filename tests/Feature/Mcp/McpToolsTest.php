@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\GetCashflow;
@@ -13,6 +14,7 @@ use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Models\Achievement;
 use App\Models\AutomationRule;
 use App\Models\Budget;
@@ -23,6 +25,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 it('blocks read tools when subscriptions are enabled and the user has no paid plan', function () {
     config(['subscriptions.enabled' => true]);
@@ -277,6 +280,74 @@ it('says which currency the rolled-up figures are in', function (string $tool) {
     'spending_by_category' => SpendingByCategory::class,
     'get_cashflow' => GetCashflow::class,
     'get_net_worth' => GetNetWorth::class,
+]);
+
+/**
+ * A EUR user with this month's salary, rent and a refund on two accounts, one
+ * of them in USD, to compare the analytics tools against the screens.
+ */
+function analyticsReader(): User
+{
+    Http::fake();
+    $user = User::factory()->create(['currency_code' => 'EUR']);
+    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Checking]);
+    AccountBalance::factory()->create([
+        'account_id' => Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'USD', 'type' => AccountType::Savings])->id,
+        'balance_date' => now()->subMonth()->toDateString(),
+        'balance' => 50_000,
+    ]);
+
+    foreach ([[CategoryType::Income, 260_000], [CategoryType::Expense, -90_000], [CategoryType::Expense, 2_000]] as [$type, $amount]) {
+        Transaction::factory()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'category_id' => Category::factory()->create(['user_id' => $user->id, 'type' => $type])->id,
+            'amount' => $amount,
+            'currency_code' => 'EUR',
+            'transaction_date' => now()->startOfMonth()->addDay()->toDateString(),
+        ]);
+    }
+
+    return $user;
+}
+
+it('hands over exactly what the cashflow screen reads', function () {
+    // The tool used to call the screen's controllers; now both read the same
+    // service, and the agent must still see the very same JSON.
+    $user = analyticsReader();
+    $range = ['from' => now()->startOfMonth()->toDateString(), 'to' => now()->endOfMonth()->toDateString()];
+    $query = '?'.http_build_query($range);
+    $this->actingAs($user);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(GetCashflow::class, $range)
+        ->assertOk()
+        ->assertSee((string) json_encode([
+            'currency' => 'EUR',
+            'summary' => $this->getJson('/api/cashflow/summary'.$query)->json(),
+            'sankey' => $this->getJson('/api/cashflow/sankey'.$query)->json(),
+            'trend' => $this->getJson('/api/cashflow/trend'.$query)->json(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+});
+
+it('hands over exactly what the net worth charts read', function (string $granularity, string $evolution) {
+    $user = analyticsReader();
+    $range = ['from' => now()->subMonths(2)->startOfMonth()->toDateString(), 'to' => now()->toDateString()];
+    $query = '?'.http_build_query($range);
+    $this->actingAs($user);
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(GetNetWorth::class, [...$range, 'granularity' => $granularity])
+        ->assertOk()
+        ->assertSee((string) json_encode([
+            'currency' => 'EUR',
+            'granularity' => $granularity,
+            'current' => $this->getJson('/api/dashboard/net-worth'.$query)->json(),
+            'evolution' => $this->getJson("/api/dashboard/{$evolution}".$query)->json(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+})->with([
+    'monthly' => ['monthly', 'net-worth-evolution'],
+    'daily' => ['daily', 'net-worth-daily-evolution'],
 ]);
 
 it('formats the spending amounts in the user\'s currency', function () {
