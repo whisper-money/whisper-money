@@ -142,3 +142,15 @@ it('rotates a legacy id|secret token into a prefixed one', function () {
 
     expect($user->tokens()->sole()->abilities)->toBe(['mcp:read', 'mcp:write']);
 });
+
+it('refuses to rotate an expired token, so it cannot be revived', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('Stale', ['mcp:read'], now()->subDay())->accessToken;
+
+    actingAs($user)
+        ->post(route('mcp.tokens.rotate', $token->id))
+        ->assertSessionHasErrors('token')
+        ->assertSessionMissing('mcp_token');
+
+    expect($user->tokens()->sole()->is($token))->toBeTrue();
+});

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\OpenBanking\ConnectionController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\ApiTokenController;
 use App\Http\Controllers\Settings\AutomationRuleApplicationController;
 use App\Http\Controllers\Settings\AutomationRuleController;
 use App\Http\Controllers\Settings\BankController;
@@ -82,6 +83,19 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/mcp/tokens/{token}', [McpTokenController::class, 'destroy'])
         ->middleware('block-demo')
         ->name('mcp.tokens.destroy');
+
+    // `block-shared`: the API refuses both shared accounts (EnsureApiAccess),
+    // so neither may hold an API token.
+    Route::get('settings/api', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('settings/api/tokens', [ApiTokenController::class, 'store'])
+        ->middleware('block-shared')
+        ->name('api-tokens.store');
+    Route::post('settings/api/tokens/{token}/rotate', [ApiTokenController::class, 'rotate'])
+        ->middleware('block-shared')
+        ->name('api-tokens.rotate');
+    Route::delete('settings/api/tokens/{token}', [ApiTokenController::class, 'destroy'])
+        ->middleware('block-shared')
+        ->name('api-tokens.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 
