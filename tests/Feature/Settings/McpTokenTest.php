@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Inertia\Testing\AssertableInertia;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -35,6 +36,7 @@ it('creates a token for the scope picked and flashes the secret once', function 
 
     expect($token->name)->toBe($name);
     expect($token->abilities)->toBe($abilities);
+    expect(session('mcp_token'))->toStartWith('wm_mcp_');
 })->with([
     'read-only' => ['Claude Desktop', 'read', ['mcp:read']],
     'read & write' => ['Claude Code', 'read_write', ['mcp:read', 'mcp:write']],
@@ -97,4 +99,46 @@ it('rotates a token, replacing the secret but keeping the scope', function () {
     expect($tokens)->toHaveCount(1);
     expect($tokens->first()->id)->not->toBe($token->id);
     expect($tokens->first()->abilities)->toBe(['mcp:read']);
+});
+
+it('lists MCP and wildcard tokens, never API tokens', function () {
+    $user = User::factory()->create();
+    $user->createToken('MCP', ['mcp:read']);
+    $user->createToken('API', ['api:read']);
+    $user->createToken('Wildcard');
+
+    actingAs($user)
+        ->get(route('mcp.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('tokens', 2)
+            ->where('tokens', fn ($tokens): bool => collect($tokens)->pluck('scope', 'name')->sortKeys()->all() === ['MCP' => 'read', 'Wildcard' => 'read_write']));
+});
+
+it('cannot rotate or revoke an API token from the MCP screen', function (string $method, string $route) {
+    $user = User::factory()->create();
+    $token = $user->createToken('API', ['api:read', 'api:write'])->accessToken;
+
+    actingAs($user)
+        ->{$method}(route($route, $token->id))
+        ->assertNotFound();
+
+    expect($user->tokens()->sole()->is($token))->toBeTrue();
+})->with([
+    'rotate' => ['post', 'mcp.tokens.rotate'],
+    'revoke' => ['delete', 'mcp.tokens.destroy'],
+]);
+
+it('rotates a legacy id|secret token into a prefixed one', function () {
+    $user = User::factory()->create();
+    $legacy = $user->tokens()->create([
+        'name' => 'Legacy',
+        'token' => hash('sha256', 'secret'),
+        'abilities' => ['mcp:read', 'mcp:write'],
+    ]);
+
+    actingAs($user)
+        ->post(route('mcp.tokens.rotate', $legacy->id))
+        ->assertSessionHas('mcp_token', fn (string $plain): bool => str_starts_with($plain, 'wm_mcp_'));
+
+    expect($user->tokens()->sole()->abilities)->toBe(['mcp:read', 'mcp:write']);
 });

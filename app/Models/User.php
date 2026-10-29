@@ -6,6 +6,7 @@ use App\Enums\DripEmailType;
 use App\Enums\PlanFeature;
 use App\Enums\TransactionSource;
 use App\Features\FullImport;
+use App\Models\Concerns\HasPrefixedApiTokens;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
 use Carbon\Carbon;
@@ -32,7 +33,6 @@ use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Subscription;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
-use Laravel\Sanctum\HasApiTokens;
 use Stripe\Subscription as StripeSubscription;
 
 /**
@@ -54,7 +54,7 @@ use Stripe\Subscription as StripeSubscription;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use Billable, HasApiTokens, HasFactory, HasFeatures, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use Billable, HasFactory, HasFeatures, HasPrefixedApiTokens, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
