@@ -1,15 +1,23 @@
 <?php
 
+use App\Enums\LabelSource;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateBalance;
+use App\Mcp\Tools\CreateCategory;
 use App\Mcp\Tools\CreateTransaction;
+use App\Mcp\Tools\DeleteCategory;
+use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListCategories;
+use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SplitTransaction;
+use App\Mcp\Tools\UpdateCategory;
+use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
 use App\Models\Category;
@@ -161,4 +169,56 @@ it('refuses to label, split or merge another member\'s transaction, and their la
     expect($theirs->fresh()->labels()->count())->toBe(0)
         ->and($mine->fresh()->isSplitPart())->toBeFalse()
         ->and($mine->labels()->pluck('labels.id')->all())->toBe([$myLabel->id]);
+});
+
+it('lists only the caller\'s own categories and labels of a shared space', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    Category::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'name' => 'My category']);
+    Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Their category']);
+    Label::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'name' => 'My label']);
+    Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Their label']);
+
+    callOwnRowsTool($user, ListCategories::class, ['space' => $space->id])
+        ->assertOk()->assertSee('My category')->assertDontSee('Their category');
+    callOwnRowsTool($user, ListLabels::class, ['space' => $space->id])
+        ->assertOk()->assertSee('My label')->assertDontSee('Their label');
+});
+
+it('refuses to change or delete another member\'s category or label, or nest under their category', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Theirs']);
+    $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Theirs']);
+
+    callOwnRowsTool($user, UpdateCategory::class, ['category_id' => $theirCategory->id, 'space' => $space->id, 'name' => 'Mine'])
+        ->assertHasErrors(["No category with id {$theirCategory->id} in space {$space->id}."]);
+    callOwnRowsTool($user, DeleteCategory::class, ['category_id' => $theirCategory->id, 'space' => $space->id])
+        ->assertHasErrors(["No category with id {$theirCategory->id} in space {$space->id}."]);
+    callOwnRowsTool($user, UpdateLabel::class, ['label_id' => $theirLabel->id, 'space' => $space->id, 'name' => 'Mine'])
+        ->assertHasErrors(["No label with id {$theirLabel->id} in space {$space->id}."]);
+    callOwnRowsTool($user, DeleteLabel::class, ['label_id' => $theirLabel->id, 'space' => $space->id])
+        ->assertHasErrors(["No label with id {$theirLabel->id} in space {$space->id}."]);
+    callOwnRowsTool($user, CreateCategory::class, ['space' => $space->id, 'name' => 'Child', 'icon' => 'Home', 'color' => 'red', 'type' => 'expense', 'parent_id' => $theirCategory->id])
+        ->assertHasErrors(["No category with id {$theirCategory->id} in space {$space->id}."]);
+
+    expect($theirCategory->fresh()->name)->toBe('Theirs')
+        ->and($theirLabel->fresh()->name)->toBe('Theirs')
+        ->and($user->categories()->count())->toBe(0);
+});
+
+it('refuses to rename or delete the label of a savings goal, like the API', function () {
+    $user = User::factory()->create();
+    $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'New car', 'color' => 'blue', 'source' => LabelSource::SavingsGoal]);
+
+    callOwnRowsTool($user, UpdateLabel::class, ['label_id' => $label->id, 'name' => 'Old car'])
+        ->assertHasErrors(['renamed with the goal']);
+    callOwnRowsTool($user, DeleteLabel::class, ['label_id' => $label->id])
+        ->assertHasErrors(['it can only go away with the goal']);
+    callOwnRowsTool($user, UpdateLabel::class, ['label_id' => $label->id, 'color' => 'red'])
+        ->assertOk();
+
+    expect($label->fresh())->name->toBe('New car')->color->toBe('red');
 });

@@ -3,7 +3,6 @@
 namespace App\Http\Resources\V1;
 
 use App\Models\Category;
-use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,9 +21,6 @@ class CategoryResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var User $user */
-        $user = $request->user();
-
         return [
             /**
              * The category's id.
@@ -80,10 +76,6 @@ class CategoryResource extends JsonResource
              * @example null
              */
             'parent_id' => $this->parent_id,
-            /**
-             * Whether you created the category. Every member of its space reads it and can use it, but only the one who created it can change or delete it.
-             */
-            'owned' => $this->user_id === $user->id,
             /**
              * When the category was created.
              *

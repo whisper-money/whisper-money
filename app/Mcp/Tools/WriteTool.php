@@ -13,6 +13,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounts\AccountBalanceRecorder;
 use App\Services\Accounts\AccountWriteRules;
+use App\Services\Labels\LabelWriter;
 use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -166,6 +167,21 @@ abstract class WriteTool extends McpTool
     protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
     {
         return $this->modelInSpace($request, $space, AutomationRule::query(), $key, 'automation rule', 'Call list_automation_rules to see valid ids.');
+    }
+
+    /**
+     * Refuse renaming or deleting the label of a savings goal, as the API
+     * does (LabelWriter::savingsGoalLabelErrors()).
+     *
+     * @param  list<string>  $sent  the fields the write carries
+     */
+    protected function refuseSavingsGoalLabelChange(Label $label, array $sent, bool $deleting): void
+    {
+        $errors = LabelWriter::savingsGoalLabelErrors($label, $sent, $deleting);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
     }
 
     /**

@@ -53,24 +53,23 @@ describe('list', function () {
                 'type' => $older->type->value,
                 'cashflow_direction' => $older->cashflow_direction->value,
                 'parent_id' => $older->id,
-                'owned' => true,
                 'created_at' => '2026-01-15T09:30:00+00:00',
             ]);
     });
 
-    it('lists a shared space when asked, and refuses one the user cannot access', function () {
+    it('lists only your own categories of a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedCategorySpace($user, $owner);
-        $theirs = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $mine = Category::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
         Category::factory()->create(['user_id' => $user->id]);
         $headers = apiV1Bearer($user);
 
         withHeaders($headers)
             ->getJson('/api/v1/categories?space='.$space->id)
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id])
-            ->assertJsonPath('data.0.owned', false);
+            ->assertJsonPath('data.*.id', [$mine->id]);
 
         withHeaders($headers)
             ->getJson('/api/v1/categories?space='.Space::factory()->create()->id)
@@ -303,7 +302,7 @@ describe('update', function () {
 });
 
 describe('ownership', function () {
-    it('lets a member read another member\'s category but not change or delete it', function () {
+    it('answers 404 for another member\'s category of a shared space, on read and write', function () {
         $member = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedCategorySpace($member, $owner);
@@ -312,17 +311,15 @@ describe('ownership', function () {
 
         withHeaders($headers)
             ->getJson('/api/v1/categories/'.$theirs->id.'?space='.$space->id)
-            ->assertOk();
+            ->assertNotFound();
 
         withHeaders($headers)
             ->patchJson('/api/v1/categories/'.$theirs->id.'?space='.$space->id, ['name' => 'Mine'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_category_owner');
+            ->assertNotFound();
 
         withHeaders($headers)
             ->deleteJson('/api/v1/categories/'.$theirs->id.'?space='.$space->id)
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_category_owner');
+            ->assertNotFound();
 
         expect($theirs->fresh()->name)->toBe('Theirs');
     });
@@ -336,9 +333,20 @@ describe('ownership', function () {
         withHeaders(categoriesWriter($member))
             ->postJson('/api/v1/categories', ['space' => $space->id, 'name' => 'Mine', 'icon' => 'Home', 'color' => 'red', 'type' => 'expense', 'parent_id' => $theirs->id])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.parent_id.0', 'The parent id is a category another member of the space created. Nest it under one of your own.');
+            ->assertJsonPath('errors.parent_id.0', 'The parent id is not a category of yours in this space.');
 
         expect($member->categories()->count())->toBe(0);
+    });
+
+    it('lets a member reuse a name another member of the space already took', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedCategorySpace($member, $owner);
+        Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Groceries', 'parent_id' => null]);
+
+        withHeaders(categoriesWriter($member))
+            ->postJson('/api/v1/categories', ['space' => $space->id, 'name' => 'Groceries', 'icon' => 'Home', 'color' => 'red', 'type' => 'expense'])
+            ->assertCreated();
     });
 });
 

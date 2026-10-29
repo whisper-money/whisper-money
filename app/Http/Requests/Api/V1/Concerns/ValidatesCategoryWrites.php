@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Api\V1\Concerns;
 
 use App\Models\Category;
-use App\Models\User;
-use Closure;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -54,26 +52,12 @@ trait ValidatesCategoryWrites
              */
             'cashflow_direction' => $rules['cashflow_direction'],
             /**
-             * The id of the category to nest it under, or `null` for a root. It must be one you created: a tree stays with the member who built it. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children.
+             * The id of the category to nest it under, or `null` for a root. It must be one of your categories in the space. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children.
              *
              * @format uuid
              */
-            'parent_id' => ['bail', 'sometimes', 'nullable', 'string', $this->inSpace(Category::class, 'a category'), $this->ownCategory(...)],
+            'parent_id' => ['bail', 'sometimes', 'nullable', 'string', $this->inSpace(Category::class, 'a category')],
         ];
-    }
-
-    /**
-     * The category tree is kept per member, so a category cannot be nested
-     * under one another member of the space created.
-     */
-    private function ownCategory(string $attribute, mixed $value, Closure $fail): void
-    {
-        /** @var User $user */
-        $user = $this->user();
-
-        if (Category::query()->whereKey($value)->value('user_id') !== $user->id) {
-            $fail('The :attribute is a category another member of the space created. Nest it under one of your own.');
-        }
     }
 
     /**

@@ -45,24 +45,23 @@ describe('list', function () {
                 'name' => 'Holidays',
                 'color' => 'blue',
                 'source' => 'user',
-                'owned' => true,
                 'created_at' => '2026-01-15T09:30:00+00:00',
             ]);
     });
 
-    it('lists a shared space when asked, and refuses one the user cannot access', function () {
+    it('lists only your own labels of a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedLabelSpace($user, $owner);
-        $theirs = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $mine = Label::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
         Label::factory()->create(['user_id' => $user->id]);
         $headers = apiV1Bearer($user);
 
         withHeaders($headers)
             ->getJson('/api/v1/labels?space='.$space->id)
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id])
-            ->assertJsonPath('data.0.owned', false);
+            ->assertJsonPath('data.*.id', [$mine->id]);
 
         withHeaders($headers)
             ->getJson('/api/v1/labels?space='.Space::factory()->create()->id)
@@ -244,7 +243,7 @@ describe('savings goal labels', function () {
 });
 
 describe('ownership', function () {
-    it('lets a member read another member\'s label but not change or delete it', function () {
+    it('answers 404 for another member\'s label of a shared space, on read and write', function () {
         $member = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedLabelSpace($member, $owner);
@@ -253,19 +252,28 @@ describe('ownership', function () {
 
         withHeaders($headers)
             ->getJson('/api/v1/labels/'.$theirs->id.'?space='.$space->id)
-            ->assertOk();
+            ->assertNotFound();
 
         withHeaders($headers)
             ->patchJson('/api/v1/labels/'.$theirs->id.'?space='.$space->id, ['name' => 'Mine'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_label_owner');
+            ->assertNotFound();
 
         withHeaders($headers)
             ->deleteJson('/api/v1/labels/'.$theirs->id.'?space='.$space->id)
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_label_owner');
+            ->assertNotFound();
 
         expect($theirs->fresh()->name)->toBe('Theirs');
+    });
+
+    it('lets a member reuse a name another member of the space already took', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedLabelSpace($member, $owner);
+        Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Holidays']);
+
+        withHeaders(labelsWriter($member))
+            ->postJson('/api/v1/labels', ['space' => $space->id, 'name' => 'Holidays', 'color' => 'blue'])
+            ->assertCreated();
     });
 });
 

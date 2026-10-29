@@ -10,7 +10,7 @@ A label is a free tag: a transaction can carry any number of them next to its si
 
 `GET /api/v1/labels`
 
-The labels in a space, newest first, the ones that track a savings goal included. Every member of a space sees all of its labels.
+Your labels in a space, newest first, the ones that track a savings goal included. As in the app, another member's labels are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -35,7 +35,6 @@ The labels in a space, newest first, the ones that track a savings goal included
 | `data[].name` | string | The label's name, unique within the space. |
 | `data[].color` | string | The label's color. |
 | `data[].source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
-| `data[].owned` | boolean | Whether you created the label. Every member of its space reads it and can tag with it, but only the one who created it can change or delete it. |
 | `data[].created_at` | string (date-time) or null | When the label was created. |
 | `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
 
@@ -57,7 +56,6 @@ curl https://whisper.money/api/v1/labels \
             "name": "Holidays",
             "color": "blue",
             "source": "user",
-            "owned": true,
             "created_at": "2026-01-15T09:30:00+00:00"
         }
     ],
@@ -71,7 +69,7 @@ curl https://whisper.money/api/v1/labels \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -109,7 +107,6 @@ Tag transactions with it through `PUT /api/v1/transactions/{id}/labels`.
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
-| `data.owned` | boolean | Whether you created the label. Every member of its space reads it and can tag with it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -134,7 +131,6 @@ curl -X POST https://whisper.money/api/v1/labels \
         "name": "Holidays",
         "color": "blue",
         "source": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -146,7 +142,7 @@ curl -X POST https://whisper.money/api/v1/labels \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -176,7 +172,6 @@ curl -X POST https://whisper.money/api/v1/labels \
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
-| `data.owned` | boolean | Whether you created the label. Every member of its space reads it and can tag with it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -196,7 +191,6 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
         "name": "Holidays",
         "color": "blue",
         "source": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -207,7 +201,7 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -216,7 +210,7 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
 
 `PATCH /api/v1/labels/{label}`
 
-Changes only the fields you send. Only the member of the space who created the label can change it. The label of a savings goal (`source: saving_goal`) carries the goal's name, so renaming it is a `422`; its color can still be changed.
+Changes only the fields you send. The label of a savings goal (`source: saving_goal`) carries the goal's name, so renaming it is a `422`; its color can still be changed.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -246,7 +240,6 @@ Changes only the fields you send. Only the member of the space who created the l
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
-| `data.owned` | boolean | Whether you created the label. Every member of its space reads it and can tag with it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -270,7 +263,6 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
         "name": "Holidays",
         "color": "blue",
         "source": "user",
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -281,7 +273,7 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -290,7 +282,7 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
 
 `DELETE /api/v1/labels/{label}`
 
-Deletes the label; the transactions that carried it no longer show it. Only the member of the space who created it can delete it. The label of a savings goal (`source: saving_goal`) is how the goal counts its contributions, so it cannot be deleted on its own: that answers `422` with the error under `label`.
+Deletes the label; the transactions that carried it no longer show it. The label of a savings goal (`source: saving_goal`) is how the goal counts its contributions, so it cannot be deleted on its own: that answers `422` with the error under `label`.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -331,7 +323,7 @@ curl -X DELETE https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

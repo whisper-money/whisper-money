@@ -3,7 +3,6 @@
 namespace App\Http\Resources\V1;
 
 use App\Models\Label;
-use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,9 +21,6 @@ class LabelResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var User $user */
-        $user = $request->user();
-
         return [
             /**
              * The label's id.
@@ -60,10 +56,6 @@ class LabelResource extends JsonResource
              * @example user
              */
             'source' => $this->source->value,
-            /**
-             * Whether you created the label. Every member of its space reads it and can tag with it, but only the one who created it can change or delete it.
-             */
-            'owned' => $this->user_id === $user->id,
             /**
              * When the label was created.
              *

@@ -24,16 +24,16 @@ class CategoryController extends Controller
     /**
      * List categories
      *
-     * The categories in a space, newest first, roots and children alike: rebuild
-     * the tree from `parent_id`. Every member of a space sees all of its
-     * categories.
+     * Your categories in a space, newest first, roots and children alike:
+     * rebuild the tree from `parent_id`. As in the app, another member's
+     * categories are not listed.
      */
     #[ScopedToSpace]
     #[Paginated(CategoryResource::class)]
     public function index(Request $request): AnonymousResourceCollection
     {
         return CursorPaginator::paginate(
-            Category::query()->forSpace($this->space($request)),
+            $this->owned($request, Category::query()),
             $request,
             [['created_at', 'desc'], ['id', 'desc']],
             CategoryResource::class,
@@ -81,8 +81,7 @@ class CategoryController extends Controller
     /**
      * Update a category
      *
-     * Changes only the fields you send. Only the member of the space who
-     * created the category can change it. Moving it under another parent,
+     * Changes only the fields you send. Moving it under another parent,
      * or making it a root with `parent_id: null`, re-derives its type and
      * cashflow direction as on create, and its whole subtree follows: its
      * children and their children take its new type and direction. While it
@@ -108,8 +107,7 @@ class CategoryController extends Controller
      * Delete a category
      *
      * Deletes the category and takes it off its transactions, which are left
-     * uncategorized. Only the member of the space who created it can delete
-     * it. `strategy` decides what happens to its children; when moving them
+     * uncategorized. `strategy` decides what happens to its children; when moving them
      * would leave two categories with the same name at one level, nothing is
      * deleted and the answer is a `422` under `strategy`: rename one first.
      *

@@ -10,7 +10,7 @@ A category says what a transaction was for. Each transaction has at most one. Ca
 
 `GET /api/v1/categories`
 
-The categories in a space, newest first, roots and children alike: rebuild the tree from `parent_id`. Every member of a space sees all of its categories.
+Your categories in a space, newest first, roots and children alike: rebuild the tree from `parent_id`. As in the app, another member's categories are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -38,7 +38,6 @@ The categories in a space, newest first, roots and children alike: rebuild the t
 | `data[].type` | "income" \| "expense" \| "transfer" \| "savings" \| "investment" | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. A whole tree shares its root's type. |
 | `data[].cashflow_direction` | "hidden" \| "inflow" \| "outflow" | How the category's transactions count in the cashflow: `inflow`, `outflow`, or `hidden` to leave them out of it. A whole tree shares its root's direction. |
 | `data[].parent_id` | string (uuid) or null | The id of the category it is nested under, or `null` for a root. |
-| `data[].owned` | boolean | Whether you created the category. Every member of its space reads it and can use it, but only the one who created it can change or delete it. |
 | `data[].created_at` | string (date-time) or null | When the category was created. |
 | `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
 
@@ -63,7 +62,6 @@ curl https://whisper.money/api/v1/categories \
             "type": "expense",
             "cashflow_direction": "hidden",
             "parent_id": null,
-            "owned": true,
             "created_at": "2026-01-15T09:30:00+00:00"
         }
     ],
@@ -77,7 +75,7 @@ curl https://whisper.money/api/v1/categories \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -105,7 +103,7 @@ A root category takes the `type` you send, and its cashflow direction follows fr
 | `color` | CategoryColor | Yes | The category's color. |
 | `type` | CategoryType | Yes | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. Ignored on a child, which always takes its parent's type. |
 | `cashflow_direction` | CategoryCashflowDirection | No | How the category's transactions count in the cashflow. Only a root `transfer` category keeps the one you send: a `savings` or `investment` root is always `outflow`, any other root `hidden`, and a child takes its parent's. |
-| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one you created: a tree stays with the member who built it. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
+| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one of your categories in the space. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
 
 #### Response
 
@@ -122,7 +120,6 @@ A root category takes the `type` you send, and its cashflow direction follows fr
 | `data.type` | "income" \| "expense" \| "transfer" \| "savings" \| "investment" | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. A whole tree shares its root's type. |
 | `data.cashflow_direction` | "hidden" \| "inflow" \| "outflow" | How the category's transactions count in the cashflow: `inflow`, `outflow`, or `hidden` to leave them out of it. A whole tree shares its root's direction. |
 | `data.parent_id` | string (uuid) or null | The id of the category it is nested under, or `null` for a root. |
-| `data.owned` | boolean | Whether you created the category. Every member of its space reads it and can use it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the category was created. |
 
 #### Example request
@@ -152,7 +149,6 @@ curl -X POST https://whisper.money/api/v1/categories \
         "type": "expense",
         "cashflow_direction": "hidden",
         "parent_id": null,
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -164,7 +160,7 @@ curl -X POST https://whisper.money/api/v1/categories \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -197,7 +193,6 @@ curl -X POST https://whisper.money/api/v1/categories \
 | `data.type` | "income" \| "expense" \| "transfer" \| "savings" \| "investment" | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. A whole tree shares its root's type. |
 | `data.cashflow_direction` | "hidden" \| "inflow" \| "outflow" | How the category's transactions count in the cashflow: `inflow`, `outflow`, or `hidden` to leave them out of it. A whole tree shares its root's direction. |
 | `data.parent_id` | string (uuid) or null | The id of the category it is nested under, or `null` for a root. |
-| `data.owned` | boolean | Whether you created the category. Every member of its space reads it and can use it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the category was created. |
 
 #### Example request
@@ -220,7 +215,6 @@ curl https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a6
         "type": "expense",
         "cashflow_direction": "hidden",
         "parent_id": null,
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -231,7 +225,7 @@ curl https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a6
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -240,7 +234,7 @@ curl https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a6
 
 `PATCH /api/v1/categories/{category}`
 
-Changes only the fields you send. Only the member of the space who created the category can change it. Moving it under another parent, or making it a root with `parent_id: null`, re-derives its type and cashflow direction as on create, and its whole subtree follows: its children and their children take its new type and direction. While it has a parent, `type` and `cashflow_direction` are ignored.
+Changes only the fields you send. Moving it under another parent, or making it a root with `parent_id: null`, re-derives its type and cashflow direction as on create, and its whole subtree follows: its children and their children take its new type and direction. While it has a parent, `type` and `cashflow_direction` are ignored.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -260,7 +254,7 @@ Changes only the fields you send. Only the member of the space who created the c
 | `color` | CategoryColor | No | The category's color. |
 | `type` | CategoryType | No | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. Ignored on a child, which always takes its parent's type. |
 | `cashflow_direction` | CategoryCashflowDirection | No | How the category's transactions count in the cashflow. Only a root `transfer` category keeps the one you send: a `savings` or `investment` root is always `outflow`, any other root `hidden`, and a child takes its parent's. |
-| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one you created: a tree stays with the member who built it. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
+| `parent_id` | string (uuid) or null | No | The id of the category to nest it under, or `null` for a root. It must be one of your categories in the space. Categories nest up to 3 levels deep, and a category cannot sit under itself or one of its own children. |
 
 #### Response
 
@@ -277,7 +271,6 @@ Changes only the fields you send. Only the member of the space who created the c
 | `data.type` | "income" \| "expense" \| "transfer" \| "savings" \| "investment" | What the category's transactions are: `income`, `expense`, `transfer`, `savings` or `investment`. A whole tree shares its root's type. |
 | `data.cashflow_direction` | "hidden" \| "inflow" \| "outflow" | How the category's transactions count in the cashflow: `inflow`, `outflow`, or `hidden` to leave them out of it. A whole tree shares its root's direction. |
 | `data.parent_id` | string (uuid) or null | The id of the category it is nested under, or `null` for a root. |
-| `data.owned` | boolean | Whether you created the category. Every member of its space reads it and can use it, but only the one who created it can change or delete it. |
 | `data.created_at` | string (date-time) or null | When the category was created. |
 
 #### Example request
@@ -305,7 +298,6 @@ curl -X PATCH https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f
         "type": "expense",
         "cashflow_direction": "hidden",
         "parent_id": null,
-        "owned": true,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -316,7 +308,7 @@ curl -X PATCH https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -325,7 +317,7 @@ curl -X PATCH https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2f
 
 `DELETE /api/v1/categories/{category}`
 
-Deletes the category and takes it off its transactions, which are left uncategorized. Only the member of the space who created it can delete it. `strategy` decides what happens to its children; when moving them would leave two categories with the same name at one level, nothing is deleted and the answer is a `422` under `strategy`: rename one first.
+Deletes the category and takes it off its transactions, which are left uncategorized. `strategy` decides what happens to its children; when moving them would leave two categories with the same name at one level, nothing is deleted and the answer is a `422` under `strategy`: rename one first.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -369,7 +361,7 @@ curl -X DELETE https://whisper.money/api/v1/categories/0199a3f2-6c1e-7b4d-9a8e-2
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

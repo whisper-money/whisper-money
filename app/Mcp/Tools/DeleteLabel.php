@@ -29,6 +29,8 @@ class DeleteLabel extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $label = $this->labelInSpace($request, $space);
 
+        $this->refuseSavingsGoalLabelChange($label, [], deleting: true);
+
         $label->delete();
 
         return $this->json(['deleted' => true, 'id' => $label->id]);

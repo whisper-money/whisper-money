@@ -72,7 +72,7 @@ class CategoryWriter
         $type = $parent !== null ? $parent->type : CategoryType::from((string) $attributes['type']);
         $name = (string) $attributes['name'];
 
-        $this->assertNameFree($space, $name, $parent?->id, null);
+        $this->assertNameFree($user->id, $space, $name, $parent?->id, null);
 
         $category = new Category([
             'user_id' => $user->id,
@@ -110,7 +110,7 @@ class CategoryWriter
         $requestedDirection = filled($changes['cashflow_direction'] ?? null) ? (string) $changes['cashflow_direction'] : $category->cashflow_direction->value;
         $name = (string) ($changes['name'] ?? $category->name);
 
-        $this->assertNameFree($space, $name, $parent?->id, $category->id);
+        $this->assertNameFree($category->user_id, $space, $name, $parent?->id, $category->id);
 
         // The row and its subtree change together: a failed re-type of the
         // descendants must not leave a tree of mixed types behind.
@@ -205,10 +205,15 @@ class CategoryWriter
         }
     }
 
-    private function assertNameFree(Space $space, string $name, ?string $parentId, ?string $ignoreId): void
+    /**
+     * Names are unique per owner and level, as in the app: another member may
+     * have a category of the same name.
+     */
+    private function assertNameFree(string $userId, Space $space, string $name, ?string $parentId, ?string $ignoreId): void
     {
         $taken = Category::query()
             ->forSpace($space)
+            ->where('user_id', $userId)
             ->where('name', $name)
             ->where('parent_id', $parentId)
             ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))

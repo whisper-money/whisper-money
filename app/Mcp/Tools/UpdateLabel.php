@@ -33,6 +33,8 @@ class UpdateLabel extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $label = $this->labelInSpace($request, $space);
 
+        $this->refuseSavingsGoalLabelChange($label, array_keys($request->all()), deleting: false);
+
         $label = app(LabelWriter::class)->update($label, $space, $request->only(['name', 'color']));
 
         return $this->json(['label' => $this->presentLabel($label)]);

@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\Label;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -28,8 +29,7 @@ class ListLabels extends McpTool
     {
         $space = $this->resolveSpace($request, $user);
 
-        $labels = Label::query()
-            ->forSpace($space)
+        $labels = app(SpaceResolver::class)->ownedInSpace(Label::query(), $user, $space)
             ->orderBy('name')
             ->get()
             ->map(fn (Label $label): array => [

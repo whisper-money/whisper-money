@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Account;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Space;
@@ -90,16 +89,19 @@ class SpaceResolver
 
         return $this->ownedInSpace($query, $user, $this->forApiRequest($request));
     }
+
     /**
-     * A category or label in $space, the same way as accountOrFail().
+     * One of the caller's own categories or labels in $space, the same way as
+     * ownedInSpace(): another member's is a ModelNotFoundException like one
+     * that does not exist.
      *
      * @template TModel of Category|Label
      *
      * @param  class-string<TModel>  $model
      * @return TModel
      */
-    public function inSpaceOrFail(string $model, Space $space, string $id): Category|Label
+    public function ownedInSpaceOrFail(string $model, User $user, Space $space, string $id): Category|Label
     {
-        return $model::query()->forSpace($space)->findOrFail($id);
+        return $model::query()->forSpace($space)->where('user_id', $user->id)->findOrFail($id);
     }
 }

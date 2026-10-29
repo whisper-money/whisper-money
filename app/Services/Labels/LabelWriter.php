@@ -69,7 +69,7 @@ class LabelWriter
 
     public function create(User $user, Space $space, string $name, string $color): Label
     {
-        $this->assertNameFree($space, $name, null);
+        $this->assertNameFree($user->id, $space, $name, null);
 
         $label = new Label([
             'user_id' => $user->id,
@@ -90,7 +90,7 @@ class LabelWriter
     public function update(Label $label, Space $space, array $changes): Label
     {
         if (array_key_exists('name', $changes)) {
-            $this->assertNameFree($space, (string) $changes['name'], $label->id);
+            $this->assertNameFree($label->user_id, $space, (string) $changes['name'], $label->id);
 
             $label->name = (string) $changes['name'];
         }
@@ -104,10 +104,15 @@ class LabelWriter
         return $label;
     }
 
-    private function assertNameFree(Space $space, string $name, ?string $ignoreId): void
+    /**
+     * Names are unique per owner, as in the app: another member may have a
+     * label of the same name.
+     */
+    private function assertNameFree(string $userId, Space $space, string $name, ?string $ignoreId): void
     {
         $taken = Label::query()
             ->forSpace($space)
+            ->where('user_id', $userId)
             ->where('name', $name)
             ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
             ->exists();

@@ -68,8 +68,8 @@ abstract class Controller extends BaseController
     }
 
     /**
-     * The route's category or label, looked up in the request's space like
-     * account().
+     * The route's category or label, looked up among the caller's own in the
+     * request's space like account().
      *
      * @template TModel of Category|Label
      *
@@ -78,6 +78,6 @@ abstract class Controller extends BaseController
      */
     protected function inSpace(Request $request, string $model, string $id): Category|Label
     {
-        return app(SpaceResolver::class)->inSpaceOrFail($model, $this->space($request), $id);
+        return app(SpaceResolver::class)->ownedInSpaceOrFail($model, $this->user($request), $this->space($request), $id);
     }
 }

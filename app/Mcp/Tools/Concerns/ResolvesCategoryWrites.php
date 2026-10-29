@@ -4,6 +4,7 @@ namespace App\Mcp\Tools\Concerns;
 
 use App\Models\Category;
 use App\Models\Space;
+use App\Services\SpaceResolver;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 
@@ -15,8 +16,9 @@ use Laravel\Mcp\Request;
 trait ResolvesCategoryWrites
 {
     /**
-     * The requested parent category within the space, or null when the
-     * request makes (or keeps) a root or names no parent.
+     * The requested parent category among the caller's own in the space, as
+     * in the app, or null when the request makes (or keeps) a root or names no
+     * parent.
      */
     protected function parentCategory(Request $request, Space $space): ?Category
     {
@@ -26,7 +28,7 @@ trait ResolvesCategoryWrites
 
         $parentId = $request->string('parent_id')->toString();
 
-        $parent = Category::query()->forSpace($space)->whereKey($parentId)->first();
+        $parent = app(SpaceResolver::class)->ownedInSpace(Category::query(), $this->caller($request), $space)->whereKey($parentId)->first();
 
         if ($parent === null) {
             throw ValidationException::withMessages([
