@@ -2,8 +2,8 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\CategorySource;
 use App\Models\User;
+use App\Services\Transactions\TransactionWriter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -37,12 +37,8 @@ class CategorizeTransaction extends WriteTool
             ? $this->categoryInSpace($request, $space)->id
             : null;
 
-        $transaction->category_id = $categoryId;
-        $transaction->category_source = $categoryId === null ? null : CategorySource::Manual;
-        $transaction->ai_confidence = null;
-        $transaction->categorized_by_rule_id = null;
-        $transaction->save();
+        $transaction = app(TransactionWriter::class)->categorize($transaction, $categoryId);
 
-        return $this->json(['transaction' => $this->presentTransaction($transaction->refresh())]);
+        return $this->json(['transaction' => $this->presentTransaction($transaction)]);
     }
 }

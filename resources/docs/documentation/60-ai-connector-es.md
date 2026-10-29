@@ -336,9 +336,12 @@ token solo puede modificarlos si el token es de lectura y escritura.
 Dónde se para la escritura es lo mismo en todos los casos, y no es una cuestión
 de confianza. Son las reglas que sigue la propia app:
 
-- **Las transacciones sincronizadas del banco y las importadas no se pueden
-  editar ni eliminar.** Solo las creadas a mano. Cualquier transacción, venga de
-  donde venga, sí se puede categorizar, etiquetar, dividir y anotar.
+- **Las transacciones sincronizadas del banco y las importadas conservan lo que
+  registró el banco.** Su descripción, importe, divisa, cuenta y nombres solo se
+  pueden cambiar en las creadas a mano. Cualquier transacción, venga de donde
+  venga, sí se puede categorizar, etiquetar, dividir, anotar, mover de fecha y
+  eliminar, igual que en la app; la siguiente sincronización no trae de vuelta
+  una eliminada.
 - **Se pueden añadir transacciones nuevas a cualquier cuenta**, incluidas las
   conectadas al banco. Una sincronización solo trae filas que no ha visto antes,
   así que nunca elimina lo que has añadido tú.
@@ -413,10 +416,10 @@ rotara o se revocara. Vuelve a añadir la conexión con el secreto nuevo.
 ### ¿Puede perder o destrozar mis datos?
 
 Puede modificar y eliminar las mismas cosas que puedes tú, así que trátalo como
-tratarías dejarle el portátil a alguien. Hay dos cosas que limitan el daño: las
-transacciones que vinieron del banco o de una importación no se pueden editar ni
-eliminar en absoluto, y un token de solo lectura de Claude Code puede analizarlo
-todo y no modificar nada.
+tratarías dejarle el portátil a alguien. Hay dos cosas que limitan el daño: los importes
+y nombres de las transacciones que vinieron del banco o de una importación no se
+pueden editar, y un token de solo lectura de Claude Code puede analizarlo todo y
+no modificar nada.
 
 ### ¿Uso Claude Desktop o Claude Code?
 

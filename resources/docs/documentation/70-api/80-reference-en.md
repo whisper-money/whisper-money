@@ -33,3 +33,15 @@ A balance is a snapshot of what an account held at the end of one day, in the ac
 | --- | --- |
 | [`GET /api/v1/accounts/{account}/balances`](/documentation/api/reference/balances#list-an-accounts-balances) | List an account's balances |
 | [`POST /api/v1/accounts/{account}/balances`](/documentation/api/reference/balances#record-a-balance) | Record a balance |
+
+## Transactions
+
+A transaction is money that moved in or out of an account: synced from the bank, imported from a file or recorded by hand. Whisper Money only keeps the books: recording a transaction moves no money. Amounts are signed, in the minor units of the transaction's own currency: negative for an expense, positive for income.
+
+| Endpoint | What it does |
+| --- | --- |
+| [`GET /api/v1/transactions`](/documentation/api/reference/transactions#list-transactions) | List transactions |
+| [`POST /api/v1/transactions`](/documentation/api/reference/transactions#create-a-transaction) | Create a transaction |
+| [`GET /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#retrieve-a-transaction) | Retrieve a transaction |
+| [`PATCH /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#update-a-transaction) | Update a transaction |
+| [`DELETE /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#delete-a-transaction) | Delete a transaction |

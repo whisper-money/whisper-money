@@ -294,7 +294,7 @@ it('deletes a manual transaction', function () {
     expect(Transaction::query()->find($transaction->id))->toBeNull();
 });
 
-it('refuses to delete an imported transaction', function () {
+it('soft-deletes an imported transaction, as the app does', function () {
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $transaction = Transaction::factory()->imported()->create([
@@ -304,9 +304,33 @@ it('refuses to delete an imported transaction', function () {
 
     callWriteTool($user, DeleteTransaction::class, [
         'transaction_id' => $transaction->id,
-    ])->assertHasErrors(['manually-created']);
+    ])->assertOk()->assertSee('"deleted":true');
 
-    expect(Transaction::query()->find($transaction->id))->not->toBeNull();
+    expect(Transaction::withTrashed()->find($transaction->id)->trashed())->toBeTrue();
+});
+
+it('moves an imported transaction to another date but keeps its amount locked', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $transaction = Transaction::factory()->imported()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -500,
+        'transaction_date' => '2026-01-27',
+    ]);
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'transaction_date' => '2026-02-01',
+    ])->assertOk();
+
+    callWriteTool($user, UpdateTransaction::class, [
+        'transaction_id' => $transaction->id,
+        'amount' => -700,
+    ])->assertHasErrors(['Only manually-created transactions can change amount.']);
+
+    expect($transaction->fresh()->transaction_date->toDateString())->toBe('2026-02-01')
+        ->and($transaction->fresh()->amount)->toBe(-500);
 });
 
 it('splits a transaction into parts and keeps the original out of every list', function () {

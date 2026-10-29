@@ -2,9 +2,9 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\TransactionSource;
 use App\Models\User;
-use App\Services\ManualBalanceAdjuster;
+use App\Services\Transactions\TransactionWriter;
+use App\Services\Transactions\TransactionWriteRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Delete a manually-created transaction. Only manual transactions can be deleted; bank/imported ones cannot, and neither can one part of a split.')]
+#[Description('Delete a transaction, bank/imported ones included: the next bank sync does not bring it back. One part of a split cannot be deleted; merge the split first.')]
 class DeleteTransaction extends WriteTool
 {
     /**
@@ -21,7 +21,7 @@ class DeleteTransaction extends WriteTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'transaction_id' => $schema->string()->description('Id of the manually-created transaction to delete.')->required(),
+            'transaction_id' => $schema->string()->description('Id of the transaction to delete.')->required(),
             'update_balance' => $schema->boolean()->description('When true, reverse this transaction from the account balance snapshots. Ignored on connected accounts, whose balances come from the bank, and on credit cards that track a limit instead of a balance. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
@@ -32,18 +32,13 @@ class DeleteTransaction extends WriteTool
         $space = $this->resolveSpace($request, $user);
         $transaction = $this->transactionInSpace($request, $space);
 
-        if ($transaction->source !== TransactionSource::ManuallyCreated) {
-            return Response::error('Only manually-created transactions can be deleted. This one came from a bank or import.');
+        $deletionError = TransactionWriteRules::deletionError($transaction);
+
+        if ($deletionError !== null) {
+            return Response::error($deletionError);
         }
 
-        if ($transaction->isSplitPart()) {
-            return Response::error('This transaction is one part of a split, so deleting it on its own would leave the rest no longer adding up. Merge the split back first.');
-        }
-
-        $balanceUpdated = $request->boolean('update_balance')
-            && app(ManualBalanceAdjuster::class)->reverseDeletedTransaction($transaction);
-
-        $transaction->delete();
+        $balanceUpdated = app(TransactionWriter::class)->delete($transaction, $request->boolean('update_balance'));
 
         return $this->json([
             'deleted' => true,
