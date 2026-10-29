@@ -18,6 +18,7 @@ use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Dedoc\Scramble\Support\RouteInfo;
 use Dedoc\Scramble\Support\Type\ObjectType as InferredObjectType;
+use Illuminate\Routing\Route;
 use ReflectionAttribute;
 
 /**
@@ -26,7 +27,8 @@ use ReflectionAttribute;
  *
  * - every operation: the token ability it needs (`x-token-ability`), the 401,
  *   403 and 429 errors and the rate-limit headers on its success response;
- * - a path parameter: the 404;
+ * - a path parameter: the 404, and the `uuid` format when the route
+ *   constrains it with `whereUuid`;
  * - a POST: the optional `Idempotency-Key` header, its 409 and 422;
  * - #[ScopedToSpace]: the `space` parameter and its 422;
  * - #[Paginated]: the cursor parameters, the `has_more` envelope and the 400.
@@ -55,6 +57,7 @@ class OperationConventions extends OperationExtension
             $this->documentIdempotency($operation, $components);
         }
 
+        $this->documentUuidPathParameters($operation, $routeInfo);
         $this->documentErrors($operation, $components);
         $this->documentRateLimitHeaders($operation, $components);
 
@@ -114,6 +117,17 @@ class OperationConventions extends OperationExtension
         $this->replaceResponse($operation, SharedComponents::error($components, 400));
         $this->replaceResponse($operation, SharedComponents::error($components, 409));
         $this->replaceResponse($operation, SharedComponents::validationError($components));
+    }
+
+    private function documentUuidPathParameters(Operation $operation, RouteInfo $routeInfo): void
+    {
+        $uuid = (new Route('GET', '{id}', []))->whereUuid('id')->wheres['id'];
+
+        foreach ($operation->parameters as $parameter) {
+            if ($parameter instanceof Parameter && $parameter->in === 'path' && ($routeInfo->route->wheres[$parameter->name] ?? null) === $uuid) {
+                $parameter->setSchema(Schema::fromType((new StringType)->format('uuid')));
+            }
+        }
     }
 
     private function documentErrors(Operation $operation, Components $components): void

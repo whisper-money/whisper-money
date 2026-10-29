@@ -20,3 +20,6 @@ Never add `__()` anywhere under `app/Mcp`. The localization extractor scans docb
 
 ## Presenters are shared through a Concerns trait, never copied
 A row shape returned by more than one tool lives in `app/Mcp/Tools/Concerns/Presents*.php` (see `PresentsBudgets`, `PresentsAutomationRules`). Read tools extend `McpTool` and write tools extend `WriteTool`, so a presenter parked on `WriteTool` is unreachable from a list tool — and copying it trips `bun run dry`, a required check.
+
+## Permissions mirror the web app: own rows only
+Like the public API (see `api-v1.md`), every tool reads, changes and accepts ids of only the caller's own rows (`user_id`) in the resolved space; another member's row is refused like one that does not exist. The web app is the source of truth: never let a tool reach further than the matching web screen. Resolve ids through `WriteTool::modelInSpace()` / `McpTool::labelsInSpace()` and list through `SpaceResolver::ownedInSpace()`, never a bare `forSpace()`.

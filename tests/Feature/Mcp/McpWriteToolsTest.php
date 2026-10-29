@@ -34,6 +34,7 @@ use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Budget;
@@ -537,6 +538,20 @@ it('records a balance on a manual account', function () {
     ])->assertOk();
 
     expect($account->balances()->whereDate('balance_date', '2026-01-31')->value('balance'))->toBe(250000);
+});
+
+it('takes over a derived snapshot when recording a balance for its day', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->withBalance()->create(['user_id' => $user->id]);
+    AccountBalance::factory()->derived()->create(['account_id' => $account->id, 'balance_date' => '2026-01-31']);
+
+    callWriteTool($user, CreateBalance::class, [
+        'account_id' => $account->id,
+        'balance' => 250000,
+        'balance_date' => '2026-01-31',
+    ])->assertOk();
+
+    expect($account->balances()->sole())->balance->toBe(250000)->derived->toBeFalse();
 });
 
 it('refuses to record a balance on a connected account', function () {
@@ -1535,7 +1550,7 @@ it('refuses to edit an account owned by another member of the space', function (
         'account_id' => $account->id,
         'space' => $shared->id,
         'name' => 'Mine now',
-    ])->assertHasErrors(['another member of the space']);
+    ])->assertHasErrors(["No account with id {$account->id} in space {$shared->id}."]);
 
     expect($account->fresh()->name)->toBe('Their account');
 });

@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\Tools\Concerns\PresentsAccounts;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -31,8 +32,7 @@ class ListAccounts extends McpTool
     {
         $space = $this->resolveSpace($request, $user);
 
-        $accounts = Account::query()
-            ->forSpace($space)
+        $accounts = app(SpaceResolver::class)->ownedInSpace(Account::query(), $user, $space)
             ->with(['bank:id,name', 'creditCardDetail'])
             ->orderBy('name')
             ->get()

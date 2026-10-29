@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Space;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -11,10 +14,11 @@ use Illuminate\Validation\ValidationException;
  * `space` argument (validated against the spaces the user can access) or the
  * user's personal space.
  *
- * Scoping is by `space_id` only, gated by membership (`accessibleSpaces`): a
- * space is a shared tenant, so a member is meant to see every row in it. The
- * security boundary is the membership check here, not a per-row `user_id`
- * filter.
+ * Permissions mirror the web app, which only ever shows a user their own
+ * rows: membership of a shared space (`accessibleSpaces`) picks the space, and
+ * every row read, written or referenced inside it must also be the caller's
+ * (`user_id`). Look rows up through ownedInSpace() or ownedForApiRequest(),
+ * never with a bare `forSpace()`.
  */
 class SpaceResolver
 {
@@ -36,5 +40,51 @@ class SpaceResolver
         }
 
         return $space;
+    }
+
+    /**
+     * The space a `/api/v1` request operates on, for its controllers and form
+     * requests alike.
+     */
+    public function forApiRequest(Request $request): Space
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->resolve($user, $request->string('space')->toString(), 'List the valid ids with GET /api/v1/spaces.');
+    }
+
+    /**
+     * Narrows $query to the caller's own rows in $space. Another member's row
+     * is left out like one that does not exist, so a `findOrFail()` on it is
+     * a 404.
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public function ownedInSpace(Builder $query, User $user, Space $space): Builder
+    {
+        return $query
+            ->where($query->qualifyColumn('space_id'), $space->id)
+            ->where($query->qualifyColumn('user_id'), $user->id);
+    }
+
+    /**
+     * Narrows $query to the caller's own rows in the space a `/api/v1`
+     * request operates on, the same way as ownedInSpace().
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public function ownedForApiRequest(Request $request, Builder $query): Builder
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->ownedInSpace($query, $user, $this->forApiRequest($request));
     }
 }

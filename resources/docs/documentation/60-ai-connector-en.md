@@ -145,11 +145,13 @@ Try:
 ### Spaces
 
 List your personal space and any space shared with you, so you can ask about
-one in particular.
+one in particular. As in the app, you only reach your own data in a shared
+space: the accounts, transactions, categories, labels, rules and goals you
+created there, never another member's.
 
 Try:
 
-- "How much has the household space spent this month?"
+- "How much have I spent in the household space this month?"
 
 </div>
 
@@ -328,8 +330,7 @@ These are the rules the app itself follows:
 - **On a bank-connected account only the name and the ownership share can be
   changed.** The type, the currency and the bank come from the connection, and a
   connected account cannot be created from here either: you
-  [connect those yourself](/documentation/accounts/bank-connections) in the app. In a shared space, an account can only be edited by
-  whoever created it.
+  [connect those yourself](/documentation/accounts/bank-connections) in the app.
 - **A budget's period, start day, rollover and tracked categories are fixed
   once it is created.** To change any of those, the budget has to be deleted
   and created again.

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AccountBalanceController;
+use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\SpaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,3 +18,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('spaces', [SpaceController::class, 'index'])->name('spaces.index');
+
+Route::whereUuid('account')->group(function (): void {
+    Route::get('accounts', [AccountController::class, 'index'])->name('accounts.index');
+    Route::post('accounts', [AccountController::class, 'store'])->name('accounts.store');
+    Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
+    Route::patch('accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
+    Route::get('accounts/{account}/balances', [AccountBalanceController::class, 'index'])->name('accounts.balances.index');
+    Route::post('accounts/{account}/balances', [AccountBalanceController::class, 'store'])->name('accounts.balances.store');
+});

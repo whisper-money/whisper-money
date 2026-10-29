@@ -2,7 +2,6 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\AccountType;
 use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Account;
 use App\Models\AutomationRule;
@@ -12,6 +11,9 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Accounts\AccountBalanceRecorder;
+use App\Services\Accounts\AccountWriteRules;
+use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -69,9 +71,10 @@ abstract class WriteTool extends McpTool
     abstract protected function write(Request $request, User $user): Response;
 
     /**
-     * Resolve the record the request points at, failing with a message that tells
-     * the agent which tool lists the valid ids. Callers pass the space-scoped
-     * query so each keeps its own model type.
+     * Resolve the record the request points at among the caller's own rows in
+     * the space, failing with a message that tells the agent which tool lists
+     * the valid ids. As in the app, another member's row is refused like one
+     * that does not exist.
      *
      * @template TModel of Model
      *
@@ -84,7 +87,7 @@ abstract class WriteTool extends McpTool
     {
         $id = $request->string($key)->toString();
 
-        $found = $query->whereKey($id)->first();
+        $found = app(SpaceResolver::class)->ownedInSpace($query, $this->caller($request), $space)->whereKey($id)->first();
 
         if ($found === null) {
             throw ValidationException::withMessages([
@@ -121,13 +124,13 @@ abstract class WriteTool extends McpTool
     }
 
     /**
-     * Resolve an account in the space. Bank-connected accounts are allowed:
+     * Resolve one of the caller's accounts in the space. Bank-connected accounts are allowed:
      * a sync only inserts rows it has not seen before, so a manual transaction
      * added to a connected account survives every later sync.
      */
     protected function accountInSpace(Request $request, Space $space, string $key = 'account_id'): Account
     {
-        return $this->modelInSpace($request, $space, Account::query()->forSpace($space), $key, 'account', 'Call list_accounts to see valid ids.');
+        return $this->modelInSpace($request, $space, Account::query(), $key, 'account', 'Call list_accounts to see valid ids.');
     }
 
     /**
@@ -140,39 +143,29 @@ abstract class WriteTool extends McpTool
     {
         $account = $this->accountInSpace($request, $space, $key);
 
-        if ($account->isConnected()) {
-            throw ValidationException::withMessages([
-                $key => 'That account is connected to a bank, so its balances come from the sync and a manual snapshot would be overwritten. Only non-connected (manual) accounts accept balances.',
-            ]);
-        }
-
-        if (! $account->type->hasBalance()) {
-            throw ValidationException::withMessages([
-                $key => AccountType::NO_BALANCE_MESSAGE,
-            ]);
-        }
+        AccountWriteRules::throwIfAny(AccountBalanceRecorder::unwritableErrors($account, $key));
 
         return $account;
     }
 
     protected function transactionInSpace(Request $request, Space $space, string $key = 'transaction_id'): Transaction
     {
-        return $this->modelInSpace($request, $space, Transaction::query()->forSpace($space), $key, 'transaction', 'Call search_transactions to find ids.');
+        return $this->modelInSpace($request, $space, Transaction::query(), $key, 'transaction', 'Call search_transactions to find ids.');
     }
 
     protected function categoryInSpace(Request $request, Space $space, string $key = 'category_id'): Category
     {
-        return $this->modelInSpace($request, $space, Category::query()->forSpace($space), $key, 'category', 'Call list_categories to see valid ids.');
+        return $this->modelInSpace($request, $space, Category::query(), $key, 'category', 'Call list_categories to see valid ids.');
     }
 
     protected function labelInSpace(Request $request, Space $space, string $key = 'label_id'): Label
     {
-        return $this->modelInSpace($request, $space, Label::query()->forSpace($space), $key, 'label', 'Call list_labels to see valid ids.');
+        return $this->modelInSpace($request, $space, Label::query(), $key, 'label', 'Call list_labels to see valid ids.');
     }
 
     protected function ruleInSpace(Request $request, Space $space, string $key = 'automation_rule_id'): AutomationRule
     {
-        return $this->modelInSpace($request, $space, AutomationRule::query()->forSpace($space), $key, 'automation rule', 'Call list_automation_rules to see valid ids.');
+        return $this->modelInSpace($request, $space, AutomationRule::query(), $key, 'automation rule', 'Call list_automation_rules to see valid ids.');
     }
 
     /**

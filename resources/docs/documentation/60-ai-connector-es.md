@@ -151,11 +151,13 @@ Prueba:
 ### Espacios
 
 Lista tu espacio personal y los espacios compartidos contigo, para poder
-preguntar por uno en concreto.
+preguntar por uno en concreto. Igual que en la app, en un espacio compartido
+solo llegas a tus propios datos: las cuentas, transacciones, categorías,
+etiquetas, reglas y objetivos que has creado tú, nunca los de otro miembro.
 
 Prueba:
 
-- «¿Cuánto ha gastado el espacio de casa este mes?»
+- «¿Cuánto he gastado en el espacio de casa este mes?»
 
 </div>
 
@@ -346,8 +348,7 @@ de confianza. Son las reglas que sigue la propia app:
 - **De una cuenta conectada al banco solo se pueden cambiar el nombre y el
   porcentaje de propiedad.** El tipo, la divisa y el banco vienen de la
   conexión, y una cuenta conectada tampoco se puede crear desde aquí: esas las
-  [conectas tú en la app](/documentation/accounts/bank-connections). En un espacio compartido, además, cada cuenta solo la
-  puede editar quien la creó.
+  [conectas tú en la app](/documentation/accounts/bank-connections).
 - **El periodo de un presupuesto, su día de inicio, el arrastre y las categorías
   que sigue quedan fijos al crearlo.** Para cambiar cualquiera de esas cosas hay
   que eliminar el presupuesto y crearlo de nuevo.
