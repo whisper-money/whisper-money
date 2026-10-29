@@ -9,6 +9,7 @@ use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
+use App\Http\Controllers\OpenBanking\Concerns\RepointsSiblingConnections;
 use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
@@ -28,6 +29,7 @@ class AuthorizationController extends Controller
 {
     use CreatesAccountsFromPending;
     use HandlesSubscriptionGate;
+    use RepointsSiblingConnections;
 
     /**
      * Start the bank authorization flow.
@@ -279,6 +281,7 @@ class AuthorizationController extends Controller
         ]);
 
         $this->refreshAccountIds($connection, $sessionData['accounts']);
+        $this->repointSiblingConnections($connection, $sessionData);
 
         SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Reconnect);
 
@@ -302,6 +305,10 @@ class AuthorizationController extends Controller
             'pending_accounts_data' => $sessionData['accounts'],
             'state_token' => null,
         ]);
+
+        // The new session has just revoked the one any sibling still holds,
+        // whether or not the user finishes mapping this connection.
+        $this->repointSiblingConnections($connection, $sessionData);
 
         if (! $user->isOnboarded()) {
             // One account is not a choice, so onboarding does not stop to ask

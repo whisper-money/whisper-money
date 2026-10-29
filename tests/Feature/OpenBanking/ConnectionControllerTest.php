@@ -103,6 +103,34 @@ test('users can disconnect a banking connection and keep accounts as manual', fu
     expect(AccountBalance::find($balance->id))->not->toBeNull();
 });
 
+test('disconnecting a connection keeps a session a sibling connection still uses', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id, 'session_id' => 'shared-session']);
+    $sibling = BankingConnection::factory()->create(['user_id' => $user->id, 'session_id' => 'shared-session']);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldNotReceive('revokeSession');
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->delete("/settings/connections/{$connection->id}", [
+        'delete_accounts' => false,
+        'confirmation' => null,
+    ])->assertRedirect(route('settings.connections.index'));
+
+    expect($connection->refresh()->trashed())->toBeTrue();
+    expect($sibling->refresh()->status)->toBe(BankingConnectionStatus::Active);
+
+    // The last connection on the session is the one that revokes it.
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('revokeSession')->once()->with('shared-session');
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->delete("/settings/connections/{$sibling->id}", [
+        'delete_accounts' => false,
+        'confirmation' => null,
+    ])->assertRedirect(route('settings.connections.index'));
+});
+
 test('users can disconnect a banking connection and delete accounts', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
