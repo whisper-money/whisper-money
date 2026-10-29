@@ -5,6 +5,7 @@ use App\Http\Middleware\ApiV1\AuthenticateApiRequest;
 use App\Http\Middleware\ApiV1\EnsureApiAccess;
 use App\Http\Middleware\ApiV1\HandleIdempotencyKey;
 use App\Http\Middleware\ApiV1\RecordApiRequest;
+use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Middleware\BlockSharedAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureOpenBankingConfigured;
@@ -68,13 +69,17 @@ return Application::configure(basePath: dirname(__DIR__))
             BlockSharedAccountActions::class.':auto',
         ]);
 
-        // Authenticate first so every later step (metric, plan gate, the
-        // per-user throttle, the per-user idempotency cache) knows the caller.
+        // The per-IP throttle caps anonymous floods before any token lookup.
+        // Then authenticate, so every later step (metric, per-user throttle,
+        // plan gate, per-user idempotency cache) knows the caller. The per-user
+        // throttle sits ahead of the plan gate, so a refused account is capped
+        // too, and inside the metric, so its 429s are recorded.
         $middleware->group('api-v1', [
+            ThrottleApiRequestsByIp::class,
             AuthenticateApiRequest::class,
             RecordApiRequest::class,
-            EnsureApiAccess::class,
             'throttle:api-v1',
+            EnsureApiAccess::class,
             HandleIdempotencyKey::class,
             SubstituteBindings::class,
         ]);

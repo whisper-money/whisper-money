@@ -3,6 +3,8 @@
 use App\Enums\ApiCredential;
 use App\Models\ApiRequest;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Passport\Passport;
 
 use function Pest\Laravel\getJson;
@@ -90,4 +92,21 @@ it('leaves the shared accounts out of the report', function () {
     $this->artisan('stats:api-usage')
         ->expectsOutputToContain('No API requests')
         ->assertSuccessful();
+});
+
+it('prunes rows older than the retention window', function () {
+    ApiRequest::factory()->create(['created_at' => now()->subDays(91)]);
+    $recent = ApiRequest::factory()->create(['created_at' => now()->subDays(89)]);
+
+    test()->artisan('model:prune', ['--model' => [ApiRequest::class]])->assertSuccessful();
+
+    expect(ApiRequest::query()->pluck('id')->all())->toBe([$recent->id]);
+});
+
+it('schedules the pruning daily', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'model:prune')
+            && str_contains((string) $event->command, 'ApiRequest'));
+
+    expect($event)->not->toBeNull();
 });

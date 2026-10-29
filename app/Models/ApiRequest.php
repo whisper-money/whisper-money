@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\ApiCredential;
 use Database\Factories\ApiRequestFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ApiRequest extends Model
 {
     /** @use HasFactory<ApiRequestFactory> */
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, MassPrunable;
 
     /** Append-only: a request is never updated, so there is no `updated_at`. */
     const UPDATED_AT = null;
@@ -36,6 +38,17 @@ class ApiRequest extends Model
             'credential' => ApiCredential::class,
             'status' => 'integer',
         ];
+    }
+
+    /**
+     * Rows are kept 90 days: `stats:api-usage` looks back 30 by default, and
+     * a quarter leaves room to compare a month with the ones before it.
+     *
+     * @return Builder<ApiRequest>
+     */
+    public function prunable(): Builder
+    {
+        return ApiRequest::query()->where('created_at', '<', now()->subDays(90));
     }
 
     /** @return BelongsTo<User, $this> */

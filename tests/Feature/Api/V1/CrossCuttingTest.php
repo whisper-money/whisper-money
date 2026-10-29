@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ApiRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -31,6 +32,48 @@ describe('rate limit', function () {
 
         // Another user has a bucket of their own.
         withHeaders(apiV1Bearer(User::factory()->create()))->getJson('/api/v1/spaces')->assertOk();
+    });
+
+    it('caps requests per IP before authentication, so bogus tokens cannot flood the API', function () {
+        $headers = ['Authorization' => 'Bearer not-a-real-token'];
+
+        for ($i = 1; $i <= 120; $i++) {
+            withHeaders($headers)->getJson('/api/v1/spaces')->assertUnauthorized();
+        }
+
+        withHeaders($headers)->getJson('/api/v1/spaces')
+            ->assertTooManyRequests()
+            ->assertHeader('Retry-After')
+            ->assertJsonPath('code', 'too_many_requests');
+
+        // Another IP has a bucket of its own.
+        withHeaders($headers)->withServerVariables(['REMOTE_ADDR' => '203.0.113.9'])
+            ->getJson('/api/v1/spaces')
+            ->assertUnauthorized();
+    });
+
+    it('throttles a user the plan gate refuses, and records the 429s', function () {
+        config(['subscriptions.enabled' => true]);
+        $headers = apiV1Bearer(User::factory()->create());
+
+        for ($i = 1; $i <= 60; $i++) {
+            withHeaders($headers)->getJson('/api/v1/spaces')->assertForbidden();
+        }
+
+        withHeaders($headers)->getJson('/api/v1/spaces')->assertTooManyRequests();
+
+        expect(ApiRequest::query()->pluck('status')->countBy()->all())->toBe([403 => 60, 429 => 1]);
+    });
+
+    it('throttles the shared demo account', function () {
+        config(['app.demo.email' => 'demo@example.test']);
+        $headers = apiV1Bearer(User::factory()->create(['email' => 'demo@example.test']));
+
+        for ($i = 1; $i <= 60; $i++) {
+            withHeaders($headers)->getJson('/api/v1/spaces')->assertForbidden();
+        }
+
+        withHeaders($headers)->getJson('/api/v1/spaces')->assertTooManyRequests();
     });
 });
 
