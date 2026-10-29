@@ -74,7 +74,7 @@ describe('API settings page', () => {
         expect(screen.getByText('Copy your new token now')).toBeTruthy();
     });
 
-    it('marks an expired token', () => {
+    it('marks an expired token and does not offer rotating it', () => {
         page.props.tokens = [
             apiToken({
                 name: 'Old script',
@@ -88,7 +88,7 @@ describe('API settings page', () => {
 
         expect(screen.getByText('Old script')).toBeTruthy();
         expect(screen.getAllByText('Expired').length).toBeGreaterThan(0);
-        expect(screen.getByRole('button', { name: 'Rotate' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Rotate' })).toBeNull();
     });
 
     it('upsells free accounts, who cannot create or rotate tokens', () => {
