@@ -45,3 +45,6 @@ A transaction is money that moved in or out of an account: synced from the bank,
 | [`GET /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#retrieve-a-transaction) | Retrieve a transaction |
 | [`PATCH /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#update-a-transaction) | Update a transaction |
 | [`DELETE /api/v1/transactions/{transaction}`](/documentation/api/reference/transactions#delete-a-transaction) | Delete a transaction |
+| [`PUT /api/v1/transactions/{transaction}/labels`](/documentation/api/reference/transactions#replace-the-labels-of-a-transaction) | Replace the labels of a transaction |
+| [`POST /api/v1/transactions/{transaction}/split`](/documentation/api/reference/transactions#split-a-transaction) | Split a transaction |
+| [`POST /api/v1/transactions/{transaction}/merge-splits`](/documentation/api/reference/transactions#merge-a-split-back) | Merge a split back |

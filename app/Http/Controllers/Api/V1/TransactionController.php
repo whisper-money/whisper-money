@@ -6,13 +6,18 @@ use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
 use App\Http\Requests\Api\V1\DeleteTransactionRequest;
+use App\Http\Requests\Api\V1\MergeTransactionSplitsRequest;
+use App\Http\Requests\Api\V1\ReplaceTransactionLabelsRequest;
 use App\Http\Requests\Api\V1\SearchTransactionsRequest;
+use App\Http\Requests\Api\V1\SplitTransactionRequest;
 use App\Http\Requests\Api\V1\StoreTransactionRequest;
 use App\Http\Requests\Api\V1\UpdateTransactionRequest;
 use App\Http\Resources\V1\TransactionResource;
+use App\Services\Transactions\TransactionLabeler;
 use App\Services\Transactions\TransactionSearch;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\WrittenTransaction;
+use App\Services\TransactionSplitter;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -140,6 +145,68 @@ class TransactionController extends Controller
              */
             'balance_updated' => $this->writer->delete($model, $request->boolean('update_balance')),
         ]);
+    }
+
+    /**
+     * Replace the labels of a transaction
+     *
+     * Sets the transaction's labels to exactly `label_ids`: a label it had
+     * that is not in the list is removed, and an empty list removes them
+     * all. Works on any transaction you own, including one from a bank or an
+     * import and one part of a split. Labelling is also how a transaction
+     * counts towards a savings goal: it does once it carries the goal's
+     * label.
+     *
+     * @param  string  $transaction  The transaction's id.
+     */
+    #[ScopedToSpace]
+    public function labels(ReplaceTransactionLabelsRequest $request, string $transaction, TransactionLabeler $labeler): TransactionResource
+    {
+        return new TransactionResource($labeler->replace($request->transaction(), $request->validated('label_ids')));
+    }
+
+    /**
+     * Split a transaction
+     *
+     * Replaces a transaction that covered several things with 2 to 20 parts,
+     * each with its own amount, category and labels. Works on bank and
+     * imported transactions too. The parts must add up to the original
+     * exactly and all move money the same way. From then on the parts are
+     * what exists: the original is out of every list and every total, and
+     * each part carries a `split_parent_id` shared with its siblings. A part
+     * cannot be split again, deleted on its own, or have its amount, date or
+     * account changed; categorizing, labelling and editing its notes work as
+     * usual. Splitting a part again answers `422` with the error under
+     * `transaction`, and the original's id answers `404` once it is split.
+     * Answers the parts, in the order they were sent.
+     *
+     * @param  string  $transaction  The transaction's id.
+     */
+    #[ScopedToSpace]
+    public function split(SplitTransactionRequest $request, string $transaction, TransactionSplitter $splitter): JsonResponse
+    {
+        $parts = $splitter->split($request->transaction(), $request->splits());
+
+        return TransactionResource::collection($parts)->response()->setStatusCode(201);
+    }
+
+    /**
+     * Merge a split back
+     *
+     * Puts back the transaction a split came from, with the category it had
+     * before, and deletes every part along with the category, labels and
+     * notes set on them. Pass the id of any one of the parts; one that is not
+     * part of a split answers `422` with the error under `transaction`, and
+     * the original's own id answers `404`: it is out of every list until the
+     * merge. Answers the original transaction, under its id from before the
+     * split.
+     *
+     * @param  string  $transaction  The id of any part of the split.
+     */
+    #[ScopedToSpace]
+    public function mergeSplits(MergeTransactionSplitsRequest $request, string $transaction, TransactionSplitter $splitter): TransactionResource
+    {
+        return new TransactionResource($splitter->merge($request->transaction()));
     }
 
     private function written(WrittenTransaction $written): TransactionResource

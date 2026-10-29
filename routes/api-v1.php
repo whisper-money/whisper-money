@@ -35,4 +35,7 @@ Route::whereUuid('transaction')->group(function (): void {
     Route::get('transactions/{transaction}', [TransactionController::class, 'show'])->name('transactions.show');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    Route::put('transactions/{transaction}/labels', [TransactionController::class, 'labels'])->name('transactions.labels.update');
+    Route::post('transactions/{transaction}/split', [TransactionController::class, 'split'])->name('transactions.split');
+    Route::post('transactions/{transaction}/merge-splits', [TransactionController::class, 'mergeSplits'])->name('transactions.merge-splits');
 });
