@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\OpenBanking;
 
+use App\Actions\OpenBanking\RepointSiblingConnections;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
@@ -9,7 +10,6 @@ use App\Enums\BankingSyncTrigger;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
-use App\Http\Controllers\OpenBanking\Concerns\RepointsSiblingConnections;
 use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
@@ -29,7 +29,8 @@ class AuthorizationController extends Controller
 {
     use CreatesAccountsFromPending;
     use HandlesSubscriptionGate;
-    use RepointsSiblingConnections;
+
+    public function __construct(private RepointSiblingConnections $repointSiblingConnections) {}
 
     /**
      * Start the bank authorization flow.
@@ -267,21 +268,10 @@ class AuthorizationController extends Controller
      */
     private function completeReconnect(BankingConnection $connection, array $sessionData): RedirectResponse|Response
     {
-        $connection->update([
-            'session_id' => $sessionData['session_id'],
-            'status' => BankingConnectionStatus::Active,
-            'valid_until' => $sessionData['access']['valid_until'] ?? null,
-            'error_message' => null,
-            'state_token' => null,
-            // Reconnecting is the way out of a parked connection, so it has
-            // to hand back the full retry budget. Carrying the old count over
-            // meant the first failure after a reconnect could re-park it
-            // immediately, which is the state the user just paid SCA to leave.
-            'consecutive_sync_failures' => 0,
-        ]);
+        $connection->activateWithSession($sessionData, ['state_token' => null]);
 
-        $this->refreshAccountIds($connection, $sessionData['accounts']);
-        $this->repointSiblingConnections($connection, $sessionData);
+        $siblingUids = $this->repointSiblingConnections->handle($connection, $sessionData);
+        $this->refreshAccountIds($connection, $sessionData['accounts'], $siblingUids);
 
         SyncBankingConnectionJob::dispatch($connection, trigger: BankingSyncTrigger::Reconnect);
 
@@ -308,7 +298,7 @@ class AuthorizationController extends Controller
 
         // The new session has just revoked the one any sibling still holds,
         // whether or not the user finishes mapping this connection.
-        $this->repointSiblingConnections($connection, $sessionData);
+        $this->repointSiblingConnections->handle($connection, $sessionData);
 
         if (! $user->isOnboarded()) {
             // One account is not a choice, so onboarding does not stop to ask
@@ -554,10 +544,12 @@ class AuthorizationController extends Controller
      * Matching strategy (in priority order):
      *   1. Match by IBAN — reliable when the account was created after the iban column existed.
      *   2. Positional fallback — match by creation order for legacy accounts without a stored IBAN.
+     *      Uids a sibling connection has already claimed by IBAN are never handed out here.
      *
      * @param  array<int, array<string, mixed>>  $newAccounts
+     * @param  list<string>  $siblingUids
      */
-    private function refreshAccountIds(BankingConnection $connection, array $newAccounts): void
+    private function refreshAccountIds(BankingConnection $connection, array $newAccounts, array $siblingUids = []): void
     {
         if (empty($newAccounts)) {
             return;
@@ -585,6 +577,8 @@ class AuthorizationController extends Controller
 
             $unmatchedExisting->push($account);
         }
+
+        $unmatchedNew = $unmatchedNew->reject(fn (array $data) => in_array($data['uid'] ?? null, $siblingUids, true))->values();
 
         foreach ($unmatchedExisting as $index => $account) {
             $newAccountData = $unmatchedNew->get($index);

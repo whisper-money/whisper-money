@@ -1720,3 +1720,42 @@ test('the first connection callback also repoints an existing same-bank sibling'
     Queue::assertPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->is($sibling)
         && $job->trigger === BankingSyncTrigger::Reconnect);
 });
+
+test('the reconnecting connection never takes a sibling\'s uid by position', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    [$connection, $legacyAccount] = connectionWithAccount($user, null, ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['status' => BankingConnectionStatus::Expired]);
+
+    // The sibling's account comes first, where the positional fallback would look.
+    mockSharedSession([
+        ['uid' => 'sibling-uid', 'iban' => 'ES0000000000000000000002'],
+        ['uid' => 'own-uid', 'iban' => 'ES0000000000000000000001'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($siblingAccount->refresh()->external_account_id)->toBe('sibling-uid');
+    expect($legacyAccount->refresh()->external_account_id)->toBe('own-uid');
+    expect($sibling->refresh()->status)->toBe(BankingConnectionStatus::Active);
+});
+
+test('an iban the session lists twice is no evidence for repointing a sibling', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['session_id' => 'other-session']);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-eur', 'iban' => 'ES0000000000000000000002'],
+        ['uid' => 'new-uid-usd', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($sibling->refresh()->session_id)->toBe('other-session');
+    expect($siblingAccount->refresh()->external_account_id)->toBe('old-uid-'.$sibling->id);
+});

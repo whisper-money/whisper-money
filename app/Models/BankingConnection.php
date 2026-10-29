@@ -151,6 +151,29 @@ class BankingConnection extends Model
         return $this->status === BankingConnectionStatus::Active;
     }
 
+    /**
+     * Point the connection at a freshly authorized provider session.
+     *
+     * Reconnecting is the way out of a parked connection, so it has to hand back
+     * the full retry budget. Carrying the old count over meant the first failure
+     * after a reconnect could re-park it immediately, which is the state the user
+     * just paid SCA to leave.
+     *
+     * @param  array<string, mixed>  $sessionData
+     * @param  array<string, mixed>  $attributes
+     */
+    public function activateWithSession(array $sessionData, array $attributes = []): void
+    {
+        $this->update([
+            'session_id' => $sessionData['session_id'],
+            'status' => BankingConnectionStatus::Active,
+            'valid_until' => $sessionData['access']['valid_until'] ?? null,
+            'error_message' => null,
+            'consecutive_sync_failures' => 0,
+            ...$attributes,
+        ]);
+    }
+
     public function isIndexaCapital(): bool
     {
         return $this->provider === BankingProvider::IndexaCapital;

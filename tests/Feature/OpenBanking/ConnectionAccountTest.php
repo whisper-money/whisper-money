@@ -83,6 +83,30 @@ test('refresh discovers bank accounts that are not yet synced', function () {
         );
 });
 
+test('refresh does not offer an account a sibling connection on the same session already syncs', function () {
+    $user = onboardedUser();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id, 'session_id' => 'shared-session']);
+    $sibling = BankingConnection::factory()->create(['user_id' => $user->id, 'session_id' => 'shared-session']);
+
+    Account::factory()->for($user)->create([
+        'banking_connection_id' => $sibling->id,
+        'external_account_id' => 'sibling-uid',
+    ]);
+
+    $this->mock(BankingProviderInterface::class, function ($mock) {
+        $mock->shouldReceive('getSession')->andReturn([
+            'status' => 'AUTHORIZED',
+            'accounts' => [['uid' => 'sibling-uid']],
+        ]);
+        $mock->shouldNotReceive('getAccount');
+    });
+
+    $this->actingAs($user)
+        ->get(route('open-banking.connection-accounts.index', [$connection, 'refresh' => 1]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('discoveredAccounts', 0));
+});
+
 test('map create adds a new synced account and dispatches a sync', function () {
     Queue::fake();
 
