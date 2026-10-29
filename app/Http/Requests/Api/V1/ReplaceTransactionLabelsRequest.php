@@ -20,11 +20,11 @@ class ReplaceTransactionLabelsRequest extends FormRequest
     {
         return [
             /**
-             * The ids of every label the transaction should carry, each a label of the space. The transaction ends up with exactly these: a label left out is removed, and an empty list removes them all.
+             * The ids of every label the transaction should carry, each a label of the space, up to 100. The transaction ends up with exactly these: a label left out is removed, and an empty list removes them all.
              *
              * @example ["0199a3f7-3b4c-7d5e-8f6a-7b8c9d0e1f2a"]
              */
-            'label_ids' => ['present', 'array'],
+            'label_ids' => ['present', 'array', 'max:100'],
             /**
              * @format uuid
              */

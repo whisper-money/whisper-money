@@ -42,7 +42,7 @@ class SplitTransactionRequest extends FormRequest
              */
             'splits.*.category_id' => [...$rules['splits.*.category_id'], $this->inSpace(Category::class, 'a category')],
             /**
-             * The ids of the part's labels, each a label of the space. Defaults to none: the original's labels are not copied.
+             * The ids of the part's labels, each a label of the space, up to 100. Defaults to none: the original's labels are not copied.
              */
             'splits.*.label_ids' => $rules['splits.*.label_ids'],
             /**
@@ -77,8 +77,7 @@ class SplitTransactionRequest extends FormRequest
 
     /**
      * The parts as sent, in the shape TransactionSplitter takes. Only read
-     * once they passed the rules. A label id sent twice in a part, in any
-     * case, is kept once.
+     * once they passed the rules.
      *
      * @return list<array{amount: int, category_id: ?string, label_ids: list<string>}>
      */
@@ -88,7 +87,7 @@ class SplitTransactionRequest extends FormRequest
             ->map(fn (array $part): array => [
                 'amount' => (int) $part['amount'],
                 'category_id' => $part['category_id'] ?? null,
-                'label_ids' => array_values(array_unique(array_map(mb_strtolower(...), $part['label_ids'] ?? []))),
+                'label_ids' => array_values(array_map(mb_strtolower(...), $part['label_ids'] ?? [])),
             ])
             ->values()
             ->all();

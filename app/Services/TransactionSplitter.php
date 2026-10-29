@@ -37,8 +37,8 @@ class TransactionSplitter
             'splits' => ['required', 'array', 'min:2', 'max:'.self::MAX_PARTS],
             'splits.*.amount' => ['required', 'integer'],
             'splits.*.category_id' => ['nullable', 'string'],
-            'splits.*.label_ids' => ['nullable', 'array'],
-            'splits.*.label_ids.*' => ['required', 'string'],
+            'splits.*.label_ids' => ['nullable', 'array', 'max:100'],
+            'splits.*.label_ids.*' => ['required', 'string', 'distinct:ignore_case'],
         ];
     }
 

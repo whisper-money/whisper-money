@@ -536,7 +536,7 @@ Sets the transaction's labels to exactly `label_ids`: a label it had that is not
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `label_ids` | array of string (uuid) | Yes | The ids of every label the transaction should carry, each a label of the space. The transaction ends up with exactly these: a label left out is removed, and an empty list removes them all. |
+| `label_ids` | array of string (uuid) | Yes | The ids of every label the transaction should carry, each a label of the space, up to 100. The transaction ends up with exactly these: a label left out is removed, and an empty list removes them all. |
 
 #### Response
 
@@ -650,7 +650,7 @@ Replaces a transaction that covered several things with 2 to 20 parts, each with
 | `splits` | array of object | Yes | The parts to replace the transaction with, 2 to 20 of them. Their amounts must add up to the transaction's amount exactly. |
 | `splits[].amount` | integer | Yes | The part's signed amount, in the minor units of the transaction's currency. It has the sign of the original: the parts of an expense are all negative. |
 | `splits[].category_id` | string (uuid) or null | No | The id of the part's category, a category of the space. Left out or `null`, the part is uncategorized. |
-| `splits[].label_ids` | array of string (uuid) | No | The ids of the part's labels, each a label of the space. Defaults to none: the original's labels are not copied. |
+| `splits[].label_ids` | array of string (uuid) | No | The ids of the part's labels, each a label of the space, up to 100. Defaults to none: the original's labels are not copied. |
 
 #### Response
 

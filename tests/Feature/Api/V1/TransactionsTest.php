@@ -9,6 +9,7 @@ use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\TransactionSplitter;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
@@ -752,6 +753,33 @@ describe('labels', function () {
 
         expect($theirs->labels()->count())->toBe(0);
     });
+    it('refuses more than 100 labels', function () {
+        $user = User::factory()->create();
+        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]));
+
+        withHeaders(transactionsWriter($user))
+            ->putJson('/api/v1/transactions/'.$transaction->id.'/labels', ['label_ids' => array_map(fn (): string => (string) Str::uuid7(), range(1, 101))])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['label_ids' => 'must not have more than 100 items']);
+    });
+
+    it('checks the labels against the space in a single query, however many are sent', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $labels = Label::factory()->count(30)->create(['user_id' => $user->id]);
+        $headers = transactionsWriter($user);
+        $labelLookups = function (array $labelIds) use ($headers, $account): int {
+            $transaction = transactionOn($account);
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            withHeaders($headers)->putJson('/api/v1/transactions/'.$transaction->id.'/labels', ['label_ids' => $labelIds])->assertOk();
+            DB::disableQueryLog();
+
+            return collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `labels` where'))->count();
+        };
+
+        expect($labelLookups($labels->pluck('id')->all()))->toBe(1);
+    });
 });
 
 describe('split', function () {
@@ -766,7 +794,7 @@ describe('split', function () {
 
         withHeaders($headers)
             ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
-                ['amount' => -3000, 'category_id' => $category->id, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
+                ['amount' => -3000, 'category_id' => $category->id, 'label_ids' => [$label->id]],
                 ['amount' => -2000],
             ]])
             ->assertCreated()
@@ -822,6 +850,22 @@ describe('split', function () {
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['splits.0.category_id', 'splits.1.label_ids.0', 'parts']);
+    });
+
+    it('refuses more than 100 labels on a part and a label sent twice in a part', function () {
+        $user = User::factory()->create();
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+        $label = Label::factory()->create(['user_id' => $user->id]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
+                ['amount' => -3000, 'label_ids' => array_map(fn (): string => (string) Str::uuid7(), range(1, 101))],
+                ['amount' => -2000, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
+            ]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids.1' => 'duplicate']);
+
+        expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
     });
 
     it('answers 404 for a transaction of another user and refuses a read-only token', function () {
