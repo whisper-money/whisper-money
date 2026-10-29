@@ -11,6 +11,7 @@
     "require": {
         "php": "^8.3",
         "aws/aws-sdk-php": "^3.382",
+        "dedoc/scramble": "^0.13.51",
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^3.3",
         "intervention/image": "^4.2",

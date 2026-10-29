@@ -50,6 +50,15 @@ class AuthenticateApiRequest implements AuthenticatesRequests
 
     public function __construct(private AuthFactory $auth) {}
 
+    /**
+     * The personal-token ability a request with this method needs. Also what
+     * the OpenAPI spec documents for each endpoint (OperationConventions).
+     */
+    public static function requiredAbility(string $method): string
+    {
+        return in_array(strtoupper($method), self::ReadMethods, true) ? self::ReadAbility : self::WriteAbility;
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $this->auth->guard('sanctum')->user();
@@ -102,7 +111,7 @@ class AuthenticateApiRequest implements AuthenticatesRequests
             throw ApiV1Exception::insufficientScope('This token cannot be used with the API. Create an API token in Settings → API.');
         }
 
-        if (! in_array($request->method(), self::ReadMethods, true) && ! in_array(self::WriteAbility, $abilities, true)) {
+        if (self::requiredAbility($request->method()) === self::WriteAbility && ! in_array(self::WriteAbility, $abilities, true)) {
             throw ApiV1Exception::insufficientScope('This token is read-only. Create a read & write token to make changes.');
         }
     }

@@ -1,2 +1,4 @@
 resources/js/components/ui/*
 resources/views/mail/*
+# Written by `php artisan api:docs`; a test compares them byte for byte
+resources/docs/documentation/70-api/80-reference*

@@ -29,7 +29,9 @@ it('shows the default documentation page', function () {
 });
 
 it('shows every published page in every locale', function () {
-    foreach (publishedSlugs() as $slug) {
+    foreach (DocumentationTree::for('en')->pages() as $published) {
+        $slug = $published['slug'];
+
         foreach (array_keys((array) config('documentation.locales')) as $locale) {
             $this->get(route('documentation.show', ['slug' => $slug, 'lang' => $locale]))
                 ->assertOk()
@@ -37,7 +39,7 @@ it('shows every published page in every locale', function () {
                     fn (AssertableInertia $page) => $page
                         ->component('documentation/show')
                         ->where('document.slug', $slug)
-                        ->where('document.locale', $locale)
+                        ->where('document.locale', in_array($locale, $published['locales'], true) ? $locale : 'en')
                 );
         }
     }

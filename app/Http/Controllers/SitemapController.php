@@ -86,11 +86,17 @@ class SitemapController extends Controller
 
         foreach ($locales as $locale) {
             foreach (DocumentationTree::for((string) $locale)->pages() as $page) {
+                // An untranslated page (the English-only API reference) is
+                // listed once, in the language it is written in.
+                if (! in_array($locale, $page['locales'], true)) {
+                    continue;
+                }
+
                 $urls[] = [
                     'loc' => route('documentation.show', ['slug' => $page['slug'], 'lang' => $locale]),
                     'changefreq' => 'monthly',
                     'priority' => '0.6',
-                    'alternates' => collect($locales)
+                    'alternates' => collect($page['locales'])
                         ->mapWithKeys(fn (mixed $alternate): array => [
                             (string) $alternate => route('documentation.show', ['slug' => $page['slug'], 'lang' => $alternate]),
                         ])
