@@ -6,11 +6,9 @@ use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryColor;
 use App\Enums\CategoryType;
 use App\Mcp\Tools\Concerns\ResolvesCategoryWrites;
-use App\Models\Category;
 use App\Models\User;
+use App\Services\Categories\CategoryWriter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -38,39 +36,16 @@ class CreateCategory extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'icon' => ['required', 'string'],
-            'color' => ['required', Rule::enum(CategoryColor::class)],
-            'type' => ['required', Rule::enum(CategoryType::class)],
-            'cashflow_direction' => ['sometimes', Rule::enum(CategoryCashflowDirection::class)],
-        ]);
+        $request->validate(CategoryWriter::createRules());
 
         $space = $this->resolveSpace($request, $user);
-        $parent = $this->resolveParentCategory($request, $space, null);
 
-        $type = $parent !== null ? $parent->type : $request->enum('type', CategoryType::class);
-        $cashflow = $this->cashflowDirectionFor($type, $parent, $request->string('cashflow_direction')->toString());
-
-        $name = $request->string('name')->toString();
-
-        if ($this->categoryNameTaken($space, $name, $parent?->id)) {
-            throw ValidationException::withMessages([
-                'name' => 'A category with that name already exists at this level.',
-            ]);
-        }
-
-        $category = new Category([
-            'user_id' => $user->id,
-            'space_id' => $space->id,
-            'name' => $name,
-            'icon' => $request->string('icon')->toString(),
-            'color' => $request->string('color')->toString(),
-            'type' => $type->value,
-            'cashflow_direction' => $cashflow->value,
-            'parent_id' => $parent?->id,
-        ]);
-        $category->save();
+        $category = app(CategoryWriter::class)->create(
+            $user,
+            $space,
+            $request->all(),
+            $this->parentCategory($request, $space),
+        );
 
         return $this->json(['category' => $this->presentCategory($category)]);
     }

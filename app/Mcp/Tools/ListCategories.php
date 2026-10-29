@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Models\Category;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -28,8 +29,7 @@ class ListCategories extends McpTool
     {
         $space = $this->resolveSpace($request, $user);
 
-        $categories = Category::query()
-            ->forSpace($space)
+        $categories = app(SpaceResolver::class)->ownedInSpace(Category::query(), $user, $space)
             ->orderBy('name')
             ->get()
             ->map(fn (Category $category): array => [

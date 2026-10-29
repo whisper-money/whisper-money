@@ -42,7 +42,7 @@ Un id al que no tienes acceso responde `422`, con el error en `space`. La
 de cada endpoint que lo acepta.
 
 El id de un objeto también se busca en ese espacio. Para leer o cambiar una
-cuenta o una transacción de un espacio compartido, envía el id de ese espacio
+cuenta, una transacción, una categoría o una etiqueta de un espacio compartido, envía el id de ese espacio
 junto a ella: sin él, el objeto se busca en tu espacio personal y responde
 `404`.
 
