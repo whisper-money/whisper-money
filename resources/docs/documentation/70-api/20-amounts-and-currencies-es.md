@@ -35,6 +35,10 @@ dividas entre 100 a ciegas. Lee antes la `currency`:
 Cuando envíes un importe, usa las unidades mínimas de la moneda de la cuenta u
 objeto al que corresponde.
 
+La única excepción son las `conditions` de una regla de automatización: un
+importe que se compara ahí va en unidades principales y con signo, así que un
+gasto de 12,50 es `-12.5`.
+
 ## Fechas
 
 Las fechas son cadenas ISO 8601: `2026-01-15` para un día del calendario, como

@@ -745,6 +745,8 @@ it('rejects a rule whose variable or operator the engine cannot evaluate', funct
     'unknown variable' => [['in' => ['netflix', ['var' => 'merchant']]], 'merchant'],
     'unknown operator' => [['contains' => [['var' => 'description'], 'netflix']], 'contains'],
     'nested unknown variable' => [['and' => [['!' => ['in' => ['netflix', ['var' => 'payee']]]]]], 'payee'],
+    'operator in a variable default' => [['in' => ['netflix', ['var' => ['description', ['log' => 'x']]]]], 'plain value'],
+    'nested too deep' => [array_reduce(range(1, 25), fn (array $node): array => ['!' => $node], ['in' => ['netflix', ['var' => 'description']]]), '20 levels'],
 ]);
 
 it('rejects a bare list of conditions that is missing its and/or wrapper', function () {

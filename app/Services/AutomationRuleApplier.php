@@ -6,15 +6,19 @@ use App\Jobs\ApplySingleAutomationRuleJob;
 use App\Models\AutomationRule;
 use App\Models\Space;
 use App\Models\Transaction;
+use App\Services\AutomationRules\RuleApplication;
+use App\Services\AutomationRules\RuleApplicationStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 /**
  * Applies an existing automation rule to transactions already in the database.
  * Rules otherwise only run on newly created transactions (see
- * App\Listeners\ApplyAutomationRules), so both the settings screen and the MCP
- * apply_automation_rule tool come through here to backfill history.
+ * App\Listeners\ApplyAutomationRules), so the settings screen, the MCP
+ * apply_automation_rule tool and `/api/v1` all come through here to backfill
+ * history.
  *
  * Resolving the matches means evaluating the rule row by row in PHP, so the id
  * list is cached and re-used by the preview and the apply that follows it.
@@ -26,6 +30,13 @@ class AutomationRuleApplier
      * the queue so the request does not hang on it.
      */
     public const SYNC_THRESHOLD = 100;
+
+    /**
+     * How many matching transactions a preview lists. The full count is reported
+     * separately: the sample is only there to sanity check what the rule caught
+     * before committing to it.
+     */
+    private const SAMPLE_SIZE = 20;
 
     private const MATCHES_CACHE_TTL_MINUTES = 15;
 
@@ -82,6 +93,32 @@ class AutomationRuleApplier
     }
 
     /**
+     * Preview or apply a rule over the transactions of one space, for the MCP
+     * apply_automation_rule tool and `POST /api/v1/automation-rules/{id}/apply`.
+     * A preview changes nothing; an apply runs inline up to SYNC_THRESHOLD
+     * matches and is queued past it.
+     */
+    public function applyInSpace(AutomationRule $rule, Space $space, bool $dryRun, bool $onlyUncategorized): RuleApplication
+    {
+        $matchingIds = $this->matchingIds($rule, $onlyUncategorized, $space);
+        $total = count($matchingIds);
+
+        if ($dryRun) {
+            return new RuleApplication(RuleApplicationStatus::Preview, $rule->id, $total, $this->sample($rule, $matchingIds, $space));
+        }
+
+        if ($total > self::SYNC_THRESHOLD) {
+            $this->queue($rule, $matchingIds, $onlyUncategorized, $space);
+
+            return new RuleApplication(RuleApplicationStatus::Queued, $rule->id, $total);
+        }
+
+        $result = $this->applyNow($rule, $matchingIds, $onlyUncategorized, $space);
+
+        return new RuleApplication(RuleApplicationStatus::Done, $rule->id, $total, applied: $result['applied'], updated: $result['updated']);
+    }
+
+    /**
      * Apply the rule's actions to the matched transactions right now.
      *
      * @param  array<int, string>  $transactionIds
@@ -129,6 +166,32 @@ class AutomationRuleApplier
     public function forgetMatches(AutomationRule $rule, bool $onlyUncategorized, ?Space $space = null): void
     {
         Cache::forget($this->matchesCacheKey($rule, $onlyUncategorized, $space));
+    }
+
+    /**
+     * The first matches, to show what a preview caught.
+     *
+     * @param  array<int, string>  $matchingIds
+     * @return EloquentCollection<int, Transaction>
+     */
+    private function sample(AutomationRule $rule, array $matchingIds, Space $space): EloquentCollection
+    {
+        $ids = array_slice($matchingIds, 0, self::SAMPLE_SIZE);
+
+        if ($ids === []) {
+            return new EloquentCollection;
+        }
+
+        // Re-scoped to the rule owner's rows of the space even though the ids
+        // already come from such a match, so this stays safe to read on its own.
+        return Transaction::query()
+            ->forSpace($space)
+            ->where('user_id', $rule->user_id)
+            ->whereIn('id', $ids)
+            ->with(['account:id,name', 'category:id,name', 'labels:id,name'])
+            ->orderByDesc('transaction_date')
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     /**

@@ -2,24 +2,30 @@
 
 use App\Enums\LabelSource;
 use App\Mcp\Servers\WhisperMoneyServer;
+use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
+use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateCategory;
 use App\Mcp\Tools\CreateTransaction;
+use App\Mcp\Tools\DeleteAutomationRule;
 use App\Mcp\Tools\DeleteCategory;
 use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SplitTransaction;
+use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Space;
@@ -221,4 +227,33 @@ it('refuses to rename or delete the label of a savings goal, like the API', func
         ->assertOk();
 
     expect($label->fresh())->name->toBe('New car')->color->toBe('red');
+});
+
+it('lists, changes, applies and deletes only the caller\'s own automation rules, with their own category and labels', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirs = AutomationRule::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'title' => 'Their rule']);
+    AutomationRule::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'title' => 'My rule']);
+    $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $notFound = "No automation rule with id {$theirs->id} in space {$space->id}.";
+
+    callOwnRowsTool($user, ListAutomationRules::class, ['space' => $space->id])
+        ->assertOk()->assertSee('My rule')->assertDontSee('Their rule');
+    callOwnRowsTool($user, UpdateAutomationRule::class, ['automation_rule_id' => $theirs->id, 'space' => $space->id, 'title' => 'Mine'])
+        ->assertHasErrors([$notFound]);
+    callOwnRowsTool($user, ApplyAutomationRule::class, ['automation_rule_id' => $theirs->id, 'space' => $space->id])
+        ->assertHasErrors([$notFound]);
+    callOwnRowsTool($user, DeleteAutomationRule::class, ['automation_rule_id' => $theirs->id, 'space' => $space->id])
+        ->assertHasErrors([$notFound]);
+
+    $rule = ['space' => $space->id, 'title' => 'Groceries', 'priority' => 0, 'rules_json' => ['in' => ['grocery', ['var' => 'description']]]];
+    callOwnRowsTool($user, CreateAutomationRule::class, [...$rule, 'action_category_id' => $theirCategory->id])
+        ->assertHasErrors(["No category with id {$theirCategory->id} in space {$space->id}."]);
+    callOwnRowsTool($user, CreateAutomationRule::class, [...$rule, 'action_label_ids' => [$theirLabel->id]])
+        ->assertHasErrors(["One or more label ids are not labels of yours in space {$space->id}."]);
+
+    expect($theirs->fresh()->title)->toBe('Their rule')
+        ->and($user->automationRules()->count())->toBe(1);
 });

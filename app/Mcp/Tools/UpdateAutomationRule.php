@@ -5,8 +5,8 @@ namespace App\Mcp\Tools;
 use App\Mcp\Tools\Concerns\DecodesRulesJson;
 use App\Mcp\Tools\Concerns\PresentsAutomationRules;
 use App\Models\User;
+use App\Services\AutomationRules\AutomationRuleWriter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -37,16 +37,12 @@ class UpdateAutomationRule extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
-            'priority' => ['sometimes', 'integer', 'min:0'],
-            'action_note' => ['sometimes', 'nullable', 'string'],
-        ]);
+        $request->validate(AutomationRuleWriter::updateRules());
 
         $space = $this->resolveSpace($request, $user);
         $rule = $this->ruleInSpace($request, $space);
 
-        $this->applyFields($request, $rule, [
+        $changes = $this->requestedFields($request, [
             'title' => fn () => $request->string('title')->toString(),
             'priority' => fn () => $request->integer('priority'),
             'rules_json' => fn () => $this->rulesJson($request),
@@ -56,28 +52,12 @@ class UpdateAutomationRule extends WriteTool
             'action_note' => fn () => $this->nullableString($request, 'action_note'),
         ]);
 
-        $newLabels = $request->has('action_label_ids')
-            ? $this->labelsInSpace($request, $space, 'action_label_ids')
+        $labelIds = $request->has('action_label_ids')
+            ? $this->labelsInSpace($request, $space, 'action_label_ids')->pluck('id')->all()
             : null;
 
-        // The rule must keep at least one action. Compare against the labels it
-        // would have after this edit (the new set if provided, else current).
-        $labelCount = $newLabels !== null ? $newLabels->count() : $rule->labels()->count();
+        $rule = app(AutomationRuleWriter::class)->update($rule, $changes, $labelIds);
 
-        if ($rule->action_category_id === null && $labelCount === 0) {
-            throw ValidationException::withMessages([
-                'action_category_id' => 'An automation rule must keep at least one action: a category or labels.',
-            ]);
-        }
-
-        $rule->save();
-
-        if ($newLabels !== null) {
-            $rule->labels()->sync($newLabels->pluck('id')->all());
-        }
-
-        $rule->touch();
-
-        return $this->json(['automation_rule' => $this->presentAutomationRule($rule->refresh())]);
+        return $this->json(['automation_rule' => $this->presentAutomationRule($rule)]);
     }
 }

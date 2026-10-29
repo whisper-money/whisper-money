@@ -35,6 +35,9 @@ divide by 100 blindly. Read the `currency` first:
 When you send an amount, use the minor units of the currency of the account or
 object it is for.
 
+The one exception is the `conditions` of an automation rule: an amount compared
+there is in major units and signed, so an expense of 12.50 is `-12.5`.
+
 ## Dates
 
 Dates are ISO 8601 strings: `2026-01-15` for a calendar date, such as the day of

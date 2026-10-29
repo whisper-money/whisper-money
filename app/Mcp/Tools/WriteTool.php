@@ -109,11 +109,29 @@ abstract class WriteTool extends McpTool
      */
     protected function applyFields(Request $request, Model $model, array $fields): void
     {
+        foreach ($this->requestedFields($request, $fields) as $attribute => $value) {
+            $model->{$attribute} = $value;
+        }
+    }
+
+    /**
+     * The values of the fields the request actually carries, resolved the way
+     * applyFields() resolves them, for a shared writer to apply.
+     *
+     * @param  array<string, callable(): mixed>  $fields
+     * @return array<string, mixed>
+     */
+    protected function requestedFields(Request $request, array $fields): array
+    {
+        $values = [];
+
         foreach ($fields as $attribute => $value) {
             if ($request->has($attribute)) {
-                $model->{$attribute} = $value();
+                $values[$attribute] = $value();
             }
         }
+
+        return $values;
     }
 
     /**

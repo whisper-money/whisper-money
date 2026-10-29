@@ -2,13 +2,11 @@
 
 namespace App\Mcp\Tools;
 
-use App\Enums\RuleOrigin;
 use App\Mcp\Tools\Concerns\DecodesRulesJson;
 use App\Mcp\Tools\Concerns\PresentsAutomationRules;
-use App\Models\AutomationRule;
 use App\Models\User;
+use App\Services\AutomationRules\AutomationRuleWriter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -36,11 +34,7 @@ class CreateAutomationRule extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'priority' => ['required', 'integer', 'min:0'],
-            'action_note' => ['sometimes', 'nullable', 'string'],
-        ]);
+        $request->validate(AutomationRuleWriter::createRules());
 
         $space = $this->resolveSpace($request, $user);
 
@@ -50,28 +44,13 @@ class CreateAutomationRule extends WriteTool
             ? $this->categoryInSpace($request, $space, 'action_category_id')->id
             : null;
 
-        if ($categoryId === null && $labels->isEmpty()) {
-            throw ValidationException::withMessages([
-                'action_category_id' => 'At least one action is required: pass action_category_id and/or action_label_ids.',
-            ]);
-        }
-
-        $rule = new AutomationRule([
-            'user_id' => $user->id,
-            'space_id' => $space->id,
+        $rule = app(AutomationRuleWriter::class)->create($user, $space, [
             'title' => $request->string('title')->toString(),
             'priority' => $request->integer('priority'),
-            'origin' => RuleOrigin::User->value,
             'rules_json' => $rulesJson,
             'action_category_id' => $categoryId,
-            'action_note' => $request->filled('action_note') ? $request->string('action_note')->toString() : null,
-        ]);
-        $rule->save();
-
-        if ($labels->isNotEmpty()) {
-            $rule->labels()->sync($labels->pluck('id')->all());
-            $rule->touch();
-        }
+            'action_note' => $this->nullableString($request, 'action_note'),
+        ], $labels->pluck('id')->all());
 
         return $this->json(['automation_rule' => $this->presentAutomationRule($rule)]);
     }

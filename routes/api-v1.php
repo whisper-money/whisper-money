@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AccountBalanceController;
 use App\Http\Controllers\Api\V1\AccountController;
+use App\Http\Controllers\Api\V1\AutomationRuleController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\SpaceController;
@@ -56,4 +57,13 @@ Route::whereUuid('label')->group(function (): void {
     Route::get('labels/{label}', [LabelController::class, 'show'])->name('labels.show');
     Route::patch('labels/{label}', [LabelController::class, 'update'])->name('labels.update');
     Route::delete('labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
+});
+
+Route::whereUuid('automation_rule')->group(function (): void {
+    Route::get('automation-rules', [AutomationRuleController::class, 'index'])->name('automation-rules.index');
+    Route::post('automation-rules', [AutomationRuleController::class, 'store'])->name('automation-rules.store');
+    Route::get('automation-rules/{automation_rule}', [AutomationRuleController::class, 'show'])->name('automation-rules.show');
+    Route::patch('automation-rules/{automation_rule}', [AutomationRuleController::class, 'update'])->name('automation-rules.update');
+    Route::delete('automation-rules/{automation_rule}', [AutomationRuleController::class, 'destroy'])->name('automation-rules.destroy');
+    Route::post('automation-rules/{automation_rule}/apply', [AutomationRuleController::class, 'apply'])->name('automation-rules.apply');
 });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller as BaseController;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Space;
@@ -68,15 +69,15 @@ abstract class Controller extends BaseController
     }
 
     /**
-     * The route's category or label, looked up among the caller's own in the
+     * The route's category, label or automation rule, looked up among the caller's own in the
      * request's space like account().
      *
-     * @template TModel of Category|Label
+     * @template TModel of AutomationRule|Category|Label
      *
      * @param  class-string<TModel>  $model
      * @return TModel
      */
-    protected function inSpace(Request $request, string $model, string $id): Category|Label
+    protected function inSpace(Request $request, string $model, string $id): AutomationRule|Category|Label
     {
         return app(SpaceResolver::class)->ownedInSpaceOrFail($model, $this->user($request), $this->space($request), $id);
     }

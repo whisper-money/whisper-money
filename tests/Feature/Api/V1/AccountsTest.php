@@ -30,7 +30,7 @@ describe('list', function () {
     it('lists the accounts of the personal space, newest first', function () {
         $user = User::factory()->create();
         $bank = Bank::factory()->create(['name' => 'BBVA']);
-        $older = Account::factory()->create(['user_id' => $user->id, 'name' => 'Older', 'bank_id' => $bank->id, 'created_at' => now()->subDay()]);
+        $older = Account::factory()->create(['user_id' => $user->id, 'name' => 'Older', 'type' => AccountType::Checking, 'bank_id' => $bank->id, 'created_at' => now()->subDay()]);
         $newer = Account::factory()->connected()->create(['user_id' => $user->id, 'name' => 'Newer', 'type' => AccountType::Checking]);
         Account::factory()->create(['name' => 'Someone else']);
 
