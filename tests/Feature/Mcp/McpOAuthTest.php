@@ -3,6 +3,7 @@
 use App\Models\Label;
 use App\Models\User;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Laravel\Passport\Passport;
 use League\OAuth2\Server\Exception\OAuthServerException;
 
 use function Pest\Laravel\get;
@@ -101,6 +102,18 @@ it('registers a native client with a loopback redirect on any port', function (s
 })->with([
     'localhost' => 'http://localhost:53682/callback',
     '127.0.0.1' => 'http://127.0.0.1:61234/callback',
+    '127.0.0.1, short path' => 'http://127.0.0.1:5555/cb',
+    'localhost, other port' => 'http://localhost:1234/callback',
+]);
+
+it('registers the hosted connector callbacks', function (string $callback) {
+    postJson('/oauth/register', [
+        'client_name' => 'Connector',
+        'redirect_uris' => [$callback],
+    ])->assertCreated();
+})->with([
+    'Claude' => 'https://claude.ai/api/mcp/auth_callback',
+    'ChatGPT' => 'https://chatgpt.com/connector_platform_oauth_redirect',
 ]);
 
 it('rejects a DCR redirect URI outside the allowlist, plain-http or not', function (string $callback) {
@@ -111,7 +124,21 @@ it('rejects a DCR redirect URI outside the allowlist, plain-http or not', functi
 })->with([
     'plain-http host that is not loopback' => 'http://evil.example.com/callback',
     'https host outside the allowlist' => 'https://evil.example.com/callback',
+    'loopback prefix hiding another host' => 'http://127.0.0.1:x@evil.com/cb',
+    'localhost prefix hiding another host' => 'http://localhost:1234@evil.com/cb',
+    'allowed host as user info' => 'https://claude.ai@evil.com/cb',
+    'allowed host as a subdomain' => 'https://claude.ai.evil.com/cb',
+    'allowed host with credentials' => 'https://user:pass@claude.ai/cb',
 ]);
+
+it('rejects the whole registration when any redirect URI is outside the allowlist', function () {
+    postJson('/oauth/register', [
+        'client_name' => 'Evil',
+        'redirect_uris' => [CLAUDE_CALLBACK, 'http://127.0.0.1:x@evil.com/cb'],
+    ])->assertStatus(400)->assertJson(['error' => 'invalid_redirect_uri']);
+
+    expect(Passport::client()->newQuery()->count())->toBe(0);
+});
 
 /*
 |--------------------------------------------------------------------------

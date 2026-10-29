@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\OAuthScope;
 use App\Http\Controllers\OAuth\ApproveAuthorizationController;
 use App\Http\Controllers\OAuth\AuthorizationController;
+use App\Http\Controllers\OAuth\RegisterController;
 use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Responses\OAuthConsentResponse;
 use App\Http\Responses\RegisterResponse;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+use Laravel\Mcp\Server\Http\Controllers\OAuthRegisterController;
 use Laravel\Mcp\Server\Registrar;
 use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
 use Laravel\Passport\Http\Controllers\AuthorizationController as PassportAuthorizationController;
@@ -64,6 +66,7 @@ class AppServiceProvider extends ServiceProvider
             ->needs(StatefulGuard::class)
             ->give(fn () => Auth::guard(config('passport.guard')));
         $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
+        $this->app->bind(OAuthRegisterController::class, RegisterController::class);
 
         // The device-code grant approves through Passport's own controllers,
         // which skip the scope rules above. No client uses it; keep it off.
