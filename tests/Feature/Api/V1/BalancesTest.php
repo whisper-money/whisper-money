@@ -48,12 +48,12 @@ describe('list', function () {
             ->assertNotFound();
     });
 
-    it('lists the balances of an account in another space when asked', function () {
+    it('lists the balances of your account in another space when asked', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = Space::factory()->create(['owner_id' => $owner->id, 'personal' => false]);
         $space->members()->attach($user->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
-        $account = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $account = Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
         AccountBalance::factory()->create(['account_id' => $account->id]);
 
         withHeaders(apiV1Bearer($user))->getJson("/api/v1/accounts/{$account->id}/balances")->assertNotFound();
@@ -62,6 +62,25 @@ describe('list', function () {
             ->getJson("/api/v1/accounts/{$account->id}/balances?space={$space->id}")
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    });
+
+    it('answers 404 for the balances of another member\'s account of a shared space', function () {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = Space::factory()->create(['owner_id' => $owner->id, 'personal' => false]);
+        $space->members()->attach($user->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
+        $account = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        AccountBalance::factory()->create(['account_id' => $account->id]);
+
+        withHeaders(apiV1Bearer($user))
+            ->getJson("/api/v1/accounts/{$account->id}/balances?space={$space->id}")
+            ->assertNotFound();
+
+        withHeaders(apiV1Bearer($user, ['api:read', 'api:write']))
+            ->postJson("/api/v1/accounts/{$account->id}/balances?space={$space->id}", ['balance' => 1_000])
+            ->assertNotFound();
+
+        expect($account->balances()->count())->toBe(1);
     });
 });
 

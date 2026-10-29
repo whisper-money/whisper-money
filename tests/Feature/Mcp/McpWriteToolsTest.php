@@ -1550,7 +1550,7 @@ it('refuses to edit an account owned by another member of the space', function (
         'account_id' => $account->id,
         'space' => $shared->id,
         'name' => 'Mine now',
-    ])->assertHasErrors(['another member of the space']);
+    ])->assertHasErrors(["No account with id {$account->id} in space {$shared->id}."]);
 
     expect($account->fresh()->name)->toBe('Their account');
 });

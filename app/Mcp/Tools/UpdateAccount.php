@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Services\Accounts\AccountWriteRules;
 use App\Services\AccountWriteService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -41,10 +40,6 @@ class UpdateAccount extends WriteTool
 
         $space = $this->resolveSpace($request, $user);
         $account = $this->accountInSpace($request, $space);
-
-        if ($account->user_id !== $user->id) {
-            throw ValidationException::withMessages(['account_id' => AccountWriteRules::notOwnerMessage($account)]);
-        }
 
         $request->validate($rules->typeRule(required: false));
 

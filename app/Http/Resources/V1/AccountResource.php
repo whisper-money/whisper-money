@@ -78,10 +78,6 @@ class AccountResource extends JsonResource
              */
             'is_connected' => $this->isConnected(),
             /**
-             * Whether you own the account. Every member of its space reads it, but only its owner can edit it.
-             */
-            'owned' => $this->user_id === $user->id,
-            /**
              * The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures.
              *
              * @example 100

@@ -3,34 +3,34 @@
 namespace App\Http\Requests\Api\V1\Concerns;
 
 use App\Models\Account;
+use App\Models\User;
 use App\Services\SpaceResolver;
 
 /**
  * For the `/api/v1/accounts/{account}` form requests whose rules depend on
- * the account: it is looked up in the request's space, so one in another
- * space, or someone else's, is a 404 before anything is validated.
+ * the account: it is looked up among the caller's own in the request's
+ * space, so one in another space, or another member's, is a 404 before
+ * anything is validated.
  */
 trait ResolvesRouteAccount
 {
     private ?Account $routeAccount = null;
 
     /**
-     * Any member of the space may act on its accounts, so resolving the
-     * account is the whole check. A request that narrows it (only the owner
-     * may edit an account) overrides this.
+     * Only the caller's own accounts resolve, so this is the AccountPolicy
+     * check the app runs, made again on the resolved account.
      */
     public function authorize(): bool
     {
-        $this->account();
+        /** @var User $user */
+        $user = $this->user();
 
-        return true;
+        return $user->can('update', $this->account());
     }
 
     public function account(): Account
     {
-        $resolver = app(SpaceResolver::class);
-
-        return $this->routeAccount ??= $resolver->accountOrFail($resolver->forApiRequest($this), (string) $this->route('account'));
+        return $this->routeAccount ??= app(SpaceResolver::class)->ownedForApiRequest($this, Account::query())->findOrFail((string) $this->route('account'));
     }
 
     /**

@@ -141,8 +141,18 @@ abstract class McpTool extends Tool
     }
 
     /**
-     * Resolve every label id passed under $key, asserting each belongs to the
-     * space. Returns an empty collection when the argument is absent or empty.
+     * The authenticated user. Only a User reaches respond(): handle() refuses
+     * anything else first.
+     */
+    protected function caller(Request $request): User
+    {
+        /** @var User */
+        return $request->user();
+    }
+
+    /**
+     * Resolve every label id passed under $key, asserting each is one of the
+     * caller's own labels in the space, as the app does. Returns an empty collection when the argument is absent or empty.
      *
      * @return Collection<int, Label>
      */
@@ -155,11 +165,11 @@ abstract class McpTool extends Tool
             return new Collection;
         }
 
-        $labels = Label::query()->forSpace($space)->whereIn('id', $ids)->get();
+        $labels = app(SpaceResolver::class)->ownedInSpace(Label::query(), $this->caller($request), $space)->whereIn('id', $ids)->get();
 
         if ($labels->count() !== count($ids)) {
             throw ValidationException::withMessages([
-                $key => "One or more label ids do not exist in space {$space->id}. Call list_labels to see valid ids.",
+                $key => "One or more label ids are not labels of yours in space {$space->id}. Call list_labels to see valid ids.",
             ]);
         }
 

@@ -25,15 +25,15 @@ class AccountController extends Controller
     /**
      * List accounts
      *
-     * The accounts in a space, newest first, archived ones included. Every
-     * member of a space sees all of its accounts, whoever owns them.
+     * Your accounts in a space, newest first, archived ones included. As in
+     * the app, another member's accounts are not listed.
      */
     #[ScopedToSpace]
     #[Paginated(AccountResource::class)]
     public function index(Request $request): AnonymousResourceCollection
     {
         return CursorPaginator::paginate(
-            Account::query()->forSpace($this->space($request))->with(['bank:id,name', 'creditCardDetail']),
+            $this->owned($request, Account::query())->with(['bank:id,name', 'creditCardDetail']),
             $request,
             [['created_at', 'desc'], ['id', 'desc']],
             AccountResource::class,
@@ -82,8 +82,7 @@ class AccountController extends Controller
      * Changes only the fields you send. On a manual account that is all of
      * them; on a bank-connected one only the name, the type (among
      * `checking`, `credit_card`, `savings` and `others`) and the ownership
-     * fields, since its currency and bank come from the bank. Only the
-     * account's owner can edit it, not the other members of its space. A loan
+     * fields, since its currency and bank come from the bank. A loan
      * with no details yet needs `annual_interest_rate`, `loan_term_months` and
      * `original_amount` together; sending only some of them is a `422` and
      * nothing in the request is saved.

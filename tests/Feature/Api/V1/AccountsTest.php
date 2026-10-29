@@ -49,7 +49,6 @@ describe('list', function () {
                 'currency' => $older->currency_code,
                 'bank' => ['id' => $bank->id, 'name' => 'BBVA'],
                 'is_connected' => false,
-                'owned' => true,
                 'ownership_percentage' => 100,
                 'ownership_applies_to_balance' => $older->fresh()->ownership_applies_to_balance,
                 'credit_card_detail' => null,
@@ -61,19 +60,31 @@ describe('list', function () {
             ->assertJsonCount(2, 'data');
     });
 
-    it('lists another space when asked, including what other members own', function () {
+    it('lists only your own accounts of another space when asked, as the app does', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedSpaceWith($user, $owner);
-        $theirs = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $mine = Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
+        Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
         Account::factory()->create(['user_id' => $user->id]);
 
         withHeaders(apiV1Bearer($user))
             ->getJson('/api/v1/accounts?space='.$space->id)
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $theirs->id)
-            ->assertJsonPath('data.0.owned', false);
+            ->assertJsonPath('data.0.id', $mine->id);
+    });
+
+    it('answers 404 for another member\'s account of a shared space', function () {
+        $user = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedSpaceWith($user, $owner);
+        $account = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+
+        withHeaders(apiV1Bearer($user))
+            ->getJson('/api/v1/accounts/'.$account->id.'?space='.$space->id)
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
     });
 
     it('refuses a space the user cannot access', function () {
@@ -179,7 +190,6 @@ describe('create', function () {
             ->assertJsonPath('data.currency', 'EUR')
             ->assertJsonPath('data.is_connected', false)
             ->assertJsonPath('data.ownership_percentage', 100)
-            ->assertJsonPath('data.owned', true)
             ->assertJsonPath('data.space_id', $user->personalSpace->id);
 
         $account = $user->accounts()->sole();
@@ -352,7 +362,7 @@ describe('update', function () {
         expect($account->fresh()->currency_code)->toBe('EUR');
     });
 
-    it('refuses an account owned by another member of the space', function () {
+    it('answers 404 for an account owned by another member of the space', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedSpaceWith($user, $owner);
@@ -360,8 +370,8 @@ describe('update', function () {
 
         withHeaders(accountsWriter($user))
             ->patchJson('/api/v1/accounts/'.$account->id.'?space='.$space->id, ['name' => 'Mine now'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_account_owner');
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
 
         expect($account->fresh()->name)->toBe('Theirs');
     });

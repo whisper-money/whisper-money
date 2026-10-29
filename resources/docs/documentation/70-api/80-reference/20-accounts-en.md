@@ -10,7 +10,7 @@ An account is a bookkeeping record of money held somewhere: a manual one you kee
 
 `GET /api/v1/accounts`
 
-The accounts in a space, newest first, archived ones included. Every member of a space sees all of its accounts, whoever owns them.
+Your accounts in a space, newest first, archived ones included. As in the app, another member's accounts are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -39,7 +39,6 @@ The accounts in a space, newest first, archived ones included. Every member of a
 | `data[].bank.id` | string |  |
 | `data[].bank.name` | string |  |
 | `data[].is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data[].owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
 | `data[].ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data[].ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data[].credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
@@ -108,7 +107,6 @@ curl https://whisper.money/api/v1/accounts \
                 "name": "BBVA"
             },
             "is_connected": false,
-            "owned": true,
             "ownership_percentage": 100,
             "ownership_applies_to_balance": true,
             "credit_card_detail": null,
@@ -128,7 +126,7 @@ curl https://whisper.money/api/v1/accounts \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -191,7 +189,6 @@ Opens a manual account of any type, optionally with today's balance. A loan or a
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
 | `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
@@ -265,7 +262,6 @@ curl -X POST https://whisper.money/api/v1/accounts \
             "name": "BBVA"
         },
         "is_connected": false,
-        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,
@@ -283,7 +279,7 @@ curl -X POST https://whisper.money/api/v1/accounts \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -317,7 +313,6 @@ curl -X POST https://whisper.money/api/v1/accounts \
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
 | `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
@@ -384,7 +379,6 @@ curl https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 
             "name": "BBVA"
         },
         "is_connected": false,
-        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,
@@ -401,7 +395,7 @@ curl https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -410,7 +404,7 @@ curl https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 
 
 `PATCH /api/v1/accounts/{account}`
 
-Changes only the fields you send. On a manual account that is all of them; on a bank-connected one only the name, the type (among `checking`, `credit_card`, `savings` and `others`) and the ownership fields, since its currency and bank come from the bank. Only the account's owner can edit it, not the other members of its space. A loan with no details yet needs `annual_interest_rate`, `loan_term_months` and `original_amount` together; sending only some of them is a `422` and nothing in the request is saved. Changing a loan or a property to another type keeps its details and any mortgage link on file but stops using them. Archiving, hiding and deleting an account happen in the app.
+Changes only the fields you send. On a manual account that is all of them; on a bank-connected one only the name, the type (among `checking`, `credit_card`, `savings` and `others`) and the ownership fields, since its currency and bank come from the bank. A loan with no details yet needs `annual_interest_rate`, `loan_term_months` and `original_amount` together; sending only some of them is a `422` and nothing in the request is saved. Changing a loan or a property to another type keeps its details and any mortgage link on file but stops using them. Archiving, hiding and deleting an account happen in the app.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -465,7 +459,6 @@ Changes only the fields you send. On a manual account that is all of them; on a 
 | `data.bank.id` | string |  |
 | `data.bank.name` | string |  |
 | `data.is_connected` | boolean | Whether the account is connected to a bank. A connected account's balances, currency and bank come from the sync: only its name, type and ownership can be changed, and it takes no manual balance. |
-| `data.owned` | boolean | Whether you own the account. Every member of its space reads it, but only its owner can edit it. |
 | `data.ownership_percentage` | integer | The owner's share of the account, 1 to 100. Below 100 only that slice counts in their figures. |
 | `data.ownership_applies_to_balance` | boolean | Whether the ownership share applies to the balance too, not only to transactions. |
 | `data.credit_card_detail` | object or null | `credit_card` only, otherwise `null`: the card's limit and statement dates, in minor units and ISO dates. Later cycles repeat from the dates at `statement_frequency`. `null` while none is set. |
@@ -537,7 +530,6 @@ curl -X PATCH https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c
             "name": "BBVA"
         },
         "is_connected": false,
-        "owned": true,
         "ownership_percentage": 100,
         "ownership_applies_to_balance": true,
         "credit_card_detail": null,
@@ -554,7 +546,7 @@ curl -X PATCH https://whisper.money/api/v1/accounts/0199a3f2-6c1e-7b4d-9a8e-2f5c
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

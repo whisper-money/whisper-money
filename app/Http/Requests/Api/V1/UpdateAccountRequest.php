@@ -2,29 +2,14 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Http\ApiV1\ApiV1Exception;
 use App\Http\Requests\Api\V1\Concerns\ResolvesRouteAccount;
 use App\Http\Requests\Api\V1\Concerns\ValidatesAccountWrites;
-use App\Models\User;
-use App\Services\Accounts\AccountWriteRules;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAccountRequest extends FormRequest
 {
     use ResolvesRouteAccount, ValidatesAccountWrites;
-
-    /**
-     * Any member of a space reads its accounts, but only an account's owner
-     * edits it.
-     */
-    public function authorize(): bool
-    {
-        /** @var User $user */
-        $user = $this->user();
-
-        return $this->account()->user_id === $user->id;
-    }
 
     /**
      * @return array<string, array<mixed>>
@@ -84,10 +69,5 @@ class UpdateAccountRequest extends FormRequest
 
             $this->addRefusals($validator, $errors);
         }];
-    }
-
-    protected function failedAuthorization(): never
-    {
-        throw new ApiV1Exception(403, 'not_account_owner', AccountWriteRules::notOwnerMessage($this->account()));
     }
 }

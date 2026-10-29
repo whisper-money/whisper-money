@@ -176,15 +176,6 @@ class AccountWriteRules
     }
 
     /**
-     * A space is shared, so its members see what a housemate owns too — but
-     * an account belongs to its owner, not to the space.
-     */
-    public static function notOwnerMessage(Account $account): string
-    {
-        return "Account {$account->id} belongs to another member of the space, so only its owner can edit it. You can still read it and add transactions to it.";
-    }
-
-    /**
      * @param  array<string, string>  $errors
      *
      * @throws ValidationException
