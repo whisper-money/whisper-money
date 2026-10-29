@@ -36,13 +36,13 @@ class SplitTransactionRequest extends FormRequest
              */
             'splits.*.amount' => $rules['splits.*.amount'],
             /**
-             * The id of the part's category, a category of the space. Left out or `null`, the part is uncategorized.
+             * The id of the part's category, one of your categories in the space. Left out or `null`, the part is uncategorized.
              *
              * @format uuid
              */
             'splits.*.category_id' => [...$rules['splits.*.category_id'], $this->inSpace(Category::class, 'a category')],
             /**
-             * The ids of the part's labels, each a label of the space, up to 100. Defaults to none: the original's labels are not copied.
+             * The ids of the part's labels, each one of your labels in the space, up to 100. Defaults to none: the original's labels are not copied.
              */
             'splits.*.label_ids' => $rules['splits.*.label_ids'],
             /**

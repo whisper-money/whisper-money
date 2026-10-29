@@ -155,8 +155,7 @@ class TransactionController extends Controller
      * all. Works on any transaction you own, including one from a bank or an
      * import and one part of a split. Labelling is also how a transaction
      * counts towards a savings goal: it does once it carries the goal's
-     * label. Only the member of the space who owns the transaction can label
-     * it.
+     * label.
      *
      * @param  string  $transaction  The transaction's id.
      */

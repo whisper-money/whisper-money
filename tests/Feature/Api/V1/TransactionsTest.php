@@ -708,7 +708,7 @@ describe('labels', function () {
         withHeaders($headers)
             ->putJson('/api/v1/transactions/'.$transaction->id.'/labels', ['label_ids' => [Label::factory()->create()->id]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['label_ids.0' => 'is not a label in this space']);
+            ->assertJsonValidationErrors(['label_ids.0' => 'is not a label of yours in this space']);
 
         $label = Label::factory()->create(['user_id' => $user->id]);
 
@@ -733,7 +733,7 @@ describe('labels', function () {
             ->assertNotFound();
     });
 
-    it('refuses a read-only token and a transaction another member owns', function () {
+    it('refuses a read-only token, and answers 404 for a transaction another member owns', function () {
         $member = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedTransactionSpace($member, $owner);
@@ -748,10 +748,30 @@ describe('labels', function () {
 
         withHeaders(transactionsWriter($member))
             ->putJson($url, ['label_ids' => [$label->id]])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_transaction_owner');
+            ->assertNotFound();
 
         expect($theirs->labels()->count())->toBe(0);
+    });
+
+    it('refuses another member\'s label on your own transaction', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedTransactionSpace($member, $owner);
+        $mine = transactionOn(Account::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]));
+        $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $myLabel = Label::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]);
+        $url = '/api/v1/transactions/'.$mine->id.'/labels?space='.$space->id;
+
+        withHeaders(transactionsWriter($member))
+            ->putJson($url, ['label_ids' => [$theirLabel->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['label_ids.0' => 'of yours']);
+
+        withHeaders(transactionsWriter($member))
+            ->putJson($url, ['label_ids' => [$myLabel->id]])
+            ->assertOk();
+
+        expect($mine->labels()->pluck('labels.id')->all())->toBe([$myLabel->id]);
     });
     it('refuses more than 100 labels', function () {
         $user = User::factory()->create();
@@ -897,6 +917,41 @@ describe('split', function () {
         $replay->assertHeader('Idempotent-Replayed', 'true');
         expect($replay->json('data.*.id'))->toBe($first->json('data.*.id'))
             ->and(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(2);
+    });
+});
+
+describe('split and merge in a shared space', function () {
+    it('answers 404 for splitting or merging another member\'s transaction, and refuses their category and labels on your parts', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedTransactionSpace($member, $owner);
+        $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirs = transactionOn($theirAccount, ['amount' => -5000]);
+        $theirParts = app(TransactionSplitter::class)->split(transactionOn($theirAccount, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]]);
+        $mine = transactionOn(Account::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]), ['amount' => -5000]);
+        $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $headers = transactionsWriter($member);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$theirs->id.'/split?space='.$space->id, ['splits' => [['amount' => -3000], ['amount' => -2000]]])
+            ->assertNotFound();
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$theirParts->first()->id.'/merge-splits?space='.$space->id)
+            ->assertNotFound();
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$mine->id.'/split?space='.$space->id, ['splits' => [
+                ['amount' => -3000, 'category_id' => $theirCategory->id],
+                ['amount' => -2000, 'label_ids' => [$theirLabel->id]],
+            ]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits.0.category_id' => 'of yours', 'splits.1.label_ids.0' => 'of yours']);
+
+        expect($theirs->fresh()->isSplitPart())->toBeFalse()
+            ->and(Transaction::query()->whereKey($theirParts->pluck('id')->all())->count())->toBe(2)
+            ->and($mine->fresh())->not->toBeNull();
     });
 });
 

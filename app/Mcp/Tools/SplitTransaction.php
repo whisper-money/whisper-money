@@ -7,6 +7,7 @@ use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\SpaceResolver;
 use App\Services\TransactionSplitter;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,7 +44,7 @@ class SplitTransaction extends WriteTool
         $request->validate(TransactionSplitter::partRules());
 
         $parts = app(TransactionSplitter::class)
-            ->split($transaction, $this->partsFromRequest($request, $space));
+            ->split($transaction, $this->partsFromRequest($request, $user, $space));
 
         return $this->json([
             'space_id' => $space->id,
@@ -53,18 +54,18 @@ class SplitTransaction extends WriteTool
     }
 
     /**
-     * The requested parts, with every category and label id checked against the
-     * space before anything is written.
+     * The requested parts, with every category and label id checked to be the
+     * caller's own in the space before anything is written, as in the app.
      *
      * @return list<array<string, mixed>>
      */
-    private function partsFromRequest(Request $request, Space $space): array
+    private function partsFromRequest(Request $request, User $user, Space $space): array
     {
         $rows = collect((array) $request->get('splits', []))
             ->map(fn (mixed $row): array => (array) $row);
 
         $this->assertIdsExistInSpace(
-            Category::query()->forSpace($space),
+            app(SpaceResolver::class)->ownedInSpace(Category::query(), $user, $space),
             $rows->pluck('category_id')->filter()->unique()->values(),
             'category',
             'list_categories',
@@ -72,7 +73,7 @@ class SplitTransaction extends WriteTool
         );
 
         $this->assertIdsExistInSpace(
-            Label::query()->forSpace($space),
+            app(SpaceResolver::class)->ownedInSpace(Label::query(), $user, $space),
             $rows->pluck('label_ids')->flatten()->filter()->unique()->values(),
             'label',
             'list_labels',
@@ -102,7 +103,7 @@ class SplitTransaction extends WriteTool
 
         if ($found->count() !== $ids->count()) {
             throw ValidationException::withMessages([
-                'splits' => "One or more {$noun} ids do not exist in space {$space->id}. Call {$listTool} to see valid ids.",
+                'splits' => "One or more {$noun} ids are not yours in space {$space->id}. Call {$listTool} to see valid ids.",
             ]);
         }
     }

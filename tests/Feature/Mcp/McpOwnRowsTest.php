@@ -5,14 +5,19 @@ use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateTransaction;
 use App\Mcp\Tools\DeleteTransaction;
+use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
+use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\TransactionSplitter;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Testing\TestResponse;
 
@@ -123,4 +128,37 @@ it('refuses another member\'s account and category on a new transaction, and tak
 
     expect($theirAccount->transactions()->count())->toBe(0)
         ->and($myAccount->transactions()->count())->toBe(1);
+});
+
+it('refuses to label, split or merge another member\'s transaction, and their labels and categories on your own', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $theirs = Transaction::factory()->create(['user_id' => $owner->id, 'account_id' => $theirAccount->id, 'amount' => -5000]);
+    $theirParts = app(TransactionSplitter::class)->split(
+        Transaction::factory()->create(['user_id' => $owner->id, 'account_id' => $theirAccount->id, 'amount' => -5000]),
+        [['amount' => -3000], ['amount' => -2000]],
+    );
+    $mine = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id])->id, 'amount' => -5000]);
+    $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $myLabel = Label::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
+
+    callOwnRowsTool($user, LabelTransaction::class, ['transaction_id' => $theirs->id, 'space' => $space->id, 'add_label_ids' => [$myLabel->id]])
+        ->assertHasErrors(["No transaction with id {$theirs->id} in space {$space->id}."]);
+    callOwnRowsTool($user, SplitTransaction::class, ['transaction_id' => $theirs->id, 'space' => $space->id, 'splits' => [['amount' => -3000], ['amount' => -2000]]])
+        ->assertHasErrors(["No transaction with id {$theirs->id} in space {$space->id}."]);
+    callOwnRowsTool($user, MergeTransactionSplits::class, ['transaction_id' => $theirParts->first()->id, 'space' => $space->id])
+        ->assertHasErrors(['No transaction with id']);
+    callOwnRowsTool($user, LabelTransaction::class, ['transaction_id' => $mine->id, 'space' => $space->id, 'add_label_ids' => [$theirLabel->id]])
+        ->assertHasErrors(["One or more label ids are not labels of yours in space {$space->id}."]);
+    callOwnRowsTool($user, SplitTransaction::class, ['transaction_id' => $mine->id, 'space' => $space->id, 'splits' => [['amount' => -3000, 'category_id' => $theirCategory->id], ['amount' => -2000]]])
+        ->assertHasErrors(["One or more category ids are not yours in space {$space->id}."]);
+    callOwnRowsTool($user, LabelTransaction::class, ['transaction_id' => $mine->id, 'space' => $space->id, 'add_label_ids' => [$myLabel->id]])
+        ->assertOk();
+
+    expect($theirs->fresh()->labels()->count())->toBe(0)
+        ->and($mine->fresh()->isSplitPart())->toBeFalse()
+        ->and($mine->labels()->pluck('labels.id')->all())->toBe([$myLabel->id]);
 });
