@@ -6,6 +6,8 @@ use App\Enums\AccessTokenType;
 use DateTimeInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -58,13 +60,26 @@ trait ManagesAccessTokens
     /**
      * Revoke the token and issue a fresh secret with the same name and
      * abilities (and so the same prefix). Returns the new plaintext secret.
+     * Both happen in one transaction, so a failure never leaves the old and
+     * the new token alive side by side. An expired token is refused: rotating
+     * it would hand out a working secret for access that has already ended.
+     *
+     * @throws ValidationException
      */
     protected function reissue(Request $request, PersonalAccessToken $token, ?DateTimeInterface $expiresAt = null): string
     {
-        $fresh = $request->user()->createToken($token->name, $token->abilities, $expiresAt);
-        $token->delete();
+        if ($token->expires_at?->isPast()) {
+            throw ValidationException::withMessages([
+                'token' => __('This token has expired and cannot be rotated. Create a new one instead.'),
+            ]);
+        }
 
-        return $fresh->plainTextToken;
+        return DB::transaction(function () use ($request, $token, $expiresAt): string {
+            $fresh = $request->user()->createToken($token->name, $token->abilities, $expiresAt);
+            $token->delete();
+
+            return $fresh->plainTextToken;
+        });
     }
 
     /**

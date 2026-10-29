@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia;
+use Laravel\Sanctum\PersonalAccessToken;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -217,4 +218,30 @@ it('issues a token that authenticates at the API and is refused by the MCP serve
     withHeaders(['Authorization' => "Bearer {$plain}"])
         ->postJson('/mcp', ['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'])
         ->assertForbidden();
+});
+
+it('refuses to rotate an expired token, so it cannot be revived', function () {
+    Carbon::setTestNow('2026-01-01 00:00:00');
+    $user = User::factory()->create();
+    $token = $user->createToken('Stale', ['api:read'], now()->addDays(30))->accessToken;
+
+    Carbon::setTestNow('2026-03-01 00:00:00');
+
+    actingAs($user)
+        ->post(route('api-tokens.rotate', $token->id))
+        ->assertSessionHasErrors('token')
+        ->assertSessionMissing('api_token');
+
+    expect($user->tokens()->sole()->is($token))->toBeTrue();
+});
+
+it('keeps only the old token when rotating it fails halfway', function () {
+    $user = User::factory()->create();
+    $token = $user->createToken('Script', ['api:read'])->accessToken;
+    PersonalAccessToken::deleting(fn () => throw new RuntimeException('Delete failed.'));
+
+    expect(fn () => actingAs($user)->withoutExceptionHandling()->post(route('api-tokens.rotate', $token->id)))
+        ->toThrow(RuntimeException::class, 'Delete failed.');
+
+    expect($user->tokens()->sole()->is($token))->toBeTrue();
 });

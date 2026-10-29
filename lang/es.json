@@ -410,6 +410,7 @@
     "Done! You can continue now, or keep categorizing if you want.": "¡Listo! Ya puedes continuar, o seguir categorizando si quieres.",
     "You do not need to categorize all of them.": "No necesitas categorizarlas todas.",
     "Something went wrong.": "Algo salió mal.",
+    "This token has expired and cannot be rotated. Create a new one instead.": "Este token ha caducado y no se puede rotar. Crea uno nuevo.",
     "Integration requests": "Solicitudes de integración",
     "Request integration": "Solicitar integración",
     "Can't find your bank? Request or vote for it": "¿No encuentras tu banco? Solicítalo o vótalo",

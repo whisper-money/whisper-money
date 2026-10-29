@@ -85,7 +85,7 @@ function ConfirmTokenAction({
  * The user's tokens for one surface, each with its access, dates and the
  * rotate and revoke actions. `showExpiry` adds each token's expiry, for
  * screens whose tokens can expire; `canRotate` hides rotating where the server
- * would refuse it, while revoking is always offered.
+ * would refuse it, as does an expired token, while revoking is always offered.
  */
 export function TokenList({
     tokens,
@@ -108,12 +108,15 @@ export function TokenList({
         );
     }
 
-    // A refused rotation (the shared-account block) comes back as an error
-    // bag; say so instead of closing the dialog silently.
+    // A refused rotation (the shared-account block, an expired token) comes
+    // back as an error bag; say why instead of closing the dialog silently.
     const visitOptions = {
         preserveScroll: true,
         preserveState: true,
-        onError: () => toast.error(__('Something went wrong.')),
+        onError: (errors: Record<string, string>) =>
+            toast.error(
+                Object.values(errors)[0] ?? __('Something went wrong.'),
+            ),
     };
 
     return (
@@ -153,7 +156,7 @@ export function TokenList({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {canRotate && (
+                        {canRotate && !token.expired && (
                             <ConfirmTokenAction
                                 icon={RefreshCw}
                                 label={__('Rotate')}
