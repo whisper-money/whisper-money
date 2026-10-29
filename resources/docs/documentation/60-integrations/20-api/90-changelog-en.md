@@ -24,6 +24,13 @@ automation rule, budget or savings goal by its id:
 - **Analytics**: cashflow, net worth and spending by category.
 - **Achievements**: list your medals.
 
+Permissions are the app's: the API reaches only your own data, even in a
+[shared space](/documentation/api/spaces). Another member's account,
+transaction, category, label, rule or goal answers `404`, and its id is refused
+in a request body. As in the app, a transaction from your bank or an import can
+be deleted and moved to another date, but its amount and names stay as the bank
+sent them.
+
 Authentication works with [personal tokens or OAuth apps](/documentation/api/authentication),
 and the whole API is described in the [OpenAPI spec](https://whisper.money/api/v1/openapi.json).
 

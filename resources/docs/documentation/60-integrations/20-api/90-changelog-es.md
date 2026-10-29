@@ -25,6 +25,13 @@ objetivo de ahorro:
 - **Analítica**: flujo de caja, patrimonio y gasto por categoría.
 - **Medallas**: lista tus medallas.
 
+Los permisos son los de la app: la API solo llega a tus propios datos, también
+en un [espacio compartido](/documentation/api/spaces). La cuenta, transacción,
+categoría, etiqueta, regla u objetivo de otro miembro responde `404`, y su id
+se rechaza en el cuerpo de una petición. Igual que en la app, una transacción
+del banco o de una importación se puede borrar y mover de fecha, pero su
+importe y sus nombres se quedan como los envió el banco.
+
 La autenticación funciona con [tokens personales o apps OAuth](/documentation/api/authentication),
 y toda la API está descrita en la [especificación OpenAPI](https://whisper.money/api/v1/openapi.json).
 
