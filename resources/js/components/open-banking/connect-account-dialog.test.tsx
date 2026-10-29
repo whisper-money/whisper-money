@@ -18,8 +18,12 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
+const { translate } = vi.hoisted(() => ({
+    translate: vi.fn((key: string) => key),
+}));
+
 vi.mock('@/utils/i18n', () => ({
-    __: (key: string) => key,
+    __: translate,
 }));
 
 vi.mock('@/lib/csrf', () => ({
@@ -198,6 +202,15 @@ describe('ConnectAccountDialog', () => {
                 "Only continue if you are signing in with a different login, like a partner's.",
             ),
         ).toBeInTheDocument();
+    });
+
+    it('translates the word between the support links', async () => {
+        await reachBankStep([liveBbvaConnection()]);
+
+        fireEvent.click(screen.getByRole('button', { name: /BBVA/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(translate).toHaveBeenCalledWith('or');
     });
 
     it('names Manage Accounts without a link while the connection awaits mapping', async () => {

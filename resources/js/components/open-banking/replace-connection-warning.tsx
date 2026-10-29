@@ -64,7 +64,7 @@ export function ReplaceConnectionWarning({
                     >
                         {__('Join the community')}
                     </a>{' '}
-                    or{' '}
+                    {__('or')}{' '}
                     <a href={SUPPORT_MAILTO} className="text-primary underline">
                         {__('mail support')}
                     </a>

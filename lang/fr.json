@@ -2393,7 +2393,7 @@
     "If the transaction matches any of": "Si la transaction correspond à l'un des",
     "Add value": "Ajouter de la valeur",
     "Remove value": "Supprimer la valeur",
-    "or": "soit",
+    "or": "ou",
     "Create rule": "Créer une règle",
     "Ignore rule": "Ignorer la règle",
     ":count matches": ":count correspondances",
