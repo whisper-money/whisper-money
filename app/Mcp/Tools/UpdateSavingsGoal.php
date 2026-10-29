@@ -9,6 +9,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalService;
 use App\Services\SavingsGoals\SavingsGoalWriteRules;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -44,7 +45,7 @@ class UpdateSavingsGoal extends WriteTool
     protected function write(Request $request, User $user): Response
     {
         $space = $this->resolveSpace($request, $user);
-        $goal = $this->savingsGoalInSpace($request, $space);
+        $goal = $this->savingsGoalInSpace($request, $user, $space);
 
         $validated = $request->validate(...app(SavingsGoalWriteRules::class)->forUpdate($user, $goal));
 
@@ -63,12 +64,13 @@ class UpdateSavingsGoal extends WriteTool
     }
 
     /**
-     * An archived goal is frozen for good, so it is refused rather than edited.
+     * One of the caller's own goals in the space, as in the app. An archived
+     * goal is frozen for good, so it is refused rather than edited.
      */
-    private function savingsGoalInSpace(Request $request, Space $space): SavingsGoal
+    private function savingsGoalInSpace(Request $request, User $user, Space $space): SavingsGoal
     {
         $id = $request->string('savings_goal_id')->toString();
-        $goal = SavingsGoal::query()->forSpace($space)->whereKey($id)->first();
+        $goal = app(SpaceResolver::class)->ownedInSpace(SavingsGoal::query(), $user, $space)->whereKey($id)->first();
 
         if ($goal === null) {
             throw ValidationException::withMessages([

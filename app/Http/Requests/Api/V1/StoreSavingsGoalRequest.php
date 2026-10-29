@@ -30,7 +30,7 @@ class StoreSavingsGoalRequest extends FormRequest
              */
             'kind' => $this->writeRules()[0]['kind'] ?? ['required', Rule::enum(SavingsGoalKind::class)],
             /**
-             * Monthly goals: the id of a savings account of the goal's space. A new automation rule then tags the transfers into it to this goal, from the start of this month on. An account can feed only one running monthly goal.
+             * Monthly goals: the id of one of your savings accounts in the goal's space. A new automation rule then tags the transfers into it to this goal, from the start of this month on. An account can feed only one running monthly goal.
              *
              * @format uuid
              */
@@ -52,9 +52,8 @@ class StoreSavingsGoalRequest extends FormRequest
 
     private function feedableAccount(string $attribute, mixed $value, Closure $fail): void
     {
-        $resolver = app(SpaceResolver::class);
         $refusal = app(SavingsGoalWriteRules::class)->autoTagAccountRefusal(
-            $resolver->accountOrFail($resolver->forApiRequest($this), (string) $value),
+            app(SpaceResolver::class)->ownedForApiRequest($this, Account::query())->findOrFail((string) $value),
             'Pick an account of type savings from GET /api/v1/accounts.',
             'tag contributions to the goal with its label.',
         );

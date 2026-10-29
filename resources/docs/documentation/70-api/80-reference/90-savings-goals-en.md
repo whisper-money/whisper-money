@@ -10,7 +10,7 @@ A savings goal is tracked through a label: its contributions are the transaction
 
 `GET /api/v1/savings-goals`
 
-The goals of a space, newest first, archived ones included. Every member of a space sees all of its goals.
+Your goals in a space, newest first, archived ones included. As in the app, another member's goals are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -151,7 +151,7 @@ curl https://whisper.money/api/v1/savings-goals \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`, `not_savings_goal_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -176,7 +176,7 @@ Creates the goal in the space, with a label of the same name to tag its contribu
 | --- | --- | --- | --- |
 | `name` | string | Yes | The goal's name. It also names the label its contributions are tagged with, so it must not clash with one of your labels. |
 | `kind` | SavingsGoalKind | Yes | `one_off` to reach a total once, `monthly` to save towards a target every calendar month. Fixed once created. |
-| `auto_tag_account_id` | string (uuid) or null | No | Monthly goals: the id of a savings account of the goal's space. A new automation rule then tags the transfers into it to this goal, from the start of this month on. An account can feed only one running monthly goal. |
+| `auto_tag_account_id` | string (uuid) or null | No | Monthly goals: the id of one of your savings accounts in the goal's space. A new automation rule then tags the transfers into it to this goal, from the start of this month on. An account can feed only one running monthly goal. |
 | `target_amount` | integer | No | One-off goals: the total to reach, in the minor units of your account's currency. |
 | `initial_amount` | integer | No | One-off goals: what is already saved towards it, in minor units. Defaults to `0`. |
 | `target_date` | string (date) or null | No | One-off goals: the day to reach the total by, `YYYY-MM-DD`; in the future for a new goal. `null` clears it. |
@@ -320,7 +320,7 @@ curl -X POST https://whisper.money/api/v1/savings-goals \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`, `not_savings_goal_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -461,7 +461,7 @@ curl https://whisper.money/api/v1/savings-goals/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`, `not_savings_goal_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -627,7 +627,7 @@ curl -X PATCH https://whisper.money/api/v1/savings-goals/0199a3f2-6c1e-7b4d-9a8e
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`, `not_category_owner`, `not_label_owner`, `not_automation_rule_owner`, `not_savings_goal_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

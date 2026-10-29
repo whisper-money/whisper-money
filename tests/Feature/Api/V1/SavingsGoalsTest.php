@@ -158,17 +158,18 @@ describe('list', function () {
             ->assertJsonPath('code', 'invalid_cursor');
     });
 
-    it('lists a shared space when asked, and refuses one the user cannot access', function () {
+    it('lists only your own goals of a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create(['currency_code' => 'USD']);
         $owner = goalUser();
         $space = sharedGoalSpace($user, $owner);
-        $theirs = SavingsGoal::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        SavingsGoal::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $mine = SavingsGoal::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
         $headers = apiV1Bearer($user);
 
         withHeaders($headers)->getJson("/api/v1/savings-goals?space={$space->id}")
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id])
-            ->assertJsonPath('data.0.currency', 'EUR');
+            ->assertJsonPath('data.*.id', [$mine->id])
+            ->assertJsonPath('data.0.currency', 'USD');
 
         withHeaders($headers)->getJson('/api/v1/savings-goals?space='.Space::factory()->create()->id)
             ->assertUnprocessable()
@@ -267,7 +268,7 @@ describe('create', function () {
         'rate with more than two decimals' => [fn () => newMonthlyGoal(['monthly_target_type' => 'income_rate', 'monthly_target_rate' => 10.555]), 'monthly_target_rate'],
         'name too long' => [fn () => newMonthlyGoal(['name' => str_repeat('a', 256)]), 'name'],
         'not a savings account' => [fn (User $user) => newMonthlyGoal(['auto_tag_account_id' => Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking])->id]), 'auto_tag_account_id'],
-        'account of another space' => [fn (User $user) => newMonthlyGoal(['auto_tag_account_id' => savingsAccount(User::factory()->create())->id]), 'auto_tag_account_id', 'The auto tag account id is not an account in this space.'],
+        'account of another space' => [fn (User $user) => newMonthlyGoal(['auto_tag_account_id' => savingsAccount(User::factory()->create())->id]), 'auto_tag_account_id', 'The auto tag account id is not an account of yours in this space.'],
         'unknown field' => [fn () => newMonthlyGoal(['target' => 100]), 'target', 'This endpoint does not take a target field.'],
     ]);
 
@@ -284,6 +285,20 @@ describe('create', function () {
 
         expect($error)->toContain('already feeds the running monthly goal "Emergency fund"')
             ->and($user->savingsGoals()->count())->toBe(1);
+    });
+
+    it('refuses another member\'s savings account of the shared space as the auto-tag account', function () {
+        $user = goalUser();
+        $owner = goalUser();
+        $space = sharedGoalSpace($user, $owner);
+        $theirs = savingsAccount($owner, ['space_id' => $space->id]);
+
+        withHeaders(goalsWriter($user))
+            ->postJson("/api/v1/savings-goals?space={$space->id}", newMonthlyGoal(['auto_tag_account_id' => $theirs->id]))
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.auto_tag_account_id.0', 'The auto tag account id is not an account of yours in this space.');
+
+        expect($user->savingsGoals()->count())->toBe(0);
     });
 
     it('refuses a read-only token', function () {
@@ -354,7 +369,7 @@ describe('update', function () {
         'amount without its type' => [['monthly_target_amount' => 100], 'monthly_target_type', 'The monthly target type field is required when monthly target amount / monthly target rate is present.'],
     ]);
 
-    it('refuses an archived goal, a co-member\'s, someone else\'s and a read-only token', function () {
+    it('refuses an archived goal and a read-only token, and answers 404 for a co-member\'s or someone else\'s', function () {
         $user = goalUser();
         $archived = apiMonthlyGoal($user, ['name' => 'Old']);
         app(SavingsGoalService::class)->archive($archived);
@@ -367,9 +382,12 @@ describe('update', function () {
             ->assertUnprocessable()
             ->assertJsonPath('errors.savings_goal.0', "Savings goal {$archived->id} is archived and can no longer be changed. Archiving and deleting goals happen in the Whisper Money app.");
 
+        withHeaders($headers)->getJson("/api/v1/savings-goals/{$coMembers->id}?space={$space->id}")
+            ->assertNotFound();
+
         withHeaders($headers)->patchJson("/api/v1/savings-goals/{$coMembers->id}?space={$space->id}", ['name' => 'Mine'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_savings_goal_owner');
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
 
         withHeaders($headers)->patchJson('/api/v1/savings-goals/'.SavingsGoal::factory()->create()->id, ['name' => 'Mine'])
             ->assertNotFound();

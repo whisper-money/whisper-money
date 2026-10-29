@@ -4,6 +4,7 @@ namespace App\Mcp\Tools\Concerns;
 
 use App\Models\SavingsGoal;
 use App\Models\Space;
+use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalPresenter;
 
 /**
@@ -14,13 +15,13 @@ use App\Services\SavingsGoals\SavingsGoalPresenter;
 trait PresentsSavingsGoals
 {
     /**
-     * Every goal of the space, one-off ones first, read in one query.
+     * Every goal of $user in the space, one-off ones first, read in one query.
      *
      * @return list<array<string, mixed>>
      */
-    protected function presentSavingsGoals(Space $space): array
+    protected function presentSavingsGoals(User $user, Space $space): array
     {
-        return app(SavingsGoalPresenter::class)->all($space);
+        return app(SavingsGoalPresenter::class)->all($user, $space);
     }
 
     /**

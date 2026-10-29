@@ -23,15 +23,15 @@ class SavingsGoalController extends Controller
     /**
      * List savings goals
      *
-     * The goals of a space, newest first, archived ones included. Every
-     * member of a space sees all of its goals.
+     * Your goals in a space, newest first, archived ones included. As in the
+     * app, another member's goals are not listed.
      */
     #[ScopedToSpace]
     #[Paginated(SavingsGoalResource::class)]
     public function index(Request $request): AnonymousResourceCollection
     {
         return CursorPaginator::paginate(
-            SavingsGoal::query()->forSpace($this->space($request))->with(['user:id,currency_code', 'label' => fn ($query) => $query->withTrashed()]),
+            $this->owned($request, SavingsGoal::query())->with(['user:id,currency_code', 'label' => fn ($query) => $query->withTrashed()]),
             $request,
             [['created_at', 'desc'], ['id', 'desc']],
             SavingsGoalResource::class,

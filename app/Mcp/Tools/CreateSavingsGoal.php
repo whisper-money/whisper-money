@@ -97,8 +97,8 @@ class CreateSavingsGoal extends WriteTool
     }
 
     /**
-     * An account of the goal's space, where its rule and label live, that can
-     * feed the goal's auto-tag rule.
+     * One of the caller's own accounts in the goal's space, where its rule and
+     * label live, that can feed the goal's auto-tag rule.
      */
     private function assertSavingsAccount(Request $request, Space $space): void
     {

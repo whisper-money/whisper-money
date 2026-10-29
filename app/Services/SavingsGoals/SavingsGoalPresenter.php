@@ -5,6 +5,8 @@ namespace App\Services\SavingsGoals;
 use App\Enums\SavingsGoalKind;
 use App\Models\SavingsGoal;
 use App\Models\Space;
+use App\Models\User;
+use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -21,13 +23,14 @@ class SavingsGoalPresenter
     public function __construct(private MonthlySavingsGoalStats $monthlyStats) {}
 
     /**
-     * Every goal of the space, one-off ones first, read in one query.
+     * Every goal of $user in the space, one-off ones first, read in one
+     * query. As in the app, another member's goals are left out.
      *
      * @return list<array<string, mixed>>
      */
-    public function all(Space $space): array
+    public function all(User $user, Space $space): array
     {
-        return array_values($this->many(SavingsGoal::query()->forSpace($space)->listed()->get()));
+        return array_values($this->many(app(SpaceResolver::class)->ownedInSpace(SavingsGoal::query(), $user, $space)->listed()->get()));
     }
 
     /**
