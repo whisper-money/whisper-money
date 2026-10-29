@@ -73,7 +73,9 @@ Route::middleware('auth')->group(function () {
 
     // Only `block-demo` here: the press account is meant to hand out MCP
     // tokens, and the demo account is refused by the tools themselves anyway.
-    Route::get('settings/mcp', [McpTokenController::class, 'index'])->name('mcp.index');
+    Route::get('settings/mcp', [McpTokenController::class, 'index'])
+        ->middleware('deny-framing')
+        ->name('mcp.index');
     Route::post('settings/mcp/tokens', [McpTokenController::class, 'store'])
         ->middleware('block-demo')
         ->name('mcp.tokens.store');
@@ -83,10 +85,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/mcp/tokens/{token}', [McpTokenController::class, 'destroy'])
         ->middleware('block-demo')
         ->name('mcp.tokens.destroy');
+    Route::delete('settings/mcp/apps/{client}', [McpTokenController::class, 'destroyApp'])
+        ->middleware('block-demo')
+        ->name('mcp.apps.destroy');
 
     // `block-shared`: the API refuses both shared accounts (EnsureApiAccess),
     // so neither may hold an API token.
-    Route::get('settings/api', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::get('settings/api', [ApiTokenController::class, 'index'])
+        ->middleware('deny-framing')
+        ->name('api-tokens.index');
     Route::post('settings/api/tokens', [ApiTokenController::class, 'store'])
         ->middleware('block-shared')
         ->name('api-tokens.store');
@@ -96,6 +103,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/api/tokens/{token}', [ApiTokenController::class, 'destroy'])
         ->middleware('block-shared')
         ->name('api-tokens.destroy');
+    Route::delete('settings/api/apps/{client}', [ApiTokenController::class, 'destroyApp'])
+        ->middleware('block-shared')
+        ->name('api-tokens.apps.destroy');
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 

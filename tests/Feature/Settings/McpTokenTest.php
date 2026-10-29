@@ -24,6 +24,13 @@ it('renders the MCP settings page', function () {
         ->assertOk();
 });
 
+it('forbids framing the MCP settings page, which shows a new token', function () {
+    actingAs(User::factory()->create())
+        ->get(route('mcp.index'))
+        ->assertHeader('X-Frame-Options', 'DENY')
+        ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'");
+});
+
 it('creates a token for the scope picked and flashes the secret once', function (string $name, string $scope, array $abilities) {
     $user = User::factory()->create();
 

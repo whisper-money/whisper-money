@@ -1,21 +1,13 @@
-import { type TokenScope } from '@/components/access-tokens/create-token-form';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+    ConfirmTokenAction,
+    confirmedActionVisitOptions,
+    formatDate,
+} from '@/components/access-tokens/confirm-action';
+import { type TokenScope } from '@/components/access-tokens/create-token-form';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { RefreshCw, Trash2, type LucideIcon } from 'lucide-react';
-import { toast } from 'sonner';
+import { RefreshCw, Trash2 } from 'lucide-react';
 
 export interface AccessTokenRow {
     id: number;
@@ -26,59 +18,6 @@ export interface AccessTokenRow {
     /** Sent by screens whose tokens can expire (see `showExpiry`). */
     expires_at?: string | null;
     expired?: boolean;
-}
-
-function formatDate(value: string | null): string {
-    return value ? new Date(value).toLocaleString() : __('Never');
-}
-
-/**
- * A token action that asks for confirmation first, since both rotating and
- * revoking cut off whatever uses the current secret.
- */
-function ConfirmTokenAction({
-    icon: Icon,
-    label,
-    title,
-    description,
-    destructive = false,
-    onConfirm,
-}: {
-    icon: LucideIcon;
-    label: string;
-    title: string;
-    description: string;
-    destructive?: boolean;
-    onConfirm: () => void;
-}) {
-    return (
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className={destructive ? 'text-destructive' : undefined}
-                >
-                    <Icon className="h-4 w-4" />
-                    {label}
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{title}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {description}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>{__('Cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={onConfirm}>
-                        {label}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    );
 }
 
 /**
@@ -107,17 +46,6 @@ export function TokenList({
             </p>
         );
     }
-
-    // A refused rotation (the shared-account block, an expired token) comes
-    // back as an error bag; say why instead of closing the dialog silently.
-    const visitOptions = {
-        preserveScroll: true,
-        preserveState: true,
-        onError: (errors: Record<string, string>) =>
-            toast.error(
-                Object.values(errors)[0] ?? __('Something went wrong.'),
-            ),
-    };
 
     return (
         <ul className="divide-y">
@@ -168,7 +96,7 @@ export function TokenList({
                                     router.post(
                                         rotateUrl(token.id),
                                         {},
-                                        visitOptions,
+                                        confirmedActionVisitOptions,
                                     )
                                 }
                             />
@@ -184,7 +112,7 @@ export function TokenList({
                             onConfirm={() =>
                                 router.delete(
                                     destroyUrl(token.id),
-                                    visitOptions,
+                                    confirmedActionVisitOptions,
                                 )
                             }
                         />

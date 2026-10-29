@@ -101,18 +101,9 @@ describe('OAuth access tokens', function () {
         $user = User::factory()->create();
         app(ClientRepository::class)->createPersonalAccessGrantClient('Test personal access client', 'users');
 
-        // The api:use scope is registered by the OAuth work that ships later;
-        // register it here so the server will sign a token carrying it.
-        $registered = Passport::$scopes;
-        Passport::tokensCan([...$registered, 'api:use' => 'Use the Whisper Money API']);
-
-        try {
-            $jwt = app(PersonalAccessTokenFactory::class)
-                ->make($user->getKey(), 'test', $scopes, 'users')
-                ->accessToken;
-        } finally {
-            Passport::$scopes = $registered;
-        }
+        $jwt = app(PersonalAccessTokenFactory::class)
+            ->make($user->getKey(), 'test', $scopes, 'users')
+            ->accessToken;
 
         withHeaders(['Authorization' => "Bearer {$jwt}"])
             ->getJson('/api/v1/spaces')

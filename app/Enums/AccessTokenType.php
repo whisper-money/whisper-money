@@ -19,6 +19,17 @@ enum AccessTokenType: string
      */
     public const string GenericPrefix = 'wm_';
 
+    /**
+     * The OAuth scope that opens the same surface to a connected app.
+     */
+    public function oauthScope(): OAuthScope
+    {
+        return match ($this) {
+            self::Api => OAuthScope::Api,
+            self::Mcp => OAuthScope::Mcp,
+        };
+    }
+
     public function prefix(): string
     {
         return self::GenericPrefix.$this->value.'_';

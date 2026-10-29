@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Enums\AccessTokenType;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Settings\Concerns\ManagesAccessTokens;
+use App\Http\Controllers\Settings\Concerns\ManagesConnectedApps;
 use App\Http\Requests\Settings\StoreMcpTokenRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,10 +15,11 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class McpTokenController extends Controller
 {
-    use ManagesAccessTokens;
+    use ManagesAccessTokens, ManagesConnectedApps;
 
     /**
-     * Show the MCP access page: existing tokens, connection details and the
+     * Show the MCP access page: existing tokens, the connected OAuth apps,
+     * connection details and the
      * one-time plaintext secret when a token was just created.
      */
     public function index(Request $request): Response
@@ -25,6 +27,7 @@ class McpTokenController extends Controller
         abort_if($request->user()->isRestrictedDemoAccount(), 404);
 
         return Inertia::render('settings/mcp', [
+            'connectedApps' => $this->connectedApps($request),
             'tokens' => $this->managedTokens($request)
                 ->map(fn (PersonalAccessToken $token): array => $this->tokenRow($token))
                 ->all(),

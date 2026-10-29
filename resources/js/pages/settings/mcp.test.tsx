@@ -1,3 +1,4 @@
+import { type ConnectedAppRow } from '@/components/access-tokens/connected-app-list';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +7,7 @@ import McpPage from './mcp';
 const pageProps = vi.hoisted(() => ({
     auth: { hasProPlan: true },
     tokens: [],
+    connectedApps: [] as ConnectedAppRow[],
     serverUrl: 'https://whisper.money/mcp',
     oauthUrl: 'https://whisper.money/mcp/oauth',
     subscribeUrl: '/subscribe',
@@ -37,6 +39,28 @@ vi.mock('@/layouts/settings/layout', () => ({
 describe('MCP settings page', () => {
     beforeEach(() => {
         pageProps.newToken = null;
+        pageProps.connectedApps = [];
+    });
+
+    it('lists the assistants connected through OAuth', () => {
+        pageProps.connectedApps = [
+            {
+                id: 'client-1',
+                name: 'ChatGPT',
+                verified: true,
+                redirect: 'https://chatgpt.com',
+                scopes: ['AI Connector'],
+                connected_at: '2026-10-01T00:00:00+00:00',
+                last_used_at: null,
+            },
+        ];
+
+        render(<McpPage />);
+
+        expect(screen.getByText('Connected apps')).toBeTruthy();
+        expect(screen.getByText('Verified')).toBeTruthy();
+        expect(screen.getByText('https://chatgpt.com')).toBeTruthy();
+        expect(screen.queryByText(/Last used/)).toBeNull();
     });
 
     it('offers the Claude Code plugin before the token command', () => {

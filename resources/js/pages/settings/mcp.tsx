@@ -1,9 +1,14 @@
 import {
     destroy,
+    destroyApp,
     index as mcpIndex,
     rotate,
     store,
 } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
+import {
+    ConnectedAppList,
+    type ConnectedAppRow,
+} from '@/components/access-tokens/connected-app-list';
 import { CopyableCode } from '@/components/access-tokens/copyable-code';
 import {
     CreateTokenForm,
@@ -48,6 +53,7 @@ import { useState, type ReactNode } from 'react';
 
 interface McpPageProps {
     tokens: AccessTokenRow[];
+    connectedApps: ConnectedAppRow[];
     serverUrl: string;
     oauthUrl: string;
     subscribeUrl: string;
@@ -94,8 +100,15 @@ const CLAUDE_CODE_PLUGIN_COMMANDS = [
 type ConnectorApp = 'claude' | 'chatgpt';
 
 export default function Mcp() {
-    const { tokens, serverUrl, oauthUrl, subscribeUrl, newToken, auth } =
-        usePage<SharedData & McpPageProps>().props;
+    const {
+        tokens,
+        connectedApps,
+        serverUrl,
+        oauthUrl,
+        subscribeUrl,
+        newToken,
+        auth,
+    } = usePage<SharedData & McpPageProps>().props;
     const [connector, setConnector] = useState<ConnectorApp>('claude');
     // A freshly minted token means the user just used the developer flow, so
     // keep that section open; otherwise it starts collapsed for everyone else.
@@ -266,6 +279,14 @@ export default function Mcp() {
                             </p>
                         </CardContent>
                     </Card>
+
+                    <ConnectedAppList
+                        apps={connectedApps}
+                        description={__(
+                            'Assistants you connected by signing in, such as Claude or ChatGPT. Revoke one to disconnect it.',
+                        )}
+                        destroyUrl={(id) => destroyApp(id).url}
+                    />
 
                     {/* Developer flow: Claude Code + token management, hidden by default */}
                     <Collapsible
