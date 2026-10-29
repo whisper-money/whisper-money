@@ -57,9 +57,11 @@ return [
         ],
     ],
 
-    'servers' => [
-        'Whisper Money' => 'api/v1',
-    ],
+    /*
+     * Pinned to APP_URL by ApiDocumentationServiceProvider, so the spec never
+     * depends on the request host.
+     */
+    'servers' => null,
 
     'enum_cases_description_strategy' => 'description',
 

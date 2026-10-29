@@ -32,6 +32,12 @@ it('allows any origin to fetch the spec', function () {
         ->assertHeader('Access-Control-Allow-Origin', '*');
 });
 
+it('pins the server URL to the app URL, whatever host the request claims', function () {
+    $this->getJson('/api/v1/openapi.json', ['X-Forwarded-Host' => 'evil.test'])
+        ->assertOk()
+        ->assertJsonPath('servers.0.url', rtrim((string) config('app.url'), '/').'/api/v1');
+});
+
 it('does not register the Scramble UI or its own spec route', function () {
     $this->get('/docs/api')->assertNotFound();
     $this->get('/docs/api.json')->assertNotFound();
