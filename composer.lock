@@ -10694,16 +10694,16 @@
         },
         {
             "name": "amphp/http-server",
-            "version": "v3.4.6",
+            "version": "v3.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/amphp/http-server.git",
-                "reference": "8a971bf92cf8cf2bc511f37a75b39126d5305315"
+                "reference": "aa96ca38c5f822a827236543d5417d0c2a782ef0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/amphp/http-server/zipball/8a971bf92cf8cf2bc511f37a75b39126d5305315",
-                "reference": "8a971bf92cf8cf2bc511f37a75b39126d5305315",
+                "url": "https://api.github.com/repos/amphp/http-server/zipball/aa96ca38c5f822a827236543d5417d0c2a782ef0",
+                "reference": "aa96ca38c5f822a827236543d5417d0c2a782ef0",
                 "shasum": ""
             },
             "require": {
@@ -10779,7 +10779,7 @@
             ],
             "support": {
                 "issues": "https://github.com/amphp/http-server/issues",
-                "source": "https://github.com/amphp/http-server/tree/v3.4.6"
+                "source": "https://github.com/amphp/http-server/tree/v3.4.7"
             },
             "funding": [
                 {
@@ -10787,7 +10787,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-06-27T10:31:48+00:00"
+            "time": "2026-10-04T15:14:17+00:00"
         },
         {
             "name": "amphp/parser",
