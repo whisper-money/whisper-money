@@ -29,7 +29,7 @@ class UpdateTransactionRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            $sent = $this->getInputSource()->keys();
+            $sent = $this->sentFields();
             $lockedFieldError = TransactionWriteRules::lockedCoreFieldError($this->transaction(), $sent);
 
             $this->addRefusals($validator, [

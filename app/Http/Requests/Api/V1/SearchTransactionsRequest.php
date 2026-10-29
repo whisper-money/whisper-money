@@ -26,7 +26,7 @@ class SearchTransactionsRequest extends FormRequest
              *
              * @example coffee
              */
-            'query' => ['sometimes', 'string'],
+            'query' => ['sometimes', 'string', 'max:200'],
             /**
              * Only the transactions of this account.
              *

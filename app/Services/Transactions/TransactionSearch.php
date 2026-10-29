@@ -4,6 +4,7 @@ namespace App\Services\Transactions;
 
 use App\Models\Space;
 use App\Models\Transaction;
+use App\Rules\StorableDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Fluent;
 
@@ -23,8 +24,8 @@ class TransactionSearch
     public static function rules(): array
     {
         return [
-            'from' => ['sometimes', 'date'],
-            'to' => ['sometimes', 'date'],
+            'from' => ['sometimes', 'date', new StorableDate],
+            'to' => ['sometimes', 'date', new StorableDate],
         ];
     }
 

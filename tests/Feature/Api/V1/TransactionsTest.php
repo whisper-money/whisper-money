@@ -127,6 +127,15 @@ describe('list', function () {
             ->assertJsonValidationErrors(['from', 'account_id', 'category_id', 'label_ids.0']);
     });
 
+    it('refuses a date whose year cannot be stored and an oversized query', function () {
+        $user = User::factory()->create();
+
+        withHeaders(apiV1Bearer($user))
+            ->getJson('/api/v1/transactions?from=262004-08-10&to=0001-01-01&query='.str_repeat('a', 201))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['from', 'to', 'query']);
+    });
+
     it('lists a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
@@ -277,6 +286,25 @@ describe('create', function () {
             ->assertJsonValidationErrors(['account_id', 'description', 'amount', 'transaction_date', 'currency_code', 'colour']);
     });
 
+    it('refuses oversized text and a currency the app does not support', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions', [
+                'account_id' => $account->id,
+                'description' => str_repeat('a', 1001),
+                'notes' => str_repeat('a', 10001),
+                'amount' => -100,
+                'transaction_date' => '2026-01-15',
+                'currency_code' => 'XYZ',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['description', 'notes', 'currency_code']);
+
+        expect(Transaction::query()->count())->toBe(0);
+    });
+
     it('refuses an account, category or label of another space', function () {
         $user = User::factory()->create();
 
@@ -402,6 +430,37 @@ describe('update', function () {
 
         expect($imported->fresh()->amount)->toBe(-500)
             ->and($imported->fresh()->notes)->not->toBe('Edited');
+    });
+
+    it('refuses the core fields of an imported transaction or a split part sent in the query string', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $other = Account::factory()->create(['user_id' => $user->id]);
+        $imported = Transaction::factory()->imported()->create(['user_id' => $user->id, 'account_id' => $account->id, 'amount' => -500, 'transaction_date' => '2026-01-15']);
+        $original = transactionOn($account, ['amount' => -5000]);
+        $part = app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000]])->first();
+        $headers = transactionsWriter($user);
+
+        foreach ([$imported, $part] as $transaction) {
+            withHeaders($headers)
+                ->patchJson('/api/v1/transactions/'.$transaction->id.'?amount=1&transaction_date=2020-01-01&account_id='.$other->id, [])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['amount', 'transaction_date', 'account_id']);
+        }
+
+        expect($imported->fresh())->amount->toBe(-500)->account_id->toBe($account->id)
+            ->and($imported->fresh()->transaction_date->toDateString())->toBe('2026-01-15')
+            ->and($part->fresh())->amount->toBe(-3000)->account_id->toBe($account->id);
+    });
+
+    it('refuses a field it does not take sent in the query string', function () {
+        $user = User::factory()->create();
+        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]));
+
+        withHeaders(transactionsWriter($user))
+            ->patchJson('/api/v1/transactions/'.$transaction->id.'?colour=red', ['notes' => 'Edited'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['colour']);
     });
 
     it('moves the transaction to another account of the space, moving the manual balances', function () {

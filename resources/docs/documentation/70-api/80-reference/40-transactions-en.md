@@ -141,7 +141,7 @@ Records a transaction by hand on any account of the space, bank-connected ones i
 | `description` | string | Yes | What the transaction was for. |
 | `amount` | integer | Yes | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
 | `transaction_date` | string (date) | Yes | The day the transaction happened. |
-| `currency_code` | string | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
+| `currency_code` | "USD" \| "EUR" \| "GBP" \| "JPY" \| "CHF" \| "CZK" \| "CAD" \| "AUD" \| "NZD" \| "CNY" \| "INR" \| "PKR" \| "MXN" \| "ARS" \| "BOB" \| "CLP" \| "PYG" \| "PEN" \| "UYU" \| "VES" \| "BRL" \| "COP" \| "DOP" \| "SAR" \| "KWD" \| "BTC" \| "RSD" \| "NGN" \| "GHS" \| "SEK" \| "GTQ" \| "HNL" \| "HKD" \| "THB" \| "DKK" \| "SGD" | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
 | `category_id` | string (uuid) or null | No | The id of the category, or `null` for none. Setting it marks the category as assigned by you, so the automatic categorization leaves it alone. |
 | `creditor_name` | string or null | No | Who was paid, or `null`. |
 | `debtor_name` | string or null | No | Who paid, or `null`. |
@@ -363,7 +363,7 @@ Changes only the fields you send, and also sets or clears the category. Only the
 | `description` | string | No | What the transaction was for. |
 | `amount` | integer | No | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
 | `transaction_date` | string (date) | No | The day the transaction happened. |
-| `currency_code` | string | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
+| `currency_code` | "USD" \| "EUR" \| "GBP" \| "JPY" \| "CHF" \| "CZK" \| "CAD" \| "AUD" \| "NZD" \| "CNY" \| "INR" \| "PKR" \| "MXN" \| "ARS" \| "BOB" \| "CLP" \| "PYG" \| "PEN" \| "UYU" \| "VES" \| "BRL" \| "COP" \| "DOP" \| "SAR" \| "KWD" \| "BTC" \| "RSD" \| "NGN" \| "GHS" \| "SEK" \| "GTQ" \| "HNL" \| "HKD" \| "THB" \| "DKK" \| "SGD" | No | The ISO 4217 currency the amount is in. Defaults to the account's. |
 | `category_id` | string (uuid) or null | No | The id of the category, or `null` for none. Setting it marks the category as assigned by you, so the automatic categorization leaves it alone. |
 | `creditor_name` | string or null | No | Who was paid, or `null`. |
 | `debtor_name` | string or null | No | Who paid, or `null`. |

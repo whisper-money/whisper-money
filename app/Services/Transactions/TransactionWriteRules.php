@@ -5,6 +5,8 @@ namespace App\Services\Transactions;
 use App\Enums\TransactionSource;
 use App\Models\Transaction;
 use App\Rules\StorableDate;
+use App\Services\CurrencyOptions;
+use Illuminate\Validation\Rule;
 
 /**
  * The transaction write rules and refusals, shared by the create, update and
@@ -34,13 +36,21 @@ class TransactionWriteRules
     ];
 
     /**
+     * Well under what the TEXT columns hold, so oversized input is a 422
+     * instead of a failed insert.
+     */
+    private const int DescriptionMaxLength = 1000;
+
+    private const int NotesMaxLength = 10000;
+
+    /**
      * @return array<string, array<mixed>>
      */
     public static function createRules(): array
     {
         return [
             'account_id' => ['required', 'string'],
-            'description' => ['required', 'string'],
+            'description' => ['required', 'string', 'max:'.self::DescriptionMaxLength],
             'amount' => ['required', 'integer'],
             'transaction_date' => ['required', 'date', new StorableDate],
             ...self::optionalFieldRules(),
@@ -55,7 +65,7 @@ class TransactionWriteRules
     public static function updateRules(): array
     {
         return [
-            'description' => ['sometimes', 'string'],
+            'description' => ['sometimes', 'string', 'max:'.self::DescriptionMaxLength],
             'amount' => ['sometimes', 'integer'],
             'transaction_date' => ['sometimes', 'date', new StorableDate],
             ...self::optionalFieldRules(),
@@ -115,8 +125,8 @@ class TransactionWriteRules
     private static function optionalFieldRules(): array
     {
         return [
-            'currency_code' => ['sometimes', 'string', 'size:3'],
-            'notes' => ['sometimes', 'nullable', 'string'],
+            'currency_code' => ['sometimes', 'string', Rule::in(app(CurrencyOptions::class)->accountCodes())],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:'.self::NotesMaxLength],
             'creditor_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'debtor_name' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];

@@ -32,9 +32,21 @@ trait AddsRefusals
     {
         $known = [...array_keys($this->rules()), 'space'];
 
-        return collect($this->getInputSource()->keys())
+        return collect($this->sentFields())
             ->reject(fn (string $field): bool => in_array($field, $known, true))
             ->mapWithKeys(fn (string $field): array => [$field => "This endpoint does not take a {$field} field."])
             ->all();
+    }
+
+    /**
+     * The fields the request carries: exactly the data it is validated with,
+     * the query string included, so a field cannot skip a refusal by being
+     * sent there instead of in the body.
+     *
+     * @return list<string>
+     */
+    protected function sentFields(): array
+    {
+        return array_map(strval(...), array_keys($this->validationData()));
     }
 }
