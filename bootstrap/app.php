@@ -7,6 +7,7 @@ use App\Http\Middleware\ApiV1\HandleIdempotencyKey;
 use App\Http\Middleware\ApiV1\RecordApiRequest;
 use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Middleware\BlockSharedAccountActions;
+use App\Http\Middleware\DenyFraming;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureOpenBankingConfigured;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -91,6 +92,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'open-banking' => EnsureOpenBankingConfigured::class,
             'block-demo' => BlockSharedAccountActions::class.':demo',
             'block-shared' => BlockSharedAccountActions::class,
+            'deny-framing' => DenyFraming::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);

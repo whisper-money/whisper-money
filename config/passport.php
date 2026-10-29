@@ -15,7 +15,8 @@ return [
 
     'guard' => 'web',
 
-    'middleware' => [],
+    // Every Passport route, the consent screen included, refuses to be framed.
+    'middleware' => ['deny-framing'],
 
     /*
     |--------------------------------------------------------------------------

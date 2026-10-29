@@ -148,6 +148,15 @@ describe('consent screen', function () {
         'API' => ['api:use', 'API with your account', 'connect your AI assistant'],
     ]);
 
+    it('forbids framing the consent screen', function () {
+        [, $challenge] = pkcePair();
+
+        requestOAuthConsent(User::factory()->create(), oauthClient(), ['api:use'], $challenge)
+            ->assertOk()
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'");
+    });
+
     it('shows the API wording in Spanish', function () {
         [, $challenge] = pkcePair();
         $user = User::factory()->create(['locale' => 'es']);
