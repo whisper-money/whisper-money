@@ -117,6 +117,7 @@ describe('API settings page', () => {
             {
                 id: 'client-1',
                 name: 'Budget Sync',
+                verified: false,
                 redirect: 'http://localhost:53682',
                 scopes: ['API'],
                 connected_at: '2026-10-01T00:00:00+00:00',

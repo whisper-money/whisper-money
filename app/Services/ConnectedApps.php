@@ -6,6 +6,7 @@ use App\Enums\OAuthScope;
 use App\Models\ApiRequest;
 use App\Models\User;
 use App\Support\RedirectTarget;
+use App\Support\VerifiedOAuthApps;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -26,10 +27,11 @@ class ConnectedApps
     /**
      * One row per client, with where it redirects (its name is whatever its
      * registrant chose, so the redirect is what tells two apps apart) and its
-     * scopes by name. `last_used_at` is only known for the API, which records
+     * scopes by name. A client whose redirects only reach a verified app is
+     * named after that app and flagged `verified`. `last_used_at` is only known for the API, which records
      * the client of every request; MCP tool calls do not.
      *
-     * @return list<array{id: string, name: string, redirect: ?string, scopes: list<string>, connected_at: ?string, last_used_at: ?string}>
+     * @return list<array{id: string, name: string, verified: bool, redirect: ?string, scopes: list<string>, connected_at: ?string, last_used_at: ?string}>
      */
     public function for(User $user, OAuthScope $scope): array
     {
@@ -40,7 +42,7 @@ class ConnectedApps
             ->groupBy('client_id')
             ->map(fn (Collection $clientTokens, string $clientId): array => [
                 'id' => $clientId,
-                'name' => $clientTokens->first()->client->name ?? __('Deleted app'),
+                ...$this->identityOf($clientTokens->first()->client),
                 'redirect' => $this->redirectOf($clientTokens->first()->client),
                 'scopes' => $clientTokens->pluck('scopes')->flatten()->unique()
                     ->map(fn (string $id): string => OAuthScope::tryFrom($id)?->label() ?? $id)
@@ -69,6 +71,22 @@ class ConnectedApps
 
             return Token::query()->whereIn('id', $tokenIds)->update(['revoked' => true]);
         });
+    }
+
+    /**
+     * The verified app's name for a verified client, otherwise whatever name
+     * its registrant chose.
+     *
+     * @return array{name: string, verified: bool}
+     */
+    private function identityOf(?Client $client): array
+    {
+        $verifiedName = VerifiedOAuthApps::fromConfig()->nameOf($client);
+
+        return [
+            'name' => $verifiedName ?? $client->name ?? __('Deleted app'),
+            'verified' => $verifiedName !== null,
+        ];
     }
 
     private function redirectOf(?Client $client): ?string

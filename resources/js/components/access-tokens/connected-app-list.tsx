@@ -13,11 +13,14 @@ import {
 } from '@/components/ui/card';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import { BadgeCheck, Trash2 } from 'lucide-react';
 
 export interface ConnectedAppRow {
     id: string;
+    /** The verified app's name when `verified`, otherwise whatever its registrant chose. */
     name: string;
+    /** Every redirect of the app reaches only a verified app's hosts (Claude, ChatGPT). */
+    verified: boolean;
     /** Where the app sends the user back: what tells two same-named apps apart. */
     redirect: string | null;
     scopes: string[];
@@ -27,7 +30,8 @@ export interface ConnectedAppRow {
 
 /**
  * The OAuth apps connected to one surface (MCP or API), each with where it
- * redirects, its scopes, dates and a revoke action that disconnects it. `showLastUsed` is for
+ * redirects, a badge when it is verified, its scopes, dates and a revoke
+ * action that disconnects it. `showLastUsed` is for
  * screens whose server knows when an app last used its access.
  */
 export function ConnectedAppList({
@@ -64,6 +68,15 @@ export function ConnectedAppList({
                                         <span className="font-medium break-all">
                                             {app.name}
                                         </span>
+                                        {app.verified && (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                            >
+                                                <BadgeCheck aria-hidden />
+                                                {__('Verified')}
+                                            </Badge>
+                                        )}
                                         {app.scopes.map((scope) => (
                                             <Badge
                                                 key={scope}

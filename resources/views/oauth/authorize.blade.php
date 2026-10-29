@@ -46,6 +46,7 @@
 @php
     $isApi = $surface === \App\Enums\OAuthScope::Api;
     $appName = config('app.name', 'Whisper Money');
+    $clientName = $verifiedApp ?? $client->name;
 @endphp
 <div class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md">
@@ -61,14 +62,25 @@
                 </div>
 
                 <h3 class="text-2xl font-semibold leading-none tracking-tight text-center">
-                    {{ __('Connect :client to :app', ['client' => $client->name, 'app' => $appName]) }}
+                    {{ __('Connect :client to :app', ['client' => $clientName, 'app' => $appName]) }}
                 </h3>
+
+                @if($verifiedApp)
+                    <div class="flex justify-center">
+                        <span class="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300" data-test="verified-badge">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ __('Verified') }}
+                        </span>
+                    </div>
+                @endif
 
                 <p class="text-sm text-muted-foreground text-center">
                     @if($isApi)
-                        {{ __(':client wants to use the :app API with your account, with read and write access to your finances.', ['client' => $client->name, 'app' => $appName]) }}
+                        {{ __(':client wants to use the :app API with your account, with read and write access to your finances.', ['client' => $clientName, 'app' => $appName]) }}
                     @else
-                        {{ __(':client wants to connect your AI assistant to :app, with read and write access to your finances.', ['client' => $client->name, 'app' => $appName]) }}
+                        {{ __(':client wants to connect your AI assistant to :app, with read and write access to your finances.', ['client' => $clientName, 'app' => $appName]) }}
                     @endif
                 </p>
             </div>
@@ -83,17 +95,19 @@
                     </div>
                 @endif
 
-                <!-- Unverified app warning -->
-                <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200" role="note">
-                    <p class="text-sm font-medium">{{ __('Unverified app') }}</p>
-                    <p class="text-sm mt-1">
-                        @if($redirectTarget)
-                            {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust :domain.', ['domain' => $redirectTarget]) }}
-                        @else
-                            {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust it.') }}
-                        @endif
-                    </p>
-                </div>
+                <!-- Warning for any app that is not verified -->
+                @unless($verifiedApp)
+                    <div class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200" role="note">
+                        <p class="text-sm font-medium">{{ __('Unverified app') }}</p>
+                        <p class="text-sm mt-1">
+                            @if($redirectTarget)
+                                {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust :domain.', ['domain' => $redirectTarget]) }}
+                            @else
+                                {{ __('This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust it.') }}
+                            @endif
+                        </p>
+                    </div>
+                @endunless
 
                 <!-- What the connection can do -->
                 <div class="flex flex-col gap-2">

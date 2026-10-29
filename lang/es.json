@@ -2662,6 +2662,7 @@
     ":client wants to connect your AI assistant to :app, with read and write access to your finances.": ":client quiere conectar tu asistente de IA con :app, con acceso de lectura y escritura a tus finanzas.",
     "After you approve, you are sent to": "Cuando aceptes, te enviará a",
     "Unverified app": "App no verificada",
+    "Verified": "Verificada",
     "This app has not been reviewed by Whisper Money, and anyone can give an app any name. Only continue if you trust :domain.": "Whisper Money no ha revisado esta app, y cualquiera puede ponerle a una app el nombre que quiera. Continúa solo si confías en :domain.",
     "It gets read and write access to your finances:": "Tendrá acceso de lectura y escritura a tus finanzas:",
     "Read your accounts, balances, transactions, categories, budgets and savings goals.": "Leer tus cuentas, saldos, transacciones, categorías, presupuestos y objetivos de ahorro.",

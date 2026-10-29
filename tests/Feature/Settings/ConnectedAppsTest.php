@@ -2,7 +2,9 @@
 
 use App\Models\ApiRequest;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Passport\Client;
@@ -17,9 +19,9 @@ use function Pest\Laravel\withHeaders;
  *
  * @return array{0: Client, 1: string}
  */
-function connectApp(User $user, string $name, string $scope): array
+function connectApp(User $user, string $name, string $scope, string $redirectUri = CLAUDE_CALLBACK): array
 {
-    $client = oauthClient($name);
+    $client = oauthClient($name, $redirectUri);
 
     return [$client, issueOAuthToken($user, [$scope], $client)];
 }
@@ -38,9 +40,9 @@ function connectAgain(Client $client): void
         ->replicate()->forceFill(['id' => Str::random(80), 'access_token_id' => $copy->id])->save();
 }
 
-it('lists each screen\'s connected apps only', function (string $route, string $scope, string $label, string $listed) {
+it('lists each screen\'s connected apps only', function (string $route, string $scope, string $label, string $listed, string $redirect) {
     $user = User::factory()->create();
-    connectApp($user, 'Budget Sync', 'api:use');
+    connectApp($user, 'Budget Sync', 'api:use', 'https://budget-sync.test/callback');
     connectApp($user, 'Claude', 'mcp:use');
     connectApp(User::factory()->create(), 'Someone else\'s app', $scope);
 
@@ -49,12 +51,41 @@ it('lists each screen\'s connected apps only', function (string $route, string $
             ->has('connectedApps', 1)
             ->where('connectedApps.0.name', $listed)
             ->where('connectedApps.0.scopes', [$label])
-            ->where('connectedApps.0.redirect', 'https://claude.ai')
+            ->where('connectedApps.0.redirect', $redirect)
             ->whereNot('connectedApps.0.connected_at', null));
 })->with([
-    'Settings → API' => ['api-tokens.index', 'api:use', 'API', 'Budget Sync'],
-    'Settings → AI Connector' => ['mcp.index', 'mcp:use', 'AI Connector', 'Claude'],
+    'Settings → API' => ['api-tokens.index', 'api:use', 'API', 'Budget Sync', 'https://budget-sync.test'],
+    'Settings → AI Connector' => ['mcp.index', 'mcp:use', 'AI Connector', 'Claude', 'https://claude.ai'],
 ]);
+
+it('lists a client verified by its redirect under the verified app name', function (string $route, string $scope) {
+    $user = User::factory()->create();
+    connectApp($user, 'Totally Claude', $scope);
+    connectApp($user, 'Claude', $scope, 'http://localhost:8123/callback');
+
+    actingAs($user)->get(route($route))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('connectedApps', 2)
+            ->where('connectedApps', fn (Collection $apps): bool => $apps
+                ->map(fn (array $app): array => Arr::only($app, ['name', 'verified', 'redirect']))
+                ->sortBy('redirect')->values()->all() === [
+                    ['name' => 'Claude', 'verified' => false, 'redirect' => 'http://localhost:8123'],
+                    ['name' => 'Claude', 'verified' => true, 'redirect' => 'https://claude.ai'],
+                ]));
+})->with([
+    'Settings → API' => ['api-tokens.index', 'api:use'],
+    'Settings → AI Connector' => ['mcp.index', 'mcp:use'],
+]);
+
+it('lists a ChatGPT client as verified', function () {
+    $user = User::factory()->create();
+    connectApp($user, 'My connector', 'mcp:use', 'https://chatgpt.com/connector_platform_oauth_redirect');
+
+    actingAs($user)->get(route('mcp.index'))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('connectedApps.0.name', 'ChatGPT')
+            ->where('connectedApps.0.verified', true));
+});
 
 it('groups an app\'s tokens into one row and shows when the API last saw it', function () {
     $user = User::factory()->create();

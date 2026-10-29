@@ -12,6 +12,7 @@ function app(overrides: Partial<ConnectedAppRow> = {}): ConnectedAppRow {
     return {
         id: 'client-1',
         name: 'Claude',
+        verified: false,
         redirect: 'https://chatgpt.com',
         scopes: ['AI Connector'],
         connected_at: '2026-10-01T00:00:00+00:00',
@@ -50,6 +51,16 @@ describe('ConnectedAppList', () => {
         expect(screen.getAllByText('https://chatgpt.com')).toHaveLength(2);
         expect(screen.getAllByText(/Connected/).length).toBeGreaterThan(0);
         expect(screen.queryByText(/Last used/)).toBeNull();
+    });
+
+    it('marks only verified apps as verified', () => {
+        renderList([
+            app({ verified: true, redirect: 'https://claude.ai' }),
+            app({ id: 'client-2', name: 'Budget Sync' }),
+        ]);
+
+        expect(screen.getAllByText('Verified')).toHaveLength(1);
+        expect(screen.getByText('https://claude.ai')).toBeTruthy();
     });
 
     it('shows when an app was last used where the screen knows it', () => {

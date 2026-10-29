@@ -46,7 +46,8 @@ describe('MCP settings page', () => {
         pageProps.connectedApps = [
             {
                 id: 'client-1',
-                name: 'My ChatGPT',
+                name: 'ChatGPT',
+                verified: true,
                 redirect: 'https://chatgpt.com',
                 scopes: ['AI Connector'],
                 connected_at: '2026-10-01T00:00:00+00:00',
@@ -57,7 +58,8 @@ describe('MCP settings page', () => {
         render(<McpPage />);
 
         expect(screen.getByText('Connected apps')).toBeTruthy();
-        expect(screen.getByText('My ChatGPT')).toBeTruthy();
+        expect(screen.getByText('Verified')).toBeTruthy();
+        expect(screen.getByText('https://chatgpt.com')).toBeTruthy();
         expect(screen.queryByText(/Last used/)).toBeNull();
     });
 

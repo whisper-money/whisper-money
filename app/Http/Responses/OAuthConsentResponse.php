@@ -5,6 +5,7 @@ namespace App\Http\Responses;
 use App\Enums\OAuthScope;
 use App\Models\User;
 use App\Support\RedirectTarget;
+use App\Support\VerifiedOAuthApps;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Laravel\Passport\Client;
@@ -13,7 +14,9 @@ use Laravel\Passport\Scope;
 /**
  * The OAuth consent screen (an MCP connector or an API app), worded for the
  * scope requested, naming where approving sends the user and, for a request
- * the user may not approve, why instead of the approve button.
+ * the user may not approve, why instead of the approve button. A client whose
+ * redirects only reach a verified app is named after that app and shown as
+ * verified; any other client is flagged as unverified.
  */
 class OAuthConsentResponse
 {
@@ -30,6 +33,7 @@ class OAuthConsentResponse
             'surface' => $scope,
             'refusal' => $scope->approvalRefusalFor($parameters['user']),
             'redirectTarget' => $redirectUri === '' ? null : RedirectTarget::display($redirectUri),
+            'verifiedApp' => VerifiedOAuthApps::fromConfig()->nameOf($parameters['client']),
         ]);
     }
 }

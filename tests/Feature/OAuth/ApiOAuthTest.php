@@ -135,11 +135,11 @@ describe('consent screen', function () {
     it('words the screen for the scope requested', function (string $scope, string $expected, string $unexpected) {
         [, $challenge] = pkcePair();
 
-        requestOAuthConsent(User::factory()->create(), oauthClient('Budget Sync'), [$scope], $challenge)
+        requestOAuthConsent(User::factory()->create(), oauthClient('Budget Sync', 'https://budget-sync.test/callback'), [$scope], $challenge)
             ->assertOk()
             ->assertSee($expected, false)
             ->assertDontSee($unexpected, false)
-            ->assertSee('https://claude.ai', false)
+            ->assertSee('https://budget-sync.test', false)
             ->assertSee('Unverified app', false)
             ->assertSee('read and write access to your finances', false)
             ->assertSee('id="authorizeForm"', false);
@@ -162,9 +162,48 @@ describe('consent screen', function () {
         $user = User::factory()->create(['locale' => 'es']);
         app()->setLocale('es');
 
-        requestOAuthConsent($user, oauthClient('Budget Sync'), ['api:use'], $challenge)
+        requestOAuthConsent($user, oauthClient('Budget Sync', 'https://budget-sync.test/callback'), ['api:use'], $challenge)
             ->assertOk()
             ->assertSee('App no verificada', false);
+    });
+
+    it('shows a client verified by its redirect under the verified name, without the warning', function (string $redirectUri, string $app, string $target) {
+        [, $challenge] = pkcePair();
+
+        requestOAuthConsent(User::factory()->create(), oauthClient('Totally Legit Bank', $redirectUri), ['mcp:use'], $challenge)
+            ->assertOk()
+            ->assertSee("Connect {$app} to", false)
+            ->assertSee('data-test="verified-badge"', false)
+            ->assertSee($target, false)
+            ->assertDontSee('Totally Legit Bank', false)
+            ->assertDontSee('Unverified app', false)
+            ->assertSee('id="authorizeForm"', false);
+    })->with([
+        'Claude' => [CLAUDE_CALLBACK, 'Claude', 'https://claude.ai'],
+        'ChatGPT' => ['https://chatgpt.com/connector_platform_oauth_redirect', 'ChatGPT', 'https://chatgpt.com'],
+    ]);
+
+    it('keeps the warning for a client named after a verified app that redirects elsewhere', function (string $redirectUri) {
+        [, $challenge] = pkcePair();
+
+        requestOAuthConsent(User::factory()->create(), oauthClient('Claude', $redirectUri), ['mcp:use'], $challenge)
+            ->assertOk()
+            ->assertSee('Unverified app', false)
+            ->assertDontSee('data-test="verified-badge"', false);
+    })->with([
+        'loopback (Claude Code)' => ['http://localhost:8123/callback'],
+        'look-alike host' => ['https://claude.ai.evil.test/callback'],
+    ]);
+
+    it('shows the verified badge in Spanish', function () {
+        [, $challenge] = pkcePair();
+        $user = User::factory()->create(['locale' => 'es']);
+        app()->setLocale('es');
+
+        requestOAuthConsent($user, oauthClient(), ['mcp:use'], $challenge)
+            ->assertOk()
+            ->assertSee('Verificada', false)
+            ->assertDontSee('App no verificada', false);
     });
 });
 
