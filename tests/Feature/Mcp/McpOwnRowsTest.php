@@ -1,10 +1,17 @@
 <?php
 
 use App\Mcp\Servers\WhisperMoneyServer;
+use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateBalance;
+use App\Mcp\Tools\CreateTransaction;
+use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\ListAccounts;
+use App\Mcp\Tools\SearchTransactions;
+use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Space;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Testing\TestResponse;
@@ -64,4 +71,56 @@ it('refuses a balance on another member\'s account of a shared space', function 
 
     expect($theirs->balances()->count())->toBe(0)
         ->and($mine->balances()->count())->toBe(1);
+});
+
+it('searches only the caller\'s own transactions of a shared space', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $mine = Transaction::factory()->create(['user_id' => $user->id, 'account_id' => Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id])->id]);
+    $theirs = Transaction::factory()->create(['user_id' => $owner->id, 'account_id' => Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id])->id]);
+
+    callOwnRowsTool($user, SearchTransactions::class, ['space' => $space->id])
+        ->assertOk()
+        ->assertSee($mine->id)
+        ->assertDontSee($theirs->id);
+});
+
+it('refuses to change, categorize or delete another member\'s transaction', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirs = Transaction::factory()->create(['user_id' => $owner->id, 'account_id' => Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id])->id, 'notes' => null]);
+    $notFound = "No transaction with id {$theirs->id} in space {$space->id}.";
+
+    callOwnRowsTool($user, UpdateTransaction::class, ['transaction_id' => $theirs->id, 'space' => $space->id, 'notes' => 'Mine now'])
+        ->assertHasErrors([$notFound]);
+    callOwnRowsTool($user, CategorizeTransaction::class, ['transaction_id' => $theirs->id, 'space' => $space->id, 'category_id' => null])
+        ->assertHasErrors([$notFound]);
+    callOwnRowsTool($user, DeleteTransaction::class, ['transaction_id' => $theirs->id, 'space' => $space->id])
+        ->assertHasErrors([$notFound]);
+
+    expect($theirs->fresh()->notes)->toBeNull()
+        ->and($theirs->fresh()->trashed())->toBeFalse();
+});
+
+it('refuses another member\'s account and category on a new transaction, and takes your own', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+    $myAccount = Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
+    $myCategory = Category::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]);
+    $transaction = ['space' => $space->id, 'description' => 'Groceries', 'amount' => -2000, 'transaction_date' => '2026-01-15'];
+
+    callOwnRowsTool($user, CreateTransaction::class, [...$transaction, 'account_id' => $theirAccount->id])
+        ->assertHasErrors(["No account with id {$theirAccount->id} in space {$space->id}."]);
+    callOwnRowsTool($user, CreateTransaction::class, [...$transaction, 'account_id' => $myAccount->id, 'category_id' => $theirCategory->id])
+        ->assertHasErrors(["No category with id {$theirCategory->id} in space {$space->id}."]);
+    callOwnRowsTool($user, CreateTransaction::class, [...$transaction, 'account_id' => $myAccount->id, 'category_id' => $myCategory->id])
+        ->assertOk();
+
+    expect($theirAccount->transactions()->count())->toBe(0)
+        ->and($myAccount->transactions()->count())->toBe(1);
 });

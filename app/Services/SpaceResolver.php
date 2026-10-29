@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Space;
-use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -87,13 +86,5 @@ class SpaceResolver
         $user = $request->user();
 
         return $this->ownedInSpace($query, $user, $this->forApiRequest($request));
-    }
-
-    /**
-     * A transaction in $space, the same way as accountOrFail().
-     */
-    public function transactionOrFail(Space $space, string $id): Transaction
-    {
-        return Transaction::query()->forSpace($space)->findOrFail($id);
     }
 }

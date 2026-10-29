@@ -106,7 +106,7 @@ class TransactionResource extends JsonResource
                 ->values()
                 ->all(),
             /**
-             * Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any.
+             * Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted.
              *
              * @var 'manually_created'|'imported'|'enablebanking'|'wise'
              *

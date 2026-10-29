@@ -2,17 +2,15 @@
 
 namespace App\Http\Requests\Api\V1\Concerns;
 
-use App\Http\ApiV1\ApiV1Exception;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SpaceResolver;
 
 /**
  * For the `/api/v1/transactions/{transaction}` write requests: the
- * transaction is looked up in the request's space, so one in another space,
- * or someone else's, is a 404 before anything is validated. Every member of
- * the space reads its transactions, but only the one who owns a transaction
- * may change or delete it (TransactionPolicy, as in the app).
+ * transaction is looked up among the caller's own in the request's space, so
+ * one in another space, or another member's, is a 404 before anything is
+ * validated. TransactionPolicy, as in the app, is checked again on it.
  */
 trait ResolvesRouteTransaction
 {
@@ -28,13 +26,6 @@ trait ResolvesRouteTransaction
 
     public function transaction(): Transaction
     {
-        $resolver = app(SpaceResolver::class);
-
-        return $this->routeTransaction ??= $resolver->transactionOrFail($resolver->forApiRequest($this), (string) $this->route('transaction'));
-    }
-
-    protected function failedAuthorization(): never
-    {
-        throw new ApiV1Exception(403, 'not_transaction_owner', "Transaction {$this->transaction()->id} belongs to another member of the space, so only they can change or delete it. You can still read it.");
+        return $this->routeTransaction ??= app(SpaceResolver::class)->ownedForApiRequest($this, Transaction::query())->findOrFail((string) $this->route('transaction'));
     }
 }

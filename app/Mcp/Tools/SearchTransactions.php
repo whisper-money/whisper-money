@@ -49,7 +49,7 @@ class SearchTransactions extends McpTool
         $labels = $this->labelsInSpace($request, $space, 'label_ids');
 
         $transactions = app(TransactionSearch::class)
-            ->query($space, [...$request->all(), 'label_ids' => $labels->modelKeys()])
+            ->query($user, $space, [...$request->all(), 'label_ids' => $labels->modelKeys()])
             ->with(['account:id,name', 'category:id,name,type', 'labels:id,name'])
             ->orderByDesc('transaction_date')
             ->limit($request->integer('limit', 50))

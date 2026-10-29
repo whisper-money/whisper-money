@@ -62,6 +62,6 @@ abstract class Controller extends BaseController
      */
     protected function transaction(Request $request, string $id): Transaction
     {
-        return app(SpaceResolver::class)->transactionOrFail($this->space($request), $id);
+        return $this->owned($request, Transaction::query())->findOrFail($id);
     }
 }

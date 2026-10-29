@@ -18,14 +18,15 @@ use Illuminate\Validation\Rule;
 class TransactionWriteRules
 {
     /**
-     * The fields that describe the transaction itself. A bank/imported row owns
-     * them through its sync, and a split part takes them from its original, so
-     * they are locked there — while notes and category_id stay editable on any
-     * transaction.
+     * The fields that describe the transaction itself. As in the app, a split
+     * part takes all of them from its original, so they are locked there. A
+     * bank/imported row owns them through its sync, except its date, which
+     * stays editable like in the app (a payroll booked on the 27th can belong
+     * to next month). Notes and category_id stay editable on any transaction.
      *
      * @var list<string>
      */
-    public const array CoreFields = [
+    private const array CoreFields = [
         'description',
         'amount',
         'transaction_date',
@@ -73,17 +74,40 @@ class TransactionWriteRules
     }
 
     /**
+     * The core fields among $sent that the transaction does not let change:
+     * all of them on a split part, all but the date on a bank/imported row,
+     * none on a manually-created one.
+     *
+     * @param  list<string>  $sent  the fields the edit carries
+     * @return list<string>
+     */
+    public static function lockedCoreFields(Transaction $transaction, array $sent): array
+    {
+        $sentCoreFields = array_values(array_intersect(self::CoreFields, $sent));
+
+        if ($transaction->isSplitPart()) {
+            return $sentCoreFields;
+        }
+
+        if ($transaction->source !== TransactionSource::ManuallyCreated) {
+            return array_values(array_diff($sentCoreFields, ['transaction_date']));
+        }
+
+        return [];
+    }
+
+    /**
      * Why an edit of the $sent fields cannot go through, or null when it can.
-     * Only an edit that actually carries a core field is refused: one limited
-     * to notes or the category is allowed on every transaction, which is how
-     * bank/imported rows and split parts get annotated.
+     * Only an edit that actually carries a locked core field is refused: one
+     * limited to notes or the category is allowed on every transaction, which
+     * is how bank/imported rows and split parts get annotated.
      *
      * @param  list<string>  $sent  the fields the edit carries
      * @param  string  $labelsHint  appended to the message, naming where the labels are changed
      */
     public static function lockedCoreFieldError(Transaction $transaction, array $sent, string $labelsHint = ''): ?string
     {
-        $locked = array_values(array_intersect(self::CoreFields, $sent));
+        $locked = self::lockedCoreFields($transaction, $sent);
 
         if ($locked === []) {
             return null;
@@ -91,27 +115,20 @@ class TransactionWriteRules
 
         $fields = implode(', ', $locked);
 
-        if ($transaction->source !== TransactionSource::ManuallyCreated) {
-            return "Only manually-created transactions can change {$fields}. This one came from a bank or import, so its core fields are locked; notes and category_id can still be edited here{$labelsHint}.";
-        }
-
         if ($transaction->isSplitPart()) {
             return "This transaction is one part of a split, so it cannot change {$fields} — those come from the original. Notes and category_id can still be edited here{$labelsHint}.";
         }
 
-        return null;
+        return "Only manually-created transactions can change {$fields}. This one came from a bank or import, so those fields are locked; transaction_date, notes and category_id can still be edited here{$labelsHint}.";
     }
 
     /**
-     * Why the transaction cannot be deleted, or null when it can: only a
-     * manually-created one that is not one part of a split can.
+     * Why the transaction cannot be deleted, or null when it can. As in the
+     * app, any transaction can, bank/imported ones included (a soft delete the
+     * next sync does not bring back), except one part of a split.
      */
     public static function deletionError(Transaction $transaction): ?string
     {
-        if ($transaction->source !== TransactionSource::ManuallyCreated) {
-            return 'Only manually-created transactions can be deleted. This one came from a bank or import.';
-        }
-
         if ($transaction->isSplitPart()) {
             return 'This transaction is one part of a split, so deleting it on its own would leave the rest no longer adding up. Merge the split back first.';
         }

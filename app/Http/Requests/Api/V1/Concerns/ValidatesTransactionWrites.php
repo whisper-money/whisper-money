@@ -8,7 +8,8 @@ use App\Models\Category;
 /**
  * What the transaction create and update requests share: the
  * TransactionWriteRules the MCP tools validate with too, the account and
- * category they point at, checked to be in the request's space, and the
+ * category they point at, checked to be the caller's own in the request's
+ * space, and the
  * balance switch.
  */
 trait ValidatesTransactionWrites
@@ -23,7 +24,7 @@ trait ValidatesTransactionWrites
     {
         return [
             /**
-             * The id of the account the transaction is on. Any account of the space, bank-connected ones included: a sync never removes a transaction you added by hand.
+             * The id of the account the transaction is on: one of your accounts in the space, bank-connected ones included, since a sync never removes a transaction you added by hand.
              *
              * @format uuid
              *

@@ -155,8 +155,10 @@ read & write token; a read-only token can analyse data but never change it.
 Manual transactions can be created on any account, bank-connected ones included
 — a sync never removes them.
 Bank/imported transactions keep their core fields protected: only a
-manually-created one can change its description, amount, date, currency,
-account or counterparty names, and only a manually-created one can be deleted.
+manually-created one can change its description, amount, currency, account or
+counterparty names. Their date can change, as in the app, and they can be
+deleted (the next sync does not bring them back). One part of a split keeps
+every core field, its date included, and cannot be deleted on its own.
 Their notes and category are not locked — `update_transaction` writes those on
 any transaction, split parts included — and labelling and splitting work on any
 transaction too.

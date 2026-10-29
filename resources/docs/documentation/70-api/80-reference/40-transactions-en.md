@@ -10,7 +10,7 @@ A transaction is money that moved in or out of an account: synced from the bank,
 
 `GET /api/v1/transactions`
 
-The transactions in a space, the most recent day first, narrowed by any of the filters. Every member of a space sees all of its transactions, but only the member who owns one can change or delete it. A transaction that was split is not listed: its parts are, each with the same `split_parent_id`. To find recurring charges, such as subscriptions, search them and group the results by merchant and cadence.
+Your transactions in a space, the most recent day first, narrowed by any of the filters. As in the app, another member's transactions are not listed. A transaction that was split is not listed: its parts are, each with the same `split_parent_id`. To find recurring charges, such as subscriptions, search them and group the results by merchant and cadence.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -54,7 +54,7 @@ The transactions in a space, the most recent day first, narrowed by any of the f
 | `data[].labels` | array of object | The labels the transaction is tagged with: their ids and names. |
 | `data[].labels[].id` | string |  |
 | `data[].labels[].name` | string |  |
-| `data[].source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data[].source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted. |
 | `data[].creditor_name` | string or null | Who was paid, or `null`. |
 | `data[].debtor_name` | string or null | Who paid, or `null`. |
 | `data[].notes` | string or null | Free-text notes, or `null`. |
@@ -114,7 +114,7 @@ curl https://whisper.money/api/v1/transactions \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -122,7 +122,7 @@ curl https://whisper.money/api/v1/transactions \
 
 `POST /api/v1/transactions`
 
-Records a transaction by hand on any account of the space, bank-connected ones included: a sync never removes it. Nothing deduplicates it against what the bank sends, so add only what the bank will not sync, such as a cash payment or a transfer you made elsewhere. Any member of the space can add one to any of its accounts, and owns what they add. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
+Records a transaction by hand on one of your accounts in the space, bank-connected ones included: a sync never removes it. Nothing deduplicates it against what the bank sends, so add only what the bank will not sync, such as a cash payment or a transfer you made elsewhere. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -137,7 +137,7 @@ Records a transaction by hand on any account of the space, bank-connected ones i
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `account_id` | string (uuid) | Yes | The id of the account the transaction is on. Any account of the space, bank-connected ones included: a sync never removes a transaction you added by hand. |
+| `account_id` | string (uuid) | Yes | The id of the account the transaction is on: one of your accounts in the space, bank-connected ones included, since a sync never removes a transaction you added by hand. |
 | `description` | string | Yes | What the transaction was for. |
 | `amount` | integer | Yes | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
 | `transaction_date` | string (date) | Yes | The day the transaction happened. |
@@ -172,7 +172,7 @@ Records a transaction by hand on any account of the space, bank-connected ones i
 | `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
 | `data.labels[].id` | string |  |
 | `data.labels[].name` | string |  |
-| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted. |
 | `data.creditor_name` | string or null | Who was paid, or `null`. |
 | `data.debtor_name` | string or null | Who paid, or `null`. |
 | `data.notes` | string or null | Free-text notes, or `null`. |
@@ -239,7 +239,7 @@ curl -X POST https://whisper.money/api/v1/transactions \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -280,7 +280,7 @@ curl -X POST https://whisper.money/api/v1/transactions \
 | `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
 | `data.labels[].id` | string |  |
 | `data.labels[].name` | string |  |
-| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted. |
 | `data.creditor_name` | string or null | Who was paid, or `null`. |
 | `data.debtor_name` | string or null | Who paid, or `null`. |
 | `data.notes` | string or null | Free-text notes, or `null`. |
@@ -335,7 +335,7 @@ curl https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -344,7 +344,7 @@ curl https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4
 
 `PATCH /api/v1/transactions/{transaction}`
 
-Changes only the fields you send, and also sets or clears the category. Only the member of the space who owns the transaction can change it. The labels are not changed here. The notes and the category can be changed on any transaction. The rest (description, amount, date, currency, account and counterparty names) only on one you recorded by hand that is not one part of a split: on any other, sending them is a `422` and nothing is saved. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
+Changes only the fields you send, and also sets or clears the category. The labels are not changed here. The notes and the category can be changed on any transaction, and the date on any but one part of a split. The rest (description, amount, currency, account and counterparty names) only on one you recorded by hand that is not one part of a split: on any other, sending them is a `422` and nothing is saved. The response adds `balance_updated`, whether `update_balance` moved the account's balance snapshots.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -359,7 +359,7 @@ Changes only the fields you send, and also sets or clears the category. Only the
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `account_id` | string (uuid) | No | The id of the account the transaction is on. Any account of the space, bank-connected ones included: a sync never removes a transaction you added by hand. |
+| `account_id` | string (uuid) | No | The id of the account the transaction is on: one of your accounts in the space, bank-connected ones included, since a sync never removes a transaction you added by hand. |
 | `description` | string | No | What the transaction was for. |
 | `amount` | integer | No | The signed amount, in the minor units of `currency_code`: negative for an expense, positive for income. |
 | `transaction_date` | string (date) | No | The day the transaction happened. |
@@ -393,7 +393,7 @@ Changes only the fields you send, and also sets or clears the category. Only the
 | `data.labels` | array of object | The labels the transaction is tagged with: their ids and names. |
 | `data.labels[].id` | string |  |
 | `data.labels[].name` | string |  |
-| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, date, currency, account or counterparty names, and only a manually-created one can be deleted; notes and the category can be changed on any. |
+| `data.source` | "manually_created" \| "imported" \| "enablebanking" \| "wise" | Where the transaction came from: `manually_created` (recorded by hand), `imported` (from a file), `enablebanking` or `wise` (a bank sync). Only a manually-created one can change its description, amount, currency, account or counterparty names; notes and the category can be changed on any, the date on any but one part of a split, and any but one part of a split can be deleted. |
 | `data.creditor_name` | string or null | Who was paid, or `null`. |
 | `data.debtor_name` | string or null | Who paid, or `null`. |
 | `data.notes` | string or null | Free-text notes, or `null`. |
@@ -459,7 +459,7 @@ curl -X PATCH https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -468,7 +468,7 @@ curl -X PATCH https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e-
 
 `DELETE /api/v1/transactions/{transaction}`
 
-Deletes a transaction you recorded by hand and own. One that came from a bank or an import cannot be deleted, and neither can one part of a split on its own; both answer `422` with the error under `transaction`.
+Deletes a transaction, one that came from a bank or an import included: as in the app, the next sync does not bring it back. One part of a split cannot be deleted on its own and answers `422` with the error under `transaction`.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -512,7 +512,7 @@ curl -X DELETE https://whisper.money/api/v1/transactions/0199a3f2-6c1e-7b4d-9a8e
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`), it is a shared demo account (`shared_account`) or the object belongs to another member of the space (`not_account_owner`, `not_transaction_owner`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |

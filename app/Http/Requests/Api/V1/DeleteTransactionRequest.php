@@ -26,8 +26,7 @@ class DeleteTransactionRequest extends FormRequest
     }
 
     /**
-     * Refuse unknown fields, and a transaction that came from a bank or
-     * import, or is one part of a split.
+     * Refuse unknown fields, and one part of a split.
      *
      * @return array<int, callable(Validator): void>
      */

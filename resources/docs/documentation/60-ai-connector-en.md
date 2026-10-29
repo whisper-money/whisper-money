@@ -318,9 +318,11 @@ change it only if the token is read & write.
 Where write access stops is the same for all of them, and it is not about trust.
 These are the rules the app itself follows:
 
-- **Bank-synced and imported transactions cannot be edited or deleted.** Only
-  transactions created by hand can. Any transaction, however it arrived, can
-  still be categorized, labelled, split and given a note.
+- **Bank-synced and imported transactions keep what the bank recorded.** Their
+  description, amount, currency, account and names can only change on
+  transactions created by hand. Any transaction, however it arrived, can still
+  be categorized, labelled, split, given a note, moved to another date and
+  deleted, as in the app; the next sync does not bring a deleted one back.
 - **New transactions can be added to any account**, a bank-connected one
   included. A sync only brings in rows it has not seen before, so it never
   removes what you added.
@@ -395,9 +397,9 @@ token was rotated or revoked. Add the connection again with the new secret.
 ### Can it lose or wreck my data?
 
 It can change and delete the same things you can, so treat it the way you would
-treat handing someone your laptop. Two things limit the damage: transactions
-that came from your bank or an import cannot be edited or deleted at all, and a
-read-only Claude Code token can analyse everything and change nothing.
+treat handing someone your laptop. Two things limit the damage: the amounts and
+names of transactions that came from your bank or an import cannot be edited,
+and a read-only Claude Code token can analyse everything and change nothing.
 
 ### Should I use Claude Desktop or Claude Code?
 

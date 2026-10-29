@@ -4,7 +4,9 @@ namespace App\Services\Transactions;
 
 use App\Models\Space;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Rules\StorableDate;
+use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Fluent;
 
@@ -30,21 +32,21 @@ class TransactionSearch
     }
 
     /**
-     * The transactions of $space matching $filters: `query` (matched against
-     * the description and the counterparty names), `account_id`,
-     * `category_id`, `label_ids` (any of them, already checked to be in the
-     * space), `from`, `to`, `min_amount` and `max_amount`.
+     * $user's own transactions of $space matching $filters, as the app only
+     * ever shows a user their own: `query` (matched against the description
+     * and the counterparty names), `account_id`, `category_id`, `label_ids`
+     * (any of them, already checked to be the user's own in the space),
+     * `from`, `to`, `min_amount` and `max_amount`.
      *
      * @param  array<string, mixed>  $filters
      * @return Builder<Transaction>
      */
-    public function query(Space $space, array $filters): Builder
+    public function query(User $user, Space $space, array $filters): Builder
     {
         $filters = new Fluent($filters);
         $labelIds = (array) $filters->get('label_ids', []);
 
-        return Transaction::query()
-            ->forSpace($space)
+        return app(SpaceResolver::class)->ownedInSpace(Transaction::query(), $user, $space)
             ->when($filters->string('query')->toString() !== '', function (Builder $query) use ($filters): void {
                 $term = '%'.$filters->string('query')->toString().'%';
                 $query->where(function (Builder $q) use ($term): void {

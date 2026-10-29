@@ -136,18 +136,19 @@ describe('list', function () {
             ->assertJsonValidationErrors(['from', 'to', 'query']);
     });
 
-    it('lists a shared space when asked, and refuses one the user cannot access', function () {
+    it('lists only your own transactions of a shared space when asked, and refuses one the user cannot access', function () {
         $user = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedTransactionSpace($user, $owner);
-        $theirs = transactionOn(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]));
+        transactionOn(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]));
+        $mine = transactionOn(Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]));
         transactionOn(Account::factory()->create(['user_id' => $user->id]));
         $headers = apiV1Bearer($user);
 
         withHeaders($headers)
             ->getJson('/api/v1/transactions?space='.$space->id)
             ->assertOk()
-            ->assertJsonPath('data.*.id', [$theirs->id]);
+            ->assertJsonPath('data.*.id', [$mine->id]);
 
         withHeaders($headers)
             ->getJson('/api/v1/transactions?space='.Space::factory()->create(['owner_id' => $owner->id, 'personal' => false])->id)
@@ -432,7 +433,7 @@ describe('update', function () {
             ->and($imported->fresh()->notes)->not->toBe('Edited');
     });
 
-    it('refuses the core fields of an imported transaction or a split part sent in the query string', function () {
+    it('refuses the locked core fields of an imported transaction or a split part sent in the query string', function () {
         $user = User::factory()->create();
         $account = Account::factory()->create(['user_id' => $user->id]);
         $other = Account::factory()->create(['user_id' => $user->id]);
@@ -441,16 +442,34 @@ describe('update', function () {
         $part = app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000]])->first();
         $headers = transactionsWriter($user);
 
-        foreach ([$imported, $part] as $transaction) {
-            withHeaders($headers)
-                ->patchJson('/api/v1/transactions/'.$transaction->id.'?amount=1&transaction_date=2020-01-01&account_id='.$other->id, [])
-                ->assertUnprocessable()
-                ->assertJsonValidationErrors(['amount', 'transaction_date', 'account_id']);
-        }
+        withHeaders($headers)
+            ->patchJson('/api/v1/transactions/'.$imported->id.'?amount=1&transaction_date=2020-01-01&account_id='.$other->id, [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['amount', 'account_id'])
+            ->assertJsonMissingValidationErrors('transaction_date');
+
+        withHeaders($headers)
+            ->patchJson('/api/v1/transactions/'.$part->id.'?amount=1&transaction_date=2020-01-01&account_id='.$other->id, [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['amount', 'transaction_date', 'account_id']);
 
         expect($imported->fresh())->amount->toBe(-500)->account_id->toBe($account->id)
             ->and($imported->fresh()->transaction_date->toDateString())->toBe('2026-01-15')
             ->and($part->fresh())->amount->toBe(-3000)->account_id->toBe($account->id);
+    });
+
+    it('moves an imported transaction to another date, as the app does', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $imported = Transaction::factory()->imported()->create(['user_id' => $user->id, 'account_id' => $account->id, 'amount' => -500, 'transaction_date' => '2026-01-27']);
+
+        withHeaders(transactionsWriter($user))
+            ->patchJson('/api/v1/transactions/'.$imported->id, ['transaction_date' => '2026-02-01'])
+            ->assertOk()
+            ->assertJsonPath('data.transaction_date', '2026-02-01');
+
+        expect($imported->fresh()->transaction_date->toDateString())->toBe('2026-02-01')
+            ->and($imported->fresh()->amount)->toBe(-500);
     });
 
     it('refuses a field it does not take sent in the query string', function () {
@@ -513,35 +532,66 @@ describe('update', function () {
 });
 
 describe('ownership', function () {
-    it('lets a member add to another member\'s account but not change or delete what that member owns', function () {
+    it('answers 404 for another member\'s transaction of a shared space, on read and write', function () {
         $member = User::factory()->create();
         $owner = User::factory()->create();
         $space = sharedTransactionSpace($member, $owner);
-        $account = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
-        $theirs = transactionOn($account, ['notes' => null]);
+        $theirs = transactionOn(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]), ['notes' => null]);
         $headers = transactionsWriter($member);
 
-        $mine = withHeaders($headers)
-            ->postJson('/api/v1/transactions', ['space' => $space->id, 'account_id' => $account->id, 'description' => 'Groceries', 'amount' => -2000, 'transaction_date' => '2026-01-15'])
-            ->assertCreated()
-            ->json('data.id');
-
         withHeaders($headers)
-            ->patchJson('/api/v1/transactions/'.$mine.'?space='.$space->id, ['notes' => 'Mine'])
-            ->assertOk();
+            ->getJson('/api/v1/transactions/'.$theirs->id.'?space='.$space->id)
+            ->assertNotFound()
+            ->assertJsonPath('code', 'not_found');
 
         withHeaders($headers)
             ->patchJson('/api/v1/transactions/'.$theirs->id.'?space='.$space->id, ['notes' => 'Not mine'])
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_transaction_owner');
+            ->assertNotFound();
 
         withHeaders($headers)
             ->deleteJson('/api/v1/transactions/'.$theirs->id.'?space='.$space->id)
-            ->assertForbidden()
-            ->assertJsonPath('code', 'not_transaction_owner');
+            ->assertNotFound();
 
         expect($theirs->fresh()->notes)->toBeNull()
-            ->and(Transaction::query()->find($mine)->user_id)->toBe($member->id);
+            ->and($theirs->fresh()->trashed())->toBeFalse();
+    });
+
+    it('refuses another member\'s account, category and labels as a reference or a search filter, and takes your own', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedTransactionSpace($member, $owner);
+        $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $myAccount = Account::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]);
+        $myCategory = Category::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]);
+        $myLabel = Label::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]);
+        $mine = transactionOn($myAccount);
+        $headers = transactionsWriter($member);
+        $body = ['space' => $space->id, 'description' => 'Groceries', 'amount' => -2000, 'transaction_date' => '2026-01-15'];
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions', [...$body, 'account_id' => $theirAccount->id, 'category_id' => $theirCategory->id, 'label_ids' => [$theirLabel->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['account_id' => 'of yours', 'category_id' => 'of yours', 'label_ids.0' => 'of yours']);
+
+        withHeaders($headers)
+            ->patchJson('/api/v1/transactions/'.$mine->id.'?space='.$space->id, ['account_id' => $theirAccount->id, 'category_id' => $theirCategory->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['account_id', 'category_id']);
+
+        withHeaders($headers)
+            ->getJson('/api/v1/transactions?space='.$space->id.'&account_id='.$theirAccount->id)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('account_id');
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions', [...$body, 'account_id' => $myAccount->id, 'category_id' => $myCategory->id, 'label_ids' => [$myLabel->id]])
+            ->assertCreated();
+
+        expect($theirAccount->transactions()->count())->toBe(0)
+            ->and($myAccount->transactions()->count())->toBe(2)
+            ->and($mine->fresh()->account_id)->toBe($myAccount->id);
     });
 });
 
@@ -561,17 +611,24 @@ describe('delete', function () {
             ->and($account->balances()->value('balance'))->toBe(10_100);
     });
 
-    it('refuses an imported transaction, a split part and a field it does not take', function () {
+    it('soft-deletes an imported transaction, as the app does', function () {
         $user = User::factory()->create();
         $account = Account::factory()->create(['user_id' => $user->id]);
         $imported = Transaction::factory()->imported()->create(['user_id' => $user->id, 'account_id' => $account->id]);
+
+        withHeaders(transactionsWriter($user))
+            ->deleteJson('/api/v1/transactions/'.$imported->id)
+            ->assertOk()
+            ->assertJsonPath('deleted', true);
+
+        expect(Transaction::withTrashed()->find($imported->id)->trashed())->toBeTrue();
+    });
+
+    it('refuses a split part and a field it does not take', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
         $part = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]])->first();
         $headers = transactionsWriter($user);
-
-        withHeaders($headers)
-            ->deleteJson('/api/v1/transactions/'.$imported->id)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['transaction' => 'Only manually-created transactions can be deleted.']);
 
         withHeaders($headers)
             ->deleteJson('/api/v1/transactions/'.$untouched = transactionOn($account)->id, ['update_balanc' => true])
@@ -583,7 +640,7 @@ describe('delete', function () {
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['transaction' => 'Merge the split back first.']);
 
-        expect(Transaction::query()->whereKey([$imported->id, $part->id])->count())->toBe(2);
+        expect($part->fresh())->not->toBeNull();
     });
 
     it('answers 404 for a transaction of another user', function () {

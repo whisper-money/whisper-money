@@ -133,15 +133,15 @@
       "justifications": {
         "read_only_justification": "Writes: it edits the fields of an existing transaction in the user's own account.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Overwrites: the fields passed replace the transaction's current values, so the model should confirm the change with the user first. A bank-imported transaction only accepts its notes and category, so the data the sync owns is never rewritten."
+        "destructive_justification": "Overwrites: the fields passed replace the transaction's current values, so the model should confirm the change with the user first. A bank-imported transaction only accepts its notes, category and date, so the amounts and names the sync owns are never rewritten."
       }
     },
     "delete_transaction": {
       "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
-        "read_only_justification": "Writes: it removes a manual transaction from the user's own account.",
+        "read_only_justification": "Writes: it removes a transaction from the user's own account.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Irreversible data loss: the transaction is deleted and cannot be restored, so the model must confirm with the user first. Only manual transactions can be deleted; bank-imported ones are rejected."
+        "destructive_justification": "Irreversible data loss: the transaction is deleted and cannot be restored, so the model must confirm with the user first. A bank-imported one can be deleted too, as in the app, and the next sync does not bring it back; one part of a split is rejected."
       }
     },
     "split_transaction": {

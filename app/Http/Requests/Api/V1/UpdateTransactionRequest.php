@@ -21,8 +21,9 @@ class UpdateTransactionRequest extends FormRequest
     }
 
     /**
-     * Refuse unknown fields, and the core fields of a transaction that came
-     * from a bank or import or is one part of a split.
+     * Refuse unknown fields, and the core fields a transaction locks: all of
+     * them on a split part, all but the date on one that came from a bank or
+     * import.
      *
      * @return array<int, callable(Validator): void>
      */
@@ -34,7 +35,7 @@ class UpdateTransactionRequest extends FormRequest
 
             $this->addRefusals($validator, [
                 ...$this->unknownFieldRefusals(),
-                ...$lockedFieldError === null ? [] : array_fill_keys(array_intersect(TransactionWriteRules::CoreFields, $sent), $lockedFieldError),
+                ...$lockedFieldError === null ? [] : array_fill_keys(TransactionWriteRules::lockedCoreFields($this->transaction(), $sent), $lockedFieldError),
             ]);
         }];
     }
