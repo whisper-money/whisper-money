@@ -27,6 +27,16 @@ class AutomationRuleWriter
     private const int MaxPriority = 2_147_483_647;
 
     /**
+     * The longest note a rule appends, the same as a transaction's own notes.
+     */
+    private const int MaxNoteLength = 10_000;
+
+    /**
+     * The most labels one rule applies.
+     */
+    private const int MaxLabels = 50;
+
+    /**
      * @return array<string, array<mixed>>
      */
     public static function createRules(): array
@@ -34,7 +44,8 @@ class AutomationRuleWriter
         return [
             'title' => ['required', 'string', 'max:'.AutomationRule::MAX_TITLE_LENGTH],
             'priority' => ['required', 'integer', 'min:0', 'max:'.self::MaxPriority],
-            'action_note' => ['sometimes', 'nullable', 'string'],
+            'action_note' => ['sometimes', 'nullable', 'string', 'max:'.self::MaxNoteLength],
+            'action_label_ids' => ['sometimes', 'array', 'max:'.self::MaxLabels],
         ];
     }
 

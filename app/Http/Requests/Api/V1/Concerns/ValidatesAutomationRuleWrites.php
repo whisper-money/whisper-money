@@ -54,11 +54,11 @@ trait ValidatesAutomationRuleWrites
              */
             'action_category_id' => ['sometimes', 'nullable', 'string', $this->inSpace(Category::class, 'a category')],
             /**
-             * The ids of the labels to add to the matching transactions, each a label of the space. On update the list replaces the rule's labels; an empty one removes them all.
+             * The ids of the labels to add to the matching transactions, each a label of the space, 50 at most. On update the list replaces the rule's labels; an empty one removes them all.
              *
              * @example ["0199a3f6-3c4d-7e5f-9a6b-7c8d9e0f1a23"]
              */
-            'action_label_ids' => ['sometimes', 'array'],
+            'action_label_ids' => $rules['action_label_ids'],
             /**
              * @format uuid
              */

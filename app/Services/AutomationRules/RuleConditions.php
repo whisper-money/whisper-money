@@ -29,6 +29,19 @@ class RuleConditions
     private const array SupportedVariables = ['description', 'notes', 'creditor_name', 'debtor_name', 'account_name', 'bank_name', 'category', 'transaction_date', 'amount'];
 
     /**
+     * How deep the objects and lists of a condition may nest. The visual
+     * builder's deepest rule (an "and" of "or" groups of negated conditions)
+     * stays well under it.
+     */
+    private const int MaxDepth = 20;
+
+    /**
+     * How many objects and lists a condition may hold in all, a few hundred
+     * conditions: every rule is evaluated against every new transaction.
+     */
+    private const int MaxNodes = 500;
+
+    /**
      * The format, for the MCP schema and the API reference alike, so an agent
      * reads the same text whichever one it starts from.
      */
@@ -74,7 +87,9 @@ class RuleConditions
             return "{$key} must be a non-empty JsonLogic object.";
         }
 
-        return self::nodeError($conditions);
+        $nodes = 0;
+
+        return self::nodeError($conditions, 1, $nodes);
     }
 
     /**
@@ -95,18 +110,32 @@ class RuleConditions
         return is_array($decoded) ? $decoded : [];
     }
 
-    private static function nodeError(mixed $node): ?string
+    /**
+     * @param  int  $depth  how deep $node sits, the top-level object being 1
+     * @param  int  $nodes  the objects and lists seen so far, shared across the walk
+     */
+    private static function nodeError(mixed $node, int $depth, int &$nodes): ?string
     {
         if (! is_array($node)) {
             return null;
         }
 
+        $nodes++;
+
+        if ($depth > self::MaxDepth) {
+            return 'The conditions nest more than '.self::MaxDepth.' levels deep.';
+        }
+
+        if ($nodes > self::MaxNodes) {
+            return 'The conditions have more than '.self::MaxNodes.' JsonLogic nodes.';
+        }
+
         foreach ($node as $operator => $value) {
             $error = match (true) {
-                is_int($operator) => self::nodeError($value),
+                is_int($operator) => self::nodeError($value, $depth + 1, $nodes),
                 ! in_array($operator, self::SupportedOperators, true) => "Unsupported JsonLogic operator \"{$operator}\". Supported operators: ".implode(', ', self::SupportedOperators).'.',
                 $operator === 'var' => self::variableError($value),
-                default => self::nodeError($value),
+                default => self::nodeError($value, $depth + 1, $nodes),
             };
 
             if ($error !== null) {
@@ -118,16 +147,22 @@ class RuleConditions
     }
 
     /**
-     * A `var` argument is either the name or a [name, default] pair.
+     * A `var` argument is either the name or a [name, default] pair. The
+     * default must be a plain value: JsonLogic evaluates one that is an
+     * expression, which would let any operator past the list above.
      */
     private static function variableError(mixed $value): ?string
     {
         $name = is_array($value) ? ($value[0] ?? null) : $value;
 
-        if (is_string($name) && in_array($name, self::SupportedVariables, true)) {
-            return null;
+        if (! is_string($name) || ! in_array($name, self::SupportedVariables, true)) {
+            return 'Unknown rule variable '.json_encode($name).'. Supported variables: '.implode(', ', self::SupportedVariables).'.';
         }
 
-        return 'Unknown rule variable '.json_encode($name).'. Supported variables: '.implode(', ', self::SupportedVariables).'.';
+        if (is_array($value) && (! array_is_list($value) || count($value) > 2 || is_array($value[1] ?? null))) {
+            return 'A variable default must be a plain value (text, a number, a boolean or null).';
+        }
+
+        return null;
     }
 }

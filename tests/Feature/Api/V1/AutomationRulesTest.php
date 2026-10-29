@@ -79,6 +79,32 @@ function groceryConditions(): array
     return ['and' => [['in' => ['mercadona', ['var' => 'description']]], ['<' => [['var' => 'amount'], 0]]]];
 }
 
+/**
+ * A condition wrapped in $levels negations, each one a level of nesting.
+ *
+ * @return array<string, mixed>
+ */
+function deeplyNegatedConditions(int $levels): array
+{
+    $conditions = ['in' => ['mercadona', ['var' => 'description']]];
+
+    foreach (range(1, $levels) as $level) {
+        $conditions = ['!' => $conditions];
+    }
+
+    return $conditions;
+}
+
+/**
+ * An "or" of $count "contains" conditions, three JsonLogic nodes each.
+ *
+ * @return array<string, mixed>
+ */
+function manyConditions(int $count): array
+{
+    return ['or' => array_map(fn (int $index): array => ['in' => ["shop {$index}", ['var' => 'description']]], range(1, $count))];
+}
+
 describe('list', function () {
     it('lists the rules of the personal space in evaluation order', function () {
         $user = User::factory()->create();
@@ -250,7 +276,44 @@ describe('create', function () {
         'a list' => [[['in' => ['x', ['var' => 'description']]]], 'conditions must be a non-empty JsonLogic object.'],
         'an unsupported operator' => [['regex' => ['x', ['var' => 'description']]], 'Unsupported JsonLogic operator "regex". Supported operators: and, or, !, ==, !=, >, >=, <, <=, in, var.'],
         'an unknown variable' => [['in' => ['x', ['var' => 'merchant']]], 'Unknown rule variable "merchant". Supported variables: description, notes, creditor_name, debtor_name, account_name, bank_name, category, transaction_date, amount.'],
+        'an operator in a variable default' => [['in' => ['x', ['var' => ['description', ['log' => 'x']]]]], 'A variable default must be a plain value (text, a number, a boolean or null).'],
+        'a supported operator in a variable default' => [['in' => ['x', ['var' => ['description', ['var' => 'notes']]]]], 'A variable default must be a plain value (text, a number, a boolean or null).'],
+        'conditions nested too deep' => [deeplyNegatedConditions(25), 'The conditions nest more than 20 levels deep.'],
+        'too many conditions' => [manyConditions(200), 'The conditions have more than 500 JsonLogic nodes.'],
     ]);
+
+    it('accepts a variable with a plain default and a rule as large as the builder makes', function () {
+        $user = User::factory()->create();
+        $category = Category::factory()->create(['user_id' => $user->id]);
+
+        foreach ([['==' => [['var' => ['creditor_name', null]], null]], ['in' => ['x', ['var' => ['description', '']]]], deeplyNegatedConditions(15), manyConditions(100)] as $priority => $conditions) {
+            withHeaders(rulesWriter($user))
+                ->postJson('/api/v1/automation-rules', [
+                    'title' => 'Groceries',
+                    'priority' => $priority,
+                    'conditions' => $conditions,
+                    'action_category_id' => $category->id,
+                ])
+                ->assertCreated();
+        }
+    });
+
+    it('caps the note and the labels a rule applies', function () {
+        $user = User::factory()->create();
+
+        withHeaders(rulesWriter($user))
+            ->postJson('/api/v1/automation-rules', [
+                'title' => 'Groceries',
+                'priority' => 1,
+                'conditions' => groceryConditions(),
+                'action_note' => str_repeat('a', 10_001),
+                'action_label_ids' => array_map(fn (): string => (string) Str::uuid(), range(1, 51)),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['action_note', 'action_label_ids']);
+
+        expect($user->automationRules()->count())->toBe(0);
+    });
 
     it('refuses missing and unknown fields, ids outside the space and a rule with no action', function () {
         $user = User::factory()->create();
