@@ -26,6 +26,13 @@ class Budget extends Model
 {
     use Archivable, BelongsToSpace, HasFactory, HasUuids, SoftDeletes;
 
+    /**
+     * The largest limit, in minor units, a budget period may have: the same
+     * ceiling as a savings goal's amounts, so carried-over sums stay well
+     * inside the integers a browser holds exactly.
+     */
+    public const MAX_ALLOCATED_AMOUNT = SavingsGoal::MAX_AMOUNT;
+
     protected $fillable = [
         'user_id',
         'space_id',
@@ -69,6 +76,16 @@ class Budget extends Model
         ];
     }
 
+    /**
+     * One of $user's budgets: someone else's is a ModelNotFoundException like
+     * one that does not exist. Budgets cover the user's whole account rather
+     * than a space.
+     */
+    public static function ownedByOrFail(User $user, string $id): self
+    {
+        return self::query()->whereBelongsTo($user)->findOrFail($id);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
@@ -109,11 +126,22 @@ class Budget extends Model
      */
     public function getCurrentPeriod(): ?BudgetPeriod
     {
+        return $this->currentPeriods()->first();
+    }
+
+    /**
+     * The periods covering today, latest start first: the first one is the
+     * current period (see getCurrentPeriod()). A relation so a list can eager
+     * load the current period of every budget at once.
+     *
+     * @return HasMany<BudgetPeriod, $this>
+     */
+    public function currentPeriods(): HasMany
+    {
         return $this->periods()
             ->where('start_date', '<=', today())
             ->where('end_date', '>=', today())
-            ->orderByDesc('start_date')
-            ->first();
+            ->orderByDesc('start_date');
     }
 
     /**

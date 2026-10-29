@@ -30,7 +30,7 @@ class ListSavingsGoals extends McpTool
     {
         return $this->json([
             'currency' => $this->reportingCurrency($user),
-            'savings_goals' => $this->presentSavingsGoals($this->resolveSpace($request, $user)),
+            'savings_goals' => $this->presentSavingsGoals($user, $this->resolveSpace($request, $user)),
         ]);
     }
 }

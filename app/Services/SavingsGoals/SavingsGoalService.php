@@ -15,6 +15,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\MonthlySavingsGoalClosed;
 use App\Services\AutomationRuleService;
+use App\Services\SpaceResolver;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -56,7 +57,7 @@ class SavingsGoalService
             $this->periods->openPeriod($goal, today());
 
             if (filled($input['auto_tag_account_id'] ?? null)) {
-                $this->createAutoTagRule($goal, Account::query()->forSpace($space)->findOrFail($input['auto_tag_account_id']));
+                $this->createAutoTagRule($goal, app(SpaceResolver::class)->ownedInSpace(Account::query(), $user, $space)->findOrFail($input['auto_tag_account_id']));
             }
 
             return $goal;

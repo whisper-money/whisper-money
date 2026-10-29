@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller as BaseController;
 use App\Models\Account;
 use App\Models\AutomationRule;
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
@@ -69,16 +71,25 @@ abstract class Controller extends BaseController
     }
 
     /**
-     * The route's category, label or automation rule, looked up among the caller's own in the
-     * request's space like account().
+     * The route's category, label, automation rule or savings goal, looked up
+     * among the caller's own in the request's space like account().
      *
-     * @template TModel of AutomationRule|Category|Label
+     * @template TModel of AutomationRule|Category|Label|SavingsGoal
      *
      * @param  class-string<TModel>  $model
      * @return TModel
      */
-    protected function inSpace(Request $request, string $model, string $id): AutomationRule|Category|Label
+    protected function inSpace(Request $request, string $model, string $id): AutomationRule|Category|Label|SavingsGoal
     {
         return app(SpaceResolver::class)->ownedInSpaceOrFail($model, $this->user($request), $this->space($request), $id);
+    }
+
+    /**
+     * The route's budget. Budgets cover the user's whole account rather than a
+     * space, so one of someone else's is a 404 like one that does not exist.
+     */
+    protected function budget(Request $request, string $id): Budget
+    {
+        return Budget::ownedByOrFail($this->user($request), $id);
     }
 }

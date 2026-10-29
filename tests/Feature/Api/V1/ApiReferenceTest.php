@@ -119,3 +119,19 @@ it('shows only the required fields and those with an example of their own in an 
 
     expect($body)->toBe(['name' => 'Main checking', 'balance' => 125000]);
 });
+
+it('reads a nullable reference as the object it points at, or null', function () {
+    $document = new OpenApiDocument(['components' => ['schemas' => ['Period' => [
+        'type' => 'object',
+        'properties' => ['start_date' => ['type' => 'string', 'format' => 'date', 'example' => '2026-10-01']],
+    ]]]]);
+    $schema = ['type' => 'object', 'properties' => ['current_period' => ['anyOf' => [
+        ['description' => 'The period in progress.', '$ref' => '#/components/schemas/Period'],
+        ['type' => 'null'],
+    ]]]];
+
+    expect($document->fields($schema))->toBe([
+        ['name' => 'current_period', 'type' => 'Period or null', 'required' => false, 'description' => 'The period in progress.'],
+        ['name' => 'current_period.start_date', 'type' => 'string (date)', 'required' => false, 'description' => ''],
+    ])->and($document->example($schema))->toBe(['current_period' => ['start_date' => '2026-10-01']]);
+});

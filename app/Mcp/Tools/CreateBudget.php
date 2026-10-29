@@ -12,7 +12,6 @@ use App\Services\BudgetService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -42,16 +41,7 @@ class CreateBudget extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'allocated_amount' => ['required', 'integer', 'min:0'],
-            'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
-            'rollover_type' => ['required', Rule::enum(RolloverType::class)],
-            // The field means a day of the week for weekly periods and a day of
-            // the month for the rest, so its range depends on period_type.
-            'period_start_day' => ['sometimes', 'nullable', 'integer', ...(BudgetPeriodType::tryFrom($request->string('period_type')->toString())?->startDayRules() ?? [])],
-            'is_catch_all' => ['sometimes', 'boolean'],
-        ]);
+        $request->validate(BudgetService::createRules(BudgetPeriodType::tryFrom($request->string('period_type')->toString())));
 
         // Budgets track their owner's own categories and labels, so an id
         // belonging to a co-member of a shared space is rejected even though
@@ -60,7 +50,11 @@ class CreateBudget extends WriteTool
         $labelIds = $this->ownedIds($request, 'label_ids', Label::query()->where('user_id', $user->id), 'One or more label_ids are not labels you own. Only your own labels can be budgeted.');
         $isCatchAll = $request->boolean('is_catch_all');
 
-        $this->assertBudgetTracksSomething($user, $isCatchAll, $categoryIds, $labelIds);
+        $refusals = BudgetService::trackingRefusals($user, $isCatchAll, $categoryIds, $labelIds);
+
+        if ($refusals !== []) {
+            throw ValidationException::withMessages($refusals);
+        }
 
         $budget = app(BudgetService::class)->create(
             $user,
@@ -77,32 +71,6 @@ class CreateBudget extends WriteTool
         );
 
         return $this->json(['budget' => $this->presentBudget($budget)]);
-    }
-
-    /**
-     * A budget needs something to watch: either explicit categories/labels, or
-     * the single catch-all budget that absorbs whatever the others leave behind.
-     *
-     * The web form checks the same two rules (StoreBudgetRequest), with wording
-     * aimed at someone looking at the create dialog rather than at an agent
-     * deciding what to send next.
-     *
-     * @param  array<int, string>  $categoryIds
-     * @param  array<int, string>  $labelIds
-     */
-    private function assertBudgetTracksSomething(User $user, bool $isCatchAll, array $categoryIds, array $labelIds): void
-    {
-        if (! $isCatchAll && $categoryIds === [] && $labelIds === []) {
-            throw ValidationException::withMessages([
-                'category_ids' => 'Pass at least one category or label to track, or set is_catch_all to true.',
-            ]);
-        }
-
-        if ($isCatchAll && $user->budgets()->notArchived()->where('is_catch_all', true)->exists()) {
-            throw ValidationException::withMessages([
-                'is_catch_all' => 'This account already has a catch-all budget.',
-            ]);
-        }
     }
 
     /**

@@ -3,15 +3,13 @@
 namespace App\Mcp\Tools;
 
 use App\Enums\MonthlyTargetType;
-use App\Http\Requests\Concerns\ValidatesMonthlySavingsTarget;
-use App\Http\Requests\Concerns\ValidatesOneOffSavingsTarget;
-use App\Http\Requests\Concerns\ValidatesSavingsGoalName;
 use App\Mcp\Tools\Concerns\PresentsSavingsGoals;
-use App\Mcp\Tools\Concerns\ValidatesSavingsGoalWrites;
 use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\User;
 use App\Services\SavingsGoals\SavingsGoalService;
+use App\Services\SavingsGoals\SavingsGoalWriteRules;
+use App\Services\SpaceResolver;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -23,7 +21,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 #[Description('Edit a savings goal; only the fields you pass change. Its kind is fixed. A monthly target change applies to the month in progress and later ones, never to past months.')]
 class UpdateSavingsGoal extends WriteTool
 {
-    use PresentsSavingsGoals, ValidatesMonthlySavingsTarget, ValidatesOneOffSavingsTarget, ValidatesSavingsGoalName, ValidatesSavingsGoalWrites;
+    use PresentsSavingsGoals;
 
     /**
      * @return array<string, mixed>
@@ -47,23 +45,9 @@ class UpdateSavingsGoal extends WriteTool
     protected function write(Request $request, User $user): Response
     {
         $space = $this->resolveSpace($request, $user);
-        $goal = $this->savingsGoalInSpace($request, $space);
+        $goal = $this->savingsGoalInSpace($request, $user, $space);
 
-        [$otherKindRules, $messages] = $this->otherKindFieldRules($goal->kind);
-
-        $validated = $request->validate([
-            'name' => $this->savingsGoalNameRules($user->id, creating: false, ownLabelId: $goal->label_id),
-            // Refused rather than ignored, like the other fields this goal
-            // does not take: the agent must not report a switch that did not
-            // happen.
-            'kind' => ['prohibited'],
-            ...$otherKindRules,
-            ...($goal->isMonthly() ? $this->monthlyTargetRules(creating: false) : $this->oneOffTargetRules(creating: false)),
-        ], [
-            ...$messages,
-            ...$this->amountLimitMessages($this->reportingCurrency($user)),
-            'kind.prohibited' => 'A goal\'s kind is fixed once created. To switch, create a new goal of the other kind.',
-        ]);
+        $validated = $request->validate(...app(SavingsGoalWriteRules::class)->forUpdate($user, $goal));
 
         if ($validated === []) {
             throw ValidationException::withMessages([
@@ -80,12 +64,13 @@ class UpdateSavingsGoal extends WriteTool
     }
 
     /**
-     * An archived goal is frozen for good, so it is refused rather than edited.
+     * One of the caller's own goals in the space, as in the app. An archived
+     * goal is frozen for good, so it is refused rather than edited.
      */
-    private function savingsGoalInSpace(Request $request, Space $space): SavingsGoal
+    private function savingsGoalInSpace(Request $request, User $user, Space $space): SavingsGoal
     {
         $id = $request->string('savings_goal_id')->toString();
-        $goal = SavingsGoal::query()->forSpace($space)->whereKey($id)->first();
+        $goal = app(SpaceResolver::class)->ownedInSpace(SavingsGoal::query(), $user, $space)->whereKey($id)->first();
 
         if ($goal === null) {
             throw ValidationException::withMessages([

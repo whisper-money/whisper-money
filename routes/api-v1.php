@@ -3,8 +3,10 @@
 use App\Http\Controllers\Api\V1\AccountBalanceController;
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AutomationRuleController;
+use App\Http\Controllers\Api\V1\BudgetController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\LabelController;
+use App\Http\Controllers\Api\V1\SavingsGoalController;
 use App\Http\Controllers\Api\V1\SpaceController;
 use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Support\Facades\Route;
@@ -66,4 +68,19 @@ Route::whereUuid('automation_rule')->group(function (): void {
     Route::patch('automation-rules/{automation_rule}', [AutomationRuleController::class, 'update'])->name('automation-rules.update');
     Route::delete('automation-rules/{automation_rule}', [AutomationRuleController::class, 'destroy'])->name('automation-rules.destroy');
     Route::post('automation-rules/{automation_rule}/apply', [AutomationRuleController::class, 'apply'])->name('automation-rules.apply');
+});
+
+Route::whereUuid('budget')->group(function (): void {
+    Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
+    Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
+    Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+});
+
+Route::whereUuid('savings_goal')->group(function (): void {
+    Route::get('savings-goals', [SavingsGoalController::class, 'index'])->name('savings-goals.index');
+    Route::post('savings-goals', [SavingsGoalController::class, 'store'])->name('savings-goals.store');
+    Route::get('savings-goals/{savings_goal}', [SavingsGoalController::class, 'show'])->name('savings-goals.show');
+    Route::patch('savings-goals/{savings_goal}', [SavingsGoalController::class, 'update'])->name('savings-goals.update');
 });

@@ -7,6 +7,7 @@ use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateCategory;
+use App\Mcp\Tools\CreateSavingsGoal;
 use App\Mcp\Tools\CreateTransaction;
 use App\Mcp\Tools\DeleteAutomationRule;
 use App\Mcp\Tools\DeleteCategory;
@@ -17,17 +18,20 @@ use App\Mcp\Tools\ListAccounts;
 use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListCategories;
 use App\Mcp\Tools\ListLabels;
+use App\Mcp\Tools\ListSavingsGoals;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateAutomationRule;
 use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
+use App\Mcp\Tools\UpdateSavingsGoal;
 use App\Mcp\Tools\UpdateTransaction;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
@@ -256,4 +260,29 @@ it('lists, changes, applies and deletes only the caller\'s own automation rules,
 
     expect($theirs->fresh()->title)->toBe('Their rule')
         ->and($user->automationRules()->count())->toBe(1);
+});
+
+it('lists and changes only the caller\'s own savings goals, auto-tagging only their own accounts', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $space = mcpSharedSpace($user, $owner);
+    $theirs = SavingsGoal::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'name' => 'Their goal']);
+    SavingsGoal::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'name' => 'My goal']);
+    $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'type' => 'savings']);
+
+    callOwnRowsTool($user, ListSavingsGoals::class, ['space' => $space->id])
+        ->assertOk()->assertSee('My goal')->assertDontSee('Their goal');
+    callOwnRowsTool($user, UpdateSavingsGoal::class, ['savings_goal_id' => $theirs->id, 'space' => $space->id, 'name' => 'Mine'])
+        ->assertHasErrors(["No savings goal with id {$theirs->id} in space {$space->id}."]);
+    callOwnRowsTool($user, CreateSavingsGoal::class, [
+        'space' => $space->id,
+        'name' => 'Rainy day',
+        'kind' => 'monthly',
+        'monthly_target_type' => 'amount',
+        'monthly_target_amount' => 30_000,
+        'auto_tag_account_id' => $theirAccount->id,
+    ])->assertHasErrors(["No account with id {$theirAccount->id} in space {$space->id}."]);
+
+    expect($theirs->fresh()->name)->toBe('Their goal')
+        ->and($user->savingsGoals()->count())->toBe(1);
 });
