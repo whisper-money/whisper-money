@@ -1,5 +1,6 @@
 import { useLocale } from '@/hooks/use-locale';
 import {
+    activeConnectionForBank,
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
 } from '@/lib/banking-connections';
@@ -190,6 +191,11 @@ export function useConnectFlow(
         [selectedBank, connectedBankNames],
     );
 
+    const existingConnection = useMemo(
+        () => activeConnectionForBank(connections, selectedBank?.name),
+        [connections, selectedBank],
+    );
+
     const setCredential = useCallback((key: string, value: string) => {
         setCredentials((current) => ({ ...current, [key]: value }));
     }, []);
@@ -375,6 +381,7 @@ export function useConnectFlow(
         provider,
         connectedBankNames,
         isAlreadyConnected,
+        existingConnection,
         acknowledgedReplace,
         setAcknowledgedReplace,
         canSubmit,

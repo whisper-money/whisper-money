@@ -2,6 +2,7 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncTrigger;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
@@ -1501,4 +1502,260 @@ test('reconnect hands back the full scheduled retry budget', function () {
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->consecutive_sync_failures)->toBe(0);
+});
+
+// Sibling connections to a bank that keeps one session per user
+
+/**
+ * @param  array<int, array{uid: string, iban: string}>  $accounts
+ */
+function mockSharedSession(array $accounts, string $sessionId = 'shared-session'): void
+{
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => $sessionId,
+            'accounts' => array_map(fn (array $account): array => [
+                'uid' => $account['uid'],
+                'currency' => 'EUR',
+                'name' => 'Account',
+                'account_id' => ['iban' => $account['iban']],
+            ], $accounts),
+            'aspsp' => ['name' => 'Joint Bank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    app()->instance(BankingProviderInterface::class, $mockProvider);
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ * @return array{0: BankingConnection, 1: Account}
+ */
+function connectionWithAccount(User $user, ?string $iban, array $attributes = []): array
+{
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Joint Bank',
+        'aspsp_country' => 'ES',
+        ...$attributes,
+    ]);
+
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-'.$connection->id,
+        'iban' => $iban,
+    ]);
+
+    return [$connection, $account];
+}
+
+test('reconnecting a connection also repoints a same-bank sibling the new session covers', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    [$connection] = connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', [
+        'status' => BankingConnectionStatus::Expired,
+        'session_id' => 'revoked-session',
+        'error_message' => 'Session expired',
+        'consecutive_sync_failures' => 3,
+        'valid_until' => now()->subDay(),
+    ]);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code')
+        ->assertRedirect(route('settings.connections.index'));
+
+    $sibling->refresh();
+    expect($sibling->session_id)->toBe('shared-session');
+    expect($sibling->status)->toBe(BankingConnectionStatus::Active);
+    expect($sibling->valid_until->isFuture())->toBeTrue();
+    expect($sibling->error_message)->toBeNull();
+    expect($sibling->consecutive_sync_failures)->toBe(0);
+    expect($siblingAccount->refresh()->external_account_id)->toBe('new-uid-2');
+    expect($connection->refresh()->session_id)->toBe('shared-session');
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->is($sibling)
+        && $job->trigger === BankingSyncTrigger::Reconnect);
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->is($connection));
+});
+
+test('a same-bank sibling the new session does not cover is left untouched', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['session_id' => 'other-session']);
+
+    mockSharedSession([['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001']]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($sibling->refresh()->session_id)->toBe('other-session');
+    expect($siblingAccount->refresh()->external_account_id)->toBe('old-uid-'.$sibling->id);
+    Queue::assertNotPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->is($sibling));
+});
+
+test('a sibling only partly covered by the new session is left untouched', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $coveredAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['session_id' => 'other-session']);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $sibling->id,
+        'iban' => 'ES0000000000000000000003',
+    ]);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($sibling->refresh()->session_id)->toBe('other-session');
+    expect($coveredAccount->refresh()->external_account_id)->toBe('old-uid-'.$sibling->id);
+});
+
+test('a connection to a different bank is never repointed even when an iban matches', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$otherBank, $otherAccount] = connectionWithAccount($user, 'ES0000000000000000000002', [
+        'aspsp_name' => 'Other Bank',
+        'session_id' => 'other-session',
+    ]);
+    [$otherCountry] = connectionWithAccount($user, 'ES0000000000000000000002', [
+        'aspsp_country' => 'PT',
+        'session_id' => 'other-country-session',
+    ]);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($otherBank->refresh()->session_id)->toBe('other-session');
+    expect($otherAccount->refresh()->external_account_id)->toBe('old-uid-'.$otherBank->id);
+    expect($otherCountry->refresh()->session_id)->toBe('other-country-session');
+});
+
+test('another user\'s connection to the same bank is never repointed', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$strangerConnection] = connectionWithAccount(User::factory()->create(), 'ES0000000000000000000002', ['session_id' => 'stranger-session']);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($strangerConnection->refresh()->session_id)->toBe('stranger-session');
+});
+
+test('a sibling without stored ibans is never repointed by position', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, null, [
+        'status' => BankingConnectionStatus::Expired,
+        'session_id' => 'revoked-session',
+    ]);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $sibling->refresh();
+    expect($sibling->session_id)->toBe('revoked-session');
+    expect($sibling->status)->toBe(BankingConnectionStatus::Expired);
+    expect($siblingAccount->refresh()->external_account_id)->toBe('old-uid-'.$sibling->id);
+    expect($siblingAccount->iban)->toBeNull();
+});
+
+test('the first connection callback also repoints an existing same-bank sibling', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000001', ['session_id' => 'soon-revoked-session']);
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Joint Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-2', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code')
+        ->assertRedirect(route('open-banking.map-accounts', ['connection' => $connection]));
+
+    expect($connection->refresh()->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($sibling->refresh()->session_id)->toBe('shared-session');
+    expect($sibling->status)->toBe(BankingConnectionStatus::Active);
+    expect($siblingAccount->refresh()->external_account_id)->toBe('new-uid-1');
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->is($sibling)
+        && $job->trigger === BankingSyncTrigger::Reconnect);
+});
+
+test('the reconnecting connection never takes a sibling\'s uid by position', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    [$connection, $legacyAccount] = connectionWithAccount($user, null, ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['status' => BankingConnectionStatus::Expired]);
+
+    // The sibling's account comes first, where the positional fallback would look.
+    mockSharedSession([
+        ['uid' => 'sibling-uid', 'iban' => 'ES0000000000000000000002'],
+        ['uid' => 'own-uid', 'iban' => 'ES0000000000000000000001'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($siblingAccount->refresh()->external_account_id)->toBe('sibling-uid');
+    expect($legacyAccount->refresh()->external_account_id)->toBe('own-uid');
+    expect($sibling->refresh()->status)->toBe(BankingConnectionStatus::Active);
+});
+
+test('an iban the session lists twice is no evidence for repointing a sibling', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    connectionWithAccount($user, 'ES0000000000000000000001', ['status' => BankingConnectionStatus::Pending]);
+    [$sibling, $siblingAccount] = connectionWithAccount($user, 'ES0000000000000000000002', ['session_id' => 'other-session']);
+
+    mockSharedSession([
+        ['uid' => 'new-uid-1', 'iban' => 'ES0000000000000000000001'],
+        ['uid' => 'new-uid-eur', 'iban' => 'ES0000000000000000000002'],
+        ['uid' => 'new-uid-usd', 'iban' => 'ES0000000000000000000002'],
+    ]);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($sibling->refresh()->session_id)->toBe('other-session');
+    expect($siblingAccount->refresh()->external_account_id)->toBe('old-uid-'.$sibling->id);
 });

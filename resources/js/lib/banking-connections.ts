@@ -34,6 +34,23 @@ export function alreadyConnectedBankNames(
 }
 
 /**
+ * The active EnableBanking connection to a bank, whose accounts screen is where
+ * another account from the same bank login belongs. An awaiting-mapping
+ * connection has no accounts screen yet, so it is never returned.
+ */
+export function activeConnectionForBank(
+    connections: BankingConnection[],
+    aspspName: string | undefined,
+): BankingConnection | undefined {
+    return connections.find(
+        (c) =>
+            c.provider === 'enablebanking' &&
+            c.status === 'active' &&
+            c.aspsp_name === aspspName,
+    );
+}
+
+/**
  * Whether the user already has a live connection for a single-connection
  * provider (Binance, Bitpanda, Coinbase, Indexa Capital, …).
  */

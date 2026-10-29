@@ -129,7 +129,8 @@ class ConnectionAccountController extends Controller
      * Fetch the bank accounts the consent covers that are not yet synced.
      *
      * The session only returns account uids, so we enrich the unknown ones with a
-     * details call. Already-synced uids are skipped — they live in syncedAccounts.
+     * details call. Already-synced uids are skipped — they live in syncedAccounts,
+     * or in a sibling connection's when the bank shares one session between them.
      *
      * @return array<int, array{uid: string, name: string|null, currency: string|null, iban: string|null}>
      */
@@ -150,7 +151,12 @@ class ConnectionAccountController extends Controller
             return [];
         }
 
-        $knownUids = $connection->accounts()->pluck('external_account_id')->filter()->all();
+        $knownUids = Account::query()
+            ->where('user_id', $connection->user_id)
+            ->whereNotNull('banking_connection_id')
+            ->pluck('external_account_id')
+            ->filter()
+            ->all();
 
         $uids = collect($session['accounts_data'] ?? $session['accounts'])
             ->map(fn ($account) => is_array($account) ? ($account['uid'] ?? null) : $account)

@@ -13,7 +13,7 @@ class DisconnectBankingConnection
 
     public function handle(BankingConnection $connection, bool $deleteAccounts = false): void
     {
-        if ($connection->isEnableBanking() && $connection->session_id && $connection->isActive()) {
+        if ($connection->isEnableBanking() && $connection->session_id && $connection->isActive() && ! $this->sessionIsShared($connection)) {
             try {
                 $this->provider->revokeSession($connection->session_id);
             } catch (\Throwable $e) {
@@ -40,5 +40,19 @@ class DisconnectBankingConnection
 
         $connection->update(['status' => BankingConnectionStatus::Revoked]);
         $connection->delete();
+    }
+
+    /**
+     * Whether another of the user's connections still syncs through this session.
+     * Banks that keep one session per user have every connection to them share it,
+     * so revoking it here would silently take the others down too.
+     */
+    private function sessionIsShared(BankingConnection $connection): bool
+    {
+        return BankingConnection::query()
+            ->where('user_id', $connection->user_id)
+            ->where('session_id', $connection->session_id)
+            ->whereKeyNot($connection->getKey())
+            ->exists();
     }
 }

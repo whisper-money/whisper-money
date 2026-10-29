@@ -60,6 +60,7 @@ export function ConnectAccountDialog({
         provider,
         connectedBankNames,
         isAlreadyConnected,
+        existingConnection,
         acknowledgedReplace,
         setAcknowledgedReplace,
         canSubmit,
@@ -281,6 +282,9 @@ export function ConnectAccountDialog({
 
                             {isAlreadyConnected && (
                                 <ReplaceConnectionWarning
+                                    existingConnectionId={
+                                        existingConnection?.id
+                                    }
                                     acknowledged={acknowledgedReplace}
                                     onAcknowledgedChange={
                                         setAcknowledgedReplace
