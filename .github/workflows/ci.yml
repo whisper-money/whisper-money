@@ -15,10 +15,14 @@ on:
         type: boolean
         default: true
 
+# Runners are pinned to ubuntu-24.04: ubuntu-latest moved to 26.04, where
+# Playwright can't install chromium-headless-shell and the newer ICU/tzdata
+# drops legacy timezone aliases (Asia/Calcutta), breaking the test suite.
+# Unpin once Playwright supports 26.04 and those timezone tests pass there.
 jobs:
   build-assets:
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +44,7 @@ jobs:
           retention-days: 1
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8.0
@@ -114,7 +118,7 @@ jobs:
     # artifact to download, and a red `crap` job for a missing file would say
     # nothing about complexity. Skipping is the honest outcome.
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: tests
     steps:
       - name: Checkout
@@ -143,7 +147,7 @@ jobs:
 
   browser-tests:
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: browser-tests-matrix
     steps:
       - name: Aggregate shard results
@@ -156,7 +160,7 @@ jobs:
 
   browser-tests-matrix:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -222,7 +226,7 @@ jobs:
 
   update-browser-shards:
     if: github.event_name == 'workflow_dispatch' && inputs.build_only == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8.0
@@ -286,7 +290,7 @@ jobs:
           retention-days: 1
 
   static-analysis:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -299,7 +303,7 @@ jobs:
         run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
 
   linter:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: read
@@ -375,7 +379,7 @@ jobs:
             Subject must not start with uppercase. Use: feat: add checkout, fix(billing): handle retry.
 
   performance-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8.0
@@ -410,7 +414,7 @@ jobs:
           DB_PASSWORD: password
 
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
@@ -453,7 +457,7 @@ jobs:
               - '.github/workflows/ci.yml'
 
   build-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     needs: [tests, linter, static-analysis, performance-tests, changes]
     if: ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch') && needs.changes.outputs.code == 'true'
