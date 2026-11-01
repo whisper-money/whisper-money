@@ -1,5 +1,5 @@
 import { pricingFixture as pricing } from '@/lib/pricing-fixture';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Paywall from './paywall';
 
@@ -15,6 +15,7 @@ const emptyStats = {
 const mocks = vi.hoisted(() => ({
     visit: vi.fn(),
     post: vi.fn(),
+    httpPost: vi.fn(),
     captureEvent: vi.fn(),
     props: {
         canUseFreePlan: false,
@@ -32,6 +33,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // The paywall shell renders the app logo, which reads the privacy-mode
 // context the real app provides app-wide from app.tsx.
@@ -42,9 +45,12 @@ vi.mock('@/contexts/privacy-mode-context', () => ({
     }),
 }));
 
-vi.mock('@inertiajs/react', () => ({
+vi.mock('@inertiajs/react', async () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
     router: { visit: mocks.visit, post: mocks.post },
+    useHttp: (await import('@/lib/use-http.fixture')).fakeUseHttp(
+        mocks.httpPost,
+    ),
     usePage: () => ({
         props: {
             auth: { user: { id: '1', name: 'Ada', email: 'ada@example.test' } },
@@ -58,6 +64,7 @@ vi.mock('@inertiajs/react', () => ({
 describe('Paywall', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.httpPost.mockResolvedValue(undefined);
         mocks.props.canUseFreePlan = false;
         mocks.props.canEscapeToFreePlan = false;
         mocks.props.canManageConnectionsForFreePlan = false;
@@ -142,16 +149,49 @@ describe('Paywall', () => {
             ).toBeInTheDocument();
         });
 
-        it('walks straight out to the dashboard, with nothing to confirm', () => {
+        it('asks why before walking out, with nothing to confirm', () => {
             mocks.props.canEscapeToFreePlan = true;
 
             render(<Paywall />);
 
             fireEvent.click(screen.getByTestId('carry-on-free'));
 
-            // Nothing to disconnect, so nothing to confirm.
-            expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
+            // Nothing to disconnect, so nothing to confirm: only the survey.
+            expect(screen.getByTestId('free-plan-survey')).toBeInTheDocument();
+            expect(mocks.visit).not.toHaveBeenCalled();
             expect(mocks.post).not.toHaveBeenCalled();
+        });
+
+        it('walks out to the dashboard when the survey is skipped', () => {
+            render(<Paywall />);
+
+            fireEvent.click(screen.getByTestId('carry-on-free'));
+            fireEvent.click(screen.getByTestId('free-plan-survey-skip'));
+
+            expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
+            expect(mocks.httpPost).not.toHaveBeenCalled();
+        });
+
+        it('stores the answer from the soft gate, then walks out', async () => {
+            render(<Paywall />);
+
+            fireEvent.click(screen.getByTestId('carry-on-free'));
+            fireEvent.click(
+                screen.getByTestId('free-plan-survey-reason-too_expensive'),
+            );
+
+            await act(async () => {
+                fireEvent.click(screen.getByTestId('free-plan-survey-send'));
+            });
+
+            expect(mocks.httpPost).toHaveBeenCalledWith(
+                '/subscribe/free-plan/survey',
+                expect.objectContaining({
+                    reason: 'too_expensive',
+                    gate: 'soft',
+                }),
+            );
+            expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
         });
 
         it('names what free keeps and what the plan adds', () => {

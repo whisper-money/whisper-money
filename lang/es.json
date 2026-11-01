@@ -4211,5 +4211,16 @@
     "Base URL": "URL base",
     "Send every request to this URL, with your token in the Authorization header as a Bearer token.": "Envía cada petición a esta URL, con tu token en la cabecera Authorization como token Bearer.",
     "Read the API documentation": "Leer la documentación de la API",
-    "Personal tokens": "Tokens personales"
+    "Personal tokens": "Tokens personales",
+    "What's keeping you on free?": "¿Qué te hace quedarte en el plan gratis?",
+    "A quick answer helps us improve. You stay on the free plan either way.": "Una respuesta rápida nos ayuda a mejorar. Te quedas en el plan gratis igualmente.",
+    "It's too expensive for me": "Es demasiado caro para mí",
+    "I'm still trying the app out": "Todavía estoy probando la app",
+    "I don't need bank sync or the AI": "No necesito la sincronización bancaria ni la IA",
+    "I don't trust connecting my bank": "No me fío de conectar mi banco",
+    "I use it too little to pay": "La uso demasiado poco para pagar",
+    "Other reason": "Otro motivo",
+    "Tell us a bit more (optional)": "Cuéntanos un poco más (opcional)",
+    "Send and stay free": "Enviar y seguir gratis",
+    "Thanks for telling us": "Gracias por contárnoslo"
 }

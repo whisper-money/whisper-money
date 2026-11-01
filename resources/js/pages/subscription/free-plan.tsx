@@ -1,6 +1,10 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepList, StepRow } from '@/components/onboarding/step-list';
 import { StepCallout, StepScreen } from '@/components/onboarding/step-screen';
+import {
+    FreePlanSurvey,
+    type PaywallGate,
+} from '@/components/subscription/free-plan-survey';
 import SubscriptionLayout from '@/layouts/subscription-layout';
 import { captureEvent } from '@/lib/posthog';
 import { subscribe } from '@/routes';
@@ -17,6 +21,8 @@ interface FreePlanPageProps extends SharedData {
     banks: string[];
     transactionsCount: number;
     hasAiConsent: boolean;
+    /** The paywall screen that sent the user here, for the survey. */
+    gate: Exclude<PaywallGate, 'soft'>;
 }
 
 /**
@@ -30,12 +36,36 @@ interface FreePlanPageProps extends SharedData {
  * "we delete my transactions" to most people.
  */
 export default function FreePlanConfirm() {
-    const { banks, transactionsCount, hasAiConsent } =
+    const { banks, transactionsCount, hasAiConsent, gate } =
         usePage<FreePlanPageProps>().props;
     const [isLeaving, setIsLeaving] = useState(false);
+    const [surveyOpen, setSurveyOpen] = useState(false);
+    const [surveyAsked, setSurveyAsked] = useState(false);
+
+    // The survey comes after the confirmation and before the request: the
+    // request ends in a redirect to the dashboard, so there is no screen left
+    // to ask on once it has gone out. Every way out of the survey goes on to
+    // the disconnect, so it can delay the choice but never cancel it — and it
+    // is asked once: a retry after a failed request goes straight through.
+    const confirm = () => {
+        captureEvent('paywall_free_plan_confirmed', { banks: banks.length });
+
+        if (surveyAsked) {
+            chooseFreePlan();
+
+            return;
+        }
+
+        setSurveyAsked(true);
+        setSurveyOpen(true);
+    };
+
+    const continueAfterSurvey = () => {
+        setSurveyOpen(false);
+        chooseFreePlan();
+    };
 
     const chooseFreePlan = () => {
-        captureEvent('paywall_free_plan_confirmed', { banks: banks.length });
         setIsLeaving(true);
 
         // The server redirects to the dashboard on success, so there is nothing
@@ -75,7 +105,7 @@ export default function FreePlanConfirm() {
                                     ? __('Disconnect and continue free')
                                     : __('Switch it off and continue free')
                             }
-                            onClick={chooseFreePlan}
+                            onClick={confirm}
                             loading={isLeaving}
                             loadingText={__('Disconnecting…')}
                             data-testid="confirm-free-plan"
@@ -130,6 +160,12 @@ export default function FreePlanConfirm() {
                     )}
                 </StepCallout>
             </StepScreen>
+
+            <FreePlanSurvey
+                open={surveyOpen}
+                gate={gate}
+                onContinue={continueAfterSurvey}
+            />
         </SubscriptionLayout>
     );
 }
