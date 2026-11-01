@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\FreePlanSurveyReason;
+use App\Enums\PaywallGate;
 use App\Models\FreePlanSurveyResponse;
 use App\Models\User;
 
@@ -22,7 +23,7 @@ test('stores why a user on the paywall stays on the free plan', function () {
 
     expect($response->reason)->toBe(FreePlanSurveyReason::TooExpensive)
         ->and($response->details)->toBeNull()
-        ->and($response->gate)->toBe('soft');
+        ->and($response->gate)->toBe(PaywallGate::Soft);
 });
 
 test('keeps the details given with the other reason', function () {
@@ -39,7 +40,7 @@ test('keeps the details given with the other reason', function () {
     expect($user->freePlanSurveyResponses()->sole())
         ->reason->toBe(FreePlanSurveyReason::Other)
         ->details->toBe('I only track cash')
-        ->gate->toBe('former-subscriber');
+        ->gate->toBe(PaywallGate::FormerSubscriber);
 });
 
 test('drops the details unless the reason is other', function () {
@@ -145,4 +146,23 @@ test('a user still held by the paywall can answer the survey', function () {
             'gate' => 'soft',
         ])
         ->assertNoContent();
+});
+
+test('the survey cannot be flooded with answers', function () {
+    $user = User::factory()->onboarded()->create();
+    $this->actingAs($user);
+
+    foreach (range(1, 6) as $attempt) {
+        $this->post(route('subscribe.free-plan.survey'), [
+            'reason' => 'too_expensive',
+            'gate' => 'soft',
+        ])->assertNoContent();
+    }
+
+    $this->post(route('subscribe.free-plan.survey'), [
+        'reason' => 'too_expensive',
+        'gate' => 'soft',
+    ])->assertTooManyRequests();
+
+    expect($user->freePlanSurveyResponses()->count())->toBe(6);
 });

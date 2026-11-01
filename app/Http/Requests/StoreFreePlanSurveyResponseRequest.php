@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\FreePlanSurveyReason;
-use App\Models\FreePlanSurveyResponse;
+use App\Enums\PaywallGate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,7 +27,7 @@ class StoreFreePlanSurveyResponseRequest extends FormRequest
         return [
             'reason' => ['required', Rule::enum(FreePlanSurveyReason::class)],
             'details' => ['nullable', 'string', 'max:1000'],
-            'gate' => ['required', 'string', Rule::in(FreePlanSurveyResponse::GATES)],
+            'gate' => ['required', Rule::enum(PaywallGate::class)],
         ];
     }
 
@@ -35,7 +35,7 @@ class StoreFreePlanSurveyResponseRequest extends FormRequest
      * The answer to store. The free text only belongs to "Other reason": the
      * field is hidden for every other option, so anything left in it is stale.
      *
-     * @return array{reason: FreePlanSurveyReason, details: ?string, gate: string}
+     * @return array{reason: FreePlanSurveyReason, details: ?string, gate: PaywallGate}
      */
     public function answer(): array
     {
@@ -45,7 +45,7 @@ class StoreFreePlanSurveyResponseRequest extends FormRequest
         return [
             'reason' => $reason,
             'details' => $reason === FreePlanSurveyReason::Other && $details !== '' ? $details : null,
-            'gate' => $this->string('gate')->toString(),
+            'gate' => $this->enum('gate', PaywallGate::class),
         ];
     }
 }

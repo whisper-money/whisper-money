@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\RefundSelfServe;
+use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
 use App\Http\Requests\ChooseFreePlanRequest;
 use App\Http\Requests\StoreFreePlanSurveyResponseRequest;
@@ -89,8 +90,8 @@ class SubscriptionController extends Controller
             // Which paywall screen sent the user here, for the survey asked on
             // the way out. Only the two gates with something to give up do.
             'gate' => $this->isFormerSubscriberWithBanks($user, $connections->isNotEmpty())
-                ? 'former-subscriber'
-                : 'hard',
+                ? PaywallGate::FormerSubscriber
+                : PaywallGate::Hard,
         ]);
     }
 

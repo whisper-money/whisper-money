@@ -23,7 +23,7 @@ import { captureEvent } from '@/lib/posthog';
 import { survey as surveyRoute } from '@/routes/subscribe/free-plan';
 import { __ } from '@/utils/i18n';
 import { useHttp } from '@inertiajs/react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 /**
@@ -36,36 +36,58 @@ import { toast } from 'sonner';
  */
 export type PaywallGate = 'former-subscriber' | 'soft' | 'hard';
 
-/** `App\Enums\FreePlanSurveyReason`, in the order the survey lists them. */
-const REASONS = [
-    'too_expensive',
-    'still_trying',
-    'no_need_for_sync_or_ai',
-    'dont_trust_bank_connection',
-    'use_too_little',
-    'other',
-] as const;
+/**
+ * `App\Enums\FreePlanSurveyReason`, in the order the survey lists them. A
+ * record rather than a list, so a reason added on one side without its label
+ * fails to type-check.
+ */
+const REASON_LABELS = {
+    too_expensive: () => __("It's too expensive for me"),
+    still_trying: () => __("I'm still trying the app out"),
+    no_need_for_sync_or_ai: () => __("I don't need bank sync or the AI"),
+    dont_trust_bank_connection: () => __("I don't trust connecting my bank"),
+    use_too_little: () => __('I use it too little to pay'),
+    other: () => __('Other reason'),
+} satisfies Record<string, () => string>;
 
-type FreePlanSurveyReason = (typeof REASONS)[number];
+type FreePlanSurveyReason = keyof typeof REASON_LABELS;
+
+const REASONS = Object.keys(REASON_LABELS) as FreePlanSurveyReason[];
 
 /** Same cap as the server's, so the textarea stops where validation would. */
 const DETAILS_MAX_LENGTH = 1000;
 
-function reasonLabel(reason: FreePlanSurveyReason): string {
-    switch (reason) {
-        case 'too_expensive':
-            return __("It's too expensive for me");
-        case 'still_trying':
-            return __("I'm still trying the app out");
-        case 'no_need_for_sync_or_ai':
-            return __("I don't need bank sync or the AI");
-        case 'dont_trust_bank_connection':
-            return __("I don't trust connecting my bank");
-        case 'use_too_little':
-            return __('I use it too little to pay');
-        case 'other':
-            return __('Other reason');
-    }
+/**
+ * The survey in front of a way out: `ask()` opens it the first time and goes
+ * straight on after that, so a way out that has to be retried — a failed
+ * disconnect, a visit that did not land — does not ask the same question
+ * twice. The survey closes as soon as it is answered or skipped.
+ */
+export function useFreePlanSurvey(onContinue: () => void) {
+    const [open, setOpen] = useState(false);
+    const [asked, setAsked] = useState(false);
+
+    const ask = () => {
+        if (asked) {
+            onContinue();
+
+            return;
+        }
+
+        setAsked(true);
+        setOpen(true);
+    };
+
+    return {
+        ask,
+        surveyProps: {
+            open,
+            onContinue: () => {
+                setOpen(false);
+                onContinue();
+            },
+        },
+    };
 }
 
 /**
@@ -84,10 +106,15 @@ export function FreePlanSurvey({
     open,
     gate,
     onContinue,
+    description = __(
+        'A quick answer helps us improve. You stay on the free plan either way.',
+    ),
 }: {
     open: boolean;
     gate: PaywallGate;
     onContinue: () => void;
+    /** What happens next whatever the answer, under the question. */
+    description?: string;
 }) {
     const isMobile = useIsMobile();
     const http = useHttp<{
@@ -96,30 +123,36 @@ export function FreePlanSurvey({
         gate: PaywallGate;
     }>({ reason: '', details: '', gate });
 
-    // Escape or a tap outside while the answer is still sending must not
-    // continue a second time.
-    const hasContinued = useRef(false);
+    // Set by the first way out the user takes, so nothing after it counts: a
+    // second click on Send while the next page loads would store the answer
+    // twice, and Escape during the request would continue twice. The ref
+    // guards and the state disables the buttons: two clicks can land before
+    // React re-renders with the buttons disabled.
+    const chosen = useRef(false);
+    const [hasChosen, setHasChosen] = useState(false);
 
-    const continueOnce = () => {
-        if (hasContinued.current) {
-            return;
+    const choose = (): boolean => {
+        if (chosen.current) {
+            return false;
         }
 
-        hasContinued.current = true;
-        onContinue();
+        chosen.current = true;
+        setHasChosen(true);
+
+        return true;
     };
 
     const skip = () => {
-        if (hasContinued.current || http.processing) {
+        if (!choose()) {
             return;
         }
 
         captureEvent('paywall_free_plan_survey_skipped', { gate });
-        continueOnce();
+        onContinue();
     };
 
     const send = () => {
-        if (http.data.reason === '' || http.processing) {
+        if (http.data.reason === '' || !choose()) {
             return;
         }
 
@@ -128,12 +161,12 @@ export function FreePlanSurvey({
             gate,
         });
 
+        // Thanked only for an answer that was kept; one that was not still
+        // lets the user through.
         http.post(surveyRoute.url())
+            .then(() => toast.success(__('Thanks for telling us')))
             .catch(() => undefined)
-            .then(() => {
-                toast.success(__('Thanks for telling us'));
-                continueOnce();
-            });
+            .finally(onContinue);
     };
 
     const onOpenChange = (next: boolean) => {
@@ -143,9 +176,6 @@ export function FreePlanSurvey({
     };
 
     const title = __("What's keeping you on free?");
-    const description = __(
-        'A quick answer helps us improve. You stay on the free plan either way.',
-    );
 
     const body = (
         <div className="flex flex-col gap-3">
@@ -166,7 +196,7 @@ export function FreePlanSurvey({
                             value={reason}
                             data-testid={`free-plan-survey-reason-${reason}`}
                         />
-                        <span>{reasonLabel(reason)}</span>
+                        <span>{REASON_LABELS[reason]()}</span>
                     </label>
                 ))}
             </RadioGroup>
@@ -181,7 +211,8 @@ export function FreePlanSurvey({
                     aria-label={__('Tell us a bit more (optional)')}
                     maxLength={DETAILS_MAX_LENGTH}
                     rows={3}
-                    autoFocus
+                    // On the phone the keyboard would cover the buttons.
+                    autoFocus={!isMobile}
                     data-testid="free-plan-survey-details"
                 />
             )}
@@ -191,11 +222,22 @@ export function FreePlanSurvey({
     const sendButton = (
         <Button
             onClick={send}
-            disabled={http.data.reason === '' || http.processing}
+            disabled={http.data.reason === '' || hasChosen}
             data-testid="free-plan-survey-send"
         >
             {http.processing && <Spinner />}
             {__('Send and stay free')}
+        </Button>
+    );
+
+    const skipButton = (
+        <Button
+            variant="ghost"
+            onClick={skip}
+            disabled={hasChosen}
+            data-testid="free-plan-survey-skip"
+        >
+            {isMobile ? __('Skip') : __('Not now')}
         </Button>
     );
 
@@ -210,14 +252,7 @@ export function FreePlanSurvey({
                     <div className="overflow-y-auto px-4">{body}</div>
                     <DrawerFooter>
                         {sendButton}
-                        <Button
-                            variant="ghost"
-                            onClick={skip}
-                            disabled={http.processing}
-                            data-testid="free-plan-survey-skip"
-                        >
-                            {__('Skip')}
-                        </Button>
+                        {skipButton}
                     </DrawerFooter>
                 </DrawerContent>
             </Drawer>
@@ -236,14 +271,7 @@ export function FreePlanSurvey({
                 </DialogHeader>
                 {body}
                 <DialogFooter>
-                    <Button
-                        variant="ghost"
-                        onClick={skip}
-                        disabled={http.processing}
-                        data-testid="free-plan-survey-skip"
-                    >
-                        {__('Not now')}
-                    </Button>
+                    {skipButton}
                     {sendButton}
                 </DialogFooter>
             </DialogContent>

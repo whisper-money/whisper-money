@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\FreePlanSurveyReason;
+use App\Enums\PaywallGate;
 use App\Models\FreePlanSurveyResponse;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,7 +24,7 @@ class FreePlanSurveyResponseFactory extends Factory
             'user_id' => User::factory(),
             'reason' => fake()->randomElement(FreePlanSurveyReason::cases()),
             'details' => null,
-            'gate' => fake()->randomElement(FreePlanSurveyResponse::GATES),
+            'gate' => fake()->randomElement(PaywallGate::cases()),
         ];
     }
 }

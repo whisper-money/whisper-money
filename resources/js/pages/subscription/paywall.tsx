@@ -4,6 +4,7 @@ import { StepScreen } from '@/components/onboarding/step-screen';
 import {
     FreePlanSurvey,
     type PaywallGate,
+    useFreePlanSurvey,
 } from '@/components/subscription/free-plan-survey';
 import { PlanPicker } from '@/components/subscription/plan-picker';
 import {
@@ -57,8 +58,8 @@ export default function Paywall() {
 
     const locale = useLocale();
     const [supportOpen, setSupportOpen] = useState(false);
-    const [surveyOpen, setSurveyOpen] = useState(false);
     const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer();
+    const survey = useFreePlanSurvey(() => router.visit(dashboard().url));
 
     const gate: PaywallGate = canManageConnectionsForFreePlan
         ? 'former-subscriber'
@@ -93,7 +94,7 @@ export default function Paywall() {
     // next only asks why, and every way out of it carries on to the dashboard.
     const continueFree = () => {
         captureEvent('paywall_free_plan_chosen');
-        setSurveyOpen(true);
+        survey.ask();
     };
 
     const openFreePlanConfirmation = () => {
@@ -191,11 +192,7 @@ export default function Paywall() {
             </StepScreen>
 
             {gate === 'soft' && (
-                <FreePlanSurvey
-                    open={surveyOpen}
-                    gate={gate}
-                    onContinue={() => router.visit(dashboard().url)}
-                />
+                <FreePlanSurvey gate={gate} {...survey.surveyProps} />
             )}
 
             {isFormer && (

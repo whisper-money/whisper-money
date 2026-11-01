@@ -172,6 +172,19 @@ describe('Paywall', () => {
             expect(mocks.httpPost).not.toHaveBeenCalled();
         });
 
+        it('does not ask twice when walking out has to be retried', () => {
+            render(<Paywall />);
+
+            fireEvent.click(screen.getByTestId('carry-on-free'));
+            fireEvent.click(screen.getByTestId('free-plan-survey-skip'));
+            fireEvent.click(screen.getByTestId('carry-on-free'));
+
+            expect(mocks.visit).toHaveBeenCalledTimes(2);
+            expect(
+                screen.queryByTestId('free-plan-survey'),
+            ).not.toBeInTheDocument();
+        });
+
         it('stores the answer from the soft gate, then walks out', async () => {
             render(<Paywall />);
 

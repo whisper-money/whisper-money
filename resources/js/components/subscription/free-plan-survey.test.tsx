@@ -93,6 +93,24 @@ describe('FreePlanSurvey', () => {
         expect(onContinue).toHaveBeenCalledTimes(1);
     });
 
+    it('takes one answer only, however often Send is clicked', async () => {
+        const onContinue = renderSurvey();
+
+        fireEvent.click(
+            screen.getByTestId('free-plan-survey-reason-too_expensive'),
+        );
+
+        await act(async () => {
+            fireEvent.click(screen.getByTestId('free-plan-survey-send'));
+            fireEvent.click(screen.getByTestId('free-plan-survey-send'));
+        });
+
+        expect(screen.getByTestId('free-plan-survey-send')).toBeDisabled();
+        expect(screen.getByTestId('free-plan-survey-skip')).toBeDisabled();
+        expect(mocks.post).toHaveBeenCalledTimes(1);
+        expect(onContinue).toHaveBeenCalledTimes(1);
+    });
+
     // A privacy-first app: what the user wrote stays in our own database.
     it('never sends the free text to analytics', async () => {
         renderSurvey();
@@ -115,7 +133,7 @@ describe('FreePlanSurvey', () => {
         );
     });
 
-    it('continues even when the answer fails to save', async () => {
+    it('continues, without the thanks, when the answer fails to save', async () => {
         mocks.post.mockRejectedValue(new Error('offline'));
         const onContinue = renderSurvey();
 
@@ -128,6 +146,7 @@ describe('FreePlanSurvey', () => {
         });
 
         expect(onContinue).toHaveBeenCalledTimes(1);
+        expect(mocks.toastSuccess).not.toHaveBeenCalled();
     });
 
     it('lets the user skip without answering, and without the thanks', () => {

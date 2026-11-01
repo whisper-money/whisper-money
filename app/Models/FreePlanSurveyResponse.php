@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\FreePlanSurveyReason;
+use App\Enums\PaywallGate;
 use Database\Factories\FreePlanSurveyResponseFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,15 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property FreePlanSurveyReason $reason
  * @property ?string $details
- * @property string $gate
+ * @property PaywallGate $gate
  */
 class FreePlanSurveyResponse extends Model
 {
     /** @use HasFactory<FreePlanSurveyResponseFactory> */
     use HasFactory, HasUuids;
-
-    /** The paywall screens that can ask, as the frontend names them. */
-    public const GATES = ['soft', 'former-subscriber', 'hard'];
 
     protected $fillable = [
         'user_id',
@@ -36,6 +34,7 @@ class FreePlanSurveyResponse extends Model
     {
         return [
             'reason' => FreePlanSurveyReason::class,
+            'gate' => PaywallGate::class,
         ];
     }
 
