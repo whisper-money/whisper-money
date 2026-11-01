@@ -166,6 +166,28 @@ describe('the free plan confirmation', function () {
                 // Named once each: three connections to two banks is two names.
                 ->where('banks', ['BBVA', 'Santander'])
                 ->where('hasAiConsent', false)
+                // Never paid: the survey on the way out is from the hard gate.
+                ->where('gate', 'hard')
+            );
+    });
+
+    it('tells the survey a former subscriber came from their own gate', function () {
+        $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subDay()]);
+        BankingConnection::factory()->for($user)->create(['aspsp_name' => 'BBVA']);
+        $user->subscriptions()->create([
+            'type' => 'default',
+            'stripe_id' => 'sub_former_survey_gate',
+            'stripe_status' => 'canceled',
+            'stripe_price' => 'price_test123',
+            'ends_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('subscribe.free-plan.confirm'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('subscription/free-plan')
+                ->where('gate', 'former-subscriber')
             );
     });
 

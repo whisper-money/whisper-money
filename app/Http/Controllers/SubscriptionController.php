@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\RefundSelfServe;
+use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
 use App\Http\Requests\ChooseFreePlanRequest;
+use App\Http\Requests\StoreFreePlanSurveyResponseRequest;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
@@ -14,6 +16,7 @@ use App\Services\Subscriptions\RefundWindow;
 use App\Services\Subscriptions\SubscribedPlan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,9 +55,7 @@ class SubscriptionController extends Controller
             'stats' => $this->getUserStats($user),
             'canUseFreePlan' => $canUseFreePlan,
             'canEscapeToFreePlan' => $user->canEscapeToFreePlan(),
-            'canManageConnectionsForFreePlan' => $user->isOnboarded()
-                && $hasBankConnections
-                && $user->hasCanceledSubscription(),
+            'canManageConnectionsForFreePlan' => $this->isFormerSubscriberWithBanks($user, $hasBankConnections),
         ]);
     }
 
@@ -86,7 +87,23 @@ class SubscriptionController extends Controller
             'banks' => $connections,
             'transactionsCount' => $user->transactions()->count(),
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            // Which paywall screen sent the user here, for the survey asked on
+            // the way out. Only the two gates with something to give up do.
+            'gate' => $this->isFormerSubscriberWithBanks($user, $connections->isNotEmpty())
+                ? PaywallGate::FormerSubscriber
+                : PaywallGate::Hard,
         ]);
+    }
+
+    /**
+     * Whether the paywall shows this user the screen for someone who paid and
+     * stopped, rather than the one for a user who never paid.
+     */
+    private function isFormerSubscriberWithBanks(User $user, bool $hasBankConnections): bool
+    {
+        return $user->isOnboarded()
+            && $hasBankConnections
+            && $user->hasCanceledSubscription();
     }
 
     /**
@@ -116,6 +133,24 @@ class SubscriptionController extends Controller
         $user->update(['paywall_seen_at' => now()]);
 
         return redirect()->route('dashboard');
+    }
+
+    /**
+     * Store why the user is staying on the free plan.
+     *
+     * No redirect: the survey sits in front of the way out of the paywall, and
+     * the page that opened it decides where the user goes next — the dashboard,
+     * or the disconnect the free-plan screen was already confirmed for. A
+     * response that fails to save must never hold that up.
+     */
+    public function storeFreePlanSurvey(StoreFreePlanSurveyResponseRequest $request): HttpResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $user->freePlanSurveyResponses()->create($request->answer());
+
+        return response()->noContent();
     }
 
     /**

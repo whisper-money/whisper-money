@@ -173,6 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe/cancel', [SubscriptionController::class, 'cancel'])->name('subscribe.cancel');
     Route::get('subscribe/free-plan', [SubscriptionController::class, 'freePlanConfirm'])->name('subscribe.free-plan.confirm');
     Route::post('subscribe/free-plan', [SubscriptionController::class, 'chooseFreePlan'])->name('subscribe.free-plan');
+    Route::post('subscribe/free-plan/survey', [SubscriptionController::class, 'storeFreePlanSurvey'])->middleware('throttle:6,1')->name('subscribe.free-plan.survey');
 
     Route::middleware(['onboarded'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');

@@ -1,6 +1,11 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepList, StepRow } from '@/components/onboarding/step-list';
 import { StepScreen } from '@/components/onboarding/step-screen';
+import {
+    FreePlanSurvey,
+    type PaywallGate,
+    useFreePlanSurvey,
+} from '@/components/subscription/free-plan-survey';
 import { PlanPicker } from '@/components/subscription/plan-picker';
 import {
     SubscriptionOffer,
@@ -41,16 +46,6 @@ interface PaywallPageProps extends SharedData {
     canManageConnectionsForFreePlan: boolean;
 }
 
-/**
- * Which of the three screens the user gets.
- *
- * `soft` is the only one a signup reaching this today can land on: a bank and
- * the AI both now require a plan before they can be switched on, so nobody
- * finishes onboarding owing us anything. The other two are the users who got
- * into that state under the old rules, and the users who paid and stopped.
- */
-type PaywallGate = 'former-subscriber' | 'soft' | 'hard';
-
 export default function Paywall() {
     const {
         auth,
@@ -64,6 +59,7 @@ export default function Paywall() {
     const locale = useLocale();
     const [supportOpen, setSupportOpen] = useState(false);
     const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer();
+    const survey = useFreePlanSurvey(() => router.visit(dashboard().url));
 
     const gate: PaywallGate = canManageConnectionsForFreePlan
         ? 'former-subscriber'
@@ -94,9 +90,11 @@ export default function Paywall() {
         ? __('Your plan ended')
         : __('One thing left to decide');
 
+    // The choice is made here and the event says so; the survey that opens
+    // next only asks why, and every way out of it carries on to the dashboard.
     const continueFree = () => {
         captureEvent('paywall_free_plan_chosen');
-        router.visit(dashboard().url);
+        survey.ask();
     };
 
     const openFreePlanConfirmation = () => {
@@ -192,6 +190,10 @@ export default function Paywall() {
                     </>
                 )}
             </StepScreen>
+
+            {gate === 'soft' && (
+                <FreePlanSurvey gate={gate} {...survey.surveyProps} />
+            )}
 
             {isFormer && (
                 <SupportDialog

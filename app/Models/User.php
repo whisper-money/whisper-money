@@ -416,6 +416,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(Achievement::class);
     }
 
+    /** @return HasMany<FreePlanSurveyResponse, $this> */
+    public function freePlanSurveyResponses(): HasMany
+    {
+        return $this->hasMany(FreePlanSurveyResponse::class);
+    }
+
     /** @return HasMany<MonthlySummary, $this> */
     public function monthlySummaries(): HasMany
     {
