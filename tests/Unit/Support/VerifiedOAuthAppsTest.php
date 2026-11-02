@@ -7,6 +7,7 @@ function verifiedOAuthApps(): VerifiedOAuthApps
     return new VerifiedOAuthApps([
         'Claude' => ['claude.ai'],
         'ChatGPT' => ['chatgpt.com'],
+        'Perplexity' => ['www.perplexity.ai', 'enterprise.perplexity.ai'],
     ]);
 }
 
@@ -15,6 +16,9 @@ it('verifies a client whose every redirect URI reaches one app\'s hosts', functi
 })->with([
     'Claude callback' => [['https://claude.ai/api/mcp/auth_callback'], 'Claude'],
     'ChatGPT callback' => [['https://chatgpt.com/connector_platform_oauth_redirect'], 'ChatGPT'],
+    'Perplexity callback' => [['https://www.perplexity.ai/rest/connections/oauth_callback'], 'Perplexity'],
+    'Perplexity Enterprise callback' => [['https://enterprise.perplexity.ai/rest/connections/oauth_callback'], 'Perplexity'],
+    'both Perplexity callbacks' => [['https://www.perplexity.ai/rest/connections/oauth_callback', 'https://enterprise.perplexity.ai/rest/connections/oauth_callback'], 'Perplexity'],
     'several Claude callbacks' => [['https://claude.ai/api/mcp/auth_callback', 'https://claude.ai/other'], 'Claude'],
     'explicit default port' => [['https://claude.ai:443/api/mcp/auth_callback'], 'Claude'],
     'uppercase scheme and host' => [['HTTPS://CLAUDE.AI/api/mcp/auth_callback'], 'Claude'],
@@ -28,6 +32,8 @@ it('does not verify a client that could send the code anywhere else', function (
     'Claude and ChatGPT callbacks mixed' => [['https://claude.ai/api/mcp/auth_callback', 'https://chatgpt.com/callback']],
     'a host ending in claude.ai' => [['https://claude.ai.evil.com/callback']],
     'a subdomain of claude.ai' => [['https://evil.claude.ai/callback']],
+    'a host ending in www.perplexity.ai' => [['https://www.perplexity.ai.evil.com/rest/connections/oauth_callback']],
+    'another subdomain of perplexity.ai' => [['https://evil.perplexity.ai/rest/connections/oauth_callback']],
     'claude.ai in the path' => [['https://evil.com/claude.ai']],
     'plain http' => [['http://claude.ai/api/mcp/auth_callback']],
     'another port' => [['https://claude.ai:8443/api/mcp/auth_callback']],
