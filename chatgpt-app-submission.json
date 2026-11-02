@@ -117,7 +117,7 @@
       "justifications": {
         "read_only_justification": "Writes: it edits an existing account's name, type, currency, bank, ownership share or loan/property details.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Overwrites: the fields passed replace the account's current values, so the model should confirm the change with the user first. The account keeps its transactions and balance history. On a bank-connected account it refuses the fields the sync owns (its currency, its bank, and any type without a transaction ledger), and it can never archive or delete an account."
+        "destructive_justification": "Overwrites: the fields passed replace the account's current values, so the model should confirm the change with the user first. The account keeps its transactions and balance history, and a new ownership share changes how it counts in totals and budgets. On a bank-connected account it refuses the fields the sync owns (its currency, its bank, and any type without a transaction ledger), and it can never archive or delete an account."
       }
     },
     "create_transaction": {
@@ -197,7 +197,7 @@
       "justifications": {
         "read_only_justification": "Writes: it renames or restyles an existing category in the user's own workspace.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Overwrites: the fields passed replace the category's current values, so the model should confirm the change with the user first. Moving it under another parent also changes the type of its subcategories. Its transactions stay attached."
+        "destructive_justification": "Overwrites: the fields passed replace the category's current values, so the model should confirm the change with the user first. Moving it or changing its type also changes the type of its subcategories. Its transactions stay attached."
       }
     },
     "delete_category": {
