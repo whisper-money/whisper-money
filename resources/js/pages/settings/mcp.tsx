@@ -130,7 +130,17 @@ export default function Mcp() {
         });
     }
 
-    const oauthUrlBlock = <CopyableCode value={oauthUrl} className="pt-2" />;
+    // Every connector ends the same way: paste our URL, then approve on our
+    // consent screen.
+    const pasteUrlStep = (
+        <>
+            {__('Give it a name and paste this URL:')}
+            <CopyableCode value={oauthUrl} className="pt-2" />
+        </>
+    );
+    const approveStep = __(
+        'Approve the connection on the Whisper Money screen that opens.',
+    );
 
     const connectors: Record<
         ConnectorApp,
@@ -143,13 +153,8 @@ export default function Mcp() {
                 __(
                     'Click "Add" in the top right, then "Add custom connector".',
                 ),
-                <>
-                    {__('Give it a name and paste this URL:')}
-                    {oauthUrlBlock}
-                </>,
-                __(
-                    'Approve the connection on the Whisper Money screen that opens.',
-                ),
+                pasteUrlStep,
+                approveStep,
             ],
         },
         chatgpt: {
@@ -159,31 +164,21 @@ export default function Mcp() {
                     'Turn on developer mode: Settings → Security and login → Developer mode.',
                 ),
                 __('In Plugins, click the + button in the top right.'),
-                <>
-                    {__('Give it a name and paste this URL:')}
-                    {oauthUrlBlock}
-                </>,
-                __(
-                    'Approve the connection on the Whisper Money screen that opens.',
-                ),
+                pasteUrlStep,
+                approveStep,
             ],
         },
         perplexity: {
             label: __('Perplexity'),
             steps: [
                 __(
-                    'In Perplexity, open Plugins in the sidebar, select "Add custom", then "Add MCP connector" and choose "Remote".',
+                    'In Perplexity, open Plugins in the sidebar (or Customize → Connectors), select "Add custom", then "Add MCP connector" and choose "Remote".',
                 ),
-                <>
-                    {__('Give it a name and paste this URL:')}
-                    {oauthUrlBlock}
-                </>,
+                pasteUrlStep,
                 __(
                     'Under "Advanced", pick OAuth as the authentication, tick the acknowledgement and select "Add". Then select the new connector card to sign in.',
                 ),
-                __(
-                    'Approve the connection on the Whisper Money screen that opens.',
-                ),
+                approveStep,
             ],
         },
     };

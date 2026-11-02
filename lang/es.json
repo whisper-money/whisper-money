@@ -2624,7 +2624,7 @@
     "Claude Code": "Claude Code",
     "ChatGPT": "ChatGPT",
     "Perplexity": "Perplexity",
-    "In Perplexity, open Plugins in the sidebar, select \"Add custom\", then \"Add MCP connector\" and choose \"Remote\".": "En Perplexity, abre Plugins en la barra lateral, selecciona \"Add custom\", luego \"Add MCP connector\" y elige \"Remote\".",
+    "In Perplexity, open Plugins in the sidebar (or Customize → Connectors), select \"Add custom\", then \"Add MCP connector\" and choose \"Remote\".": "En Perplexity, abre Plugins en la barra lateral (o Customize → Connectors), selecciona \"Add custom\", luego \"Add MCP connector\" y elige \"Remote\".",
     "Under \"Advanced\", pick OAuth as the authentication, tick the acknowledgement and select \"Add\". Then select the new connector card to sign in.": "En \"Advanced\", elige OAuth como autenticación, marca la casilla de confirmación y selecciona \"Add\". Después selecciona la tarjeta del nuevo conector para iniciar sesión.",
     "This is the only time it is shown. Store it somewhere safe — you won't be able to see it again.": "Es la única vez que se muestra. Guárdalo en un lugar seguro: no podrás verlo de nuevo.",
     "Tokens are read-only: they can analyse your data but never change it.": "Los tokens son de solo lectura: pueden analizar tus datos pero nunca modificarlos.",

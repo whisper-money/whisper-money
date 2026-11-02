@@ -182,6 +182,7 @@ describe('consent screen', function () {
         'Claude' => [CLAUDE_CALLBACK, 'Claude', 'https://claude.ai'],
         'ChatGPT' => ['https://chatgpt.com/connector_platform_oauth_redirect', 'ChatGPT', 'https://chatgpt.com'],
         'Perplexity' => ['https://www.perplexity.ai/rest/connections/oauth_callback', 'Perplexity', 'https://www.perplexity.ai'],
+        'Perplexity Enterprise' => ['https://enterprise.perplexity.ai/rest/connections/oauth_callback', 'Perplexity', 'https://enterprise.perplexity.ai'],
     ]);
 
     it('keeps the warning for a client named after a verified app that redirects elsewhere', function (string $redirectUri) {
