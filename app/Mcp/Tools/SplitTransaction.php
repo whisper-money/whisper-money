@@ -16,7 +16,9 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
+#[IsDestructive]
 #[Description('Split one transaction into 2-20 parts, each with its own category and labels. Works on bank transactions too. The parts must add up to the original and all move money the same way.')]
 class SplitTransaction extends WriteTool
 {

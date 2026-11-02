@@ -29,7 +29,8 @@ use Laravel\Mcp\Response;
  * ability, so a read-only PAT can analyse data but never change it.
  *
  * The deletes carry #[IsDestructive], and so do the tools that overwrite what
- * the user already has: editing a transaction, a rule or a savings goal,
+ * the user already has: editing a transaction, a rule, a savings goal, a
+ * budget, an account, a category or a label, splitting a transaction,
  * replacing a balance snapshot, applying a rule over existing transactions.
  * OpenAI's review treats an overwrite as destructive even when it could be
  * undone. Creating, categorizing and labelling inherit `destructiveHint: false`
