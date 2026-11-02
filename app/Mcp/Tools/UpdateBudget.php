@@ -9,7 +9,9 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
+#[IsDestructive]
 #[Description('Rename a budget or change its limit; only the fields you pass are changed. Its period length, start day, rollover and tracked categories are fixed — delete and recreate it to change those.')]
 class UpdateBudget extends WriteTool
 {

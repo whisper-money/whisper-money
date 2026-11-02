@@ -12,7 +12,9 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
+#[IsDestructive]
 #[Description('Edit a category. Only the fields you pass are changed. Moving it under a parent (or clearing parent_id to make it a root) re-derives its type/cashflow and cascades the type to its descendants.')]
 class UpdateCategory extends WriteTool
 {

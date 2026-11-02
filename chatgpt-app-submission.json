@@ -113,11 +113,11 @@
       }
     },
     "update_account": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it edits an existing account's name, type, currency, bank, ownership share or loan/property details.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: only the fields passed are changed, the account keeps its transactions and balance history, and every value can be edited back. On a bank-connected account it refuses the fields the sync owns (its currency, its bank, and any type without a transaction ledger), and it can never archive or delete an account."
+        "destructive_justification": "Overwrites: the fields passed replace the account's current values, so the model should confirm the change with the user first. The account keeps its transactions and balance history, and a new ownership share changes how it counts in totals and budgets. On a bank-connected account it refuses the fields the sync owns (its currency, its bank, and any type without a transaction ledger), and it can never archive or delete an account."
       }
     },
     "create_transaction": {
@@ -145,11 +145,11 @@
       }
     },
     "split_transaction": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it replaces one transaction in the user's own account with the parts they asked for.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: the original transaction is kept and merge_transaction_splits puts it back at any time. The parts must add up to the original amount, so no money is created or lost."
+        "destructive_justification": "Overwrites: the transaction is replaced by the parts passed, so the model should confirm the split with the user first. The original is kept and merge_transaction_splits puts it back, and the parts must add up to its amount, so no money is created or lost."
       }
     },
     "merge_transaction_splits": {
@@ -193,11 +193,11 @@
       }
     },
     "update_category": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it renames or restyles an existing category in the user's own workspace.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: only the category's own attributes change, its transactions stay attached, and the values can be edited back."
+        "destructive_justification": "Overwrites: the fields passed replace the category's current values, so the model should confirm the change with the user first. Moving it or changing its type also changes the type of its subcategories. Its transactions stay attached."
       }
     },
     "delete_category": {
@@ -217,11 +217,11 @@
       }
     },
     "update_label": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it renames or recolours an existing label in the user's own workspace.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: only the label's name and colour change, its transactions stay attached, and the values can be edited back."
+        "destructive_justification": "Overwrites: the name or colour passed replaces the label's current value, so the model should confirm the change with the user first. Its transactions stay attached."
       }
     },
     "delete_label": {
@@ -273,11 +273,11 @@
       }
     },
     "update_budget": {
-      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
         "read_only_justification": "Writes: it renames the user's own budget or changes the amount allocated to its current and future periods.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Reversible: only the name and the limit can be changed, both can be set straight back, and no transaction is touched."
+        "destructive_justification": "Overwrites: the name or limit passed replaces the budget's current value, so the model should confirm the change with the user first. A new limit applies to the period in progress and later ones. Only the name and the limit can change, and no transaction is touched."
       }
     },
     "delete_budget": {

@@ -38,6 +38,13 @@ $destructive = [
     'update_automation_rule',
     'apply_automation_rule',
     'update_savings_goal',
+    'update_budget',
+    'update_account',
+    'update_category',
+    'update_label',
+    // Splitting rewrites an existing transaction into parts. Merging can undo
+    // it, but that does not make the split additive.
+    'split_transaction',
 ];
 
 /**
@@ -72,5 +79,19 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
             ->and($annotations['openWorldHint'])->toBe(! in_array($name, $readOnly, true), "openWorldHint for {$name}")
             ->and($annotations['readOnlyHint'])->toBe(in_array($name, $readOnly, true), "readOnlyHint for {$name}")
             ->and($annotations['destructiveHint'])->toBe(in_array($name, $destructive, true), "destructiveHint for {$name}");
+    }
+});
+
+it('marks every update and delete tool as destructive', function () {
+    /** @var array<int, class-string<Tool>> $tools */
+    $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
+
+    foreach ($tools as $class) {
+        $tool = new $class;
+        $name = $tool->name();
+
+        if (str_starts_with($name, 'update_') || str_starts_with($name, 'delete_')) {
+            expect($tool->annotations()['destructiveHint'])->toBeTrue("destructiveHint for {$name}");
+        }
     }
 });
