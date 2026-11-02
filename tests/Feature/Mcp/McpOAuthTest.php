@@ -114,6 +114,8 @@ it('registers the hosted connector callbacks', function (string $callback) {
 })->with([
     'Claude' => 'https://claude.ai/api/mcp/auth_callback',
     'ChatGPT' => 'https://chatgpt.com/connector_platform_oauth_redirect',
+    'Perplexity' => 'https://www.perplexity.ai/rest/connections/oauth_callback',
+    'Perplexity Enterprise' => 'https://enterprise.perplexity.ai/rest/connections/oauth_callback',
 ]);
 
 it('rejects a DCR redirect URI outside the allowlist, plain-http or not', function (string $callback) {
@@ -129,6 +131,9 @@ it('rejects a DCR redirect URI outside the allowlist, plain-http or not', functi
     'allowed host as user info' => 'https://claude.ai@evil.com/cb',
     'allowed host as a subdomain' => 'https://claude.ai.evil.com/cb',
     'allowed host with credentials' => 'https://user:pass@claude.ai/cb',
+    'Perplexity host as a subdomain' => 'https://www.perplexity.ai.evil.com/rest/connections/oauth_callback',
+    'another Perplexity subdomain' => 'https://evil.perplexity.ai/rest/connections/oauth_callback',
+    'bare Perplexity domain' => 'https://perplexity.ai/rest/connections/oauth_callback',
 ]);
 
 it('rejects the whole registration when any redirect URI is outside the allowlist', function () {

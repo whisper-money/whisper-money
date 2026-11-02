@@ -3155,5 +3155,11 @@
     "See :count transactions": "Voir :count transactions",
     "Pick the filters, then apply them to the list.": "Choisissez les filtres, puis appliquez-les à la liste.",
     "View all (:count)": "Tout voir (:count)",
-    "Nothing to pick yet.": "Rien à choisir pour l’instant."
+    "Nothing to pick yet.": "Rien à choisir pour l’instant.",
+    "Perplexity": "Perplexity",
+    "Connect Whisper Money to your AI assistant (Claude, ChatGPT, Perplexity) to analyse your finances.": "Connectez Whisper Money à votre assistant IA (Claude, ChatGPT, Perplexity) pour analyser vos finances.",
+    "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude, ChatGPT or Perplexity on your phone as usual.": "La connexion et l’approbation fonctionnent bien dans un navigateur d’ordinateur, mais échouent souvent dans le navigateur intégré d’une app mobile. Une fois connecté, vous pouvez discuter avec Whisper Money depuis Claude, ChatGPT ou Perplexity sur votre téléphone comme d’habitude.",
+    "Assistants you connected by signing in, such as Claude, ChatGPT or Perplexity. Revoke one to disconnect it.": "Les assistants que vous avez connectés en vous identifiant, comme Claude, ChatGPT ou Perplexity. Révoquez-en un pour le déconnecter.",
+    "In Perplexity, open Plugins in the sidebar (or Customize → Connectors), select \"Add custom\", then \"Add MCP connector\" and choose \"Remote\".": "Dans Perplexity, ouvrez Plugins dans la barre latérale (ou Customize → Connectors), sélectionnez « Add custom », puis « Add MCP connector » et choisissez « Remote ».",
+    "Under \"Advanced\", pick OAuth as the authentication, tick the acknowledgement and select \"Add\". Then select the new connector card to sign in.": "Sous « Advanced », choisissez OAuth comme authentification, cochez la case de confirmation et sélectionnez « Add ». Sélectionnez ensuite la carte du nouveau connecteur pour vous identifier."
 }

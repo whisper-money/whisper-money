@@ -20,6 +20,10 @@ return [
         'https://claude.ai',
         // OpenAI's hosted callback for ChatGPT connectors.
         'https://chatgpt.com',
+        // Perplexity's hosted callbacks for custom remote connectors: the
+        // consumer app, and the one Perplexity Enterprise uses.
+        'https://www.perplexity.ai',
+        'https://enterprise.perplexity.ai',
         // Loopback callbacks for native clients such as Claude Code (RFC 8252):
         // listing localhost lets laravel/mcp accept any port on localhost,
         // 127.0.0.1 or [::1]. The code can only ever reach the user's own
@@ -44,6 +48,7 @@ return [
     'verified_apps' => [
         'Claude' => ['claude.ai'],
         'ChatGPT' => ['chatgpt.com'],
+        'Perplexity' => ['www.perplexity.ai', 'enterprise.perplexity.ai'],
     ],
 
     /*

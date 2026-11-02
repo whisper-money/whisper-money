@@ -97,7 +97,7 @@ const CLAUDE_CODE_PLUGIN_COMMANDS = [
     '/plugin install whisper-money@whisper-money',
 ];
 
-type ConnectorApp = 'claude' | 'chatgpt';
+type ConnectorApp = 'claude' | 'chatgpt' | 'perplexity';
 
 export default function Mcp() {
     const {
@@ -130,7 +130,17 @@ export default function Mcp() {
         });
     }
 
-    const oauthUrlBlock = <CopyableCode value={oauthUrl} className="pt-2" />;
+    // Every connector ends the same way: paste our URL, then approve on our
+    // consent screen.
+    const pasteUrlStep = (
+        <>
+            {__('Give it a name and paste this URL:')}
+            <CopyableCode value={oauthUrl} className="pt-2" />
+        </>
+    );
+    const approveStep = __(
+        'Approve the connection on the Whisper Money screen that opens.',
+    );
 
     const connectors: Record<
         ConnectorApp,
@@ -143,13 +153,8 @@ export default function Mcp() {
                 __(
                     'Click "Add" in the top right, then "Add custom connector".',
                 ),
-                <>
-                    {__('Give it a name and paste this URL:')}
-                    {oauthUrlBlock}
-                </>,
-                __(
-                    'Approve the connection on the Whisper Money screen that opens.',
-                ),
+                pasteUrlStep,
+                approveStep,
             ],
         },
         chatgpt: {
@@ -159,13 +164,21 @@ export default function Mcp() {
                     'Turn on developer mode: Settings → Security and login → Developer mode.',
                 ),
                 __('In Plugins, click the + button in the top right.'),
-                <>
-                    {__('Give it a name and paste this URL:')}
-                    {oauthUrlBlock}
-                </>,
+                pasteUrlStep,
+                approveStep,
+            ],
+        },
+        perplexity: {
+            label: __('Perplexity'),
+            steps: [
                 __(
-                    'Approve the connection on the Whisper Money screen that opens.',
+                    'In Perplexity, open Plugins in the sidebar (or Customize → Connectors), select "Add custom", then "Add MCP connector" and choose "Remote".',
                 ),
+                pasteUrlStep,
+                __(
+                    'Under "Advanced", pick OAuth as the authentication, tick the acknowledgement and select "Add". Then select the new connector card to sign in.',
+                ),
+                approveStep,
             ],
         },
     };
@@ -180,7 +193,7 @@ export default function Mcp() {
                         <HeadingSmall
                             title={__('AI Connector')}
                             description={__(
-                                'Connect Whisper Money to your AI assistant (Claude, ChatGPT) to analyse your finances.',
+                                'Connect Whisper Money to your AI assistant (Claude, ChatGPT, Perplexity) to analyse your finances.',
                             )}
                         />
                         <ProBadge className="mt-1 shrink-0" />
@@ -209,7 +222,7 @@ export default function Mcp() {
 
                     {newToken && <NewTokenAlert token={newToken} />}
 
-                    {/* Connect Claude Desktop / ChatGPT — the primary flow */}
+                    {/* Connect Claude Desktop / ChatGPT / Perplexity — the primary flow */}
                     <Card>
                         <CardHeader>
                             <CardTitle>{__('How to connect')}</CardTitle>
@@ -225,7 +238,7 @@ export default function Mcp() {
                                 title={__('Set this up on a computer')}
                             >
                                 {__(
-                                    "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude or ChatGPT on your phone as usual.",
+                                    "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude, ChatGPT or Perplexity on your phone as usual.",
                                 )}
                             </CardNote>
 
@@ -283,7 +296,7 @@ export default function Mcp() {
                     <ConnectedAppList
                         apps={connectedApps}
                         description={__(
-                            'Assistants you connected by signing in, such as Claude or ChatGPT. Revoke one to disconnect it.',
+                            'Assistants you connected by signing in, such as Claude, ChatGPT or Perplexity. Revoke one to disconnect it.',
                         )}
                         destroyUrl={(id) => destroyApp(id).url}
                     />

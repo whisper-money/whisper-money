@@ -1,6 +1,6 @@
 # AI Connector
 
-The AI Connector lets an assistant you already use, Claude or ChatGPT, read your Whisper Money data and change it, so you can ask about your money in plain language instead of clicking through screens.
+The AI Connector lets an assistant you already use, Claude, ChatGPT or Perplexity, read your Whisper Money data and change it, so you can ask about your money in plain language instead of clicking through screens.
 
 {{TOC}}
 
@@ -8,7 +8,7 @@ The AI Connector lets an assistant you already use, Claude or ChatGPT, read your
 
 1. Open **Settings → AI Connector**.
 2. Pick your app under **How to connect** and copy the URL it shows.
-3. In Claude or ChatGPT, add that URL as a custom connector.
+3. In Claude, ChatGPT or Perplexity, add that URL as a custom connector.
 4. Sign in and approve the connection on the Whisper Money screen that opens.
 5. Ask it something: "how much did I spend on groceries last month?"
 
@@ -241,9 +241,28 @@ apart.
 
 ![Refreshing a custom connector in ChatGPT: opening its settings from the dots button on the connector's page, scrolling down to the Information section and clicking Refresh](/docs/documentation/chatgpt-refresh-connector.mp4)
 
+## Connect Perplexity
+
+Perplexity calls this a custom remote connector. Whether you can add one depends
+on your Perplexity plan and, on an organization account, on whether your admin
+lets members add custom connectors.
+
+1. Open **Plugins** in Perplexity's sidebar (**Customize → Connectors** if you
+   do not see Plugins yet), select **Add custom**, then **Add MCP connector**,
+   and choose **Remote**.
+2. Give it a name and paste the same URL ending in `/mcp/oauth`.
+3. Under **Advanced**, pick **OAuth** as the authentication, tick the
+   acknowledgement and select **Add**.
+4. Select the new connector card on the Plugins page to sign in.
+5. Approve the connection on the Whisper Money screen that opens.
+
+Perplexity Enterprise works the same way. An admin can also add it for the whole
+organization from **Organization settings → Connectors**, where it starts turned
+off until they switch it on.
+
 ## Connect Claude Code
 
-Claude Code is the developer command line. If you do not use it, one of the two
+Claude Code is the developer command line. If you do not use it, one of the
 sections above is all you need.
 
 ### With the plugin
@@ -265,7 +284,7 @@ no token to create or paste.
    screen that follows, and Claude Code is connected.
 
 `claude mcp list` then shows `plugin:whisper-money:whisper-money` as connected.
-Like a Claude or ChatGPT connection, it can read your data and change it.
+Like a Claude, ChatGPT or Perplexity connection, it can read your data and change it.
 
 The plugin also brings two skills: one with recipes for the Whisper Money tools,
 and one that reads this documentation when you ask how the app works.
@@ -310,15 +329,15 @@ Two things you can do to a token later:
 - **Revoke** it to cut access off. That takes effect immediately and cannot be
   undone.
 
-Tokens are only for Claude Code. A Claude or ChatGPT connection, or Claude Code
-through the plugin, has no token behind it, so there is nothing to rotate and
-nothing to leak.
+Tokens are only for Claude Code. A Claude, ChatGPT or Perplexity connection, or
+Claude Code through the plugin, has no token behind it, so there is nothing to
+rotate and nothing to leak.
 
 ## What it can and cannot change
 
-A connection you approve in the browser, from Claude, ChatGPT or the Claude Code
-plugin, can read your data and change it. A connection made with a token can
-change it only if the token is read & write.
+A connection you approve in the browser, from Claude, ChatGPT, Perplexity or the
+Claude Code plugin, can read your data and change it. A connection made with a
+token can change it only if the token is read & write.
 
 Where write access stops is the same for all of them, and it is not about trust.
 These are the rules the app itself follows:
@@ -368,9 +387,9 @@ where data leaves the app, so here is exactly what happens.
   do with them.
 - Only what your question needs is sent. Asking about last month's groceries
   does not hand over your whole history.
-- When you want out, remove Whisper Money from the connected apps inside Claude
-  or ChatGPT. In Claude Code, sign the plugin out, or revoke the token if you
-  connected with one. It stops answering immediately.
+- When you want out, remove Whisper Money from the connected apps inside Claude,
+  ChatGPT or Perplexity. In Claude Code, sign the plugin out, or revoke the
+  token if you connected with one. It stops answering immediately.
 
 Connect it only if you are comfortable with that trade. If you never connect it,
 nothing about your account changes.
@@ -415,21 +434,21 @@ in Claude Code if you want read-only access, or if it runs without a browser.
 
 ### Why does connecting fail on my phone?
 
-The sign-in and approval step opens in the in-app browser inside Claude or
-ChatGPT, and that browser usually cannot complete it. Connect on a computer.
-Afterwards the connection belongs to your account, so asking questions from your
-phone works normally.
+The sign-in and approval step opens in the in-app browser inside Claude, ChatGPT
+or Perplexity, and that browser usually cannot complete it. Connect on a
+computer. Afterwards the connection belongs to your account, so asking questions
+from your phone works normally.
 
 ### Can I connect more than one assistant?
 
-Yes. Claude and ChatGPT can both be connected at the same time, and Claude Code
-alongside them, through the plugin or with a token. They are separate
-connections and removing one leaves the others alone.
+Yes. Claude, ChatGPT and Perplexity can all be connected at the same time, and
+Claude Code alongside them, through the plugin or with a token. They are
+separate connections and removing one leaves the others alone.
 
 ### How do I disconnect?
 
-In Claude or ChatGPT, remove Whisper Money from the list of connected apps or
-plugins. For the Claude Code plugin, run
+In Claude, ChatGPT or Perplexity, remove Whisper Money from the list of
+connected apps or plugins. For the Claude Code plugin, run
 `claude mcp logout plugin:whisper-money:whisper-money`. For a Claude Code token,
 revoke it in **Settings → AI Connector**. There is nothing to undo on our side
 afterwards.

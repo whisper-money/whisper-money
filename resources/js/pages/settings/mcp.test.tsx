@@ -63,6 +63,25 @@ describe('MCP settings page', () => {
         expect(screen.queryByText(/Last used/)).toBeNull();
     });
 
+    it('walks through adding Whisper Money as a Perplexity connector', () => {
+        render(<McpPage />);
+
+        expect(screen.queryByText(/In Perplexity, open Plugins/)).toBeNull();
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Perplexity' }));
+
+        expect(screen.getByText(/In Perplexity, open Plugins/)).toBeTruthy();
+        expect(
+            screen.getByText(/pick OAuth as the authentication/),
+        ).toBeTruthy();
+        expect(
+            screen.getByText('https://whisper.money/mcp/oauth'),
+        ).toBeTruthy();
+        expect(
+            screen.queryByText("Whisper Money is in ChatGPT's app directory"),
+        ).toBeNull();
+    });
+
     it('offers the Claude Code plugin before the token command', () => {
         render(<McpPage />);
 
