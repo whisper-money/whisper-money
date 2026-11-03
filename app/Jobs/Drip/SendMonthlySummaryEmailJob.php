@@ -102,7 +102,7 @@ class SendMonthlySummaryEmailJob extends SendDripEmailJob
     {
         $writer = app(AnalysisWriter::class);
 
-        if (! $writer->eligible($this->user)) {
+        if (! $writer->enabled() || ! $writer->eligible($this->user)) {
             return true;
         }
 

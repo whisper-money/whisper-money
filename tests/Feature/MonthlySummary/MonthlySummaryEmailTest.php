@@ -561,6 +561,54 @@ it('sends the report without the analysis once the retries are spent', function 
     Exceptions::assertReportedCount(1);
 });
 
+it('sends on the first pass without asking the model while the analysis is switched off', function (): void {
+    // The kill switch must not leave the send holding the report for a model it
+    // is never going to ask: that would delay every Pro reader by five passes.
+    Mail::fake();
+    Queue::fake();
+    Exceptions::fake();
+
+    $prompted = false;
+    $summary = readerOwedAnAnalysis();
+    MonthlySummaryAgent::fake(function () use (&$prompted): string {
+        $prompted = true;
+
+        return 'Should never be written.';
+    });
+    config(['ai_monthly_summary.enabled' => false]);
+
+    [$job, $queueJob] = summaryJobOnAttempt($summary, 1);
+    $queueJob->shouldNotReceive('release');
+
+    $job->handle();
+
+    expect($prompted)->toBeFalse();
+
+    Mail::assertQueued(
+        MonthlySummaryEmail::class,
+        fn (MonthlySummaryEmail $mail): bool => $mail->analysis === null,
+    );
+
+    expect($summary->fresh()->sent_at)->not->toBeNull()
+        ->and($summary->fresh()->ai_analysis)->toBeNull();
+
+    Exceptions::assertNothingReported();
+});
+
+it('leaves the analysis section out of the email while it is switched off', function (bool $pro): void {
+    // Neither the apology for an analysis never attempted nor a pitch for a
+    // feature nobody gets.
+    config(['subscriptions.enabled' => true, 'ai_monthly_summary.enabled' => false]);
+    $summary = sentSummaryFor();
+
+    $rendered = (new MonthlySummaryEmail($summary->user, $summary, pro: $pro))->render();
+
+    expect($rendered)
+        ->not->toContain('Why this happened')
+        ->not->toContain('We could not write your analysis this month')
+        ->not->toContain('Pro tells you where from');
+})->with(['pro' => true, 'free' => false]);
+
 it('does not send to a reader who turned the summary off', function (): void {
     Mail::fake();
     $summary = sentSummaryFor();

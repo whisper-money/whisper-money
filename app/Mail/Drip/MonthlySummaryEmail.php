@@ -4,6 +4,7 @@ namespace App\Mail\Drip;
 
 use App\Models\MonthlySummary;
 use App\Models\User;
+use App\Services\MonthlySummary\AnalysisWriter;
 use App\Services\MonthlySummary\EmailPresenter;
 use App\Support\Figures;
 use Illuminate\Mail\Mailables\Content;
@@ -83,6 +84,7 @@ class MonthlySummaryEmail extends DripMail
                 'complete' => $this->summary->complete,
                 'incompleteNotice' => $this->incompleteNotice(),
                 'spaceName' => $this->spaceName,
+                'analysisEnabled' => app(AnalysisWriter::class)->enabled(),
                 'analysis' => $this->analysis,
                 'pro' => $this->pro,
                 'lockedPitch' => $this->lockedPitch(),

@@ -38,14 +38,23 @@ class AnalysisWriter
         'fr' => 'French',
     ];
 
+    /**
+     * Whether the analysis is switched on at all. Separate from
+     * {@see eligible()}, which also gates the other Pro sections.
+     */
+    public function enabled(): bool
+    {
+        return (bool) config('ai_monthly_summary.enabled');
+    }
+
     public function eligible(User $user): bool
     {
         return $user->canUseFeature(PlanFeature::AiSuggestions) && $user->hasActiveAiConsent();
     }
 
     /**
-     * Write the analysis onto the summary, unless it already has one or the user
-     * is not entitled to it. Returns the text, or null when there is none.
+     * Write the analysis onto the summary, unless it already has one, the
+     * analysis is switched off, or the user is not entitled to it. Returns the text, or null when there is none.
      *
      * @throws ConnectionException|FailoverableException when the model could not
      *                                                   be reached at all
@@ -56,7 +65,7 @@ class AnalysisWriter
             return $summary->ai_analysis;
         }
 
-        if (! $this->eligible($user)) {
+        if (! $this->enabled() || ! $this->eligible($user)) {
             return null;
         }
 
