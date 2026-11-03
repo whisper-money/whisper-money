@@ -71,9 +71,10 @@
                 @include('mail.summary.kpis')
             @endif
 
-            {{-- Switched off, the section goes entirely: no Pro pitch for a
-                 feature nobody gets, no apology for one never attempted. --}}
-            @if ($analysisEnabled)
+            {{-- Switched off, the section goes unless an analysis was already
+                 written: no Pro pitch for a feature nobody gets, no apology for
+                 one never attempted. --}}
+            @if ($analysisEnabled || $analysis !== null)
                 @include('mail.summary.analysis')
             @endif
 

@@ -54,7 +54,8 @@ class AnalysisWriter
 
     /**
      * Write the analysis onto the summary, unless it already has one, the
-     * analysis is switched off, or the user is not entitled to it. Returns the text, or null when there is none.
+     * analysis is switched off, or the user is not entitled to it. Returns the
+     * text, or null when there is none.
      *
      * @throws ConnectionException|FailoverableException when the model could not
      *                                                   be reached at all

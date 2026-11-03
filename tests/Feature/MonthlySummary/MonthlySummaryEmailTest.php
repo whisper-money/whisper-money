@@ -609,6 +609,19 @@ it('leaves the analysis section out of the email while it is switched off', func
         ->not->toContain('Pro tells you where from');
 })->with(['pro' => true, 'free' => false]);
 
+it('still points at an analysis already written before it was switched off', function (): void {
+    // The report screen keeps showing it, so the email should not pretend it
+    // does not exist.
+    config(['subscriptions.enabled' => false, 'ai_monthly_summary.enabled' => false]);
+    $summary = sentSummaryFor();
+
+    $rendered = (new MonthlySummaryEmail($summary->user, $summary, analysis: 'Groceries drove it.', pro: true))->render();
+
+    expect($rendered)
+        ->toContain('Read my analysis')
+        ->not->toContain('Groceries drove it.');
+});
+
 it('does not send to a reader who turned the summary off', function (): void {
     Mail::fake();
     $summary = sentSummaryFor();
