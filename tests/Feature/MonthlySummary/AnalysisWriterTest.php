@@ -111,3 +111,26 @@ it('reports an unexpected failure once and does not burn the remaining attempts'
 
     Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'malformed response');
 });
+
+it('asks no model at all while the analysis is switched off', function (): void {
+    // The kill switch exists to stop paying for generations, so an entitled,
+    // consenting reader must not reach the model either.
+    config(['subscriptions.enabled' => false, 'ai_monthly_summary.enabled' => false]);
+
+    $calls = 0;
+    MonthlySummaryAgent::fake(function () use (&$calls) {
+        $calls++;
+
+        return 'Should never be written.';
+    });
+
+    [$summary, $user] = readerAwaitingAnalysis();
+    $user->recordAiConsent();
+
+    $writer = app(AnalysisWriter::class);
+
+    expect($writer->eligible($user))->toBeTrue()
+        ->and($writer->write($summary, $user))->toBeNull()
+        ->and($calls)->toBe(0)
+        ->and($summary->fresh()->ai_analysis)->toBeNull();
+});

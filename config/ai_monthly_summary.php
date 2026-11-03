@@ -4,6 +4,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Enabled
+    |--------------------------------------------------------------------------
+    |
+    | Kill switch for the analysis. Off, no model is asked about anyone: the
+    | send goes out on its first pass without the section, and the email drops
+    | the block rather than pitching Pro or apologising for an analysis that
+    | was never attempted. Analyses already written are still pointed at and
+    | stay on the report screen. With `config:cache`, flipping it takes a
+    | re-cache (a redeploy) to apply.
+    |
+    */
+
+    'enabled' => (bool) env('AI_MONTHLY_SUMMARY_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Provider & model
     |--------------------------------------------------------------------------
     |

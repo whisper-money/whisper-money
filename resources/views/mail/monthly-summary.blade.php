@@ -71,7 +71,12 @@
                 @include('mail.summary.kpis')
             @endif
 
-            @include('mail.summary.analysis')
+            {{-- Switched off, the section goes unless an analysis was already
+                 written: no Pro pitch for a feature nobody gets, no apology for
+                 one never attempted. --}}
+            @if ($analysisEnabled || $analysis !== null)
+                @include('mail.summary.analysis')
+            @endif
 
             {{-- The main way in. Full width, because it is the one thing this
                  email asks of the reader. --}}
