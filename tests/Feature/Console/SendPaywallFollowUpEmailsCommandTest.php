@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\DripEmailType;
+use App\Enums\SignupPlan;
 use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserMailLog;
+use App\Models\UserSetting;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
@@ -18,13 +20,10 @@ beforeEach(function () {
 
 function stuckPaywallUser(): User
 {
-    $user = User::factory()->create(['onboarded_at' => now()->subDay()]);
-    BankingConnection::factory()->for($user)->create();
-
-    return $user;
+    return User::factory()->paywallSeen()->create(['onboarded_at' => now()->subDay()]);
 }
 
-test('it sends the follow-up email to users onboarded yesterday with a bank connection and no pro plan', function () {
+test('it sends the follow-up email to users onboarded yesterday who saw the paywall and have no pro plan', function () {
     $user = stuckPaywallUser();
 
     $this->artisan('email:paywall-follow-up')->assertSuccessful();
@@ -38,19 +37,65 @@ test('it sends the follow-up email to users onboarded yesterday with a bank conn
 });
 
 test('it does not send to users who onboarded today or earlier than yesterday', function () {
-    User::factory()->create(['onboarded_at' => now()])
-        ->bankingConnections()->save(BankingConnection::factory()->make());
-
-    User::factory()->create(['onboarded_at' => now()->subDays(2)])
-        ->bankingConnections()->save(BankingConnection::factory()->make());
+    User::factory()->paywallSeen()->create(['onboarded_at' => now()]);
+    User::factory()->paywallSeen()->create(['onboarded_at' => now()->subDays(2)]);
 
     $this->artisan('email:paywall-follow-up')->assertSuccessful();
 
     Mail::assertNotQueued(PaywallFollowUpEmail::class);
 });
 
-test('it does not send to users without a bank connection', function () {
-    User::factory()->create(['onboarded_at' => now()->subDay()]);
+test('it sends to users who never connected a bank', function () {
+    $user = stuckPaywallUser();
+
+    expect($user->bankingConnections()->exists())->toBeFalse();
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertQueued(PaywallFollowUpEmail::class, fn ($mail) => $mail->hasTo($user->email));
+});
+
+test('it still sends to users who connected a bank', function () {
+    $user = stuckPaywallUser();
+    BankingConnection::factory()->for($user)->create();
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertQueued(PaywallFollowUpEmail::class, fn ($mail) => $mail->hasTo($user->email));
+});
+
+test('it sends to users who picked the free plan from the pricing page', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => now()->subDay(),
+        'signup_plan' => SignupPlan::Free->value,
+        'paywall_seen_at' => now()->subDay(),
+    ]);
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertQueued(PaywallFollowUpEmail::class, fn ($mail) => $mail->hasTo($user->email));
+});
+
+test('it does not send to users who never saw the paywall', function () {
+    User::factory()->create(['onboarded_at' => now()->subDay(), 'paywall_seen_at' => null]);
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertNotQueued(PaywallFollowUpEmail::class);
+});
+
+test('it does not send to the shared demo account', function () {
+    config(['app.demo.email' => 'demo@whisper.money']);
+    stuckPaywallUser()->update(['email' => 'demo@whisper.money']);
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertNotQueued(PaywallFollowUpEmail::class);
+});
+
+test('it does not send to users who opted out of marketing emails', function () {
+    $user = stuckPaywallUser();
+    UserSetting::factory()->for($user)->create(['notify_marketing' => false]);
 
     $this->artisan('email:paywall-follow-up')->assertSuccessful();
 

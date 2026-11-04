@@ -85,6 +85,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the user has been shown the paywall.
+     */
+    public function paywallSeen(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'paywall_seen_at' => now(),
+        ]);
+    }
+
+    /**
      * Give the user an active paid plan.
      *
      * Every paid feature is now gated from the first tap — a bank, a broker,
