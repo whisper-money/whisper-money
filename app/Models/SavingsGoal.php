@@ -7,6 +7,7 @@ use App\Enums\MonthlyTargetType;
 use App\Enums\SavingsGoalKind;
 use App\Models\Concerns\Archivable;
 use App\Models\Concerns\BelongsToSpace;
+use Carbon\Carbon as BaseCarbon;
 use Carbon\CarbonInterface;
 use Database\Factories\SavingsGoalFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -84,6 +85,7 @@ class SavingsGoal extends Model
     /** @var list<string> */
     protected $hidden = [
         'space_id',
+        'user',
     ];
 
     protected function casts(): array
@@ -138,15 +140,50 @@ class SavingsGoal extends Model
     {
         $lateStart = $month->copy()->endOfMonth()->startOfDay()->subDays(self::LATE_START_DAYS - 1);
 
-        return $this->created_at->gte($lateStart) && $this->created_at->lte($month->copy()->endOfMonth());
+        $createdOn = $this->ownerDateOf($this->created_at);
+
+        return $createdOn->gte($lateStart) && $createdOn->lte($month->copy()->endOfMonth());
     }
 
     /**
-     * Whether the goal was archived during $month.
+     * Whether the goal was archived during $month, on its owner's calendar.
      */
     public function wasArchivedIn(CarbonInterface $month): bool
     {
-        return $this->archived_at !== null && $this->archived_at->isSameMonth($month);
+        return $this->archived_at !== null && $this->ownerDateOf($this->archived_at)->isSameMonth($month);
+    }
+
+    /**
+     * The date it is for this goal's owner: the day that decides which month
+     * is in progress, which ones are over, and whether a reminder is due.
+     *
+     * The app's `today()` is UTC, which is already next month for an American
+     * user on the evening of the last day. Falls back to the app's today for a
+     * goal without an existing owner.
+     */
+    public function ownerToday(): BaseCarbon
+    {
+        return $this->user?->localToday() ?? today();
+    }
+
+    /**
+     * The first day of the month the goal was created in, on its owner's
+     * calendar: the first month it has.
+     */
+    public function createdMonth(): BaseCarbon
+    {
+        return $this->ownerDateOf($this->created_at)->startOfMonth();
+    }
+
+    /**
+     * The owner's date at $instant, as midnight in the app timezone, so it
+     * compares with months the way {@see ownerToday()} does.
+     */
+    private function ownerDateOf(CarbonInterface $instant): BaseCarbon
+    {
+        $timezone = $this->user?->localTimezone() ?? (string) config('app.timezone');
+
+        return BaseCarbon::parse($instant->copy()->setTimezone($timezone)->toDateString());
     }
 
     /**

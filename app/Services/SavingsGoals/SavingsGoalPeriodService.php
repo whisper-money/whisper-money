@@ -15,7 +15,10 @@ use Illuminate\Support\Collection;
  *
  * Every step is safe to repeat. Opening finds the existing row on the
  * (goal, month) unique key, and closing only claims a period nobody closed yet,
- * so overlapping or repeated runs of the daily command change nothing twice.
+ * so overlapping or repeated runs of the hourly command change nothing twice.
+ *
+ * Months are the owner's calendar months: one closes at the owner's midnight,
+ * not the server's.
  */
 class SavingsGoalPeriodService
 {
@@ -43,7 +46,7 @@ class SavingsGoalPeriodService
     public function syncCurrentPeriod(SavingsGoal $goal): SavingsGoalPeriod
     {
         $this->advance($goal);
-        $period = $this->openPeriod($goal, today());
+        $period = $this->openPeriod($goal, $goal->ownerToday());
 
         if ($period->closed_at === null) {
             $period->update($this->editedTargetAttributes($goal, $period));
@@ -96,11 +99,11 @@ class SavingsGoalPeriodService
             $this->openPeriod($goal, $month);
         }
 
-        return $this->closeOpenPeriods($goal, before: today()->startOfMonth());
+        return $this->closeOpenPeriods($goal, before: $goal->ownerToday()->startOfMonth());
     }
 
     /**
-     * The months a read finds without a period — the daily command has not
+     * The months a read finds without a period — the hourly command has not
      * opened them yet — as unsaved periods holding the target they would open
      * with. A page shows the month from the 1st without writing anything: only
      * the command and the write paths persist periods.
@@ -126,11 +129,11 @@ class SavingsGoalPeriodService
      */
     private function missingMonths(SavingsGoal $goal, Collection $opened): array
     {
-        $currentMonth = today()->startOfMonth();
+        $currentMonth = $goal->ownerToday()->startOfMonth();
         $have = $opened->mapWithKeys(fn (mixed $month): array => [Carbon::parse($month)->format('Y-m') => true]);
         $missing = [];
 
-        for ($cursor = $goal->created_at->copy()->startOfMonth(); $cursor->lte($currentMonth); $cursor->addMonthNoOverflow()) {
+        for ($cursor = $goal->createdMonth(); $cursor->lte($currentMonth); $cursor->addMonthNoOverflow()) {
             if (! $have->has($cursor->format('Y-m'))) {
                 $missing[] = $cursor->copy();
             }

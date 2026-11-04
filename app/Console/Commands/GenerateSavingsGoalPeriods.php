@@ -37,7 +37,7 @@ class GenerateSavingsGoalPeriods extends Command
                 report($exception);
             }
 
-            // Apart from the close: a notice that fails is retried tomorrow,
+            // Apart from the close: a notice that fails is retried next run,
             // and must not keep the goal's months from moving on.
             try {
                 $this->notifier->announce($goal);
