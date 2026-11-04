@@ -139,10 +139,14 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/billing/refund', [SubscriptionController::class, 'refund'])
         ->middleware(['throttle:6,1', 'block-demo'])
         ->name('settings.billing.refund');
+    Route::post('settings/billing/cancel-unpaid', [SubscriptionController::class, 'cancelUnpaid'])
+        ->middleware(['throttle:6,1', 'block-shared'])
+        ->name('settings.billing.cancel-unpaid');
 
     Route::get('settings/delete-account', function (Request $request) {
         return Inertia::render('settings/delete-account', [
-            'hasActiveSubscriptionOrTrial' => $request->user()->hasActiveSubscriptionOrTrial(),
+            'mustCancelSubscription' => $request->user()->mustCancelSubscriptionBeforeDeleting(),
+            'cancelsUnpaidSubscription' => $request->user()->unpaidSubscription() !== null,
         ]);
     })->name('delete-account.edit');
 

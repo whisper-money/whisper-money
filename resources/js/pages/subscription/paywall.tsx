@@ -103,7 +103,7 @@ export default function Paywall() {
     };
 
     return (
-        <SubscriptionLayout>
+        <SubscriptionLayout withAccountLinks>
             <Head title={title} />
 
             <StepScreen

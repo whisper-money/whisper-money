@@ -640,6 +640,15 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     ];
 
     /**
+     * The collectable statuses whose latest invoice was never paid.
+     */
+    private const UNPAID_STRIPE_STATUSES = [
+        StripeSubscription::STATUS_PAST_DUE,
+        StripeSubscription::STATUS_UNPAID,
+        StripeSubscription::STATUS_INCOMPLETE,
+    ];
+
+    /**
      * The subscription Stripe can still collect on, whatever its payment state.
      * A cancelled one (`ends_at` set, in grace period or over) issues no further
      * invoices, so it does not count and does not stand in the way of deletion.
@@ -659,7 +668,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
     /**
      * Whether the user is still being billed: on a trial or holding a subscription
-     * Stripe can still collect on. Such users must cancel before deleting their account.
+     * Stripe can still collect on.
      */
     public function hasActiveSubscriptionOrTrial(): bool
     {
@@ -672,6 +681,39 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         }
 
         return $this->collectableSubscription() !== null;
+    }
+
+    /**
+     * The collectable subscription whose last charge failed: a trial that ended
+     * on a card that was declined, or a renewal Stripe is still retrying.
+     *
+     * Nothing was paid for the period it is chasing, so there is nothing to
+     * settle before leaving: the billing page cancels it on the spot, and so does
+     * deleting the account. Making the user cancel it in Stripe's portal first
+     * trapped them: `unpaid` and `incomplete` are not `subscribed()`, so the
+     * billing page never offered the portal, and the paywall had no way out.
+     */
+    public function unpaidSubscription(): ?Subscription
+    {
+        if (! config('subscriptions.enabled')) {
+            return null;
+        }
+
+        $subscription = $this->collectableSubscription();
+
+        return in_array($subscription?->stripe_status, self::UNPAID_STRIPE_STATUSES, true)
+            ? $subscription
+            : null;
+    }
+
+    /**
+     * Whether account deletion has to wait until the user cancels their plan
+     * themselves: a trial, or a subscription that is paid up. An unpaid one is
+     * cancelled by the deletion instead (see {@see unpaidSubscription()}).
+     */
+    public function mustCancelSubscriptionBeforeDeleting(): bool
+    {
+        return $this->unpaidSubscription() === null && $this->hasActiveSubscriptionOrTrial();
     }
 
     /**

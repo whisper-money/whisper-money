@@ -23,7 +23,8 @@ test('delete account page displays delete account component', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/delete-account')
-            ->where('hasActiveSubscriptionOrTrial', false)
+            ->where('mustCancelSubscription', false)
+            ->where('cancelsUnpaidSubscription', false)
         );
 });
 
@@ -47,6 +48,31 @@ test('delete account page flags users with an active subscription', function () 
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/delete-account')
-            ->where('hasActiveSubscriptionOrTrial', true)
+            ->where('mustCancelSubscription', true)
+            ->where('cancelsUnpaidSubscription', false)
         );
 });
+
+test('delete account page lets a user with an unpaid subscription delete and says it gets cancelled', function (string $status) {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => "sub_{$status}_delete_page_test",
+        'stripe_status' => $status,
+        'stripe_price' => 'price_delete_page_test',
+        'trial_ends_at' => now()->subDays(3),
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->get(route('delete-account.edit'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/delete-account')
+            ->where('mustCancelSubscription', false)
+            ->where('cancelsUnpaidSubscription', true)
+        );
+})->with(['past_due', 'unpaid', 'incomplete']);

@@ -3161,5 +3161,14 @@
     "Signing in and approving works fine in a desktop browser, but usually breaks in a phone's in-app browser. Once it's connected, you can chat with Whisper Money from Claude, ChatGPT or Perplexity on your phone as usual.": "La connexion et l’approbation fonctionnent bien dans un navigateur d’ordinateur, mais échouent souvent dans le navigateur intégré d’une app mobile. Une fois connecté, vous pouvez discuter avec Whisper Money depuis Claude, ChatGPT ou Perplexity sur votre téléphone comme d’habitude.",
     "Assistants you connected by signing in, such as Claude, ChatGPT or Perplexity. Revoke one to disconnect it.": "Les assistants que vous avez connectés en vous identifiant, comme Claude, ChatGPT ou Perplexity. Révoquez-en un pour le déconnecter.",
     "In Perplexity, open Plugins in the sidebar (or Customize → Connectors), select \"Add custom\", then \"Add MCP connector\" and choose \"Remote\".": "Dans Perplexity, ouvrez Plugins dans la barre latérale (ou Customize → Connectors), sélectionnez « Add custom », puis « Add MCP connector » et choisissez « Remote ».",
-    "Under \"Advanced\", pick OAuth as the authentication, tick the acknowledgement and select \"Add\". Then select the new connector card to sign in.": "Sous « Advanced », choisissez OAuth comme authentification, cochez la case de confirmation et sélectionnez « Add ». Sélectionnez ensuite la carte du nouveau connecteur pour vous identifier."
+    "Under \"Advanced\", pick OAuth as the authentication, tick the acknowledgement and select \"Add\". Then select the new connector card to sign in.": "Sous « Advanced », choisissez OAuth comme authentification, cochez la case de confirmation et sélectionnez « Add ». Sélectionnez ensuite la carte du nouveau connecteur pour vous identifier.",
+    "We could not cancel your subscription. Please try again in a few minutes.": "Nous n'avons pas pu annuler votre abonnement. Veuillez réessayer dans quelques minutes.",
+    "Your payment failed": "Votre paiement a échoué",
+    "We could not charge your card for your subscription. Deleting your account cancels it too, so we stop trying to charge you.": "Nous n'avons pas pu débiter votre carte pour votre abonnement. Supprimer votre compte l'annule aussi, et nous arrêtons d'essayer de vous débiter.",
+    "We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Pro.": "Nous n'avons pas pu débiter votre carte pour votre abonnement. Annulez-le et nous arrêtons d'essayer de vous débiter, ou mettez à jour votre moyen de paiement pour garder Pro.",
+    "Confirm cancellation": "Confirmer l'annulation",
+    "Cancel subscription": "Annuler l'abonnement",
+    "Update payment method": "Mettre à jour le moyen de paiement",
+    "Your plan ends right away and we stop charging your card.": "Votre abonnement prend fin immédiatement et nous arrêtons de débiter votre carte.",
+    "Your subscription was canceled.": "Votre abonnement a été annulé."
 }

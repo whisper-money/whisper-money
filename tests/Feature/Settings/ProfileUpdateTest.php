@@ -1,6 +1,9 @@
 <?php
 
+use App\Actions\Subscription\CancelSubscriptionNow;
 use App\Models\User;
+use Laravel\Cashier\Subscription;
+use Stripe\Exception\ApiConnectionException;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -133,7 +136,7 @@ test('correct password must be provided to delete account', function () {
     expect($user->fresh())->not->toBeNull();
 });
 
-test('user with a subscription Stripe can still collect on cannot delete their account', function (string $status, array $extra) {
+test('user with a trial or a paid-up subscription cannot delete their account', function (string $status, array $extra) {
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->create();
@@ -161,10 +164,122 @@ test('user with a subscription Stripe can still collect on cannot delete their a
 })->with([
     'active' => ['active', []],
     'on a trial' => ['trialing', fn () => ['trial_ends_at' => now()->addDays(7)]],
-    'past due' => ['past_due', []],
-    'unpaid' => ['unpaid', []],
-    'incomplete' => ['incomplete', []],
 ]);
+
+test('deleting the account cancels a subscription whose payment failed', function (string $status) {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $subscription = $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => "sub_{$status}_delete_test",
+        'stripe_status' => $status,
+        'stripe_price' => 'price_delete_test',
+        'trial_ends_at' => now()->subDays(3),
+    ]);
+
+    $cancel = Mockery::mock(CancelSubscriptionNow::class);
+    $cancel->shouldReceive('handle')
+        ->once()
+        ->withArgs(fn (User $owner, Subscription $cancelled): bool => $owner->is($user) && $cancelled->is($subscription));
+    app()->instance(CancelSubscriptionNow::class, $cancel);
+
+    $response = $this
+        ->actingAs($user)
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home'));
+
+    expect(User::query()->find($user->id))->toBeNull();
+})->with([
+    'past due' => ['past_due'],
+    'unpaid' => ['unpaid'],
+    'incomplete' => ['incomplete'],
+]);
+
+test('an unpaid subscription without a Stripe customer is cancelled locally on deletion', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create(['stripe_id' => null]);
+
+    $subscription = $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_unpaid_local_cancel_test',
+        'stripe_status' => 'unpaid',
+        'stripe_price' => 'price_delete_test',
+    ]);
+
+    $this
+        ->actingAs($user)
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home'));
+
+    expect($subscription->fresh())
+        ->stripe_status->toBe('canceled')
+        ->ends_at->not->toBeNull();
+});
+
+test('the account is kept when Stripe cannot cancel the unpaid subscription', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_unpaid_stripe_down_test',
+        'stripe_status' => 'unpaid',
+        'stripe_price' => 'price_delete_test',
+    ]);
+
+    $cancel = Mockery::mock(CancelSubscriptionNow::class);
+    $cancel->shouldReceive('handle')->once()->andThrow(ApiConnectionException::factory('Stripe is down'));
+    app()->instance(CancelSubscriptionNow::class, $cancel);
+
+    $this
+        ->actingAs($user)
+        ->from(route('delete-account.edit'))
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ])
+        ->assertSessionHasErrors('subscription')
+        ->assertRedirect(route('delete-account.edit'));
+
+    expect(User::query()->find($user->id))->not->toBeNull();
+});
+
+test('a wrong password leaves the unpaid subscription alone', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_unpaid_wrong_password_test',
+        'stripe_status' => 'unpaid',
+        'stripe_price' => 'price_delete_test',
+    ]);
+
+    $cancel = Mockery::mock(CancelSubscriptionNow::class);
+    $cancel->shouldNotReceive('handle');
+    app()->instance(CancelSubscriptionNow::class, $cancel);
+
+    $this
+        ->actingAs($user)
+        ->delete(route('profile.destroy'), [
+            'password' => 'wrong-password',
+        ])
+        ->assertSessionHasErrors('password');
+
+    expect(User::query()->find($user->id))->not->toBeNull();
+});
 
 test('user with a subscription Stripe cannot collect on can delete their account', function (string $status, bool $cancelled) {
     config(['subscriptions.enabled' => true]);

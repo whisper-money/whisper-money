@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { leavePage } from '@/lib/leave-page';
+import { billing } from '@/routes/settings';
 import type { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
@@ -18,11 +19,17 @@ import { TriangleAlertIcon } from 'lucide-react';
  *
  * The action leaves the SPA on purpose — the billing portal route redirects to
  * Stripe, which Inertia cannot follow.
+ *
+ * The billing page shows its own payment-failure alert, which also offers to
+ * cancel, so the banner stays off there rather than say the same thing twice.
  */
 export function SubscriptionPaymentIssueBanner() {
-    const { subscriptionPaymentIssue } = usePage<SharedData>().props;
+    const {
+        url,
+        props: { subscriptionPaymentIssue },
+    } = usePage<SharedData>();
 
-    if (!subscriptionPaymentIssue) {
+    if (!subscriptionPaymentIssue || url.split('?')[0] === billing.url()) {
         return null;
     }
 

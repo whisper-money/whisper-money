@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
+use App\Actions\Subscription\CancelSubscriptionNow;
 use App\Actions\Subscription\RefundSelfServe;
 use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
@@ -22,6 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Checkout;
+use Stripe\Exception\ApiErrorException;
 
 class SubscriptionController extends Controller
 {
@@ -340,6 +342,7 @@ class SubscriptionController extends Controller
 
         return Inertia::render('settings/billing', [
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            'hasUnpaidSubscription' => $user->unpaidSubscription() !== null,
             'subscription' => $subscription === null ? null : [
                 'onTrial' => $subscription->onTrial(),
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
@@ -403,6 +406,33 @@ class SubscriptionController extends Controller
                 ['name' => 'User', 'value' => $user->email, 'inline' => false],
             ],
         ];
+    }
+
+    /**
+     * Cancel, right now, a subscription whose charge failed. Stripe's portal is
+     * no reliable way out for it (an `incomplete` one is not even listed), and
+     * someone who only wants the charges to stop should not have to delete the
+     * account to get there.
+     */
+    public function cancelUnpaid(Request $request, CancelSubscriptionNow $cancelSubscriptionNow): RedirectResponse
+    {
+        $user = $request->user();
+        $subscription = $user->unpaidSubscription();
+
+        if ($subscription === null) {
+            return redirect()->route('settings.billing');
+        }
+
+        try {
+            $cancelSubscriptionNow->handle($user, $subscription);
+        } catch (ApiErrorException $exception) {
+            report($exception);
+
+            return redirect()->route('settings.billing')
+                ->withErrors(['subscription' => __('We could not cancel your subscription. Please try again in a few minutes.')]);
+        }
+
+        return redirect()->route('settings.billing');
     }
 
     public function billingPortal(Request $request): RedirectResponse
