@@ -127,13 +127,60 @@ test('an unknown --user fails without writing', function (string $userId) {
     expect(storedBudgetAmount($this->usdExpense, $this->period))->toBe(10000);
 })->with(['not-a-uuid', '00000000-0000-4000-8000-000000000000']);
 
-test('the repair sends no email and keeps the limit alert flags', function () {
-    $this->period->update(['allocated_amount' => 6000, 'over_limit_notified' => true]);
+test('the repair sends no email and resets the limit alert flags of the periods whose total changed', function () {
+    $this->period->update(['close_to_limit_notified' => true, 'over_limit_notified' => true]);
+    $untouched = BudgetPeriod::factory()->create([
+        'budget_id' => $this->period->budget_id,
+        'start_date' => '2026-09-01',
+        'end_date' => '2026-09-30',
+        'over_limit_notified' => true,
+    ]);
 
-    $this->artisan('budgets:resnapshot-foreign-currency', ['--force' => true])->assertSuccessful();
+    $this->artisan('budgets:resnapshot-foreign-currency', ['--force' => true])
+        ->expectsOutputToContain('Limit alert flags were reset on 1 budget period(s).')
+        ->assertSuccessful();
 
     Mail::assertNothingOutgoing();
+    expect($this->period->fresh())
+        ->close_to_limit_notified->toBeFalse()
+        ->over_limit_notified->toBeFalse()
+        ->and($untouched->fresh()->over_limit_notified)->toBeTrue();
+});
+
+test('a dry run reports the periods whose flags would be reset and keeps them', function () {
+    $this->period->update(['over_limit_notified' => true]);
+
+    $this->artisan('budgets:resnapshot-foreign-currency')
+        ->expectsOutputToContain('Limit alert flags would be reset on 1 budget period(s).')
+        ->assertSuccessful();
+
     expect($this->period->fresh()->over_limit_notified)->toBeTrue();
+});
+
+test('a period whose rows change but whose total does not keeps its flags', function () {
+    // Stored at 0 where it weighs 50 EUR: +50 EUR, cancelling the -50 EUR of the other USD row.
+    $underCounted = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->usdExpense->account_id,
+        'category_id' => $this->usdExpense->category_id,
+        'currency_code' => 'USD',
+        'amount' => -10000,
+        'transaction_date' => '2026-10-10',
+    ]);
+    BudgetTransaction::query()->updateOrCreate(
+        ['budget_period_id' => $this->period->id, 'transaction_id' => $underCounted->id],
+        ['amount' => 0],
+    );
+    // Set last: assigning the new transaction live re-evaluates the flags.
+    $this->period->update(['over_limit_notified' => true]);
+
+    $this->artisan('budgets:resnapshot-foreign-currency', ['--force' => true])
+        ->expectsOutputToContain('2 budget row(s) across 1 user(s) and 1 budget period(s) were rewritten. Spending delta: 0.00 EUR.')
+        ->expectsOutputToContain('Limit alert flags were reset on 0 budget period(s).')
+        ->assertSuccessful();
+
+    expect(storedBudgetAmount($underCounted, $this->period))->toBe(5000)
+        ->and($this->period->fresh()->over_limit_notified)->toBeTrue();
 });
 
 test('the reported delta uses the user currency decimals', function () {

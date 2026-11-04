@@ -522,20 +522,43 @@ class BudgetTransactionService
             $this->foreignCurrencySnapshots(fn ($query) => $query->where('accounts.id', $account->id)),
         );
 
-        // Every affected period now holds a different total, so the limit alerts
-        // it already sent describe a state that no longer exists. Clearing the
-        // flags lets the next crossing notify again, the same way a refund that
-        // drops a budget back under its limit does.
         if ($reweighed > 0) {
-            BudgetPeriod::query()
-                ->whereHas(
-                    'budgetTransactions.transaction',
-                    fn (Builder $query) => $query->where('account_id', $account->id),
-                )
-                ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
+            $this->resetLimitAlerts(BudgetPeriod::query()->whereHas(
+                'budgetTransactions.transaction',
+                fn (Builder $query) => $query->where('account_id', $account->id),
+            ));
         }
 
         return $reweighed;
+    }
+
+    /**
+     * Clear the limit alerts already sent for periods whose total just changed
+     * under them: those alerts describe a state that no longer exists, and
+     * clearing the flags lets the next crossing notify again, the same way a
+     * refund that drops a budget back under its limit does. Sends nothing.
+     *
+     * @param  Builder<BudgetPeriod>  $periods
+     * @return int the number of periods whose flags were cleared
+     */
+    public function resetLimitAlerts(Builder $periods): int
+    {
+        return $this->withLimitAlertsSent($periods)
+            ->update(['close_to_limit_notified' => false, 'over_limit_notified' => false]);
+    }
+
+    /**
+     * Narrow $periods to those that already sent a limit alert, the ones
+     * {@see self::resetLimitAlerts()} would clear.
+     *
+     * @param  Builder<BudgetPeriod>  $periods
+     * @return Builder<BudgetPeriod>
+     */
+    public function withLimitAlertsSent(Builder $periods): Builder
+    {
+        return $periods->where(fn (Builder $query) => $query
+            ->where('close_to_limit_notified', true)
+            ->orWhere('over_limit_notified', true));
     }
 
     /**

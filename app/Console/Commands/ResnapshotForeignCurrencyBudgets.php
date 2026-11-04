@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
@@ -13,7 +14,9 @@ use Illuminate\Support\Str;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * @phpstan-type ChangeTally array{currency: string, rows: int, periods: array<string, true>, delta: int}
+ * A user's changes; `periods` maps each touched budget period id to its spending delta.
+ *
+ * @phpstan-type ChangeTally array{currency: string, rows: int, periods: array<string, int>, delta: int}
  */
 class ResnapshotForeignCurrencyBudgets extends Command
 {
@@ -40,7 +43,7 @@ class ResnapshotForeignCurrencyBudgets extends Command
 
         $changesByUser = [];
 
-        // Silent: no budget email is sent and no limit alert flag is touched.
+        // Silent: no budget email is sent.
         $service->eachStaleSnapshot(
             $service->foreignCurrencySnapshots(fn ($query) => $query->when($userId, fn ($q) => $q->where('transactions.user_id', $userId))),
             function (BudgetTransaction $row, int $amount) use ($isForced, &$changesByUser): void {
@@ -54,9 +57,37 @@ class ResnapshotForeignCurrencyBudgets extends Command
             },
         );
 
-        $this->report(collect($changesByUser), $isForced);
+        $changes = collect($changesByUser);
+
+        $this->report($changes, $isForced);
+        $this->resetLimitAlerts($service, $changes, $isForced);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A period whose total moved already sent alerts for a total it no longer
+     * holds, so its flags are cleared the way an ownership reweigh clears
+     * them. A period whose rows changed but whose deltas cancel out keeps them.
+     *
+     * @param  Collection<string, ChangeTally>  $changes
+     */
+    private function resetLimitAlerts(BudgetTransactionService $service, Collection $changes, bool $isForced): void
+    {
+        $changedPeriodIds = $changes
+            ->flatMap(fn (array $change): array => array_keys(array_filter($change['periods'])))
+            ->all();
+
+        $reset = 0;
+
+        if ($changedPeriodIds !== []) {
+            $periods = BudgetPeriod::query()->whereKey($changedPeriodIds);
+            $reset = $isForced ? $service->resetLimitAlerts($periods) : $service->withLimitAlertsSent($periods)->count();
+        }
+
+        $verb = $isForced ? 'were' : 'would be';
+
+        $this->info("Limit alert flags {$verb} reset on {$reset} budget period(s).");
     }
 
     /**
@@ -70,7 +101,8 @@ class ResnapshotForeignCurrencyBudgets extends Command
 
         $changesByUser[$user->id] ??= ['currency' => $user->currency_code, 'rows' => 0, 'periods' => [], 'delta' => 0];
         $changesByUser[$user->id]['rows']++;
-        $changesByUser[$user->id]['periods'][$row->budget_period_id] = true;
+        $changesByUser[$user->id]['periods'][$row->budget_period_id] ??= 0;
+        $changesByUser[$user->id]['periods'][$row->budget_period_id] += $amount - $row->amount;
         $changesByUser[$user->id]['delta'] += $amount - $row->amount;
     }
 
