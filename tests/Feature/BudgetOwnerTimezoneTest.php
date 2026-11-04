@@ -185,6 +185,11 @@ describe('budgets:generate-periods', function () {
 
         expect($events)->toHaveCount(1)
             ->and($events->first()->expression)->toBe('0 * * * *')
-            ->and($events->first()->withoutOverlapping)->toBeTrue();
+            ->and($events->first()->withoutOverlapping)->toBeTrue()
+            ->and($events->first()->expiresAt)->toBe(60);
     });
 });
+
+it('refuses existence queries on currentPeriods, which cannot know each owner\'s today', function () {
+    Budget::query()->whereHas('currentPeriods')->get();
+})->throws(LogicException::class);

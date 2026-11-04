@@ -29,13 +29,14 @@ class ListBudgets extends McpTool
     {
         // ponytail: two extra queries per budget (its current period, and that
         // period's spend). Fine for the handful of budgets a user keeps; eager
-        // load the current period with a sum if anyone ever runs dozens.
+        // load the current period with a sum if anyone ever runs dozens. The
+        // owner is set by hand so reading their today costs no query.
         $budgets = $user->budgets()
             ->notArchived()
             ->with(['categories:id,name', 'labels:id,name'])
             ->orderBy('name')
             ->get()
-            ->map(fn (Budget $budget): array => $this->presentBudget($budget))
+            ->map(fn (Budget $budget): array => $this->presentBudget($budget->setRelation('user', $user)))
             ->all();
 
         return $this->json([

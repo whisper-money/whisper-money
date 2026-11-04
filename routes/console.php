@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schedule;
 // for a user in Buenos Aires that is 03:00 UTC, for one in Tokyo 15:00 UTC the
 // day before. A daily run at 00:00 UTC rolled periods over hours late (or a
 // day late) for most users. Every run is idempotent.
-Schedule::command('budgets:generate-periods')->hourly()->withoutOverlapping();
+Schedule::command('budgets:generate-periods')->hourly()->withoutOverlapping(60);
 // Just after midnight, so a month opens and the last one closes as soon as it
 // is over (pages open the month themselves if they get there first). Again at
 // breakfast time in Europe, which is when the month-end reminder goes out: the

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use LogicException;
 
 /**
  * A budget's periods covering its owner's today, latest start first.
@@ -29,6 +30,8 @@ class CurrentBudgetPeriods extends HasMany
     {
         parent::addConstraints();
 
+        // Outside the check: an eager load runs with constraints off and needs
+        // the order just the same.
         $this->getRelationQuery()->orderByDesc('start_date');
 
         if (static::$constraints) {
@@ -48,10 +51,26 @@ class CurrentBudgetPeriods extends HasMany
         $this->getRelationQuery()->where(function (Builder $query) use ($budgetIdsByDay): void {
             foreach ($budgetIdsByDay as $day => $budgetIds) {
                 $query->orWhere(fn (Builder $periods) => $periods
-                    ->whereIn('budget_id', $budgetIds)
+                    ->whereIn($this->foreignKey, $budgetIds)
                     ->covering(Carbon::parse($day)));
             }
         });
+    }
+
+    /**
+     * `whereHas('currentPeriods')`, `withCount` and friends build the relation
+     * on a blank budget and never call addEagerConstraints(), so they would
+     * match every period, not today's. Refused rather than silently wrong:
+     * filter `periods` with `covering()` and the owner's today instead.
+     *
+     * @param  Builder<BudgetPeriod>  $query
+     * @param  Builder<TDeclaringModel>  $parentQuery
+     * @param  mixed  $columns
+     * @return Builder<BudgetPeriod>
+     */
+    public function getRelationExistenceQuery(Builder $query, Builder $parentQuery, $columns = ['*']): Builder
+    {
+        throw new LogicException('currentPeriods depends on each owner\'s today and cannot be used in an existence query; constrain `periods` with covering() instead.');
     }
 
     /**

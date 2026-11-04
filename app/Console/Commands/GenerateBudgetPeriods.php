@@ -71,7 +71,9 @@ class GenerateBudgetPeriods extends Command
                 ->get();
 
             foreach ($completedPeriods as $period) {
-                $this->budgetPeriodService->closePeriod($period);
+                // The budget at hand, owner loaded: closing reads both, and this
+                // runs every hour over every ended period.
+                $this->budgetPeriodService->closePeriod($period->setRelation('budget', $budget));
                 $closedCount++;
             }
 
