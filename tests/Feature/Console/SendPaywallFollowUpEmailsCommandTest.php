@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DripEmailType;
+use App\Enums\SignupPlan;
 use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -57,6 +58,18 @@ test('it sends to users who never connected a bank', function () {
 test('it still sends to users who connected a bank', function () {
     $user = stuckPaywallUser();
     BankingConnection::factory()->for($user)->create();
+
+    $this->artisan('email:paywall-follow-up')->assertSuccessful();
+
+    Mail::assertQueued(PaywallFollowUpEmail::class, fn ($mail) => $mail->hasTo($user->email));
+});
+
+test('it sends to users who picked the free plan from the pricing page', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => now()->subDay(),
+        'signup_plan' => SignupPlan::Free->value,
+        'paywall_seen_at' => now()->subDay(),
+    ]);
 
     $this->artisan('email:paywall-follow-up')->assertSuccessful();
 
