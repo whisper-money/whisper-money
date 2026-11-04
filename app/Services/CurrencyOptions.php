@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\TimezoneCountry;
+
 class CurrencyOptions
 {
     /**
@@ -72,35 +74,7 @@ class CurrencyOptions
      */
     public function forTimezone(?string $timezone): ?string
     {
-        if ($timezone === null || $timezone === '') {
-            return null;
-        }
-
-        return $this->forRegion($this->countryOfTimezone($timezone));
-    }
-
-    /**
-     * PHP's tzdata knows the country of every canonical zone but answers "??"
-     * for a legacy alias like "Asia/Calcutta", which older browsers still
-     * send, so those are asked of ICU instead.
-     */
-    private function countryOfTimezone(string $timezone): ?string
-    {
-        try {
-            $location = (new \DateTimeZone($timezone))->getLocation();
-        } catch (\Exception) {
-            return null;
-        }
-
-        if ($location !== false && $location['country_code'] !== '??') {
-            return $location['country_code'];
-        }
-
-        if (! class_exists(\IntlTimeZone::class)) {
-            return null;
-        }
-
-        return \IntlTimeZone::getRegion($timezone) ?: null;
+        return $this->forRegion(TimezoneCountry::of($timezone));
     }
 
     /**

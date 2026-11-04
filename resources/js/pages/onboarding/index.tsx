@@ -44,6 +44,7 @@ interface OnboardingProps {
     onboardingAnswers?: OnboardingAnswers;
     signupPlan?: SignupPlan | null;
     pendingMapping?: PendingMapping | null;
+    timezoneCountry?: string | null;
 }
 
 export default function Onboarding({
@@ -55,6 +56,7 @@ export default function Onboarding({
     onboardingAnswers = {},
     signupPlan = null,
     pendingMapping = null,
+    timezoneCountry = null,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const { auth, currencies } = usePage<SharedData>().props;
@@ -245,6 +247,7 @@ export default function Onboarding({
                             markConnectedAccountSelected
                         }
                         signupPlan={signupPlan}
+                        timezoneCountry={timezoneCountry}
                         onContinue={() => goToStep('syncing')}
                     />
                 );

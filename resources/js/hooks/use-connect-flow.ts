@@ -80,15 +80,22 @@ export function rememberConnectCountry(code: string): void {
     }
 }
 
-/** The remembered country, if it is still one we connect in. */
-function rememberedCountry(): string | null {
+/** Whether a two-letter country code is one we can connect banks in. */
+export function isConnectCountry(code: string | null | undefined): boolean {
+    return (
+        !!code && (CONNECT_COUNTRY_CODES as readonly string[]).includes(code)
+    );
+}
+
+/**
+ * The country the reader last picked in the bank picker, if it is still one we
+ * connect in.
+ */
+export function rememberedConnectCountry(): string | null {
     try {
         const code = localStorage.getItem(COUNTRY_STORAGE_KEY);
 
-        return code &&
-            (CONNECT_COUNTRY_CODES as readonly string[]).includes(code)
-            ? code
-            : null;
+        return isConnectCountry(code) ? code : null;
     } catch {
         return null;
     }
@@ -113,7 +120,7 @@ export function useGuessedCountry(): string | null {
     const locale = useLocale();
 
     return useMemo(() => {
-        const remembered = rememberedCountry();
+        const remembered = rememberedConnectCountry();
 
         if (remembered) {
             return remembered;
@@ -121,10 +128,7 @@ export function useGuessedCountry(): string | null {
 
         const region = new Intl.Locale(locale).region;
 
-        return region &&
-            (CONNECT_COUNTRY_CODES as readonly string[]).includes(region)
-            ? region
-            : null;
+        return region && isConnectCountry(region) ? region : null;
     }, [locale]);
 }
 
