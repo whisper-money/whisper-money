@@ -11,7 +11,7 @@ class SendPaywallFollowUpEmailsCommand extends Command
 {
     protected $signature = 'email:paywall-follow-up';
 
-    protected $description = 'Queue the paywall follow-up email for users who completed onboarding yesterday but are stuck on the paywall';
+    protected $description = 'Queue the paywall follow-up email for users who completed onboarding yesterday, saw the paywall and did not subscribe';
 
     public function handle(): int
     {
@@ -24,7 +24,7 @@ class SendPaywallFollowUpEmailsCommand extends Command
         $query = User::query()
             ->excludingSharedAccounts()
             ->whereDate('onboarded_at', today()->subDay())
-            ->whereHas('bankingConnections')
+            ->whereNotNull('paywall_seen_at')
             ->whereDoesntHave('mailLogs', function ($query): void {
                 $query->where('email_type', DripEmailType::PaywallFollowUp);
             });

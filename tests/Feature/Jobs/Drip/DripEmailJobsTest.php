@@ -15,7 +15,6 @@ use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
-use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
@@ -38,12 +37,7 @@ $subscriptionGatedJobs = [
     'import help' => [SendImportHelpEmailJob::class, ImportHelpEmail::class, DripEmailType::ImportHelp,
         fn (): User => User::factory()->onboarded()->create()],
     'paywall follow-up' => [SendPaywallFollowUpEmailJob::class, PaywallFollowUpEmail::class, DripEmailType::PaywallFollowUp,
-        function (): User {
-            $user = User::factory()->onboarded()->create();
-            BankingConnection::factory()->for($user)->create();
-
-            return $user;
-        }],
+        fn (): User => User::factory()->onboarded()->paywallSeen()->create()],
     'promo code' => [SendPromoCodeEmailJob::class, PromoCodeEmail::class, DripEmailType::PromoCode,
         function (): User {
             $user = User::factory()->onboarded()->create();
