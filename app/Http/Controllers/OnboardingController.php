@@ -6,6 +6,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
 use App\Enums\SignupPlan;
+use App\Features\OnboardingGateCopy;
 use App\Http\Requests\StoreOnboardingAnswersRequest;
 use App\Http\Requests\StoreOnboardingTargetRequest;
 use App\Http\Requests\UpdateOnboardingCurrencyRequest;
@@ -111,7 +112,23 @@ class OnboardingController extends Controller
             // in a country no bank of ours reaches. The timezone rather than the
             // language: a third of `es-ES` signups live in America.
             'timezoneCountry' => TimezoneCountry::of($user->timezone),
+            'gateCopyArm' => $this->gateCopyArm($user, $signupPlan),
         ]);
+    }
+
+    /**
+     * Which copy the bank and broker gate is drawn with (see
+     * {@see OnboardingGateCopy}). Only drawn for someone the gate can reach:
+     * nothing is sold on a self-hosted instance, and a free-plan signup is
+     * never offered a connection.
+     */
+    private function gateCopyArm(User $user, ?SignupPlan $signupPlan): ?string
+    {
+        if (! config('subscriptions.enabled') || $signupPlan === SignupPlan::Free) {
+            return null;
+        }
+
+        return OnboardingGateCopy::armFor($user);
     }
 
     /**

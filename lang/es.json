@@ -4243,5 +4243,9 @@
     "Cancel subscription": "Cancelar suscripción",
     "Update payment method": "Actualizar método de pago",
     "Your plan ends right away and we stop charging your card.": "Tu plan termina ahora mismo y dejamos de cobrarte en tu tarjeta.",
-    "Your subscription was canceled.": "Tu suscripción se ha cancelado."
+    "Your subscription was canceled.": "Tu suscripción se ha cancelado.",
+    "Start free trial": "Empezar prueba gratis",
+    "Connect your bank free for :days days": "Conecta tu banco gratis durante :days días",
+    "Connect your account free for :days days": "Conecta tu cuenta gratis durante :days días",
+    "Your movements arrive on their own, every day. Everything you’ve done so far stays free.": "Tus movimientos llegan solos, cada día. Todo lo que has hecho hasta ahora sigue siendo gratis."
 }

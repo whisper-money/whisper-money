@@ -5,6 +5,7 @@ import {
     identifyUser,
     initializePostHog,
     isPostHogSessionRecordingEnabled,
+    registerProperties,
     resetPostHog,
 } from './posthog';
 
@@ -25,6 +26,7 @@ vi.mock('posthog-js', () => {
             identify: vi.fn(explode),
             reset: vi.fn(explode),
             capture: vi.fn(explode),
+            register: vi.fn(explode),
         },
     };
 });
@@ -60,6 +62,7 @@ describe('PostHog wrappers', () => {
         ['identify', () => identifyUser('user-1', { email: 'reader@a.test' })],
         ['reset', () => resetPostHog()],
         ['capture', () => captureEvent('upgrade_checkout_started')],
+        ['register', () => registerProperties({ arm: 'control' })],
     ] as const)(
         'keeps the app alive when posthog.%s throws',
         (method, call) => {

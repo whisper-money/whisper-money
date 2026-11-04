@@ -1,0 +1,180 @@
+import { pricingFixture } from '@/lib/pricing-fixture';
+import { type PricingConfig } from '@/types/pricing';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { StepGate, type GateCopyArm } from './step-gate';
+
+const mocks = vi.hoisted(() => ({
+    props: {
+        current: {} as {
+            pricing: PricingConfig;
+            gateCopyArm?: GateCopyArm | null;
+        },
+    },
+    captureEvent: vi.fn(),
+    registerProperties: vi.fn(),
+}));
+
+vi.mock('@inertiajs/react', () => ({
+    usePage: () => ({ props: { locale: 'en', ...mocks.props.current } }),
+}));
+
+vi.mock('@/lib/posthog', () => ({
+    captureEvent: mocks.captureEvent,
+    registerProperties: mocks.registerProperties,
+}));
+
+/** The plans as they ship with `SUBSCRIPTION_PAY_NOW` off: 7 and 14 days. */
+const withTrial: PricingConfig = {
+    ...pricingFixture,
+    plans: {
+        monthly: { ...pricingFixture.plans.monthly, trial_days: 7 },
+        yearly: { ...pricingFixture.plans.yearly, trial_days: 14 },
+    },
+};
+
+function renderGate(
+    arm: GateCopyArm | null,
+    {
+        kind = 'bank',
+        pricing = withTrial,
+    }: { kind?: 'bank' | 'broker' | 'ai'; pricing?: PricingConfig } = {},
+) {
+    mocks.props.current = { pricing, gateCopyArm: arm };
+
+    return render(<StepGate kind={kind} onDecline={vi.fn()} />);
+}
+
+function checkoutHref(): string {
+    return screen.getByTestId('start-plan').getAttribute('href') ?? '';
+}
+
+beforeEach(() => {
+    mocks.captureEvent.mockClear();
+    mocks.registerProperties.mockClear();
+});
+
+describe('StepGate copy experiment', () => {
+    it('draws the gate as it always was in control', () => {
+        renderGate('control');
+
+        expect(
+            screen.getByText('Connecting a bank needs Standard'),
+        ).toBeTruthy();
+        expect(screen.queryByText('Start free trial')).toBeNull();
+        expect(checkoutHref()).toContain('plan=yearly');
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_viewed',
+            { gate: 'bank', arm: 'control' },
+        );
+        expect(mocks.registerProperties).toHaveBeenCalledWith({
+            onboarding_gate_arm: 'control',
+        });
+    });
+
+    it('frames the yearly plan as a free trial, price in the fine print', () => {
+        renderGate('trial_yearly');
+
+        expect(
+            screen.getByText('Connect your bank free for 14 days'),
+        ).toBeTruthy();
+        expect(screen.getByTestId('start-plan').textContent).toBe(
+            'Start free trial',
+        );
+        expect(
+            screen.getByText(
+                'Free for 14 days, then €53.94 a year. Cancel before then and you are not charged.',
+            ),
+        ).toBeTruthy();
+        expect(checkoutHref()).toContain('plan=yearly');
+        expect(checkoutHref()).toContain('source=onboarding_bank');
+    });
+
+    it('frames the monthly plan as a free trial, monthly preselected', () => {
+        renderGate('trial_monthly');
+
+        expect(
+            screen.getByText('Connect your bank free for 7 days'),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Free for 7 days, then €8.99 a month. Cancel before then and you are not charged.',
+            ),
+        ).toBeTruthy();
+        expect(checkoutHref()).toContain('plan=monthly');
+    });
+
+    it('names the trial of the plan in hand when the user switches', () => {
+        renderGate('trial_monthly');
+
+        fireEvent.click(screen.getByText('Yearly'));
+
+        expect(
+            screen.getByText('Connect your bank free for 14 days'),
+        ).toBeTruthy();
+        expect(checkoutHref()).toContain('plan=yearly');
+    });
+
+    it('says account rather than bank on the broker gate', () => {
+        renderGate('trial_yearly', { kind: 'broker' });
+
+        expect(
+            screen.getByText('Connect your account free for 14 days'),
+        ).toBeTruthy();
+    });
+
+    it('reports the arm on decline and on the way to checkout', () => {
+        renderGate('trial_monthly');
+
+        fireEvent.click(screen.getByTestId('start-plan'));
+        fireEvent.click(screen.getByTestId('decline-gate'));
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_checkout_started',
+            { gate: 'bank', plan: 'monthly', arm: 'trial_monthly' },
+        );
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_declined',
+            { gate: 'bank', arm: 'trial_monthly' },
+        );
+    });
+
+    it('leaves the AI gate out of the experiment', () => {
+        renderGate('trial_yearly', { kind: 'ai' });
+
+        expect(screen.getByText('AI sorting needs Standard')).toBeTruthy();
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_viewed',
+            { gate: 'ai' },
+        );
+        expect(mocks.registerProperties).not.toHaveBeenCalled();
+    });
+
+    /**
+     * With the plans charged upfront there is no trial to frame the gate
+     * around, and a control measured against two arms identical to it is no
+     * experiment: nobody is in one.
+     */
+    it('turns itself off when the plans charge today', () => {
+        renderGate('trial_monthly', { pricing: pricingFixture });
+
+        expect(
+            screen.getByText('Connecting a bank needs Standard'),
+        ).toBeTruthy();
+        expect(checkoutHref()).toContain('plan=yearly');
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_viewed',
+            { gate: 'bank' },
+        );
+        expect(mocks.registerProperties).not.toHaveBeenCalled();
+    });
+
+    it('draws control, unlabelled, when no arm is handed down', () => {
+        renderGate(null);
+
+        expect(
+            screen.getByText('Connecting a bank needs Standard'),
+        ).toBeTruthy();
+        expect(mocks.registerProperties).not.toHaveBeenCalled();
+    });
+});
