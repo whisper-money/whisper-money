@@ -2,8 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\BankingConnectionStatus;
-use App\Enums\BankingProvider;
 use App\Enums\BankingSyncTrigger;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
@@ -42,31 +40,7 @@ class SyncBankingConnections extends Command
             return Command::SUCCESS;
         }
 
-        $query = BankingConnection::query()
-            ->whereHas('user')
-            ->where(function ($query) {
-                $query->where(function ($query) {
-                    $query->where(function ($query) {
-                        $query->where('status', BankingConnectionStatus::Active)
-                            ->orWhere(function ($query) {
-                                $query->where('status', BankingConnectionStatus::Error)
-                                    ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
-                            });
-                    })->where(function ($query) {
-                        $query->whereNull('valid_until')
-                            ->orWhere('valid_until', '>', now());
-                    });
-                })->orWhere(function ($query) {
-                    $query->where('provider', BankingProvider::EnableBanking)
-                        ->where('status', BankingConnectionStatus::Active)
-                        ->whereNotNull('valid_until')
-                        ->where('valid_until', '<=', now());
-                });
-            })
-            ->where(function ($query) {
-                $query->whereNull('rate_limited_until')
-                    ->orWhere('rate_limited_until', '<=', now());
-            });
+        $query = BankingConnection::query()->eligibleForScheduledSync();
 
         if ($connectionId) {
             $query->where('id', $connectionId);

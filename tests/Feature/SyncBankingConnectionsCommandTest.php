@@ -51,6 +51,16 @@ test('banking:sync dispatches only the connection matching the filters', functio
     'user and connection combined' => [['--user', '--connection'], true],
 ]);
 
+test('banking:sync with filters syncs a connection that just synced', function () {
+    Queue::fake();
+
+    $connection = BankingConnection::factory()->create(['last_synced_at' => now()->subMinute()]);
+
+    artisan('banking:sync', ['--connection' => $connection->id])->assertSuccessful();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->is($connection));
+});
+
 test('banking:sync fails when user email is not found', function () {
     artisan('banking:sync', ['--user' => 'nonexistent@example.com'])
         ->expectsOutputToContain("User with email 'nonexistent@example.com' not found.")
