@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * One answer to the survey the paywall shows when a user stays on the free
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property FreePlanSurveyReason $reason
  * @property ?string $details
  * @property PaywallGate $gate
+ * @property ?Carbon $converted_at
  */
 class FreePlanSurveyResponse extends Model
 {
@@ -28,6 +30,7 @@ class FreePlanSurveyResponse extends Model
         'reason',
         'details',
         'gate',
+        'converted_at',
     ];
 
     protected function casts(): array
@@ -35,6 +38,7 @@ class FreePlanSurveyResponse extends Model
         return [
             'reason' => FreePlanSurveyReason::class,
             'gate' => PaywallGate::class,
+            'converted_at' => 'datetime',
         ];
     }
 

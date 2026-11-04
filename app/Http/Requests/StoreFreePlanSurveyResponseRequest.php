@@ -27,13 +27,16 @@ class StoreFreePlanSurveyResponseRequest extends FormRequest
         return [
             'reason' => ['required', Rule::enum(FreePlanSurveyReason::class)],
             'details' => ['nullable', 'string', 'max:1000'],
-            'gate' => ['required', Rule::enum(PaywallGate::class)],
         ];
     }
 
     /**
      * The answer to store. The free text only belongs to "Other reason": the
      * field is hidden for every other option, so anything left in it is stale.
+     *
+     * The gate is read off the user rather than taken from the page: what is
+     * recorded is who the user is, not which screen happened to ask (see
+     * `User::paywallGate()`).
      *
      * @return array{reason: FreePlanSurveyReason, details: ?string, gate: PaywallGate}
      */
@@ -45,7 +48,7 @@ class StoreFreePlanSurveyResponseRequest extends FormRequest
         return [
             'reason' => $reason,
             'details' => $reason === FreePlanSurveyReason::Other && $details !== '' ? $details : null,
-            'gate' => $this->enum('gate', PaywallGate::class),
+            'gate' => $this->user()->paywallGate(),
         ];
     }
 }
