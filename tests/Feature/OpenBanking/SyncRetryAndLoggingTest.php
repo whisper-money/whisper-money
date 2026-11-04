@@ -819,7 +819,7 @@ test('scheduled sync skips connections that synced within the last few hours', f
     Queue::assertPushedTimes(SyncBankingConnectionJob::class, $shouldDispatch ? 1 : 0);
 })->with([
     'synced a minute ago' => [1, false],
-    'synced just inside the window' => [SyncAllBankingConnectionsJob::RECENTLY_SYNCED_HOURS * 60 - 1, false],
+    'synced just inside the three-hour window' => [3 * 60 - 1, false],
     'synced on the previous sweep' => [6 * 60, true],
     'never synced' => [null, true],
 ]);

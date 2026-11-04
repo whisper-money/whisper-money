@@ -26,7 +26,7 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
      * below is what keeps a redelivered sweep from re-dispatching those.
      * A full sync (an operator's `banking:sync --full`) is never skipped.
      */
-    public const int RECENTLY_SYNCED_HOURS = 3;
+    private const int RECENTLY_SYNCED_HOURS = 3;
 
     /**
      * One attempt only. If a run outlives the database queue's retry_after (or is
