@@ -217,6 +217,10 @@ class SubscriptionController extends Controller
         // value rides along as Stripe subscription metadata and is persisted
         // locally when the subscription webhook lands (see
         // PersistUpsellSourceFromStripe).
+        // A return left by an earlier checkout the user walked away from must
+        // not send this one, if it is canceled, back into the wizard.
+        $request->session()->forget(self::RETURN_SESSION_KEY);
+
         if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
             $subscriptionBuilder->withMetadata(['upsell_source' => $source->value]);
             $this->rememberCheckoutIntent($request, $source);

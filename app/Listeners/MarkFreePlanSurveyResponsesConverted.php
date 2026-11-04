@@ -11,12 +11,13 @@ use Laravel\Cashier\Subscription;
  * since started a trial or a paid plan.
  *
  * Listens to WebhookHandled, after Cashier has upserted the local subscription,
- * and acts on any subscription event whose status is `trialing` or `active`:
- * a checkout whose first payment needs 3-D Secure is created `incomplete` and
- * only turns `active` in a later `customer.subscription.updated`. Answers
- * already stamped keep their date, so renewals change nothing, and the survey
- * only takes answers from users without a plan, so every answer still open
- * here was given before this subscription started.
+ * and acts on the moment a subscription becomes `trialing` or `active`: when it
+ * is created that way, or when an update moves it there (a checkout whose first
+ * payment needs 3-D Secure is created `incomplete` and only turns `active`
+ * later). An update that leaves the status alone, such as a renewal or a card
+ * change, is no conversion, so answers given before this column existed by a
+ * user who was already subscribed are not stamped with the date of their next
+ * renewal. Answers already stamped keep their date.
  */
 class MarkFreePlanSurveyResponsesConverted
 {
@@ -24,11 +25,9 @@ class MarkFreePlanSurveyResponsesConverted
 
     public function handle(WebhookHandled $event): void
     {
-        $type = (string) ($event->payload['type'] ?? '');
         $object = $event->payload['data']['object'] ?? [];
 
-        if (! in_array($type, ['customer.subscription.created', 'customer.subscription.updated'], true)
-            || ! in_array($object['status'] ?? null, self::CONVERTED_STATUSES, true)) {
+        if (! $this->startsSubscription($event->payload)) {
             return;
         }
 
@@ -44,5 +43,30 @@ class MarkFreePlanSurveyResponsesConverted
             ->where('user_id', $userId)
             ->whereNull('converted_at')
             ->update(['converted_at' => now()]);
+    }
+
+    /**
+     * Whether this event is the subscription turning `trialing` or `active`.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function startsSubscription(array $payload): bool
+    {
+        $status = $payload['data']['object']['status'] ?? null;
+
+        if (! in_array($status, self::CONVERTED_STATUSES, true)) {
+            return false;
+        }
+
+        return match ($payload['type'] ?? null) {
+            'customer.subscription.created' => true,
+            // Stripe lists the old status only when the update changed it.
+            'customer.subscription.updated' => ! in_array(
+                $payload['data']['previous_attributes']['status'] ?? $status,
+                self::CONVERTED_STATUSES,
+                true,
+            ),
+            default => false,
+        };
     }
 }

@@ -8,11 +8,14 @@ use Laravel\Cashier\Events\WebhookHandled;
 /**
  * @return array<string, mixed>
  */
-function convertedWebhookPayload(string $stripeId, string $status, string $type = 'customer.subscription.created'): array
+function convertedWebhookPayload(string $stripeId, string $status, string $type = 'customer.subscription.created', ?string $previousStatus = null): array
 {
     return [
         'type' => $type,
-        'data' => ['object' => ['id' => $stripeId, 'status' => $status]],
+        'data' => [
+            'object' => ['id' => $stripeId, 'status' => $status],
+            'previous_attributes' => $previousStatus === null ? [] : ['status' => $previousStatus],
+        ],
     ];
 }
 
@@ -46,7 +49,7 @@ test('stamps the answers once a checkout that needed 3-D Secure turns active', f
     event(new WebhookHandled(convertedWebhookPayload($stripeId, 'incomplete')));
     expect($response->fresh()->converted_at)->toBeNull();
 
-    event(new WebhookHandled(convertedWebhookPayload($stripeId, 'active', 'customer.subscription.updated')));
+    event(new WebhookHandled(convertedWebhookPayload($stripeId, 'active', 'customer.subscription.updated', 'incomplete')));
     expect($response->fresh()->converted_at)->not->toBeNull();
 });
 
@@ -56,24 +59,28 @@ test('keeps the date of an answer already stamped', function () {
     $response = FreePlanSurveyResponse::factory()->for($user)->create(['converted_at' => $convertedAt]);
     $stripeId = subscriptionFor($user, 'active');
 
-    event(new WebhookHandled(convertedWebhookPayload($stripeId, 'active', 'customer.subscription.updated')));
+    event(new WebhookHandled(convertedWebhookPayload($stripeId, 'active', 'customer.subscription.updated', 'trialing')));
 
     expect($response->fresh()->converted_at)->toEqual($convertedAt);
 });
 
-test('leaves the answers alone for anything but a live subscription', function (string $type, string $status) {
+test('leaves the answers alone for anything but a subscription starting', function (string $type, string $status, ?string $previousStatus = null) {
     $user = User::factory()->create();
     $response = FreePlanSurveyResponse::factory()->for($user)->create();
     $stripeId = subscriptionFor($user, $status);
 
-    event(new WebhookHandled(convertedWebhookPayload($stripeId, $status, $type)));
+    event(new WebhookHandled(convertedWebhookPayload($stripeId, $status, $type, $previousStatus)));
 
     expect($response->fresh()->converted_at)->toBeNull();
 })->with([
     'incomplete checkout' => ['customer.subscription.created', 'incomplete'],
-    'canceled subscription' => ['customer.subscription.updated', 'canceled'],
     'deleted subscription' => ['customer.subscription.deleted', 'canceled'],
     'not a subscription event' => ['invoice.paid', 'active'],
+    // An answer stored before this column existed, by a user already paying,
+    // must not be stamped with the date of a later renewal or card change.
+    'renewal of a live subscription' => ['customer.subscription.updated', 'active'],
+    'trial turning paid' => ['customer.subscription.updated', 'active', 'trialing'],
+    'canceled subscription' => ['customer.subscription.updated', 'canceled', 'active'],
 ]);
 
 test('only stamps the answers of the subscriber', function () {

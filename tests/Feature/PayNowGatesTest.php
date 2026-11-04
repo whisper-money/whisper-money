@@ -110,6 +110,18 @@ it('parks nothing for a checkout started outside the wizard', function () {
         ->assertSessionMissing(RETURN_KEY);
 });
 
+// A checkout the user walked away from with the browser's Back button never
+// reaches success or cancel, so its return trip is still parked.
+it('drops the return left by an abandoned onboarding checkout', function (?string $source) {
+    $user = checkoutUser();
+
+    test()->withSession([RETURN_KEY => ['step' => 'ai-suggestions']]);
+
+    startCheckout($user, $source)
+        ->assertRedirect()
+        ->assertSessionMissing(RETURN_KEY);
+})->with(['no source' => [null], 'outside the wizard' => ['connections']]);
+
 describe('the trip back from Stripe', function () {
     it('sends a mid-onboarding buyer back to the step that sent them', function () {
         $user = User::factory()->notOnboarded()->create();
