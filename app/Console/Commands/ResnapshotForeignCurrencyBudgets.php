@@ -5,9 +5,12 @@ namespace App\Console\Commands;
 use App\Models\BudgetTransaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
+use App\Services\CurrencyOptions;
+use App\Support\Money;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * @phpstan-type ChangeTally array{currency: string, rows: int, periods: array<string, true>, delta: int}
@@ -42,6 +45,8 @@ class ResnapshotForeignCurrencyBudgets extends Command
             $service->foreignCurrencySnapshots(fn ($query) => $query->when($userId, fn ($q) => $q->where('transactions.user_id', $userId))),
             function (BudgetTransaction $row, int $amount) use ($isForced, &$changesByUser): void {
                 $this->record($changesByUser, $row, $amount);
+
+                $this->line("Budget period {$row->budget_period_id}, transaction {$row->transaction_id} ({$row->transaction->transaction_date->toDateString()}): {$row->amount} → {$amount} (minor units)", verbosity: OutputInterface::VERBOSITY_VERBOSE);
 
                 if ($isForced) {
                     $row->update(['amount' => $amount]);
@@ -89,7 +94,7 @@ class ResnapshotForeignCurrencyBudgets extends Command
                 strtoupper($change['currency']),
                 $change['rows'],
                 count($change['periods']),
-                $this->formatAmount($change['delta']),
+                $this->formatAmount($change['delta'], $change['currency']),
             ])->values()->all(),
         );
 
@@ -97,17 +102,23 @@ class ResnapshotForeignCurrencyBudgets extends Command
         $periods = $changes->sum(fn (array $change): int => count($change['periods']));
         $deltaByCurrency = $changes
             ->groupBy(fn (array $change): string => strtoupper($change['currency']))
-            ->map(fn ($group, string $currency): string => $this->formatAmount($group->sum('delta')).' '.$currency)
+            ->map(fn ($group, string $currency): string => $this->formatAmount($group->sum('delta'), $currency))
             ->implode(', ');
 
         $this->info("{$rows} budget row(s) across {$changes->count()} user(s) and {$periods} budget period(s) {$verb} rewritten. Spending delta: {$deltaByCurrency}.");
     }
 
     /**
-     * A signed amount in minor units, as major units with two decimals.
+     * A signed amount in minor units, in major units with the currency's own
+     * decimals, e.g. "-18.43 EUR" or "+1500 COP".
      */
-    private function formatAmount(int $amount): string
+    private function formatAmount(int $amount, string $currency): string
     {
-        return ($amount > 0 ? '+' : '').number_format($amount / 100, 2, '.', '');
+        return ($amount > 0 ? '+' : '').number_format(
+            Money::toMajor($amount, $currency),
+            app(CurrencyOptions::class)->decimals($currency),
+            '.',
+            '',
+        ).' '.strtoupper($currency);
     }
 }

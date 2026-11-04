@@ -443,9 +443,9 @@ class BudgetTransactionService
      * `transaction.user` loaded.
      *
      * @param  Builder<BudgetTransaction>  $budgetTransactions
-     * @param  callable(BudgetTransaction, int): void  $callback
+     * @param  Closure(BudgetTransaction, int): void  $callback
      */
-    public function eachStaleSnapshot(Builder $budgetTransactions, callable $callback): void
+    public function eachStaleSnapshot(Builder $budgetTransactions, Closure $callback): void
     {
         $budgetTransactions
             ->with(['transaction' => fn ($query) => $query->withTrashed()->with([
@@ -459,9 +459,9 @@ class BudgetTransactionService
 
     /**
      * @param  Collection<int, BudgetTransaction>  $rows  with `transaction.account` and `transaction.user` loaded
-     * @param  callable(BudgetTransaction, int): void  $callback
+     * @param  Closure(BudgetTransaction, int): void  $callback
      */
-    private function eachStaleSnapshotInChunk(Collection $rows, callable $callback): void
+    private function eachStaleSnapshotInChunk(Collection $rows, Closure $callback): void
     {
         $rows = $rows->filter(fn (BudgetTransaction $row): bool => $row->transaction?->user !== null);
 

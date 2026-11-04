@@ -135,3 +135,25 @@ test('the repair sends no email and keeps the limit alert flags', function () {
     Mail::assertNothingOutgoing();
     expect($this->period->fresh()->over_limit_notified)->toBeTrue();
 });
+
+test('the reported delta uses the user currency decimals', function () {
+    // 10 USD buy 40000 COP, a currency with no decimals.
+    ExchangeRate::factory()->create(['base_currency' => 'cop', 'date' => '2026-10-10', 'rates' => ['usd' => 0.00025]]);
+    $copUser = User::factory()->create(['currency_code' => 'COP']);
+    [$copPeriod, $usdExpense, $eurExpense] = staleForeignCurrencyBudget($copUser);
+    BudgetTransaction::query()->where('transaction_id', $eurExpense->id)->delete();
+    $usdExpense->update(['amount' => -1000]);
+    BudgetTransaction::query()->where('transaction_id', $usdExpense->id)->update(['amount' => 1000]);
+
+    $this->artisan('budgets:resnapshot-foreign-currency', ['--force' => true, '--user' => $copUser->id])
+        ->expectsOutputToContain('Spending delta: +39000 COP.')
+        ->assertSuccessful();
+
+    expect(storedBudgetAmount($usdExpense, $copPeriod))->toBe(40000);
+});
+
+test('verbose output lists every row that changes', function () {
+    $this->artisan('budgets:resnapshot-foreign-currency', ['-v' => true])
+        ->expectsOutputToContain("transaction {$this->usdExpense->id} (2026-10-10): 10000 → 5000 (minor units)")
+        ->assertSuccessful();
+});
