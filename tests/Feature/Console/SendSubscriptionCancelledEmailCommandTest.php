@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\DripEmailType;
 use App\Jobs\Drip\SendSubscriptionCancelledEmailJob;
 use App\Models\User;
+use App\Models\UserMailLog;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\artisan;
@@ -56,4 +58,29 @@ test('command handles mixed valid and invalid emails', function () {
 
     Queue::assertPushed(SendSubscriptionCancelledEmailJob::class, fn ($job) => $job->user->id === $user->id);
     Queue::assertCount(1);
+});
+
+test('command reports why it skips a user instead of claiming a send', function () {
+    config(['subscriptions.enabled' => true]);
+    $subscribed = User::factory()->create();
+    $subscribed->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_still_active',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_monthly',
+    ]);
+    $alreadySent = User::factory()->create();
+    UserMailLog::factory()->for($alreadySent)->create([
+        'email_type' => DripEmailType::SubscriptionCancelled,
+        'email_identifier' => DripEmailType::SubscriptionCancelled->value,
+    ]);
+
+    artisan('email:subscription-cancelled', ['emails' => "{$subscribed->email},{$alreadySent->email}"])
+        ->expectsTable(['Email', 'Status'], [
+            [$subscribed->email, 'Still subscribed'],
+            [$alreadySent->email, 'Already sent'],
+        ])
+        ->assertSuccessful();
+
+    Queue::assertNothingPushed();
 });

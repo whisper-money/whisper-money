@@ -18,23 +18,43 @@ use Laravel\Cashier\Cashier;
  */
 class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
 {
+    /**
+     * The variant is picked by asking Stripe, so an outage is waited out
+     * rather than retried on the spot.
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [60, 300, 900, 3600];
+
+    public int $tries = 5;
+
     protected function emailType(): DripEmailType
     {
         return DripEmailType::SubscriptionCancelled;
     }
 
-    /**
-     * Nobody still on a plan hears they left (including one cancelled but
-     * still inside its paid period), and the shared accounts (demo, press and
-     * the seeded fixtures) are never written to.
-     */
     protected function shouldSend(): bool
     {
-        if ($this->user->cannotUseStripe()) {
-            return false;
-        }
+        return $this->ineligibilityReason() === null;
+    }
 
-        return ! $this->user->subscribed('default') && ! $this->user->hasActiveSubscriptionOrTrial();
+    /**
+     * Why this user must not get the email, or null when they may. Nobody
+     * still on a plan hears they left (including one cancelled but still
+     * inside its paid period), and the shared accounts (demo, press and the
+     * seeded fixtures) are never written to. Public so the manual command can
+     * say why it skipped someone instead of reporting a send that never
+     * happens.
+     */
+    public function ineligibilityReason(): ?string
+    {
+        return match (true) {
+            $this->user->cannotUseStripe() => 'Shared account',
+            $this->user->subscribed('default'), $this->user->hasActiveSubscriptionOrTrial() => 'Still subscribed',
+            $this->user->hasReceivedEmail($this->emailType()) => 'Already sent',
+            ! $this->user->wantsMarketingEmails() => 'Opted out of news and offers',
+            default => null,
+        };
     }
 
     protected function buildMail(): Mailable
@@ -65,7 +85,7 @@ class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
             'limit' => 100,
         ]);
 
-        foreach ($invoices->data as $invoice) {
+        foreach ($invoices->autoPagingIterator() as $invoice) {
             if ($invoice->amount_paid > 0) {
                 return true;
             }

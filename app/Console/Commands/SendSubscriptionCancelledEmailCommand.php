@@ -34,7 +34,16 @@ class SendSubscriptionCancelledEmailCommand extends Command
                 continue;
             }
 
-            SendSubscriptionCancelledEmailJob::dispatch($user);
+            $job = new SendSubscriptionCancelledEmailJob($user);
+            $skipReason = $job->ineligibilityReason();
+
+            if ($skipReason !== null) {
+                $results[] = [$email, $skipReason];
+
+                continue;
+            }
+
+            dispatch($job);
             $results[] = [$email, 'Queued'];
         }
 

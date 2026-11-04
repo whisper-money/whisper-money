@@ -13,8 +13,7 @@ use Throwable;
 /**
  * Queues the "sorry to see you go" email when Stripe reports a subscription
  * has ended (`customer.subscription.deleted`): a trial cancelled before the
- * first charge, a paid plan reaching the end of its cancelled period, or a
- * first payment that never went through.
+ * first charge, or a paid plan reaching the end of its cancelled period.
  *
  * It listens to {@see WebhookHandled} rather than `WebhookReceived` (which
  * {@see SendTrialEndingEmail} uses) so Cashier has already marked the local
@@ -28,7 +27,11 @@ class SendSubscriptionCancelledEmail
 {
     private const DELAY_MINUTES = 60;
 
-    private const DEDUPE_TTL_HOURS = 24;
+    /**
+     * Long enough to outlive the delayed job, short enough that a user who
+     * resubscribes and cancels again later is not swallowed by a stale claim.
+     */
+    private const DEDUPE_TTL_MINUTES = self::DELAY_MINUTES + 60;
 
     public function handle(WebhookHandled $event): void
     {
@@ -51,7 +54,7 @@ class SendSubscriptionCancelledEmail
         // ending together) queueing a second job before the first has run.
         $claim = 'subscription-cancelled:user:'.$user->id;
 
-        if (! Cache::add($claim, true, now()->addHours(self::DEDUPE_TTL_HOURS))) {
+        if (! Cache::add($claim, true, now()->addMinutes(self::DEDUPE_TTL_MINUTES))) {
             return;
         }
 
