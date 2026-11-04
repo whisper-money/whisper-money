@@ -66,7 +66,7 @@ class BudgetController extends Controller
             'savingsGoals' => SavingsGoal::withStats($oneOffGoals),
             'monthlySavingsGoals' => $presentedMonthlyGoals,
             // Archived goals included, as on the cashflow card and the summary.
-            'monthlySavingsLastMonth' => $this->monthlySavingsTotals->verdicts($presentedMonthlyGoals, today()->subMonthNoOverflow()),
+            'monthlySavingsLastMonth' => $this->monthlySavingsTotals->verdicts($presentedMonthlyGoals, $user->localToday()->subMonthNoOverflow()),
             // Only when the create dialog asks for them: the savings accounts of
             // the active space, the same set the server validates the auto-tag
             // account against, each with the running goal it already feeds.

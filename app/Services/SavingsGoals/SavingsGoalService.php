@@ -54,7 +54,7 @@ class SavingsGoalService
             }
 
             $goal = $this->create($user, $space, $this->monthlyAttributes($input, $user->wantsSavingsGoalRemindersByDefault()));
-            $this->periods->openPeriod($goal, today());
+            $this->periods->openPeriod($goal, $goal->ownerToday());
 
             if (filled($input['auto_tag_account_id'] ?? null)) {
                 $this->createAutoTagRule($goal, app(SpaceResolver::class)->ownedInSpace(Account::query(), $user, $space)->findOrFail($input['auto_tag_account_id']));
@@ -76,7 +76,10 @@ class SavingsGoalService
             'source' => LabelSource::SavingsGoal,
         ]);
 
-        return $user->savingsGoals()->create([...$attributes, 'space_id' => $space->id, 'label_id' => $label->id]);
+        // The owner is at hand: reading their calendar costs no query.
+        return $user->savingsGoals()
+            ->create([...$attributes, 'space_id' => $space->id, 'label_id' => $label->id])
+            ->setRelation('user', $user);
     }
 
     /**
@@ -267,7 +270,7 @@ class SavingsGoalService
         $existing = Transaction::query()
             ->where('account_id', $account->id)
             ->where('amount', '>', 0)
-            ->where('transaction_date', '>=', $goal->created_at->copy()->startOfMonth()->toDateString())
+            ->where('transaction_date', '>=', $goal->createdMonth()->toDateString())
             ->whereDoesntHave('labels', fn ($query) => $query->where('source', LabelSource::SavingsGoal->value))
             ->get()
             ->filter(fn (Transaction $transaction): bool => $this->rules->ruleMatches($rule, $transaction));

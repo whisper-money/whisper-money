@@ -96,7 +96,7 @@ class MonthlySavingsGoalStats
     }
 
     /**
-     * The goal's periods, plus — for a running goal the daily command has not
+     * The goal's periods, plus — for a running goal the hourly command has not
      * caught up with yet, say on the 1st before it ran — the missing months as
      * unsaved periods. Reading never writes; the month still shows.
      *
@@ -155,7 +155,7 @@ class MonthlySavingsGoalStats
             return SavingsGoalMonthStatus::Archived;
         }
 
-        if ($month->gte(today()->startOfMonth())) {
+        if ($month->gte($goal->ownerToday()->startOfMonth())) {
             return SavingsGoalMonthStatus::InProgress;
         }
 
@@ -173,13 +173,14 @@ class MonthlySavingsGoalStats
         $judged = array_values(array_filter($history, fn (array $month): bool => $month['status']->isJudged()));
         // An archived goal has no month in progress: what it saved this month
         // stays in its history, without a countdown to a target it dropped.
-        $current = $goal->isArchived() ? null : collect($history)->firstWhere('month', today()->format('Y-m'));
+        $today = $goal->ownerToday();
+        $current = $goal->isArchived() ? null : collect($history)->firstWhere('month', $today->format('Y-m'));
 
         return [
             'current' => $current === null ? null : [
                 ...$current,
                 'remaining' => max(0, $current['target'] - $current['saved']),
-                'days_left' => (int) today()->diffInDays(today()->endOfMonth()) + 1,
+                'days_left' => (int) $today->diffInDays($today->copy()->endOfMonth()) + 1,
             ],
             'history' => $history,
             'months_met' => count(array_filter($judged, fn (array $month): bool => $month['status'] === SavingsGoalMonthStatus::Met)),

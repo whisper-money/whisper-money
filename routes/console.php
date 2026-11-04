@@ -9,12 +9,14 @@ use Illuminate\Support\Facades\Schedule;
 // day before. A daily run at 00:00 UTC rolled periods over hours late (or a
 // day late) for most users. Every run is idempotent.
 Schedule::command('budgets:generate-periods')->hourly()->withoutOverlapping(60);
-// Just after midnight, so a month opens and the last one closes as soon as it
-// is over (pages open the month themselves if they get there first). Again at
-// breakfast time in Europe, which is when the month-end reminder goes out: the
-// notifier holds it back until then. Every run is idempotent.
-Schedule::command('savings-goals:generate-periods')->dailyAt('00:05')->withoutOverlapping();
-Schedule::command('savings-goals:generate-periods')->dailyAt('07:00')->withoutOverlapping();
+// Hourly, because a month is over at each owner's midnight (03:00 UTC for
+// Buenos Aires, 15:00 UTC the day before for Tokyo) and the month-end reminder
+// waits for 07:00 on the owner's clock: hourly is the coarsest schedule that
+// closes every timezone's month, and reminds it, within the hour (pages show
+// the new month themselves if they get there first). Every run is idempotent:
+// a month opens once on its (goal, month) key, and closing, the bell notice and
+// the reminder are each claimed on the period, so each goes out once a month.
+Schedule::command('savings-goals:generate-periods')->hourly()->withoutOverlapping(60);
 // The press account keeps itself alive: every reset re-derives its 12 months of
 // transactions and balances from today, so a journalist who logs in months after
 // the press round still lands on current data. It also provisions the account on

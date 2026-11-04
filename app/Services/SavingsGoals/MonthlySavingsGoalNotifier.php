@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * What the daily command tells the user about their monthly goals: a line in
+ * What the hourly command tells the user about their monthly goals: a line in
  * the bell for each goal when the month just gone is closed, and one email a
  * month, near its end, listing every goal still short of its target.
  *
@@ -25,6 +25,9 @@ use Throwable;
  * A partial month — the goal was created in its last days — is left alone,
  * by the same rule the stats use to keep it unjudged: a reminder a day after
  * creating the goal, and a "missed" notice for a stub month, would be noise.
+ *
+ * Months, days and hours are the owner's: a month is announced once it is
+ * over on their calendar, and the reminder waits for their morning.
  */
 class MonthlySavingsGoalNotifier
 {
@@ -35,8 +38,8 @@ class MonthlySavingsGoalNotifier
     private const REMINDER_DAYS_LEFT = 5;
 
     /**
-     * The daily command also runs just after midnight; the reminder waits for
-     * the run at breakfast time in Europe rather than landing in the night.
+     * The command runs every hour; the reminder waits for the first run after
+     * this hour on the user's own clock rather than landing in their night.
      */
     private const REMINDER_HOUR = 7;
 
@@ -48,7 +51,7 @@ class MonthlySavingsGoalNotifier
      */
     public function announce(SavingsGoal $goal): void
     {
-        $month = today()->startOfMonth()->subMonth();
+        $month = $goal->ownerToday()->startOfMonth()->subMonth();
 
         if ($goal->isPartialMonth($month)) {
             return;
@@ -83,11 +86,14 @@ class MonthlySavingsGoalNotifier
      */
     public function remind(User $user): void
     {
-        if (! self::inReminderWindow() || ! $user->canReceiveEmails()) {
+        $now = $user->localNow();
+        $today = $user->localToday();
+
+        if (! self::inReminderWindow($today, $now->hour) || ! $user->canReceiveEmails()) {
             return;
         }
 
-        $behind = $this->goalsBehind($user);
+        $behind = $this->goalsBehind($user, $today);
         $claimed = $behind->filter(fn (array $item): bool => self::claim($item['period_id'], 'reminder_notified_at'));
 
         if ($claimed->isEmpty()) {
@@ -99,9 +105,9 @@ class MonthlySavingsGoalNotifier
         try {
             Mail::to($user)->send(new MonthlySavingsGoalReminderEmail(
                 $user,
-                today()->format('Y-m'),
+                $today->format('Y-m'),
                 $claimed->map(fn (array $item): array => ['name' => $item['name'], 'percent' => $item['percent']])->values()->all(),
-                (int) today()->diffInDays(today()->endOfMonth()) + 1,
+                (int) $today->diffInDays($today->copy()->endOfMonth()) + 1,
                 $periodIds,
             ));
         } catch (Throwable $exception) {
@@ -128,29 +134,36 @@ class MonthlySavingsGoalNotifier
      *
      * @return Collection<int, array{period_id: string, name: string, percent: int}>
      */
-    private function goalsBehind(User $user): Collection
+    private function goalsBehind(User $user, Carbon $today): Collection
     {
         $goals = $user->savingsGoals()
             ->monthly()
             ->notArchived()
             ->where('notify_on_month_end_reminder', true)
             ->get()
-            ->reject(fn (SavingsGoal $goal): bool => $goal->isPartialMonth(today()));
+            // The owner is at hand: their calendar costs no query per goal.
+            ->each(fn (SavingsGoal $goal): SavingsGoal => $goal->setRelation('user', $user))
+            ->reject(fn (SavingsGoal $goal): bool => $goal->isPartialMonth($today));
+
+        $periods = SavingsGoalPeriod::query()
+            ->whereIn('savings_goal_id', $goals->modelKeys())
+            ->where('month', $today->copy()->startOfMonth()->toDateString())
+            ->whereNull('reminder_notified_at')
+            ->get()
+            ->keyBy('savings_goal_id');
+
+        // The command runs hourly through the window: once every goal was
+        // reminded, the stats are not worth reading again.
+        $goals = $goals->filter(fn (SavingsGoal $goal): bool => $periods->has($goal->id));
 
         if ($goals->isEmpty()) {
             return collect();
         }
 
         $stats = $this->stats->forGoals($goals);
-        $periods = SavingsGoalPeriod::query()
-            ->whereIn('savings_goal_id', $goals->modelKeys())
-            ->where('month', today()->startOfMonth()->toDateString())
-            ->whereNull('reminder_notified_at')
-            ->get()
-            ->keyBy('savings_goal_id');
 
         return $goals
-            ->filter(fn (SavingsGoal $goal): bool => $periods->has($goal->id) && self::isBehind($stats[$goal->id]['current']))
+            ->filter(fn (SavingsGoal $goal): bool => self::isBehind($stats[$goal->id]['current']))
             ->map(fn (SavingsGoal $goal): array => [
                 'period_id' => $periods->get($goal->id)->id,
                 'name' => $goal->name,
@@ -181,9 +194,12 @@ class MonthlySavingsGoalNotifier
             ->update([$marker => now()]) === 1;
     }
 
-    private static function inReminderWindow(): bool
+    /**
+     * @param  int  $localHour  the hour on the user's own clock
+     */
+    private static function inReminderWindow(Carbon $today, int $localHour): bool
     {
-        return today()->gte(self::reminderWindowStart(today())) && now()->hour >= self::REMINDER_HOUR;
+        return $today->gte(self::reminderWindowStart($today)) && $localHour >= self::REMINDER_HOUR;
     }
 
     /**
