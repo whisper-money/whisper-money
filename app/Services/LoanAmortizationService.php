@@ -85,12 +85,11 @@ class LoanAmortizationService
      * the loan's current interest rate and remaining term.
      *
      * @param  LoanDetail  $loanDetail  The loan's amortization parameters
+     * @param  Carbon  $today  The owner's current date ({@see User::localToday()}), which anchors a loan with no balance yet
      * @param  int  $monthsAhead  How many months into the future to project
-     * @param  Carbon|null  $today  The owner's current date ({@see User::localToday()}),
-     *                              which anchors a loan with no balance yet; the server clock when null
      * @return array<string, int> Map of 'Y-m' => balance in cents
      */
-    public function generateProjection(LoanDetail $loanDetail, int $monthsAhead = 12, ?Carbon $today = null): array
+    public function generateProjection(LoanDetail $loanDetail, Carbon $today, int $monthsAhead = 12): array
     {
         $lastBalance = AccountBalance::query()
             ->where('account_id', $loanDetail->account_id)
@@ -107,7 +106,7 @@ class LoanAmortizationService
             );
         }
 
-        return $this->projectFromOriginal($loanDetail, $monthsAhead, $today ?? Carbon::now());
+        return $this->projectFromOriginal($loanDetail, $monthsAhead, $today);
     }
 
     /**

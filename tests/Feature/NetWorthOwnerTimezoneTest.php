@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
@@ -120,3 +121,41 @@ it('projects real estate from the month after the owner\'s current one', functio
 
     expect(projectedPointsOf($user, $account)[0]['month'])->toBe(monthAfter($currentMonth));
 })->with('owner clocks');
+
+/*
+ * `loans:generate-balances` and `real-estate:apply-revaluation` write the 1st
+ * at 00:00 UTC, three hours before the month opens in Buenos Aires. Until it
+ * does, the "current" figures must not read that row yet.
+ */
+dataset('first of november row', [
+    'Buenos Aires, still 31 October' => ['America/Argentina/Buenos_Aires', 100],
+    'UTC, already 1 November' => ['UTC', 200],
+    'no timezone, already 1 November' => [null, 200],
+]);
+
+it('reads the current invested amount on the owner\'s today', function (?string $timezone, int $expected) {
+    $user = ownerAt($timezone, '2026-11-01 00:30:00');
+    $account = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Investment]);
+    AccountBalance::factory()->withInvestedAmount(100)->create(['account_id' => $account->id, 'balance_date' => '2026-10-01']);
+    AccountBalance::factory()->withInvestedAmount(200)->create(['account_id' => $account->id, 'balance_date' => '2026-11-01']);
+
+    $evolution = $this->actingAs($user)->withoutVite()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'netWorthEvolution',
+    ])->assertOk()->json('props.netWorthEvolution');
+
+    expect($evolution['accounts'][$account->id]['invested_amount'])->toBe($expected);
+})->with('first of november row');
+
+it('reads a property\'s current market value on the owner\'s today', function (?string $timezone, int $expected) {
+    $user = ownerAt($timezone, '2026-11-01 00:30:00');
+    $account = Account::factory()->realEstate()->create(['user_id' => $user->id]);
+    RealEstateDetail::factory()->create(['account_id' => $account->id]);
+    AccountBalance::factory()->create(['account_id' => $account->id, 'balance_date' => '2026-10-01', 'balance' => 100]);
+    AccountBalance::factory()->create(['account_id' => $account->id, 'balance_date' => '2026-11-01', 'balance' => 200]);
+
+    $this->actingAs($user)->get(route('accounts.show', $account))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('account.real_estate_detail.current_market_value', $expected));
+})->with('first of november row');

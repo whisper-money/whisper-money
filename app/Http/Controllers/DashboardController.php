@@ -120,7 +120,7 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);
+        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today);
     }
 
     /**

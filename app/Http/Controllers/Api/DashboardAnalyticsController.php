@@ -282,9 +282,9 @@ class DashboardAnalyticsController extends Controller
      * Future months appended to the historical series: the amortization schedule
      * for loans, and revaluation plus the linked mortgage for real estate.
      *
-     * The projection starts after the owner's current month, read on their
-     * own clock ({@see User::localToday()}): the server's UTC
-     * month is already the next one for an American user every month-end.
+     * The projection starts after the owner's current month, read on their own
+     * clock ({@see User::localToday()}): at month-end the server's UTC month is
+     * already the next one for an American user.
      *
      * @param  list<array<string, mixed>>  $points  the historical series
      * @return list<array<string, mixed>>
@@ -311,7 +311,7 @@ class DashboardAnalyticsController extends Controller
 
         $points = [];
 
-        foreach ($this->loanAmortizationService->generateProjection($loanDetail, 12, $today) as $yearMonth => $balanceCents) {
+        foreach ($this->loanAmortizationService->generateProjection($loanDetail, $today, 12) as $yearMonth => $balanceCents) {
             $projectedDate = Carbon::createFromFormat('Y-m', $yearMonth)->endOfMonth();
 
             // Only add future months that are beyond the current date
@@ -349,7 +349,7 @@ class DashboardAnalyticsController extends Controller
         $baseValue = is_array($lastPoint) ? $lastPoint['value'] : 0;
         $monthlyRate = $revaluationPercentage / 12 / 100;
         $loanProjection = $linkedLoanDetail !== null
-            ? $this->loanAmortizationService->generateProjection($linkedLoanDetail, $monthsAhead, $today)
+            ? $this->loanAmortizationService->generateProjection($linkedLoanDetail, $today, $monthsAhead)
             : [];
 
         $projected = [];
