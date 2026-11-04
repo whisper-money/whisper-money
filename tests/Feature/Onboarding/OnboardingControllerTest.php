@@ -219,3 +219,19 @@ it('offers no mapping when every connection is settled', function () {
         ->get('/onboarding')
         ->assertInertia(fn ($page) => $page->where('pendingMapping', null)->etc());
 });
+
+// The hub stops offering a bank connection where no bank of ours reaches, and
+// it tells where the user is by their timezone, not by their language.
+it('passes the country of the user timezone to the hub', function (?string $timezone, ?string $country) {
+    $user = User::factory()->create(['onboarded_at' => null, 'timezone' => $timezone]);
+
+    $this->actingAs($user)
+        ->get('/onboarding')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page->where('timezoneCountry', $country));
+})->with([
+    'Spain' => ['Europe/Madrid', 'ES'],
+    'the Canary Islands' => ['Atlantic/Canary', 'ES'],
+    'Colombia' => ['America/Bogota', 'CO'],
+    'no timezone' => [null, null],
+]);

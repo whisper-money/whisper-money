@@ -27,6 +27,10 @@ import {
 } from '@/components/open-banking/connect-account-inline';
 import { ConnectBrokerInline } from '@/components/open-banking/connect-broker-inline';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
+import {
+    isConnectCountry,
+    rememberedConnectCountry,
+} from '@/hooks/use-connect-flow';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { captureEvent } from '@/lib/posthog';
 import { type SharedData } from '@/types';
@@ -43,7 +47,7 @@ import {
     Plus,
     type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /**
  * The hub, and the two ways out of it. Neither way out is a step of its own:
@@ -100,6 +104,24 @@ function cameBackToConnect(): HubMode | null {
         : connect === 'broker'
           ? 'broker'
           : null;
+}
+
+/**
+ * Whether the user sits in a country no bank of ours reaches, so the bank row
+ * and the plan gate in front of it would sell them something they cannot use.
+ * Most of the bank gate's views came from Colombia, the US, Mexico and
+ * Argentina, where the connections were zero.
+ *
+ * Only a known country counts against them: with no timezone to go by, the
+ * bank stays on offer. And a country they once picked by hand in the bank
+ * picker beats where they are — a Spaniard abroad still banks in Spain.
+ */
+function bankCountryOutOfReach(timezoneCountry: string | null): boolean {
+    if (!timezoneCountry || rememberedConnectCountry()) {
+        return false;
+    }
+
+    return !isConnectCountry(timezoneCountry);
 }
 
 /** Drop a dealt-with parameter off the URL so a reload does not replay it. */
@@ -182,6 +204,8 @@ interface StepAccountsHubProps {
     createdAccounts?: CreatedAccount[];
     hasSelectedConnectedAccount?: boolean;
     signupPlan?: SignupPlan | null;
+    /** The country of the user's timezone, null when it names none. */
+    timezoneCountry?: string | null;
     /** A connection waiting for the user to say which of its accounts to keep. */
     pendingMapping?: PendingMapping | null;
     onAccountCreated: (account: CreatedAccount) => void;
@@ -208,6 +232,7 @@ export function StepAccountsHub({
     createdAccounts = [],
     hasSelectedConnectedAccount = false,
     signupPlan = null,
+    timezoneCountry = null,
     pendingMapping = null,
     onAccountCreated,
     onConnectedAccountSelected,
@@ -228,13 +253,24 @@ export function StepAccountsHub({
     const hasProPlan = auth.hasProPlan;
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     const isFreePlan = signupPlan === 'free';
-    // No bank connection to offer, for either of the two reasons there are: the
-    // free card buys none, and a self-hosted install may carry no open-banking
-    // credentials at all. Either way the "Another bank" row would promise a
-    // bank picker that never comes, so it opens the manual form and says so.
-    // The two part ways over the broker, which is an API key rather than open
-    // banking: the free plan still cannot have one, an unconfigured install can.
-    const noBankToOffer = isFreePlan || !openBankingEnabled;
+    // Read once: it looks at localStorage, and the hub remounts after every
+    // account anyway, which is when a country picked by hand could change it.
+    const [bankHiddenByCountry] = useState(
+        () =>
+            openBankingEnabled &&
+            !isFreePlan &&
+            bankCountryOutOfReach(timezoneCountry),
+    );
+    // No bank connection to offer, for any of the three reasons there are: the
+    // free card buys none, a self-hosted install may carry no open-banking
+    // credentials at all, and no bank of ours reaches the user's country.
+    // Either way the "Another bank" row would promise a bank picker that never
+    // comes, so it opens the manual form and says so. They part ways over the
+    // broker, which is an API key rather than open banking: the free plan
+    // still cannot have one, the other two keep the "A pension or a broker"
+    // suggestion once an account is in.
+    const noBankToOffer =
+        isFreePlan || !openBankingEnabled || bankHiddenByCountry;
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
     const [failedBank] = useState(readFailedBank);
@@ -356,6 +392,20 @@ export function StepAccountsHub({
         0,
     );
 
+    // The bank gate's own event never fires for these users any more, so this
+    // is what tells "chose not to connect" apart from "was never offered". Only
+    // on the empty hub, where the bank would have been the first thing offered:
+    // the hub remounts after every account, and counting each of those would
+    // inflate it.
+    useEffect(() => {
+        if (bankHiddenByCountry && !hasAccounts) {
+            captureEvent('onboarding_bank_option_hidden', {
+                reason: 'no_banks_in_country',
+                country: timezoneCountry,
+            });
+        }
+    }, [bankHiddenByCountry, hasAccounts, timezoneCountry]);
+
     /**
      * Which way out was taken is the one thing `onboarding_step_viewed` cannot
      * say — the hub and everything behind it are a single step — and it is the
@@ -366,6 +416,7 @@ export function StepAccountsHub({
             captureEvent('onboarding_accounts_hub_route', {
                 option,
                 accounts: accountCount,
+                ...(bankHiddenByCountry && { bank_hidden: true }),
             });
 
             if (route === 'full-import') {
@@ -390,6 +441,7 @@ export function StepAccountsHub({
         },
         [
             accountCount,
+            bankHiddenByCountry,
             onConnectedAccountSelected,
             subscriptionsEnabled,
             hasProPlan,
@@ -534,11 +586,17 @@ export function StepAccountsHub({
 
     // Nothing in yet: the two ways in, and why most people need both.
     if (accountGroups.length === 0) {
+        const offersBank = openBankingEnabled && !bankHiddenByCountry;
+        // Only an install with no open banking at all leads with the broker:
+        // where the bank is hidden by country, the broker is behind the same
+        // plan gate, and the point is to stop selling a plan up front.
+        const offersBroker = !openBankingEnabled;
+
         return (
             <StepScreen
                 title={__("Let's build the picture")}
                 description={
-                    openBankingEnabled
+                    offersBank
                         ? __(
                               "Start with the bank your salary lands in. You'll add the rest right after — you can mix as many as you like.",
                           )
@@ -549,7 +607,7 @@ export function StepAccountsHub({
             >
                 <div className="flex flex-col gap-6">
                     <StepList>
-                        {openBankingEnabled ? (
+                        {offersBank && (
                             <StepRow
                                 icon={Landmark}
                                 title={__('Connect a bank')}
@@ -562,7 +620,8 @@ export function StepAccountsHub({
                                     openRoute('connected', 'connect')
                                 }
                             />
-                        ) : (
+                        )}
+                        {offersBroker && (
                             <StepRow
                                 icon={ChartLine}
                                 title={__('Connect a broker')}
@@ -586,7 +645,22 @@ export function StepAccountsHub({
                         {canFullImport && <FullImportRow onOpen={openRoute} />}
                     </StepList>
 
-                    {openBankingEnabled && (
+                    {/* Out of reach is a guess from the timezone, so it is
+                        never a wall: someone abroad whose bank is at home
+                        still gets to the picker, gate and all. */}
+                    {bankHiddenByCountry && (
+                        <button
+                            type="button"
+                            onClick={() =>
+                                openRoute('connected', 'connect-elsewhere')
+                            }
+                            className="cursor-pointer self-center rounded-sm text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        >
+                            {__('Is your bank in Europe or the UK? Connect it')}
+                        </button>
+                    )}
+
+                    {offersBank && (
                         <StepCallout>
                             <StepEmphasis
                                 sentence={__(

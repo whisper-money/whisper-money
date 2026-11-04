@@ -21,6 +21,7 @@ use App\Services\Banking\Formatters\AccountNameFormatter;
 use App\Services\BudgetService;
 use App\Services\OnboardingRevealService;
 use App\Services\OnboardingSummaryService;
+use App\Support\TimezoneCountry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -106,6 +107,10 @@ class OnboardingController extends Controller
             'onboardingAnswers' => $user->onboarding_answers ?? [],
             'signupPlan' => $signupPlan?->value,
             'pendingMapping' => $this->pendingMapping($user),
+            // Where the user is, for the hub to stop offering a bank connection
+            // in a country no bank of ours reaches. The timezone rather than the
+            // language: a third of `es-ES` signups live in America.
+            'timezoneCountry' => TimezoneCountry::of($user->timezone),
         ]);
     }
 
