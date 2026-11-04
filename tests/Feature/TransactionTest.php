@@ -1148,6 +1148,7 @@ test('label_ids must exist and belong to user', function () {
 });
 
 test('when budget with label exists, updating transaction with that label assigns it to budget', function () {
+    fakeCurrencyApi();
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Work']);

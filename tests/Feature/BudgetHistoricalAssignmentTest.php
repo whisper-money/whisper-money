@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Queue;
 use function Pest\Laravel\assertDatabaseHas;
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->user = User::factory()->create(['onboarded_at' => now()]);
 });
 

@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Services\BudgetTransactionService;
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->user = User::factory()->create([
         'email_verified_at' => now(),
         'onboarded_at' => now(),

@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->service = app(BudgetTransactionService::class);
     $this->user = User::factory()->create();
 });

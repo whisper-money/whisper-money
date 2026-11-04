@@ -37,6 +37,8 @@ function budgetsOf(Transaction $transaction): array
 }
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->user = User::factory()->create();
     $this->label = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'Miami 26']);
 

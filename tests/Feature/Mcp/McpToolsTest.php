@@ -230,6 +230,7 @@ it('lists the user\'s categories for the space', function () {
 });
 
 it('lists budgets with what the current period has spent and has left', function () {
+    fakeCurrencyApi();
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
@@ -380,6 +381,7 @@ it('tells the agent on the accounts tool that nothing moves money', function () 
 });
 
 it('reports the remaining amount the app shows, ignoring carry-over', function () {
+    fakeCurrencyApi();
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);

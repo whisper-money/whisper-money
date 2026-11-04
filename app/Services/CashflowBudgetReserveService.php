@@ -62,8 +62,9 @@ class CashflowBudgetReserveService
      * transaction tracked by both a fixed and a variable budget counts once,
      * as fixed. See {@see self::expenseSplit()}.
      *
-     * Budget amounts are read as stored, in the user's currency, the same way
-     * the budget screens read them.
+     * Budget amounts are read as stored, the same way the budget screens read
+     * them: each snapshot is already in the user's currency, converted when it
+     * was taken exactly as {@see self::budgetedExpense()} converts a row.
      *
      * @param  Carbon  $today  the user's today (User::localToday()): which periods are in progress
      * @return array{reserved: int, budgets: list<BudgetMarginRow>, fixed_expense: int, variable_expense: int, general_expense: int}
