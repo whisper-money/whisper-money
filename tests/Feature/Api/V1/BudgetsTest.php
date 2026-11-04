@@ -68,6 +68,8 @@ function newBudget(User $user, array $overrides = []): array
 }
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->travelTo(Carbon::parse('2026-10-15 12:00:00'));
 });
 

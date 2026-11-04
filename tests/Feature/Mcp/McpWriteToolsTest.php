@@ -1005,6 +1005,7 @@ it('refuses to edit another user\'s budget', function () {
 });
 
 it('deletes a budget and leaves its transactions alone', function () {
+    fakeCurrencyApi();
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);

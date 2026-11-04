@@ -8,6 +8,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use App\Services\Concerns\ConvertsTransactionCurrency;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,23 @@ use Illuminate\Support\Facades\Log;
  */
 class BudgetTransactionService
 {
+    use ConvertsTransactionCurrency;
+
+    /**
+     * How many budget rows {@see self::resnapshot()} reads per batch.
+     */
+    private const RESNAPSHOT_CHUNK = 500;
+
+    /**
+     * Whether a transaction is booked in its owner's currency, by the same
+     * fallback as {@see ConvertsTransactionCurrency::sourceCurrency()}: the
+     * transaction's currency, else its account's. Only valid on queries that
+     * join `transactions`, `accounts` and `users`.
+     */
+    private const BOOKED_IN_USER_CURRENCY_SQL = "lower(coalesce(nullif(transactions.currency_code, ''), nullif(accounts.currency_code, ''), users.currency_code)) = lower(users.currency_code)";
+
     public function __construct(
+        private readonly ExchangeRateService $exchangeRateService,
         private readonly CategoryTree $tree = new CategoryTree,
         private readonly BudgetNotificationService $notifications = new BudgetNotificationService,
     ) {}
@@ -88,6 +105,9 @@ class BudgetTransactionService
         // ignores the soft-delete scope as well.
         $transaction->loadMissing('labels');
         $transaction->loadMissing(['account' => fn ($query) => $query->withTrashed()]);
+        // The owner, whose currency every snapshot is converted to. Loaded
+        // whole: the notifications that follow email this same model.
+        $transaction->loadMissing('user');
 
         // A budget tracking a parent category also covers its children, so a
         // transaction matches a budget when any of its category's ancestors
@@ -149,7 +169,7 @@ class BudgetTransactionService
     public function assignHistoricalTransactionsToPeriod(BudgetPeriod $period): int
     {
         // Load the budget with its relationships
-        $budget = $period->budget()->with(['categories:id', 'labels:id'])->first();
+        $budget = $period->budget()->with(['categories:id', 'labels:id', 'user:id,currency_code'])->first();
 
         if (! $budget) {
             return 0;
@@ -175,8 +195,8 @@ class BudgetTransactionService
         Log::info("Found {$totalCount} transactions to process in date range");
 
         // Process in chunks to prevent memory issues
-        $query->chunk(500, function (Collection $transactions) use ($period, &$assignedCount) {
-            $assignedCount += $this->recordSnapshots($transactions, $period->id);
+        $query->chunk(500, function (Collection $transactions) use ($period, $budget, &$assignedCount) {
+            $assignedCount += $this->recordSnapshots($transactions, $period->id, $budget->user->currency_code);
         });
 
         return $assignedCount;
@@ -305,7 +325,8 @@ class BudgetTransactionService
 
     /**
      * Record what a transaction contributes to a budget period: the owner's
-     * share of it, flipped so an expense counts as positive spending.
+     * share of it in the owner's currency, flipped so an expense counts as
+     * positive spending. Requires the `account` and `user` relations loaded.
      *
      * The amount is a snapshot taken here and never revisited, so a later
      * change to the account's share has to go through
@@ -319,7 +340,7 @@ class BudgetTransactionService
                 'budget_period_id' => $budgetPeriodId,
             ],
             [
-                'amount' => $this->snapshotAmount($transaction),
+                'amount' => $this->snapshotAmount($transaction, $transaction->user->currency_code),
             ],
         );
     }
@@ -333,11 +354,14 @@ class BudgetTransactionService
      * the right amount is left untouched, updated_at included. Eloquent's
      * upsert() fills in the ids and timestamps the model would have set.
      *
-     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, Transaction>  $transactions  with `account` loaded
+     * @param  string  $currency  the budget owner's currency
      * @return int the number of snapshots newly created
      */
-    private function recordSnapshots(Collection $transactions, string $budgetPeriodId): int
+    private function recordSnapshots(Collection $transactions, string $budgetPeriodId, string $currency): int
     {
+        $this->preloadExchangeRates($transactions, $currency);
+
         $existingAmounts = BudgetTransaction::query()
             ->where('budget_period_id', $budgetPeriodId)
             ->whereIn('transaction_id', $transactions->modelKeys())
@@ -346,7 +370,7 @@ class BudgetTransactionService
         $rows = [];
 
         foreach ($transactions as $transaction) {
-            $amount = $this->snapshotAmount($transaction);
+            $amount = $this->snapshotAmount($transaction, $currency);
 
             if ($existingAmounts->get($transaction->id) === $amount) {
                 continue;
@@ -365,19 +389,75 @@ class BudgetTransactionService
     }
 
     /**
-     * The owner's share of a transaction, flipped so an expense counts as
-     * positive spending: what every budget snapshot of it holds.
+     * The owner's share of a transaction in $currency, flipped so an expense
+     * counts as positive spending: what every budget snapshot of it holds.
+     *
+     * Converted exactly as the cashflow converts it, rate of the transaction's
+     * day included, so a budget row matches what the cashflow counts for that
+     * transaction. A day with no rate keeps the amount unconverted, as the
+     * cashflow does, so the two still agree. Same-currency rows need no rate.
      */
-    private function snapshotAmount(Transaction $transaction): int
+    private function snapshotAmount(Transaction $transaction, string $currency): int
     {
-        return -$transaction->ownerShareOf($transaction->amount);
+        return -$this->convertTransactionAmount($transaction, $currency);
+    }
+
+    /**
+     * Rewrite the given budget rows from their transactions as they stand now,
+     * in their owner's currency, the way {@see self::recordSnapshot()} would
+     * write them today. Rows already holding the right amount are left alone,
+     * and rows whose transaction is gone are skipped.
+     *
+     * @param  Builder<BudgetTransaction>  $budgetTransactions
+     * @return int the number of rows whose amount changed
+     */
+    public function resnapshot(Builder $budgetTransactions): int
+    {
+        $changed = 0;
+
+        $budgetTransactions
+            ->with(['transaction' => fn ($query) => $query->withTrashed()->with([
+                'account' => fn ($account) => $account->withTrashed(),
+                'user:id,currency_code',
+            ])])
+            ->chunkById(self::RESNAPSHOT_CHUNK, function (Collection $rows) use (&$changed): void {
+                $changed += $this->resnapshotChunk($rows);
+            });
+
+        return $changed;
+    }
+
+    /**
+     * @param  Collection<int, BudgetTransaction>  $rows  with `transaction.account` and `transaction.user` loaded
+     */
+    private function resnapshotChunk(Collection $rows): int
+    {
+        $rows = $rows->filter(fn (BudgetTransaction $row): bool => $row->transaction?->user !== null);
+
+        $rows->groupBy(fn (BudgetTransaction $row): string => $row->transaction->user->currency_code)
+            ->each(fn (Collection $group, string $currency) => $this->preloadExchangeRates($group->pluck('transaction'), $currency));
+
+        $changed = 0;
+
+        foreach ($rows as $row) {
+            $amount = $this->snapshotAmount($row->transaction, $row->transaction->user->currency_code);
+
+            if ($row->amount !== $amount) {
+                $row->update(['amount' => $amount]);
+                $changed++;
+            }
+        }
+
+        return $changed;
     }
 
     /**
      * Re-snapshot every budget row of an account after its ownership share
-     * changed, in SQL so it stays one query no matter how much history the
-     * account has. Uses {@see Transaction::OWNED_AMOUNT_SQL} so the rounding
-     * matches what {@see self::recordSnapshot()} would have written.
+     * changed. Rows booked in their owner's currency are rewritten in SQL, so
+     * they stay one query no matter how much history the account has, using
+     * {@see Transaction::OWNED_AMOUNT_SQL} so the rounding matches what
+     * {@see self::recordSnapshot()} would have written. Rows booked in another
+     * currency need a rate per day, so they go through {@see self::resnapshot()}.
      *
      * @return int the number of rows re-weighed
      */
@@ -386,8 +466,20 @@ class BudgetTransactionService
         $reweighed = DB::table('budget_transactions')
             ->join('transactions', 'transactions.id', '=', 'budget_transactions.transaction_id')
             ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
+            ->join('users', 'users.id', '=', 'transactions.user_id')
             ->where('accounts.id', $account->id)
+            ->whereRaw(self::BOOKED_IN_USER_CURRENCY_SQL)
             ->update(['budget_transactions.amount' => DB::raw('-('.Transaction::OWNED_AMOUNT_SQL.')')]);
+
+        $reweighed += $this->resnapshot(
+            BudgetTransaction::query()->whereIn('transaction_id', Transaction::query()
+                ->withTrashed()
+                ->select('transactions.id')
+                ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
+                ->join('users', 'users.id', '=', 'transactions.user_id')
+                ->where('accounts.id', $account->id)
+                ->whereRaw('not ('.self::BOOKED_IN_USER_CURRENCY_SQL.')')),
+        );
 
         // Every affected period now holds a different total, so the limit alerts
         // it already sent describe a state that no longer exists. Clearing the

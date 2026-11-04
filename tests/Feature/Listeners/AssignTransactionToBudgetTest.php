@@ -13,6 +13,8 @@ use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->user = User::factory()->create();
 });
 

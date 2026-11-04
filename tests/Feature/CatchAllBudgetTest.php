@@ -12,6 +12,8 @@ use App\Services\BudgetTransactionService;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
     $this->service = app(BudgetTransactionService::class);
     $this->user = User::factory()->create();
 });
