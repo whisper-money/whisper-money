@@ -255,7 +255,7 @@ export function StepAccountsHub({
     const isFreePlan = signupPlan === 'free';
     // Read once: it looks at localStorage, and the hub remounts after every
     // account anyway, which is when a country picked by hand could change it.
-    const [banksOutOfReach] = useState(
+    const [bankHiddenByCountry] = useState(
         () =>
             openBankingEnabled &&
             !isFreePlan &&
@@ -267,8 +267,10 @@ export function StepAccountsHub({
     // Either way the "Another bank" row would promise a bank picker that never
     // comes, so it opens the manual form and says so. They part ways over the
     // broker, which is an API key rather than open banking: the free plan
-    // still cannot have one, the other two can.
-    const noBankToOffer = isFreePlan || !openBankingEnabled || banksOutOfReach;
+    // still cannot have one, the other two keep the "A pension or a broker"
+    // suggestion once an account is in.
+    const noBankToOffer =
+        isFreePlan || !openBankingEnabled || bankHiddenByCountry;
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
     const [failedBank] = useState(readFailedBank);
@@ -391,15 +393,18 @@ export function StepAccountsHub({
     );
 
     // The bank gate's own event never fires for these users any more, so this
-    // is what tells "chose not to connect" apart from "was never offered".
+    // is what tells "chose not to connect" apart from "was never offered". Only
+    // on the empty hub, where the bank would have been the first thing offered:
+    // the hub remounts after every account, and counting each of those would
+    // inflate it.
     useEffect(() => {
-        if (banksOutOfReach) {
+        if (bankHiddenByCountry && !hasAccounts) {
             captureEvent('onboarding_bank_option_hidden', {
                 reason: 'no_banks_in_country',
                 country: timezoneCountry,
             });
         }
-    }, [banksOutOfReach, timezoneCountry]);
+    }, [bankHiddenByCountry, hasAccounts, timezoneCountry]);
 
     /**
      * Which way out was taken is the one thing `onboarding_step_viewed` cannot
@@ -411,7 +416,7 @@ export function StepAccountsHub({
             captureEvent('onboarding_accounts_hub_route', {
                 option,
                 accounts: accountCount,
-                ...(banksOutOfReach && { bank_hidden: true }),
+                ...(bankHiddenByCountry && { bank_hidden: true }),
             });
 
             if (route === 'full-import') {
@@ -436,7 +441,7 @@ export function StepAccountsHub({
         },
         [
             accountCount,
-            banksOutOfReach,
+            bankHiddenByCountry,
             onConnectedAccountSelected,
             subscriptionsEnabled,
             hasProPlan,
@@ -581,7 +586,11 @@ export function StepAccountsHub({
 
     // Nothing in yet: the two ways in, and why most people need both.
     if (accountGroups.length === 0) {
-        const offersBank = openBankingEnabled && !banksOutOfReach;
+        const offersBank = openBankingEnabled && !bankHiddenByCountry;
+        // Only an install with no open banking at all leads with the broker:
+        // where the bank is hidden by country, the broker is behind the same
+        // plan gate, and the point is to stop selling a plan up front.
+        const offersBroker = !openBankingEnabled;
 
         return (
             <StepScreen
@@ -598,7 +607,7 @@ export function StepAccountsHub({
             >
                 <div className="flex flex-col gap-6">
                     <StepList>
-                        {offersBank ? (
+                        {offersBank && (
                             <StepRow
                                 icon={Landmark}
                                 title={__('Connect a bank')}
@@ -611,7 +620,8 @@ export function StepAccountsHub({
                                     openRoute('connected', 'connect')
                                 }
                             />
-                        ) : openBankingEnabled ? null : (
+                        )}
+                        {offersBroker && (
                             <StepRow
                                 icon={ChartLine}
                                 title={__('Connect a broker')}
@@ -638,7 +648,7 @@ export function StepAccountsHub({
                     {/* Out of reach is a guess from the timezone, so it is
                         never a wall: someone abroad whose bank is at home
                         still gets to the picker, gate and all. */}
-                    {banksOutOfReach && (
+                    {bankHiddenByCountry && (
                         <button
                             type="button"
                             onClick={() =>

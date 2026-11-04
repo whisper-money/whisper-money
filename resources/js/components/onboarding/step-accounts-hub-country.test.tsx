@@ -119,6 +119,18 @@ describe('StepAccountsHub in a country with no connectable banks', () => {
         expect(screen.getByTestId('account-form')).toBeInTheDocument();
     });
 
+    // The hub remounts after every account: counting each of those would
+    // inflate the event far past the users it was hidden from.
+    it('reports the hidden bank only on the empty hub', () => {
+        renderHub({
+            timezoneCountry: 'US',
+            isFirstAccount: false,
+            existingAccounts: [EXISTING_ACCOUNT],
+        });
+
+        expect(captureEvent).not.toHaveBeenCalled();
+    });
+
     it('keeps the bank for a country picked by hand before', () => {
         rememberConnectCountry('ES');
 
