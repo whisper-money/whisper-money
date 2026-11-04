@@ -40,9 +40,9 @@ class TimezoneCountry
             return null;
         }
 
-        $region = \IntlTimeZone::getRegion($timezone);
+        $region = \IntlTimeZone::getRegion($timezone) ?: '';
 
         // ICU answers "001", the world, for a zone like UTC that has no country.
-        return is_string($region) && preg_match('/^[A-Z]{2}$/', $region) === 1 ? $region : null;
+        return preg_match('/^[A-Z]{2}$/', $region) === 1 ? $region : null;
     }
 }
