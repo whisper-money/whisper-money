@@ -86,30 +86,48 @@ export function RefundPromise() {
     );
 }
 
+interface OfferOptions {
+    /** The plan to start on instead of the configured default. */
+    initialPlan?: string;
+    /** Replaces the label that names the charge, e.g. "Start free trial". */
+    buttonText?: string;
+    /** Runs on the way out to checkout, with the plan being bought. */
+    onCheckout?: (plan: string) => void;
+}
+
 /**
  * The plan picker's state and the two controls that have to agree with it: a
  * button that names the amount it is about to charge, and the line under it
  * that says when.
  */
-export function useOffer(source: OfferSource = null) {
+export function useOffer(
+    source: OfferSource = null,
+    { initialPlan, buttonText, onCheckout }: OfferOptions = {},
+) {
     const { pricing } = usePage<SharedData>().props;
     const locale = useLocale();
-    const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
+    const [selectedPlan, setSelectedPlan] = useState(
+        initialPlan ?? pricing.defaultPlan,
+    );
     const plan: Plan | undefined = pricing.plans[selectedPlan];
 
     return {
         selectedPlan,
         setSelectedPlan,
+        plan,
         /** Whether there is anything to sell at all — no plans, no screen. */
         hasPlans: plan !== undefined,
         button: (
             <StepButton
-                text={checkoutLabel(plan, pricing.currency, locale)}
+                text={
+                    buttonText ?? checkoutLabel(plan, pricing.currency, locale)
+                }
                 href={checkout.url({
                     query: source
                         ? { plan: selectedPlan, source }
                         : { plan: selectedPlan },
                 })}
+                onClick={onCheckout && (() => onCheckout(selectedPlan))}
                 data-testid="start-plan"
             />
         ),

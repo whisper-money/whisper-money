@@ -111,3 +111,21 @@ export function captureEvent(
 ): void {
     withPostHog(() => posthog.capture(eventName, properties));
 }
+
+/**
+ * Tags everything this browser sends from now on, and the person behind it,
+ * with the given properties — an experiment arm, so that events captured long
+ * after the screen that assigned it (a bank connection after checkout, the
+ * trial converting) can still be split by it.
+ */
+export function registerProperties(properties: Record<string, unknown>): void {
+    withPostHog(() => {
+        posthog.register(properties);
+        posthog.setPersonProperties(properties);
+    });
+}
+
+/** Stops tagging this browser's events with a property {@link registerProperties} set. */
+export function unregisterProperty(name: string): void {
+    withPostHog(() => posthog.unregister(name));
+}

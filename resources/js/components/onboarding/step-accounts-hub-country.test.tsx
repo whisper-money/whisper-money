@@ -6,7 +6,11 @@ import { StepAccountsHub, type ExistingAccount } from './step-accounts-hub';
 
 const { captureEvent } = vi.hoisted(() => ({ captureEvent: vi.fn() }));
 
-vi.mock('@/lib/posthog', () => ({ captureEvent }));
+vi.mock('@/lib/posthog', () => ({
+    captureEvent,
+    registerProperties: vi.fn(),
+    unregisterProperty: vi.fn(),
+}));
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: pageProps }),

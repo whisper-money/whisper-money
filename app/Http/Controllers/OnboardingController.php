@@ -6,6 +6,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
 use App\Enums\SignupPlan;
+use App\Features\OnboardingGateCopy;
 use App\Http\Requests\StoreOnboardingAnswersRequest;
 use App\Http\Requests\StoreOnboardingTargetRequest;
 use App\Http\Requests\UpdateOnboardingCurrencyRequest;
@@ -111,7 +112,34 @@ class OnboardingController extends Controller
             // in a country no bank of ours reaches. The timezone rather than the
             // language: a third of `es-ES` signups live in America.
             'timezoneCountry' => TimezoneCountry::of($user->timezone),
+            'gateCopyArm' => $this->gateCopyArm($user, $signupPlan),
         ]);
+    }
+
+    /**
+     * Which copy the bank and broker gate is drawn with (see
+     * {@see OnboardingGateCopy}). Only drawn for someone the gate can reach:
+     * nothing is sold on a self-hosted instance, and a free-plan signup is
+     * never offered a connection.
+     *
+     * The trial arms say "free for N days", which is only true while every
+     * plan starts with a trial. With `SUBSCRIPTION_PAY_NOW` on, nobody is in
+     * the experiment — control included, or it would be measured against two
+     * arms that look exactly like it.
+     */
+    private function gateCopyArm(User $user, ?SignupPlan $signupPlan): ?string
+    {
+        if (! config('subscriptions.enabled') || $signupPlan === SignupPlan::Free || ! $this->everyPlanHasTrial()) {
+            return null;
+        }
+
+        return OnboardingGateCopy::armFor($user);
+    }
+
+    private function everyPlanHasTrial(): bool
+    {
+        return collect(config('subscriptions.plans', []))
+            ->every(fn (array $plan): bool => ($plan['trial_days'] ?? 0) > 0);
     }
 
     /**
