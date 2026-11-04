@@ -852,6 +852,19 @@ test('scheduled sync dispatches expired active enablebanking connections even wh
     Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->is($connection));
 });
 
+test('a full sweep syncs connections that synced recently', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => User::factory()->onboarded(),
+        'last_synced_at' => now()->subMinute(),
+    ]);
+
+    (new SyncAllBankingConnectionsJob(fullSync: true))->handle();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->is($connection) && $job->fullSync);
+});
+
 test('a second sweep right after the first dispatches nothing new', function () {
     Queue::fake(SyncBankingConnectionJob::class);
 
