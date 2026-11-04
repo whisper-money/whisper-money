@@ -8,6 +8,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,9 +23,9 @@ class BudgetTransactionService
     use ConvertsTransactionCurrency;
 
     /**
-     * How many budget rows {@see self::resnapshot()} reads per batch.
+     * How many rows a backfill or {@see self::resnapshot()} reads per batch.
      */
-    private const RESNAPSHOT_CHUNK = 500;
+    private const CHUNK_SIZE = 500;
 
     /**
      * Whether a transaction is booked in its owner's currency, by the same
@@ -65,17 +66,24 @@ class BudgetTransactionService
      *
      * The tree and the catch-all claims are only held for this call, so the
      * next batch sees any category re-parented or budget created in the meantime.
+     * Each user is read once too, for the currency their snapshots are in.
      *
      * @param  iterable<int, Transaction>  $transactions
      */
     public function assignTransactions(iterable $transactions, bool $notify = true): void
     {
         $parentMaps = [];
+        $users = [];
         $this->claimsByPeriod = [];
 
         try {
             foreach ($transactions as $transaction) {
                 $userId = $transaction->user_id;
+
+                if ($userId && ! $transaction->relationLoaded('user')) {
+                    $transaction->setRelation('user', $users[$userId] ??= User::query()->find($userId));
+                }
+
                 $parentMap = $userId && $transaction->category_id
                     ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId))
                     : null;
@@ -126,11 +134,15 @@ class BudgetTransactionService
             $matchingPeriodIds = $this->catchAllPeriodIds($transaction, $categoryMatchIds);
         }
 
+        // Converted before the lock below is taken: a missing rate may be
+        // fetched from the provider, which is no work to hold a row lock over.
+        $amount = $matchingPeriodIds === [] ? 0 : $this->snapshotAmount($transaction, $transaction->user->currency_code);
+
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
         $createdPeriodIds = [];
 
-        DB::transaction(function () use ($transaction, $matchingPeriodIds, &$createdPeriodIds) {
+        DB::transaction(function () use ($transaction, $matchingPeriodIds, $amount, &$createdPeriodIds) {
             // Reset per attempt: a deadlock retry re-runs this closure.
             $createdPeriodIds = [];
 
@@ -148,7 +160,7 @@ class BudgetTransactionService
                 ->delete();
 
             foreach ($matchingPeriodIds as $periodId) {
-                $budgetTransaction = $this->recordSnapshot($transaction, $periodId);
+                $budgetTransaction = $this->recordSnapshot($transaction, $periodId, $amount);
 
                 if ($budgetTransaction->wasRecentlyCreated) {
                     $createdPeriodIds[] = $periodId;
@@ -195,7 +207,7 @@ class BudgetTransactionService
         Log::info("Found {$totalCount} transactions to process in date range");
 
         // Process in chunks to prevent memory issues
-        $query->chunk(500, function (Collection $transactions) use ($period, $budget, &$assignedCount) {
+        $query->chunk(self::CHUNK_SIZE, function (Collection $transactions) use ($period, $budget, &$assignedCount) {
             $assignedCount += $this->recordSnapshots($transactions, $period->id, $budget->user->currency_code);
         });
 
@@ -324,15 +336,14 @@ class BudgetTransactionService
     }
 
     /**
-     * Record what a transaction contributes to a budget period: the owner's
-     * share of it in the owner's currency, flipped so an expense counts as
-     * positive spending. Requires the `account` and `user` relations loaded.
+     * Record what a transaction contributes to a budget period: its
+     * {@see self::snapshotAmount()}, worked out by the caller.
      *
      * The amount is a snapshot taken here and never revisited, so a later
      * change to the account's share has to go through
      * {@see self::reweighAccountSnapshots()}.
      */
-    private function recordSnapshot(Transaction $transaction, string $budgetPeriodId): BudgetTransaction
+    private function recordSnapshot(Transaction $transaction, string $budgetPeriodId, int $amount): BudgetTransaction
     {
         return BudgetTransaction::updateOrCreate(
             [
@@ -340,7 +351,7 @@ class BudgetTransactionService
                 'budget_period_id' => $budgetPeriodId,
             ],
             [
-                'amount' => $this->snapshotAmount($transaction, $transaction->user->currency_code),
+                'amount' => $amount,
             ],
         );
     }
@@ -420,7 +431,7 @@ class BudgetTransactionService
                 'account' => fn ($account) => $account->withTrashed(),
                 'user:id,currency_code',
             ])])
-            ->chunkById(self::RESNAPSHOT_CHUNK, function (Collection $rows) use (&$changed): void {
+            ->chunkById(self::CHUNK_SIZE, function (Collection $rows) use (&$changed): void {
                 $changed += $this->resnapshotChunk($rows);
             });
 
@@ -459,7 +470,8 @@ class BudgetTransactionService
      * {@see self::recordSnapshot()} would have written. Rows booked in another
      * currency need a rate per day, so they go through {@see self::resnapshot()}.
      *
-     * @return int the number of rows re-weighed
+     * @return int the same-currency rows the SQL update touched plus the
+     *             foreign-currency rows whose amount changed
      */
     public function reweighAccountSnapshots(Account $account): int
     {

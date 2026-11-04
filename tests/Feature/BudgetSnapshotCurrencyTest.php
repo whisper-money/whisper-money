@@ -183,3 +183,29 @@ test('the catch-all spends what the cashflow general block counts with a foreign
         ->and($tracked->spentAmount())->toBe($summary['variable_expense'])
         ->and(budgetSnapshotOf($backfilled, $catchAll))->toBe(2953);
 });
+
+test('resnapshot converts each row to its own owner currency', function () {
+    $period = currencyTrackedPeriod($this);
+    $eurUserRow = foreignCurrencyExpense($this, -10000, 'USD');
+    storeUnconvertedSnapshot($eurUserRow, $period);
+
+    $usdUser = User::factory()->create(['currency_code' => 'USD']);
+    $usdCategory = Category::factory()->create(['user_id' => $usdUser->id, 'type' => CategoryType::Expense]);
+    $usdPeriod = currencyOctoberPeriod(Budget::factory()->monthly()->forCategories($usdCategory)->create(['user_id' => $usdUser->id]));
+    ExchangeRate::factory()->create(['base_currency' => 'usd', 'date' => '2026-10-10', 'rates' => ['eur' => 0.5]]);
+    $usdUserRow = Transaction::factory()->create([
+        'user_id' => $usdUser->id,
+        'account_id' => Account::factory()->create(['user_id' => $usdUser->id, 'currency_code' => 'EUR'])->id,
+        'category_id' => $usdCategory->id,
+        'currency_code' => 'EUR',
+        'amount' => -1000,
+        'transaction_date' => '2026-10-10',
+    ]);
+    storeUnconvertedSnapshot($usdUserRow, $usdPeriod);
+
+    $changed = $this->service->resnapshot(BudgetTransaction::query()->whereIn('budget_period_id', [$period->id, $usdPeriod->id]));
+
+    expect($changed)->toBe(2)
+        ->and(budgetSnapshotOf($eurUserRow, $period))->toBe(5000)
+        ->and(budgetSnapshotOf($usdUserRow, $usdPeriod))->toBe(2000);
+});

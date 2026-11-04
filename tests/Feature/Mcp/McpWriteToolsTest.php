@@ -49,6 +49,11 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Server\Testing\TestResponse;
 
+beforeEach(function () {
+    // Factory currencies are random; budget snapshots convert them 1:1.
+    fakeCurrencyApi();
+});
+
 /**
  * Call a write tool as $user, giving them a real personal access token with the
  * given abilities so the tool's tokenCan('mcp:write') gate is exercised exactly
@@ -1005,7 +1010,6 @@ it('refuses to edit another user\'s budget', function () {
 });
 
 it('deletes a budget and leaves its transactions alone', function () {
-    fakeCurrencyApi();
     $user = User::factory()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
