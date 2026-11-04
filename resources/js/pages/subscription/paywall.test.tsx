@@ -1,5 +1,6 @@
 import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Paywall from './paywall';
 
@@ -47,7 +48,14 @@ vi.mock('@/contexts/privacy-mode-context', () => ({
 
 vi.mock('@inertiajs/react', async () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
-    router: { visit: mocks.visit, post: mocks.post },
+    Link: ({
+        href,
+        children,
+    }: {
+        href: string | { url: string };
+        children: React.ReactNode;
+    }) => <a href={typeof href === 'string' ? href : href.url}>{children}</a>,
+    router: { visit: mocks.visit, post: mocks.post, flushAll: vi.fn() },
     useHttp: (await import('@/lib/use-http.fixture')).fakeUseHttp(
         mocks.httpPost,
     ),
@@ -69,6 +77,21 @@ describe('Paywall', () => {
         mocks.props.canEscapeToFreePlan = false;
         mocks.props.canManageConnectionsForFreePlan = false;
         mocks.props.stats = { ...emptyStats };
+    });
+
+    it('always offers a way out to billing, account deletion and log out', () => {
+        render(<Paywall />);
+
+        expect(
+            screen.getByRole('link', { name: 'Manage billing' }),
+        ).toHaveAttribute('href', '/settings/billing');
+        expect(
+            screen.getByRole('link', { name: 'Delete account' }),
+        ).toHaveAttribute('href', '/settings/delete-account');
+        expect(screen.getByRole('link', { name: 'Log out' })).toHaveAttribute(
+            'href',
+            '/logout',
+        );
     });
 
     it('starts on the configured default plan and carries it into checkout', () => {

@@ -177,3 +177,26 @@ test('a user without a subscription gets no subscription state', function () {
     actingAs($user)->withoutVite()->get(route('settings.billing'))
         ->assertInertia(fn (Assert $page) => $page->where('subscription', null));
 });
+
+test('a subscription whose charge failed is flagged so the page can offer the billing portal', function (string $status, bool $hasProPlan) use ($knownPrices) {
+    bindStripePrices($knownPrices);
+    $user = subscriber(['stripe_status' => $status, 'trial_ends_at' => now()->subDays(3)]);
+
+    actingAs($user)->withoutVite()->get(route('settings.billing'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('auth.hasProPlan', $hasProPlan)
+            ->where('hasUnpaidSubscription', true)
+        );
+})->with([
+    'past due, still on Pro' => ['past_due', true],
+    'unpaid' => ['unpaid', false],
+    'incomplete' => ['incomplete', false],
+]);
+
+test('a paid-up subscription is not flagged as unpaid', function () use ($knownPrices) {
+    bindStripePrices($knownPrices);
+    $user = subscriber([]);
+
+    actingAs($user)->withoutVite()->get(route('settings.billing'))
+        ->assertInertia(fn (Assert $page) => $page->where('hasUnpaidSubscription', false));
+});

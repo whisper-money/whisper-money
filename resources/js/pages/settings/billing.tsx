@@ -11,6 +11,7 @@ import {
     destroy as revokeConsent,
     store as storeConsent,
 } from '@/routes/ai/consent';
+import { edit as deleteAccountEdit } from '@/routes/delete-account';
 import { billing } from '@/routes/settings';
 import { portal, refund as refundRoute } from '@/routes/settings/billing';
 import { checkout } from '@/routes/subscribe';
@@ -19,7 +20,7 @@ import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     CheckIcon,
@@ -29,6 +30,7 @@ import {
     LandmarkIcon,
     ShieldCheckIcon,
     SparklesIcon,
+    TriangleAlertIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -300,6 +302,60 @@ function PlanStatus({
     );
 }
 
+function ManageSubscriptionButton() {
+    return (
+        <a href={portal.url()}>
+            <Button className="mt-4">
+                <CreditCardIcon className="size-4" />
+                {__('Manage Subscription')}
+            </Button>
+        </a>
+    );
+}
+
+/**
+ * For a subscription whose charge failed and that Stripe no longer counts as
+ * active (`unpaid`, `incomplete`): the user is not on Pro, but Stripe is still
+ * chasing the invoice, so the way to pay it or cancel it has to be here. The
+ * upgrade section would only start a second subscription next to it.
+ */
+function UnpaidSubscriptionSection() {
+    return (
+        <div className="space-y-6">
+            <HeadingSmall
+                title={__('Your payment failed')}
+                description={__(
+                    'We could not charge your card for your subscription.',
+                )}
+            />
+
+            <Alert variant="destructive">
+                <TriangleAlertIcon className="h-4 w-4" />
+                <AlertDescription className="flex flex-col items-start gap-3">
+                    <span>
+                        {__(
+                            'Update your payment method to keep Pro, or cancel the subscription so we stop trying to charge you. Both are done in the Stripe billing portal.',
+                        )}
+                    </span>
+                    <span>
+                        {__(
+                            'If you are leaving, you can also delete your account: that cancels the subscription too.',
+                        )}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <ManageSubscriptionButton />
+                        <Button variant="secondary" className="mt-4" asChild>
+                            <Link href={deleteAccountEdit().url}>
+                                {__('Delete account')}
+                            </Link>
+                        </Button>
+                    </div>
+                </AlertDescription>
+            </Alert>
+        </div>
+    );
+}
+
 function SubscribedSection({
     isSharedAccount,
     defaultPlan,
@@ -349,14 +405,7 @@ function SubscribedSection({
                         'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
                     )}
                 </p>
-                {!isSharedAccount && (
-                    <a href={portal.url()}>
-                        <Button className="mt-4">
-                            <CreditCardIcon className="size-4" />
-                            {__('Manage Subscription')}
-                        </Button>
-                    </a>
-                )}
+                {!isSharedAccount && <ManageSubscriptionButton />}
             </div>
 
             {refund?.canSelfRefund && (
@@ -496,14 +545,22 @@ function AiConsentSection({
 }
 
 export default function Billing() {
-    const { auth, pricing, locale, hasAiConsent, refund, subscription } =
-        usePage<
-            SharedData & {
-                hasAiConsent: boolean;
-                refund?: RefundInfo;
-                subscription?: SubscriptionInfo | null;
-            }
-        >().props;
+    const {
+        auth,
+        pricing,
+        locale,
+        hasAiConsent,
+        refund,
+        subscription,
+        hasUnpaidSubscription,
+    } = usePage<
+        SharedData & {
+            hasAiConsent: boolean;
+            hasUnpaidSubscription: boolean;
+            refund?: RefundInfo;
+            subscription?: SubscriptionInfo | null;
+        }
+    >().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
     const defaultPlan = pricing.plans[pricing.defaultPlan];
@@ -534,6 +591,8 @@ export default function Billing() {
                             locale={locale}
                             refund={refund}
                         />
+                    ) : hasUnpaidSubscription && !isSharedAccount ? (
+                        <UnpaidSubscriptionSection />
                     ) : (
                         <UpgradeSection
                             plans={pricing.plans}

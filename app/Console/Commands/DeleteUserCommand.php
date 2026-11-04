@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
+use App\Actions\Subscription\CancelSubscriptionNow;
 use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -31,7 +32,7 @@ class DeleteUserCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(DisconnectBankingConnection $disconnectBankingConnection): int
+    public function handle(DisconnectBankingConnection $disconnectBankingConnection, CancelSubscriptionNow $cancelSubscriptionNow): int
     {
         $email = $this->argument('email');
 
@@ -62,7 +63,7 @@ class DeleteUserCommand extends Command
         }
 
         if ($subscription) {
-            $this->cancelSubscription($user, $subscription);
+            $cancelSubscriptionNow->handle($user, $subscription);
             $this->info("Cancelled Stripe subscription for '{$user->email}'.");
         }
 
@@ -102,16 +103,5 @@ class DeleteUserCommand extends Command
 
         return $enableBankingConnections->isEmpty()
             || $this->confirm("User '{$user->email}' has {$enableBankingConnections->count()} Enable Banking connection(s). Revoke them and keep linked accounts as manual accounts?");
-    }
-
-    private function cancelSubscription(User $user, Subscription $subscription): void
-    {
-        if ($user->hasStripeId() && ! $user->hasSeededSubscription()) {
-            $subscription->cancelNow();
-
-            return;
-        }
-
-        $subscription->markAsCanceled();
     }
 }

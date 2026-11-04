@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Subscription\CancelSubscriptionNow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
+use Stripe\Exception\ApiErrorException;
 
 class ProfileController extends Controller
 {
@@ -59,13 +61,14 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's account.
+     * Delete the user's account. A trial or a paid-up plan has to be cancelled
+     * by the user first; an unpaid subscription is cancelled here, with it.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, CancelSubscriptionNow $cancelSubscriptionNow): RedirectResponse
     {
         $user = $request->user();
 
-        if ($user->hasActiveSubscriptionOrTrial()) {
+        if ($user->mustCancelSubscriptionBeforeDeleting()) {
             return back()->withErrors([
                 'subscription' => __('Please cancel your subscription before deleting your account.'),
             ]);
@@ -74,6 +77,20 @@ class ProfileController extends Controller
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
+
+        $unpaidSubscription = $user->unpaidSubscription();
+
+        if ($unpaidSubscription !== null) {
+            try {
+                $cancelSubscriptionNow->handle($user, $unpaidSubscription);
+            } catch (ApiErrorException $exception) {
+                report($exception);
+
+                return back()->withErrors([
+                    'subscription' => __('We could not cancel your subscription. Please try again in a few minutes.'),
+                ]);
+            }
+        }
 
         Auth::logout();
 

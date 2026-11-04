@@ -4227,5 +4227,11 @@
     "Send and stay free": "Enviar y seguir gratis",
     "Thanks for telling us": "Gracias por contárnoslo",
     "A quick answer helps us improve. Your banks are disconnected either way.": "Una respuesta rápida nos ayuda a mejorar. Tus bancos se desconectan igualmente.",
-    "A quick answer helps us improve. The AI is switched off either way.": "Una respuesta rápida nos ayuda a mejorar. La IA se desactiva igualmente."
+    "A quick answer helps us improve. The AI is switched off either way.": "Una respuesta rápida nos ayuda a mejorar. La IA se desactiva igualmente.",
+    "Your subscription has an unpaid charge. Deleting your account cancels it, and we will not try to charge your card again.": "Tu suscripción tiene un cobro pendiente. Al eliminar tu cuenta se cancela y no volveremos a intentar cobrarte.",
+    "We could not cancel your subscription. Please try again in a few minutes.": "No hemos podido cancelar tu suscripción. Vuelve a intentarlo en unos minutos.",
+    "Your payment failed": "Tu pago ha fallado",
+    "We could not charge your card for your subscription.": "No hemos podido cobrar tu suscripción en tu tarjeta.",
+    "Update your payment method to keep Pro, or cancel the subscription so we stop trying to charge you. Both are done in the Stripe billing portal.": "Actualiza tu método de pago para seguir en Pro, o cancela la suscripción para que dejemos de intentar cobrarte. Ambas cosas se hacen en el portal de facturación de Stripe.",
+    "If you are leaving, you can also delete your account: that cancels the subscription too.": "Si te vas, también puedes eliminar tu cuenta: eso también cancela la suscripción."
 }

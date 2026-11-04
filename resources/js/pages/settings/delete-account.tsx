@@ -14,9 +14,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function DeleteAccount({
-    hasActiveSubscriptionOrTrial,
+    mustCancelSubscription,
+    cancelsUnpaidSubscription,
 }: {
-    hasActiveSubscriptionOrTrial: boolean;
+    mustCancelSubscription: boolean;
+    cancelsUnpaidSubscription: boolean;
 }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -24,7 +26,8 @@ export default function DeleteAccount({
 
             <SettingsLayout>
                 <DeleteUser
-                    hasActiveSubscriptionOrTrial={hasActiveSubscriptionOrTrial}
+                    mustCancelSubscription={mustCancelSubscription}
+                    cancelsUnpaidSubscription={cancelsUnpaidSubscription}
                 />
             </SettingsLayout>
         </AppLayout>

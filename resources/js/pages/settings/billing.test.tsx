@@ -1,7 +1,7 @@
 import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Billing from './billing';
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
         hasAiConsent: false,
         isSharedAccount: false,
         subscription: null as Record<string, unknown> | null,
+        hasUnpaidSubscription: false,
     },
 }));
 
@@ -26,6 +27,13 @@ vi.mock('axios', () => ({
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    Link: ({
+        href,
+        children,
+    }: {
+        href: string | { url: string };
+        children: React.ReactNode;
+    }) => <a href={typeof href === 'string' ? href : href.url}>{children}</a>,
     router: { post: vi.fn(), visit: vi.fn() },
     usePage: () => ({
         props: {
@@ -38,6 +46,7 @@ vi.mock('@inertiajs/react', () => ({
             locale: 'en',
             hasAiConsent: mocks.state.hasAiConsent,
             subscription: mocks.state.subscription,
+            hasUnpaidSubscription: mocks.state.hasUnpaidSubscription,
         },
     }),
 }));
@@ -209,5 +218,42 @@ describe('Billing – plan status', () => {
         render(<Billing />);
 
         expect(screen.getByText('— €53.94/year')).toBeInTheDocument();
+    });
+});
+
+describe('Billing – a subscription whose charge failed', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.state.hasProPlan = false;
+        mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
+        mocks.state.subscription = null;
+        mocks.state.hasUnpaidSubscription = true;
+    });
+
+    afterEach(() => {
+        mocks.state.hasUnpaidSubscription = false;
+    });
+
+    it('offers the billing portal and account deletion instead of a new plan', () => {
+        render(<Billing />);
+
+        expect(screen.getByText('Your payment failed')).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: /Manage Subscription/ }),
+        ).toHaveAttribute('href', '/settings/billing/portal');
+        expect(
+            screen.getByRole('link', { name: 'Delete account' }),
+        ).toHaveAttribute('href', '/settings/delete-account');
+        expect(screen.queryByText(/Upgrade to Pro/i)).not.toBeInTheDocument();
+    });
+
+    it('keeps the upgrade path when nothing is owed', () => {
+        mocks.state.hasUnpaidSubscription = false;
+        render(<Billing />);
+
+        expect(
+            screen.queryByText('Your payment failed'),
+        ).not.toBeInTheDocument();
     });
 });

@@ -142,7 +142,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/delete-account', function (Request $request) {
         return Inertia::render('settings/delete-account', [
-            'hasActiveSubscriptionOrTrial' => $request->user()->hasActiveSubscriptionOrTrial(),
+            'mustCancelSubscription' => $request->user()->mustCancelSubscriptionBeforeDeleting(),
+            'cancelsUnpaidSubscription' => $request->user()->unpaidSubscription() !== null,
         ]);
     })->name('delete-account.edit');
 

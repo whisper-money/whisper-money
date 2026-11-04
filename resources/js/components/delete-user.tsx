@@ -22,9 +22,11 @@ import { InfoIcon } from 'lucide-react';
 import { useRef } from 'react';
 
 export default function DeleteUser({
-    hasActiveSubscriptionOrTrial,
+    mustCancelSubscription,
+    cancelsUnpaidSubscription,
 }: {
-    hasActiveSubscriptionOrTrial: boolean;
+    mustCancelSubscription: boolean;
+    cancelsUnpaidSubscription: boolean;
 }) {
     const { auth } = usePage<SharedData>().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
@@ -50,7 +52,7 @@ export default function DeleteUser({
         );
     }
 
-    if (hasActiveSubscriptionOrTrial) {
+    if (mustCancelSubscription) {
         return (
             <div className="space-y-6">
                 <HeadingSmall
@@ -96,6 +98,13 @@ export default function DeleteUser({
                             'Please proceed with caution, this cannot be undone.',
                         )}
                     </p>
+                    {cancelsUnpaidSubscription && (
+                        <p className="text-sm">
+                            {__(
+                                'Your subscription has an unpaid charge. Deleting your account cancels it, and we will not try to charge your card again.',
+                            )}
+                        </p>
+                    )}
                 </div>
 
                 <Dialog>
@@ -147,6 +156,9 @@ export default function DeleteUser({
                                         />
 
                                         <InputError message={errors.password} />
+                                        <InputError
+                                            message={errors.subscription}
+                                        />
                                     </div>
 
                                     <DialogFooter className="gap-2">

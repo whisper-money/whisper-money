@@ -340,6 +340,7 @@ class SubscriptionController extends Controller
 
         return Inertia::render('settings/billing', [
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            'hasUnpaidSubscription' => $user->unpaidSubscription() !== null,
             'subscription' => $subscription === null ? null : [
                 'onTrial' => $subscription->onTrial(),
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
