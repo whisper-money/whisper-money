@@ -22,7 +22,7 @@ interface FreePlanPageProps extends SharedData {
     banks: string[];
     transactionsCount: number;
     hasAiConsent: boolean;
-    /** The paywall screen that sent the user here, for the survey. */
+    /** The paywall screen that sent the user here, for the survey's analytics. */
     gate: Exclude<PaywallGate, 'soft'>;
 }
 

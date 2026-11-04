@@ -89,8 +89,9 @@ class SubscriptionController extends Controller
             'banks' => $connections,
             'transactionsCount' => $user->transactions()->count(),
             'hasAiConsent' => $user->hasActiveAiConsent(),
-            // Which paywall screen sent the user here, for the survey asked on
-            // the way out. Only the two gates with something to give up do.
+            // Which paywall screen sent the user here, for the analytics of the
+            // survey asked on the way out. Only the two gates with something to
+            // give up do. The answer itself records `User::paywallGate()`.
             'gate' => $this->isFormerSubscriberWithBanks($user, $connections->isNotEmpty())
                 ? PaywallGate::FormerSubscriber
                 : PaywallGate::Hard,
@@ -316,18 +317,35 @@ class SubscriptionController extends Controller
      */
     public function success(Request $request): Response
     {
-        $return = $request->session()->pull(self::RETURN_SESSION_KEY);
-
         return Inertia::render('subscription/success', [
-            'continueUrl' => is_array($return) && ! $request->user()->isOnboarded()
-                ? route('onboarding', $return)
-                : null,
+            'continueUrl' => $this->pullOnboardingReturnUrl($request),
         ]);
     }
 
-    public function cancel(): RedirectResponse
+    /**
+     * Where Stripe sends a user who backs out of the checkout. One who started
+     * it mid-onboarding goes back to the step they left, not to `/subscribe`:
+     * the paywall and its free-plan survey are not something to show to a user
+     * who has not finished setting up yet, and would record a survey answer
+     * from someone who was only looking at the plans.
+     */
+    public function cancel(Request $request): RedirectResponse
     {
-        return redirect()->route('subscribe');
+        return redirect()->to($this->pullOnboardingReturnUrl($request) ?? route('subscribe'));
+    }
+
+    /**
+     * The onboarding step a checkout started from, consumed once the user is
+     * back from Stripe. Null for a checkout started anywhere else, and for a
+     * user who has finished onboarding in the meantime.
+     */
+    private function pullOnboardingReturnUrl(Request $request): ?string
+    {
+        $return = $request->session()->pull(self::RETURN_SESSION_KEY);
+
+        return is_array($return) && ! $request->user()->isOnboarded()
+            ? route('onboarding', $return)
+            : null;
     }
 
     public function billing(Request $request): Response|RedirectResponse

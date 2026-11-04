@@ -117,11 +117,12 @@ export function FreePlanSurvey({
     description?: string;
 }) {
     const isMobile = useIsMobile();
+    // No gate in the answer: the server reads it off the user. The prop only
+    // labels the analytics events below.
     const http = useHttp<{
         reason: FreePlanSurveyReason | '';
         details: string;
-        gate: PaywallGate;
-    }>({ reason: '', details: '', gate });
+    }>({ reason: '', details: '' });
 
     // Set by the first way out the user takes, so nothing after it counts: a
     // second click on Send while the next page loads would store the answer

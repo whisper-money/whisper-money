@@ -96,11 +96,27 @@ class UserFactory extends Factory
      */
     public function subscribed(string $status = 'active'): static
     {
+        return $this->withSubscription(['stripe_status' => $status]);
+    }
+
+    /**
+     * A user who paid, canceled, and whose subscription has already ended.
+     */
+    public function formerSubscriber(): static
+    {
+        return $this->withSubscription(['stripe_status' => 'canceled', 'ends_at' => now()->subDay()]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function withSubscription(array $attributes): static
+    {
         return $this->afterCreating(fn (User $user) => $user->subscriptions()->create([
             'type' => 'default',
             'stripe_id' => 'sub_factory_'.fake()->unique()->numerify('##########'),
-            'stripe_status' => $status,
             'stripe_price' => 'price_factory',
+            ...$attributes,
         ]));
     }
 }

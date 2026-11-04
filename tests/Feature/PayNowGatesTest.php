@@ -149,6 +149,38 @@ describe('the trip back from Stripe', function () {
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('continueUrl', null));
     });
+
+    // Backing out of Stripe mid-onboarding must not land on the paywall and
+    // its free-plan survey before the user has even finished setting up.
+    it('sends a buyer who backs out mid-onboarding back to the step that sent them', function () {
+        $user = User::factory()->notOnboarded()->create();
+
+        $this->actingAs($user)
+            ->withSession([RETURN_KEY => ['step' => 'create-account', 'connect' => 'bank']])
+            ->get(route('subscribe.cancel'))
+            ->assertRedirect(route('onboarding', ['step' => 'create-account', 'connect' => 'bank']))
+            ->assertSessionMissing(RETURN_KEY);
+
+        expect($user->fresh()->paywall_seen_at)->toBeNull();
+    });
+
+    it('sends a user who backs out of a checkout started outside the wizard to the paywall', function () {
+        $user = User::factory()->notOnboarded()->create();
+
+        $this->actingAs($user)
+            ->get(route('subscribe.cancel'))
+            ->assertRedirect(route('subscribe'));
+    });
+
+    it('sends a user who finished onboarding meanwhile to the paywall when backing out', function () {
+        $user = User::factory()->onboarded()->create();
+
+        $this->actingAs($user)
+            ->withSession([RETURN_KEY => ['step' => 'ai-suggestions']])
+            ->get(route('subscribe.cancel'))
+            ->assertRedirect(route('subscribe'))
+            ->assertSessionMissing(RETURN_KEY);
+    });
 });
 
 describe('the free plan confirmation', function () {

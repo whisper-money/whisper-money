@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DripEmailType;
+use App\Enums\PaywallGate;
 use App\Enums\PlanFeature;
 use App\Enums\TransactionSource;
 use App\Features\FullImport;
@@ -181,6 +182,25 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->onboarded_at
             ->addHours(config('subscriptions.free_plan_escape_delay_hours'))
             ->isPast();
+    }
+
+    /**
+     * Which kind of paywall user this is, as recorded with a free-plan survey
+     * answer.
+     *
+     * Anyone who paid and stopped is a former subscriber, whatever they still
+     * hold: the paywall only shows them the former-subscriber screen while a
+     * bank is connected, so someone who removed their banks by hand and kept
+     * only the AI reaches the free-plan screen as `Hard`, and the screen alone
+     * would record them as a user who never paid.
+     */
+    public function paywallGate(): PaywallGate
+    {
+        if ($this->hasCanceledSubscription()) {
+            return PaywallGate::FormerSubscriber;
+        }
+
+        return $this->hasPaidFeaturesToGiveUp() ? PaywallGate::Hard : PaywallGate::Soft;
     }
 
     /** @return HasOne<UserSetting, $this> */

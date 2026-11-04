@@ -85,7 +85,6 @@ describe('FreePlanSurvey', () => {
         expect(mocks.post).toHaveBeenCalledWith('/subscribe/free-plan/survey', {
             reason: 'other',
             details: 'I only track cash',
-            gate: 'soft',
         });
         expect(mocks.toastSuccess).toHaveBeenCalledWith(
             'Thanks for telling us',
