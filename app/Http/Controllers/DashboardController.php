@@ -101,12 +101,17 @@ class DashboardController extends Controller
         ));
     }
 
+    /**
+     * The last 12 months up to the user's own current month, not the server's
+     * UTC one: at 21:00 on 31 October in Buenos Aires the server is already in
+     * November, and the chart would end on a November that repeats October.
+     */
     private function getNetWorthEvolution(Request $request): array
     {
         $user = $request->user();
-        $now = Carbon::now();
-        $start = $now->copy()->subMonths(12);
-        $end = $now->copy();
+        $today = $user->localToday();
+        $start = $today->copy()->subMonths(12);
+        $end = $today->copy()->endOfDay();
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
@@ -115,7 +120,7 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);
+        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -17,24 +18,29 @@ class AccountMetricsService
      * Returns current/previous balance, diff, invested amount, and a 12-month sparkline history
      * with month labels formatted as "M" (current year) or "M 'y" (previous years).
      *
+     * The history ends on the owner's current month, read from $today
+     * ({@see User::localToday()}): at month-end the server's UTC clock is
+     * already in the next month for an American user, which would show up as a
+     * copy of the last one.
+     *
      * @param  Collection<int, Account>  $accounts
      * @return array<string, array{currentBalance: int, previousBalance: int, diff: int, investedAmount: int|null, history: list<array{date: string, value: int, investedAmount?: int|null}>}>
      */
-    public function getAccountMetrics(string $userCurrency, Collection $accounts): array
+    public function getAccountMetrics(string $userCurrency, Collection $accounts, Carbon $today): array
     {
-        $now = Carbon::now();
-        $rangeStart = $now->copy()->subMonths(12)->startOfMonth();
+        $end = $today->copy()->endOfDay();
+        $rangeStart = $end->copy()->subMonths(12)->startOfMonth();
 
         $accountIds = $accounts->pluck('id');
-        $lookup = BalanceLookup::forAccounts($accountIds, $rangeStart, $now->copy());
-        $this->preloadExchangeRates($userCurrency, $accounts, $this->monthlyEndDateStrings($rangeStart, $now));
+        $lookup = BalanceLookup::forAccounts($accountIds, $rangeStart, $end->copy());
+        $this->preloadExchangeRates($userCurrency, $accounts, $this->monthlyEndDateStrings($rangeStart, $end));
 
         $metrics = [];
 
         foreach ($accounts as $account) {
             $history = [];
             $current = $rangeStart->copy();
-            $endMonth = $now->copy()->startOfMonth();
+            $endMonth = $end->copy()->startOfMonth();
 
             while ($current->lte($endMonth)) {
                 $date = $current->copy()->endOfMonth();
@@ -42,7 +48,7 @@ class AccountMetricsService
                 $convertedBalance = $this->convertBalance($originalBalance, $account->currency_code, $userCurrency, $date->toDateString());
 
                 $point = [
-                    'date' => $this->formatMonth($date),
+                    'date' => $this->formatMonth($date, $end->year),
                     'value' => $convertedBalance,
                 ];
 
@@ -60,7 +66,7 @@ class AccountMetricsService
 
             $investedAmount = null;
             if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $this->investedAmountAt($lookup, $account, $now);
+                $investedAmount = $this->investedAmountAt($lookup, $account, $end);
             }
 
             $metrics[$account->id] = [
@@ -80,16 +86,19 @@ class AccountMetricsService
      *
      * Each point contains the month, timestamp, and per-account converted balances.
      * Accounts with a different currency than the user also get `_original` entries.
-     * Investment accounts get `_invested` entries.
+     * Investment accounts get `_invested` entries. Their current invested
+     * amount is read at the end of the owner's $today
+     * ({@see User::localToday()}), not at the server's UTC instant.
      *
      * @param  Collection<int, Account>  $accounts
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end): array
+    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, Carbon $today): array
     {
         $accountIds = $accounts->pluck('id');
+        $endOfToday = $today->copy()->endOfDay();
 
-        $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
+        $lookupEnd = $endOfToday->gt($end) ? $endOfToday->copy() : $end->copy();
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
         $this->preloadExchangeRates($userCurrency, $accounts, $this->monthlyEndDateStrings($start, $end));
 
@@ -131,8 +140,7 @@ class AccountMetricsService
             $current->addMonth();
         }
 
-        $now = Carbon::now();
-        $accountsConfig = $accounts->mapWithKeys(function (Account $account) use ($lookup, $now) {
+        $accountsConfig = $accounts->mapWithKeys(function (Account $account) use ($lookup, $endOfToday) {
             $config = [
                 'id' => $account->id,
                 'name' => $account->name,
@@ -149,7 +157,7 @@ class AccountMetricsService
             }
 
             if ($account->type->supportsInvestedAmount()) {
-                $config['invested_amount'] = $this->investedAmountAt($lookup, $account, $now);
+                $config['invested_amount'] = $this->investedAmountAt($lookup, $account, $endOfToday);
             }
 
             return [$account->id => $config];
@@ -321,9 +329,9 @@ class AccountMetricsService
     /**
      * Format a month label: "M" for current year, "M 'y" for previous years.
      */
-    private function formatMonth(Carbon $date): string
+    private function formatMonth(Carbon $date, int $currentYear): string
     {
-        $isCurrentYear = $date->year === Carbon::now()->year;
+        $isCurrentYear = $date->year === $currentYear;
 
         return $isCurrentYear
             ? $date->format('M')

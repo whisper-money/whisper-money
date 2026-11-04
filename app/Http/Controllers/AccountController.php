@@ -14,6 +14,7 @@ use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LoanAmortizationService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ class AccountController extends Controller
 
         return Inertia::render('Accounts/Index', [
             'accounts' => $accounts,
-            'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts)),
+            'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts, $user->localToday())),
             // A credit card shows what is in use of it instead of a balance.
             'creditCardUsage' => Inertia::defer(fn () => $this->creditCardStatementService->usageByAccount($accounts, $user)),
         ]);
@@ -89,6 +90,7 @@ class AccountController extends Controller
         $account->load('bank');
 
         $data = $account->toArray();
+        $today = $request->user()->localToday();
 
         if ($account->type === AccountType::RealEstate) {
             $account->load('realEstateDetail.linkedLoanAccount.bank');
@@ -104,7 +106,7 @@ class AccountController extends Controller
 
                 // Include current balances for equity calculation
                 if ($linkedLoan) {
-                    $data['real_estate_detail']['current_loan_balance'] = $this->latestBalance($linkedLoan->id);
+                    $data['real_estate_detail']['current_loan_balance'] = $this->latestBalance($linkedLoan->id, $today);
 
                     // Include linked loan account at top level for header actions
                     $data['linked_loan_account'] = $linkedLoan->toArray();
@@ -112,11 +114,11 @@ class AccountController extends Controller
                     $linkedLoan->load('loanDetail');
 
                     if ($linkedLoan->loanDetail) {
-                        $data['loan_detail'] = $this->loanDetailData($linkedLoan->loanDetail, $linkedLoan);
+                        $data['loan_detail'] = $this->loanDetailData($linkedLoan->loanDetail, $linkedLoan, $today);
                     }
                 }
 
-                $data['real_estate_detail']['current_market_value'] = $this->latestBalance($account->id);
+                $data['real_estate_detail']['current_market_value'] = $this->latestBalance($account->id, $today);
             }
 
             // Provide available loan accounts for linking
@@ -132,7 +134,7 @@ class AccountController extends Controller
             $account->load('loanDetail');
 
             if ($account->loanDetail) {
-                $data['loan_detail'] = $this->loanDetailData($account->loanDetail, $account);
+                $data['loan_detail'] = $this->loanDetailData($account->loanDetail, $account, $today);
             }
         }
 
@@ -160,13 +162,14 @@ class AccountController extends Controller
 
     /**
      * Build the loan detail payload, augmenting the model with the computed
-     * amortization figures that depend on the account's latest balance.
+     * amortization figures that depend on the account's latest balance. The
+     * months left count from the owner's $today, not the server's UTC date.
      *
      * @return array<string, mixed>
      */
-    private function loanDetailData(LoanDetail $loanDetail, Account $account): array
+    private function loanDetailData(LoanDetail $loanDetail, Account $account, Carbon $today): array
     {
-        $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
+        $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, $today);
 
         $lastBalance = AccountBalance::query()
             ->where('account_id', $account->id)
@@ -187,13 +190,15 @@ class AccountController extends Controller
     }
 
     /**
-     * The most recent balance for an account on or before today.
+     * The most recent balance for an account on or before the owner's $today.
+     * The monthly balance jobs write the 1st at 00:00 UTC, which is still the
+     * 31st for an American user: the server's date would read it a few hours early.
      */
-    private function latestBalance(string $accountId): int
+    private function latestBalance(string $accountId, Carbon $today): int
     {
         return AccountBalance::query()
             ->where('account_id', $accountId)
-            ->where('balance_date', '<=', now()->toDateString())
+            ->where('balance_date', '<=', $today->toDateString())
             ->orderByDesc('balance_date')
             ->value('balance') ?? 0;
     }

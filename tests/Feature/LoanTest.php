@@ -206,7 +206,7 @@ it('generates projection from last account balance entry', function () {
         'balance' => 19700000,
     ]);
 
-    $projection = $this->service->generateProjection($loanDetail, 6);
+    $projection = $this->service->generateProjection($loanDetail, today(), 6);
 
     expect($projection)->not->toBeEmpty()
         ->and(count($projection))->toBeLessThanOrEqual(6);
