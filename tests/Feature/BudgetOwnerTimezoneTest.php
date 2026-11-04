@@ -111,7 +111,9 @@ describe('the current period', function () {
         $this->actingAs($budget->user)->get(route('budgets.show', $budget))
             ->assertInertia(fn ($page) => $page
                 ->where('currentPeriod.start_date', '2026-10-01')
-                ->where('nextPeriod', null));
+                ->where('nextPeriod', null)
+                // Loaded to read the owner's today, never sent with the budget.
+                ->missing('budget.user'));
     });
 
     it('is the owner\'s in the public API', function () {

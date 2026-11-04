@@ -134,6 +134,9 @@ class BudgetController extends Controller
         $this->authorize('view', $budget);
 
         $user = $request->user();
+        // The policy only lets the owner in: reuse them for the owner's today
+        // rather than loading them again.
+        $budget->setRelation('user', $user);
 
         $viewedPeriod = $this->periodToView($request, $budget);
 

@@ -55,10 +55,16 @@ class Budget extends Model
         'expense_type' => BudgetExpenseType::Variable->value,
     ];
 
-    /** @var list<string> */
+    /**
+     * `user` is loaded to read the owner's today (ownerToday()), never to be
+     * sent: a budget handed to a page must not carry its owner's record.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'period_duration',
         'space_id',
+        'user',
     ];
 
     protected function casts(): array
