@@ -37,8 +37,7 @@ class BudgetNotificationService
         // meaningless for a period that has already ended.
         $periods = BudgetPeriod::query()
             ->whereIn('id', $matchingPeriodIds)
-            ->where('start_date', '<=', today())
-            ->where('end_date', '>=', today())
+            ->covering($user->localToday())
             ->with('budget')
             ->get();
 

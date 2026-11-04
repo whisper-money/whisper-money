@@ -7,6 +7,7 @@ use App\Enums\CashflowBlock;
 use App\Models\BudgetPeriod;
 use App\Models\Transaction;
 use App\Services\Concerns\ConvertsTransactionCurrency;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -64,11 +65,12 @@ class CashflowBudgetReserveService
      * Budget amounts are read as stored, in the user's currency, the same way
      * the budget screens read them.
      *
+     * @param  Carbon  $today  the user's today (User::localToday()): which periods are in progress
      * @return array{reserved: int, budgets: list<BudgetMarginRow>, fixed_expense: int, variable_expense: int, general_expense: int}
      */
-    public function forPeriod(string $userId, string $userCurrency, PeriodComparator $period, int $expense): array
+    public function forPeriod(string $userId, string $userCurrency, PeriodComparator $period, int $expense, Carbon $today): array
     {
-        $budgets = $this->openBudgetMargins($userId, $period);
+        $budgets = $this->openBudgetMargins($userId, $period, $today);
 
         return [
             'reserved' => array_sum(array_map(fn (array $row): int => max(0, $row['margin']), $budgets)),
@@ -100,7 +102,7 @@ class CashflowBudgetReserveService
     /**
      * @return list<BudgetMarginRow>
      */
-    private function openBudgetMargins(string $userId, PeriodComparator $period): array
+    private function openBudgetMargins(string $userId, PeriodComparator $period, Carbon $today): array
     {
         return BudgetPeriod::query()
             ->whereHas('budget', fn (Builder $query) => $query
@@ -110,8 +112,7 @@ class CashflowBudgetReserveService
             ->overlapping($period->from, $period->to)
             // In progress today: a period that is over already gave back what it
             // left, and one yet to start holds nothing back from this income.
-            ->where('start_date', '<=', today()->toDateString())
-            ->where('end_date', '>=', today()->toDateString())
+            ->covering($today)
             ->with('budget:id,name,expense_type')
             ->withSum('budgetTransactions as spent', 'amount')
             ->orderBy('start_date')

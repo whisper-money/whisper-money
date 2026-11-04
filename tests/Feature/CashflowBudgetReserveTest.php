@@ -466,3 +466,16 @@ test('the previous period carries the expense split but nothing reserved', funct
         ->and($previous['expense'])->toBe(83000)
         ->and($previous)->not->toHaveKeys(['reserved', 'budgets']);
 });
+
+test('reserved reads the periods in progress on the user\'s today', function () {
+    // 1 November 00:30 UTC is still 31 October in Buenos Aires: October holds
+    // its margin back, November has not started.
+    $this->travelTo(now()->setDate(2026, 11, 1)->setTime(0, 30));
+    $this->user->update(['timezone' => 'America/Argentina/Buenos_Aires']);
+
+    $groceries = Budget::factory()->monthly()->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+    budgetPeriodWithSpend($groceries, '2026-10-01', '2026-10-31', 40000, 15000);
+    budgetPeriodWithSpend($groceries, '2026-11-01', '2026-11-30', 40000, 0);
+
+    expect(cashflowSummary('2026-10-01', '2026-11-30')['reserved'])->toBe(25000);
+});

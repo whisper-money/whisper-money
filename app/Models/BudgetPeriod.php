@@ -84,6 +84,17 @@ class BudgetPeriod extends Model
             ->where('end_date', '>=', $from->toDateString());
     }
 
+    /**
+     * Periods that include the given day.
+     *
+     * @param  Builder<BudgetPeriod>  $query
+     * @return Builder<BudgetPeriod>
+     */
+    public function scopeCovering(Builder $query, Carbon $day): Builder
+    {
+        return $query->overlapping($day, $day);
+    }
+
     /** @return HasMany<BudgetTransaction, $this> */
     public function budgetTransactions(): HasMany
     {

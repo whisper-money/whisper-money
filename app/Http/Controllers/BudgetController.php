@@ -44,13 +44,12 @@ class BudgetController extends Controller
             ->budgets()
             ->orderBy('position')
             ->orderBy('name')
-            ->with(['categories', 'labels', 'periods' => function ($query) {
+            ->with(['categories', 'labels', 'periods' => function ($query) use ($user) {
                 // Same ordering as Budget::getCurrentPeriod, for the same
                 // reason: the card reads `periods[0]`, and where two periods
                 // cover today the earliest-starting one is the one the user
                 // never configured.
-                $query->where('start_date', '<=', today())
-                    ->where('end_date', '>=', today())
+                $query->covering($user->localToday())
                     ->orderByDesc('start_date')
                     ->with(['budgetTransactions']);
             }])
@@ -154,7 +153,7 @@ class BudgetController extends Controller
 
         $nextPeriod = $budget->periods()
             ->where('start_date', '>', $viewedPeriod->end_date)
-            ->where('start_date', '<=', today())
+            ->where('start_date', '<=', $budget->ownerToday()->toDateString())
             ->orderBy('start_date', 'asc')
             ->first();
 
@@ -209,7 +208,7 @@ class BudgetController extends Controller
         if ($periodId) {
             return $budget->periods()
                 ->where('id', $periodId)
-                ->where('start_date', '<=', today())
+                ->where('start_date', '<=', $budget->ownerToday()->toDateString())
                 ->firstOrFail();
         }
 
@@ -221,7 +220,7 @@ class BudgetController extends Controller
         // showing a stale period as the current one and appending another row on
         // every visit. A budget always has at least the period it was created
         // with, so this is only reached by one that is still running.
-        return $viewedPeriod ?? $this->budgetPeriodService->generatePeriod($budget, null, today());
+        return $viewedPeriod ?? $this->budgetPeriodService->generatePeriod($budget, null, $budget->ownerToday());
     }
 
     public function store(StoreBudgetRequest $request): RedirectResponse

@@ -40,19 +40,24 @@ class GenerateBudgetPeriods extends Command
         // 128M limit and killed this command outright. Lazily for the same
         // reason - nothing here needs every budget in memory at once.
         // Archived budgets are left out: they stopped counting, so they get
-        // no further periods.
-        $budgets = Budget::query()->notArchived()->lazyById();
+        // no further periods. The owner comes along because every date below is
+        // the owner's today, not the server's.
+        $budgets = Budget::query()->notArchived()->with('user:id,timezone')->lazyById();
         $generatedCount = 0;
         $closedCount = 0;
 
         foreach ($budgets as $budget) {
+            // A period is over when it is over for the owner: hours after UTC
+            // midnight west of it, hours before it east of it. Hence the hourly
+            // schedule.
+            $today = $budget->ownerToday();
             $currentPeriod = $budget->getCurrentPeriod();
 
             if (! $currentPeriod) {
                 // Anchored on today, not on the end of the chain: a budget whose
                 // last period ended months ago needs the period covering now, or
                 // it crawls forward one period per night before it works again.
-                $this->budgetPeriodService->generatePeriod($budget, null, today());
+                $this->budgetPeriodService->generatePeriod($budget, null, $today);
                 $generatedCount++;
                 $this->info("Generated initial period for budget: {$budget->name}");
             }
@@ -61,7 +66,7 @@ class GenerateBudgetPeriods extends Command
             // the most recent one has the last word instead of whichever row
             // MySQL happened to return first.
             $completedPeriods = BudgetPeriod::where('budget_id', $budget->id)
-                ->where('end_date', '<', today())
+                ->where('end_date', '<', $today->toDateString())
                 ->orderBy('start_date')
                 ->get();
 
@@ -71,7 +76,7 @@ class GenerateBudgetPeriods extends Command
             }
 
             $futurePeriods = $budget->periods()
-                ->where('start_date', '>', today())
+                ->where('start_date', '>', $today->toDateString())
                 ->count();
 
             if ($futurePeriods < self::PERIODS_KEPT_AHEAD) {

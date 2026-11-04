@@ -8,7 +8,6 @@ use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
-use DateTimeZone;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -112,12 +111,12 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
 
     private function localReportDate(): string
     {
-        return now($this->reportingTimezone())->toDateString();
+        return $this->user->localToday()->toDateString();
     }
 
     private function quietHoursDelayInSeconds(): ?int
     {
-        $timezone = $this->userTimezone();
+        $timezone = $this->user->validTimezone();
 
         if ($timezone === null) {
             return null;
@@ -139,27 +138,5 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
         // A release of zero or less is picked up again at once and burns the
         // job's tries in a loop, so always wait at least a second.
         return max(1, $nextAllowedAt->getTimestamp() - $localNow->getTimestamp());
-    }
-
-    private function reportingTimezone(): string
-    {
-        return $this->userTimezone() ?? config('app.timezone', 'UTC');
-    }
-
-    private function userTimezone(): ?string
-    {
-        $timezone = $this->user->timezone;
-
-        if ($timezone === null) {
-            return null;
-        }
-
-        try {
-            new DateTimeZone($timezone);
-
-            return $timezone;
-        } catch (\Exception) {
-            return null;
-        }
     }
 }

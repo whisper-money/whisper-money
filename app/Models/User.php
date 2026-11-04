@@ -11,6 +11,8 @@ use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
+use DateTimeZone;
+use Exception;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Builder;
@@ -771,6 +773,63 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function formatLocale(): string
     {
         return $this->format_locale ?? app(FormatLocaleOptions::class)->fallbackFor($this->locale);
+    }
+
+    /**
+     * The stored timezone when it is a real identifier, or null when there is
+     * none (about 180 users never sent one) or it does not parse.
+     *
+     * Use it where "unknown" must behave differently from the fallback, such as
+     * quiet hours. Everywhere else read {@see localTimezone()}.
+     */
+    public function validTimezone(): ?string
+    {
+        if ($this->timezone === null) {
+            return null;
+        }
+
+        try {
+            new DateTimeZone($this->timezone);
+
+            return $this->timezone;
+        } catch (Exception) {
+            return null;
+        }
+    }
+
+    /**
+     * The timezone this user's calendar runs in: their own, or the app's when it
+     * is unknown or invalid.
+     */
+    public function localTimezone(): string
+    {
+        return $this->validTimezone() ?? (string) config('app.timezone');
+    }
+
+    /**
+     * The current instant on this user's wall clock, in {@see localTimezone()}.
+     */
+    public function localNow(): Carbon
+    {
+        return now($this->localTimezone());
+    }
+
+    /**
+     * The date it is for this user right now, as midnight in the *app*
+     * timezone.
+     *
+     * The server clock is UTC, so `today()` is tomorrow for an American user
+     * every evening and yesterday for an Asian one every morning. Anything that
+     * decides which day, week or month is "current" for a user (the period in
+     * progress, what has ended) must read this instead. Only the date is the
+     * user's: it is re-anchored in the app timezone so it compares and stores
+     * like the plain `date` columns and every other `today()` it meets. Never
+     * change the app timezone per request instead: that would skew every stored
+     * timestamp.
+     */
+    public function localToday(): Carbon
+    {
+        return Carbon::parse($this->localNow()->toDateString());
     }
 
     public function isDeleted(): bool
