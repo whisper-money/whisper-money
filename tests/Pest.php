@@ -33,6 +33,7 @@ use Laravel\Ai\Exceptions\ProviderOverloadedException;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
 use Stripe\Collection as StripeCollection;
+use Stripe\Service\InvoiceService;
 use Stripe\Service\SubscriptionService;
 use Stripe\StripeClient;
 use Stripe\Subscription;
@@ -756,4 +757,26 @@ function issueOAuthToken(User $user, ?array $scopes = ['mcp:use'], ?Client $clie
     ])->assertOk()->json('access_token');
 
     return $token;
+}
+
+/**
+ * Bind a Stripe client whose paid-invoice listing answers with invoices for
+ * the given amounts (in cents). A trial opens with a paid invoice for 0.
+ *
+ * @param  list<int>  $amountsPaid
+ */
+function bindPaidInvoices(array $amountsPaid, string $customerId = 'cus_cancelled'): void
+{
+    $invoiceService = Mockery::mock(InvoiceService::class);
+    $invoiceService->shouldReceive('all')
+        ->with(Mockery::on(fn (array $params): bool => $params['status'] === 'paid' && $params['customer'] === $customerId))
+        ->andReturn(StripeCollection::constructFrom([
+            'object' => 'list',
+            'data' => array_map(fn (int $amount) => ['object' => 'invoice', 'status' => 'paid', 'amount_paid' => $amount], $amountsPaid),
+            'has_more' => false,
+        ]));
+
+    $stripeClient = Mockery::mock(StripeClient::class);
+    $stripeClient->invoices = $invoiceService;
+    app()->bind(StripeClient::class, fn () => $stripeClient);
 }

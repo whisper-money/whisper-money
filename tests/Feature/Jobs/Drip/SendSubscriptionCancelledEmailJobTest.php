@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Models\UserMailLog;
 use App\Models\UserSetting;
 use Illuminate\Support\Facades\Mail;
-use Stripe\Collection as StripeCollection;
-use Stripe\Service\InvoiceService;
 use Stripe\StripeClient;
 
 beforeEach(function () {
@@ -17,28 +15,6 @@ beforeEach(function () {
 
     config(['subscriptions.enabled' => true]);
 });
-
-/**
- * Bind a Stripe client whose paid-invoice listing answers with invoices for
- * the given amounts (in cents). A trial opens with a paid invoice for 0.
- *
- * @param  list<int>  $amountsPaid
- */
-function bindPaidInvoices(array $amountsPaid): void
-{
-    $invoiceService = Mockery::mock(InvoiceService::class);
-    $invoiceService->shouldReceive('all')
-        ->with(Mockery::on(fn (array $params) => $params['status'] === 'paid' && $params['customer'] === 'cus_cancelled'))
-        ->andReturn(StripeCollection::constructFrom([
-            'object' => 'list',
-            'data' => array_map(fn (int $amount) => ['object' => 'invoice', 'status' => 'paid', 'amount_paid' => $amount], $amountsPaid),
-            'has_more' => false,
-        ]));
-
-    $stripeClient = Mockery::mock(StripeClient::class);
-    $stripeClient->invoices = $invoiceService;
-    app()->bind(StripeClient::class, fn () => $stripeClient);
-}
 
 function cancelledCustomer(string $status = 'canceled', array $attributes = []): User
 {
