@@ -8,12 +8,12 @@ use App\Jobs\Drip\SendPaywallFollowUpEmailJob;
 use App\Jobs\Drip\SendPromoCodeEmailJob;
 use App\Jobs\Drip\SendSubscriptionCancelledEmailJob;
 use App\Jobs\Drip\SendWelcomeEmailJob;
+use App\Mail\Drip\CancelledBeforePayingEmail;
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
 use App\Mail\Drip\OnboardingReminderEmail;
 use App\Mail\Drip\PaywallFollowUpEmail;
 use App\Mail\Drip\PromoCodeEmail;
-use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
@@ -58,8 +58,8 @@ dataset('drip email jobs', [
         fn (): User => User::factory()->create()],
     'onboarding reminder' => [SendOnboardingReminderEmailJob::class, OnboardingReminderEmail::class, DripEmailType::OnboardingReminder,
         fn (): User => User::factory()->notOnboarded()->create()],
-    'subscription cancelled' => [SendSubscriptionCancelledEmailJob::class, SubscriptionCancelledEmail::class, DripEmailType::SubscriptionCancelled,
-        fn (): User => User::factory()->create()],
+    'subscription cancelled before paying' => [SendSubscriptionCancelledEmailJob::class, CancelledBeforePayingEmail::class, DripEmailType::SubscriptionCancelled,
+        fn (): User => User::factory()->create(['stripe_id' => null])],
     ...$subscriptionGatedJobs,
 ]);
 
