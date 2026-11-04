@@ -94,3 +94,13 @@ it('ranks the 30 days ending on the owner\'s today on the top labels card', func
 
     expect($labels->pluck('id')->all())->toBe([$current->id]);
 })->with('dashboard owner clocks');
+
+it('hands the cards the same 30 days it sums them over, for their links and drill-downs', function (?string $timezone, string $now, string $today) {
+    $user = dashboardOwnerAt($timezone, $now);
+
+    $this->actingAs($user)->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('spendingWindow', [
+            'from' => Carbon::parse($today)->subDays(29)->toDateString(),
+            'to' => $today,
+        ]));
+})->with('dashboard owner clocks');

@@ -34,6 +34,9 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
+            // The window the top categories and top labels cards report on, so
+            // their links and drill-downs ask for the same days the server summed.
+            'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
             'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
