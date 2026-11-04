@@ -39,7 +39,7 @@ class CreditCardStatementService
         $creditCards = $accounts
             ->filter(fn (Account $account): bool => $account->type === AccountType::CreditCard)
             ->loadMissing('creditCardDetail');
-        $today = $this->todayFor($user);
+        $today = $user->localToday()->toImmutable();
 
         return $creditCards
             ->mapWithKeys(fn (Account $account): array => [
@@ -61,7 +61,7 @@ class CreditCardStatementService
             return [];
         }
 
-        $today = $this->todayFor($user);
+        $today = $user->localToday()->toImmutable();
         $detail = $account->creditCardDetail;
 
         return [
@@ -347,11 +347,6 @@ class CreditCardStatementService
             'period_to' => $to->toDateString(),
             'daily' => $daily,
         ];
-    }
-
-    private function todayFor(User $user): CarbonImmutable
-    {
-        return CarbonImmutable::parse(now($user->timezone ?? config('app.timezone'))->toDateString());
     }
 
     private static function bookedOn(Transaction $transaction): CarbonImmutable

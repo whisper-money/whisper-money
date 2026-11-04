@@ -233,3 +233,32 @@ test('notifies over limit when the preference is enabled while already over', fu
         fn (BudgetNotificationEmail $mail) => $mail->type === BudgetNotificationType::OverLimit,
     );
 });
+
+test('emails about the period in progress on the user\'s today', function () {
+    // 1 November 00:30 UTC is still 31 October in Buenos Aires: an October
+    // spend lands in the period the user is living in, so it is news.
+    $this->travelTo(now()->setDate(2026, 11, 1)->setTime(0, 30));
+    Mail::fake();
+    $this->user->update(['timezone' => 'America/Argentina/Buenos_Aires']);
+
+    $budget = Budget::factory()->forCategories($this->category)->create([
+        'user_id' => $this->user->id,
+        'notify_on_new_transaction' => true,
+    ]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2026-10-01',
+        'end_date' => '2026-10-31',
+        'allocated_amount' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $this->category->id,
+        'transaction_date' => '2026-10-31',
+        'amount' => -1000,
+    ]);
+    $this->service->assignTransaction($transaction);
+
+    Mail::assertQueued(BudgetNotificationEmail::class);
+});

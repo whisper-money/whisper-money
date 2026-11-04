@@ -186,7 +186,7 @@ class BudgetService
 
             if ($allocatedAmount !== null) {
                 $budget->periods()
-                    ->where('end_date', '>=', today())
+                    ->where('end_date', '>=', $budget->ownerToday()->toDateString())
                     ->update(['allocated_amount' => $allocatedAmount]);
             }
         });

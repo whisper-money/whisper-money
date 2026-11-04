@@ -63,7 +63,7 @@ class CashflowAnalyticsService
         $summaries = $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $previousPeriod);
         $summaries['current'] = [
             ...$summaries['current'],
-            ...$this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense']),
+            ...$this->budgetReserve->forPeriod($user->id, $user->currency_code, $period, $summaries['current']['expense'], $user->localToday()),
         ];
         $summaries['previous'] = [
             ...$summaries['previous'],
