@@ -4,10 +4,13 @@ namespace App\Models;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\Banking\Formatters\AccountNameFormatter;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Factories\BankingConnectionFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -144,6 +147,70 @@ class BankingConnection extends Model
     public function latestSyncLog(): HasOne
     {
         return $this->hasOne(BankingSyncLog::class)->latestOfMany();
+    }
+
+    /**
+     * Connections a scheduled sync should pick up: Active ones and Error ones
+     * still inside their retry budget, with an unexpired consent, plus Active
+     * Enable Banking ones whose consent ran out (the sync marks those expired),
+     * all outside a rate-limit backoff and owned by a user that still exists.
+     *
+     * @param  Builder<BankingConnection>  $query
+     * @return Builder<BankingConnection>
+     */
+    public function scopeEligibleForScheduledSync(Builder $query): Builder
+    {
+        return $query
+            ->whereHas('user')
+            ->where(function (Builder $query) {
+                $query->where(function (Builder $query) {
+                    $query->where(function (Builder $query) {
+                        $query->where('status', BankingConnectionStatus::Active)
+                            ->orWhere(function (Builder $query) {
+                                $query->where('status', BankingConnectionStatus::Error)
+                                    ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+                            });
+                    })->where(function (Builder $query) {
+                        $query->whereNull('valid_until')
+                            ->orWhere('valid_until', '>', now());
+                    });
+                })->orWhere(fn (Builder $query) => $query->consentExpiredWhileActive());
+            })
+            ->where(function (Builder $query) {
+                $query->whereNull('rate_limited_until')
+                    ->orWhere('rate_limited_until', '<=', now());
+            });
+    }
+
+    /**
+     * Active Enable Banking connections whose consent has run out. They are still
+     * dispatched so the sync job can mark them expired and tell the user; that
+     * path never reaches the bank.
+     *
+     * @param  Builder<BankingConnection>  $query
+     * @return Builder<BankingConnection>
+     */
+    public function scopeConsentExpiredWhileActive(Builder $query): Builder
+    {
+        return $query->where('provider', BankingProvider::EnableBanking)
+            ->where('status', BankingConnectionStatus::Active)
+            ->whereNotNull('valid_until')
+            ->where('valid_until', '<=', now());
+    }
+
+    /**
+     * Connections that have not synced successfully since $since. Never-synced
+     * connections count as not synced.
+     *
+     * @param  Builder<BankingConnection>  $query
+     * @return Builder<BankingConnection>
+     */
+    public function scopeNotSyncedSince(Builder $query, CarbonInterface $since): Builder
+    {
+        return $query->where(function (Builder $query) use ($since) {
+            $query->whereNull('last_synced_at')
+                ->orWhere('last_synced_at', '<', $since);
+        });
     }
 
     public function isActive(): bool

@@ -700,11 +700,13 @@ test('scheduled sync includes error connections under retry cap', function () {
 
     $activeConnection = BankingConnection::factory()->create([
         'user_id' => $user->id,
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     $errorConnection = BankingConnection::factory()->error()->create([
         'user_id' => $user->id,
         'consecutive_sync_failures' => 1,
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     $job = new SyncAllBankingConnectionsJob;
@@ -722,18 +724,21 @@ test('scheduled sync excludes error connections at or over retry cap', function 
 
     $activeConnection = BankingConnection::factory()->create([
         'user_id' => $user->id,
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     // At the cap - should be excluded
     BankingConnection::factory()->error()->create([
         'user_id' => $user->id,
         'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     // Over the cap (auth error) - should be excluded
     BankingConnection::factory()->error()->create([
         'user_id' => $user->id,
         'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1,
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     $job = new SyncAllBankingConnectionsJob;
@@ -785,11 +790,13 @@ test('scheduled sync skips connections still within rate limit backoff window', 
     BankingConnection::factory()->create([
         'user_id' => $user->id,
         'rate_limited_until' => now()->addHour(),
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     $eligible = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'rate_limited_until' => now()->subMinute(),
+        'last_synced_at' => now()->subHours(6),
     ]);
 
     $job = new SyncAllBankingConnectionsJob;
@@ -797,6 +804,78 @@ test('scheduled sync skips connections still within rate limit backoff window', 
 
     Queue::assertPushed(SyncBankingConnectionJob::class, 1);
     Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->id === $eligible->id);
+});
+
+test('scheduled sync skips connections that synced within the last few hours', function (?int $minutesAgo, bool $shouldDispatch) {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => User::factory()->onboarded(),
+        'last_synced_at' => $minutesAgo === null ? null : now()->subMinutes($minutesAgo),
+    ]);
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    Queue::assertPushedTimes(SyncBankingConnectionJob::class, $shouldDispatch ? 1 : 0);
+})->with([
+    'synced a minute ago' => [1, false],
+    'synced just inside the window' => [SyncAllBankingConnectionsJob::RECENTLY_SYNCED_HOURS * 60 - 1, false],
+    'synced on the previous sweep' => [6 * 60, true],
+    'never synced' => [null, true],
+]);
+
+test('scheduled sync still retries error connections whose last success is old', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $connection = BankingConnection::factory()->error()->create([
+        'user_id' => User::factory()->onboarded(),
+        'last_synced_at' => now()->subHours(6),
+    ]);
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->is($connection));
+});
+
+test('scheduled sync dispatches expired active enablebanking connections even when they synced recently', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => User::factory()->onboarded(),
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->subMinute(),
+        'last_synced_at' => now()->subMinutes(5),
+    ]);
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->is($connection));
+});
+
+test('a second sweep right after the first dispatches nothing new', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => User::factory()->onboarded(),
+        'last_synced_at' => now()->subHours(6),
+    ]);
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    // The first sweep's sync succeeds before the redelivered sweep runs.
+    $connection->update(['last_synced_at' => now()]);
+    $this->travel(15)->minutes();
+
+    (new SyncAllBankingConnectionsJob)->handle();
+
+    Queue::assertPushedTimes(SyncBankingConnectionJob::class, 1);
+});
+
+test('the scheduled sweep is never redelivered to a second worker', function () {
+    $job = new SyncAllBankingConnectionsJob;
+
+    expect($job->tries)->toBe(1)
+        ->and($job->timeout)->toBeLessThan((int) config('queue.connections.database.retry_after'));
 });
 
 // --- Manual Retry Reset Tests ---
