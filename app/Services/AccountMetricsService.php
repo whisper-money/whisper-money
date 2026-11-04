@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -17,12 +18,17 @@ class AccountMetricsService
      * Returns current/previous balance, diff, invested amount, and a 12-month sparkline history
      * with month labels formatted as "M" (current year) or "M 'y" (previous years).
      *
+     * The history ends on the owner's current month, read from $today
+     * ({@see User::localToday()}): on the server's UTC clock an
+     * American user's month-end is already the next month, which would show up
+     * as a copy of the last one.
+     *
      * @param  Collection<int, Account>  $accounts
      * @return array<string, array{currentBalance: int, previousBalance: int, diff: int, investedAmount: int|null, history: list<array{date: string, value: int, investedAmount?: int|null}>}>
      */
-    public function getAccountMetrics(string $userCurrency, Collection $accounts): array
+    public function getAccountMetrics(string $userCurrency, Collection $accounts, Carbon $today): array
     {
-        $now = Carbon::now();
+        $now = $today->copy()->endOfDay();
         $rangeStart = $now->copy()->subMonths(12)->startOfMonth();
 
         $accountIds = $accounts->pluck('id');
@@ -42,7 +48,7 @@ class AccountMetricsService
                 $convertedBalance = $this->convertBalance($originalBalance, $account->currency_code, $userCurrency, $date->toDateString());
 
                 $point = [
-                    'date' => $this->formatMonth($date),
+                    'date' => $this->formatMonth($date, $now->year),
                     'value' => $convertedBalance,
                 ];
 
@@ -321,9 +327,9 @@ class AccountMetricsService
     /**
      * Format a month label: "M" for current year, "M 'y" for previous years.
      */
-    private function formatMonth(Carbon $date): string
+    private function formatMonth(Carbon $date, int $currentYear): string
     {
-        $isCurrentYear = $date->year === Carbon::now()->year;
+        $isCurrentYear = $date->year === $currentYear;
 
         return $isCurrentYear
             ? $date->format('M')

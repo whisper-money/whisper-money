@@ -48,7 +48,7 @@ class AccountController extends Controller
 
         return Inertia::render('Accounts/Index', [
             'accounts' => $accounts,
-            'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts)),
+            'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts, $user->localToday())),
             // A credit card shows what is in use of it instead of a balance.
             'creditCardUsage' => Inertia::defer(fn () => $this->creditCardStatementService->usageByAccount($accounts, $user)),
         ]);

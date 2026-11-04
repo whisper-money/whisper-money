@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
+use App\Models\User;
 use Carbon\Carbon;
 
 class LoanAmortizationService
@@ -85,9 +86,11 @@ class LoanAmortizationService
      *
      * @param  LoanDetail  $loanDetail  The loan's amortization parameters
      * @param  int  $monthsAhead  How many months into the future to project
+     * @param  Carbon|null  $today  The owner's current date ({@see User::localToday()}),
+     *                              which anchors a loan with no balance yet; the server clock when null
      * @return array<string, int> Map of 'Y-m' => balance in cents
      */
-    public function generateProjection(LoanDetail $loanDetail, int $monthsAhead = 12): array
+    public function generateProjection(LoanDetail $loanDetail, int $monthsAhead = 12, ?Carbon $today = null): array
     {
         $lastBalance = AccountBalance::query()
             ->where('account_id', $loanDetail->account_id)
@@ -104,7 +107,7 @@ class LoanAmortizationService
             );
         }
 
-        return $this->projectFromOriginal($loanDetail, $monthsAhead);
+        return $this->projectFromOriginal($loanDetail, $monthsAhead, $today ?? Carbon::now());
     }
 
     /**
@@ -148,13 +151,12 @@ class LoanAmortizationService
      *
      * @return array<string, int> Map of 'Y-m' => balance in cents
      */
-    private function projectFromOriginal(LoanDetail $loanDetail, int $monthsAhead): array
+    private function projectFromOriginal(LoanDetail $loanDetail, int $monthsAhead, Carbon $today): array
     {
         $projection = [];
-        $now = Carbon::now();
         $start = $loanDetail->start_date->copy()->startOfMonth();
 
-        $monthsElapsed = (int) $start->diffInMonths($now);
+        $monthsElapsed = (int) $start->diffInMonths($today);
         $startMonth = max(0, $monthsElapsed);
 
         $monthsToProject = min($monthsAhead, $loanDetail->loan_term_months - $startMonth);
@@ -165,7 +167,7 @@ class LoanAmortizationService
                 break;
             }
 
-            $date = $now->copy()->addMonthsNoOverflow($i);
+            $date = $today->copy()->addMonthsNoOverflow($i);
             $balance = $this->calculateRemainingBalance(
                 $loanDetail->original_amount,
                 $loanDetail->annual_interest_rate,
