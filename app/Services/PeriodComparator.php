@@ -19,6 +19,20 @@ class PeriodComparator
         return (int) $this->from->copy()->startOfDay()->diffInDays($this->to->copy()->startOfDay()) + 1;
     }
 
+    /**
+     * Both bounds as `Y-m-d`, the shape the transactions filter and the
+     * analytics endpoints take a range in.
+     *
+     * @return array{from: string, to: string}
+     */
+    public function toDateStrings(): array
+    {
+        return [
+            'from' => $this->from->toDateString(),
+            'to' => $this->to->toDateString(),
+        ];
+    }
+
     public function previous(): self
     {
         $days = $this->from->diffInDays($this->to) + 1;
