@@ -65,7 +65,7 @@ describe('FreePlanConfirm', () => {
         );
     });
 
-    it('stores the answer with its gate, then disconnects', async () => {
+    it('stores the answer, without a gate, then disconnects', async () => {
         render(<FreePlanConfirm />);
 
         fireEvent.click(screen.getByTestId('confirm-free-plan'));
@@ -81,10 +81,7 @@ describe('FreePlanConfirm', () => {
 
         expect(mocks.httpPost).toHaveBeenCalledWith(
             '/subscribe/free-plan/survey',
-            expect.objectContaining({
-                reason: 'dont_trust_bank_connection',
-                gate: 'hard',
-            }),
+            { reason: 'dont_trust_bank_connection', details: '' },
         );
         expect(mocks.post).toHaveBeenCalledTimes(1);
     });

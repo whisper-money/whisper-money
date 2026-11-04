@@ -208,7 +208,7 @@ describe('Paywall', () => {
             ).not.toBeInTheDocument();
         });
 
-        it('stores the answer from the soft gate, then walks out', async () => {
+        it('stores the answer from the soft gate, without a gate, then walks out', async () => {
             render(<Paywall />);
 
             fireEvent.click(screen.getByTestId('carry-on-free'));
@@ -222,10 +222,7 @@ describe('Paywall', () => {
 
             expect(mocks.httpPost).toHaveBeenCalledWith(
                 '/subscribe/free-plan/survey',
-                expect.objectContaining({
-                    reason: 'too_expensive',
-                    gate: 'soft',
-                }),
+                { reason: 'too_expensive', details: '' },
             );
             expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
         });
