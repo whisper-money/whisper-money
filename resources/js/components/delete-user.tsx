@@ -101,7 +101,7 @@ export default function DeleteUser({
                     {cancelsUnpaidSubscription && (
                         <p className="text-sm">
                             {__(
-                                'Your subscription has an unpaid charge. Deleting your account cancels it, and we will not try to charge your card again.',
+                                'We could not charge your card for your subscription. Deleting your account cancels it too, so we stop trying to charge you.',
                             )}
                         </p>
                     )}

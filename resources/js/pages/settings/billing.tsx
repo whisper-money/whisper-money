@@ -2,7 +2,7 @@ import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
@@ -11,16 +11,19 @@ import {
     destroy as revokeConsent,
     store as storeConsent,
 } from '@/routes/ai/consent';
-import { edit as deleteAccountEdit } from '@/routes/delete-account';
 import { billing } from '@/routes/settings';
-import { portal, refund as refundRoute } from '@/routes/settings/billing';
+import {
+    cancelUnpaid,
+    portal,
+    refund as refundRoute,
+} from '@/routes/settings/billing';
 import { checkout } from '@/routes/subscribe';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     CheckIcon,
@@ -302,62 +305,115 @@ function PlanStatus({
     );
 }
 
-function ManageSubscriptionButton() {
+function ManageSubscriptionButton({
+    label = __('Manage Subscription'),
+    variant = 'default',
+}: {
+    label?: string;
+    variant?: 'default' | 'outline';
+}) {
     return (
-        <a href={portal.url()}>
-            <Button className="mt-4">
+        <Button variant={variant} asChild>
+            <a href={portal.url()}>
                 <CreditCardIcon className="size-4" />
-                {__('Manage Subscription')}
-            </Button>
-        </a>
+                {label}
+            </a>
+        </Button>
     );
 }
 
 /**
- * For a subscription whose charge failed and that Stripe no longer counts as
- * active (`unpaid`, `incomplete`): the user is not on Pro, but Stripe is still
- * chasing the invoice, so the way to pay it or cancel it has to be here. The
- * upgrade section would only start a second subscription next to it.
+ * For a subscription whose charge failed (`past_due`, `unpaid`, `incomplete`):
+ * Stripe is still chasing the invoice, so stopping it has to be one click away
+ * here. Stripe's portal is offered only to pay — an `incomplete` subscription is
+ * not even listed there — and never as the only way to cancel.
  */
 function UnpaidSubscriptionSection() {
-    return (
-        <div className="space-y-6">
-            <HeadingSmall
-                title={__('Your payment failed')}
-                description={__(
-                    'We could not charge your card for your subscription.',
-                )}
-            />
+    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const [confirming, setConfirming] = useState(false);
+    const [processing, setProcessing] = useState(false);
 
-            <Alert variant="destructive">
-                <TriangleAlertIcon className="h-4 w-4" />
-                <AlertDescription className="flex flex-col items-start gap-3">
-                    <span>
+    const cancel = () => {
+        setProcessing(true);
+        router.post(
+            cancelUnpaid.url(),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () =>
+                    toast.success(__('Your subscription was canceled.')),
+                onFinish: () => {
+                    setProcessing(false);
+                    setConfirming(false);
+                },
+            },
+        );
+    };
+
+    return (
+        <Alert
+            variant="destructive"
+            className="border-destructive/30 bg-destructive/10"
+        >
+            <TriangleAlertIcon className="h-4 w-4" />
+            <AlertTitle>{__('Your payment failed')}</AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-3">
+                <span>
+                    {__(
+                        'We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Pro.',
+                    )}
+                </span>
+                {errors.subscription && (
+                    <span role="alert">{errors.subscription}</span>
+                )}
+                {confirming && (
+                    <span className="font-medium">
                         {__(
-                            'Update your payment method to keep Pro, or cancel the subscription so we stop trying to charge you. Both are done in the Stripe billing portal.',
+                            'Your plan ends right away and we stop charging your card.',
                         )}
                     </span>
-                    <span>
-                        {__(
-                            'If you are leaving, you can also delete your account: that cancels the subscription too.',
-                        )}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <ManageSubscriptionButton />
-                        <Button variant="secondary" className="mt-4" asChild>
-                            <Link href={deleteAccountEdit().url}>
-                                {__('Delete account')}
-                            </Link>
-                        </Button>
-                    </div>
-                </AlertDescription>
-            </Alert>
-        </div>
+                )}
+                <div className="flex flex-wrap items-center gap-3">
+                    {confirming ? (
+                        <>
+                            <Button
+                                variant="destructive"
+                                disabled={processing}
+                                onClick={cancel}
+                            >
+                                {__('Confirm cancellation')}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                disabled={processing}
+                                onClick={() => setConfirming(false)}
+                            >
+                                {__('Keep my plan')}
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button
+                                variant="destructive"
+                                onClick={() => setConfirming(true)}
+                            >
+                                {__('Cancel subscription')}
+                            </Button>
+                            <ManageSubscriptionButton
+                                label={__('Update payment method')}
+                                variant="outline"
+                            />
+                        </>
+                    )}
+                </div>
+            </AlertDescription>
+        </Alert>
     );
 }
 
 function SubscribedSection({
     isSharedAccount,
+    showsPaymentFailure,
     defaultPlan,
     subscription,
     currency,
@@ -365,6 +421,8 @@ function SubscribedSection({
     refund,
 }: {
     isSharedAccount: boolean;
+    /** The payment-failure alert above already links to the portal. */
+    showsPaymentFailure: boolean;
     defaultPlan: Plan | undefined;
     subscription?: SubscriptionInfo | null;
     currency: string;
@@ -405,7 +463,11 @@ function SubscribedSection({
                         'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
                     )}
                 </p>
-                {!isSharedAccount && <ManageSubscriptionButton />}
+                {!isSharedAccount && !showsPaymentFailure && (
+                    <div className="mt-4">
+                        <ManageSubscriptionButton />
+                    </div>
+                )}
             </div>
 
             {refund?.canSelfRefund && (
@@ -565,6 +627,7 @@ export default function Billing() {
     const hasProPlan = auth?.hasProPlan ?? false;
     const defaultPlan = pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
+    const showsPaymentFailure = hasUnpaidSubscription && !isSharedAccount;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -582,18 +645,19 @@ export default function Billing() {
                         />
                     )}
 
+                    {showsPaymentFailure && <UnpaidSubscriptionSection />}
+
                     {hasProPlan ? (
                         <SubscribedSection
                             isSharedAccount={isSharedAccount}
+                            showsPaymentFailure={showsPaymentFailure}
                             defaultPlan={defaultPlan}
                             subscription={subscription}
                             currency={pricing.currency}
                             locale={locale}
                             refund={refund}
                         />
-                    ) : hasUnpaidSubscription && !isSharedAccount ? (
-                        <UnpaidSubscriptionSection />
-                    ) : (
+                    ) : showsPaymentFailure ? null : (
                         <UpgradeSection
                             plans={pricing.plans}
                             defaultPlan={pricing.defaultPlan}

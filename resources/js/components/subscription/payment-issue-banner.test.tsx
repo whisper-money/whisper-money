@@ -6,10 +6,12 @@ import { SubscriptionPaymentIssueBanner } from './payment-issue-banner';
 const mocks = vi.hoisted(() => ({
     leavePage: vi.fn(),
     issue: null as SubscriptionPaymentIssueNotification | null,
+    url: '/dashboard',
 }));
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
+        url: mocks.url,
         props: { subscriptionPaymentIssue: mocks.issue },
     }),
 }));
@@ -26,6 +28,19 @@ describe('SubscriptionPaymentIssueBanner', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.issue = null;
+        mocks.url = '/dashboard';
+    });
+
+    it('stays off the billing page, which has its own payment-failure alert', () => {
+        mocks.issue = {
+            status: 'past_due',
+            action_url: '/settings/billing/portal',
+        };
+        mocks.url = '/settings/billing';
+
+        const { container } = render(<SubscriptionPaymentIssueBanner />);
+
+        expect(container).toBeEmptyDOMElement();
     });
 
     it('renders nothing when there is no payment issue', () => {

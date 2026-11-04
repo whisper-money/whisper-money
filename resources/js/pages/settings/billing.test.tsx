@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Billing from './billing';
 
 const mocks = vi.hoisted(() => ({
+    routerPost: vi.fn(),
     axiosPost: vi.fn(() => Promise.resolve({ data: {} })),
     axiosDelete: vi.fn(() => Promise.resolve({ data: {} })),
     state: {
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
         isSharedAccount: false,
         subscription: null as Record<string, unknown> | null,
         hasUnpaidSubscription: false,
+        errors: {} as Record<string, string>,
     },
 }));
 
@@ -27,14 +29,7 @@ vi.mock('axios', () => ({
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
-    Link: ({
-        href,
-        children,
-    }: {
-        href: string | { url: string };
-        children: React.ReactNode;
-    }) => <a href={typeof href === 'string' ? href : href.url}>{children}</a>,
-    router: { post: vi.fn(), visit: vi.fn() },
+    router: { post: mocks.routerPost, visit: vi.fn() },
     usePage: () => ({
         props: {
             auth: {
@@ -47,6 +42,7 @@ vi.mock('@inertiajs/react', () => ({
             hasAiConsent: mocks.state.hasAiConsent,
             subscription: mocks.state.subscription,
             hasUnpaidSubscription: mocks.state.hasUnpaidSubscription,
+            errors: mocks.state.errors,
         },
     }),
 }));
@@ -229,23 +225,126 @@ describe('Billing – a subscription whose charge failed', () => {
         mocks.state.isSharedAccount = false;
         mocks.state.subscription = null;
         mocks.state.hasUnpaidSubscription = true;
+        mocks.state.errors = {};
     });
 
     afterEach(() => {
         mocks.state.hasUnpaidSubscription = false;
+        mocks.state.errors = {};
     });
 
-    it('offers the billing portal and account deletion instead of a new plan', () => {
+    it('offers to cancel or to update the card instead of a new plan', () => {
         render(<Billing />);
 
         expect(screen.getByText('Your payment failed')).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Manage Subscription/ }),
-        ).toHaveAttribute('href', '/settings/billing/portal');
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        ).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: 'Delete account' }),
-        ).toHaveAttribute('href', '/settings/delete-account');
+            screen.getByRole('link', { name: /Update payment method/ }),
+        ).toHaveAttribute('href', '/settings/billing/portal');
         expect(screen.queryByText(/Upgrade to Pro/i)).not.toBeInTheDocument();
+    });
+
+    it('cancels only once the user confirms', () => {
+        render(<Billing />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        );
+        expect(mocks.routerPost).not.toHaveBeenCalled();
+
+        expect(
+            screen.getByText(
+                'Your plan ends right away and we stop charging your card.',
+            ),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm cancellation' }),
+        );
+
+        expect(mocks.routerPost).toHaveBeenCalledTimes(1);
+        expect(mocks.routerPost).toHaveBeenCalledWith(
+            '/settings/billing/cancel-unpaid',
+            {},
+            expect.any(Object),
+        );
+    });
+
+    it('lets the user back out of the cancellation', () => {
+        render(<Billing />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Keep my plan' }));
+
+        expect(mocks.routerPost).not.toHaveBeenCalled();
+        expect(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        ).toBeInTheDocument();
+    });
+
+    it('shows why the cancellation failed', () => {
+        mocks.state.errors = {
+            subscription: 'We could not cancel your subscription.',
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('We could not cancel your subscription.'),
+        ).toBeInTheDocument();
+    });
+
+    it('still offers the cancel while Stripe retries a Pro renewal (past_due)', () => {
+        mocks.state.hasProPlan = true;
+        mocks.state.subscription = {
+            onTrial: false,
+            trialEndsAt: null,
+            onGracePeriod: false,
+            plan: { price: 8.99, billing_period: 'month' },
+        };
+        render(<Billing />);
+
+        expect(screen.getByText('Your payment failed')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Pro Plan Active')).toBeInTheDocument();
+        // The alert already links to the portal; a second button is noise.
+        expect(
+            screen.queryByRole('link', { name: /Manage Subscription/ }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('confirms the cancellation once it went through', async () => {
+        const { toast } = await import('sonner');
+        mocks.routerPost.mockImplementation(
+            (_url: string, _data: object, options: { onSuccess: () => void }) =>
+                options.onSuccess(),
+        );
+        render(<Billing />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm cancellation' }),
+        );
+
+        expect(toast.success).toHaveBeenCalledWith(
+            'Your subscription was canceled.',
+        );
+    });
+
+    it('hides the cancel on a shared account', () => {
+        mocks.state.isSharedAccount = true;
+        render(<Billing />);
+
+        expect(
+            screen.queryByText('Your payment failed'),
+        ).not.toBeInTheDocument();
     });
 
     it('keeps the upgrade path when nothing is owed', () => {

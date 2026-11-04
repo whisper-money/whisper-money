@@ -688,12 +688,17 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * on a card that was declined, or a renewal Stripe is still retrying.
      *
      * Nothing was paid for the period it is chasing, so there is nothing to
-     * settle before leaving: deleting the account cancels it on the spot. Making
-     * the user cancel it first trapped them, since `unpaid` and `incomplete` are
-     * not `subscribed()` and see no billing portal to cancel it from.
+     * settle before leaving: the billing page cancels it on the spot, and so does
+     * deleting the account. Making the user cancel it in Stripe's portal first
+     * trapped them: `unpaid` and `incomplete` are not `subscribed()`, so the
+     * billing page never offered the portal, and the paywall had no way out.
      */
     public function unpaidSubscription(): ?Subscription
     {
+        if (! config('subscriptions.enabled')) {
+            return null;
+        }
+
         $subscription = $this->collectableSubscription();
 
         return in_array($subscription?->stripe_status, self::UNPAID_STRIPE_STATUSES, true)
@@ -708,7 +713,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      */
     public function mustCancelSubscriptionBeforeDeleting(): bool
     {
-        return $this->hasActiveSubscriptionOrTrial() && $this->unpaidSubscription() === null;
+        return $this->unpaidSubscription() === null && $this->hasActiveSubscriptionOrTrial();
     }
 
     /**
