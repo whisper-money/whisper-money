@@ -3,7 +3,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepAccountsHub, type ExistingAccount } from './step-accounts-hub';
 
-vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
+vi.mock('@/lib/posthog', () => ({
+    captureEvent: vi.fn(),
+    registerProperties: vi.fn(),
+    unregisterProperty: vi.fn(),
+}));
 
 import { pageProps } from '@/lib/onboarding-page-props';
 

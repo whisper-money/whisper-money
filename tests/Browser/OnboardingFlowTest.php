@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\CreateDefaultCategories;
+use App\Features\OnboardingGateCopy;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 // =============================================================================
 // Signup Tests
@@ -192,6 +194,8 @@ it('hides the connected plan price after connected setup is selected once', func
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
+    // The gate copy is A/B tested; this walks the control gate.
+    Feature::for($user)->activate(OnboardingGateCopy::class, OnboardingGateCopy::CONTROL);
 
     $this->actingAs($user);
 
