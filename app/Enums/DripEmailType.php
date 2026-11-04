@@ -49,6 +49,7 @@ enum DripEmailType: string
             self::Feedback,
             self::PromoCode,
             self::PaywallFollowUp,
+            self::SubscriptionCancelled,
             self::AiConsentFollowUp,
             self::Update,
         ];

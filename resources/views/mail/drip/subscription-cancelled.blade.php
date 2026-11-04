@@ -12,7 +12,7 @@
 {{ __("If you'd like to come back, here's a special offer just for you:") }}
 
 <x-mail::panel>
-{{ __('Use code **CONTINUE50** to get **50% off** all current and future payments - works for both monthly and yearly subscriptions.') }}
+{{ __('Use code **COMEBACK30** to get **30% off** all current and future payments - works for both monthly and yearly subscriptions.') }}
 </x-mail::panel>
 
 <x-mail::button :url="config('app.url') . '/subscribe'">
@@ -28,4 +28,6 @@
 {{ __('Best,') }}<br>
 {{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
+
+<x-slot:subcopy>@include('mail.partials.marketing-unsubscribe')</x-slot:subcopy>
 </x-mail::message>

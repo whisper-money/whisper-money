@@ -10,7 +10,7 @@ class SendSubscriptionCancelledEmailCommand extends Command
 {
     protected $signature = 'email:subscription-cancelled {emails : Comma-separated list of user emails}';
 
-    protected $description = 'Send subscription cancellation email to one or more users';
+    protected $description = 'Send the subscription cancellation email to one or more users (the win-back offer if they ever paid, the no-discount note otherwise)';
 
     public function handle(): int
     {
@@ -34,7 +34,16 @@ class SendSubscriptionCancelledEmailCommand extends Command
                 continue;
             }
 
-            SendSubscriptionCancelledEmailJob::dispatch($user);
+            $job = new SendSubscriptionCancelledEmailJob($user);
+            $skipReason = $job->ineligibilityReason();
+
+            if ($skipReason !== null) {
+                $results[] = [$email, $skipReason];
+
+                continue;
+            }
+
+            dispatch($job);
             $results[] = [$email, 'Queued'];
         }
 
