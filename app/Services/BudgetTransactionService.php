@@ -10,6 +10,7 @@ use App\Models\BudgetTransaction;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -426,40 +427,74 @@ class BudgetTransactionService
     {
         $changed = 0;
 
-        $budgetTransactions
-            ->with(['transaction' => fn ($query) => $query->withTrashed()->with([
-                'account' => fn ($account) => $account->withTrashed(),
-                'user:id,currency_code',
-            ])])
-            ->chunkById(self::CHUNK_SIZE, function (Collection $rows) use (&$changed): void {
-                $changed += $this->resnapshotChunk($rows);
-            });
+        $this->eachStaleSnapshot($budgetTransactions, function (BudgetTransaction $row, int $amount) use (&$changed): void {
+            $row->update(['amount' => $amount]);
+            $changed++;
+        });
 
         return $changed;
     }
 
     /**
-     * @param  Collection<int, BudgetTransaction>  $rows  with `transaction.account` and `transaction.user` loaded
+     * Walk the given budget rows and hand every one whose amount differs from
+     * what {@see self::resnapshot()} would write to $callback, along with that
+     * amount, without writing anything itself. Rows whose transaction is gone
+     * are skipped. The row passed in still holds its stored amount and has
+     * `transaction.user` loaded.
+     *
+     * @param  Builder<BudgetTransaction>  $budgetTransactions
+     * @param  callable(BudgetTransaction, int): void  $callback
      */
-    private function resnapshotChunk(Collection $rows): int
+    public function eachStaleSnapshot(Builder $budgetTransactions, callable $callback): void
+    {
+        $budgetTransactions
+            ->with(['transaction' => fn ($query) => $query->withTrashed()->with([
+                'account' => fn ($account) => $account->withTrashed(),
+                'user:id,currency_code',
+            ])])
+            ->chunkById(self::CHUNK_SIZE, function (Collection $rows) use ($callback): void {
+                $this->eachStaleSnapshotInChunk($rows, $callback);
+            });
+    }
+
+    /**
+     * @param  Collection<int, BudgetTransaction>  $rows  with `transaction.account` and `transaction.user` loaded
+     * @param  callable(BudgetTransaction, int): void  $callback
+     */
+    private function eachStaleSnapshotInChunk(Collection $rows, callable $callback): void
     {
         $rows = $rows->filter(fn (BudgetTransaction $row): bool => $row->transaction?->user !== null);
 
         $rows->groupBy(fn (BudgetTransaction $row): string => $row->transaction->user->currency_code)
             ->each(fn (Collection $group, string $currency) => $this->preloadExchangeRates($group->pluck('transaction'), $currency));
 
-        $changed = 0;
-
         foreach ($rows as $row) {
             $amount = $this->snapshotAmount($row->transaction, $row->transaction->user->currency_code);
 
             if ($row->amount !== $amount) {
-                $row->update(['amount' => $amount]);
-                $changed++;
+                $callback($row, $amount);
             }
         }
+    }
 
-        return $changed;
+    /**
+     * Every budget row whose transaction is booked in a currency other than its
+     * owner's, by the fallback {@see self::BOOKED_IN_USER_CURRENCY_SQL} uses:
+     * the only rows a conversion can change. Soft-deleted transactions and
+     * accounts count, as {@see self::resnapshot()} reads them too.
+     *
+     * @param  (Closure(Builder<Transaction>): mixed)|null  $scope  narrows the transactions, joined to `accounts` and `users`
+     * @return Builder<BudgetTransaction>
+     */
+    public function foreignCurrencySnapshots(?Closure $scope = null): Builder
+    {
+        return BudgetTransaction::query()->whereIn('transaction_id', Transaction::query()
+            ->withTrashed()
+            ->select('transactions.id')
+            ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
+            ->join('users', 'users.id', '=', 'transactions.user_id')
+            ->whereRaw('not ('.self::BOOKED_IN_USER_CURRENCY_SQL.')')
+            ->when($scope !== null, $scope));
     }
 
     /**
@@ -484,13 +519,7 @@ class BudgetTransactionService
             ->update(['budget_transactions.amount' => DB::raw('-('.Transaction::OWNED_AMOUNT_SQL.')')]);
 
         $reweighed += $this->resnapshot(
-            BudgetTransaction::query()->whereIn('transaction_id', Transaction::query()
-                ->withTrashed()
-                ->select('transactions.id')
-                ->join('accounts', 'accounts.id', '=', 'transactions.account_id')
-                ->join('users', 'users.id', '=', 'transactions.user_id')
-                ->where('accounts.id', $account->id)
-                ->whereRaw('not ('.self::BOOKED_IN_USER_CURRENCY_SQL.')')),
+            $this->foreignCurrencySnapshots(fn ($query) => $query->where('accounts.id', $account->id)),
         );
 
         // Every affected period now holds a different total, so the limit alerts
