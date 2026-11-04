@@ -124,3 +124,8 @@ export function registerProperties(properties: Record<string, unknown>): void {
         posthog.setPersonProperties(properties);
     });
 }
+
+/** Stops tagging this browser's events with a property {@link registerProperties} set. */
+export function unregisterProperty(name: string): void {
+    withPostHog(() => posthog.unregister(name));
+}

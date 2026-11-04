@@ -8,9 +8,12 @@ import {
     type OfferSource,
 } from '@/components/subscription/subscription-offer';
 import { useLocale } from '@/hooks/use-locale';
-import { captureEvent, registerProperties } from '@/lib/posthog';
+import {
+    captureEvent,
+    registerProperties,
+    unregisterProperty,
+} from '@/lib/posthog';
 import { type SharedData } from '@/types';
-import { type PricingConfig } from '@/types/pricing';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { Check, RotateCcw, Sparkles } from 'lucide-react';
@@ -38,7 +41,10 @@ type GateKind = 'bank' | 'broker' | 'ai';
  */
 export type GateCopyArm = 'control' | 'trial_yearly' | 'trial_monthly';
 
-const TRIAL_ARM_PLAN: Record<Exclude<GateCopyArm, 'control'>, string> = {
+const TRIAL_ARM_PLAN: Record<
+    Exclude<GateCopyArm, 'control'>,
+    'monthly' | 'yearly'
+> = {
     trial_yearly: 'yearly',
     trial_monthly: 'monthly',
 };
@@ -82,14 +88,15 @@ export function StepGate({
     const { gateCopyArm = null, pricing } = usePage<
         SharedData & { gateCopyArm?: GateCopyArm | null }
     >().props;
-    const arm = isAi ? null : liveArm(gateCopyArm, pricing);
+    // The server hands down no arm where the experiment is off, pay-now
+    // included; the AI gate is never in it.
+    const arm = isAi ? null : gateCopyArm;
     const trialPlan = arm && arm !== 'control' ? TRIAL_ARM_PLAN[arm] : null;
     // Every event this screen sends names the arm, so the funnel splits by it
     // without a join; outside the experiment there is nothing to name.
     const armProps = arm ? { arm } : {};
-    const { selectedPlan, setSelectedPlan, hasPlans, button, terms } = useOffer(
-        source,
-        {
+    const { selectedPlan, setSelectedPlan, plan, hasPlans, button, terms } =
+        useOffer(source, {
             initialPlan: trialPlan ?? undefined,
             buttonText: trialPlan ? __('Start free trial') : undefined,
             onCheckout: (plan) =>
@@ -98,21 +105,22 @@ export function StepGate({
                     plan,
                     ...armProps,
                 }),
-        },
-    );
+        });
     const locale = useLocale();
 
     useEffect(() => {
         // Registered here, where the user is exposed to the arm, rather than
         // where it is assigned: the bank connection and the trial converting
         // happen after a trip to Stripe, and still have to split by it.
+        // Switched off, a browser that was tagged before stops being: its
+        // later events would otherwise keep reporting an arm it no longer saw.
         if (arm) {
             registerProperties({ onboarding_gate_arm: arm });
+        } else if (!isAi) {
+            unregisterProperty('onboarding_gate_arm');
         }
-        captureEvent('onboarding_gate_viewed', {
-            gate: kind,
-            ...(arm ? { arm } : {}),
-        });
+        captureEvent('onboarding_gate_viewed', { gate: kind, ...armProps });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kind, arm]);
 
     // Nothing configured to sell: the gate would be a dead end rather than a
@@ -132,8 +140,6 @@ export function StepGate({
         captureEvent('onboarding_gate_declined', { gate: kind, ...armProps });
         onDecline();
     };
-
-    const plan = pricing.plans[selectedPlan];
 
     return (
         <StepScreen
@@ -170,7 +176,7 @@ export function StepGate({
                         data-testid="decline-gate"
                     />
                     {trialPlan ? (
-                        <StepNote>
+                        <StepNote emphasis>
                             {planTerms(plan, pricing.currency, locale)}
                         </StepNote>
                     ) : (
@@ -236,27 +242,6 @@ function AiDisclosure({ kind }: { kind: GateKind }) {
             }
         />
     );
-}
-
-/**
- * The arm the gate is actually drawn in. The trial framing only says something
- * true while both plans start with a trial, so with `SUBSCRIPTION_PAY_NOW` on
- * the experiment is off for everyone — control included, or control would be
- * measured against two arms that look exactly like it.
- */
-function liveArm(
-    arm: GateCopyArm | null,
-    pricing: PricingConfig,
-): GateCopyArm | null {
-    if (!arm) {
-        return null;
-    }
-
-    const everyPlanHasTrial = Object.values(TRIAL_ARM_PLAN).every(
-        (key) => (pricing.plans[key]?.trial_days ?? 0) > 0,
-    );
-
-    return everyPlanHasTrial ? arm : null;
 }
 
 /** The trial-framed headline: what they reached for, and that it starts free. */

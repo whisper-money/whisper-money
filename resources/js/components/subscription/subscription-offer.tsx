@@ -114,6 +114,7 @@ export function useOffer(
     return {
         selectedPlan,
         setSelectedPlan,
+        plan,
         /** Whether there is anything to sell at all — no plans, no screen. */
         hasPlans: plan !== undefined,
         button: (

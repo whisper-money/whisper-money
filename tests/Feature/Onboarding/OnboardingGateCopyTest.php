@@ -64,6 +64,8 @@ it('draws no arm where the gate cannot reach', function (array $config, ?string 
 })->with([
     'subscriptions off' => [['subscriptions.enabled' => false], null],
     'free-plan signup' => [[], 'free'],
+    // Charged today, "free for N days" would be a lie, so nobody is in it.
+    'pay now' => [['subscriptions.plans.monthly.trial_days' => 0], null],
 ]);
 
 it('sends everybody to control, with no arm, once disabled for all', function () {

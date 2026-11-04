@@ -7,6 +7,7 @@ import {
     isPostHogSessionRecordingEnabled,
     registerProperties,
     resetPostHog,
+    unregisterProperty,
 } from './posthog';
 
 // An SDK behaving the way it behaves on the browsers that reported
@@ -27,6 +28,7 @@ vi.mock('posthog-js', () => {
             reset: vi.fn(explode),
             capture: vi.fn(explode),
             register: vi.fn(explode),
+            unregister: vi.fn(explode),
         },
     };
 });
@@ -63,6 +65,7 @@ describe('PostHog wrappers', () => {
         ['reset', () => resetPostHog()],
         ['capture', () => captureEvent('upgrade_checkout_started')],
         ['register', () => registerProperties({ arm: 'control' })],
+        ['unregister', () => unregisterProperty('arm')],
     ] as const)(
         'keeps the app alive when posthog.%s throws',
         (method, call) => {

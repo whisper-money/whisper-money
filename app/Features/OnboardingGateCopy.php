@@ -18,10 +18,13 @@ use Laravel\Pennant\Feature;
  * Same product, same trial, same checkout in every arm; only the framing and
  * the preselected plan change.
  *
- * The arm is a hash of the user id, so it is stable without having to be
- * stored, and Pennant stores it anyway on the first read: the `features` table
- * is then the record of who was in which arm, to join against subscriptions
- * for trial→paid.
+ * The arm is a salted hash of the user id, so it is stable without having to
+ * be stored, and Pennant stores it anyway on the first read. That read happens
+ * when the onboarding page loads, not when the gate is shown, so the `features`
+ * table holds who was *assigned*, not who was *exposed*: exposure is the
+ * `onboarding_gate_viewed` event in PostHog. For trial→paid, join it against
+ * subscriptions whose `upsell_source` is `onboarding_bank`/`onboarding_broker` —
+ * only someone who saw the gate can have checked out from it.
  *
  * Off switch, no deploy: `php artisan feature:disable OnboardingGateCopy all`.
  * That writes `false` over every stored value, the global (null-scope) one
@@ -40,6 +43,12 @@ class OnboardingGateCopy
     public const TRIAL_YEARLY = 'trial_yearly';
 
     public const TRIAL_MONTHLY = 'trial_monthly';
+
+    /**
+     * Keeps this experiment's split independent of any other one hashed off
+     * the same user ids.
+     */
+    private const SALT = 'onboarding-gate-copy:';
 
     /** @var list<string> */
     public const ARMS = [self::CONTROL, self::TRIAL_YEARLY, self::TRIAL_MONTHLY];
@@ -67,6 +76,8 @@ class OnboardingGateCopy
      */
     public static function armFor(User $user): ?string
     {
+        // `true` is what `feature:enable … all` writes over every stored arm:
+        // back in the experiment, in the arm the hash always gave.
         $value = Feature::for($user)->value(self::class);
 
         if ($value === true) {
@@ -78,6 +89,6 @@ class OnboardingGateCopy
 
     private static function hashedArm(User $user): string
     {
-        return self::ARMS[crc32((string) $user->id) % count(self::ARMS)];
+        return self::ARMS[crc32(self::SALT.$user->id) % count(self::ARMS)];
     }
 }

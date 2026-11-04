@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     },
     captureEvent: vi.fn(),
     registerProperties: vi.fn(),
+    unregisterProperty: vi.fn(),
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -22,6 +23,7 @@ vi.mock('@inertiajs/react', () => ({
 vi.mock('@/lib/posthog', () => ({
     captureEvent: mocks.captureEvent,
     registerProperties: mocks.registerProperties,
+    unregisterProperty: mocks.unregisterProperty,
 }));
 
 /** The plans as they ship with `SUBSCRIPTION_PAY_NOW` off: 7 and 14 days. */
@@ -52,6 +54,7 @@ function checkoutHref(): string {
 beforeEach(() => {
     mocks.captureEvent.mockClear();
     mocks.registerProperties.mockClear();
+    mocks.unregisterProperty.mockClear();
 });
 
 describe('StepGate copy experiment', () => {
@@ -148,15 +151,16 @@ describe('StepGate copy experiment', () => {
             { gate: 'ai' },
         );
         expect(mocks.registerProperties).not.toHaveBeenCalled();
+        expect(mocks.unregisterProperty).not.toHaveBeenCalled();
     });
 
     /**
-     * With the plans charged upfront there is no trial to frame the gate
-     * around, and a control measured against two arms identical to it is no
-     * experiment: nobody is in one.
+     * No arm is what the server hands down once the experiment is switched
+     * off, or while the plans charge today. A browser tagged before stops
+     * reporting the arm it no longer sees.
      */
-    it('turns itself off when the plans charge today', () => {
-        renderGate('trial_monthly', { pricing: pricingFixture });
+    it('draws control, unlabelled, when no arm is handed down', () => {
+        renderGate(null);
 
         expect(
             screen.getByText('Connecting a bank needs Standard'),
@@ -167,14 +171,8 @@ describe('StepGate copy experiment', () => {
             { gate: 'bank' },
         );
         expect(mocks.registerProperties).not.toHaveBeenCalled();
-    });
-
-    it('draws control, unlabelled, when no arm is handed down', () => {
-        renderGate(null);
-
-        expect(
-            screen.getByText('Connecting a bank needs Standard'),
-        ).toBeTruthy();
-        expect(mocks.registerProperties).not.toHaveBeenCalled();
+        expect(mocks.unregisterProperty).toHaveBeenCalledWith(
+            'onboarding_gate_arm',
+        );
     });
 });
