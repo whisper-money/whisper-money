@@ -198,10 +198,22 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    /**
+     * A pending connection that already has accounts is a re-authorization
+     * the user left at the bank. No callback ever comes for it, so the way
+     * out is starting the authorization again.
+     */
+    function isAbandonedReauthorization(
+        connection: BankingConnection,
+    ): boolean {
+        return connection.status === 'pending' && connection.accounts_count > 0;
+    }
+
     function canReconnect(connection: BankingConnection): boolean {
         return (
             connection.provider === 'enablebanking' &&
             (connection.status === 'expired' ||
+                isAbandonedReauthorization(connection) ||
                 isExpiringSoon(connection) ||
                 isEnableBankingAuthError(connection))
         );
@@ -301,7 +313,10 @@ export default function ConnectionsPage({ connections }: Props) {
                                             <ConnectionStatusBadge
                                                 connection={connection}
                                             />
-                                            {connection.status === 'expired' &&
+                                            {(connection.status === 'expired' ||
+                                                isAbandonedReauthorization(
+                                                    connection,
+                                                )) &&
                                                 canReconnect(connection) && (
                                                     <ReconnectButton
                                                         reconnecting={

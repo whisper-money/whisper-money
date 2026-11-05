@@ -657,6 +657,34 @@ test('reauthorize starts new authorization and sets connection to pending for er
     expect($connection->error_message)->toBeNull();
 });
 
+test('reauthorize restarts a re-authorization the user abandoned at the bank', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'restarted-auth-id',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertOk();
+    $response->assertJson(['redirect_url' => 'https://bank.example.com/reauthorize']);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->authorization_id)->toBe('restarted-auth-id');
+});
+
 test('reauthorize starts new authorization for expired connections', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->expired()->create([
@@ -1095,6 +1123,58 @@ test('reconnect callback uses positional fallback for accounts without stored ib
     expect($accountA->refresh()->iban)->toBe('ES0000000000000000000001'); // IBAN populated from new session
     expect($accountB->refresh()->external_account_id)->toBe('new-uid-b');
     expect($accountB->refresh()->iban)->toBe('ES0000000000000000000002');
+});
+
+test('reconnect callback unlinks an account the new session no longer returns', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $kept = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-kept',
+        'iban' => 'ES0000000000000000000001',
+        'created_at' => now()->subMinutes(2),
+    ]);
+
+    // No IBAN to match on and nothing left for the positional fallback.
+    $dropped = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-dropped',
+        'iban' => null,
+        'created_at' => now()->subMinutes(1),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-abc',
+            'accounts' => [
+                [
+                    'uid' => 'new-uid-kept',
+                    'currency' => 'EUR',
+                    'name' => 'Account',
+                    'account_id' => ['iban' => 'ES0000000000000000000001'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($connection->refresh()->status)->toBe(BankingConnectionStatus::Active);
+    expect($kept->refresh()->external_account_id)->toBe('new-uid-kept');
+    expect($dropped->refresh()->external_account_id)->toBeNull();
 });
 
 test('callback stores iban in pending accounts data', function () {
