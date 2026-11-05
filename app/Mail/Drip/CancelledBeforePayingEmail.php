@@ -2,29 +2,19 @@
 
 namespace App\Mail\Drip;
 
-use App\Mail\Concerns\MarketingUnsubscribe;
-
 /**
- * The founders' note for a user whose subscription ended before the first
- * charge: no offer, just "what was missing?" and an invitation to reply.
- * It shares {@see SubscriptionCancelledEmail}'s type, so it is marketing too.
+ * The note for a user whose subscription ended before the first charge (a
+ * cancelled trial, a first payment that never went through).
  */
-class CancelledBeforePayingEmail extends DripMail
+class CancelledBeforePayingEmail extends WhatWasMissingEmail
 {
-    use MarketingUnsubscribe;
-
-    protected function dripSubject(): string
+    protected function intro(): string
     {
-        return __('What was missing?');
+        return __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. We saw your subscription ended before your first payment, and we wanted to ask you personally: what was missing?");
     }
 
-    protected function template(): string
+    protected function thanks(): string
     {
-        return 'mail.drip.cancelled-before-paying';
-    }
-
-    protected function repliesToSender(): bool
-    {
-        return true;
+        return __('Thank you for giving Whisper Money a try.');
     }
 }

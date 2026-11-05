@@ -2,8 +2,12 @@
 
 use App\Enums\DripEmailType;
 use App\Jobs\Drip\SendSubscriptionCancelledEmailJob;
+use App\Mail\Drip\CancelledAfterPayingEmail;
+use App\Mail\Drip\CancelledBeforePayingEmail;
+use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Models\User;
 use App\Models\UserMailLog;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\artisan;
@@ -84,3 +88,23 @@ test('command reports why it skips a user instead of claiming a send', function 
 
     Queue::assertNothingPushed();
 });
+
+test('the command sends the variant Stripe calls for, with no webhook to read the reason from', function (array $amountsPaid, ?string $reason, bool $hasCancelledSubscription, string $expectedMail) {
+    Mail::fake();
+    config(['subscriptions.enabled' => true]);
+    bindPaidInvoices($amountsPaid, cancellationReason: $reason, hasCancelledSubscription: $hasCancelledSubscription);
+    $user = User::factory()->create(['stripe_id' => 'cus_cancelled']);
+
+    artisan('email:subscription-cancelled', ['emails' => $user->email])->assertSuccessful();
+    Queue::pushed(SendSubscriptionCancelledEmailJob::class)->each->handle();
+
+    Mail::assertQueued($expectedMail, fn ($mail) => $mail->hasTo($user->email));
+    Mail::assertQueuedCount(1);
+})->with([
+    'never paid' => [[0], 'cancellation_requested', true, CancelledBeforePayingEmail::class],
+    'paid, cancelled themselves' => [[399], 'cancellation_requested', true, CancelledAfterPayingEmail::class],
+    'paid, renewal failed' => [[399], 'payment_failed', true, SubscriptionCancelledEmail::class],
+    'paid, payment disputed' => [[399], 'payment_disputed', true, SubscriptionCancelledEmail::class],
+    'paid, no reason from Stripe' => [[399], null, true, SubscriptionCancelledEmail::class],
+    'paid, no cancelled subscription in Stripe' => [[399], null, false, SubscriptionCancelledEmail::class],
+]);

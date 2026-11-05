@@ -762,11 +762,18 @@ function issueOAuthToken(User $user, ?array $scopes = ['mcp:use'], ?Client $clie
 /**
  * Bind a Stripe client whose paid-invoice listing answers with invoices for
  * the given amounts (in cents). A trial opens with a paid invoice for 0.
+ * Its cancelled-subscription listing answers with one subscription ended for
+ * the given `cancellation_details.reason`, or none at all when
+ * `$hasCancelledSubscription` is false.
  *
  * @param  list<int>  $amountsPaid
  */
-function bindPaidInvoices(array $amountsPaid, string $customerId = 'cus_cancelled'): void
-{
+function bindPaidInvoices(
+    array $amountsPaid,
+    string $customerId = 'cus_cancelled',
+    ?string $cancellationReason = null,
+    bool $hasCancelledSubscription = true,
+): void {
     $invoiceService = Mockery::mock(InvoiceService::class);
     $invoiceService->shouldReceive('all')
         ->with(Mockery::on(fn (array $params): bool => $params['status'] === 'paid' && $params['customer'] === $customerId))
@@ -776,7 +783,23 @@ function bindPaidInvoices(array $amountsPaid, string $customerId = 'cus_cancelle
             'has_more' => false,
         ]));
 
+    $subscriptionService = Mockery::mock(SubscriptionService::class);
+    $subscriptionService->shouldReceive('all')
+        ->with(Mockery::on(fn (array $params): bool => $params['status'] === 'canceled' && $params['customer'] === $customerId))
+        ->andReturn(StripeCollection::constructFrom([
+            'object' => 'list',
+            'data' => $hasCancelledSubscription ? [[
+                'object' => 'subscription',
+                'id' => 'sub_ended',
+                'status' => 'canceled',
+                'ended_at' => now()->subMinute()->getTimestamp(),
+                'cancellation_details' => ['reason' => $cancellationReason, 'comment' => null, 'feedback' => null],
+            ]] : [],
+            'has_more' => false,
+        ]));
+
     $stripeClient = Mockery::mock(StripeClient::class);
     $stripeClient->invoices = $invoiceService;
+    $stripeClient->subscriptions = $subscriptionService;
     app()->bind(StripeClient::class, fn () => $stripeClient);
 }

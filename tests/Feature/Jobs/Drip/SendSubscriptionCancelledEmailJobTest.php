@@ -2,6 +2,7 @@
 
 use App\Enums\DripEmailType;
 use App\Jobs\Drip\SendSubscriptionCancelledEmailJob;
+use App\Mail\Drip\CancelledAfterPayingEmail;
 use App\Mail\Drip\CancelledBeforePayingEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Models\User;
@@ -31,14 +32,47 @@ function cancelledCustomer(string $status = 'canceled', array $attributes = []):
     return $user->fresh();
 }
 
-test('a customer who paid gets the win-back offer', function () {
-    bindPaidInvoices([0, 399]);
+test('a customer who paid and cancelled it themselves gets the no-discount note, having turned down the portal offer', function () {
+    bindPaidInvoices([0, 399], cancellationReason: 'cancellation_requested');
+    $user = cancelledCustomer();
+
+    (new SendSubscriptionCancelledEmailJob($user))->handle();
+
+    Mail::assertQueued(CancelledAfterPayingEmail::class, fn ($mail) => $mail->hasTo($user->email));
+    Mail::assertNotQueued(SubscriptionCancelledEmail::class);
+    Mail::assertNotQueued(CancelledBeforePayingEmail::class);
+});
+
+test('a customer who paid and lost the plan some other way gets the win-back offer', function (?string $reason) {
+    bindPaidInvoices([0, 399], cancellationReason: $reason);
     $user = cancelledCustomer();
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
 
     Mail::assertQueued(SubscriptionCancelledEmail::class, fn ($mail) => $mail->hasTo($user->email));
+    Mail::assertNotQueued(CancelledAfterPayingEmail::class);
     Mail::assertNotQueued(CancelledBeforePayingEmail::class);
+})->with([
+    'renewal failed' => 'payment_failed',
+    'payment disputed' => 'payment_disputed',
+    'no reason given' => null,
+]);
+
+test('a customer who paid gets the win-back offer when Stripe has no cancelled subscription to read a reason from', function () {
+    bindPaidInvoices([399], hasCancelledSubscription: false);
+
+    (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle();
+
+    Mail::assertQueued(SubscriptionCancelledEmail::class);
+});
+
+test('a customer who never paid gets the trial note even if they cancelled it themselves', function () {
+    bindPaidInvoices([0], cancellationReason: 'cancellation_requested');
+
+    (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle();
+
+    Mail::assertQueued(CancelledBeforePayingEmail::class);
+    Mail::assertNotQueued(CancelledAfterPayingEmail::class);
 });
 
 test('a customer whose only paid invoice is the zero-euro trial one gets the no-discount note', function () {
@@ -159,12 +193,36 @@ test('the no-discount note asks what was missing and offers no code', function (
         ->toContain('Stop receiving news and offers');
 });
 
-test('both variants are translated to Spanish', function () {
+test('the note for a paying customer who cancelled asks what was missing, without the trial wording or a code', function () {
     $user = User::factory()->create(['name' => 'Marta']);
-    app()->setLocale('es');
+    $mail = new CancelledAfterPayingEmail($user);
 
+    $body = $mail->render();
+
+    expect($mail->envelope()->subject)->toBe('What was missing?')
+        ->and($mail->envelope()->replyTo)->not->toBeEmpty()
+        ->and($body)
+        ->toContain('Hey Marta, what was missing?')
+        ->toContain('We saw you cancelled your subscription')
+        ->toContain('reply to this email')
+        ->not->toContain('before your first payment')
+        ->not->toContain('COMEBACK30')
+        ->not->toContain('% off')
+        ->toContain('Stop receiving news and offers');
+});
+
+test('every variant is translated to Spanish and French', function () {
+    $user = User::factory()->create(['name' => 'Marta']);
+
+    app()->setLocale('es');
     expect((new CancelledBeforePayingEmail($user))->render())->toContain('Hola Marta, ¿qué te faltó?')
+        ->and((new CancelledAfterPayingEmail($user))->render())->toContain('Hemos visto que has cancelado tu suscripción')
+        ->toContain('Gracias por el tiempo que has pasado con Whisper Money')
         ->and((new SubscriptionCancelledEmail($user))->render())->toContain('COMEBACK30</strong> para obtener un');
+
+    app()->setLocale('fr');
+    expect((new CancelledAfterPayingEmail($user))->render())->toContain('vous avez résilié votre abonnement')
+        ->toContain('Merci pour le temps passé avec Whisper Money');
 });
 
 test('the cancellation email counts as marketing while the trial-ending warning stays operational', function () {
