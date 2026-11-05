@@ -15,9 +15,10 @@ use Laravel\Cashier\Cashier;
  * - someone who left before the first charge (a cancelled trial, a first
  *   payment that never went through) gets a short note asking what was
  *   missing, with no discount;
- * - someone who paid and cancelled it themselves gets the same kind of note,
- *   worded for a paying customer and also without a discount, because the
- *   Stripe customer portal already offered them COMEBACK30 on the way out;
+ * - someone who paid and asked to end it gets the same kind of note, worded
+ *   for a paying customer and also without a discount, because the Stripe
+ *   customer portal already offered them COMEBACK30 on the way out (or they
+ *   asked for a refund, which a discount does not answer);
  * - someone who paid and lost the plan any other way (a failed renewal, a
  *   dispute, a reason Stripe does not give) never saw that offer, so they get
  *   the win-back email with COMEBACK30.
@@ -27,8 +28,9 @@ use Laravel\Cashier\Cashier;
 class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
 {
     /**
-     * The `cancellation_details.reason` Stripe gives when the customer ended
-     * the subscription themselves, from the portal or by asking us.
+     * The `cancellation_details.reason` Stripe gives when the subscription was
+     * ended on request rather than by a failed or disputed payment: the
+     * customer portal, and our own API cancels (the in-app refund) too.
      */
     private const string CANCELLED_BY_CUSTOMER = 'cancellation_requested';
 
@@ -81,10 +83,12 @@ class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
     }
 
     /**
-     * Why the customer's latest cancelled subscription (Stripe lists newest
-     * first) was cancelled, as Stripe records it, or null when Stripe has no reason or no cancelled
-     * subscription. Asked of Stripe rather than read off the webhook, so the
-     * manual command, which has no webhook, picks the same variant.
+     * Why the customer's latest cancelled subscription was cancelled, as
+     * Stripe records it, or null when Stripe gives no reason or has no
+     * cancelled subscription. Stripe lists newest first, and a customer holds
+     * one plan at a time, so the newest cancelled one is the one that just
+     * ended. Asked of Stripe rather than read off the webhook, so the manual
+     * command, which has no webhook, picks the same variant.
      *
      * A Stripe outage throws, and the job is retried rather than guessing.
      */

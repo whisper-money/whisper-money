@@ -92,7 +92,7 @@ test('command reports why it skips a user instead of claiming a send', function 
 test('the command sends the variant Stripe calls for, with no webhook to read the reason from', function (array $amountsPaid, ?string $reason, bool $hasCancelledSubscription, string $expectedMail) {
     Mail::fake();
     config(['subscriptions.enabled' => true]);
-    bindPaidInvoices($amountsPaid, cancellationReason: $reason, hasCancelledSubscription: $hasCancelledSubscription);
+    bindStripeBillingHistory($amountsPaid, cancellationReason: $reason, hasCancelledSubscription: $hasCancelledSubscription);
     $user = User::factory()->create(['stripe_id' => 'cus_cancelled']);
 
     artisan('email:subscription-cancelled', ['emails' => $user->email])->assertSuccessful();

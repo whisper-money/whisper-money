@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\UserMailLog;
 use App\Models\UserSetting;
 use Illuminate\Support\Facades\Mail;
+use Stripe\Exception\ApiConnectionException;
+use Stripe\Service\SubscriptionService;
 use Stripe\StripeClient;
 
 beforeEach(function () {
@@ -33,7 +35,7 @@ function cancelledCustomer(string $status = 'canceled', array $attributes = []):
 }
 
 test('a customer who paid and cancelled it themselves gets the no-discount note, having turned down the portal offer', function () {
-    bindPaidInvoices([0, 399], cancellationReason: 'cancellation_requested');
+    bindStripeBillingHistory([0, 399], cancellationReason: 'cancellation_requested');
     $user = cancelledCustomer();
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
@@ -44,7 +46,7 @@ test('a customer who paid and cancelled it themselves gets the no-discount note,
 });
 
 test('a customer who paid and lost the plan some other way gets the win-back offer', function (?string $reason) {
-    bindPaidInvoices([0, 399], cancellationReason: $reason);
+    bindStripeBillingHistory([0, 399], cancellationReason: $reason);
     $user = cancelledCustomer();
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
@@ -59,15 +61,28 @@ test('a customer who paid and lost the plan some other way gets the win-back off
 ]);
 
 test('a customer who paid gets the win-back offer when Stripe has no cancelled subscription to read a reason from', function () {
-    bindPaidInvoices([399], hasCancelledSubscription: false);
+    bindStripeBillingHistory([399], hasCancelledSubscription: false);
 
     (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle();
 
     Mail::assertQueued(SubscriptionCancelledEmail::class);
 });
 
+test('a Stripe outage while reading the cancellation reason fails the attempt instead of guessing a variant', function () {
+    bindStripeBillingHistory([399]);
+    $stripe = app(StripeClient::class);
+    $stripe->subscriptions = Mockery::mock(SubscriptionService::class);
+    $stripe->subscriptions->shouldReceive('all')->andThrow(new ApiConnectionException('Stripe is down'));
+
+    expect(fn () => (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle())
+        ->toThrow(ApiConnectionException::class);
+
+    Mail::assertNothingQueued();
+    expect(UserMailLog::query()->count())->toBe(0);
+});
+
 test('a customer who never paid gets the trial note even if they cancelled it themselves', function () {
-    bindPaidInvoices([0], cancellationReason: 'cancellation_requested');
+    bindStripeBillingHistory([0], cancellationReason: 'cancellation_requested');
 
     (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle();
 
@@ -76,7 +91,7 @@ test('a customer who never paid gets the trial note even if they cancelled it th
 });
 
 test('a customer whose only paid invoice is the zero-euro trial one gets the no-discount note', function () {
-    bindPaidInvoices([0]);
+    bindStripeBillingHistory([0]);
     $user = cancelledCustomer();
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
@@ -86,7 +101,7 @@ test('a customer whose only paid invoice is the zero-euro trial one gets the no-
 });
 
 test('a customer with no paid invoice at all gets the no-discount note', function () {
-    bindPaidInvoices([]);
+    bindStripeBillingHistory([]);
 
     (new SendSubscriptionCancelledEmailJob(cancelledCustomer()))->handle();
 
@@ -103,7 +118,7 @@ test('a user Stripe has never seen gets the no-discount note without asking Stri
 });
 
 test('the send is logged once and never repeated, whichever variant went out', function () {
-    bindPaidInvoices([399]);
+    bindStripeBillingHistory([399]);
     $user = cancelledCustomer();
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
@@ -114,7 +129,7 @@ test('the send is logged once and never repeated, whichever variant went out', f
 });
 
 test('nobody still on a plan is told they left', function (string $status) {
-    bindPaidInvoices([399]);
+    bindStripeBillingHistory([399]);
 
     (new SendSubscriptionCancelledEmailJob(cancelledCustomer($status)))->handle();
 
@@ -122,7 +137,7 @@ test('nobody still on a plan is told they left', function (string $status) {
 })->with(['active', 'trialing', 'past_due']);
 
 test('a plan cancelled but still inside its paid period is not written to yet', function () {
-    bindPaidInvoices([399]);
+    bindStripeBillingHistory([399]);
     $user = cancelledCustomer('active');
     $user->subscription('default')->update(['ends_at' => now()->addWeek()]);
 
@@ -132,7 +147,7 @@ test('a plan cancelled but still inside its paid period is not written to yet', 
 });
 
 test('the shared accounts are never written to', function (User $user) {
-    bindPaidInvoices([399]);
+    bindStripeBillingHistory([399]);
 
     (new SendSubscriptionCancelledEmailJob($user))->handle();
 
@@ -154,7 +169,7 @@ test('the shared accounts are never written to', function (User $user) {
 ]);
 
 test('a reader who switched off news and offers gets neither variant', function () {
-    bindPaidInvoices([399]);
+    bindStripeBillingHistory([399]);
     $user = cancelledCustomer();
     UserSetting::factory()->for($user)->create(['notify_marketing' => false]);
 

@@ -113,7 +113,7 @@ test('a failed dispatch hands the claim back so a redelivery can try again', fun
 test('a replayed Stripe webhook ends the local subscription and sends the trial variant', function () {
     Mail::fake();
     config(['cashier.webhook.secret' => null]);
-    bindPaidInvoices([0]);
+    bindStripeBillingHistory([0]);
     $user = User::factory()->create(['stripe_id' => 'cus_cancelled']);
     $user->subscriptions()->create([
         'type' => 'default',

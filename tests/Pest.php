@@ -768,7 +768,7 @@ function issueOAuthToken(User $user, ?array $scopes = ['mcp:use'], ?Client $clie
  *
  * @param  list<int>  $amountsPaid
  */
-function bindPaidInvoices(
+function bindStripeBillingHistory(
     array $amountsPaid,
     string $customerId = 'cus_cancelled',
     ?string $cancellationReason = null,
