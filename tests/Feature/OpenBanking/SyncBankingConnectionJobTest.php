@@ -1916,4 +1916,5 @@ test('a closed session still expires the connection', function (array $session) 
 })->with([
     'the session is no longer authorized' => [['status' => 'CLOSED', 'accounts' => ['ext-1']]],
     'the session still lists the refused account' => [['status' => 'AUTHORIZED', 'accounts' => ['ext-1', 'ext-2']]],
+    'the session response breaks its shape' => [['status' => 'AUTHORIZED']],
 ]);

@@ -405,20 +405,23 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             return false;
         }
 
+        // The shape is the provider's promise, not the bank's: a response that
+        // breaks it is read like a failed lookup, so the connection expires as
+        // it did before rather than failing the run from inside a catch.
         try {
             $session = $this->provider->getSession($connection->session_id);
+
+            $uids = collect($session['accounts'])
+                ->map(fn (mixed $sessionAccount): mixed => is_array($sessionAccount) ? ($sessionAccount['uid'] ?? null) : $sessionAccount)
+                ->filter()
+                ->all();
+
+            return $session['status'] === 'AUTHORIZED'
+                && $uids !== []
+                && ! in_array($account->external_account_id, $uids, true);
         } catch (\Throwable) {
             return false;
         }
-
-        $uids = collect($session['accounts'])
-            ->map(fn (mixed $sessionAccount): mixed => is_array($sessionAccount) ? ($sessionAccount['uid'] ?? null) : $sessionAccount)
-            ->filter()
-            ->all();
-
-        return $session['status'] === 'AUTHORIZED'
-            && $uids !== []
-            && ! in_array($account->external_account_id, $uids, true);
     }
 
     /**
