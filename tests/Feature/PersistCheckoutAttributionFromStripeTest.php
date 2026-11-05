@@ -130,5 +130,6 @@ test('leaves the preselected plan empty when the metadata names no plan', functi
     expect($subscription->fresh()->preselected_plan)->toBeNull();
 })->with([
     'unknown plan' => [['preselected_plan' => 'weekly']],
+    'config sub-path of a plan' => [['preselected_plan' => 'yearly.features']],
     'no preselected plan metadata' => [[]],
 ]);

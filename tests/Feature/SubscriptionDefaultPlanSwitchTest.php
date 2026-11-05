@@ -126,4 +126,4 @@ test('checkout drops a preselected plan that is not one of the plans', function 
     expectCheckoutMetadata(null);
 
     $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'preselected_plan' => $value]))->assertRedirect();
-})->with(['weekly', 'lifetime', 'trial_days']);
+})->with(['weekly', 'lifetime', 'trial_days', 'yearly.features', '']);

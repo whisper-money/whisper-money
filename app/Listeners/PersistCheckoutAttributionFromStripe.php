@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Enums\UpsellSource;
+use App\Support\SubscriptionPlans;
 use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Cashier\Subscription;
 
@@ -39,7 +40,8 @@ class PersistCheckoutAttributionFromStripe
         $metadata = $object['metadata'] ?? [];
 
         $this->fillWhileEmpty($stripeId, 'upsell_source', UpsellSource::tryFrom((string) ($metadata['upsell_source'] ?? ''))?->value);
-        $this->fillWhileEmpty($stripeId, 'preselected_plan', $this->knownPlan((string) ($metadata['preselected_plan'] ?? '')));
+        $preselectedPlan = (string) ($metadata['preselected_plan'] ?? '');
+        $this->fillWhileEmpty($stripeId, 'preselected_plan', SubscriptionPlans::isKnown($preselectedPlan) ? $preselectedPlan : null);
     }
 
     private function fillWhileEmpty(string $stripeId, string $column, ?string $value): void
@@ -52,10 +54,5 @@ class PersistCheckoutAttributionFromStripe
             ->where('stripe_id', $stripeId)
             ->whereNull($column)
             ->update([$column => $value]);
-    }
-
-    private function knownPlan(string $planKey): ?string
-    {
-        return $planKey !== '' && is_array(config("subscriptions.plans.{$planKey}")) ? $planKey : null;
     }
 }

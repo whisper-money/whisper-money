@@ -98,7 +98,7 @@ class HandleInertiaRequests extends Middleware
             'aiImportMappingEnabled' => $user !== null && $this->aiImportMappingGate->allows($user),
             'pricing' => [
                 'plans' => config('subscriptions.plans', []),
-                'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
+                'defaultPlan' => config('subscriptions.default_plan', 'yearly'),
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
                 'currency' => strtoupper(config('cashier.currency', 'eur')),

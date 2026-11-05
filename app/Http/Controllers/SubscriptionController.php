@@ -15,6 +15,7 @@ use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Subscriptions\RefundWindow;
 use App\Services\Subscriptions\SubscribedPlan;
+use App\Support\SubscriptionPlans;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -253,7 +254,7 @@ class SubscriptionController extends Controller
     {
         $planKey = (string) $request->query('preselected_plan', '');
 
-        return $planKey !== '' && is_array(config("subscriptions.plans.{$planKey}")) ? $planKey : null;
+        return SubscriptionPlans::isKnown($planKey) ? $planKey : null;
     }
 
     /**
