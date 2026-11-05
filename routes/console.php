@@ -56,3 +56,20 @@ Schedule::command('model:prune', ['--model' => [Import::class]])->dailyAt('04:45
 // `/api/v1` usage rows past the 90 days `stats:api-usage` can usefully look
 // back over (see ApiRequest::prunable()).
 Schedule::command('model:prune', ['--model' => [ApiRequest::class]])->dailyAt('04:50')->timezone('Europe/Madrid');
+// Black Friday 2026: the launch email on Friday 27 November and the last-day
+// email on Tuesday 1 December, both at 09:00 Madrid, to free users who kept
+// "Product news and offers" on. Scheduled rather than left to someone's memory,
+// and pinned to 2026 because a day-and-month cron fires every year. No
+// `--force`: it would suffix the identifier and defeat the per-user dedupe,
+// so `--no-interaction` answers the confirmation instead. The audience is
+// recomputed at each run, so whoever subscribes after the first email is out
+// of the second. Copy and the matching manual command live in each view.
+foreach ([
+    'black-friday-2026' => ['0 9 27 11 *', '40% off Whisper Money until 1 December'],
+    'black-friday-last-day-2026' => ['0 9 1 12 *', 'Last day: 40% off ends tonight'],
+] as $view => [$cron, $subject]) {
+    Schedule::command('email:update', [$view, '--audience' => 'unsubscribed', '--subject' => $subject, '--exclude-demo', '--no-interaction'])
+        ->cron($cron)
+        ->timezone('Europe/Madrid')
+        ->when(fn (): bool => now('Europe/Madrid')->year === 2026);
+}
