@@ -147,6 +147,14 @@ them out.
 `unsubscribed` also refuses to run while `subscriptions.enabled` is false,
 because then every user reads as unsubscribed.
 
+### 3.4. Scheduling a dated campaign
+
+A campaign that has to land on a given morning can be scheduled in
+`routes/console.php` instead of run by hand: see the Black Friday 2026 sends.
+Pin the cron to the year with `->when()`, because a day-and-month cron fires
+every year. Pass `--no-interaction` and **not** `--force`: `--force` suffixes
+the identifier with a timestamp, so a re-run would mail everyone again.
+
 ### 4. Command Arguments
 
 - `view`: The name of your template file (without .blade.php extension)
