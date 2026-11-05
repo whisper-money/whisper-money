@@ -138,7 +138,7 @@ class AuthorizationController extends Controller
             || $this->isAbandonedReauthorization($connection);
 
         if (! $renewable) {
-            return ['error' => 'Only active, error or expired connections can be re-authorized.'];
+            return ['error' => 'Only active, error, expired or unfinished reconnects can be re-authorized.'];
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');
@@ -602,9 +602,15 @@ class AuthorizationController extends Controller
         foreach ($unmatchedExisting as $index => $account) {
             $newAccountData = $unmatchedNew->get($index);
 
+            if (! $newAccountData) {
+                $account->update(['external_account_id' => null]);
+
+                continue;
+            }
+
             $account->update([
-                'external_account_id' => $newAccountData['uid'] ?? null,
-                'iban' => $newAccountData === null ? $account->iban : ($newAccountData['account_id']['iban'] ?? null),
+                'external_account_id' => $newAccountData['uid'],
+                'iban' => $newAccountData['account_id']['iban'] ?? null,
             ]);
         }
     }

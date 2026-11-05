@@ -582,7 +582,7 @@ test('reauthorize returns 422 for connections that are neither active, errored n
     $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
 
     $response->assertUnprocessable();
-    $response->assertJson(['error' => 'Only active, error or expired connections can be re-authorized.']);
+    $response->assertJson(['error' => 'Only active, error, expired or unfinished reconnects can be re-authorized.']);
 })->with([
     BankingConnectionStatus::Pending,
     BankingConnectionStatus::AwaitingMapping,
