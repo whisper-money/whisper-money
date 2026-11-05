@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
 use App\Enums\DripEmailType;
@@ -1859,3 +1860,61 @@ test('a first sync that could not read balances is still owed its history', func
     $job = new SyncBankingConnectionJob($connection);
     runSync($job, $transactionSync, $balanceSync);
 });
+
+/**
+ * An account still holding a uid from the session a reconnect replaced: the
+ * bank answers it with the same CLOSED_SESSION a closed session gets.
+ *
+ * @param  array<string, mixed>  $session
+ */
+function syncWithOneStaleAccount(array $session): array
+{
+    Mail::fake();
+
+    $connection = enableBankingConnectionWithAccounts(2);
+    [$current, $stale] = $connection->accounts->all();
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnUsing(function (Account $account) use ($stale): void {
+        if ($account->external_account_id === $stale->external_account_id) {
+            throw new ExpiredBankingSessionException('Reconnect required.');
+        }
+    });
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->andReturnNull();
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturn(0);
+
+    $provider = Mockery::mock(BankingProviderInterface::class);
+    $provider->shouldReceive('getSession')->with($connection->session_id)->andReturn($session);
+    app()->instance(BankingProviderInterface::class, $provider);
+
+    runSync(new SyncBankingConnectionJob($connection), $transactionSync, $balanceSync);
+
+    return [$connection->refresh(), $current->refresh(), $stale->refresh()];
+}
+
+test('an account the current session does not cover is unlinked instead of expiring the connection', function () {
+    [$connection, $current, $stale] = syncWithOneStaleAccount([
+        'status' => 'AUTHORIZED',
+        'accounts' => ['ext-1'],
+    ]);
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active)
+        ->and($connection->last_synced_at->isToday())->toBeTrue()
+        ->and($current->external_account_id)->toBe('ext-1')
+        ->and($stale->external_account_id)->toBeNull();
+
+    Mail::assertNothingSent();
+});
+
+test('a closed session still expires the connection', function (array $session) {
+    [$connection, , $stale] = syncWithOneStaleAccount($session);
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Expired)
+        ->and($stale->external_account_id)->toBe('ext-2');
+})->with([
+    'the session is no longer authorized' => [['status' => 'CLOSED', 'accounts' => ['ext-1']]],
+    'the session still lists the refused account' => [['status' => 'AUTHORIZED', 'accounts' => ['ext-1', 'ext-2']]],
+    'the session response breaks its shape' => [['status' => 'AUTHORIZED']],
+]);

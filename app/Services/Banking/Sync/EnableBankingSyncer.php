@@ -2,6 +2,7 @@
 
 namespace App\Services\Banking\Sync;
 
+use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Exceptions\Banking\CarriesBankingOperation;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
@@ -39,6 +40,7 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
     public function __construct(
         private TransactionSyncService $transactionSync,
         private BalanceSyncService $balanceSync,
+        private BankingProviderInterface $provider,
     ) {}
 
     public function expires(): bool
@@ -90,6 +92,10 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 
                 try {
                     $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy, saveDailyBalances: ! $account->isLinked(), pageBudget: $pageBudget);
+                } catch (ExpiredBankingSessionException $e) {
+                    $this->unlinkAccountOutsideSession($connection, $account, $e);
+
+                    continue;
                 } catch (InaccessibleBankAccountException|WrongTransactionsPeriodException $e) {
                     // A single account the bank no longer exposes, or whose history
                     // window it refuses even after narrowing, must not break the
@@ -331,9 +337,11 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             return true;
         } catch (\Throwable $e) {
             // An expired consent needs the user to reconnect, so it still has to
-            // reach the job.
+            // reach the job - unless only this account's uid is stale.
             if ($e instanceof ExpiredBankingSessionException) {
-                throw $e;
+                $this->unlinkAccountOutsideSession($connection, $account, $e);
+
+                return false;
             }
 
             // A rate limit used to be rethrown so the job would apply the provider
@@ -358,6 +366,60 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
                 'error' => $e->getMessage(),
             ]);
 
+            return false;
+        }
+    }
+
+    /**
+     * Unlink an account whose uid the connection's session does not cover, or
+     * rethrow when the session itself is gone.
+     *
+     * EnableBanking answers a uid from an earlier, closed session with the same
+     * 401 CLOSED_SESSION it gives for a closed session. After a reconnect that
+     * leaves one account on its old uid (the bank no longer returns it), that one
+     * account would otherwise expire the whole connection and the fresh session
+     * it was just given. Unlinking it lets the sync skip it from now on, as it
+     * skips any other unlinked account.
+     */
+    private function unlinkAccountOutsideSession(BankingConnection $connection, Account $account, ExpiredBankingSessionException $e): void
+    {
+        if (! $this->sessionServesWithout($connection, $account)) {
+            throw $e;
+        }
+
+        $account->update(['external_account_id' => null]);
+
+        Log::warning('Unlinked an EnableBanking account its session no longer covers', [
+            ...$connection->logContext(),
+            'account_id' => $account->id,
+        ]);
+    }
+
+    /**
+     * Whether the connection's session is still authorized and lists accounts,
+     * none of them this one.
+     */
+    private function sessionServesWithout(BankingConnection $connection, Account $account): bool
+    {
+        if (! $connection->session_id) {
+            return false;
+        }
+
+        // The shape is the provider's promise, not the bank's: a response that
+        // breaks it is read like a failed lookup, so the connection expires as
+        // it did before rather than failing the run from inside a catch.
+        try {
+            $session = $this->provider->getSession($connection->session_id);
+
+            $uids = collect($session['accounts'])
+                ->map(fn (mixed $sessionAccount): mixed => is_array($sessionAccount) ? ($sessionAccount['uid'] ?? null) : $sessionAccount)
+                ->filter()
+                ->all();
+
+            return $session['status'] === 'AUTHORIZED'
+                && $uids !== []
+                && ! in_array($account->external_account_id, $uids, true);
+        } catch (\Throwable) {
             return false;
         }
     }

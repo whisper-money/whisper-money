@@ -134,10 +134,11 @@ class AuthorizationController extends Controller
         // email's business, not this gate's.
         $renewable = $connection->isActive()
             || $connection->isExpired()
-            || $connection->status === BankingConnectionStatus::Error;
+            || $connection->status === BankingConnectionStatus::Error
+            || $this->isAbandonedReauthorization($connection);
 
         if (! $renewable) {
-            return ['error' => 'Only active, error or expired connections can be re-authorized.'];
+            return ['error' => 'Only active, error, expired or unfinished reconnects can be re-authorized.'];
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');
@@ -165,6 +166,18 @@ class AuthorizationController extends Controller
         ]);
 
         return $result;
+    }
+
+    /**
+     * A Pending connection that already has accounts is a re-authorization the
+     * user left at the bank. No callback ever comes for an abandoned flow, and
+     * the scheduled sync skips Pending, so without this it is stuck for good.
+     * A first connection is Pending with no accounts, and stays out of here.
+     */
+    private function isAbandonedReauthorization(BankingConnection $connection): bool
+    {
+        return $connection->status === BankingConnectionStatus::Pending
+            && $connection->accounts()->exists();
     }
 
     /**
@@ -546,6 +559,12 @@ class AuthorizationController extends Controller
      *   2. Positional fallback — match by creation order for legacy accounts without a stored IBAN.
      *      Uids a sibling connection has already claimed by IBAN are never handed out here.
      *
+     * An account neither step matches is one the new session does not cover (a
+     * closed account, say), so it is unlinked rather than left holding a uid of
+     * the session this reconnect just replaced: the sync skips an unlinked
+     * account, whereas the old uid answers CLOSED_SESSION and would expire the
+     * whole connection along with the session it was just given.
+     *
      * @param  array<int, array<string, mixed>>  $newAccounts
      * @param  list<string>  $siblingUids
      */
@@ -584,6 +603,8 @@ class AuthorizationController extends Controller
             $newAccountData = $unmatchedNew->get($index);
 
             if (! $newAccountData) {
+                $account->update(['external_account_id' => null]);
+
                 continue;
             }
 

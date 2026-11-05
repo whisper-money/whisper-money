@@ -131,6 +131,37 @@ describe('ConnectionsPage', () => {
         ).toHaveLength(2);
     });
 
+    it('offers a reconnect for a re-authorization abandoned at the bank', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({ status: 'pending', accounts_count: 2 }),
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /reconnect/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('offers no reconnect for a first connection still being authorized', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({ status: 'pending', accounts_count: 0 }),
+                ]}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: /reconnect/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('menuitem', { name: /reconnect/i }),
+        ).not.toBeInTheDocument();
+    });
+
     it('offers an early renewal on a consent that is about to run out', () => {
         render(
             <ConnectionsPage
