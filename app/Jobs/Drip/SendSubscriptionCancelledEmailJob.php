@@ -3,21 +3,37 @@
 namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
+use App\Mail\Drip\CancelledAfterPayingEmail;
 use App\Mail\Drip\CancelledBeforePayingEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use Illuminate\Mail\Mailable;
 use Laravel\Cashier\Cashier;
 
 /**
- * The email for a user whose subscription has ended, in one of two variants:
- * someone who paid us gets the win-back offer, someone who left before the
- * first charge (a cancelled trial, a first payment that never went through)
- * gets a short note asking what was missing, with no discount.
+ * The email for a user whose subscription has ended, in one of three variants:
  *
- * Both share one type, so a user only ever gets one of them.
+ * - someone who left before the first charge (a cancelled trial, a first
+ *   payment that never went through) gets a short note asking what was
+ *   missing, with no discount;
+ * - someone who paid and asked to end it gets the same kind of note, worded
+ *   for a paying customer and also without a discount, because the Stripe
+ *   customer portal already offered them COMEBACK30 on the way out (or they
+ *   asked for a refund, which a discount does not answer);
+ * - someone who paid and lost the plan any other way (a failed renewal, a
+ *   dispute, a reason Stripe does not give) never saw that offer, so they get
+ *   the win-back email with COMEBACK30.
+ *
+ * All share one type, so a user only ever gets one of them.
  */
 class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
 {
+    /**
+     * The `cancellation_details.reason` Stripe gives when the subscription was
+     * ended on request rather than by a failed or disputed payment: the
+     * customer portal, and our own API cancels (the in-app refund) too.
+     */
+    private const string CANCELLED_BY_CUSTOMER = 'cancellation_requested';
+
     /**
      * The variant is picked by asking Stripe, so an outage is waited out
      * rather than retried on the spot.
@@ -59,9 +75,34 @@ class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
 
     protected function buildMail(): Mailable
     {
-        return $this->hasEverPaid()
-            ? new SubscriptionCancelledEmail($this->user)
-            : new CancelledBeforePayingEmail($this->user);
+        return match (true) {
+            ! $this->hasEverPaid() => new CancelledBeforePayingEmail($this->user),
+            $this->lastCancellationReason() === self::CANCELLED_BY_CUSTOMER => new CancelledAfterPayingEmail($this->user),
+            default => new SubscriptionCancelledEmail($this->user),
+        };
+    }
+
+    /**
+     * Why the customer's latest cancelled subscription was cancelled, as
+     * Stripe records it, or null when Stripe gives no reason or has no
+     * cancelled subscription. Stripe lists newest first, and a customer holds
+     * one plan at a time, so the newest cancelled one is the one that just
+     * ended. Asked of Stripe rather than read off the webhook, so the manual
+     * command, which has no webhook, picks the same variant.
+     *
+     * A Stripe outage throws, and the job is retried rather than guessing.
+     */
+    private function lastCancellationReason(): ?string
+    {
+        $subscriptions = Cashier::stripe()->subscriptions->all([
+            'customer' => $this->user->stripe_id,
+            'status' => 'canceled',
+            'limit' => 1,
+        ]);
+
+        $reason = ($subscriptions->data[0] ?? null)?->cancellation_details?->reason;
+
+        return is_string($reason) ? $reason : null;
     }
 
     /**
