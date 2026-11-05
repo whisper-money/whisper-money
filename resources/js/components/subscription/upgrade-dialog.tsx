@@ -1,6 +1,7 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepNote } from '@/components/onboarding/step-screen';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
+import { checkoutHref } from '@/components/subscription/subscription-offer';
 import {
     Dialog,
     DialogContent,
@@ -9,7 +10,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { captureEvent } from '@/lib/posthog';
-import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
@@ -40,7 +40,8 @@ export function UpgradeDialog({
     source: UpsellSource;
 }) {
     const { pricing, locale } = usePage<SharedData>().props;
-    const [selectedPlan, setSelectedPlan] = useState(pricing.defaultPlan);
+    const [preselectedPlan] = useState(pricing.defaultPlan);
+    const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const terms = planTerms(
         pricing.plans[selectedPlan],
         pricing.currency,
@@ -67,13 +68,16 @@ export function UpgradeDialog({
 
                     <StepButton
                         text={__('Start a plan')}
-                        href={checkout.url({
-                            query: { plan: selectedPlan, source },
-                        })}
+                        href={checkoutHref(
+                            selectedPlan,
+                            preselectedPlan,
+                            source,
+                        )}
                         onClick={() =>
                             captureEvent('upgrade_checkout_started', {
                                 source,
                                 plan: selectedPlan,
+                                preselected_plan: preselectedPlan,
                             })
                         }
                     />

@@ -1,6 +1,7 @@
 import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
+import { checkoutHref } from '@/components/subscription/subscription-offer';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,6 @@ import {
     portal,
     refund as refundRoute,
 } from '@/routes/settings/billing';
-import { checkout } from '@/routes/subscribe';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
@@ -150,7 +150,7 @@ function UpgradeSection({
                 {terms && <p className="mt-4 text-sm font-medium">{terms}</p>}
 
                 <Button asChild className="mt-4 w-full">
-                    <a href={checkout.url({ query: { plan: selectedPlan } })}>
+                    <a href={checkoutHref(selectedPlan, defaultPlan)}>
                         {__('Start a plan')}
                     </a>
                 </Button>

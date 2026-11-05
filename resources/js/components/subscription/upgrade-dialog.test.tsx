@@ -3,12 +3,20 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UpgradeDialog } from './upgrade-dialog';
 
-const mocks = vi.hoisted(() => ({ captureEvent: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+    captureEvent: vi.fn(),
+    defaultPlan: { current: 'yearly' },
+}));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { pricing, locale: 'en' } }),
+    usePage: () => ({
+        props: {
+            pricing: { ...pricing, defaultPlan: mocks.defaultPlan.current },
+            locale: 'en',
+        },
+    }),
 }));
 
 function renderDialog() {
@@ -24,7 +32,10 @@ function renderDialog() {
 }
 
 describe('UpgradeDialog', () => {
-    beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.defaultPlan.current = 'yearly';
+    });
 
     it('renders the per-feature title and description', () => {
         renderDialog();
@@ -53,6 +64,45 @@ describe('UpgradeDialog', () => {
             'href',
             expect.stringContaining('source=connections'),
         );
+        expect(link).toHaveAttribute(
+            'href',
+            expect.stringContaining('preselected_plan=yearly'),
+        );
+    });
+
+    it('preselects monthly when it is the configured default', () => {
+        mocks.defaultPlan.current = 'monthly';
+        renderDialog();
+
+        const link = screen.getByRole('link', { name: /Start a plan/ });
+        expect(link).toHaveAttribute(
+            'href',
+            expect.stringMatching(/[?&]plan=monthly/),
+        );
+        expect(link).toHaveAttribute(
+            'href',
+            expect.stringContaining('preselected_plan=monthly'),
+        );
+        expect(
+            screen.getByText('€8.99 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the preselected plan when the user switches plans', () => {
+        mocks.defaultPlan.current = 'monthly';
+        renderDialog();
+
+        fireEvent.click(screen.getByText('Yearly'));
+        fireEvent.click(screen.getByRole('link', { name: /Start a plan/ }));
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'upgrade_checkout_started',
+            {
+                source: 'connections',
+                plan: 'yearly',
+                preselected_plan: 'monthly',
+            },
+        );
     });
 
     it('captures a checkout-started event tagged with the source', () => {
@@ -62,7 +112,11 @@ describe('UpgradeDialog', () => {
 
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'upgrade_checkout_started',
-            { source: 'connections', plan: 'yearly' },
+            {
+                source: 'connections',
+                plan: 'yearly',
+                preselected_plan: 'yearly',
+            },
         );
     });
 });

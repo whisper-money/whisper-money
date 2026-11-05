@@ -118,6 +118,40 @@ describe('StepGate copy experiment', () => {
         expect(checkoutHref()).toContain('plan=yearly');
     });
 
+    it('records the plan the arm preselected, not the one bought', () => {
+        renderGate('trial_monthly');
+
+        fireEvent.click(screen.getByText('Yearly'));
+        fireEvent.click(screen.getByTestId('start-plan'));
+
+        expect(checkoutHref()).toContain('preselected_plan=monthly');
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'onboarding_gate_checkout_started',
+            {
+                gate: 'bank',
+                plan: 'yearly',
+                preselected_plan: 'monthly',
+                arm: 'trial_monthly',
+            },
+        );
+    });
+
+    /**
+     * Control has no plan of its own, so it follows the configured default:
+     * flipping `SUBSCRIPTIONS_DEFAULT_PLAN` moves this arm too.
+     */
+    it('preselects the configured default in control', () => {
+        renderGate('control', {
+            pricing: { ...withTrial, defaultPlan: 'monthly' },
+        });
+
+        expect(checkoutHref()).toMatch(/[?&]plan=monthly/);
+        expect(checkoutHref()).toContain('preselected_plan=monthly');
+        expect(screen.getByTestId('start-plan').textContent).toBe(
+            'Start Standard — free for 7 days',
+        );
+    });
+
     it('says account rather than bank on the broker gate', () => {
         renderGate('trial_yearly', { kind: 'broker' });
 
@@ -134,7 +168,12 @@ describe('StepGate copy experiment', () => {
 
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'onboarding_gate_checkout_started',
-            { gate: 'bank', plan: 'monthly', arm: 'trial_monthly' },
+            {
+                gate: 'bank',
+                plan: 'monthly',
+                preselected_plan: 'monthly',
+                arm: 'trial_monthly',
+            },
         );
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'onboarding_gate_declined',

@@ -58,7 +58,6 @@ export default function Paywall() {
 
     const locale = useLocale();
     const [supportOpen, setSupportOpen] = useState(false);
-    const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer();
     const survey = useFreePlanSurvey(() => router.visit(dashboard().url));
 
     const gate: PaywallGate = canManageConnectionsForFreePlan
@@ -66,6 +65,15 @@ export default function Paywall() {
         : canUseFreePlan
           ? 'soft'
           : 'hard';
+
+    const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer(null, {
+        onCheckout: (plan, preselectedPlan) =>
+            captureEvent('paywall_checkout_started', {
+                gate,
+                plan,
+                preselected_plan: preselectedPlan,
+            }),
+    });
 
     // The gates that have something to disconnect, once the delay after
     // onboarding is up. Derived once so the button and the screen it opens

@@ -15,6 +15,7 @@ use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Subscriptions\RefundWindow;
 use App\Services\Subscriptions\SubscribedPlan;
+use App\Support\SubscriptionPlans;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -217,19 +218,43 @@ class SubscriptionController extends Controller
         // not send this one, if it is canceled, back into the wizard.
         $request->session()->forget(self::RETURN_SESSION_KEY);
 
-        // Attribute revenue to the upsell point the checkout started from. The
-        // value rides along as Stripe subscription metadata and is persisted
-        // locally when the subscription webhook lands (see
-        // PersistUpsellSourceFromStripe).
+        // Attribute revenue to the upsell point the checkout started from and
+        // to the plan the picker had preselected. Both ride along as Stripe
+        // subscription metadata and are persisted locally when the
+        // subscription webhook lands (see PersistCheckoutAttributionFromStripe).
+        $metadata = [];
+
         if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
-            $subscriptionBuilder->withMetadata(['upsell_source' => $source->value]);
+            $metadata['upsell_source'] = $source->value;
             $this->rememberCheckoutIntent($request, $source);
+        }
+
+        if ($preselectedPlan = $this->preselectedPlan($request)) {
+            $metadata['preselected_plan'] = $preselectedPlan;
+        }
+
+        if ($metadata !== []) {
+            $subscriptionBuilder->withMetadata($metadata);
         }
 
         return $subscriptionBuilder->checkout([
             'success_url' => route('subscribe.success'),
             'cancel_url' => route('subscribe.cancel'),
         ]);
+    }
+
+    /**
+     * The plan the picker had selected when it was shown, which is what the
+     * default-plan switch moves (an experiment arm can override it on its own
+     * screen, so the config alone does not say what the user saw). Only an
+     * existing plan key is kept: anything else is dropped rather than refusing
+     * the checkout, because a bad measurement must never cost a sale.
+     */
+    private function preselectedPlan(Request $request): ?string
+    {
+        $planKey = (string) $request->query('preselected_plan', '');
+
+        return SubscriptionPlans::isKnown($planKey) ? $planKey : null;
     }
 
     /**

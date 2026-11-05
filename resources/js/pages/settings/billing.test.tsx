@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
         subscription: null as Record<string, unknown> | null,
         hasUnpaidSubscription: false,
         errors: {} as Record<string, string>,
+        defaultPlan: 'yearly',
     },
 }));
 
@@ -37,7 +38,7 @@ vi.mock('@inertiajs/react', () => ({
                 isSharedAccount: mocks.state.isSharedAccount,
                 hasProPlan: mocks.state.hasProPlan,
             },
-            pricing,
+            pricing: { ...pricing, defaultPlan: mocks.state.defaultPlan },
             locale: 'en',
             hasAiConsent: mocks.state.hasAiConsent,
             subscription: mocks.state.subscription,
@@ -354,5 +355,43 @@ describe('Billing – a subscription whose charge failed', () => {
         expect(
             screen.queryByText('Your payment failed'),
         ).not.toBeInTheDocument();
+    });
+});
+
+describe('Billing – upgrade section', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.state.hasProPlan = false;
+        mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
+        mocks.state.subscription = null;
+        mocks.state.hasUnpaidSubscription = false;
+        mocks.state.defaultPlan = 'yearly';
+    });
+
+    it('preselects the configured default plan and reports it to checkout', () => {
+        mocks.state.defaultPlan = 'monthly';
+        render(<Billing />);
+
+        const link = screen.getByRole('link', { name: 'Start a plan' });
+        expect(link.getAttribute('href')).toMatch(
+            /[?&]plan=monthly&preselected_plan=monthly/,
+        );
+        expect(
+            screen.getByText('€8.99 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the preselected plan when the user picks the other one', () => {
+        mocks.state.defaultPlan = 'monthly';
+        render(<Billing />);
+
+        fireEvent.click(screen.getByText('Yearly'));
+
+        expect(
+            screen
+                .getByRole('link', { name: 'Start a plan' })
+                .getAttribute('href'),
+        ).toMatch(/[?&]plan=yearly&preselected_plan=monthly/);
     });
 });

@@ -114,6 +114,22 @@ describe('Paywall', () => {
         );
     });
 
+    it('reports the checkout with the plan preselected on screen', () => {
+        render(<Paywall />);
+
+        fireEvent.click(screen.getByText('Monthly'));
+        fireEvent.click(screen.getByTestId('start-plan'));
+
+        expect(screen.getByTestId('start-plan')).toHaveAttribute(
+            'href',
+            expect.stringContaining('preselected_plan=yearly'),
+        );
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'paywall_checkout_started',
+            { gate: 'hard', plan: 'monthly', preselected_plan: 'yearly' },
+        );
+    });
+
     it('renders the price the server hands over', () => {
         render(<Paywall />);
 
