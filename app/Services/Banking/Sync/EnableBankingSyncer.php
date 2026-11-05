@@ -411,12 +411,12 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
             return false;
         }
 
-        $uids = collect($session['accounts'] ?? [])
+        $uids = collect($session['accounts'])
             ->map(fn (mixed $sessionAccount): mixed => is_array($sessionAccount) ? ($sessionAccount['uid'] ?? null) : $sessionAccount)
             ->filter()
             ->all();
 
-        return ($session['status'] ?? null) === 'AUTHORIZED'
+        return $session['status'] === 'AUTHORIZED'
             && $uids !== []
             && ! in_array($account->external_account_id, $uids, true);
     }
