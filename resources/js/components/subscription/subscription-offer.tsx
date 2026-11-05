@@ -86,13 +86,36 @@ export function RefundPromise() {
     );
 }
 
+/**
+ * The checkout URL every paid screen links to. `preselectedPlan` is the plan
+ * the picker had selected when it was shown — the configured default, or the
+ * plan an experiment arm starts on instead — so revenue can be split by what
+ * the user was offered first, not only by what they bought.
+ */
+export function checkoutHref(
+    plan: string,
+    preselectedPlan: string,
+    source?: string | null,
+): string {
+    return checkout.url({
+        query: {
+            plan,
+            preselected_plan: preselectedPlan,
+            ...(source ? { source } : {}),
+        },
+    });
+}
+
 interface OfferOptions {
     /** The plan to start on instead of the configured default. */
     initialPlan?: string;
     /** Replaces the label that names the charge, e.g. "Start free trial". */
     buttonText?: string;
-    /** Runs on the way out to checkout, with the plan being bought. */
-    onCheckout?: (plan: string) => void;
+    /**
+     * Runs on the way out to checkout, with the plan being bought and the one
+     * the picker had preselected.
+     */
+    onCheckout?: (plan: string, preselectedPlan: string) => void;
 }
 
 /**
@@ -106,9 +129,10 @@ export function useOffer(
 ) {
     const { pricing } = usePage<SharedData>().props;
     const locale = useLocale();
-    const [selectedPlan, setSelectedPlan] = useState(
-        initialPlan ?? pricing.defaultPlan,
-    );
+    // Captured once, like the state it seeds: the plan the user was shown
+    // first, whatever they switch to afterwards.
+    const [preselectedPlan] = useState(initialPlan ?? pricing.defaultPlan);
+    const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const plan: Plan | undefined = pricing.plans[selectedPlan];
 
     return {
@@ -122,12 +146,11 @@ export function useOffer(
                 text={
                     buttonText ?? checkoutLabel(plan, pricing.currency, locale)
                 }
-                href={checkout.url({
-                    query: source
-                        ? { plan: selectedPlan, source }
-                        : { plan: selectedPlan },
-                })}
-                onClick={onCheckout && (() => onCheckout(selectedPlan))}
+                href={checkoutHref(selectedPlan, preselectedPlan, source)}
+                onClick={
+                    onCheckout &&
+                    (() => onCheckout(selectedPlan, preselectedPlan))
+                }
                 data-testid="start-plan"
             />
         ),

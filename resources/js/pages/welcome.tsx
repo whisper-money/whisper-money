@@ -2714,8 +2714,12 @@ export default function Welcome({
         planEntries.some(([, p]) => p.billing_period === 'month') &&
         planEntries.some(([, p]) => p.billing_period === 'year');
 
+    // The toggle opens on the configured default plan's period, so the card
+    // highlighted as the default is the one actually on screen.
     const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>(
-        'year',
+        pricing.plans[pricing.defaultPlan]?.billing_period === 'month'
+            ? 'month'
+            : 'year',
     );
 
     const yearlyDiscount = useMemo(() => {

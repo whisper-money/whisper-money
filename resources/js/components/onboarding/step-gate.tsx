@@ -99,10 +99,11 @@ export function StepGate({
         useOffer(source, {
             initialPlan: trialPlan ?? undefined,
             buttonText: trialPlan ? __('Start free trial') : undefined,
-            onCheckout: (plan) =>
+            onCheckout: (plan, preselectedPlan) =>
                 captureEvent('onboarding_gate_checkout_started', {
                     gate: kind,
                     plan,
+                    preselected_plan: preselectedPlan,
                     ...armProps,
                 }),
         });

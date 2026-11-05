@@ -53,6 +53,12 @@ $payNow = filter_var(env('SUBSCRIPTION_PAY_NOW', false), FILTER_VALIDATE_BOOLEAN
 */
 $trialDays = static fn (string $key, int $default): int => is_numeric($raw = env($key)) ? (int) $raw : $default;
 
+/*
+| The plan preselected on every pricing surface, checked against the tier's own
+| plan keys (the same keys as `plans` below) further down. See "Default Plan".
+*/
+$defaultPlan = strtolower(trim((string) env('SUBSCRIPTIONS_DEFAULT_PLAN', 'yearly')));
+
 return [
 
     /*
@@ -223,11 +229,22 @@ return [
     | Default Plan
     |--------------------------------------------------------------------------
     |
-    | The default plan key to display prominently or use for checkout.
+    | The plan every pricing surface preselects (the paywall, the onboarding
+    | gates, the upgrade dialog, settings → billing, the landing page) and the
+    | one checkout falls back to without a `?plan=`. `yearly` unless
+    | `SUBSCRIPTIONS_DEFAULT_PLAN` names another plan above (env-only, no
+    | deploy — `php artisan config:clear` after changing it). A value that is
+    | not one of the plans falls back to `yearly`: a typo must not leave the
+    | screens with nothing selected.
+    |
+    | It only changes what is selected first, never a price. An arm of the
+    | `OnboardingGateCopy` experiment that preselects its own plan still wins
+    | on its gate; the plan actually preselected on screen is what checkout
+    | records as `preselected_plan`.
     |
     */
 
-    'default_plan' => 'yearly',
+    'default_plan' => array_key_exists($defaultPlan, $tier) ? $defaultPlan : 'yearly',
 
     /*
     |--------------------------------------------------------------------------

@@ -104,6 +104,22 @@ describe('useOffer', () => {
         ).toBeInTheDocument();
     });
 
+    it('starts on the configured default plan', () => {
+        mocks.pricing.current = {
+            ...pricingWithTrial(7, 14),
+            defaultPlan: 'monthly',
+        };
+
+        render(<Offer />);
+
+        expect(screen.getByRole('link')).toHaveTextContent(
+            'Start Standard — free for 7 days',
+        );
+        expect(screen.getByRole('link').getAttribute('href')).toMatch(
+            /[?&]plan=monthly&preselected_plan=monthly/,
+        );
+    });
+
     it('names the trial instead when nothing is charged today', () => {
         mocks.pricing.current = pricingWithTrial(7, 15);
 
