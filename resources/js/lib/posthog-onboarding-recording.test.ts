@@ -5,6 +5,9 @@ type RouterHandler = (event: { detail: Record<string, unknown> }) => void;
 
 const routerHandlers = new Map<string, RouterHandler[]>();
 
+/** Window listeners each test's fresh module adds, removed again after it. */
+const windowListeners: Array<[string, EventListenerOrEventListenerObject]> = [];
+
 vi.mock('@inertiajs/react', () => ({
     router: {
         on: vi.fn((name: string, handler: RouterHandler) => {
@@ -66,6 +69,13 @@ function initConfig(): Record<string, unknown> {
 
 describe('onboarding session recording', () => {
     beforeEach(() => {
+        const addEventListener = window.addEventListener.bind(window);
+        vi.spyOn(window, 'addEventListener').mockImplementation(
+            (type, listener, options) => {
+                windowListeners.push([type, listener]);
+                addEventListener(type, listener, options);
+            },
+        );
         vi.resetModules();
         vi.clearAllMocks();
         routerHandlers.clear();
@@ -76,6 +86,12 @@ describe('onboarding session recording', () => {
 
     afterEach(() => {
         vi.unstubAllEnvs();
+        vi.restoreAllMocks();
+        windowListeners
+            .splice(0)
+            .forEach(([type, listener]) =>
+                window.removeEventListener(type, listener),
+            );
     });
 
     it('records from the first frame when the app boots on the onboarding', async () => {
@@ -131,27 +147,69 @@ describe('onboarding session recording', () => {
     it.each([
         ['a prefetch', { prefetch: true }],
         ['a poll', { poll: true }],
-        ['a form post', { method: 'post' }],
     ])(
         'keeps recording through %s to another page',
         async (_label, overrides) => {
             await bootOn('/onboarding');
 
-            fire('before', visitTo('/accounts', overrides));
-            fire('finish', visitTo('/accounts', overrides));
+            fire('before', visitTo('/dashboard', overrides));
+            fire('finish', visitTo('/dashboard', overrides));
 
             expect(posthog.stopSessionRecording).not.toHaveBeenCalled();
         },
     );
 
-    it('stops when a post redirects out of the onboarding', async () => {
+    it('stops before the dashboard renders when finishing the onboarding', async () => {
         await bootOn('/onboarding');
 
+        // The exit is a post to an onboarding URL that redirects out.
         fire('before', visitTo('/onboarding/complete', { method: 'post' }));
-        window.history.pushState({}, '', '/dashboard');
-        fire('navigate', { page: { url: '/dashboard' } });
 
         expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+
+        window.history.pushState({}, '', '/dashboard');
+        fire('navigate', { page: { url: '/dashboard' } });
+        fire('finish', visitTo('/onboarding/complete', { method: 'post' }));
+
+        expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it('picks up again when a form post comes back to the onboarding', async () => {
+        await bootOn('/onboarding');
+
+        fire('before', visitTo('/accounts', { method: 'post' }));
+        fire('navigate', { page: { url: '/onboarding' } });
+        fire('finish', visitTo('/accounts', { method: 'post' }));
+
+        expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+        expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops on back/forward before the previous page is restored', async () => {
+        await bootOn('/onboarding');
+
+        window.history.pushState({}, '', '/subscribe');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+
+        expect(posthog.stopSessionRecording).toHaveBeenCalledTimes(1);
+
+        fire('navigate', { page: { url: '/subscribe' } });
+
+        expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it('starts only once the onboarding is on screen when going back to it', async () => {
+        await bootOn('/subscribe');
+
+        window.history.pushState({}, '', '/onboarding');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+
+        // The page being left is still in the DOM.
+        expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+
+        fire('navigate', { page: { url: '/onboarding' } });
+
+        expect(posthog.startSessionRecording).toHaveBeenCalledTimes(1);
     });
 
     it('resumes when a visit away is cancelled and the visitor stays', async () => {
@@ -175,6 +233,35 @@ describe('onboarding session recording', () => {
         expect(posthog.startSessionRecording).not.toHaveBeenCalled();
     });
 
+    it.each([
+        ['aria-label', 'Balance 900'],
+        ['title', 'BBVA Nómina'],
+        ['alt', 'Víctor Falcón'],
+        ['href', '/accounts?name=Ahorro'],
+        ['data-payee', 'Mercadona'],
+        ['placeholder', 'IBAN ES12'],
+        ['id', 'account-ahorro'],
+        ['src', 'data:image/png;base64,iVBORw0'],
+        ['src', 'blob:https://whisper.money/1'],
+        ['rr_dataURL', 'data:image/png;base64,iVBORw0'],
+    ])('masks the %s attribute in the replay', async (name, value) => {
+        const { maskOnboardingAttribute } = await import('./posthog');
+
+        expect(
+            maskOnboardingAttribute(name, value, document.createElement('img')),
+        ).toBe('***');
+    });
+
+    it('leaves the replay to a newer visit when one interrupts the visit away', async () => {
+        await bootOn('/onboarding');
+
+        fire('before', visitTo('/dashboard'));
+        fire('before', visitTo('/transactions'));
+        fire('finish', visitTo('/dashboard', { interrupted: true }));
+
+        expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+    });
+
     it('does nothing at all with the switch off', async () => {
         vi.stubEnv('VITE_POSTHOG_ONBOARDING_RECORDING_ENABLED', 'false');
 
@@ -185,6 +272,15 @@ describe('onboarding session recording', () => {
         expect(initConfig().session_recording).toBeUndefined();
         expect(routerHandlers.size).toBe(0);
         expect(posthog.startSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it('installs nothing with PostHog itself off', async () => {
+        vi.stubEnv('VITE_POSTHOG_ENABLED', 'false');
+
+        await bootOn('/onboarding');
+
+        expect(routerHandlers.size).toBe(0);
+        expect(posthog.init).not.toHaveBeenCalled();
     });
 
     it('confines recording to the onboarding even with the app-wide switch on', async () => {
@@ -205,7 +301,11 @@ describe('onboarding session recording', () => {
         > & {
             maskTextFn: (text: string) => string;
             maskInputFn: (text: string) => string;
-            maskAttributeFn: (name: string, value: string) => string;
+            maskAttributeFn: (
+                name: string,
+                value: string,
+                element?: Element,
+            ) => string;
             maskCapturedNetworkRequestFn: (request: unknown) => unknown;
         };
 
@@ -221,21 +321,34 @@ describe('onboarding session recording', () => {
         expect(config.enable_recording_console_log).toBe(false);
         expect(config.capture_performance).toEqual({ network_timing: false });
 
-        expect(recording.maskTextFn('1.234,56 €')).toBe('**********');
-        expect(recording.maskInputFn('Víctor')).toBe('******');
-        expect(recording.maskAttributeFn('aria-label', 'Balance 900')).toBe(
-            '***********',
-        );
-        expect(recording.maskAttributeFn('title', 'BBVA Nómina')).toBe(
-            '***********',
-        );
+        // Fixed length: a masked amount does not give away its digit count.
+        expect(recording.maskTextFn('1.234,56 €')).toBe('***');
+        expect(recording.maskTextFn('12 €')).toBe('***');
+        expect(recording.maskTextFn('\n  ')).toBe('\n  ');
+        expect(recording.maskInputFn('Víctor')).toBe('***');
         // Bank logos and styling stay, or the replay shows nothing at all.
-        expect(recording.maskAttributeFn('src', '/logos/bbva.svg')).toBe(
-            '/logos/bbva.svg',
-        );
+        expect(
+            recording.maskAttributeFn(
+                'src',
+                '/logos/bbva.svg',
+                document.createElement('img'),
+            ),
+        ).toBe('/logos/bbva.svg');
+        expect(
+            recording.maskAttributeFn(
+                'src',
+                '/media/statement.pdf',
+                document.createElement('iframe'),
+            ),
+        ).toBe('***');
         expect(recording.maskAttributeFn('class', 'flex gap-2')).toBe(
             'flex gap-2',
         );
+        expect(recording.maskAttributeFn('_cssText', '.a{color:red}')).toBe(
+            '.a{color:red}',
+        );
+        expect(recording.maskAttributeFn('data-state', 'open')).toBe('open');
+        expect(recording.maskAttributeFn('rr_width', '120px')).toBe('120px');
         expect(
             recording.maskCapturedNetworkRequestFn({ name: '/onboarding' }),
         ).toBeNull();

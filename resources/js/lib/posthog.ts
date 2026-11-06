@@ -1,3 +1,4 @@
+import type { PendingVisit } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import posthog, { type PostHogConfig } from 'posthog-js';
 
@@ -44,35 +45,114 @@ export const isOnboardingPath = (pathname: string): boolean =>
     pathname === '/onboarding' || pathname.startsWith('/onboarding/');
 
 /**
- * Attributes that can carry what the page says rather than how it looks: an
- * `aria-label` reading out a balance, a `title` with a full account name, an
- * input's `value`. Styling attributes (`class`, `style`, `data-state`, `src`)
- * are kept, or the replay would not render the page at all.
+ * The attributes a replay needs to draw the page, and nothing else: styling
+ * (`class`, `style`, the stylesheets rrweb inlines as `_cssText`), the state
+ * Tailwind variants key on (`data-state`, `aria-expanded`), SVG geometry so
+ * icons render, and rrweb's own layout metadata (`rr_width`, …).
+ *
+ * An allow-list on purpose: an attribute nobody thought of (an `aria-label`
+ * reading out a balance, a `title` with an account name, an `href` with a
+ * query string, a `data-*` holding a payee) is masked rather than recorded.
  */
-const TEXT_BEARING_ATTRIBUTES = new Set([
-    'alt',
-    'aria-label',
-    'aria-description',
-    'aria-valuenow',
-    'aria-valuetext',
-    'content',
-    'label',
-    'placeholder',
-    'title',
-    'value',
+const LAYOUT_ATTRIBUTES = new Set([
+    '_cssText',
+    'class',
+    'style',
+    'rel',
+    'media',
+    'type',
+    'role',
+    'disabled',
+    'hidden',
+    'aria-hidden',
+    'aria-expanded',
+    'aria-selected',
+    'aria-checked',
+    'aria-disabled',
+    'aria-current',
+    'aria-orientation',
+    'data-state',
+    'data-slot',
+    'data-side',
+    'data-align',
+    'data-orientation',
+    'data-disabled',
+    'data-highlighted',
+    'data-selected',
+    'data-placeholder',
+    'data-variant',
+    'data-size',
+    'viewBox',
+    'xmlns',
+    'fill',
+    'fill-rule',
+    'clip-rule',
+    'stroke',
+    'stroke-width',
+    'stroke-linecap',
+    'stroke-linejoin',
+    'opacity',
+    'transform',
+    'width',
+    'height',
+    'd',
+    'points',
+    'cx',
+    'cy',
+    'r',
+    'rx',
+    'ry',
+    'x',
+    'y',
+    'x1',
+    'y1',
+    'x2',
+    'y2',
 ]);
 
-const maskWith = (text: string): string => '*'.repeat(text.length);
+/**
+ * A fixed `***` rather than one asterisk per character, so a masked amount does
+ * not still give away how many digits it has. Whitespace-only text is left
+ * alone: it carries nothing and holds the layout together.
+ */
+const maskWith = (text: string): string => (text.trim() === '' ? text : '***');
+
+/**
+ * Keeps an attribute only when it draws the page: see {@link LAYOUT_ATTRIBUTES}.
+ * An `<img src>` stays when the image is served over the network (bank logos),
+ * never for an inlined `data:` or `blob:` image, which carries its pixels with
+ * it. rrweb's own `rr_*` metadata is layout, except `rr_dataURL`, a snapshot of
+ * an image.
+ */
+export function maskOnboardingAttribute(
+    name: string,
+    value: string,
+    element?: Element,
+): string {
+    const isLayoutMetadata = name.startsWith('rr_') && name !== 'rr_dataURL';
+    const isRemoteImage =
+        name === 'src' &&
+        element?.tagName === 'IMG' &&
+        !/^(data|blob):/i.test(value);
+
+    if (LAYOUT_ATTRIBUTES.has(name) || isLayoutMetadata || isRemoteImage) {
+        return value;
+    }
+
+    return maskWith(value);
+}
 
 /**
  * Replay of the onboarding with nothing readable in it: every text node, every
- * input and every text-bearing attribute is replaced by asterisks, and nothing
- * the page sends or logs is captured. What is left is layout, clicks, scrolls
- * and images (bank logos) — enough to see where someone hesitates, not what
- * they have.
+ * input and every attribute that is not layout is replaced by asterisks, and
+ * nothing the page sends or logs is captured. What is left is layout, clicks,
+ * scrolls and images (bank logos) — enough to see where someone hesitates, not
+ * what they have.
+ *
+ * Set on the client so it wins over whatever the PostHog project's remote
+ * config asks for (console logs, network payloads, canvas).
  */
 export const ONBOARDING_RECORDING_CONFIG = {
-    disable_session_recording: true,
     enable_recording_console_log: false,
     capture_performance: { network_timing: false },
     session_recording: {
@@ -80,8 +160,7 @@ export const ONBOARDING_RECORDING_CONFIG = {
         maskTextSelector: '*',
         maskTextFn: maskWith,
         maskInputFn: maskWith,
-        maskAttributeFn: (name: string, value: string): string =>
-            TEXT_BEARING_ATTRIBUTES.has(name) ? maskWith(value) : value,
+        maskAttributeFn: maskOnboardingAttribute,
         recordHeaders: false,
         recordBody: false,
         maskCapturedNetworkRequestFn: () => null,
@@ -90,6 +169,24 @@ export const ONBOARDING_RECORDING_CONFIG = {
         captureJsonLd: false,
     },
 } satisfies Partial<PostHogConfig>;
+
+/**
+ * The replay settings `posthog.init` boots with. With the onboarding switch on,
+ * recording starts only when the page loads on the onboarding; from there
+ * {@link installOnboardingSessionRecording} follows the visitor around.
+ */
+function sessionRecordingConfig(): Partial<PostHogConfig> {
+    if (!isPostHogOnboardingRecordingEnabled()) {
+        return {
+            disable_session_recording: !isPostHogSessionRecordingEnabled(),
+        };
+    }
+
+    return {
+        ...ONBOARDING_RECORDING_CONFIG,
+        disable_session_recording: !isOnboardingPath(window.location.pathname),
+    };
+}
 
 /**
  * Every call into the PostHog SDK, wrapped so it cannot take the page with it.
@@ -150,13 +247,7 @@ export function initializePostHog(): void {
             api_host: getPostHogHost(),
             ui_host: getPostHogUiHost(),
             person_profiles: 'always',
-            disable_session_recording: !isPostHogSessionRecordingEnabled(),
-            ...(isPostHogOnboardingRecordingEnabled() && {
-                ...ONBOARDING_RECORDING_CONFIG,
-                disable_session_recording: !isOnboardingPath(
-                    window.location.pathname,
-                ),
-            }),
+            ...sessionRecordingConfig(),
             loaded: () => {
                 if (import.meta.env.DEV) {
                     console.log('[PostHog] Initialized successfully');
@@ -205,9 +296,7 @@ export function unregisterProperty(name: string): void {
 /** What the replay was last told, so a poll every few seconds is not a call into the SDK. */
 let isRecordingOnboarding: boolean | null = null;
 
-function recordOnlyOnOnboarding(pathname: string): void {
-    const shouldRecord = isOnboardingPath(pathname);
-
+function setOnboardingRecording(shouldRecord: boolean): void {
     if (shouldRecord === isRecordingOnboarding) {
         return;
     }
@@ -224,22 +313,36 @@ function recordOnlyOnOnboarding(pathname: string): void {
 }
 
 /**
- * Starts the replay when the visitor reaches the onboarding and stops it when
- * they leave, across Inertia navigations. A full page load needs nothing from
- * here: {@link initializePostHog} decides from the URL it boots on.
+ * A visit the visitor asked for: neither a hover prefetch nor a poll. Inertia
+ * marks its own poll on the internal shape of the visit, hence the cast (same
+ * as ./unattended-requests.ts).
+ */
+function isAttendedVisit(visit: PendingVisit): boolean {
+    const isPoll = (visit as { poll?: boolean }).poll === true;
+
+    return !visit.prefetch && !isPoll;
+}
+
+/**
+ * Starts the replay when the visitor reaches the onboarding and stops it before
+ * they see anything else, across Inertia navigations. A full page load needs
+ * nothing from here: {@link initializePostHog} decides from the URL it boots on.
  *
- * Stopped on `before`, as soon as a visit to another page is asked for, rather
- * than on `navigate`, which fires once that page is already in the DOM and
- * would put its first frames in the recording. Only GET visits count: a form
- * posting from the onboarding to `/accounts` comes back to the onboarding, and
- * a prefetch or a poll is not the visitor going anywhere. Everything that still
- * lands elsewhere (a post redirecting out, back/forward) is caught on
- * `navigate`, and `finish` resumes the replay when a visit away failed or was
- * cancelled and the visitor is still on the onboarding.
+ * Stopping has to happen before the next page is in the DOM, which `navigate`
+ * is too late for. So it stops on `before` for any visit that could leave: a
+ * GET to another page, or any form post, since `POST /onboarding/complete`
+ * lands on the dashboard while a post to `/accounts` comes back. Back/forward
+ * has no `before`; the browser's `popstate` comes first instead. It starts only
+ * on `navigate`, once the onboarding is what is on screen, and on `finish` when
+ * a visit came back to the onboarding without one (a failed post, a cancelled
+ * visit) — but not when a newer visit interrupted it, which is the one that
+ * decides.
  */
 export function installOnboardingSessionRecording(): void {
     if (
         typeof window === 'undefined' ||
+        !isPostHogEnabled() ||
+        !getPostHogApiKey() ||
         !isPostHogOnboardingRecordingEnabled()
     ) {
         return;
@@ -249,22 +352,33 @@ export function installOnboardingSessionRecording(): void {
 
     router.on('before', (event) => {
         const { visit } = event.detail;
-        const isPoll = (visit as { poll?: boolean }).poll === true;
+        const mayLeave =
+            visit.method !== 'get' || !isOnboardingPath(visit.url.pathname);
 
-        if (visit.method === 'get' && !visit.prefetch && !isPoll) {
-            if (!isOnboardingPath(visit.url.pathname)) {
-                recordOnlyOnOnboarding(visit.url.pathname);
-            }
+        if (isAttendedVisit(visit) && mayLeave) {
+            setOnboardingRecording(false);
+        }
+    });
+
+    window.addEventListener('popstate', () => {
+        if (!isOnboardingPath(window.location.pathname)) {
+            setOnboardingRecording(false);
         }
     });
 
     router.on('navigate', (event) => {
-        recordOnlyOnOnboarding(
-            new URL(event.detail.page.url, window.location.origin).pathname,
+        setOnboardingRecording(
+            isOnboardingPath(
+                new URL(event.detail.page.url, window.location.origin).pathname,
+            ),
         );
     });
 
-    router.on('finish', () => {
-        recordOnlyOnOnboarding(window.location.pathname);
+    router.on('finish', (event) => {
+        const { visit } = event.detail;
+
+        if (isAttendedVisit(visit) && !visit.interrupted) {
+            setOnboardingRecording(isOnboardingPath(window.location.pathname));
+        }
     });
 }
