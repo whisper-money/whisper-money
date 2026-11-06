@@ -39,11 +39,12 @@ it('syncs user currency from first onboarding account after signup', function ()
     $page->assertPathIs('/onboarding')
         ->assertSee("Let's build the picture")
         ->click('Add one myself')
+        ->click('More options')
         ->fill('#display_name', 'Euro Checking Account')
         ->click('Select bank...')
         ->fill('[placeholder="Search bank..."]', 'Signup')
         ->click('Signup Test Bank')
-        ->click('Select account type')
+        ->click('button[name="type"]')
         ->click('[role="option"]:has-text("Checking")')
         ->click('button[name="currency_code"]')
         ->click('[role="option"]:has-text("EUR")')
@@ -228,8 +229,9 @@ it('creates a real estate account during onboarding by default', function () {
 
     $page->assertSee("Let's build the picture")
         ->click('Add one myself')
+        ->click('More options')
         ->fill('#display_name', 'My Apartment')
-        ->click('Select account type')
+        ->click('button[name="type"]')
         ->click('[role="option"]:has-text("Real Estate")')
         ->click('button[name="currency_code"]')
         ->click('[role="option"]:has-text("EUR")')
@@ -267,8 +269,9 @@ it('does not ask for a balance twice when the form already took one', function (
     visit('/onboarding?step=create-account')
         ->assertSee("Let's build the picture")
         ->click('Add one myself')
+        ->click('More options')
         ->fill('#display_name', 'Hipoteca')
-        ->click('Select account type')
+        ->click('button[name="type"]')
         ->click('[role="option"]:has-text("Loan")')
         ->click('button[name="currency_code"]')
         ->click('[role="option"]:has-text("EUR")')
@@ -290,8 +293,9 @@ it('still asks for a balance when the form was left without one', function () {
 
     visit('/onboarding?step=create-account')
         ->click('Add one myself')
+        ->click('More options')
         ->fill('#display_name', 'Plan de pensiones')
-        ->click('Select account type')
+        ->click('button[name="type"]')
         ->click('[role="option"]:has-text("Loan")')
         ->click('button[name="currency_code"]')
         ->click('[role="option"]:has-text("EUR")')
@@ -308,10 +312,9 @@ it('completes entire onboarding flow with account creation, transaction import, 
     // Enable subscriptions so user ends on /subscribe after completing onboarding
     config(['subscriptions.enabled' => true]);
 
-    Bank::factory()->create(['name' => 'Chase Bank']);
-
     $user = User::factory()->create([
         'onboarded_at' => null,
+        'currency_code' => 'EUR',
     ]);
 
     // Registration seeds these; the factory does not, and the categorize step
@@ -336,18 +339,12 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->assertSee("Here's what happens next")
         ->click("Let's go");
 
-    // Step 6: the accounts hub, empty. Take the by-hand route and fill the form.
+    // Step 6: the accounts hub, empty. Take the by-hand route: the first account
+    // opens on the short form, a checking account in the user's currency.
     $page->assertSee("Let's build the picture")
         ->assertSee('Connect a bank')
         ->click('Add one myself')
         ->fill('#display_name', 'My Checking Account')
-        ->click('Select bank...')
-        ->fill('[placeholder="Search bank..."]', 'Chase')
-        ->click('Chase Bank')
-        ->click('Select account type')
-        ->click('[role="option"]:has-text("Checking")')
-        ->click('button[name="currency_code"]')
-        ->click('[role="option"]:has-text("EUR")')
         ->click('Add this account');
 
     // The import is screens of the flow now, and the only account that can take

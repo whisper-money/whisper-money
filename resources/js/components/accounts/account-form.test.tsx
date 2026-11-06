@@ -151,6 +151,71 @@ describe('AccountForm', () => {
         expect(screen.getByLabelText('Owed Amount')).toBeInTheDocument();
     });
 
+    describe('compact', () => {
+        it('asks only a name and a balance, for a checking account in the user currency', () => {
+            const onChange = vi.fn();
+
+            const { container } = render(
+                <AccountForm compact onChange={onChange} />,
+            );
+
+            expect(screen.getByLabelText('Name')).toBeInTheDocument();
+            expect(screen.getByLabelText('Balance')).toBeInTheDocument();
+            expect(container.querySelector('[name="type"]')).toBeNull();
+            expect(currencySelect(container)).toBeNull();
+            expect(screen.queryByTestId('bank-combobox')).toBeNull();
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    type: 'checking',
+                    currencyCode: 'EUR',
+                    bankId: null,
+                }),
+            );
+        });
+
+        it('still asks the currency when the user currency is not on offer', () => {
+            const previous = pageProps.current;
+            pageProps.current = {
+                ...previous,
+                auth: { user: { currency_code: 'JPY' } },
+            };
+
+            try {
+                const { container } = render(
+                    <AccountForm compact onChange={() => {}} />,
+                );
+
+                expect(currencySelect(container)).toBeInTheDocument();
+            } finally {
+                pageProps.current = previous;
+            }
+        });
+
+        it('keeps what was typed when the full form opens', () => {
+            const onChange = vi.fn();
+
+            const { container, rerender } = render(
+                <AccountForm compact onChange={onChange} />,
+            );
+
+            fireEvent.change(screen.getByLabelText('Name'), {
+                target: { value: 'Main account' },
+            });
+
+            rerender(<AccountForm compact={false} onChange={onChange} />);
+
+            expect(container.querySelector('[name="type"]')).not.toBeNull();
+            expect(screen.getByTestId('bank-combobox')).toBeInTheDocument();
+            expect(onChange).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    displayName: 'Main account',
+                    type: 'checking',
+                    currencyCode: 'EUR',
+                }),
+            );
+        });
+    });
+
     describe('credit limit', () => {
         it('asks a new credit card for its limit and hands it over', () => {
             const onChange = vi.fn();

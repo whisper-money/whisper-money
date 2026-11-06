@@ -396,6 +396,32 @@ it('can create an account with an initial balance', function () {
     ]);
 });
 
+it('creates the first account from the short onboarding form, with no bank', function () {
+    actingAs($this->user);
+
+    $response = $this->postJson(route('accounts.store'), [
+        'name' => 'Main account',
+        'type' => AccountType::Checking->value,
+        'currency_code' => 'EUR',
+        'balance' => 250000,
+    ]);
+
+    $response->assertCreated();
+
+    assertDatabaseHas('accounts', [
+        'id' => $response->json('id'),
+        'user_id' => $this->user->id,
+        'name' => 'Main account',
+        'bank_id' => null,
+        'type' => AccountType::Checking->value,
+        'currency_code' => 'EUR',
+    ]);
+    assertDatabaseHas('account_balances', [
+        'account_id' => $response->json('id'),
+        'balance' => 250000,
+    ]);
+});
+
 it('creates account without balance record when balance is not provided', function () {
     actingAs($this->user);
 

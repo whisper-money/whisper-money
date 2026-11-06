@@ -79,7 +79,7 @@ describe('StepAccountsHub analytics', () => {
         expect(captureEvent).toHaveBeenCalledOnce();
         expect(captureEvent).toHaveBeenCalledWith(
             'onboarding_account_created',
-            { account_type: 'savings' },
+            { account_type: 'savings', form: 'short' },
         );
     });
 

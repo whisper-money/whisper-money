@@ -15,11 +15,14 @@ import { getCsrfToken } from '@/lib/csrf';
 import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface StepManualAccountProps {
     banks: { id: string; name: string; logo: string | null }[];
-    /** Narrows the currency list to the ones worth offering first. */
+    /**
+     * Opens on the short form (a name and a balance) and narrows the currency
+     * list to the ones worth offering first.
+     */
     isFirstAccount: boolean;
     onAccountCreated: (account: CreatedAccount) => void;
     /** Absent when there is genuinely nowhere to go back to. */
@@ -31,9 +34,11 @@ interface StepManualAccountProps {
  * you — a mortgage, a property, a cash pot — plus a plain account for anyone who
  * would rather not connect a bank at all.
  *
- * Lifted out of the hub unchanged when the hub replaced the old chooser. PRs F
- * and G rebuild what happens in here; the hub only needs it to report the
- * account it made and hand control back.
+ * The first account opens on a short form, a name and what is in it today,
+ * because a quarter of the people who chose to type one in gave up on the full
+ * form. It is a checking account in the user's currency, which is what most
+ * first accounts are; "More options" opens the full form for the rest, keeping
+ * what was typed. Later accounts get the full form straight away.
  */
 export function StepManualAccount({
     banks,
@@ -43,6 +48,8 @@ export function StepManualAccount({
 }: StepManualAccountProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isShortForm, setIsShortForm] = useState(isFirstAccount);
+    const formRef = useRef<HTMLFormElement>(null);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -55,6 +62,23 @@ export function StepManualAccount({
         loan: null,
         creditLimit: null,
     });
+
+    // The fields "More options" reveals take the focus, so a keyboard or
+    // screen-reader user lands on them rather than on the page.
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+
+            return;
+        }
+
+        if (!isShortForm) {
+            formRef.current
+                ?.querySelector<HTMLElement>('button[name="type"]')
+                ?.focus();
+        }
+    }, [isShortForm]);
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
@@ -227,6 +251,7 @@ export function StepManualAccount({
 
             captureEvent('onboarding_account_created', {
                 account_type: type,
+                form: isShortForm ? 'short' : 'full',
             });
 
             onAccountCreated({
@@ -258,13 +283,17 @@ export function StepManualAccount({
                     : __('What else should be in the picture?')
             }
             description={
-                isFirstAccount
+                isShortForm
                     ? __(
-                          'Name it, say what it is, and what it’s worth today. That is the whole form.',
+                          'Give it a name and say what’s in it today. You can change the rest later.',
                       )
-                    : __(
-                          'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
-                      )
+                    : isFirstAccount
+                      ? __(
+                            'Name it, say what it is, and what it’s worth today. That is the whole form.',
+                        )
+                      : __(
+                            'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
+                        )
             }
             footer={
                 <>
@@ -288,6 +317,7 @@ export function StepManualAccount({
         >
             <form
                 id="onboarding-account"
+                ref={formRef}
                 onSubmit={handleSubmit}
                 autoFocus
                 className={cn('flex flex-col gap-4', stepFormClass)}
@@ -295,7 +325,18 @@ export function StepManualAccount({
                 <AccountForm
                     onChange={handleFormChange}
                     usePrimaryCurrenciesOnly={isFirstAccount}
+                    compact={isShortForm}
                 />
+
+                {isShortForm && (
+                    <button
+                        type="button"
+                        onClick={() => setIsShortForm(false)}
+                        className="self-start text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                        {__('More options')}
+                    </button>
+                )}
 
                 {error && <StepError>{error}</StepError>}
             </form>
