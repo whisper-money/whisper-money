@@ -9,7 +9,7 @@ beforeEach(function () {
     config(['subscriptions.enabled' => true]);
 });
 
-it('draws every user into one of the three arms, about a third each', function () {
+it('draws every user into one of the two trial arms, about half each', function () {
     $users = User::factory()->count(300)->create();
 
     $counts = $users
@@ -20,7 +20,7 @@ it('draws every user into one of the three arms, about a third each', function (
         ->toBe(collect(OnboardingGateCopy::ARMS)->sort()->values()->all());
 
     foreach (OnboardingGateCopy::ARMS as $arm) {
-        expect($counts[$arm])->toBeGreaterThan(70)->toBeLessThan(130);
+        expect($counts[$arm])->toBeGreaterThan(120)->toBeLessThan(180);
     }
 });
 
@@ -90,6 +90,24 @@ it('puts everybody back in their own arm when enabled again', function () {
     Feature::flushCache();
 
     expect(OnboardingGateCopy::armFor($user))->toBe($arm);
+});
+
+it('keeps a user already stored in a trial arm there, whatever the hash says', function (string $storedArm) {
+    $user = User::factory()->create();
+    Feature::for($user)->activate(OnboardingGateCopy::class, $storedArm);
+    Feature::flushCache();
+
+    expect(OnboardingGateCopy::armFor($user))->toBe($storedArm);
+})->with(OnboardingGateCopy::ARMS);
+
+it('reads a user stored in the dropped control arm as out of the experiment', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+    Feature::for($user)->activate(OnboardingGateCopy::class, 'control');
+
+    expect(OnboardingGateCopy::armFor($user))->toBeNull();
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn ($page) => $page->where('gateCopyArm', null));
 });
 
 it('ignores a stored value that is not an arm', function () {

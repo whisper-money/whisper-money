@@ -194,8 +194,8 @@ it('hides the connected plan price after connected setup is selected once', func
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
-    // The gate copy is A/B tested; this walks the control gate.
-    Feature::for($user)->activate(OnboardingGateCopy::class, OnboardingGateCopy::CONTROL);
+    // The gate copy is A/B tested; out of the experiment it is the plain gate.
+    Feature::for($user)->deactivate(OnboardingGateCopy::class);
 
     $this->actingAs($user);
 
