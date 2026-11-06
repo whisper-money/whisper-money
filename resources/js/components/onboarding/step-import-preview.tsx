@@ -5,6 +5,7 @@ import {
     StepEmphasis,
     StepScreen,
 } from '@/components/onboarding/step-screen';
+import { EstimatesOverlapNotice } from '@/components/transactions/estimates-overlap-notice';
 import { cn } from '@/lib/utils';
 import { type ParsedTransaction } from '@/types/import';
 import { formatCurrency } from '@/utils/currency';
@@ -46,6 +47,8 @@ function describeSpan(
 }
 
 interface StepImportPreviewProps {
+    /** The account the file goes into, to warn about estimates already on it. */
+    accountId: string | null;
     /** Everything read from the file, duplicates included and already deselected. */
     transactions: ParsedTransaction[];
     currencyCode: string;
@@ -55,6 +58,7 @@ interface StepImportPreviewProps {
 }
 
 export function StepImportPreview({
+    accountId,
     transactions,
     currencyCode,
     locale,
@@ -153,6 +157,11 @@ export function StepImportPreview({
                         </div>
                     )}
                 </StepList>
+
+                <EstimatesOverlapNotice
+                    accountId={accountId}
+                    transactions={transactions}
+                />
 
                 {duplicateCount > 0 && (
                     <StepCallout>

@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\BulkUpdateTransactionRequest;
 use App\Http\Requests\Api\CheckDuplicateTransactionsRequest;
+use App\Http\Requests\Api\IndexEstimateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Transaction;
 use App\Services\TransactionDuplicateMatcher;
 use App\Services\TransactionFilterSummary;
+use App\Services\Transactions\EstimateTransactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -73,6 +75,29 @@ class TransactionController extends Controller
         $account = $request->user()->accounts()->findOrFail($validated['account_id']);
 
         return response()->json(['duplicates' => $matcher->flag($account, $validated['transactions'])]);
+    }
+
+    /**
+     * The estimates already on the account in the months a file about to be
+     * imported covers: the real movements would count those months twice, so
+     * the importer offers to delete them.
+     */
+    public function estimates(IndexEstimateTransactionsRequest $request, EstimateTransactions $estimates): JsonResponse
+    {
+        $validated = $request->validated();
+        $account = $request->user()->accounts()->findOrFail($validated['account_id']);
+
+        return response()->json([
+            'data' => $estimates->inMonths($account, array_values(array_unique($validated['months'])))
+                ->map(fn (Transaction $transaction): array => [
+                    'id' => $transaction->id,
+                    'description' => $transaction->description,
+                    'transaction_date' => $transaction->transaction_date->toDateString(),
+                    'amount' => $transaction->amount,
+                    'currency_code' => $transaction->currency_code,
+                ])
+                ->values(),
+        ]);
     }
 
     /**

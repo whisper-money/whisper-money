@@ -1,4 +1,5 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Api/TransactionController';
+import { EstimatesOverlapNotice } from '@/components/transactions/estimates-overlap-notice';
 import {
     CollapsibleSection,
     FOOTNOTE,
@@ -212,6 +213,11 @@ export function ImportStepPreview({
 
     return (
         <div className="flex flex-col gap-4">
+            <EstimatesOverlapNotice
+                accountId={accountId}
+                transactions={transactions}
+            />
+
             {/* What will be imported */}
             <div className="overflow-hidden rounded-lg border">
                 <div className={`${grid} min-h-11 bg-muted px-4 py-2.5`}>

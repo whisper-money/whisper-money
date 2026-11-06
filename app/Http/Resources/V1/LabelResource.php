@@ -51,7 +51,7 @@ class LabelResource extends JsonResource
              */
             'color' => $this->color,
             /**
-             * Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with.
+             * Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding.
              *
              * @example user
              */

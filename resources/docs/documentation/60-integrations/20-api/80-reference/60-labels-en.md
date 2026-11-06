@@ -36,7 +36,7 @@ Your labels in a space, newest first, the ones that track a savings goal include
 | `data[].space_id` | string (uuid) or null | The id of the space the label is in. |
 | `data[].name` | string | The label's name, unique within the space. |
 | `data[].color` | string | The label's color. |
-| `data[].source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
+| `data[].source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
 | `data[].created_at` | string (date-time) or null | When the label was created. |
 | `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
 
@@ -108,7 +108,7 @@ Tag transactions with it through `PUT /api/v1/transactions/{id}/labels`.
 | `data.space_id` | string (uuid) or null | The id of the space the label is in. |
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
-| `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
+| `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -173,7 +173,7 @@ curl -X POST https://whisper.money/api/v1/labels \
 | `data.space_id` | string (uuid) or null | The id of the space the label is in. |
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
-| `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
+| `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -241,7 +241,7 @@ Changes only the fields you send. The label of a savings goal (`source: saving_g
 | `data.space_id` | string (uuid) or null | The id of the space the label is in. |
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
-| `data.source` | "user" \| "saving_goal" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with. |
+| `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request

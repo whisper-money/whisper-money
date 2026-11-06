@@ -184,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('onboarding/currency', [OnboardingController::class, 'currency'])->name('onboarding.currency');
         Route::post('onboarding/categorize', [OnboardingController::class, 'categorize'])->name('onboarding.categorize');
         Route::post('onboarding/target', [OnboardingController::class, 'target'])->name('onboarding.target');
+        Route::post('onboarding/quick-expenses', [OnboardingController::class, 'quickExpenses'])->name('onboarding.quick-expenses');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
         // The bell: what happened in the account, newest first. Opening a row
@@ -220,6 +221,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
+    // The import previews offer to delete the estimates a file would double count.
+    Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 
     // AI rule suggestions — accessible during onboarding (auto-apply) and after.
     // `block-shared` only bites on the mutating routes: consent means nothing
@@ -277,7 +280,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
         ->name('transactions.export');
     Route::post('transactions/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'bulk'])->name('transactions.re-evaluate-rules.bulk');
     Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');
-    Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
     Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
     Route::post('transactions/{transaction}/split', [TransactionSplitController::class, 'store'])->name('transactions.split.store');
     Route::delete('transactions/{transaction}/split', [TransactionSplitController::class, 'destroy'])->name('transactions.split.destroy');

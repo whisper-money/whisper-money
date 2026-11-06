@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\RuleSuggestionAggregator;
 use App\Services\Concerns\ConvertsTransactionCurrency;
+use App\Services\Transactions\EstimateTransactions;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -39,6 +40,7 @@ class OnboardingRevealService
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private NetWorthCalculator $netWorth,
+        private EstimateTransactions $estimates,
     ) {}
 
     /**
@@ -67,9 +69,13 @@ class OnboardingRevealService
         $outgoings = $this->recentOutgoings($user);
         $byMonth = $outgoings->groupBy(fn (Transaction $transaction): string => $transaction->transaction_date->format('Y-m'));
 
+        // A month the user typed their main expenses into is a whole month by
+        // construction, however few rows it took to say so.
+        $estimated = $this->estimates->monthsFor($user, $this->windowStart());
+
         $candidates = $byMonth->keys()
             ->sortDesc()
-            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS)
+            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS || in_array($month, $estimated, true))
             ->values();
 
         if ($candidates->isEmpty()) {
@@ -82,7 +88,11 @@ class OnboardingRevealService
         // running month is only revealed when it is all there is — a file
         // holding this month alone still deserves an answer, and the screen is
         // told to drop the comparison rather than draw one.
-        $running = now()->format('Y-m');
+        // On the user's own calendar: estimates are dated last month by it, and
+        // for a few hours around midnight on the 1st that month is the server's
+        // running one.
+        $today = $user->localToday();
+        $running = $today->format('Y-m');
         $month = $candidates->first(fn (string $month): bool => $month !== $running) ?? $candidates->first();
 
         $currency = $user->currency_code;
@@ -93,7 +103,7 @@ class OnboardingRevealService
             'variant' => 'spending',
             'currency_code' => $currency,
             'month' => $month,
-            'is_last_month' => $month === now()->startOfMonth()->subMonth()->format('Y-m'),
+            'is_last_month' => $month === $today->copy()->startOfMonth()->subMonthNoOverflow()->format('Y-m'),
             // The month has not finished, so neither the comparison against the
             // guess nor the annualisation the screen draws from it holds.
             'is_partial' => $month === $running,
@@ -121,11 +131,17 @@ class OnboardingRevealService
         return Transaction::query()
             ->where('transactions.user_id', $user->id)
             ->where('transactions.amount', '<', 0)
-            ->where('transactions.transaction_date', '>=', now()->startOfMonth()->subMonths(self::MONTHS_READ - 1))
+            ->where('transactions.transaction_date', '>=', $this->windowStart())
             ->whereIn('accounts.type', $this->spendingTypes())
             ->countingTowardsTotals()
             ->with('account')
             ->get();
+    }
+
+    /** The first day a month worth revealing may start on. */
+    private function windowStart(): Carbon
+    {
+        return now()->startOfMonth()->subMonths(self::MONTHS_READ - 1);
     }
 
     /**

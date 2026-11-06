@@ -71,7 +71,7 @@ class LabelSpendingService
             ->join('label_transaction', 'label_transaction.transaction_id', '=', 'transactions.id')
             ->join('labels', function (JoinClause $join): void {
                 $join->on('labels.id', '=', 'label_transaction.label_id')
-                    ->where('labels.source', '=', LabelSource::User)
+                    ->whereIn('labels.source', [LabelSource::User->value, LabelSource::Estimate->value])
                     ->whereNull('labels.deleted_at');
             })
             ->leftJoin('categories', function (JoinClause $join): void {
