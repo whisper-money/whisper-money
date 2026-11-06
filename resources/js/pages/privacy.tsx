@@ -252,6 +252,12 @@ export default function Privacy() {
                                         'Google (Gemini) and TypeSafe AI. Only with your AI consent: to categorize a transaction, one of them receives its description, amount, whether it is income or an expense, and the payer or payee names, along with your category names; Google (Gemini) also receives your monthly figures and the names of your categories, budgets, goals, and accounts to write your monthly summary, and groups of similar transactions (payer or payee names, sample descriptions, and average amount) to suggest rules. Without needing your AI consent, TypeSafe AI helps detect the columns of a file you import: it receives only the header of each column and the shape of its values, such as "date (dd/mm/yyyy)", never the values themselves',
                                     )}
                                 </li>
+                                <li>
+                                    <strong>{__('Product Analytics:')}</strong>{' '}
+                                    {__(
+                                        'PostHog, hosted in the EU. It receives usage events, such as which pages and features you use, to help us improve the service. While you set up your account in the onboarding it may also record how you move through those screens, with every text, number and field hidden, so it never sees your amounts, names or balances. Nothing is recorded anywhere else in the app',
+                                    )}
+                                </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 {__(

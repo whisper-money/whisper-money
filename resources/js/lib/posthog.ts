@@ -1,4 +1,5 @@
-import posthog from 'posthog-js';
+import { router } from '@inertiajs/react';
+import posthog, { type PostHogConfig } from 'posthog-js';
 
 const isPostHogEnabled = (): boolean => {
     const enabled = import.meta.env.VITE_POSTHOG_ENABLED;
@@ -24,6 +25,71 @@ export const isPostHogSessionRecordingEnabled = (): boolean => {
     const enabled = import.meta.env.VITE_POSTHOG_SESSION_RECORDING_ENABLED;
     return enabled === 'true' || enabled === '1';
 };
+
+/**
+ * The switch for recording the onboarding, and nothing but the onboarding.
+ *
+ * Off unless set. When on, it takes over from
+ * {@link isPostHogSessionRecordingEnabled}: recording is confined to
+ * {@link isOnboardingPath} with everything masked, even if the app-wide switch
+ * is on too — the narrower promise is the one that holds.
+ */
+export const isPostHogOnboardingRecordingEnabled = (): boolean => {
+    const enabled = import.meta.env.VITE_POSTHOG_ONBOARDING_RECORDING_ENABLED;
+    return enabled === 'true' || enabled === '1';
+};
+
+/** The onboarding hub (`/onboarding`) and the pages under it (`/onboarding/reveal`, …). */
+export const isOnboardingPath = (pathname: string): boolean =>
+    pathname === '/onboarding' || pathname.startsWith('/onboarding/');
+
+/**
+ * Attributes that can carry what the page says rather than how it looks: an
+ * `aria-label` reading out a balance, a `title` with a full account name, an
+ * input's `value`. Styling attributes (`class`, `style`, `data-state`, `src`)
+ * are kept, or the replay would not render the page at all.
+ */
+const TEXT_BEARING_ATTRIBUTES = new Set([
+    'alt',
+    'aria-label',
+    'aria-description',
+    'aria-valuenow',
+    'aria-valuetext',
+    'content',
+    'label',
+    'placeholder',
+    'title',
+    'value',
+]);
+
+const maskWith = (text: string): string => '*'.repeat(text.length);
+
+/**
+ * Replay of the onboarding with nothing readable in it: every text node, every
+ * input and every text-bearing attribute is replaced by asterisks, and nothing
+ * the page sends or logs is captured. What is left is layout, clicks, scrolls
+ * and images (bank logos) — enough to see where someone hesitates, not what
+ * they have.
+ */
+export const ONBOARDING_RECORDING_CONFIG = {
+    disable_session_recording: true,
+    enable_recording_console_log: false,
+    capture_performance: { network_timing: false },
+    session_recording: {
+        maskAllInputs: true,
+        maskTextSelector: '*',
+        maskTextFn: maskWith,
+        maskInputFn: maskWith,
+        maskAttributeFn: (name: string, value: string): string =>
+            TEXT_BEARING_ATTRIBUTES.has(name) ? maskWith(value) : value,
+        recordHeaders: false,
+        recordBody: false,
+        maskCapturedNetworkRequestFn: () => null,
+        captureCanvas: { recordCanvas: false },
+        recordCrossOriginIframes: false,
+        captureJsonLd: false,
+    },
+} satisfies Partial<PostHogConfig>;
 
 /**
  * Every call into the PostHog SDK, wrapped so it cannot take the page with it.
@@ -85,6 +151,12 @@ export function initializePostHog(): void {
             ui_host: getPostHogUiHost(),
             person_profiles: 'always',
             disable_session_recording: !isPostHogSessionRecordingEnabled(),
+            ...(isPostHogOnboardingRecordingEnabled() && {
+                ...ONBOARDING_RECORDING_CONFIG,
+                disable_session_recording: !isOnboardingPath(
+                    window.location.pathname,
+                ),
+            }),
             loaded: () => {
                 if (import.meta.env.DEV) {
                     console.log('[PostHog] Initialized successfully');
@@ -128,4 +200,71 @@ export function registerProperties(properties: Record<string, unknown>): void {
 /** Stops tagging this browser's events with a property {@link registerProperties} set. */
 export function unregisterProperty(name: string): void {
     withPostHog(() => posthog.unregister(name));
+}
+
+/** What the replay was last told, so a poll every few seconds is not a call into the SDK. */
+let isRecordingOnboarding: boolean | null = null;
+
+function recordOnlyOnOnboarding(pathname: string): void {
+    const shouldRecord = isOnboardingPath(pathname);
+
+    if (shouldRecord === isRecordingOnboarding) {
+        return;
+    }
+
+    isRecordingOnboarding = shouldRecord;
+
+    withPostHog(() => {
+        if (shouldRecord) {
+            posthog.startSessionRecording();
+        } else {
+            posthog.stopSessionRecording();
+        }
+    });
+}
+
+/**
+ * Starts the replay when the visitor reaches the onboarding and stops it when
+ * they leave, across Inertia navigations. A full page load needs nothing from
+ * here: {@link initializePostHog} decides from the URL it boots on.
+ *
+ * Stopped on `before`, as soon as a visit to another page is asked for, rather
+ * than on `navigate`, which fires once that page is already in the DOM and
+ * would put its first frames in the recording. Only GET visits count: a form
+ * posting from the onboarding to `/accounts` comes back to the onboarding, and
+ * a prefetch or a poll is not the visitor going anywhere. Everything that still
+ * lands elsewhere (a post redirecting out, back/forward) is caught on
+ * `navigate`, and `finish` resumes the replay when a visit away failed or was
+ * cancelled and the visitor is still on the onboarding.
+ */
+export function installOnboardingSessionRecording(): void {
+    if (
+        typeof window === 'undefined' ||
+        !isPostHogOnboardingRecordingEnabled()
+    ) {
+        return;
+    }
+
+    isRecordingOnboarding = isOnboardingPath(window.location.pathname);
+
+    router.on('before', (event) => {
+        const { visit } = event.detail;
+        const isPoll = (visit as { poll?: boolean }).poll === true;
+
+        if (visit.method === 'get' && !visit.prefetch && !isPoll) {
+            if (!isOnboardingPath(visit.url.pathname)) {
+                recordOnlyOnOnboarding(visit.url.pathname);
+            }
+        }
+    });
+
+    router.on('navigate', (event) => {
+        recordOnlyOnOnboarding(
+            new URL(event.detail.page.url, window.location.origin).pathname,
+        );
+    });
+
+    router.on('finish', () => {
+        recordOnlyOnOnboarding(window.location.pathname);
+    });
 }
