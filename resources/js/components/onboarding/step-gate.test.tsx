@@ -58,23 +58,6 @@ beforeEach(() => {
 });
 
 describe('StepGate copy experiment', () => {
-    it('draws the gate as it always was in control', () => {
-        renderGate('control');
-
-        expect(
-            screen.getByText('Connecting a bank needs Standard'),
-        ).toBeTruthy();
-        expect(screen.queryByText('Start free trial')).toBeNull();
-        expect(checkoutHref()).toContain('plan=yearly');
-        expect(mocks.captureEvent).toHaveBeenCalledWith(
-            'onboarding_gate_viewed',
-            { gate: 'bank', arm: 'control' },
-        );
-        expect(mocks.registerProperties).toHaveBeenCalledWith({
-            onboarding_gate_arm: 'control',
-        });
-    });
-
     it('frames the yearly plan as a free trial, price in the fine print', () => {
         renderGate('trial_yearly');
 
@@ -137,11 +120,11 @@ describe('StepGate copy experiment', () => {
     });
 
     /**
-     * Control has no plan of its own, so it follows the configured default:
-     * flipping `SUBSCRIPTIONS_DEFAULT_PLAN` moves this arm too.
+     * Out of the experiment the gate has no plan of its own, so it follows the
+     * configured default: flipping `SUBSCRIPTIONS_DEFAULT_PLAN` moves it too.
      */
-    it('preselects the configured default in control', () => {
-        renderGate('control', {
+    it('preselects the configured default with no arm', () => {
+        renderGate(null, {
             pricing: { ...withTrial, defaultPlan: 'monthly' },
         });
 
@@ -198,7 +181,7 @@ describe('StepGate copy experiment', () => {
      * off, or while the plans charge today. A browser tagged before stops
      * reporting the arm it no longer sees.
      */
-    it('draws control, unlabelled, when no arm is handed down', () => {
+    it('draws the plain gate, unlabelled, when no arm is handed down', () => {
         renderGate(null);
 
         expect(

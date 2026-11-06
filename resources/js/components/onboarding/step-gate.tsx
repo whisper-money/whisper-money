@@ -35,16 +35,13 @@ type GateKind = 'bank' | 'broker' | 'ai';
  * The arm of the gate-copy experiment this user is in, handed down by the
  * onboarding page. Mirrors App\Features\OnboardingGateCopy.
  *
- * `trial_*` frames the plan as the free trial it starts with — the price moves
- * to the fine print — and preselects the plan in its name. Same plans, same
- * trial, same checkout as `control`.
+ * Each arm frames the plan as the free trial it starts with — the price moves
+ * to the fine print — and preselects the plan in its name. Out of the
+ * experiment (no arm) the gate is drawn as it always was.
  */
-export type GateCopyArm = 'control' | 'trial_yearly' | 'trial_monthly';
+export type GateCopyArm = 'trial_yearly' | 'trial_monthly';
 
-const TRIAL_ARM_PLAN: Record<
-    Exclude<GateCopyArm, 'control'>,
-    'monthly' | 'yearly'
-> = {
+const TRIAL_ARM_PLAN: Record<GateCopyArm, 'monthly' | 'yearly'> = {
     trial_yearly: 'yearly',
     trial_monthly: 'monthly',
 };
@@ -91,7 +88,7 @@ export function StepGate({
     // The server hands down no arm where the experiment is off, pay-now
     // included; the AI gate is never in it.
     const arm = isAi ? null : gateCopyArm;
-    const trialPlan = arm && arm !== 'control' ? TRIAL_ARM_PLAN[arm] : null;
+    const trialPlan = arm ? TRIAL_ARM_PLAN[arm] : null;
     // Every event this screen sends names the arm, so the funnel splits by it
     // without a join; outside the experiment there is nothing to name.
     const armProps = arm ? { arm } : {};
