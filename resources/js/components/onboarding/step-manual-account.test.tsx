@@ -1,5 +1,6 @@
 import { type AccountFormData } from '@/components/accounts/account-form';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepManualAccount } from './step-manual-account';
 
@@ -18,24 +19,34 @@ vi.mock('@/components/accounts/account-form', () => ({
         compact?: boolean;
         onChange: (data: AccountFormData) => void;
     }) => {
-        onChange({
-            displayName: 'Main account',
-            bankId: null,
-            type: 'checking',
-            currencyCode: 'EUR',
-            customBank: null,
-            balance: 250000,
-            investedAmount: null,
-            realEstate: null,
-            loan: null,
-            creditLimit: null,
-        });
+        useEffect(() => {
+            onChange({
+                displayName: 'Main account',
+                bankId: null,
+                type: 'checking',
+                currencyCode: 'EUR',
+                customBank: null,
+                balance: 250000,
+                investedAmount: null,
+                realEstate: null,
+                loan: null,
+                creditLimit: null,
+            });
+        }, [onChange]);
 
         return (
             <div
                 data-testid="account-form"
                 data-compact={String(Boolean(compact))}
-            />
+            >
+                {!compact && (
+                    <button
+                        type="button"
+                        name="type"
+                        data-testid="type-trigger"
+                    />
+                )}
+            </div>
         );
     },
 }));
@@ -88,6 +99,14 @@ describe('StepManualAccount', () => {
             'false',
         );
         expect(screen.queryByText('More options')).not.toBeInTheDocument();
+    });
+
+    it('moves the focus to the revealed fields', () => {
+        renderStep(true);
+
+        fireEvent.click(screen.getByText('More options'));
+
+        expect(document.activeElement).toBe(screen.getByTestId('type-trigger'));
     });
 
     it('keeps the full form for every account after the first', () => {

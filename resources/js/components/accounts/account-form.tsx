@@ -480,11 +480,16 @@ export function AccountForm({
                             currencyCode={selectedCurrency}
                         />
                     </div>
-                    <p className="pl-1 text-xs text-muted-foreground">
-                        {__(
-                            'Optional. Set the current balance for this account.',
-                        )}
-                    </p>
+                    {/* The short form has two fields; calling one of them
+                        optional invites skipping the balance, and a skipped
+                        balance opens the dashboard on zero. */}
+                    {!compact && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Optional. Set the current balance for this account.',
+                            )}
+                        </p>
+                    )}
                 </div>
             )}
 

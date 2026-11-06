@@ -180,13 +180,15 @@ describe('AccountForm', () => {
                 auth: { user: { currency_code: 'JPY' } },
             };
 
-            const { container } = render(
-                <AccountForm compact onChange={() => {}} />,
-            );
+            try {
+                const { container } = render(
+                    <AccountForm compact onChange={() => {}} />,
+                );
 
-            expect(currencySelect(container)).toBeInTheDocument();
-
-            pageProps.current = previous;
+                expect(currencySelect(container)).toBeInTheDocument();
+            } finally {
+                pageProps.current = previous;
+            }
         });
 
         it('keeps what was typed when the full form opens', () => {

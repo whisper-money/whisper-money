@@ -15,7 +15,7 @@ import { getCsrfToken } from '@/lib/csrf';
 import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface StepManualAccountProps {
     banks: { id: string; name: string; logo: string | null }[];
@@ -48,8 +48,8 @@ export function StepManualAccount({
 }: StepManualAccountProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showsFullForm, setShowsFullForm] = useState(!isFirstAccount);
-    const isShortForm = !showsFullForm;
+    const [isShortForm, setIsShortForm] = useState(isFirstAccount);
+    const formRef = useRef<HTMLFormElement>(null);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -62,6 +62,23 @@ export function StepManualAccount({
         loan: null,
         creditLimit: null,
     });
+
+    // The fields "More options" reveals take the focus, so a keyboard or
+    // screen-reader user lands on them rather than on the page.
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+
+            return;
+        }
+
+        if (!isShortForm) {
+            formRef.current
+                ?.querySelector<HTMLElement>('button[name="type"]')
+                ?.focus();
+        }
+    }, [isShortForm]);
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
@@ -266,17 +283,13 @@ export function StepManualAccount({
                     : __('What else should be in the picture?')
             }
             description={
-                isShortForm
+                isFirstAccount
                     ? __(
                           'Give it a name and say what’s in it today. You can change the rest later.',
                       )
-                    : isFirstAccount
-                      ? __(
-                            'Name it, say what it is, and what it’s worth today. That is the whole form.',
-                        )
-                      : __(
-                            'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
-                        )
+                    : __(
+                          'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
+                      )
             }
             footer={
                 <>
@@ -300,6 +313,7 @@ export function StepManualAccount({
         >
             <form
                 id="onboarding-account"
+                ref={formRef}
                 onSubmit={handleSubmit}
                 autoFocus
                 className={cn('flex flex-col gap-4', stepFormClass)}
@@ -313,7 +327,7 @@ export function StepManualAccount({
                 {isShortForm && (
                     <button
                         type="button"
-                        onClick={() => setShowsFullForm(true)}
+                        onClick={() => setIsShortForm(false)}
                         className="self-start text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     >
                         {__('More options')}
