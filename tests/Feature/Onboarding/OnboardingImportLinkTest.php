@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 
+/** How long the emailed link keeps working, as the email promises. */
+const IMPORT_LINK_LIFETIME_DAYS = 7;
+
 function importLinkUser(array $attributes = []): User
 {
     return User::factory()->create(['onboarded_at' => null, ...$attributes]);
@@ -27,7 +30,7 @@ function importLinkUrl(Account $account): string
 {
     return URL::temporarySignedRoute(
         'onboarding.import-link.show',
-        now()->addDays(OnboardingImportLinkEmail::LINK_LIFETIME_DAYS),
+        now()->addDays(IMPORT_LINK_LIFETIME_DAYS),
         ['account' => $account->id],
     );
 }
@@ -179,7 +182,7 @@ it('rejects an expired link', function () {
     $account = importLinkAccount($user);
     $url = importLinkUrl($account);
 
-    $this->travel(OnboardingImportLinkEmail::LINK_LIFETIME_DAYS + 1)->days();
+    $this->travel(IMPORT_LINK_LIFETIME_DAYS + 1)->days();
 
     $this->actingAs($user)->get($url)->assertForbidden();
 });

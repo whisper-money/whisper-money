@@ -22,7 +22,7 @@ class OnboardingImportLinkEmail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     /** How long the link keeps working. */
-    public const LINK_LIFETIME_DAYS = 7;
+    private const LINK_LIFETIME_DAYS = 7;
 
     /** @var int */
     public $tries = 5;
