@@ -83,6 +83,13 @@ interface AccountFormProps {
     availableLoanAccounts?: Account[];
     usePrimaryCurrenciesOnly?: boolean;
     isConnected?: boolean;
+    /**
+     * Only the name and the balance: the account is a checking one in the
+     * user's currency, and the rest can be changed later. The currency is
+     * still asked when the user's own is not on offer. Turning it off keeps
+     * whatever was typed.
+     */
+    compact?: boolean;
     onChange: (data: AccountFormData) => void;
     errors?: Record<string, string>;
 }
@@ -120,6 +127,7 @@ export function AccountForm({
     availableLoanAccounts = [],
     usePrimaryCurrenciesOnly = false,
     isConnected = false,
+    compact = false,
     onChange,
     errors = {},
 }: AccountFormProps) {
@@ -127,6 +135,10 @@ export function AccountForm({
     const currencyOptions = usePrimaryCurrenciesOnly
         ? currencies.profile
         : currencies.accounts;
+    const offersUserCurrency = currencyOptions.some(
+        (currency: CurrencyOption) =>
+            currency.code === auth?.user?.currency_code,
+    );
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
     );
@@ -134,7 +146,9 @@ export function AccountForm({
         initialValues?.bank?.id ?? null,
     );
     const [selectedType, setSelectedType] = useState<AccountType | null>(
-        initialValues?.type ?? forceAccountType ?? null,
+        initialValues?.type ??
+            forceAccountType ??
+            (compact ? 'checking' : null),
     );
     // The currency the reader already keeps their money in, rather than an
     // empty select on every new account. Only when the list on offer actually
@@ -143,10 +157,7 @@ export function AccountForm({
         useState<CurrencyCode | null>(
             () =>
                 initialValues?.currencyCode ??
-                (currencyOptions.some(
-                    (currency: CurrencyOption) =>
-                        currency.code === auth?.user?.currency_code,
-                )
+                (offersUserCurrency
                     ? (auth.user.currency_code as CurrencyCode)
                     : null),
         );
@@ -313,58 +324,61 @@ export function AccountForm({
                 />
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="type">{__('Account Type')}</Label>
-                <div className="mt-1">
-                    <Select
-                        name="type"
-                        value={selectedType ?? undefined}
-                        disabled={!!forceAccountType}
-                        onValueChange={(value) => {
-                            const newType = value as AccountType;
-                            setSelectedType(newType);
-                            if (newType === 'real_estate') {
-                                setSelectedBankId(null);
-                                setIsCreatingCustomBank(false);
-                                setCustomBankData(initialCustomBankData);
-                            }
-                        }}
-                        required
-                    >
-                        <SelectTrigger name="type">
-                            <SelectValue
-                                placeholder={__('Select account type')}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {ACCOUNT_TYPES.filter(
-                                (type) => !hiddenAccountTypes.includes(type),
-                            ).map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {formatAccountType(type)}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+            {!compact && (
+                <div className="space-y-2">
+                    <Label htmlFor="type">{__('Account Type')}</Label>
+                    <div className="mt-1">
+                        <Select
+                            name="type"
+                            value={selectedType ?? undefined}
+                            disabled={!!forceAccountType}
+                            onValueChange={(value) => {
+                                const newType = value as AccountType;
+                                setSelectedType(newType);
+                                if (newType === 'real_estate') {
+                                    setSelectedBankId(null);
+                                    setIsCreatingCustomBank(false);
+                                    setCustomBankData(initialCustomBankData);
+                                }
+                            }}
+                            required
+                        >
+                            <SelectTrigger name="type">
+                                <SelectValue
+                                    placeholder={__('Select account type')}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ACCOUNT_TYPES.filter(
+                                    (type) =>
+                                        !hiddenAccountTypes.includes(type),
+                                ).map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {formatAccountType(type)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {(selectedType === 'investment' ||
+                        selectedType === 'retirement') && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                "This account type is for balance tracking only and\n                        doesn't support transactions.",
+                            )}
+                        </p>
+                    )}
+                    {isRealEstate && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Track your property market value over time. Transactions are not supported.',
+                            )}
+                        </p>
+                    )}
                 </div>
-                {(selectedType === 'investment' ||
-                    selectedType === 'retirement') && (
-                    <p className="pl-1 text-xs text-muted-foreground">
-                        {__(
-                            "This account type is for balance tracking only and\n                        doesn't support transactions.",
-                        )}
-                    </p>
-                )}
-                {isRealEstate && (
-                    <p className="pl-1 text-xs text-muted-foreground">
-                        {__(
-                            'Track your property market value over time. Transactions are not supported.',
-                        )}
-                    </p>
-                )}
-            </div>
+            )}
 
-            {!isRealEstate && (
+            {!isRealEstate && !compact && (
                 <div className="space-y-2">
                     <Label htmlFor="bank_id">
                         {isConnected ? __('Bank') : __('Bank (optional)')}
@@ -411,41 +425,47 @@ export function AccountForm({
                 </div>
             )}
 
-            <div className="space-y-2">
-                <Label htmlFor="currency_code">{__('Currency')}</Label>
-                <div className="mt-1">
-                    <Select
-                        name="currency_code"
-                        value={selectedCurrency ?? undefined}
-                        disabled={isConnected}
-                        onValueChange={(value) =>
-                            setSelectedCurrency(value as CurrencyCode)
-                        }
-                        required
-                    >
-                        <SelectTrigger name="currency_code">
-                            <SelectValue placeholder={__('Select currency')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {currencyOptions.map((currency: CurrencyOption) => (
-                                <SelectItem
-                                    key={currency.code}
-                                    value={currency.code}
-                                >
-                                    {currency.code} - {currency.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+            {(!compact || !offersUserCurrency) && (
+                <div className="space-y-2">
+                    <Label htmlFor="currency_code">{__('Currency')}</Label>
+                    <div className="mt-1">
+                        <Select
+                            name="currency_code"
+                            value={selectedCurrency ?? undefined}
+                            disabled={isConnected}
+                            onValueChange={(value) =>
+                                setSelectedCurrency(value as CurrencyCode)
+                            }
+                            required
+                        >
+                            <SelectTrigger name="currency_code">
+                                <SelectValue
+                                    placeholder={__('Select currency')}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencyOptions.map(
+                                    (currency: CurrencyOption) => (
+                                        <SelectItem
+                                            key={currency.code}
+                                            value={currency.code}
+                                        >
+                                            {currency.code} - {currency.name}
+                                        </SelectItem>
+                                    ),
+                                )}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {isConnected && (
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Your bank sets the currency of a connected account.',
+                            )}
+                        </p>
+                    )}
                 </div>
-                {isConnected && (
-                    <p className="pl-1 text-xs text-muted-foreground">
-                        {__(
-                            'Your bank sets the currency of a connected account.',
-                        )}
-                    </p>
-                )}
-            </div>
+            )}
 
             {showBalanceField && selectedCurrency && !initialValues && (
                 <div className="space-y-2">
