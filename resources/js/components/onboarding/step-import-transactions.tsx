@@ -11,6 +11,7 @@ import {
 } from '@/components/onboarding/step-import-pick-account';
 import { StepImportPreview } from '@/components/onboarding/step-import-preview';
 import { StepImportProgress } from '@/components/onboarding/step-import-progress';
+import { StepImportQuickExpenses } from '@/components/onboarding/step-import-quick-expenses';
 import { StepImportUpload } from '@/components/onboarding/step-import-upload';
 import { StepScreen } from '@/components/onboarding/step-screen';
 import { Spinner } from '@/components/ui/spinner';
@@ -58,6 +59,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 type ImportScreen =
     | 'pick-account'
     | 'upload'
+    | 'quick-expenses'
     | 'columns'
     | 'preview'
     | 'importing'
@@ -454,6 +456,25 @@ export function StepImportTransactions({
             <StepImportUpload
                 onFileSelect={handleFileSelect}
                 onSkip={onComplete}
+                onQuickExpenses={
+                    selectedAccount
+                        ? () => {
+                              captureEvent('onboarding_quick_expenses_opened');
+                              setScreen('quick-expenses');
+                          }
+                        : undefined
+                }
+            />
+        );
+    }
+
+    if (screen === 'quick-expenses' && selectedAccount) {
+        return (
+            <StepImportQuickExpenses
+                accountId={selectedAccount.id}
+                currencyCode={selectedAccount.currency_code}
+                onComplete={onComplete}
+                onBack={() => setScreen('upload')}
             />
         );
     }
@@ -482,6 +503,7 @@ export function StepImportTransactions({
     if (screen === 'preview') {
         return (
             <StepImportPreview
+                accountId={selectedAccount?.id ?? null}
                 transactions={transactions}
                 currencyCode={selectedAccount?.currency_code ?? 'USD'}
                 locale={locale}

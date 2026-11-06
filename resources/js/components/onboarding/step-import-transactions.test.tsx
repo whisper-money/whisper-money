@@ -412,3 +412,22 @@ describe('StepImportTransactions remembering the layout', () => {
         expect(saveImportConfig).not.toHaveBeenCalled();
     });
 });
+
+describe('StepImportTransactions without a file', () => {
+    it('offers the main expenses instead, on the account the file would go to', async () => {
+        renderStep();
+
+        fireEvent.click(await screen.findByText('No file at hand?'));
+
+        expect(
+            await screen.findByText('Your main monthly expenses'),
+        ).toBeTruthy();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_quick_expenses_opened',
+        );
+
+        fireEvent.click(screen.getByText('Back to the file'));
+
+        expect(await screen.findByText('Bring in your history')).toBeTruthy();
+    });
+});

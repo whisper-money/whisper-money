@@ -33,6 +33,7 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
 
     // Transactions
     Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
+    Route::get('transactions/estimates', [TransactionController::class, 'estimates'])->name('api.transactions.estimates');
     Route::post('transactions/check-duplicates', [TransactionController::class, 'checkDuplicates'])->name('api.transactions.check-duplicates');
     Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
     Route::get('transactions/count', [TransactionController::class, 'count'])->name('api.transactions.count');

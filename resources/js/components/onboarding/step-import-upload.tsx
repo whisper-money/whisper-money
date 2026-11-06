@@ -13,7 +13,7 @@ import {
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
-import { CircleQuestionMark, Upload } from 'lucide-react';
+import { CircleQuestionMark, ListChecks, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 /** What a bank export looks like on the other side, for someone who has never done it. */
@@ -28,11 +28,14 @@ interface StepImportUploadProps {
     onFileSelect: (file: File) => void;
     /** The way past a step someone has no file for. */
     onSkip: () => void;
+    /** The other way past it: their main expenses, typed in by hand. */
+    onQuickExpenses?: () => void;
 }
 
 export function StepImportUpload({
     onFileSelect,
     onSkip,
+    onQuickExpenses,
 }: StepImportUploadProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -110,6 +113,21 @@ export function StepImportUpload({
                         onChange={handleInput}
                     />
                 </label>
+
+                {/* The ways in without a file, one row each. */}
+                {onQuickExpenses && (
+                    <StepList>
+                        <StepRow
+                            icon={ListChecks}
+                            title={__('No file at hand?')}
+                            description={__(
+                                'Tell us your main monthly expenses instead',
+                            )}
+                            trailing={<StepChevron />}
+                            onClick={onQuickExpenses}
+                        />
+                    </StepList>
+                )}
 
                 <StepList>
                     <StepRow

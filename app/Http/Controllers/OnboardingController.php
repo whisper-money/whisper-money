@@ -8,6 +8,7 @@ use App\Enums\RolloverType;
 use App\Enums\SignupPlan;
 use App\Features\OnboardingGateCopy;
 use App\Http\Requests\StoreOnboardingAnswersRequest;
+use App\Http\Requests\StoreOnboardingQuickExpensesRequest;
 use App\Http\Requests\StoreOnboardingTargetRequest;
 use App\Http\Requests\UpdateOnboardingCurrencyRequest;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
@@ -22,6 +23,7 @@ use App\Services\Banking\Formatters\AccountNameFormatter;
 use App\Services\BudgetService;
 use App\Services\OnboardingRevealService;
 use App\Services\OnboardingSummaryService;
+use App\Services\Transactions\EstimateTransactions;
 use App\Support\TimezoneCountry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -220,6 +222,31 @@ class OnboardingController extends Controller
     public function reveal(Request $request, OnboardingRevealService $reveal): JsonResponse
     {
         return response()->json($reveal->for($request->user()));
+    }
+
+    /**
+     * The import step's way out for someone with no file at hand: their main
+     * monthly expenses, typed in as rough figures and stored as last month's
+     * transactions on the account they just created, so the reveal has a month
+     * of spending to show.
+     *
+     * Only on an account that takes movements by hand — a connected one gets
+     * its history from the bank, and an estimate there would sit beside it.
+     */
+    public function quickExpenses(StoreOnboardingQuickExpensesRequest $request, EstimateTransactions $estimates): JsonResponse
+    {
+        $user = $request->user();
+        $account = $user->accounts()->findOrFail($request->validated('account_id'));
+
+        abort_if(
+            $account->isArchived() || $account->banking_connection_id !== null || ! $account->type->hasTransactionLedger(),
+            422,
+            __('This account cannot take movements.'),
+        );
+
+        $created = $estimates->record($user, $account, $request->amounts());
+
+        return response()->json(['count' => $created->count()], 201);
     }
 
     /**

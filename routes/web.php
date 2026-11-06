@@ -184,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('onboarding/currency', [OnboardingController::class, 'currency'])->name('onboarding.currency');
         Route::post('onboarding/categorize', [OnboardingController::class, 'categorize'])->name('onboarding.categorize');
         Route::post('onboarding/target', [OnboardingController::class, 'target'])->name('onboarding.target');
+        Route::post('onboarding/quick-expenses', [OnboardingController::class, 'quickExpenses'])->name('onboarding.quick-expenses');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
         // The bell: what happened in the account, newest first. Opening a row

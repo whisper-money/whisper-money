@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\RuleSuggestionAggregator;
 use App\Services\Concerns\ConvertsTransactionCurrency;
+use App\Services\Transactions\EstimateTransactions;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -39,6 +40,7 @@ class OnboardingRevealService
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private NetWorthCalculator $netWorth,
+        private EstimateTransactions $estimates,
     ) {}
 
     /**
@@ -67,9 +69,13 @@ class OnboardingRevealService
         $outgoings = $this->recentOutgoings($user);
         $byMonth = $outgoings->groupBy(fn (Transaction $transaction): string => $transaction->transaction_date->format('Y-m'));
 
+        // A month the user typed their main expenses into is a whole month by
+        // construction, however few rows it took to say so.
+        $estimated = $this->estimates->monthsFor($user);
+
         $candidates = $byMonth->keys()
             ->sortDesc()
-            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS)
+            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS || $estimated->contains($month))
             ->values();
 
         if ($candidates->isEmpty()) {
