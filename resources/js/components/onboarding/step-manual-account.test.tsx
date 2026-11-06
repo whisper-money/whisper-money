@@ -101,6 +101,24 @@ describe('StepManualAccount', () => {
         expect(screen.queryByText('More options')).not.toBeInTheDocument();
     });
 
+    it('describes the form the person is looking at', () => {
+        renderStep(true);
+
+        expect(
+            screen.getByText(
+                'Give it a name and say what’s in it today. You can change the rest later.',
+            ),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('More options'));
+
+        expect(
+            screen.getByText(
+                'Name it, say what it is, and what it’s worth today. That is the whole form.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('moves the focus to the revealed fields', () => {
         renderStep(true);
 

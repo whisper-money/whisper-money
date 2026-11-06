@@ -283,13 +283,17 @@ export function StepManualAccount({
                     : __('What else should be in the picture?')
             }
             description={
-                isFirstAccount
+                isShortForm
                     ? __(
                           'Give it a name and say what’s in it today. You can change the rest later.',
                       )
-                    : __(
-                          'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
-                      )
+                    : isFirstAccount
+                      ? __(
+                            'Name it, say what it is, and what it’s worth today. That is the whole form.',
+                        )
+                      : __(
+                            'Another account, a mortgage, a pension, a cash pot — the same three answers as before.',
+                        )
             }
             footer={
                 <>
