@@ -11,7 +11,8 @@ use App\Actions\CreateDefaultCategories;
  */
 enum QuickExpense: string
 {
-    case Housing = 'housing';
+    case Rent = 'rent';
+    case Mortgage = 'mortgage';
     case Groceries = 'groceries';
     case Utilities = 'utilities';
     case Subscriptions = 'subscriptions';
@@ -26,7 +27,8 @@ enum QuickExpense: string
     public function defaultCategory(): string
     {
         return match ($this) {
-            self::Housing => 'Rent and maintanence',
+            self::Rent => 'Rent and maintanence',
+            self::Mortgage => 'Mortgage',
             self::Groceries => 'Groceries',
             self::Utilities => 'Utility services',
             self::Subscriptions => 'Online services',
@@ -42,7 +44,8 @@ enum QuickExpense: string
     public function description(): string
     {
         return match ($this) {
-            self::Housing => 'Rent or mortgage',
+            self::Rent => 'Rent',
+            self::Mortgage => 'Mortgage',
             self::Groceries => 'Groceries',
             self::Utilities => 'Utilities',
             self::Subscriptions => 'Subscriptions',

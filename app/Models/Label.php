@@ -37,8 +37,9 @@ class Label extends Model
     }
 
     /**
-     * Only labels the user created and manages directly. Excludes labels that
-     * back a savings goal — those are managed through the goal, not the label
+     * Only labels the user manages directly: the ones they made, and the
+     * "Estimate" label the onboarding made for them. Excludes labels that back
+     * a savings goal — those are managed through the goal, not the label
      * settings screen.
      *
      * @param  Builder<Label>  $query
@@ -46,7 +47,7 @@ class Label extends Model
      */
     public function scopeUserManaged(Builder $query): Builder
     {
-        return $query->where('source', LabelSource::User);
+        return $query->whereIn('source', [LabelSource::User, LabelSource::Estimate]);
     }
 
     /**

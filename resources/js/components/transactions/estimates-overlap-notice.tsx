@@ -1,6 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { useLocale } from '@/hooks/use-locale';
 import { useOverlappingEstimates } from '@/hooks/use-overlapping-estimates';
+import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { CircleAlert, CircleCheck } from 'lucide-react';
 import { useMemo } from 'react';
@@ -28,7 +31,8 @@ export function EstimatesOverlapNotice({
                 .map((transaction) => transaction.transaction_date),
         [transactions],
     );
-    const { estimates, remove, isRemoving, removedCount } =
+    const locale = useLocale();
+    const { estimates, remove, isRemoving, removedCount, removeFailed } =
         useOverlappingEstimates(accountId, dates);
 
     if (estimates.length === 0) {
@@ -63,6 +67,36 @@ export function EstimatesOverlapNotice({
                           )}
                 </span>
             </p>
+            {/* What the button removes, named before it does. */}
+            <ul className="flex flex-col gap-1 ps-6 text-[13px]">
+                {estimates.map((estimate) => (
+                    <li
+                        key={estimate.id}
+                        className="flex justify-between gap-3"
+                    >
+                        <span className="truncate">
+                            {estimate.description} ·{' '}
+                            {formatDate(
+                                estimate.transaction_date,
+                                'MMM yyyy',
+                                locale,
+                            )}
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                            {formatCurrency(
+                                estimate.amount,
+                                estimate.currency_code,
+                                locale,
+                            )}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+            {removeFailed && (
+                <p className="text-destructive">
+                    {__("We couldn't delete them all. Please try again.")}
+                </p>
+            )}
             <Button
                 type="button"
                 variant="outline"

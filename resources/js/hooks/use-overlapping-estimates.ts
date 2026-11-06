@@ -29,6 +29,8 @@ export function monthsOf(dates: string[]): string[] {
  * counted twice. `remove` deletes them all, through the same path a delete
  * from the transactions list takes, and without moving the balance — they
  * never moved it.
+ *
+ * A failed lookup shows no warning at all: it must not hold up an import.
  */
 export function useOverlappingEstimates(
     accountId: string | null | undefined,
@@ -37,10 +39,15 @@ export function useOverlappingEstimates(
     const [estimates, setEstimates] = useState<OverlappingEstimate[]>([]);
     const [isRemoving, setIsRemoving] = useState(false);
     const [removedCount, setRemovedCount] = useState(0);
+    const [removeFailed, setRemoveFailed] = useState(false);
     const months = useMemo(() => monthsOf(dates), [dates]);
     const monthsKey = months.join(',');
 
     useEffect(() => {
+        // Another file or another account is another question.
+        setRemovedCount(0);
+        setRemoveFailed(false);
+
         if (!accountId || monthsKey === '') {
             setEstimates([]);
             return;
@@ -74,19 +81,29 @@ export function useOverlappingEstimates(
         };
     }, [accountId, monthsKey]);
 
+    /**
+     * One at a time, so a failure halfway leaves the notice listing exactly
+     * the ones still there rather than all of them.
+     */
     const remove = useCallback(async () => {
         setIsRemoving(true);
+        setRemoveFailed(false);
+
+        let removed = 0;
 
         try {
-            await transactionSyncService.deleteMany(
-                estimates.map((estimate) => estimate.id),
-            );
-            setRemovedCount(estimates.length);
-            setEstimates([]);
+            for (const estimate of estimates) {
+                await transactionSyncService.delete(estimate.id);
+                removed++;
+            }
+        } catch {
+            setRemoveFailed(true);
         } finally {
+            setRemovedCount((previous) => previous + removed);
+            setEstimates((previous) => previous.slice(removed));
             setIsRemoving(false);
         }
     }, [estimates]);
 
-    return { estimates, remove, isRemoving, removedCount };
+    return { estimates, remove, isRemoving, removedCount, removeFailed };
 }

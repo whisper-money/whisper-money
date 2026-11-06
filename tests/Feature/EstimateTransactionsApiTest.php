@@ -1,12 +1,13 @@
 <?php
 
+use App\Enums\LabelSource;
 use App\Models\Account;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 
-/** A transaction on the account, labelled with the given label names. */
-function estimateRow(Account $account, string $date, array $labels = ['Estimate']): Transaction
+/** A transaction on the account, carrying the estimate label or one of the user's own. */
+function estimateRow(Account $account, string $date, LabelSource $source = LabelSource::Estimate): Transaction
 {
     $transaction = Transaction::factory()->for($account->user)->for($account)->create([
         'transaction_date' => $date,
@@ -15,13 +16,11 @@ function estimateRow(Account $account, string $date, array $labels = ['Estimate'
         'description' => 'Groceries',
     ]);
 
-    foreach ($labels as $name) {
-        $label = Label::query()->firstOrCreate(
-            ['user_id' => $account->user_id, 'name' => $name],
-            ['color' => 'amber'],
-        );
-        $transaction->labels()->attach($label);
-    }
+    $label = Label::query()->firstOrCreate(
+        ['user_id' => $account->user_id, 'source' => $source],
+        ['name' => $source === LabelSource::Estimate ? 'Estimate' : 'Estimate (mine)', 'color' => 'amber'],
+    );
+    $transaction->labels()->attach($label);
 
     return $transaction;
 }
@@ -31,9 +30,10 @@ it('lists the estimates in the months a file covers', function () {
     $account = Account::factory()->for($user)->create(['currency_code' => 'EUR']);
 
     $october = estimateRow($account, '2026-10-01');
-    $september = estimateRow($account, '2026-09-30', ['Estimación']);
+    $september = estimateRow($account, '2026-09-30');
     estimateRow($account, '2026-08-01');
-    estimateRow($account, '2026-10-02', ['Groceries']);
+    // A label of the user's own is not an estimate, whatever it is called.
+    estimateRow($account, '2026-10-02', LabelSource::User);
 
     $this->actingAs($user)
         ->getJson('/api/transactions/estimates?'.http_build_query([

@@ -14,6 +14,7 @@ import axios from 'axios';
 import {
     Bus,
     House,
+    Landmark,
     Plug,
     Repeat,
     ShieldCheck,
@@ -33,7 +34,8 @@ export const QUICK_EXPENSES: {
     label: string;
     icon: LucideIcon;
 }[] = [
-    { kind: 'housing', label: 'Rent or mortgage', icon: House },
+    { kind: 'rent', label: 'Rent', icon: House },
+    { kind: 'mortgage', label: 'Mortgage', icon: Landmark },
     { kind: 'groceries', label: 'Groceries', icon: ShoppingBasket },
     { kind: 'utilities', label: 'Utilities', icon: Plug },
     { kind: 'subscriptions', label: 'Subscriptions', icon: Repeat },
@@ -62,7 +64,7 @@ export function StepImportQuickExpenses({
 }: StepImportQuickExpensesProps) {
     const [amounts, setAmounts] = useState<Record<string, number>>({});
     const [isSaving, setIsSaving] = useState(false);
-    const [failed, setFailed] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const entries = QUICK_EXPENSES.filter(
         ({ kind }) => (amounts[kind] ?? 0) > 0,
@@ -70,7 +72,7 @@ export function StepImportQuickExpenses({
 
     const handleSave = () => {
         setIsSaving(true);
-        setFailed(false);
+        setError(null);
 
         axios
             .post(quickExpenses().url, {
@@ -87,8 +89,20 @@ export function StepImportQuickExpenses({
                 });
                 onComplete();
             })
-            .catch(() => {
-                setFailed(true);
+            .catch((failure: unknown) => {
+                // A refusal the server explains (an account that cannot take
+                // movements) is worth more than a retry that cannot work.
+                const message = axios.isAxiosError(failure)
+                    ? (failure.response?.data as { message?: string })?.message
+                    : undefined;
+
+                setError(
+                    axios.isAxiosError(failure) &&
+                        failure.response?.status === 422 &&
+                        message
+                        ? message
+                        : __("We couldn't save them. Please try again."),
+                );
                 setIsSaving(false);
             });
     };
@@ -152,11 +166,7 @@ export function StepImportQuickExpenses({
                     ))}
                 </StepList>
 
-                {failed && (
-                    <StepError>
-                        {__("We couldn't save them. Please try again.")}
-                    </StepError>
-                )}
+                {error && <StepError>{error}</StepError>}
 
                 <StepCallout>
                     {__(

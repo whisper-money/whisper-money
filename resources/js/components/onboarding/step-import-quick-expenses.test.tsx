@@ -10,7 +10,11 @@ const { post, captureEvent } = vi.hoisted(() => ({
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 vi.mock('axios', () => ({
-    default: { post, isAxiosError: () => false },
+    default: {
+        post,
+        isAxiosError: (error: unknown) =>
+            typeof error === 'object' && error !== null && 'response' in error,
+    },
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -63,7 +67,7 @@ describe('StepImportQuickExpenses', () => {
         post.mockResolvedValue({ data: { count: 2 } });
         const { onComplete } = renderStep();
 
-        type('Rent or mortgage', '900');
+        type('Rent', '900');
         type('Eating out', '120,50');
 
         await act(async () => {
@@ -75,7 +79,7 @@ describe('StepImportQuickExpenses', () => {
         expect(post).toHaveBeenCalledWith('/onboarding/quick-expenses', {
             account_id: 'account-1',
             expenses: [
-                { kind: 'housing', amount: 90000 },
+                { kind: 'rent', amount: 90000 },
                 { kind: 'eating_out', amount: 12050 },
             ],
         });
@@ -103,6 +107,28 @@ describe('StepImportQuickExpenses', () => {
         ).toBeInTheDocument();
         expect(onComplete).not.toHaveBeenCalled();
         expect(captureEvent).not.toHaveBeenCalled();
+    });
+
+    it('says why when the server refuses the account', async () => {
+        post.mockRejectedValue({
+            response: {
+                status: 422,
+                data: { message: 'This account cannot take movements.' },
+            },
+        });
+        renderStep();
+
+        type('Transport', '60');
+
+        await act(async () => {
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Save 1 expense' }),
+            );
+        });
+
+        expect(
+            screen.getByText('This account cannot take movements.'),
+        ).toBeInTheDocument();
     });
 
     it('goes back to the file', () => {

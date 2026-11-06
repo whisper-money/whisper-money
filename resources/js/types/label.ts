@@ -1,7 +1,7 @@
 import { UUID } from './uuid';
 
 // Mirrors App\Enums\LabelSource (PHP). Keep both in sync.
-export type LabelSource = 'user' | 'saving_goal';
+export type LabelSource = 'user' | 'saving_goal' | 'estimate';
 
 export interface Label {
     id: UUID;
