@@ -1,6 +1,7 @@
 import type { PendingVisit } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import posthog, { type PostHogConfig } from 'posthog-js';
+import { getStorage } from './safe-storage';
 
 const isPostHogEnabled = (): boolean => {
     const enabled = import.meta.env.VITE_POSTHOG_ENABLED;
@@ -189,6 +190,76 @@ function sessionRecordingConfig(): Partial<PostHogConfig> {
 }
 
 /**
+ * Whether this browser lets us write to local storage. Reading the global is
+ * not enough: a browser blocking site data hands it out and then throws on the
+ * write, the same probe the SDK runs before it picks a store.
+ */
+function canWriteLocalStorage(): boolean {
+    const probe = '__wm_storage_probe__';
+
+    try {
+        const storage = getStorage('local');
+        storage?.setItem(probe, '1');
+        storage?.removeItem(probe);
+
+        return storage !== undefined;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Where the SDK keeps the visitor's id, session and super properties: local
+ * storage, never a cookie, which is what the privacy policy (section 9)
+ * promises.
+ *
+ * The SDK default, `localStorage+cookie`, writes everything to local storage
+ * and copies the identity to a `ph_*` cookie only so it can follow a visitor
+ * across subdomains. The landing and the app share one host, so the cookie
+ * bought us nothing, and the switch loses nothing: the id, the session and the
+ * properties {@link registerProperties} sets were in local storage all along.
+ *
+ * `memory` when local storage cannot be written, because asking for
+ * `localStorage` there makes the SDK fall back to a cookie. Such a browser is
+ * counted as a new visitor on every page load, which is the price of not
+ * storing anything.
+ */
+function persistence(): PostHogConfig['persistence'] {
+    return canWriteLocalStorage() ? 'localStorage' : 'memory';
+}
+
+/** `ph_<key>_posthog` and its siblings, plus the SDK's `__ph_opt_in_out_*`. */
+const POSTHOG_COOKIE = /^_*ph_/;
+
+/**
+ * Expires the cookies the SDK set before it was moved to local storage, so a
+ * returning visitor does not carry one for the rest of its year-long life. The
+ * SDK set it on the widest domain the browser accepted (`.whisper.money`), and
+ * a cookie only goes away when expired with the domain it was set on, so this
+ * expires it on the host and on every parent domain.
+ */
+function removePostHogCookies(): void {
+    const names = document.cookie
+        .split(';')
+        .map((cookie) => cookie.split('=')[0].trim())
+        .filter((name) => POSTHOG_COOKIE.test(name));
+
+    const labels = window.location.hostname.split('.');
+    const domains = [
+        '',
+        ...labels.map(
+            (_, index) => `; domain=${labels.slice(index).join('.')}`,
+        ),
+    ];
+
+    names.forEach((name) =>
+        domains.forEach((domain) => {
+            document.cookie = `${name}=; max-age=0; path=/${domain}`;
+        }),
+    );
+}
+
+/**
  * Every call into the PostHog SDK, wrapped so it cannot take the page with it.
  *
  * The SDK reaches for browser APIs that are not always there to be reached.
@@ -243,10 +314,13 @@ export function initializePostHog(): void {
             return;
         }
 
+        removePostHogCookies();
+
         posthog.init(apiKey, {
             api_host: getPostHogHost(),
             ui_host: getPostHogUiHost(),
             person_profiles: 'always',
+            persistence: persistence(),
             ...sessionRecordingConfig(),
             loaded: () => {
                 if (import.meta.env.DEV) {

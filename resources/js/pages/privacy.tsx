@@ -378,7 +378,17 @@ export default function Privacy() {
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 {__(
-                                    'We use essential cookies to maintain your\n                                session and ensure the proper functioning of our\n                                service. These cookies are necessary for the\n                                service to work and cannot be disabled. We do\n                                not use tracking cookies or analytics cookies\n                                without your explicit consent.',
+                                    'We use a few first-party cookies, and only to run the service: essential ones that keep you signed in and protect your session against forged requests, and ones that remember your display preferences, such as your theme, and whether you have signed in on this device before. They are needed for the service to work and are never used to track you.',
+                                )}
+                            </p>
+                            <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                {__(
+                                    "Our product analytics, PostHog (see section 5), sets no cookies. It keeps an identifier for your browser, linked to your account once you sign in, and your current visit in your browser's storage, so it can tell visits apart and group what happens in each one. We use no advertising cookies and nothing that follows you across other websites.",
+                                )}
+                            </p>
+                            <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                {__(
+                                    'You can block PostHog at any time with a content blocker. The app works the same without it.',
                                 )}
                             </p>
                         </section>
