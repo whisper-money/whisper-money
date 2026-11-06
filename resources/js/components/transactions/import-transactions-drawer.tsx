@@ -59,6 +59,8 @@ interface ImportTransactionsDrawerProps {
     automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    /** The account to start on, e.g. the one an emailed import link names. */
+    initialAccountId?: UUID | null;
     /** Receives how many transactions actually made it in (0 when all failed). */
     onImportComplete?: (importedCount: number) => void;
 }
@@ -108,6 +110,7 @@ export function ImportTransactionsDrawer({
     automationRules = [],
     open,
     onOpenChange,
+    initialAccountId = null,
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
     const { locale, features, currencies } = usePage<SharedData>().props;
@@ -142,6 +145,16 @@ export function ImportTransactionsDrawer({
             }
         }
     }, [state.selectedAccountId, accounts]);
+
+    useEffect(() => {
+        if (open && initialAccountId) {
+            setState((prev) =>
+                prev.selectedAccountId
+                    ? prev
+                    : { ...prev, selectedAccountId: initialAccountId },
+            );
+        }
+    }, [open, initialAccountId]);
 
     useEffect(() => {
         if (!open) {

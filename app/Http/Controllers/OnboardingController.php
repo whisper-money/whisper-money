@@ -238,8 +238,8 @@ class OnboardingController extends Controller
         $user = $request->user();
         $account = $user->accounts()->findOrFail($request->validated('account_id'));
 
-        abort_if(
-            $account->isArchived() || $account->banking_connection_id !== null || ! $account->type->hasTransactionLedger(),
+        abort_unless(
+            $account->acceptsManualMovements(),
             422,
             __('This account cannot take movements.'),
         );

@@ -13,6 +13,7 @@ const {
     importTransactions,
     parseImportFile,
     accounts,
+    post,
 } = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     checkDuplicates: vi.fn(),
@@ -21,9 +22,20 @@ const {
     importTransactions: vi.fn(),
     parseImportFile: vi.fn(),
     accounts: { current: [] as Partial<Account>[] },
+    post: vi.fn(),
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
+
+// A phone, so the upload screen also offers the link to a computer.
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true }));
+
+// Only the link request is stubbed; every other call keeps the real client.
+vi.mock('axios', async (original) => {
+    const axios = (await original<typeof import('axios')>()).default;
+
+    return { default: { ...axios, get: axios.get, post } };
+});
 
 vi.mock('@inertiajs/react', () => ({
     router: { reload: vi.fn() },
@@ -35,6 +47,7 @@ vi.mock('@inertiajs/react', () => ({
             automationRules: [],
             locale: 'en-US',
             currencies: { accounts: [{ code: 'EUR' }] },
+            auth: { user: { email: 'ana@example.com' } },
         },
     }),
 }));
@@ -99,9 +112,14 @@ function renderStep(
     account: Parameters<
         typeof StepImportTransactions
     >[0]['account'] = undefined,
+    linkedAccountId: string | null = null,
 ) {
     const view = render(
-        <StepImportTransactions account={account} onComplete={onComplete} />,
+        <StepImportTransactions
+            account={account}
+            linkedAccountId={linkedAccountId}
+            onComplete={onComplete}
+        />,
     );
 
     return { ...view, onComplete };
@@ -429,5 +447,69 @@ describe('StepImportTransactions without a file', () => {
         fireEvent.click(screen.getByText('Back to the file'));
 
         expect(await screen.findByText('Bring in your history')).toBeTruthy();
+    });
+});
+
+describe('StepImportTransactions with a link to a computer', () => {
+    it('confirms the link and lets the onboarding go on without a file', async () => {
+        post.mockResolvedValue({ status: 202 });
+        const { onComplete } = renderStep();
+
+        fireEvent.click(
+            await screen.findByText(
+                'Email me a link to import from my computer instead',
+            ),
+        );
+
+        expect(await screen.findByText('Link sent')).toBeTruthy();
+        expect(post).toHaveBeenCalledWith('/onboarding/import-link', {
+            account_id: 'account-1',
+        });
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_import_link_sent',
+        );
+
+        fireEvent.click(screen.getByText('Continue for now'));
+
+        expect(onComplete).toHaveBeenCalled();
+    });
+
+    it('still offers the main expenses once the link is on its way', async () => {
+        post.mockResolvedValue({ status: 202 });
+        renderStep();
+
+        fireEvent.click(
+            await screen.findByText(
+                'Email me a link to import from my computer instead',
+            ),
+        );
+        fireEvent.click(
+            await screen.findByText('Type my main expenses instead'),
+        );
+
+        expect(
+            await screen.findByText('Your main monthly expenses'),
+        ).toBeTruthy();
+    });
+
+    it('opens the file for the account the link was sent for, without asking which', async () => {
+        accounts.current = [CHECKING, SAVINGS];
+
+        renderStep(vi.fn(), undefined, 'account-3');
+
+        expect(await screen.findByText('Bring in your history')).toBeTruthy();
+        expect(
+            screen.queryByText('Which account is this file from?'),
+        ).toBeNull();
+    });
+
+    it('falls back to asking when the linked account can no longer take a file', async () => {
+        accounts.current = [CHECKING, SAVINGS, CONNECTED];
+
+        renderStep(vi.fn(), undefined, 'account-2');
+
+        expect(
+            await screen.findByText('Which account is this file from?'),
+        ).toBeTruthy();
     });
 });

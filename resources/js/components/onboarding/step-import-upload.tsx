@@ -1,4 +1,5 @@
 import { StepButton } from '@/components/onboarding/step-button';
+import { ImportLinkRow } from '@/components/onboarding/step-import-link';
 import {
     StepChevron,
     StepList,
@@ -10,8 +11,10 @@ import {
     StepEmphasis,
     StepScreen,
 } from '@/components/onboarding/step-screen';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
+import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import { CircleQuestionMark, ListChecks, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -30,16 +33,24 @@ interface StepImportUploadProps {
     onSkip: () => void;
     /** The other way past it: their main expenses, typed in by hand. */
     onQuickExpenses?: () => void;
+    /**
+     * The account a link to finish the import on a computer would point at.
+     * Only offered on a phone, where exporting from the bank is the hard part.
+     */
+    importLink?: { accountId: UUID; onSent: () => void };
 }
 
 export function StepImportUpload({
     onFileSelect,
     onSkip,
     onQuickExpenses,
+    importLink: importLinkOption,
 }: StepImportUploadProps) {
+    const isMobile = useIsMobile();
     const inputRef = useRef<HTMLInputElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [showExportSteps, setShowExportSteps] = useState(false);
+    const importLink = isMobile ? importLinkOption : undefined;
 
     const handleDrop = (event: React.DragEvent) => {
         event.preventDefault();
@@ -115,17 +126,25 @@ export function StepImportUpload({
                 </label>
 
                 {/* The ways in without a file, one row each. */}
-                {onQuickExpenses && (
+                {(onQuickExpenses || importLink) && (
                     <StepList>
-                        <StepRow
-                            icon={ListChecks}
-                            title={__('No file at hand?')}
-                            description={__(
-                                'Tell us your main monthly expenses instead',
-                            )}
-                            trailing={<StepChevron />}
-                            onClick={onQuickExpenses}
-                        />
+                        {onQuickExpenses && (
+                            <StepRow
+                                icon={ListChecks}
+                                title={__('No file at hand?')}
+                                description={__(
+                                    'Tell us your main monthly expenses instead',
+                                )}
+                                trailing={<StepChevron />}
+                                onClick={onQuickExpenses}
+                            />
+                        )}
+                        {importLink && (
+                            <ImportLinkRow
+                                accountId={importLink.accountId}
+                                onSent={importLink.onSent}
+                            />
+                        )}
                     </StepList>
                 )}
 

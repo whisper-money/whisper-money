@@ -116,6 +116,17 @@ class Account extends Model
     }
 
     /**
+     * Whether movements can be typed or imported into it by hand: not archived,
+     * not fed by a bank connection, and a type that keeps a ledger at all.
+     */
+    public function acceptsManualMovements(): bool
+    {
+        return ! $this->isArchived()
+            && $this->banking_connection_id === null
+            && $this->type->hasTransactionLedger();
+    }
+
+    /**
      * Whether the account was already archived on that date. An archived
      * account contributes nothing from then on, so every figure built from a
      * balance history has to ask this rather than read the balance straight

@@ -135,6 +135,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by((string) $request->user()?->getAuthIdentifier());
         });
 
+        // Each "import from your computer" link is an email in somebody's
+        // inbox: three an hour covers a retry, not a mailbox flood.
+        RateLimiter::for('onboarding-import-link', function (Request $request): Limit {
+            return Limit::perHour(3)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
         // A CSV export scans the user's whole filtered history, so ten a minute
         // is generous for a person and a ceiling for a script. Named for the
         // same reason as above: its own bucket, not the API routes' counter.

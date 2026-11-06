@@ -17,6 +17,7 @@ import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepTarget } from '@/components/onboarding/step-target';
 import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useImportLinkLanding } from '@/hooks/use-import-link-landing';
 import {
     BACKABLE_STEPS,
     CreatedAccount,
@@ -62,6 +63,7 @@ export default function Onboarding({
     const { auth, currencies } = usePage<SharedData>().props;
     const hasSyncedRef = useRef(false);
     const isFreePlan = signupPlan === 'free';
+    const linkedAccountId = useImportLinkLanding('onboarding');
 
     // Prefer the server-validated step; fall back to ?step= from the URL so
     // client-side deep links keep working. Neither is the hook's last resort:
@@ -279,6 +281,7 @@ export default function Onboarding({
                     <StepImportTransactions
                         account={lastAccount}
                         canConnectBank={!isFreePlan}
+                        linkedAccountId={linkedAccountId}
                         onComplete={handleImportComplete}
                     />
                 );
