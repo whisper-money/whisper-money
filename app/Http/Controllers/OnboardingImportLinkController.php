@@ -47,7 +47,11 @@ class OnboardingImportLinkController extends Controller
         // A link forwarded to, or opened by, somebody else's session.
         abort_unless($account->user_id === $user->id, 404);
 
-        $request->session()->flash(self::FLASH_KEY, $account->id);
+        // Archived or connected to a bank since the link was sent: the import
+        // still opens, it just asks which account instead of naming this one.
+        if ($account->acceptsManualMovements()) {
+            $request->session()->flash(self::FLASH_KEY, $account->id);
+        }
 
         if ($user->isOnboarded()) {
             return redirect()->route('transactions.index');

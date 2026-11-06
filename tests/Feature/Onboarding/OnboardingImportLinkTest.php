@@ -192,3 +192,13 @@ it('does not open another user’s account from a forwarded link', function () {
         ->assertNotFound()
         ->assertSessionMissing(OnboardingImportLinkController::FLASH_KEY);
 });
+
+it('still lands, without naming the account, once it can no longer take a file', function () {
+    $user = importLinkUser();
+    $account = importLinkAccount($user, ['archived_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(importLinkUrl($account))
+        ->assertRedirect(route('onboarding', ['step' => 'import-transactions']))
+        ->assertSessionMissing(OnboardingImportLinkController::FLASH_KEY);
+});
