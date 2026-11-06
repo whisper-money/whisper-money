@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\DB;
 class EstimateTransactions
 {
     /** The label's name, as an English source string to translate. */
-    public const LABEL = 'Estimate';
+    private const LABEL = 'Estimate';
 
     /** Its name when the user already has a label called "Estimate" of their own. */
     private const FALLBACK_LABEL = 'Onboarding estimate';
@@ -113,9 +113,9 @@ class EstimateTransactions
      * month of estimates is a whole month by construction, however few rows it
      * has.
      *
-     * @return Collection<int, string>
+     * @return list<string>
      */
-    public function monthsFor(User $user, CarbonInterface $since): Collection
+    public function monthsFor(User $user, CarbonInterface $since): array
     {
         return $this->estimates()
             ->where('user_id', $user->id)
@@ -123,7 +123,8 @@ class EstimateTransactions
             ->pluck('transaction_date')
             ->map(fn (Carbon $date): string => $date->format('Y-m'))
             ->unique()
-            ->values();
+            ->values()
+            ->all();
     }
 
     /**

@@ -75,7 +75,7 @@ class OnboardingRevealService
 
         $candidates = $byMonth->keys()
             ->sortDesc()
-            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS || $estimated->contains($month))
+            ->filter(fn (string $month): bool => $byMonth[$month]->count() >= self::MIN_TRANSACTIONS || in_array($month, $estimated, true))
             ->values();
 
         if ($candidates->isEmpty()) {
