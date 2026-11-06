@@ -25,7 +25,10 @@ import { installDeferredPropsRecovery } from './lib/deferred-props-recovery';
 import { installFailedNavigationToast } from './lib/failed-navigation-toast';
 import { leavePage } from './lib/leave-page';
 import { seedPageState } from './lib/page-state';
-import { initializePostHog } from './lib/posthog';
+import {
+    initializePostHog,
+    installOnboardingSessionRecording,
+} from './lib/posthog';
 import {
     isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
@@ -77,6 +80,7 @@ Sentry.init({
 });
 
 initializePostHog();
+installOnboardingSessionRecording();
 
 // Initialize theme before creating the app so progress bar color is correct
 initializeTheme();
