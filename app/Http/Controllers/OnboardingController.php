@@ -124,8 +124,7 @@ class OnboardingController extends Controller
      *
      * The trial arms say "free for N days", which is only true while every
      * plan starts with a trial. With `SUBSCRIPTION_PAY_NOW` on, nobody is in
-     * the experiment — control included, or it would be measured against two
-     * arms that look exactly like it.
+     * the experiment and everybody gets the plain gate.
      */
     private function gateCopyArm(User $user, ?SignupPlan $signupPlan): ?string
     {

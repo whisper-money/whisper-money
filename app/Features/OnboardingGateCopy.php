@@ -44,8 +44,10 @@ use Laravel\Pennant\Feature;
  * `false` too — everybody sees the gate as it was and no arm is reported.
  * `feature:enable … all` writes `true` back, which {@see self::armFor()} reads
  * as "back in the experiment" and hashes again, so every user drawn by the
- * two-arm hash returns to the arm they had. (Someone assigned before the
- * control arm was dropped is drawn again from the new hash.)
+ * two-arm hash returns to the arm they had. Anyone stored before the control
+ * arm was dropped is drawn again from the new hash instead — a former control
+ * user lands in a trial arm, and about half the old trial users switch arm —
+ * so a read across a kill-switch round trip should drop those users.
  *
  * @api
  */
