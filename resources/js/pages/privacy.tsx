@@ -383,12 +383,12 @@ export default function Privacy() {
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 {__(
-                                    "Our product analytics, PostHog (see section 5), sets no cookies. It keeps an identifier for your browser, linked to your account once you sign in, and your current visit in your browser's local storage, so it can tell visits apart and group what happens in each one. We use no advertising cookies and nothing that follows you across other websites.",
+                                    "Our product analytics, PostHog (see section 5), sets no cookies. It keeps an identifier for your browser, linked to your account once you sign in, and your current visit in your browser's storage, so it can tell visits apart and group what happens in each one. We use no advertising cookies and nothing that follows you across other websites.",
                                 )}
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 {__(
-                                    'You can clear or block local storage for this site in your browser settings, or block PostHog with a content blocker, at any time. The app works the same without it.',
+                                    'You can block PostHog at any time with a content blocker. The app works the same without it.',
                                 )}
                             </p>
                         </section>

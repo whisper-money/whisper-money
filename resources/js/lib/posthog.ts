@@ -224,8 +224,8 @@ function canWriteLocalStorage(): boolean {
  * counted as a new visitor on every page load, which is the price of not
  * storing anything.
  */
-export function persistenceConfig(): Pick<PostHogConfig, 'persistence'> {
-    return { persistence: canWriteLocalStorage() ? 'localStorage' : 'memory' };
+function persistence(): PostHogConfig['persistence'] {
+    return canWriteLocalStorage() ? 'localStorage' : 'memory';
 }
 
 /** `ph_<key>_posthog` and its siblings, plus the SDK's `__ph_opt_in_out_*`. */
@@ -238,7 +238,7 @@ const POSTHOG_COOKIE = /^_*ph_/;
  * a cookie only goes away when expired with the domain it was set on, so this
  * expires it on the host and on every parent domain.
  */
-export function removePostHogCookies(): void {
+function removePostHogCookies(): void {
     const names = document.cookie
         .split(';')
         .map((cookie) => cookie.split('=')[0].trim())
@@ -320,7 +320,7 @@ export function initializePostHog(): void {
             api_host: getPostHogHost(),
             ui_host: getPostHogUiHost(),
             person_profiles: 'always',
-            ...persistenceConfig(),
+            persistence: persistence(),
             ...sessionRecordingConfig(),
             loaded: () => {
                 if (import.meta.env.DEV) {

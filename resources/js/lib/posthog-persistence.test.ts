@@ -54,6 +54,26 @@ describe('PostHog persistence', () => {
         expect(initConfig().persistence).toBe('memory');
     });
 
+    it('keeps the visitor in memory when there is no local storage at all', () => {
+        // An Android WebView with DOM storage disabled hands out null.
+        const realStorage = Object.getOwnPropertyDescriptor(
+            window,
+            'localStorage',
+        )!;
+        Object.defineProperty(window, 'localStorage', {
+            configurable: true,
+            value: null,
+        });
+
+        try {
+            initializePostHog();
+        } finally {
+            Object.defineProperty(window, 'localStorage', realStorage);
+        }
+
+        expect(initConfig().persistence).toBe('memory');
+    });
+
     it('expires the cookies an earlier version of the SDK left behind', () => {
         document.cookie =
             'ph_phc_test_posthog=%7B%22distinct_id%22%3A%221%22%7D; path=/';
