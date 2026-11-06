@@ -272,3 +272,30 @@ it('still needs five movements for a month with no estimates in it', function ()
         ->assertOk()
         ->assertJson(['variant' => 'assets']);
 });
+
+it('lets someone still onboarding delete an estimate from the import preview', function () {
+    $user = quickExpensesUser();
+    $account = manualAccount($user);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/quick-expenses', [
+            'account_id' => $account->id,
+            'expenses' => [['kind' => 'rent', 'amount' => 90000]],
+        ])
+        ->assertCreated();
+
+    $estimate = Transaction::query()->where('account_id', $account->id)->sole();
+
+    $this->actingAs($user)->deleteJson("/transactions/{$estimate->id}")->assertOk();
+
+    expect($estimate->fresh()->trashed())->toBeTrue();
+});
+
+it('does not let someone still onboarding delete another user’s transaction', function () {
+    $user = quickExpensesUser();
+    $foreign = Transaction::factory()->for(manualAccount(User::factory()->create()))->create();
+
+    $this->actingAs($user)->deleteJson("/transactions/{$foreign->id}")->assertForbidden();
+
+    expect($foreign->fresh()->trashed())->toBeFalse();
+});
