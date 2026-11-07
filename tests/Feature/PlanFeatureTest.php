@@ -7,7 +7,7 @@ test('every feature is available when subscriptions are disabled', function () {
     config()->set('subscriptions.enabled', false);
     $user = User::factory()->create();
 
-    expect($user->canUseFeature(PlanFeature::ConnectedAccounts))->toBeTrue()
+    expect($user->canUseFeature(PlanFeature::BankAggregator))->toBeTrue()
         ->and($user->canUseFeature(PlanFeature::AiSuggestions))->toBeTrue();
 });
 
@@ -15,7 +15,7 @@ test('pro features are unavailable to free users when subscriptions are enabled'
     config()->set('subscriptions.enabled', true);
     $user = User::factory()->create();
 
-    expect($user->canUseFeature(PlanFeature::ConnectedAccounts))->toBeFalse()
+    expect($user->canUseFeature(PlanFeature::BankAggregator))->toBeFalse()
         ->and($user->canUseFeature(PlanFeature::AiSuggestions))->toBeFalse();
 });
 
@@ -29,6 +29,6 @@ test('pro features are available to subscribed users', function () {
         'stripe_price' => 'price_test123',
     ]);
 
-    expect($user->canUseFeature(PlanFeature::ConnectedAccounts))->toBeTrue()
+    expect($user->canUseFeature(PlanFeature::BankAggregator))->toBeTrue()
         ->and($user->canUseFeature(PlanFeature::AiSuggestions))->toBeTrue();
 });

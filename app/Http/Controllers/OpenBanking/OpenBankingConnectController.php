@@ -69,8 +69,8 @@ abstract class OpenBankingConnectController extends Controller
     {
         $user = auth()->user();
 
-        if ($this->shouldBlockOpenBankingAccess($user)) {
-            return $this->subscribeJsonResponse();
+        if ($this->shouldBlockOpenBankingAccess($user, $this->provider())) {
+            return $this->subscribeJsonResponse($user);
         }
 
         try {

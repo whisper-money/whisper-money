@@ -32,8 +32,8 @@ class WiseController extends Controller
     {
         $user = auth()->user();
 
-        if ($this->shouldBlockOpenBankingAccess($user)) {
-            return $this->subscribeJsonResponse();
+        if ($this->shouldBlockOpenBankingAccess($user, BankingProvider::Wise)) {
+            return $this->subscribeJsonResponse($user);
         }
 
         $client = new WiseClient($request->api_token);

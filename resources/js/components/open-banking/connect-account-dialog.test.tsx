@@ -9,7 +9,12 @@ globalThis.ResizeObserver ??= class {
     disconnect() {}
 };
 
-const pageProps = { features: {}, locale: 'es', openBankingEnabled: true };
+const pageProps = {
+    features: {},
+    locale: 'es',
+    openBankingEnabled: true,
+    auth: { bankAggregatorLocked: false },
+};
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: pageProps }),
@@ -150,6 +155,24 @@ describe('ConnectAccountDialog', () => {
         expect(
             screen.getByRole('button', { name: /Interactive Brokers/ }),
         ).toBeInTheDocument();
+    });
+
+    it('locks the banks but not the direct integrations on a plan without the bank aggregator', async () => {
+        pageProps.auth.bankAggregatorLocked = true;
+
+        try {
+            await reachBankStep([]);
+
+            expect(screen.getByRole('button', { name: /BBVA/ })).toBeDisabled();
+            expect(
+                screen.getByRole('button', { name: /Interactive Brokers/ }),
+            ).toBeEnabled();
+            expect(
+                screen.getByRole('link', { name: 'Change plan' }),
+            ).toHaveAttribute('href', '/settings/billing');
+        } finally {
+            pageProps.auth.bankAggregatorLocked = false;
+        }
     });
 
     it('keeps an already-connected bank selectable and badges it', async () => {

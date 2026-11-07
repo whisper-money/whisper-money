@@ -51,6 +51,7 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
     {
         $recentlySyncedCutoff = now()->subHours(self::RECENTLY_SYNCED_HOURS);
         $dispatched = 0;
+        $offPlan = 0;
 
         // By id, not offset: the syncs dispatched here write last_synced_at while
         // the sweep is still paging, which would shift an offset past rows.
@@ -60,12 +61,21 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
                 $query->notSyncedSince($recentlySyncedCutoff)
                     ->orWhere(fn (Builder $query) => $query->consentExpiredWhileActive());
             }))
+            ->with('user.subscriptions')
             ->lazyById()
-            ->each(function (BankingConnection $connection) use (&$dispatched) {
+            ->each(function (BankingConnection $connection) use (&$dispatched, &$offPlan) {
+                // A bank its owner's plan leaves out (latam) is not queued at
+                // all, rather than queued only to log a skip every six hours.
+                if ($connection->isOffOwnersPlan()) {
+                    $offPlan++;
+
+                    return;
+                }
+
                 SyncBankingConnectionJob::dispatch($connection, $this->fullSync, BankingSyncTrigger::Scheduled);
                 $dispatched++;
             });
 
-        Log::info('Scheduled banking sync dispatched', ['connections' => $dispatched, 'full_sync' => $this->fullSync]);
+        Log::info('Scheduled banking sync dispatched', ['connections' => $dispatched, 'off_plan' => $offPlan, 'full_sync' => $this->fullSync]);
     }
 }

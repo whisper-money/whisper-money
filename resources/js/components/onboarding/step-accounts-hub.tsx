@@ -26,6 +26,7 @@ import {
     type RetryBank,
 } from '@/components/open-banking/connect-account-inline';
 import { ConnectBrokerInline } from '@/components/open-banking/connect-broker-inline';
+import { useBankAggregatorLocked } from '@/components/subscription/standard-plan-notice';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
 import {
     isConnectCountry,
@@ -33,6 +34,7 @@ import {
 } from '@/hooks/use-connect-flow';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { captureEvent } from '@/lib/posthog';
+import { billing } from '@/routes/settings';
 import { type SharedData } from '@/types';
 import { formatAccountType, type AccountType } from '@/types/account';
 import { type SignupPlan } from '@/types/pricing';
@@ -44,6 +46,7 @@ import {
     FileUp,
     House,
     Landmark,
+    Lock,
     Plus,
     type LucideIcon,
 } from 'lucide-react';
@@ -251,6 +254,9 @@ export function StepAccountsHub({
     // is onboarding unless the account is one of the shared ones.
     const canFullImport = features?.fullImport ?? false;
     const hasProPlan = auth.hasProPlan;
+    // A latam subscriber: banks are shown, locked behind the standard plan, and
+    // lead to billing; the brokers their plan includes are offered up front.
+    const bankLocked = useBankAggregatorLocked();
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
     const isFreePlan = signupPlan === 'free';
     // Read once: it looks at localStorage, and the hub remounts after every
@@ -425,6 +431,12 @@ export function StepAccountsHub({
                 return;
             }
 
+            if (route === 'connected' && bankLocked) {
+                router.visit(billing.url());
+
+                return;
+            }
+
             if (route !== 'manual') {
                 onConnectedAccountSelected?.();
             }
@@ -445,6 +457,7 @@ export function StepAccountsHub({
             onConnectedAccountSelected,
             subscriptionsEnabled,
             hasProPlan,
+            bankLocked,
         ],
     );
 
@@ -476,7 +489,10 @@ export function StepAccountsHub({
                 title: noBankToOffer
                     ? __('Another bank, by hand')
                     : __('Another bank'),
-                description: __('A second account, a joint one, one abroad'),
+                description:
+                    bankLocked && !noBankToOffer
+                        ? __('Available on the standard plan')
+                        : __('A second account, a joint one, one abroad'),
                 route: noBankToOffer ? 'manual' : 'connected',
             },
         ];
@@ -484,7 +500,7 @@ export function StepAccountsHub({
         return all.filter(
             (suggestion) => !isFreePlan || suggestion.route === 'manual',
         );
-    }, [isFreePlan, noBankToOffer]);
+    }, [isFreePlan, noBankToOffer, bankLocked]);
 
     /** The plan disclosure belongs above the first commitment, and only there. */
     const firstConnectKey = suggestions.find(
@@ -589,14 +605,16 @@ export function StepAccountsHub({
         const offersBank = openBankingEnabled && !bankHiddenByCountry;
         // Only an install with no open banking at all leads with the broker:
         // where the bank is hidden by country, the broker is behind the same
-        // plan gate, and the point is to stop selling a plan up front.
-        const offersBroker = !openBankingEnabled;
+        // plan gate, and the point is to stop selling a plan up front. A latam
+        // subscriber is the exception: the broker is what their plan includes.
+        const offersBroker = !openBankingEnabled || bankLocked;
+        const leadsWithBank = offersBank && !bankLocked;
 
         return (
             <StepScreen
                 title={__("Let's build the picture")}
                 description={
-                    offersBank
+                    leadsWithBank
                         ? __(
                               "Start with the bank your salary lands in. You'll add the rest right after — you can mix as many as you like.",
                           )
@@ -607,7 +625,7 @@ export function StepAccountsHub({
             >
                 <div className="flex flex-col gap-6">
                     <StepList>
-                        {offersBank && (
+                        {leadsWithBank && (
                             <StepRow
                                 icon={Landmark}
                                 title={__('Connect a bank')}
@@ -633,6 +651,24 @@ export function StepAccountsHub({
                                 onClick={() => openRoute('broker', 'broker')}
                             />
                         )}
+                        {/* Below what their plan includes: it leaves the
+                            wizard for billing, where the plan is changed. */}
+                        {offersBank && bankLocked && (
+                            <StepRow
+                                icon={Landmark}
+                                title={__('Connect a bank')}
+                                description={__(
+                                    'Available on the standard plan',
+                                )}
+                                meta={__('Change plan')}
+                                trailing={
+                                    <Lock className="size-4 shrink-0 text-muted-foreground" />
+                                }
+                                onClick={() =>
+                                    openRoute('connected', 'connect')
+                                }
+                            />
+                        )}
                         <StepRow
                             icon={Plus}
                             title={__('Add one myself')}
@@ -656,11 +692,17 @@ export function StepAccountsHub({
                             }
                             className="cursor-pointer self-center rounded-sm text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
                         >
-                            {__('Is your bank in Europe or the UK? Connect it')}
+                            {bankLocked
+                                ? __(
+                                      'Is your bank in Europe or the UK? See the standard plan',
+                                  )
+                                : __(
+                                      'Is your bank in Europe or the UK? Connect it',
+                                  )}
                         </button>
                     )}
 
-                    {offersBank && (
+                    {leadsWithBank && (
                         <StepCallout>
                             <StepEmphasis
                                 sentence={__(

@@ -92,8 +92,8 @@ class ConnectionController extends Controller
             abort(403);
         }
 
-        if ($this->shouldBlockOpenBankingAccess(Auth::user())) {
-            return $this->subscribeRedirectResponse();
+        if ($this->shouldBlockOpenBankingAccess(Auth::user(), $connection->provider)) {
+            return $this->subscribeRedirectResponse(Auth::user());
         }
 
         if (! $connection->isActive() && $connection->status !== BankingConnectionStatus::Error) {
@@ -130,8 +130,8 @@ class ConnectionController extends Controller
      */
     public function updateCredentials(UpdateConnectionCredentialsRequest $request, BankingConnection $connection): RedirectResponse
     {
-        if ($this->shouldBlockOpenBankingAccess($request->user())) {
-            return $this->subscribeRedirectResponse();
+        if ($this->shouldBlockOpenBankingAccess($request->user(), $connection->provider)) {
+            return $this->subscribeRedirectResponse($request->user());
         }
 
         $validated = $request->validated();

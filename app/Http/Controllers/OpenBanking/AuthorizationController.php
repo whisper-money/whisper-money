@@ -39,8 +39,8 @@ class AuthorizationController extends Controller
     {
         $user = auth()->user();
 
-        if ($this->shouldBlockOpenBankingAccess($user)) {
-            return $this->subscribeJsonResponse();
+        if ($this->shouldBlockOpenBankingAccess($user, BankingProvider::EnableBanking)) {
+            return $this->subscribeJsonResponse($user);
         }
 
         $validated = $request->validated();
@@ -80,8 +80,8 @@ class AuthorizationController extends Controller
             abort(403);
         }
 
-        if ($this->shouldBlockOpenBankingAccess($request->user())) {
-            return $this->subscribeJsonResponse();
+        if ($this->shouldBlockOpenBankingAccess($request->user(), BankingProvider::EnableBanking)) {
+            return $this->subscribeJsonResponse($request->user());
         }
 
         $result = $this->startReauthorization($connection, $provider);
@@ -105,8 +105,8 @@ class AuthorizationController extends Controller
             abort(403);
         }
 
-        if ($this->shouldBlockOpenBankingAccess($request->user())) {
-            return $this->subscribeRedirectResponse();
+        if ($this->shouldBlockOpenBankingAccess($request->user(), BankingProvider::EnableBanking)) {
+            return $this->subscribeRedirectResponse($request->user());
         }
 
         $result = $this->startReauthorization($connection, $provider);

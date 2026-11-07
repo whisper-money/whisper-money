@@ -65,9 +65,6 @@ class SubscribedPlan
 
     /**
      * Whether a subscription pays the regional latam price.
-     *
-     * @api The entitlement check for bank aggregator connections, landing in a
-     *      follow-up; until then only the test suite calls it.
      */
     public function isLatam(User $user, Subscription $subscription): bool
     {

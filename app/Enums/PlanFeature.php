@@ -4,7 +4,12 @@ namespace App\Enums;
 
 enum PlanFeature: string
 {
-    case ConnectedAccounts = 'connected_accounts';
+    /** Banks reached through the open-banking aggregator (Enable Banking). */
+    case BankAggregator = 'bank_aggregator';
+
+    /** Providers we integrate with directly: brokers, exchanges and Wise. */
+    case DirectIntegrations = 'direct_integrations';
+
     case AiSuggestions = 'ai_suggestions';
     case McpAccess = 'mcp_access';
     case ApiAccess = 'api_access';
@@ -15,7 +20,7 @@ enum PlanFeature: string
     public function requiresProPlan(): bool
     {
         return match ($this) {
-            self::ConnectedAccounts, self::AiSuggestions, self::McpAccess, self::ApiAccess => true,
+            self::BankAggregator, self::DirectIntegrations, self::AiSuggestions, self::McpAccess, self::ApiAccess => true,
         };
     }
 }

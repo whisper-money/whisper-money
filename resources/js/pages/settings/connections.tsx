@@ -3,8 +3,14 @@ import { ConnectAccountDialog } from '@/components/open-banking/connect-account-
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
+import {
+    isBankAggregatorProvider,
+    StandardPlanNotice,
+    useBankAggregatorLocked,
+} from '@/components/subscription/standard-plan-notice';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -41,6 +47,7 @@ import {
     ArrowRight,
     Clock,
     KeyRound,
+    Lock,
     MoreHorizontal,
     RefreshCw,
     RotateCcw,
@@ -101,6 +108,7 @@ export default function ConnectionsPage({ connections }: Props) {
         usePage<SharedData>().props;
     const isSharedAccount = auth?.isSharedAccount ?? false;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
+    const bankAggregatorLocked = useBankAggregatorLocked();
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
@@ -209,9 +217,45 @@ export default function ConnectionsPage({ connections }: Props) {
         return connection.status === 'pending' && connection.accounts_count > 0;
     }
 
+    /**
+     * A bank connected before moving onto the latam plan: the server neither
+     * syncs nor reconnects it, so neither is offered here.
+     */
+    function isLockedByPlan(connection: BankingConnection): boolean {
+        return (
+            bankAggregatorLocked &&
+            isBankAggregatorProvider(connection.provider)
+        );
+    }
+
+    /**
+     * A locked bank that was syncing until the plan changed. Its own status
+     * ("Active", an old error) no longer means anything, so the plan is what
+     * the card shows.
+     */
+    function isStoppedByPlan(connection: BankingConnection): boolean {
+        return (
+            isLockedByPlan(connection) &&
+            ['active', 'error', 'expired'].includes(connection.status)
+        );
+    }
+
+    function canSync(connection: BankingConnection): boolean {
+        if (isLockedByPlan(connection)) {
+            return false;
+        }
+
+        return (
+            (connection.status === 'active' && canSyncManually(connection)) ||
+            (connection.status === 'error' &&
+                !isEnableBankingAuthError(connection))
+        );
+    }
+
     function canReconnect(connection: BankingConnection): boolean {
         return (
-            connection.provider === 'enablebanking' &&
+            isBankAggregatorProvider(connection.provider) &&
+            !isLockedByPlan(connection) &&
             (connection.status === 'expired' ||
                 isAbandonedReauthorization(connection) ||
                 isExpiringSoon(connection) ||
@@ -274,6 +318,14 @@ export default function ConnectionsPage({ connections }: Props) {
                         </CreateButton>
                     </div>
 
+                    {bankAggregatorLocked && openBankingEnabled && (
+                        <StandardPlanNotice
+                            message={__(
+                                'Bank connections are available on the standard plan. Brokers, exchanges and Wise are included in yours.',
+                            )}
+                        />
+                    )}
+
                     {connections.length === 0 ? (
                         <Card>
                             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -310,9 +362,19 @@ export default function ConnectionsPage({ connections }: Props) {
                                             </CardDescription>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <ConnectionStatusBadge
-                                                connection={connection}
-                                            />
+                                            {isStoppedByPlan(connection) ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="gap-1"
+                                                >
+                                                    <Lock className="size-3" />
+                                                    {__('Standard plan')}
+                                                </Badge>
+                                            ) : (
+                                                <ConnectionStatusBadge
+                                                    connection={connection}
+                                                />
+                                            )}
                                             {(connection.status === 'expired' ||
                                                 isAbandonedReauthorization(
                                                     connection,
@@ -403,16 +465,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Reconnect')}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {((connection.status ===
-                                                        'active' &&
-                                                        canSyncManually(
-                                                            connection,
-                                                        )) ||
-                                                        (connection.status ===
-                                                            'error' &&
-                                                            !isEnableBankingAuthError(
-                                                                connection,
-                                                            ))) && (
+                                                    {canSync(connection) && (
                                                         <DropdownMenuItem
                                                             onClick={() =>
                                                                 handleSync(
@@ -507,114 +560,125 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 )}
                                             </AmberNotice>
                                         )}
-                                        {isExpiringSoon(connection) && (
-                                            <AmberNotice>
-                                                <p>
-                                                    {__(
-                                                        'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
+                                        {isStoppedByPlan(connection) && (
+                                            <div className="mt-3">
+                                                <StandardPlanNotice
+                                                    message={__(
+                                                        'This bank no longer syncs: bank connections are available on the standard plan.',
                                                     )}
-                                                </p>
-                                                <ReconnectButton
-                                                    variant="secondary"
-                                                    className="h-7 text-xs"
-                                                    reconnecting={
-                                                        reconnectingId ===
-                                                        connection.id
-                                                    }
-                                                    onClick={() =>
-                                                        handleReconnect(
-                                                            connection,
-                                                        )
-                                                    }
                                                 />
-                                            </AmberNotice>
+                                            </div>
                                         )}
-                                        {connection.status === 'error' && (
-                                            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
-                                                <div className="flex items-start gap-2">
-                                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-destructive-foreground" />
-                                                    <div className="space-y-2">
-                                                        <p className="text-sm text-destructive dark:text-foreground">
-                                                            {connection.error_message ??
-                                                                __(
-                                                                    'An unexpected error occurred during sync.',
-                                                                )}
-                                                        </p>
-                                                        {connection.is_beta && (
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {__(
-                                                                    'This bank is still in beta: its connection fails more often than others. Retrying usually helps.',
-                                                                )}
-                                                            </p>
+                                        {isExpiringSoon(connection) &&
+                                            !isLockedByPlan(connection) && (
+                                                <AmberNotice>
+                                                    <p>
+                                                        {__(
+                                                            'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
                                                         )}
-                                                        <div className="flex flex-wrap items-center gap-3">
-                                                            {hasAuthError(
+                                                    </p>
+                                                    <ReconnectButton
+                                                        variant="secondary"
+                                                        className="h-7 text-xs"
+                                                        reconnecting={
+                                                            reconnectingId ===
+                                                            connection.id
+                                                        }
+                                                        onClick={() =>
+                                                            handleReconnect(
                                                                 connection,
-                                                            ) && (
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs"
-                                                                    onClick={() =>
-                                                                        setUpdateCredentialsConnection(
-                                                                            connection,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <KeyRound className="mr-1.5 h-3 w-3" />
-                                                                    {__(
-                                                                        'Update Credentials',
+                                                            )
+                                                        }
+                                                    />
+                                                </AmberNotice>
+                                            )}
+                                        {connection.status === 'error' &&
+                                            !isLockedByPlan(connection) && (
+                                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
+                                                    <div className="flex items-start gap-2">
+                                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-destructive-foreground" />
+                                                        <div className="space-y-2">
+                                                            <p className="text-sm text-destructive dark:text-foreground">
+                                                                {connection.error_message ??
+                                                                    __(
+                                                                        'An unexpected error occurred during sync.',
                                                                     )}
-                                                                </Button>
-                                                            )}
-                                                            {isEnableBankingAuthError(
-                                                                connection,
-                                                            ) ? (
-                                                                <ReconnectButton
-                                                                    variant="secondary"
-                                                                    className="h-7 text-xs"
-                                                                    reconnecting={
-                                                                        reconnectingId ===
-                                                                        connection.id
-                                                                    }
-                                                                    onClick={() =>
-                                                                        handleReconnect(
-                                                                            connection,
-                                                                        )
-                                                                    }
-                                                                />
-                                                            ) : (
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    size="sm"
-                                                                    className="h-7 text-xs"
-                                                                    onClick={() =>
-                                                                        handleSync(
-                                                                            connection,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <RefreshCw className="mr-1.5 h-3 w-3" />
+                                                            </p>
+                                                            {connection.is_beta && (
+                                                                <p className="text-sm text-muted-foreground">
                                                                     {__(
-                                                                        'Retry',
+                                                                        'This bank is still in beta: its connection fails more often than others. Retrying usually helps.',
                                                                     )}
-                                                                </Button>
+                                                                </p>
                                                             )}
-                                                            <a
-                                                                href="https://discord.gg/m8hUhx6D9D"
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                                                            >
-                                                                {__(
-                                                                    'Need help? Join our Discord',
+                                                            <div className="flex flex-wrap items-center gap-3">
+                                                                {hasAuthError(
+                                                                    connection,
+                                                                ) && (
+                                                                    <Button
+                                                                        variant="secondary"
+                                                                        size="sm"
+                                                                        className="h-7 text-xs"
+                                                                        onClick={() =>
+                                                                            setUpdateCredentialsConnection(
+                                                                                connection,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <KeyRound className="mr-1.5 h-3 w-3" />
+                                                                        {__(
+                                                                            'Update Credentials',
+                                                                        )}
+                                                                    </Button>
                                                                 )}
-                                                            </a>
+                                                                {isEnableBankingAuthError(
+                                                                    connection,
+                                                                ) ? (
+                                                                    <ReconnectButton
+                                                                        variant="secondary"
+                                                                        className="h-7 text-xs"
+                                                                        reconnecting={
+                                                                            reconnectingId ===
+                                                                            connection.id
+                                                                        }
+                                                                        onClick={() =>
+                                                                            handleReconnect(
+                                                                                connection,
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ) : (
+                                                                    <Button
+                                                                        variant="secondary"
+                                                                        size="sm"
+                                                                        className="h-7 text-xs"
+                                                                        onClick={() =>
+                                                                            handleSync(
+                                                                                connection,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <RefreshCw className="mr-1.5 h-3 w-3" />
+                                                                        {__(
+                                                                            'Retry',
+                                                                        )}
+                                                                    </Button>
+                                                                )}
+                                                                <a
+                                                                    href="https://discord.gg/m8hUhx6D9D"
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                                                >
+                                                                    {__(
+                                                                        'Need help? Join our Discord',
+                                                                    )}
+                                                                </a>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
                                     </CardContent>
                                 </Card>
                             ))}
