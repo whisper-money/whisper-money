@@ -43,34 +43,36 @@ class BackfillLatamPriceArm extends Command
             $this->warn('DRY RUN — no changes will be saved.');
         }
 
-        $breakdown = $this->backfill($isDryRun);
-        $total = array_sum($breakdown);
+        [$breakdown, $moved] = $this->backfill($isDryRun);
 
-        if ($total > 0) {
+        if ($breakdown !== []) {
             arsort($breakdown);
             $this->table(['Region', 'Users'], collect($breakdown)->map(fn (int $count, string $region): array => [$region, $count])->values()->all());
         }
 
-        $verb = $isDryRun ? 'would be moved' : 'moved';
-        $this->info("{$total} user(s) {$verb} to the latam price.");
+        $this->info($isDryRun
+            ? array_sum($breakdown).' user(s) would be moved to the latam price.'
+            : "{$moved} user(s) moved to the latam price.");
 
         return self::SUCCESS;
     }
 
     /**
-     * Walks the eligible users in chunks and returns how many matched per
-     * region: the timezone's country, or the currency when the timezone names
-     * no country.
+     * Walks the eligible users in chunks. Returns how many matched per region
+     * (the timezone's country, or the currency when the timezone names no
+     * country) and how many rows were actually written, which re-checks
+     * eligibility so a user who subscribed mid-run is left alone.
      *
-     * @return array<string, int>
+     * @return array{0: array<string, int>, 1: int}
      */
     private function backfill(bool $isDryRun): array
     {
         $breakdown = [];
+        $moved = 0;
 
         $this->eligibleUsers()
             ->select(['id', 'timezone', 'currency_code'])
-            ->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($isDryRun, &$breakdown): void {
+            ->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($isDryRun, &$breakdown, &$moved): void {
                 $latamUsers = $users->filter(fn (User $user): bool => PricingRegion::isLatam($user->timezone, $user->currency_code));
 
                 foreach ($latamUsers as $user) {
@@ -79,14 +81,13 @@ class BackfillLatamPriceArm extends Command
                 }
 
                 if (! $isDryRun && $latamUsers->isNotEmpty()) {
-                    User::query()
+                    $moved += $this->eligibleUsers()
                         ->whereKey($latamUsers->modelKeys())
-                        ->whereNull('price_arm')
                         ->update(['price_arm' => PriceTiers::LATAM]);
                 }
             });
 
-        return $breakdown;
+        return [$breakdown, $moved];
     }
 
     /**
