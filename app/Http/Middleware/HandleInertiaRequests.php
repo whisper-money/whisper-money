@@ -8,6 +8,7 @@ use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
 use App\Features\CashflowAvailableFree;
 use App\Features\FullImport;
+use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
@@ -74,6 +75,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
                 'saved_automation_rule_id' => $request->session()->get('saved_automation_rule_id'),
                 'saved_automation_rule_token' => $request->session()->get('saved_automation_rule_token'),
+                'import_link_account_id' => $request->session()->get(OnboardingImportLinkController::FLASH_KEY),
             ],
             'name' => config('app.name'),
             'appUrl' => config('app.url'),

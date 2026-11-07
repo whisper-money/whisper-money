@@ -3234,5 +3234,18 @@
     "Rent": "Loyer",
     "Mortgage": "Prêt immobilier",
     "Onboarding estimate": "Estimation initiale",
-    "We couldn't delete them all. Please try again.": "Nous n’avons pas pu toutes les supprimer. Veuillez réessayer."
+    "We couldn't delete them all. Please try again.": "Nous n’avons pas pu toutes les supprimer. Veuillez réessayer.",
+    "Import your history from your computer": "Importez votre historique depuis votre ordinateur",
+    "Here is the link you asked for. Open it on your computer, download your movements from your bank's website, and drop the file in. We take you straight back to the account you were importing into.": "Voici le lien que vous avez demandé. Ouvrez-le sur votre ordinateur, téléchargez vos opérations depuis le site de votre banque et déposez le fichier. Nous vous ramenons directement au compte dans lequel vous importiez.",
+    "Import my movements": "Importer mes opérations",
+    "The link works for :days days and only for you: you may be asked to log in first.": "Le lien fonctionne pendant :days jours et uniquement pour vous : il se peut que vous deviez d'abord vous connecter.",
+    "We already sent you a few links. Check your inbox, or try again in an hour.": "Nous vous avons déjà envoyé plusieurs liens. Vérifiez votre boîte de réception ou réessayez dans une heure.",
+    "We couldn't send the link. Please try again.": "Nous n'avons pas pu envoyer le lien. Veuillez réessayer.",
+    "On your phone?": "Sur votre téléphone ?",
+    "Email me a link to import from my computer instead": "Envoyez-moi un lien pour importer depuis mon ordinateur",
+    "Link sent": "Lien envoyé",
+    "Open the email we sent to :email on your computer to import the file there.": "Ouvrez sur votre ordinateur l'e-mail envoyé à :email pour y importer le fichier.",
+    "Continue for now": "Continuer pour l'instant",
+    "Type my main expenses instead": "Saisir mes principales dépenses",
+    "You can keep going here in the meantime. The link takes you straight back to this account.": "En attendant, vous pouvez continuer ici. Le lien vous ramène directement à ce compte."
 }

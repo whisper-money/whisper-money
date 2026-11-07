@@ -1,6 +1,7 @@
 import { AiColumnDetection } from '@/components/ai-column-detection';
 import { StepImportColumns } from '@/components/onboarding/step-import-columns';
 import { StepImportFailed } from '@/components/onboarding/step-import-failed';
+import { StepImportLinkSent } from '@/components/onboarding/step-import-link';
 import {
     StepImportPartial,
     type ImportFailure,
@@ -60,6 +61,7 @@ type ImportScreen =
     | 'pick-account'
     | 'upload'
     | 'quick-expenses'
+    | 'link-sent'
     | 'columns'
     | 'preview'
     | 'importing'
@@ -77,12 +79,18 @@ interface StepImportTransactionsProps {
     account: CreatedAccount | undefined;
     /** False on a plan with no bank connections to offer as a way out. */
     canConnectBank?: boolean;
+    /**
+     * The account an emailed import link was opened for: it wins over the
+     * one just created, and goes straight to its file.
+     */
+    linkedAccountId?: UUID | null;
     onComplete: () => void;
 }
 
 export function StepImportTransactions({
     account,
     canConnectBank = true,
+    linkedAccountId = null,
     onComplete,
 }: StepImportTransactionsProps) {
     const page = usePage<
@@ -93,8 +101,15 @@ export function StepImportTransactions({
             automationRules: AutomationRule[];
         }
     >();
-    const { accounts, categories, banks, automationRules, locale, currencies } =
-        page.props;
+    const {
+        accounts,
+        categories,
+        banks,
+        automationRules,
+        locale,
+        currencies,
+        auth,
+    } = page.props;
 
     const [screen, setScreen] = useState<ImportScreen | null>(null);
     const [accountId, setAccountId] = useState<UUID | null>(null);
@@ -162,22 +177,29 @@ export function StepImportTransactions({
             return;
         }
 
+        const wanted = linkedAccountId ?? account?.id;
         const preselected = eligible.some(
-            (target) => target.account.id === account?.id,
+            (target) => target.account.id === wanted,
         )
-            ? (account?.id as UUID)
+            ? (wanted as UUID)
             : eligible[0].account.id;
 
         setAccountId(preselected);
         // One account is not a question worth asking; more than one is exactly
-        // the question the old drawer skipped and got wrong.
-        setScreen(eligible.length === 1 ? 'upload' : 'pick-account');
+        // the question the old drawer skipped and got wrong. An emailed link
+        // already answered it.
+        setScreen(
+            eligible.length === 1 || preselected === linkedAccountId
+                ? 'upload'
+                : 'pick-account',
+        );
     }, [
         screen,
         accounts.length,
         awaitingAccount,
         eligible,
         account?.id,
+        linkedAccountId,
         onComplete,
     ]);
 
@@ -432,6 +454,11 @@ export function StepImportTransactions({
         setScreen('upload');
     }, []);
 
+    function openQuickExpenses() {
+        captureEvent('onboarding_quick_expenses_opened');
+        setScreen('quick-expenses');
+    }
+
     if (screen === null) {
         return (
             <StepScreen align="center">
@@ -457,13 +484,26 @@ export function StepImportTransactions({
                 onFileSelect={handleFileSelect}
                 onSkip={onComplete}
                 onQuickExpenses={
+                    selectedAccount ? openQuickExpenses : undefined
+                }
+                importLink={
                     selectedAccount
-                        ? () => {
-                              captureEvent('onboarding_quick_expenses_opened');
-                              setScreen('quick-expenses');
+                        ? {
+                              accountId: selectedAccount.id,
+                              onSent: () => setScreen('link-sent'),
                           }
                         : undefined
                 }
+            />
+        );
+    }
+
+    if (screen === 'link-sent') {
+        return (
+            <StepImportLinkSent
+                email={auth.user.email}
+                onContinue={onComplete}
+                onQuickExpenses={openQuickExpenses}
             />
         );
     }

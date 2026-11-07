@@ -23,11 +23,13 @@ class AuthEntryPointService
     {
         // Connecting ChatGPT or Claude needs an account that already exists on
         // the Pro plan, so an OAuth authorization lands on the login form rather
-        // than the sign-up form a first visit would otherwise get.
+        // than the sign-up form a first visit would otherwise get. So does an
+        // emailed import link: only an existing account is ever sent one, and
+        // it is usually opened on a computer that has never seen the app.
         if (
             $this->hasAuthenticatedBefore($request)
             || ! config('auth.registration_enabled')
-            || $request->routeIs('passport.authorizations.authorize')
+            || $request->routeIs('passport.authorizations.authorize', 'onboarding.import-link.show')
         ) {
             return route('login');
         }

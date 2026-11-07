@@ -22,6 +22,7 @@ use App\Http\Controllers\MonthlySummaryController;
 use App\Http\Controllers\MonthlySummaryShareController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\OnboardingImportLinkController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
 use App\Http\Controllers\OpenBanking\AuthorizationController;
 use App\Http\Controllers\OpenBanking\BinanceController;
@@ -186,6 +187,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('onboarding/target', [OnboardingController::class, 'target'])->name('onboarding.target');
         Route::post('onboarding/quick-expenses', [OnboardingController::class, 'quickExpenses'])->name('onboarding.quick-expenses');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+        Route::post('onboarding/import-link', [OnboardingImportLinkController::class, 'store'])
+            ->middleware('throttle:onboarding-import-link')
+            ->name('onboarding.import-link.store');
 
         // The bell: what happened in the account, newest first. Opening a row
         // marks it read and lands on whatever it announced. Outside the paywall
@@ -216,6 +220,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::get('notifications/{notification}', [NotificationController::class, 'show'])->name('notifications.read');
     });
+
+    // Where the emailed "import from your computer" link lands. Outside
+    // `onboarded` on purpose: it decides itself whether that is the onboarding
+    // or the app's importer. Signed, so only a link we sent opens it.
+    Route::get('onboarding/import-link/{account}', [OnboardingImportLinkController::class, 'show'])
+        ->middleware('signed')
+        ->name('onboarding.import-link.show');
 
     // Accessible during onboarding for transaction import and categorization
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');

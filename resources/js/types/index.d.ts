@@ -207,6 +207,8 @@ export interface Flash {
     success: string | null;
     error: string | null;
     saved_automation_rule_id?: string | null;
+    /** The account an emailed import link was opened for, once. */
+    import_link_account_id?: string | null;
 }
 
 export type ChartColorScheme = 'neutral' | 'colorful' | 'blue' | 'pink';

@@ -4302,5 +4302,18 @@
     "Rent": "Alquiler",
     "Mortgage": "Hipoteca",
     "Onboarding estimate": "Estimación inicial",
-    "We couldn't delete them all. Please try again.": "No hemos podido eliminarlas todas. Inténtalo de nuevo."
+    "We couldn't delete them all. Please try again.": "No hemos podido eliminarlas todas. Inténtalo de nuevo.",
+    "Import your history from your computer": "Importa tu historial desde el ordenador",
+    "Here is the link you asked for. Open it on your computer, download your movements from your bank's website, and drop the file in. We take you straight back to the account you were importing into.": "Aquí tienes el enlace que pediste. Ábrelo en el ordenador, descarga tus movimientos desde la web de tu banco y suelta el archivo. Te llevamos directamente a la cuenta en la que estabas importando.",
+    "Import my movements": "Importar mis movimientos",
+    "The link works for :days days and only for you: you may be asked to log in first.": "El enlace funciona durante :days días y solo para ti: puede que primero tengas que iniciar sesión.",
+    "We already sent you a few links. Check your inbox, or try again in an hour.": "Ya te hemos enviado varios enlaces. Revisa tu bandeja de entrada o vuelve a intentarlo en una hora.",
+    "We couldn't send the link. Please try again.": "No hemos podido enviar el enlace. Inténtalo de nuevo.",
+    "On your phone?": "¿Estás en el móvil?",
+    "Email me a link to import from my computer instead": "Envíame un enlace para importar desde el ordenador",
+    "Link sent": "Enlace enviado",
+    "Open the email we sent to :email on your computer to import the file there.": "Abre en el ordenador el email que hemos enviado a :email para importar el archivo allí.",
+    "Continue for now": "Seguir por ahora",
+    "Type my main expenses instead": "Escribir mis gastos principales",
+    "You can keep going here in the meantime. The link takes you straight back to this account.": "Mientras tanto, puedes seguir aquí. El enlace te lleva directamente a esta cuenta."
 }
