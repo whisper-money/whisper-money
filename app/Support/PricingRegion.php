@@ -45,6 +45,9 @@ final class PricingRegion
      * Every timezone identifier the rule places in Latin America, legacy
      * `America/*` aliases included because older browsers still send them.
      *
+     * @api Shared with the frontend for anonymous visitors in a follow-up;
+     *      until then only the test suite calls it.
+     *
      * @return list<string>
      */
     public static function latamTimezones(): array
