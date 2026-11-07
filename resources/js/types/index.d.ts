@@ -8,6 +8,12 @@ import { UUID } from './uuid';
 export interface Auth {
     user: User;
     hasProPlan: boolean;
+    /**
+     * A paying user whose plan (latam) leaves the bank aggregator out. Banks
+     * show locked behind the standard plan; direct integrations stay open.
+     * False for free users, who meet the regular paywall instead.
+     */
+    bankAggregatorLocked: boolean;
     /** The public demo account, which is not allowed to use the AI Connector. */
     isDemoAccount: boolean;
     /** The demo or the press account: public credentials, shared data. */

@@ -10,6 +10,7 @@ use App\Features\FullImport;
 use App\Models\Concerns\HasPrefixedApiTokens;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
+use App\Services\Subscriptions\SubscribedPlan;
 use App\Support\PriceTiers;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
@@ -59,6 +60,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 {
     /** @use HasFactory<UserFactory> */
     use Billable, HasFactory, HasFeatures, HasPrefixedApiTokens, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+
+    /** Memo for {@see paysLatamPrice()}, which may reach Stripe. */
+    private ?bool $paysLatamPriceMemo = null;
 
     /**
      * The attributes that are mass assignable.
@@ -640,7 +644,33 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return true;
         }
 
-        return $this->hasProPlan();
+        if (! $this->hasProPlan()) {
+            return false;
+        }
+
+        return $feature !== PlanFeature::BankAggregator || ! $this->paysLatamPrice();
+    }
+
+    /**
+     * Whether the default subscription pays the regional latam price, the
+     * plan that leaves the bank aggregator out. Read off the price actually
+     * paid, never the tier offered, and regardless of whether that tier is
+     * still offered: turning the latam flag off does not hand banks to the
+     * people already paying it.
+     *
+     * A tier Stripe cannot tell us (an outage, an unknown price, a seeded
+     * subscription) counts as not latam, so a lookup that fails never takes
+     * banks away from a standard payer.
+     */
+    public function paysLatamPrice(): bool
+    {
+        if (! config('subscriptions.enabled') || ! $this->subscribed('default')) {
+            return false;
+        }
+
+        // Asked on every Inertia request and by every gate on the way, so it is
+        // worked out once per instance.
+        return $this->paysLatamPriceMemo ??= app(SubscribedPlan::class)->isLatam($this, $this->subscription('default'));
     }
 
     public function hasPastDueSubscription(): bool

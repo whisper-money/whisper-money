@@ -5,6 +5,10 @@ import {
     BetaConnectorNotice,
 } from '@/components/open-banking/beta-connector';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
+import {
+    StandardPlanNotice,
+    useBankAggregatorLocked,
+} from '@/components/subscription/standard-plan-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,11 +28,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useConnectCountries, useConnectFlow } from '@/hooks/use-connect-flow';
-import { ProviderCredentialFields } from '@/lib/connect-providers';
+import {
+    connectProviderForBank,
+    ProviderCredentialFields,
+} from '@/lib/connect-providers';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
+import { Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface ConnectAccountDialogProps {
@@ -73,6 +81,9 @@ export function ConnectAccountDialog({
     // With open banking off the list this dialog offers is only the API-key
     // providers, so promising a bank picker would be a promise it cannot keep.
     const { openBankingEnabled } = usePage<SharedData>().props;
+    // On the latam plan the aggregator's banks stay listed but locked, so the
+    // user sees what the standard plan adds; the direct integrations remain.
+    const bankAggregatorLocked = useBankAggregatorLocked();
 
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
 
@@ -163,6 +174,14 @@ export function ConnectAccountDialog({
 
                     {step === 'bank' && (
                         <div className="space-y-4">
+                            {bankAggregatorLocked && openBankingEnabled && (
+                                <StandardPlanNotice
+                                    message={__(
+                                        'Banks are available on the standard plan. Brokers, exchanges and Wise are included in yours.',
+                                    )}
+                                />
+                            )}
+
                             <Input
                                 placeholder={
                                     openBankingEnabled
@@ -180,12 +199,18 @@ export function ConnectAccountDialog({
                                             connectedBankNames.has(
                                                 institution.name,
                                             );
+                                        const isLocked =
+                                            bankAggregatorLocked &&
+                                            !connectProviderForBank(
+                                                institution.name,
+                                            );
 
                                         return (
                                             <button
                                                 key={`${institution.name}-${institution.country}-${index}`}
                                                 type="button"
-                                                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                                                disabled={isLocked}
+                                                className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent ${
                                                     selectedBank?.name ===
                                                     institution.name
                                                         ? 'bg-accent'
@@ -203,7 +228,16 @@ export function ConnectAccountDialog({
                                                 {institution.beta && (
                                                     <BetaConnectorBadge />
                                                 )}
-                                                {isConnected && (
+                                                {isLocked && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="ml-auto gap-1"
+                                                    >
+                                                        <Lock className="size-3" />
+                                                        {__('Standard plan')}
+                                                    </Badge>
+                                                )}
+                                                {!isLocked && isConnected && (
                                                     <Badge
                                                         variant="secondary"
                                                         className="ml-auto"

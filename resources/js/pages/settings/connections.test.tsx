@@ -9,10 +9,15 @@ const mocks = vi.hoisted(() => ({
     routerVisit: vi.fn(),
     pollStart: vi.fn(),
     pollStop: vi.fn(),
+    bankAggregatorLocked: false,
+    openBankingEnabled: undefined as boolean | undefined,
 }));
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+        <a href={href}>{children}</a>
+    ),
     router: {
         post: mocks.routerPost,
         visit: mocks.routerVisit,
@@ -23,9 +28,11 @@ vi.mock('@inertiajs/react', () => ({
                 isDemoAccount: false,
                 isSharedAccount: false,
                 hasProPlan: true,
+                bankAggregatorLocked: mocks.bankAggregatorLocked,
             },
             flash: {},
             subscriptionsEnabled: false,
+            openBankingEnabled: mocks.openBankingEnabled,
             features: {
                 cashflow: true,
                 calculateBalancesOnImport: false,
@@ -106,6 +113,58 @@ function makeConnection(
 describe('ConnectionsPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.bankAggregatorLocked = false;
+        mocks.openBankingEnabled = undefined;
+    });
+
+    describe('on a plan without the bank aggregator', () => {
+        beforeEach(() => {
+            mocks.bankAggregatorLocked = true;
+            mocks.openBankingEnabled = true;
+        });
+
+        it('says banks need the standard plan and links to billing', () => {
+            render(<ConnectionsPage connections={[]} />);
+
+            expect(
+                screen.getByText(
+                    'Bank connections are available on the standard plan. Brokers, exchanges and Wise are included in yours.',
+                ),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('link', { name: 'Change plan' }),
+            ).toHaveAttribute('href', '/settings/billing');
+        });
+
+        it('offers neither sync nor reconnect on a bank, but keeps them on a direct integration', () => {
+            render(
+                <ConnectionsPage
+                    connections={[
+                        makeConnection({
+                            id: 'bank',
+                            status: 'expired',
+                            can_sync_manually: true,
+                        }),
+                        makeConnection({
+                            id: 'binance',
+                            provider: 'binance',
+                            aspsp_name: 'Binance',
+                            can_sync_manually: true,
+                        }),
+                    ]}
+                />,
+            );
+
+            expect(
+                screen.getByText(
+                    'This bank no longer syncs: bank connections are available on the standard plan.',
+                ),
+            ).toBeInTheDocument();
+            expect(screen.queryByText('Reconnect')).not.toBeInTheDocument();
+            expect(
+                screen.getAllByRole('menuitem', { name: /Sync Now/ }),
+            ).toHaveLength(1);
+        });
     });
 
     it('shows visible reconnect buttons for expired EnableBanking connections', () => {

@@ -89,6 +89,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
+                'bankAggregatorLocked' => $user?->paysLatamPrice() ?? false,
                 'isDemoAccount' => $user?->isRestrictedDemoAccount() ?? false,
                 'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
                 'isAdmin' => $user?->isAdmin() ?? false,

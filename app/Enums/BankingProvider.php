@@ -40,6 +40,16 @@ enum BankingProvider: string
     }
 
     /**
+     * The plan feature a connection through this provider is sold as: the
+     * aggregator's banks, or one of the integrations we built ourselves. Kept
+     * apart because the latam plan includes the second and not the first.
+     */
+    public function planFeature(): PlanFeature
+    {
+        return $this === self::EnableBanking ? PlanFeature::BankAggregator : PlanFeature::DirectIntegrations;
+    }
+
+    /**
      * Whether a bank is on our curated beta list, `banking.beta_banks`.
      */
     public function isBetaBank(string $aspspName, ?string $country): bool

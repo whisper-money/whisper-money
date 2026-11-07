@@ -8,7 +8,7 @@ export const pageProps: {
     locale: string;
     subscriptionsEnabled: boolean;
     openBankingEnabled: boolean;
-    auth: { hasProPlan: boolean };
+    auth: { hasProPlan: boolean; bankAggregatorLocked?: boolean };
     pricing: PricingConfig;
 } = {
     locale: 'en',

@@ -136,10 +136,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $connection->loadMissing('user');
         $this->setSentryContext($connection);
 
-        if (! $connection->user) {
-            Log::info('Banking connection belongs to deleted user, skipping sync', ['connection_id' => $connection->id]);
+        $ownerSkipReason = $this->ownerSkipReason($connection);
 
-            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'deleted_user']);
+        if ($ownerSkipReason !== null) {
+            Log::info('Banking connection skipped for its owner, skipping sync', ['connection_id' => $connection->id, 'reason' => $ownerSkipReason]);
+
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => $ownerSkipReason]);
 
             return;
         }
@@ -426,6 +428,25 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'email' => $connection->user->email,
             ]);
         });
+    }
+
+    /**
+     * Why the connection's owner rules this sync out, if they do: the user is
+     * gone, or their plan leaves the connection out (a bank on the latam plan).
+     * The scheduled sweep already leaves the second kind out; this catches
+     * every other way a sync gets dispatched.
+     */
+    private function ownerSkipReason(BankingConnection $connection): ?string
+    {
+        if (! $connection->user) {
+            return 'deleted_user';
+        }
+
+        if ($connection->isOffOwnersPlan()) {
+            return 'not_on_plan';
+        }
+
+        return null;
     }
 
     /**

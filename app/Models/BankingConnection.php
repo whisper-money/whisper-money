@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Enums\PlanFeature;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Concerns\BelongsToSpace;
 use App\Services\Banking\Formatters\AccountNameFormatter;
@@ -239,6 +240,19 @@ class BankingConnection extends Model
             'consecutive_sync_failures' => 0,
             ...$attributes,
         ]);
+    }
+
+    /**
+     * Whether the owner's paid plan leaves this connection out: a bank through
+     * the aggregator, owned by someone paying the latam price. It is neither
+     * synced nor reconnected; the direct integrations of the same plan are.
+     * Free users are not covered here: `banking:cancel-free-enablebanking`
+     * closes their banks.
+     */
+    public function isOffOwnersPlan(): bool
+    {
+        return $this->provider->planFeature() === PlanFeature::BankAggregator
+            && $this->user?->paysLatamPrice() === true;
     }
 
     public function isIndexaCapital(): bool

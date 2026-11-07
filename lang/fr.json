@@ -3257,5 +3257,13 @@
     "Switch to the standard plan": "Passer au forfait standard",
     "You are on the standard plan now. You can connect your banks.": "Vous avez maintenant le forfait standard. Vous pouvez connecter vos banques.",
     "Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par an, facturé à la fin de votre essai.",
-    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois, facturé à la fin de votre essai."
+    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois, facturé à la fin de votre essai.",
+    "Available on the standard plan": "Disponible avec le forfait Standard",
+    "Change plan": "Changer de forfait",
+    "Standard plan": "Forfait Standard",
+    "Bank connections are available on the standard plan. Brokers, exchanges and Wise are included in yours.": "Les connexions bancaires sont disponibles avec le forfait Standard. Les courtiers, les plateformes d'échange et Wise sont inclus dans le vôtre.",
+    "Banks are available on the standard plan. Brokers, exchanges and Wise are included in yours.": "Les banques sont disponibles avec le forfait Standard. Les courtiers, les plateformes d'échange et Wise sont inclus dans le vôtre.",
+    "This bank no longer syncs: bank connections are available on the standard plan.": "Cette banque ne se synchronise plus : les connexions bancaires sont disponibles avec le forfait Standard.",
+    "Is your bank in Europe or the UK? See the standard plan": "Votre banque est en Europe ou au Royaume-Uni ? Voir le forfait Standard",
+    "Bank connections are available on the standard plan.": "Les connexions bancaires sont disponibles avec le forfait Standard."
 }

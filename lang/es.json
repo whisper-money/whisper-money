@@ -4325,5 +4325,13 @@
     "Switch to the standard plan": "Cambiar al plan estándar",
     "You are on the standard plan now. You can connect your banks.": "Ya tienes el plan estándar. Puedes conectar tus bancos.",
     "Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al año, que se cobra cuando acabe tu prueba.",
-    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al mes, que se cobra cuando acabe tu prueba."
+    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al mes, que se cobra cuando acabe tu prueba.",
+    "Available on the standard plan": "Disponible en el plan estándar",
+    "Change plan": "Cambiar de plan",
+    "Standard plan": "Plan estándar",
+    "Bank connections are available on the standard plan. Brokers, exchanges and Wise are included in yours.": "Las conexiones bancarias están disponibles en el plan estándar. Los brókers, los exchanges y Wise están incluidos en el tuyo.",
+    "Banks are available on the standard plan. Brokers, exchanges and Wise are included in yours.": "Los bancos están disponibles en el plan estándar. Los brókers, los exchanges y Wise están incluidos en el tuyo.",
+    "This bank no longer syncs: bank connections are available on the standard plan.": "Este banco ya no se sincroniza: las conexiones bancarias están disponibles en el plan estándar.",
+    "Is your bank in Europe or the UK? See the standard plan": "¿Tu banco está en Europa o en Reino Unido? Ver el plan estándar",
+    "Bank connections are available on the standard plan.": "Las conexiones bancarias están disponibles en el plan estándar."
 }
