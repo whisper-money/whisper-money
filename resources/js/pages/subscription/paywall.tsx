@@ -13,6 +13,7 @@ import {
 } from '@/components/subscription/subscription-offer';
 import { SupportDialog } from '@/components/support-dialog';
 import { useLocale } from '@/hooks/use-locale';
+import { useOfferedPriceTier } from '@/hooks/use-price-tier';
 import SubscriptionLayout from '@/layouts/subscription-layout';
 import { captureEvent } from '@/lib/posthog';
 import { dashboard } from '@/routes';
@@ -66,14 +67,16 @@ export default function Paywall() {
           ? 'soft'
           : 'hard';
 
-    const { selectedPlan, setSelectedPlan, hasPlans, button } = useOffer(null, {
-        onCheckout: (plan, preselectedPlan) =>
-            captureEvent('paywall_checkout_started', {
-                gate,
-                plan,
-                preselected_plan: preselectedPlan,
-            }),
-    });
+    const { selectedPlan, setSelectedPlan, hasPlans, button, tierChoice } =
+        useOffer(null, {
+            onCheckout: (plan, preselectedPlan, priceTier) =>
+                captureEvent('paywall_checkout_started', {
+                    gate,
+                    plan,
+                    preselected_plan: preselectedPlan,
+                    price_tier: priceTier,
+                }),
+        });
 
     // The gates that have something to disconnect, once the delay after
     // onboarding is up. Derived once so the button and the screen it opens
@@ -84,9 +87,13 @@ export default function Paywall() {
     // instrumentation at all, so moving the escape hatch to first paint would
     // have shipped unmeasurable. `paywall_seen_at` is stamped on view, so it
     // cannot stand in for the choice.
+    // The tier first quoted, so conversion can be split by region. It is the
+    // signed-in user's assigned tier, known on first render.
+    const offeredTier = useOfferedPriceTier();
+
     useEffect(() => {
-        captureEvent('paywall_viewed', { gate });
-    }, [gate]);
+        captureEvent('paywall_viewed', { gate, price_tier: offeredTier });
+    }, [gate, offeredTier]);
 
     if (!hasPlans) {
         return null;
@@ -167,10 +174,11 @@ export default function Paywall() {
                     <>
                         <WhatIsLeft stats={stats} locale={locale} />
                         <PlanPicker
-                            plans={pricing.plans}
+                            plans={tierChoice.plans}
                             currency={pricing.currency}
                             selectedPlan={selectedPlan}
                             onSelect={setSelectedPlan}
+                            tierChoice={tierChoice}
                         />
                     </>
                 ) : (
@@ -178,6 +186,7 @@ export default function Paywall() {
                         <SubscriptionOffer
                             selectedPlan={selectedPlan}
                             onSelect={setSelectedPlan}
+                            tierChoice={tierChoice}
                         />
                         <StepList>
                             <StepRow

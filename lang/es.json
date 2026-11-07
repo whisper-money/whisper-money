@@ -4315,5 +4315,13 @@
     "Open the email we sent to :email on your computer to import the file there.": "Abre en el ordenador el email que hemos enviado a :email para importar el archivo allí.",
     "Continue for now": "Seguir por ahora",
     "Type my main expenses instead": "Escribir mis gastos principales",
-    "You can keep going here in the meantime. The link takes you straight back to this account.": "Mientras tanto, puedes seguir aquí. El enlace te lleva directamente a esta cuenta."
+    "You can keep going here in the meantime. The link takes you straight back to this account.": "Mientras tanto, puedes seguir aquí. El enlace te lleva directamente a esta cuenta.",
+    "No bank connection · direct integrations included": "Sin conexión bancaria · integraciones directas incluidas",
+    "Need your bank connected? See the standard plan": "¿Necesitas conectar tu banco? Ver el plan estándar",
+    "No need to connect a bank? See the plan without it": "¿No necesitas conectar un banco? Ver el plan sin conexión bancaria",
+    "Connect your bank with the standard plan": "Conecta tu banco con el plan estándar",
+    "Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al año; hoy solo pagas la diferencia por lo que queda de este periodo.",
+    "Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al mes; hoy solo pagas la diferencia por lo que queda de este periodo.",
+    "Switch to the standard plan": "Cambiar al plan estándar",
+    "You are on the standard plan now. You can connect your banks.": "Ya tienes el plan estándar. Puedes conectar tus bancos."
 }

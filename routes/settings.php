@@ -142,6 +142,9 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/billing/cancel-unpaid', [SubscriptionController::class, 'cancelUnpaid'])
         ->middleware(['throttle:6,1', 'block-shared'])
         ->name('settings.billing.cancel-unpaid');
+    Route::post('settings/billing/swap-to-standard', [SubscriptionController::class, 'swapToStandard'])
+        ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
+        ->name('settings.billing.swap-to-standard');
 
     Route::get('settings/delete-account', function (Request $request) {
         return Inertia::render('settings/delete-account', [

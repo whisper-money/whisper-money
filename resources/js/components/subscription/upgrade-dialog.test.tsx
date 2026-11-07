@@ -6,6 +6,7 @@ import { UpgradeDialog } from './upgrade-dialog';
 const mocks = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     defaultPlan: { current: 'yearly' },
+    latam: { current: false },
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
@@ -13,7 +14,29 @@ vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
-            pricing: { ...pricing, defaultPlan: mocks.defaultPlan.current },
+            pricing: {
+                ...pricing,
+                defaultPlan: mocks.defaultPlan.current,
+                ...(mocks.latam.current
+                    ? {
+                          latam: {
+                              plans: {
+                                  monthly: {
+                                      ...pricing.plans.monthly,
+                                      price: 3.99,
+                                  },
+                                  yearly: {
+                                      ...pricing.plans.yearly,
+                                      price: 23.88,
+                                  },
+                              },
+                              timezones: null,
+                          },
+                          offeredTier: 'latam',
+                      }
+                    : {}),
+            },
+            auth: { user: { id: 'user-1' } },
             locale: 'en',
         },
     }),
@@ -35,6 +58,7 @@ describe('UpgradeDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.defaultPlan.current = 'yearly';
+        mocks.latam.current = false;
     });
 
     it('renders the per-feature title and description', () => {
@@ -101,6 +125,7 @@ describe('UpgradeDialog', () => {
                 source: 'connections',
                 plan: 'yearly',
                 preselected_plan: 'monthly',
+                price_tier: 'standard',
             },
         );
     });
@@ -116,7 +141,48 @@ describe('UpgradeDialog', () => {
                 source: 'connections',
                 plan: 'yearly',
                 preselected_plan: 'yearly',
+                price_tier: 'standard',
             },
         );
+    });
+
+    it('quotes a user offered latam the latam price, and lets them pick standard', () => {
+        mocks.latam.current = true;
+        renderDialog();
+
+        expect(
+            screen.getByText(
+                'No bank connection · direct integrations included',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('€23.88 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+
+        const link = screen.getByRole('link', { name: /Start a plan/ });
+        expect(link.getAttribute('href')).toContain('tier=latam');
+
+        fireEvent.click(link);
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'upgrade_checkout_started',
+            expect.objectContaining({ price_tier: 'latam' }),
+        );
+
+        fireEvent.click(screen.getByTestId('switch-price-tier'));
+
+        expect(
+            screen.getByText('€53.94 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+        expect(
+            screen
+                .getByRole('link', { name: /Start a plan/ })
+                .getAttribute('href'),
+        ).not.toContain('tier=');
+    });
+
+    it('says nothing about tiers to a user only offered the standard price', () => {
+        renderDialog();
+
+        expect(screen.queryByTestId('price-tier-note')).toBeNull();
     });
 });

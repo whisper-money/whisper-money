@@ -18,6 +18,8 @@ use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
 use App\Services\UserCollectionVersions;
+use App\Support\PriceTiers;
+use App\Support\PricingRegion;
 use Closure;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -28,6 +30,9 @@ use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
+    /** The plan feature line (`subscriptions.plans.*.features`) the latam price does not include. */
+    private const BANK_CONNECTION_FEATURE = 'Connect bank accounts';
+
     public function __construct(
         private CurrencyOptions $currencyOptions,
         private FormatLocaleOptions $formatLocales,
@@ -107,6 +112,7 @@ class HandleInertiaRequests extends Middleware
                 // The way back out of an upfront charge, and so part of every
                 // screen that asks for one — the gates, the paywall and billing.
                 'refundWindowDays' => (int) config('subscriptions.refund_window_days', 3),
+                ...$this->latamPricing($user),
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? false,
@@ -140,6 +146,41 @@ class HandleInertiaRequests extends Middleware
             // does, so 43 country names never need a translation entry — and
             // the list never exists twice, once in PHP and once in TypeScript.
             'formatLocales' => $this->formatLocales->codes(),
+        ];
+    }
+
+    /**
+     * The regional latam price, while it is offered, and what decides who
+     * sees it: a signed-in user's tier was fixed at signup, so it is handed
+     * down as is; an anonymous visitor is placed by the browser's timezone,
+     * checked against the backend's own list so the rule exists once. Off,
+     * nothing is shared and every screen quotes the configured tier.
+     *
+     * The latam plans leave out the bank-connection feature line, because
+     * that is the one thing the price does not include.
+     *
+     * @return array{latam?: array{plans: array<string, array<string, mixed>>, timezones: list<string>|null}, offeredTier?: string|null}
+     */
+    private function latamPricing(?User $user): array
+    {
+        if (! config('subscriptions.latam_pricing')) {
+            return [];
+        }
+
+        $plans = array_map(
+            fn (array $plan): array => [
+                ...$plan,
+                'features' => array_values(array_diff($plan['features'] ?? [], [self::BANK_CONNECTION_FEATURE])),
+            ],
+            PriceTiers::configuredPlansFor(PriceTiers::LATAM),
+        );
+
+        return [
+            'latam' => [
+                'plans' => $plans,
+                'timezones' => $user === null ? PricingRegion::latamTimezones() : null,
+            ],
+            'offeredTier' => $user?->offeredPriceTier(),
         ];
     }
 

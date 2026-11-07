@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\CancelSubscriptionNow;
 use App\Actions\Subscription\RefundSelfServe;
+use App\Actions\Subscription\SwapLatamToStandard;
 use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
 use App\Http\Requests\ChooseFreePlanRequest;
@@ -14,16 +15,19 @@ use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Subscriptions\RefundWindow;
+use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
+use App\Support\PriceTiers;
 use App\Support\SubscriptionPlans;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Checkout;
+use Laravel\Cashier\Exceptions\IncompletePayment;
+use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
 
 class SubscriptionController extends Controller
@@ -35,6 +39,8 @@ class SubscriptionController extends Controller
         private RefundWindow $refundWindow,
         private SubscribedPlan $subscribedPlan,
         private DiscordWebhook $discord,
+        private StripePriceIds $priceIds,
+        private SwapLatamToStandard $swapLatamToStandard,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -184,18 +190,24 @@ class SubscriptionController extends Controller
         abort_if($request->user()->cannotUseStripe(), 403, 'Checkout is not available on this account.');
 
         $planKey = $request->query('plan', config('subscriptions.default_plan'));
-        $plan = config("subscriptions.plans.{$planKey}");
+        $isLatam = $this->checksOutAtLatam($request);
+        $plan = ($isLatam ? $request->user()->offeredPlans() : config('subscriptions.plans', []))[$planKey] ?? null;
 
         if (! $plan || ! ($plan['stripe_lookup_key'] ?? null)) {
             abort(400, 'Invalid plan selected');
         }
 
-        $priceId = $this->resolvePriceIdByLookupKey((string) $plan['stripe_lookup_key']);
+        $priceId = $this->priceIds->forLookupKey((string) $plan['stripe_lookup_key']);
 
         $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId);
 
-        if ($promotionCodeId = $this->resolveLeadPromotionCodeId($request->user(), $planKey)) {
+        // A lead's code was issued against the standard price, and Stripe
+        // refuses to open a checkout with a code that does not apply to the
+        // price being bought — the latam price only takes one typed by hand.
+        $promotionCodeId = $isLatam ? null : $this->resolveLeadPromotionCodeId($request->user(), $planKey);
+
+        if ($promotionCodeId !== null) {
             $subscriptionBuilder->withPromotionCode($promotionCodeId);
         } else {
             $subscriptionBuilder->allowPromotionCodes();
@@ -280,26 +292,21 @@ class SubscriptionController extends Controller
     }
 
     /**
-     * Resolve a Stripe price ID from a lookup key, with a 1-hour cache.
+     * Whether this checkout is for the regional latam price. The browser only
+     * asks for it (`?tier=latam`); the user's own offered tier decides, so a
+     * tier nobody offered them is refused rather than quietly swapped for the
+     * standard price they did not pick. Anyone may buy the standard price,
+     * latam users included — it is how they get bank connections.
      */
-    private function resolvePriceIdByLookupKey(string $lookupKey): string
+    private function checksOutAtLatam(Request $request): bool
     {
-        return Cache::remember(
-            "stripe_price_id:{$lookupKey}",
-            now()->addHour(),
-            function () use ($lookupKey): string {
-                $prices = Cashier::stripe()->prices->all([
-                    'lookup_keys' => [$lookupKey],
-                    'limit' => 1,
-                ]);
+        if ($request->query('tier') !== PriceTiers::LATAM) {
+            return false;
+        }
 
-                if (empty($prices->data)) {
-                    abort(500, "Stripe price not found for lookup key '{$lookupKey}'. Run `php artisan stripe:sync-prices`.");
-                }
+        abort_unless($request->user()->offeredPriceTier() === PriceTiers::LATAM, 403, 'This price is not available on this account.');
 
-                return $prices->data[0]->id;
-            }
-        );
+        return true;
     }
 
     /**
@@ -395,6 +402,9 @@ class SubscriptionController extends Controller
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
                 'onGracePeriod' => $subscription->onGracePeriod(),
                 'plan' => $this->subscribedPlan->for($user, $subscription),
+                // The standard price a latam subscriber can move up to, for the
+                // button that does it; null for everyone else.
+                'standardUpgrade' => $this->standardUpgradeFor($user, $subscription),
             ],
             'refund' => [
                 'canSelfRefund' => $canSelfRefund,
@@ -403,6 +413,48 @@ class SubscriptionController extends Controller
                     : null,
             ],
         ]);
+    }
+
+    /**
+     * @return array{price: float, billing_period: string}|null
+     */
+    private function standardUpgradeFor(User $user, Subscription $subscription): ?array
+    {
+        $standardPlan = $user->cannotUseStripe() ? null : $this->swapLatamToStandard->standardPlanFor($user, $subscription);
+
+        return $standardPlan === null ? null : [
+            'price' => (float) $standardPlan['price'],
+            'billing_period' => (string) $standardPlan['billing_period'],
+        ];
+    }
+
+    /**
+     * Move a latam subscriber onto the standard price of the same period. The
+     * request names no price: the only move there is goes to standard, and
+     * anyone not on latam is refused.
+     */
+    public function swapToStandard(Request $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $subscription = $user->subscription('default');
+        $standardPlan = $user->cannotUseStripe() ? null : $this->swapLatamToStandard->standardPlanFor($user, $subscription);
+
+        abort_if($standardPlan === null, 403, 'This subscription cannot be moved to the standard plan.');
+
+        try {
+            $this->swapLatamToStandard->handle($subscription, $standardPlan);
+        } catch (IncompletePayment $exception) {
+            // The card needs confirming (3DS). Cashier's own page does it and
+            // comes back here.
+            return redirect()->route('cashier.payment', [
+                $exception->payment->id,
+                'redirect' => route('settings.billing'),
+            ]);
+        }
+
+        return redirect()->route('settings.billing')
+            ->with('success', __('You are on the standard plan now. You can connect your banks.'));
     }
 
     public function refund(Request $request): RedirectResponse

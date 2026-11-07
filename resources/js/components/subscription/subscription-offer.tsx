@@ -3,6 +3,11 @@ import { StepHighlight } from '@/components/onboarding/step-list';
 import { StepNote } from '@/components/onboarding/step-screen';
 import { PlanPicker } from '@/components/subscription/plan-picker';
 import { useLocale } from '@/hooks/use-locale';
+import {
+    type PriceTierChoice,
+    usePriceTierChoice,
+} from '@/hooks/use-price-tier';
+import { type PriceTier } from '@/lib/price-tier';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { type Plan } from '@/types/pricing';
@@ -43,20 +48,24 @@ export type OfferSource =
 export function SubscriptionOffer({
     selectedPlan,
     onSelect,
+    tierChoice,
 }: {
     selectedPlan: string;
     onSelect: (key: string) => void;
+    /** The tier `useOffer` is quoting, so the rows and the button agree. */
+    tierChoice: PriceTierChoice;
 }) {
     const { pricing } = usePage<SharedData>().props;
-    const chargedToday = pricing.plans[selectedPlan]?.trial_days === 0;
+    const chargedToday = tierChoice.plans[selectedPlan]?.trial_days === 0;
 
     return (
         <div className="flex flex-col gap-5">
             <PlanPicker
-                plans={pricing.plans}
+                plans={tierChoice.plans}
                 currency={pricing.currency}
                 selectedPlan={selectedPlan}
                 onSelect={onSelect}
+                tierChoice={tierChoice}
             />
 
             {chargedToday && <RefundPromise />}
@@ -90,18 +99,21 @@ export function RefundPromise() {
  * The checkout URL every paid screen links to. `preselectedPlan` is the plan
  * the picker had selected when it was shown — the configured default, or the
  * plan an experiment arm starts on instead — so revenue can be split by what
- * the user was offered first, not only by what they bought.
+ * the user was offered first, not only by what they bought. The latam tier is
+ * only asked for: the server decides whether this user may have it.
  */
 export function checkoutHref(
     plan: string,
     preselectedPlan: string,
     source?: string | null,
+    tier: PriceTier = 'standard',
 ): string {
     return checkout.url({
         query: {
             plan,
             preselected_plan: preselectedPlan,
             ...(source ? { source } : {}),
+            ...(tier === 'latam' ? { tier } : {}),
         },
     });
 }
@@ -112,10 +124,19 @@ interface OfferOptions {
     /** Replaces the label that names the charge, e.g. "Start free trial". */
     buttonText?: string;
     /**
-     * Runs on the way out to checkout, with the plan being bought and the one
-     * the picker had preselected.
+     * Runs on the way out to checkout, with the plan being bought, the one the
+     * picker had preselected and the tier it is quoted at.
      */
-    onCheckout?: (plan: string, preselectedPlan: string) => void;
+    onCheckout?: (
+        plan: string,
+        preselectedPlan: string,
+        priceTier: PriceTier,
+    ) => void;
+    /**
+     * The screen sells something only the standard price includes (a bank
+     * connection), so the latam price is not offered on it.
+     */
+    requiresStandard?: boolean;
 }
 
 /**
@@ -125,20 +146,27 @@ interface OfferOptions {
  */
 export function useOffer(
     source: OfferSource = null,
-    { initialPlan, buttonText, onCheckout }: OfferOptions = {},
+    {
+        initialPlan,
+        buttonText,
+        onCheckout,
+        requiresStandard = false,
+    }: OfferOptions = {},
 ) {
     const { pricing } = usePage<SharedData>().props;
     const locale = useLocale();
+    const tierChoice = usePriceTierChoice(requiresStandard);
     // Captured once, like the state it seeds: the plan the user was shown
     // first, whatever they switch to afterwards.
     const [preselectedPlan] = useState(initialPlan ?? pricing.defaultPlan);
     const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
-    const plan: Plan | undefined = pricing.plans[selectedPlan];
+    const plan: Plan | undefined = tierChoice.plans[selectedPlan];
 
     return {
         selectedPlan,
         setSelectedPlan,
         plan,
+        tierChoice,
         /** Whether there is anything to sell at all — no plans, no screen. */
         hasPlans: plan !== undefined,
         button: (
@@ -146,10 +174,20 @@ export function useOffer(
                 text={
                     buttonText ?? checkoutLabel(plan, pricing.currency, locale)
                 }
-                href={checkoutHref(selectedPlan, preselectedPlan, source)}
+                href={checkoutHref(
+                    selectedPlan,
+                    preselectedPlan,
+                    source,
+                    tierChoice.tier,
+                )}
                 onClick={
                     onCheckout &&
-                    (() => onCheckout(selectedPlan, preselectedPlan))
+                    (() =>
+                        onCheckout(
+                            selectedPlan,
+                            preselectedPlan,
+                            tierChoice.tier,
+                        ))
                 }
                 data-testid="start-plan"
             />

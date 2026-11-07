@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -40,10 +41,11 @@ export function UpgradeDialog({
     source: UpsellSource;
 }) {
     const { pricing, locale } = usePage<SharedData>().props;
+    const tierChoice = usePriceTierChoice();
     const [preselectedPlan] = useState(pricing.defaultPlan);
     const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const terms = planTerms(
-        pricing.plans[selectedPlan],
+        tierChoice.plans[selectedPlan],
         pricing.currency,
         locale,
     );
@@ -57,10 +59,11 @@ export function UpgradeDialog({
                 </DialogHeader>
 
                 <PlanPicker
-                    plans={pricing.plans}
+                    plans={tierChoice.plans}
                     currency={pricing.currency}
                     selectedPlan={selectedPlan}
                     onSelect={setSelectedPlan}
+                    tierChoice={tierChoice}
                 />
 
                 <div className="flex flex-col gap-2.5">
@@ -72,12 +75,14 @@ export function UpgradeDialog({
                             selectedPlan,
                             preselectedPlan,
                             source,
+                            tierChoice.tier,
                         )}
                         onClick={() =>
                             captureEvent('upgrade_checkout_started', {
                                 source,
                                 plan: selectedPlan,
                                 preselected_plan: preselectedPlan,
+                                price_tier: tierChoice.tier,
                             })
                         }
                     />

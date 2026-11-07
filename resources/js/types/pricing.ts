@@ -23,6 +23,27 @@ export interface PricingConfig {
     currency: string;
     /** Days after the charge in which the refund can still be self-served. */
     refundWindowDays: number;
+    /**
+     * The regional latam price, present only while it is offered
+     * (`SUBSCRIPTION_LATAM_PRICING`). Pick the tier to show through
+     * `offeredPriceTier()`, never by reading this directly.
+     */
+    latam?: LatamPricing;
+    /**
+     * The tier a signed-in user is offered (`User::offeredPriceTier()`): `latam`
+     * or the configured one. Null for an anonymous visitor; absent while the
+     * latam price is not offered.
+     */
+    offeredTier?: string | null;
+}
+
+export interface LatamPricing {
+    plans: Record<string, Plan>;
+    /**
+     * The timezones the backend places in Latin America
+     * (`PricingRegion::latamTimezones()`), for an anonymous visitor only.
+     */
+    timezones: string[] | null;
 }
 
 /**

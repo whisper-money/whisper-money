@@ -6,6 +6,7 @@ import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import {
@@ -17,6 +18,7 @@ import {
     cancelUnpaid,
     portal,
     refund as refundRoute,
+    swapToStandard,
 } from '@/routes/settings/billing';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
@@ -107,18 +109,17 @@ function BenefitsGrid() {
 }
 
 function UpgradeSection({
-    plans,
     defaultPlan,
     currency,
     locale,
 }: {
-    plans: Record<string, Plan>;
     defaultPlan: string;
     currency: string;
     locale: string;
 }) {
+    const tierChoice = usePriceTierChoice();
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
-    const terms = planTerms(plans[selectedPlan], currency, locale);
+    const terms = planTerms(tierChoice.plans[selectedPlan], currency, locale);
 
     return (
         <div className="space-y-6">
@@ -140,17 +141,25 @@ function UpgradeSection({
                     the app's own density — 52px rows would read as the
                     onboarding leaking into a settings page. */}
                 <PlanPicker
-                    plans={plans}
+                    plans={tierChoice.plans}
                     currency={currency}
                     selectedPlan={selectedPlan}
                     onSelect={setSelectedPlan}
                     size="compact"
+                    tierChoice={tierChoice}
                 />
 
                 {terms && <p className="mt-4 text-sm font-medium">{terms}</p>}
 
                 <Button asChild className="mt-4 w-full">
-                    <a href={checkoutHref(selectedPlan, defaultPlan)}>
+                    <a
+                        href={checkoutHref(
+                            selectedPlan,
+                            defaultPlan,
+                            null,
+                            tierChoice.tier,
+                        )}
+                    >
                         {__('Start a plan')}
                     </a>
                 </Button>
@@ -243,6 +252,87 @@ interface SubscriptionInfo {
     trialEndsAt: string | null;
     onGracePeriod: boolean;
     plan: PlanPrice | null;
+    /**
+     * The standard price a subscriber on the latam price can move up to, to
+     * get bank connections. Null for everyone else.
+     */
+    standardUpgrade: PlanPrice | null;
+}
+
+/**
+ * The way off the latam price, for a subscriber who wants their bank
+ * connected: the standard price of the same period, with the difference for
+ * what is left of it charged now.
+ */
+function StandardUpgradeCard({
+    upgrade,
+    currency,
+    locale,
+}: {
+    upgrade: PlanPrice;
+    currency: string;
+    locale: string;
+}) {
+    const [processing, setProcessing] = useState(false);
+    const total = formatCurrency(upgrade.price * 100, currency, locale);
+
+    const submit = () => {
+        setProcessing(true);
+        router.post(
+            swapToStandard.url(),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const message = (
+                        page.props as { flash?: { success?: string } }
+                    ).flash?.success;
+
+                    if (message) {
+                        toast.success(message);
+                    }
+                },
+                onFinish: () => setProcessing(false),
+            },
+        );
+    };
+
+    return (
+        <div
+            className="rounded-lg border bg-card p-5"
+            data-testid="standard-upgrade"
+        >
+            <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
+                    <LandmarkIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                    <h4 className="font-medium">
+                        {__('Connect your bank with the standard plan')}
+                    </h4>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {upgrade.billing_period === 'year'
+                            ? __(
+                                  'Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.',
+                                  { total },
+                              )
+                            : __(
+                                  'Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.',
+                                  { total },
+                              )}
+                    </p>
+                </div>
+            </div>
+            <Button
+                className="mt-4"
+                disabled={processing}
+                onClick={submit}
+                data-testid="swap-to-standard"
+            >
+                {__('Switch to the standard plan')}
+            </Button>
+        </div>
+    );
 }
 
 function PlanStatus({
@@ -470,6 +560,14 @@ function SubscribedSection({
                 )}
             </div>
 
+            {subscription?.standardUpgrade && !isSharedAccount && (
+                <StandardUpgradeCard
+                    upgrade={subscription.standardUpgrade}
+                    currency={currency}
+                    locale={locale}
+                />
+            )}
+
             {refund?.canSelfRefund && (
                 <RefundCard deadline={refund.deadline} locale={locale} />
             )}
@@ -659,7 +757,6 @@ export default function Billing() {
                         />
                     ) : showsPaymentFailure ? null : (
                         <UpgradeSection
-                            plans={pricing.plans}
                             defaultPlan={pricing.defaultPlan}
                             currency={pricing.currency}
                             locale={locale}

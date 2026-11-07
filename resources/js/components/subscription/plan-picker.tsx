@@ -5,6 +5,7 @@ import {
     StepRow,
 } from '@/components/onboarding/step-list';
 import { useLocale } from '@/hooks/use-locale';
+import { type PriceTierChoice } from '@/hooks/use-price-tier';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
@@ -23,26 +24,78 @@ export function PlanPicker({
     selectedPlan,
     onSelect,
     size = 'default',
+    tierChoice,
 }: {
     plans: Record<string, Plan>;
     currency: string;
     selectedPlan: string;
     onSelect: (key: string) => void;
     size?: 'default' | 'compact';
+    /**
+     * The tier the rows are quoted at, for the line that says what the latam
+     * price leaves out and the link between the two tiers.
+     */
+    tierChoice?: PriceTierChoice;
 }) {
     return (
-        <StepList>
-            {Object.entries(plans).map(([key, plan]) => (
-                <PlanRow
-                    key={key}
-                    plan={plan}
-                    currency={currency}
-                    size={size}
-                    isSelected={key === selectedPlan}
-                    onSelect={() => onSelect(key)}
-                />
-            ))}
-        </StepList>
+        <div className="flex flex-col gap-3">
+            <StepList>
+                {Object.entries(plans).map(([key, plan]) => (
+                    <PlanRow
+                        key={key}
+                        plan={plan}
+                        currency={currency}
+                        size={size}
+                        isSelected={key === selectedPlan}
+                        onSelect={() => onSelect(key)}
+                    />
+                ))}
+            </StepList>
+
+            {tierChoice && <PriceTierNote choice={tierChoice} />}
+        </div>
+    );
+}
+
+/**
+ * What the latam price leaves out, said under the rows that quote it, and the
+ * way across to the other tier for whoever may buy either. Nothing at all for
+ * a user who is only ever offered the standard price.
+ */
+function PriceTierNote({ choice }: { choice: PriceTierChoice }) {
+    if (choice.tier !== 'latam' && !choice.canSwitch) {
+        return null;
+    }
+
+    const isLatam = choice.tier === 'latam';
+
+    return (
+        <div
+            className="flex flex-col items-center gap-1 text-center text-[13px] leading-normal text-pretty"
+            data-testid="price-tier-note"
+        >
+            {isLatam && (
+                <p className="font-medium">
+                    {__('No bank connection · direct integrations included')}
+                </p>
+            )}
+            {choice.canSwitch && (
+                <button
+                    type="button"
+                    className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    onClick={() =>
+                        choice.setTier(isLatam ? 'standard' : 'latam')
+                    }
+                    data-testid="switch-price-tier"
+                >
+                    {isLatam
+                        ? __('Need your bank connected? See the standard plan')
+                        : __(
+                              'No need to connect a bank? See the plan without it',
+                          )}
+                </button>
+            )}
+        </div>
     );
 }
 

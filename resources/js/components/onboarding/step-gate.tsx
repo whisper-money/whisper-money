@@ -92,18 +92,28 @@ export function StepGate({
     // Every event this screen sends names the arm, so the funnel splits by it
     // without a join; outside the experiment there is nothing to name.
     const armProps = arm ? { arm } : {};
-    const { selectedPlan, setSelectedPlan, plan, hasPlans, button, terms } =
-        useOffer(source, {
-            initialPlan: trialPlan ?? undefined,
-            buttonText: trialPlan ? __('Start free trial') : undefined,
-            onCheckout: (plan, preselectedPlan) =>
-                captureEvent('onboarding_gate_checkout_started', {
-                    gate: kind,
-                    plan,
-                    preselected_plan: preselectedPlan,
-                    ...armProps,
-                }),
-        });
+    const {
+        selectedPlan,
+        setSelectedPlan,
+        plan,
+        hasPlans,
+        button,
+        terms,
+        tierChoice,
+    } = useOffer(source, {
+        initialPlan: trialPlan ?? undefined,
+        buttonText: trialPlan ? __('Start free trial') : undefined,
+        // A bank connection is the one thing the latam price leaves out.
+        requiresStandard: kind === 'bank',
+        onCheckout: (plan, preselectedPlan, priceTier) =>
+            captureEvent('onboarding_gate_checkout_started', {
+                gate: kind,
+                plan,
+                preselected_plan: preselectedPlan,
+                price_tier: priceTier,
+                ...armProps,
+            }),
+    });
     const locale = useLocale();
 
     useEffect(() => {
@@ -186,6 +196,7 @@ export function StepGate({
             <SubscriptionOffer
                 selectedPlan={selectedPlan}
                 onSelect={setSelectedPlan}
+                tierChoice={tierChoice}
             />
 
             <StepList>
