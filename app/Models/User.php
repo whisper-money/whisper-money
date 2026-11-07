@@ -10,6 +10,7 @@ use App\Features\FullImport;
 use App\Models\Concerns\HasPrefixedApiTokens;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
+use App\Support\PriceTiers;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use DateTimeZone;
@@ -603,6 +604,31 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function cannotUseStripe(): bool
     {
         return $this->hasSeededSubscription() || $this->isDemoAccount() || $this->isPressAccount();
+    }
+
+    /**
+     * The price tier this user is quoted and may check out at: the regional
+     * `latam` one while it is offered and they were placed in it at signup,
+     * the configured tier otherwise. Only what they are *offered* — what a
+     * subscriber can use follows the price they pay (`SubscribedPlan::tierFor`).
+     */
+    public function offeredPriceTier(): string
+    {
+        if (config('subscriptions.latam_pricing') && $this->price_arm === PriceTiers::LATAM) {
+            return PriceTiers::LATAM;
+        }
+
+        return config('subscriptions.price_tier');
+    }
+
+    /**
+     * The configured plans quoted at the tier this user is offered.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function offeredPlans(): array
+    {
+        return PriceTiers::configuredPlansFor($this->offeredPriceTier());
     }
 
     /**

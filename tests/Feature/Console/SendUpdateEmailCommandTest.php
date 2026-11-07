@@ -34,22 +34,35 @@ function subscribeUser(User $user, string $stripePrice, string $status = 'active
 }
 
 /**
- * Seed the price IDs of the high tier into the cache the command resolves them
+ * Seed the price IDs of a tier into the cache the command resolves them
  * through, so no test reaches for Stripe.
  *
  * @return list<string>
  */
-function cacheHighTierPriceIds(): array
+function cacheTierPriceIds(string $tier): array
 {
     $ids = [];
 
-    foreach (PriceTiers::plansFor('high') as $plan) {
+    foreach (PriceTiers::plansFor($tier) as $plan) {
         $id = 'price_'.$plan['stripe_lookup_key'];
         Cache::put("stripe_price_id:{$plan['stripe_lookup_key']}", $id, now()->addHour());
         $ids[] = $id;
     }
 
     return $ids;
+}
+
+/**
+ * The high tier's price IDs, with the latam tier's seeded alongside since the
+ * audiences leave both out.
+ *
+ * @return list<string>
+ */
+function cacheHighTierPriceIds(): array
+{
+    cacheTierPriceIds(PriceTiers::LATAM);
+
+    return cacheTierPriceIds('high');
 }
 
 beforeEach(function () {
@@ -413,6 +426,55 @@ test('nobody who has been on the high price is in any price increase audience', 
         Queue::assertNotPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
     }
 })->with(['unsubscribed', 'active-low-price', 'cancelling-low-price']);
+
+test('nobody paying the regional latam price is in any price increase audience', function (string $audience) {
+    config(['subscriptions.enabled' => true]);
+    cacheHighTierPriceIds();
+    [$latamMonthly] = cacheTierPriceIds(PriceTiers::LATAM);
+
+    $live = subscribeUser(User::factory()->create(), $latamMonthly);
+    $cancelling = subscribeUser(User::factory()->create(), $latamMonthly, 'active', now()->addWeek());
+    $ended = subscribeUser(User::factory()->create(), $latamMonthly, 'canceled', now()->subDay());
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => $audience,
+        '--force' => true,
+    ])->assertSuccessful();
+
+    foreach ([$live, $cancelling, $ended] as $user) {
+        Queue::assertNotPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $user->id);
+    }
+})->with(['unsubscribed', 'active-low-price', 'cancelling-low-price']);
+
+test('latam prices not yet created in Stripe do not stop a send', function () {
+    config(['subscriptions.enabled' => true]);
+    cacheTierPriceIds('high');
+
+    // Nobody can be subscribed to a price that does not exist yet.
+    $prices = Mockery::mock(PriceService::class);
+    $prices->shouldReceive('all')->andReturn(StripeCollection::constructFrom([
+        'object' => 'list',
+        'has_more' => false,
+        'data' => [],
+    ]));
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->prices = $prices;
+    app()->bind(StripeClient::class, fn () => $stripe);
+
+    $onLowPrice = subscribeUser(User::factory()->create(), 'price_low');
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--audience' => 'active-low-price',
+        '--force' => true,
+    ])->assertSuccessful();
+
+    Queue::assertPushed(SendUpdateEmailJob::class, fn ($job) => $job->user->id === $onLowPrice->id);
+});
 
 test('command fails on an unknown audience', function () {
     User::factory()->create();

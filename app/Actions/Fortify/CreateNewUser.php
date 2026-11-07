@@ -7,6 +7,8 @@ use App\Enums\SignupPlan;
 use App\Models\User;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
+use App\Support\PriceTiers;
+use App\Support\PricingRegion;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -55,8 +57,9 @@ class CreateNewUser implements CreatesNewUsers
         $requestedFormatLocale = $this->formatLocales->requestedInHeader($acceptLanguage);
         $formatLocale = $requestedFormatLocale ?? $this->formatLocales->fallbackFor($locale);
         $timezone = $this->normalizeTimezone($input['timezone'] ?? null);
+        $currency = $this->inferCurrency($requestedFormatLocale, $formatLocale, $timezone);
 
-        $user = User::create([
+        $user = new User([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
@@ -68,7 +71,7 @@ class CreateNewUser implements CreatesNewUsers
             // And the same region a third time, for the money. Steps 4 and 5
             // quote an amount back at the user before any account exists, and
             // the column's own default would have quoted a Spaniard in dollars.
-            'currency_code' => $this->inferCurrency($requestedFormatLocale, $formatLocale, $timezone),
+            'currency_code' => $currency,
             'timezone' => $timezone,
             // Which pricing card they came from, so onboarding can hide the paid
             // options from someone who signed up for the free plan.
@@ -77,6 +80,11 @@ class CreateNewUser implements CreatesNewUsers
             // question, so skip bouncing them through it at the end of onboarding.
             'paywall_seen_at' => $signupPlan === SignupPlan::Free ? now() : null,
         ]);
+        // The regional price they are offered, fixed here for good: changing
+        // their currency or timezone later never moves it. Kept out of
+        // `$fillable` so no request can pick its own price.
+        $user->price_arm = $this->priceArm($timezone, $currency);
+        $user->save();
 
         if (! config('mail.email_verification_enabled')) {
             $user->markEmailAsVerified();
@@ -102,6 +110,17 @@ class CreateNewUser implements CreatesNewUsers
         return $requestedCurrency
             ?? $this->currencies->forTimezone($timezone)
             ?? $this->currencies->forFormatLocale($formatLocale);
+    }
+
+    /**
+     * `latam` for someone signing up from Latin America while that price is
+     * offered, null for everyone else.
+     */
+    protected function priceArm(?string $timezone, string $currency): ?string
+    {
+        return config('subscriptions.latam_pricing') && PricingRegion::isLatam($timezone, $currency)
+            ? PriceTiers::LATAM
+            : null;
     }
 
     /**

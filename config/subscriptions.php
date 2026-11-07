@@ -12,11 +12,19 @@ use App\Support\PriceTiers;
 | displayed price, the struck-through price and the Stripe lookup key as one
 | unit, so what is shown is always what is charged (env-only, no deploy —
 | `php artisan config:clear` after changing it). An unknown value falls back
-| to `high`. The tiers themselves live in `App\Support\PriceTiers`.
+| to `high`, and so does `latam`: that is the regional price offered on top
+| of this one (see "LATAM Pricing"), never a tier to switch everybody to. The
+| tiers themselves live in `App\Support\PriceTiers`.
 |
 */
 
-$tier = PriceTiers::plansFor(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
+$tierName = PriceTiers::normalize(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
+
+if ($tierName === PriceTiers::LATAM) {
+    $tierName = PriceTiers::DEFAULT;
+}
+
+$tier = PriceTiers::plansFor($tierName);
 
 /*
 |--------------------------------------------------------------------------
@@ -90,6 +98,40 @@ return [
     */
 
     'refund_window_days' => (int) env('SUBSCRIPTION_REFUND_WINDOW_DAYS', 3),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Price Tier Name
+    |--------------------------------------------------------------------------
+    |
+    | The name of the tier selected by `SUBSCRIPTION_PRICE_TIER` (see "Price
+    | Tier" at the top), already normalized, so code that needs to tell the
+    | configured tier from the regional one does not re-parse the environment.
+    |
+    */
+
+    'price_tier' => $tierName,
+
+    /*
+    |--------------------------------------------------------------------------
+    | LATAM Pricing
+    |--------------------------------------------------------------------------
+    |
+    | Whether the regional `latam` price (`App\Support\PriceTiers`) is offered
+    | to users detected in Latin America (`App\Support\PricingRegion`). Off,
+    | which is the default, nobody is assigned to it at signup and every
+    | pricing surface quotes the configured tier.
+    |
+    | It only governs *offering* the price. What a subscriber can use always
+    | follows the Stripe price they actually pay, so turning this off never
+    | changes anything for someone already subscribed at the latam price, and
+    | a user marked `latam` at signup is simply quoted the configured tier
+    | again while it is off (env-only, no deploy — `php artisan config:clear`
+    | after changing it).
+    |
+    */
+
+    'latam_pricing' => filter_var(env('SUBSCRIPTION_LATAM_PRICING', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------

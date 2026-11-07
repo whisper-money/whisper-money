@@ -31,14 +31,66 @@ class SubscribedPlan
      */
     public function for(User $user, Subscription $subscription): ?array
     {
+        $lookupKey = $this->lookupKeyFor($user, $subscription);
+
+        return $lookupKey === null ? null : $this->planForLookupKey($lookupKey);
+    }
+
+    /**
+     * The price tier (`App\Support\PriceTiers`) of the price a subscription
+     * pays. This is what entitlements follow, never the tier the user is
+     * offered.
+     *
+     * Null means the tier is unknown, not that it is the standard one: the
+     * price is one no tier declares, the subscription is seeded, Stripe could
+     * not be reached (the failure is cached for a few minutes), or the price
+     * was created after the map was cached. A caller gating a feature has to
+     * decide on purpose which way null falls.
+     */
+    public function tierFor(User $user, Subscription $subscription): ?string
+    {
+        $lookupKey = $this->lookupKeyFor($user, $subscription);
+
+        if ($lookupKey === null) {
+            return null;
+        }
+
+        // A key overridden through the environment is declared by no tier, and
+        // belongs to the configured one, the only tier whose keys can be.
+        $configuredKeys = array_column(config('subscriptions.plans', []), 'stripe_lookup_key');
+
+        return PriceTiers::tierOfLookupKey($lookupKey)
+            ?? (in_array($lookupKey, $configuredKeys, true) ? config('subscriptions.price_tier') : null);
+    }
+
+    /**
+     * Whether a subscription pays the regional latam price.
+     *
+     * @api The entitlement check for bank aggregator connections, landing in a
+     *      follow-up; until then only the test suite calls it.
+     */
+    public function isLatam(User $user, Subscription $subscription): bool
+    {
+        return $this->tierFor($user, $subscription) === PriceTiers::LATAM;
+    }
+
+    /**
+     * Drop the cached price-to-lookup-key map, so a price that was just
+     * created in Stripe is recognised straight away instead of after a day.
+     */
+    public static function forgetLookupKeys(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
+    private function lookupKeyFor(User $user, Subscription $subscription): ?string
+    {
         // A seeded subscription carries a made-up price and must never reach Stripe.
         if ($user->cannotUseStripe()) {
             return null;
         }
 
-        $lookupKey = $this->lookupKeysByPriceId()[$subscription->stripe_price] ?? null;
-
-        return $lookupKey === null ? null : $this->planForLookupKey($lookupKey);
+        return $this->lookupKeysByPriceId()[$subscription->stripe_price] ?? null;
     }
 
     /**

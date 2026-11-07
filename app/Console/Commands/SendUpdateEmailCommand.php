@@ -191,9 +191,10 @@ class SendUpdateEmailCommand extends Command
      * subscriptions and allowlists the statuses that are still being billed, so
      * the status list is not written out a second time here.
      *
-     * "Low price" here means "not the high tier", which is the same thing while
-     * PriceTiers declares exactly two tiers. A third tier would land in this
-     * audience until this says otherwise.
+     * "Low price" here means "neither the high tier nor the regional latam
+     * one" (see `usersNeverOnTheHighPrice()`), which is the `low` tier while
+     * PriceTiers declares no other. A further tier would land in this audience
+     * until this says otherwise.
      *
      * @return Collection<int, User>|null
      */
@@ -226,6 +227,10 @@ class SendUpdateEmailCommand extends Command
      * high-tier prices cannot be resolved, which refuses the send rather than
      * mailing that cohort by accident.
      *
+     * Latam subscribers are left out too: they pay a regional price that no
+     * increase is coming for, and the old price these campaigns sell is not
+     * one they could check out at.
+     *
      * @return Builder<User>|null
      */
     private function usersNeverOnTheHighPrice(): ?Builder
@@ -236,17 +241,18 @@ class SendUpdateEmailCommand extends Command
             return null;
         }
 
+        $excludedPriceIds = [...$highPriceIds, ...$this->resolvePriceIds(PriceTiers::LATAM)];
+
         return User::query()->whereDoesntHave(
             'subscriptions',
-            fn (Builder $query) => $query->whereIn('stripe_price', $highPriceIds),
+            fn (Builder $query) => $query->whereIn('stripe_price', $excludedPriceIds),
         );
     }
 
     /**
-     * The high tier's Stripe price IDs, resolved from its lookup keys through
-     * the same `stripe_price_id:` cache checkout uses. Resolved rather than
-     * hardcoded because the IDs differ per Stripe account, and refused rather
-     * than half-resolved because a short list here would let the high-price
+     * The high tier's Stripe price IDs (see `resolvePriceIds()`), resolved
+     * rather than hardcoded because the IDs differ per Stripe account, and
+     * refused rather than half-resolved because a short list here would let the high-price
      * cohort through the filter that exists to keep them out.
      *
      * @return list<string>|null
@@ -254,21 +260,33 @@ class SendUpdateEmailCommand extends Command
     private function highTierPriceIds(): ?array
     {
         $keys = array_column(PriceTiers::plansFor('high'), 'stripe_lookup_key');
-
-        $ids = array_filter(array_map(
-            fn (string $key) => Cache::remember(
-                "stripe_price_id:{$key}",
-                now()->addHour(),
-                fn () => Cashier::stripe()->prices->all(['lookup_keys' => [$key], 'limit' => 1])->data[0]->id ?? null,
-            ),
-            $keys,
-        ));
+        $ids = $this->resolvePriceIds('high');
 
         if (count($ids) !== count($keys)) {
             return $this->refuse('Could not resolve every high-tier Stripe price from its lookup key ('.implode(', ', $keys).'). Refusing to send.');
         }
 
-        return array_values($ids);
+        return $ids;
+    }
+
+    /**
+     * A tier's Stripe price IDs, resolved from its lookup keys through the
+     * same `stripe_price_id:` cache checkout uses. A key with no price in
+     * Stripe is left out, since nobody can be subscribed to a price that does
+     * not exist yet; a Stripe error still throws.
+     *
+     * @return list<string>
+     */
+    private function resolvePriceIds(string $tier): array
+    {
+        return array_values(array_filter(array_map(
+            fn (string $key) => Cache::remember(
+                "stripe_price_id:{$key}",
+                now()->addHour(),
+                fn () => Cashier::stripe()->prices->all(['lookup_keys' => [$key], 'limit' => 1])->data[0]->id ?? null,
+            ),
+            array_column(PriceTiers::plansFor($tier), 'stripe_lookup_key'),
+        )));
     }
 
     private function refuse(string $message): null

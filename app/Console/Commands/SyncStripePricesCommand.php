@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Subscriptions\SubscribedPlan;
 use App\Support\Money;
+use App\Support\PriceTiers;
 use Illuminate\Console\Command;
 use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
@@ -13,11 +15,11 @@ class SyncStripePricesCommand extends Command
     protected $signature = 'stripe:sync-prices
         {--dry-run : Preview changes without creating anything in Stripe}';
 
-    protected $description = 'Create or update Stripe prices from config/subscriptions.php using lookup keys';
+    protected $description = 'Create or update Stripe prices from config/subscriptions.php, plus the regional latam tier, using lookup keys';
 
     public function handle(): int
     {
-        $plans = (array) config('subscriptions.plans', []);
+        $plans = $this->plansToSync();
         $currency = config('cashier.currency', 'eur');
         $dryRun = $this->option('dry-run');
 
@@ -46,12 +48,38 @@ class SyncStripePricesCommand extends Command
             }
         }
 
+        if ($counts['created'] + $counts['transferred'] > 0 && ! $dryRun) {
+            SubscribedPlan::forgetLookupKeys();
+        }
+
         $this->newLine();
 
         $suffix = $dryRun ? ' (dry-run)' : '';
         $this->info("{$counts['created']} created, {$counts['transferred']} updated, {$counts['skipped']} skipped{$suffix}.");
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The configured plans, then the regional latam tier's: it is offered
+     * alongside the configured tier rather than instead of it, so its prices
+     * have to exist whatever `SUBSCRIPTION_PRICE_TIER` says. A latam plan whose
+     * key the configured plans already carry is not synced twice.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function plansToSync(): array
+    {
+        $plans = (array) config('subscriptions.plans', []);
+        $configuredKeys = array_column($plans, 'stripe_lookup_key');
+
+        foreach (PriceTiers::configuredPlansFor(PriceTiers::LATAM) as $planKey => $plan) {
+            if (! in_array($plan['stripe_lookup_key'] ?? null, $configuredKeys, true)) {
+                $plans["latam_{$planKey}"] = [...$plan, 'name' => "{$plan['name']} (LATAM)"];
+            }
+        }
+
+        return $plans;
     }
 
     /**
