@@ -38,9 +38,14 @@ class SubscribedPlan
 
     /**
      * The price tier (`App\Support\PriceTiers`) of the price a subscription
-     * pays, or null when it is not a price any tier declares (or a seeded
-     * subscription's made-up one). This is what entitlements follow, never
-     * the tier the user is offered.
+     * pays. This is what entitlements follow, never the tier the user is
+     * offered.
+     *
+     * Null means the tier is unknown, not that it is the standard one: the
+     * price is one no tier declares, the subscription is seeded, Stripe could
+     * not be reached (the failure is cached for a few minutes), or the price
+     * was created after the map was cached. A caller gating a feature has to
+     * decide on purpose which way null falls.
      */
     public function tierFor(User $user, Subscription $subscription): ?string
     {
@@ -52,7 +57,7 @@ class SubscribedPlan
 
         // A key overridden through the environment is declared by no tier, and
         // belongs to the configured one, the only tier whose keys can be.
-        $configuredKeys = array_column(config('subscriptions.plans'), 'stripe_lookup_key');
+        $configuredKeys = array_column(config('subscriptions.plans', []), 'stripe_lookup_key');
 
         return PriceTiers::tierOfLookupKey($lookupKey)
             ?? (in_array($lookupKey, $configuredKeys, true) ? config('subscriptions.price_tier') : null);

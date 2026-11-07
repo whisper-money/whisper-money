@@ -43,7 +43,7 @@ final class PricingRegion
 
     /**
      * Every timezone identifier the rule places in Latin America, legacy
-     * aliases included because older browsers still send them.
+     * `America/*` aliases included because older browsers still send them.
      *
      * @return list<string>
      */

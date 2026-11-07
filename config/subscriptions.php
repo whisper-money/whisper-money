@@ -12,11 +12,18 @@ use App\Support\PriceTiers;
 | displayed price, the struck-through price and the Stripe lookup key as one
 | unit, so what is shown is always what is charged (env-only, no deploy —
 | `php artisan config:clear` after changing it). An unknown value falls back
-| to `high`. The tiers themselves live in `App\Support\PriceTiers`.
+| to `high`, and so does `latam`: that is the regional price offered on top
+| of this one (see "LATAM Pricing"), never a tier to switch everybody to. The
+| tiers themselves live in `App\Support\PriceTiers`.
 |
 */
 
 $tierName = PriceTiers::normalize(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
+
+if ($tierName === PriceTiers::LATAM) {
+    $tierName = PriceTiers::DEFAULT;
+}
+
 $tier = PriceTiers::plansFor($tierName);
 
 /*

@@ -37,16 +37,18 @@ function runsAt(Event $event, string $madridTime): bool
 }
 
 /**
- * Mail faked, subscriptions on, and the high-tier price IDs the audience filter
- * resolves seeded into the cache, so no test reaches Stripe.
+ * Mail faked, subscriptions on, and the high and latam price IDs the audience
+ * filter resolves seeded into the cache, so no test reaches Stripe.
  */
 function prepareBlackFridaySend(): void
 {
     Mail::fake();
     config(['subscriptions.enabled' => true]);
 
-    foreach (PriceTiers::plansFor('high') as $plan) {
-        Cache::put("stripe_price_id:{$plan['stripe_lookup_key']}", 'price_'.$plan['stripe_lookup_key'], now()->addHour());
+    foreach (['high', PriceTiers::LATAM] as $tier) {
+        foreach (PriceTiers::plansFor($tier) as $plan) {
+            Cache::put("stripe_price_id:{$plan['stripe_lookup_key']}", 'price_'.$plan['stripe_lookup_key'], now()->addHour());
+        }
     }
 }
 
