@@ -1,3 +1,4 @@
+import { type PriceTierChoice } from '@/hooks/use-price-tier';
 import { pricingFixture } from '@/lib/pricing-fixture';
 import { type PricingConfig } from '@/types/pricing';
 import { render, screen } from '@testing-library/react';
@@ -29,11 +30,27 @@ beforeEach(() => {
     mocks.pricing.current = pricingFixture;
 });
 
+/** The standard tier, quoting whatever plans the test set up. */
+function standardTier(): PriceTierChoice {
+    return {
+        tier: 'standard',
+        plans: mocks.pricing.current!.plans,
+        canSwitch: false,
+        setTier: vi.fn(),
+    };
+}
+
 describe('SubscriptionOffer', () => {
     it('promises the money back when the plan charges today', () => {
         mocks.pricing.current = pricingWithTrial(0, 0);
 
-        render(<SubscriptionOffer selectedPlan="yearly" onSelect={vi.fn()} />);
+        render(
+            <SubscriptionOffer
+                selectedPlan="yearly"
+                onSelect={vi.fn()}
+                tierChoice={standardTier()}
+            />,
+        );
 
         expect(
             screen.getByText('3 days to change your mind'),
@@ -48,7 +65,13 @@ describe('SubscriptionOffer', () => {
     it('says nothing about refunds when the plan starts a trial', () => {
         mocks.pricing.current = pricingWithTrial(7, 15);
 
-        render(<SubscriptionOffer selectedPlan="yearly" onSelect={vi.fn()} />);
+        render(
+            <SubscriptionOffer
+                selectedPlan="yearly"
+                onSelect={vi.fn()}
+                tierChoice={standardTier()}
+            />,
+        );
 
         expect(screen.queryByText(/days to change your mind/)).toBeNull();
     });
@@ -58,7 +81,11 @@ describe('SubscriptionOffer', () => {
         mocks.pricing.current = pricingWithTrial(0, 15);
 
         const { rerender } = render(
-            <SubscriptionOffer selectedPlan="monthly" onSelect={vi.fn()} />,
+            <SubscriptionOffer
+                selectedPlan="monthly"
+                onSelect={vi.fn()}
+                tierChoice={standardTier()}
+            />,
         );
 
         expect(
@@ -66,7 +93,11 @@ describe('SubscriptionOffer', () => {
         ).toBeInTheDocument();
 
         rerender(
-            <SubscriptionOffer selectedPlan="yearly" onSelect={vi.fn()} />,
+            <SubscriptionOffer
+                selectedPlan="yearly"
+                onSelect={vi.fn()}
+                tierChoice={standardTier()}
+            />,
         );
 
         expect(screen.queryByText(/days to change your mind/)).toBeNull();

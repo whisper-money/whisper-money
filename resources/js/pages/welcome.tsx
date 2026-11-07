@@ -2,10 +2,12 @@ import { BankLogo } from '@/components/bank-logo';
 import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
+import { PriceTierSwitch } from '@/components/subscription/plan-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { tailwindColorClasses } from '@/components/user-info';
+import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import {
     useScrollProgress,
@@ -2271,6 +2273,7 @@ function LandingPlanCard({
     currency,
     locale,
     canRegister = false,
+    isLatam = false,
 }: {
     plan: Plan;
     isDefault: boolean;
@@ -2280,6 +2283,8 @@ function LandingPlanCard({
     currency: string;
     locale: string;
     canRegister?: boolean;
+    /** Quoted at the latam price, which leaves out bank connections. */
+    isLatam?: boolean;
 }) {
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
@@ -2345,11 +2350,19 @@ function LandingPlanCard({
                     </p>
                 )}
 
-                <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    {__(
-                        'Everything you need to manage your finances securely.',
-                    )}
-                </p>
+                {isLatam ? (
+                    <p className="mt-3 text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                        {__(
+                            'No bank connection · direct integrations included',
+                        )}
+                    </p>
+                ) : (
+                    <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                        {__(
+                            'Everything you need to manage your finances securely.',
+                        )}
+                    </p>
+                )}
 
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
@@ -2487,7 +2500,10 @@ export default function Welcome({
         : canRegister
           ? __('Get Started')
           : __('Log in');
-    const planEntries = Object.entries(pricing.plans);
+    // Quoted at the visitor's tier: a signed-in user's assigned one, or the
+    // one their browser's timezone places them in.
+    const tierChoice = usePriceTierChoice();
+    const planEntries = Object.entries(tierChoice.plans);
     const { isMobile } = usePwaInstall();
 
     const testimonials: {
@@ -3502,6 +3518,11 @@ export default function Welcome({
                                 <div
                                     className={cn(
                                         'grid w-full gap-6',
+                                        // Held back until the browser's
+                                        // timezone is known, so a visitor in
+                                        // Latin America never sees one price
+                                        // swapped for another under them.
+                                        tierChoice.isPending && 'invisible',
                                         displayedPlanEntries.length + 1 === 1 &&
                                             'mx-auto max-w-md',
                                         displayedPlanEntries.length + 1 === 2 &&
@@ -3511,8 +3532,12 @@ export default function Welcome({
                                     )}
                                 >
                                     <FreePlanCard
+                                        // The standard plan's list, so the
+                                        // bank connection still reads as the
+                                        // one thing free leaves out.
                                         features={[
-                                            ...planEntries[0][1].features,
+                                            ...Object.values(pricing.plans)[0]
+                                                .features,
                                         ]}
                                         canRegister={canRegister}
                                     />
@@ -3531,9 +3556,17 @@ export default function Welcome({
                                             currency={pricing.currency}
                                             locale={locale}
                                             canRegister={canRegister}
+                                            isLatam={
+                                                tierChoice.tier === 'latam'
+                                            }
                                         />
                                     ))}
                                 </div>
+
+                                <PriceTierSwitch
+                                    choice={tierChoice}
+                                    className="-mt-2 text-sm text-[#706f6c] hover:text-[#1b1b18] sm:-mt-6 dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
+                                />
                             </div>
                         </section>
                     )}

@@ -126,7 +126,12 @@ describe('Paywall', () => {
         );
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'paywall_checkout_started',
-            { gate: 'hard', plan: 'monthly', preselected_plan: 'yearly' },
+            {
+                gate: 'hard',
+                plan: 'monthly',
+                preselected_plan: 'yearly',
+                price_tier: 'standard',
+            },
         );
     });
 
@@ -257,6 +262,7 @@ describe('Paywall', () => {
 
             expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
                 gate: 'soft',
+                price_tier: 'standard',
             });
 
             fireEvent.click(screen.getByTestId('carry-on-free'));

@@ -114,6 +114,7 @@ describe('StepGate copy experiment', () => {
                 gate: 'bank',
                 plan: 'yearly',
                 preselected_plan: 'monthly',
+                price_tier: 'standard',
                 arm: 'trial_monthly',
             },
         );
@@ -155,6 +156,7 @@ describe('StepGate copy experiment', () => {
                 gate: 'bank',
                 plan: 'monthly',
                 preselected_plan: 'monthly',
+                price_tier: 'standard',
                 arm: 'trial_monthly',
             },
         );

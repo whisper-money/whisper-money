@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -20,6 +21,9 @@ import { useState } from 'react';
  * App\Enums\UpsellSource so revenue can be attributed per point.
  */
 export type UpsellSource = 'ai_categorization' | 'connections' | 'accounts';
+
+/** The upsell points whose copy sells a bank connection. */
+const BANK_UPSELL_SOURCES: UpsellSource[] = ['connections', 'accounts'];
 
 /**
  * A contextual "this is a paid feature" dialog with a plan picker that starts
@@ -40,10 +44,15 @@ export function UpgradeDialog({
     source: UpsellSource;
 }) {
     const { pricing, locale } = usePage<SharedData>().props;
+    // The bank-connection upsells open on the price that includes a bank; the
+    // latam one stays a click away for whoever wanted a direct integration.
+    const tierChoice = usePriceTierChoice({
+        startOnStandard: BANK_UPSELL_SOURCES.includes(source),
+    });
     const [preselectedPlan] = useState(pricing.defaultPlan);
     const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const terms = planTerms(
-        pricing.plans[selectedPlan],
+        tierChoice.plans[selectedPlan],
         pricing.currency,
         locale,
     );
@@ -57,10 +66,11 @@ export function UpgradeDialog({
                 </DialogHeader>
 
                 <PlanPicker
-                    plans={pricing.plans}
+                    plans={tierChoice.plans}
                     currency={pricing.currency}
                     selectedPlan={selectedPlan}
                     onSelect={setSelectedPlan}
+                    tierChoice={tierChoice}
                 />
 
                 <div className="flex flex-col gap-2.5">
@@ -72,12 +82,14 @@ export function UpgradeDialog({
                             selectedPlan,
                             preselectedPlan,
                             source,
+                            tierChoice.tier,
                         )}
                         onClick={() =>
                             captureEvent('upgrade_checkout_started', {
                                 source,
                                 plan: selectedPlan,
                                 preselected_plan: preselectedPlan,
+                                price_tier: tierChoice.tier,
                             })
                         }
                     />

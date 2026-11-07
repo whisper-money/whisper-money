@@ -3247,5 +3247,15 @@
     "Open the email we sent to :email on your computer to import the file there.": "Ouvrez sur votre ordinateur l'e-mail envoyé à :email pour y importer le fichier.",
     "Continue for now": "Continuer pour l'instant",
     "Type my main expenses instead": "Saisir mes principales dépenses",
-    "You can keep going here in the meantime. The link takes you straight back to this account.": "En attendant, vous pouvez continuer ici. Le lien vous ramène directement à ce compte."
+    "You can keep going here in the meantime. The link takes you straight back to this account.": "En attendant, vous pouvez continuer ici. Le lien vous ramène directement à ce compte.",
+    "No bank connection · direct integrations included": "Sans connexion bancaire · intégrations directes incluses",
+    "Need your bank connected? See the standard plan": "Besoin de connecter votre banque ? Voir le forfait standard",
+    "No need to connect a bank? See the plan without it": "Pas besoin de connecter une banque ? Voir le forfait sans connexion bancaire",
+    "Connect your bank with the standard plan": "Connectez votre banque avec le forfait standard",
+    "Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par an ; vous ne payez aujourd’hui que la différence pour le reste de cette période.",
+    "Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois ; vous ne payez aujourd’hui que la différence pour le reste de cette période.",
+    "Switch to the standard plan": "Passer au forfait standard",
+    "You are on the standard plan now. You can connect your banks.": "Vous avez maintenant le forfait standard. Vous pouvez connecter vos banques.",
+    "Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par an, facturé à la fin de votre essai.",
+    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois, facturé à la fin de votre essai."
 }
