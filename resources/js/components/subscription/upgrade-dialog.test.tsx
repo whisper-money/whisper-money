@@ -42,14 +42,16 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-function renderDialog() {
+function renderDialog(
+    source: 'connections' | 'ai_categorization' = 'connections',
+) {
     return render(
         <UpgradeDialog
             open
             onOpenChange={vi.fn()}
             title="Bank connections are a paid feature"
             description="Subscribe to sync your bank."
-            source="connections"
+            source={source}
         />,
     );
 }
@@ -146,9 +148,24 @@ describe('UpgradeDialog', () => {
         );
     });
 
+    it('opens a bank upsell on the standard price, with latam a click away', () => {
+        mocks.latam.current = true;
+        renderDialog('connections');
+
+        expect(
+            screen.getByText('€53.94 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByTestId('switch-price-tier'));
+
+        expect(
+            screen.getByText('€23.88 charged today. Cancel any time.'),
+        ).toBeInTheDocument();
+    });
+
     it('quotes a user offered latam the latam price, and lets them pick standard', () => {
         mocks.latam.current = true;
-        renderDialog();
+        renderDialog('ai_categorization');
 
         expect(
             screen.getByText(

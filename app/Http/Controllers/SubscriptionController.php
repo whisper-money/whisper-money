@@ -230,10 +230,28 @@ class SubscriptionController extends Controller
         // not send this one, if it is canceled, back into the wizard.
         $request->session()->forget(self::RETURN_SESSION_KEY);
 
-        // Attribute revenue to the upsell point the checkout started from and
-        // to the plan the picker had preselected. Both ride along as Stripe
-        // subscription metadata and are persisted locally when the
-        // subscription webhook lands (see PersistCheckoutAttributionFromStripe).
+        // Attribute revenue to the upsell point the checkout started from, to
+        // the plan the picker had preselected and to the regional price, as
+        // Stripe subscription metadata. The first two are also persisted
+        // locally when the subscription webhook lands (see
+        // PersistCheckoutAttributionFromStripe).
+        $metadata = $this->checkoutMetadata($request, $isLatam);
+
+        if ($metadata !== []) {
+            $subscriptionBuilder->withMetadata($metadata);
+        }
+
+        return $subscriptionBuilder->checkout([
+            'success_url' => route('subscribe.success'),
+            'cancel_url' => route('subscribe.cancel'),
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function checkoutMetadata(Request $request, bool $isLatam): array
+    {
         $metadata = [];
 
         if ($source = UpsellSource::tryFrom((string) $request->query('source', ''))) {
@@ -245,14 +263,11 @@ class SubscriptionController extends Controller
             $metadata['preselected_plan'] = $preselectedPlan;
         }
 
-        if ($metadata !== []) {
-            $subscriptionBuilder->withMetadata($metadata);
+        if ($isLatam) {
+            $metadata['price_tier'] = PriceTiers::LATAM;
         }
 
-        return $subscriptionBuilder->checkout([
-            'success_url' => route('subscribe.success'),
-            'cancel_url' => route('subscribe.cancel'),
-        ]);
+        return $metadata;
     }
 
     /**
@@ -420,7 +435,7 @@ class SubscriptionController extends Controller
      */
     private function standardUpgradeFor(User $user, Subscription $subscription): ?array
     {
-        $standardPlan = $user->cannotUseStripe() ? null : $this->swapLatamToStandard->standardPlanFor($user, $subscription);
+        $standardPlan = $this->swapLatamToStandard->standardPlanFor($user, $subscription);
 
         return $standardPlan === null ? null : [
             'price' => (float) $standardPlan['price'],
@@ -438,7 +453,7 @@ class SubscriptionController extends Controller
         /** @var User $user */
         $user = $request->user();
         $subscription = $user->subscription('default');
-        $standardPlan = $user->cannotUseStripe() ? null : $this->swapLatamToStandard->standardPlanFor($user, $subscription);
+        $standardPlan = $this->swapLatamToStandard->standardPlanFor($user, $subscription);
 
         abort_if($standardPlan === null, 403, 'This subscription cannot be moved to the standard plan.');
 

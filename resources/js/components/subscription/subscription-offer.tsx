@@ -155,7 +155,7 @@ export function useOffer(
 ) {
     const { pricing } = usePage<SharedData>().props;
     const locale = useLocale();
-    const tierChoice = usePriceTierChoice(requiresStandard);
+    const tierChoice = usePriceTierChoice({ requiresStandard });
     // Captured once, like the state it seeds: the plan the user was shown
     // first, whatever they switch to afterwards.
     const [preselectedPlan] = useState(initialPlan ?? pricing.defaultPlan);

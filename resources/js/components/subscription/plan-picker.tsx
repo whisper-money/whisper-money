@@ -6,6 +6,7 @@ import {
 } from '@/components/onboarding/step-list';
 import { useLocale } from '@/hooks/use-locale';
 import { type PriceTierChoice } from '@/hooks/use-price-tier';
+import { cn } from '@/lib/utils';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
@@ -79,23 +80,42 @@ function PriceTierNote({ choice }: { choice: PriceTierChoice }) {
                     {__('No bank connection · direct integrations included')}
                 </p>
             )}
-            {choice.canSwitch && (
-                <button
-                    type="button"
-                    className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    onClick={() =>
-                        choice.setTier(isLatam ? 'standard' : 'latam')
-                    }
-                    data-testid="switch-price-tier"
-                >
-                    {isLatam
-                        ? __('Need your bank connected? See the standard plan')
-                        : __(
-                              'No need to connect a bank? See the plan without it',
-                          )}
-                </button>
-            )}
+            <PriceTierSwitch
+                choice={choice}
+                className="text-muted-foreground hover:text-foreground"
+            />
         </div>
+    );
+}
+
+/**
+ * The link across to the other tier, for whoever is offered latam and may
+ * still buy the standard price. Nothing for anyone else.
+ */
+export function PriceTierSwitch({
+    choice,
+    className,
+}: {
+    choice: PriceTierChoice;
+    className?: string;
+}) {
+    if (!choice.canSwitch) {
+        return null;
+    }
+
+    const isLatam = choice.tier === 'latam';
+
+    return (
+        <button
+            type="button"
+            className={cn('underline underline-offset-2', className)}
+            onClick={() => choice.setTier(isLatam ? 'standard' : 'latam')}
+            data-testid="switch-price-tier"
+        >
+            {isLatam
+                ? __('Need your bank connected? See the standard plan')
+                : __('No need to connect a bank? See the plan without it')}
+        </button>
     );
 }
 

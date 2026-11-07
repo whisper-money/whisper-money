@@ -3255,5 +3255,7 @@
     "Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par an ; vous ne payez aujourd’hui que la différence pour le reste de cette période.",
     "Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois ; vous ne payez aujourd’hui que la différence pour le reste de cette période.",
     "Switch to the standard plan": "Passer au forfait standard",
-    "You are on the standard plan now. You can connect your banks.": "Vous avez maintenant le forfait standard. Vous pouvez connecter vos banques."
+    "You are on the standard plan now. You can connect your banks.": "Vous avez maintenant le forfait standard. Vous pouvez connecter vos banques.",
+    "Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par an, facturé à la fin de votre essai.",
+    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Votre forfait n’inclut pas de connexion bancaire. Le forfait standard l’ajoute pour :total par mois, facturé à la fin de votre essai."
 }

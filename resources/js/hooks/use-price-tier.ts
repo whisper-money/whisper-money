@@ -25,10 +25,20 @@ function useBrowserTimezone(): string | null {
 
 /** The tier to quote this user or visitor first (see `offeredPriceTier`). */
 export function useOfferedPriceTier(): PriceTier {
+    return useOffered().tier;
+}
+
+function useOffered(): { tier: PriceTier; isPending: boolean } {
     const { pricing, auth } = usePage<SharedData>().props;
     const timezone = useBrowserTimezone();
+    const isSignedIn = Boolean(auth?.user);
 
-    return offeredPriceTier(pricing, Boolean(auth?.user), timezone);
+    return {
+        tier: offeredPriceTier(pricing, isSignedIn, timezone),
+        // Only an anonymous visitor's tier waits on the browser, and only
+        // while there is a latam price to place them in.
+        isPending: Boolean(pricing.latam) && !isSignedIn && timezone === null,
+    };
 }
 
 export interface PriceTierChoice {
@@ -42,25 +52,43 @@ export interface PriceTierChoice {
      */
     canSwitch: boolean;
     setTier: (tier: PriceTier) => void;
+    /**
+     * Whether the tier is still unknown: an anonymous visitor's, before
+     * hydration tells us their timezone.
+     */
+    isPending: boolean;
 }
 
 /**
  * The tier a plan picker shows, starting on the offered one and switchable to
- * standard by whoever is offered latam. `requiresStandard` pins it to standard
- * for a screen selling what only standard includes — a bank connection.
+ * standard by whoever is offered latam.
+ *
+ * - `requiresStandard` pins it to standard, for a screen selling what only
+ *   standard includes — a bank connection.
+ * - `startOnStandard` only opens on standard, for a screen that is mostly
+ *   about banks but whose feature the latam price may also cover; the switch
+ *   to latam stays.
  */
-export function usePriceTierChoice(requiresStandard = false): PriceTierChoice {
+export function usePriceTierChoice({
+    requiresStandard = false,
+    startOnStandard = false,
+}: {
+    requiresStandard?: boolean;
+    startOnStandard?: boolean;
+} = {}): PriceTierChoice {
     const { pricing } = usePage<SharedData>().props;
-    const offered = useOfferedPriceTier();
+    const offered = useOffered();
     // Null until the user picks: the offered tier can still change after
     // hydration, when the browser's timezone becomes known.
     const [chosen, setTier] = useState<PriceTier | null>(null);
-    const tier = requiresStandard ? 'standard' : (chosen ?? offered);
+    const initial = startOnStandard ? 'standard' : offered.tier;
+    const tier = requiresStandard ? 'standard' : (chosen ?? initial);
 
     return {
         tier,
         plans: plansForTier(pricing, tier),
-        canSwitch: offered === 'latam' && !requiresStandard,
+        canSwitch: offered.tier === 'latam' && !requiresStandard,
         setTier,
+        isPending: offered.isPending,
     };
 }

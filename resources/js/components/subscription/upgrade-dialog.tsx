@@ -22,6 +22,9 @@ import { useState } from 'react';
  */
 export type UpsellSource = 'ai_categorization' | 'connections' | 'accounts';
 
+/** The upsell points whose copy sells a bank connection. */
+const BANK_UPSELL_SOURCES: UpsellSource[] = ['connections', 'accounts'];
+
 /**
  * A contextual "this is a paid feature" dialog with a plan picker that starts
  * Stripe checkout. Reused across upsell points (AI categorization, bank
@@ -41,7 +44,11 @@ export function UpgradeDialog({
     source: UpsellSource;
 }) {
     const { pricing, locale } = usePage<SharedData>().props;
-    const tierChoice = usePriceTierChoice();
+    // The bank-connection upsells open on the price that includes a bank; the
+    // latam one stays a click away for whoever wanted a direct integration.
+    const tierChoice = usePriceTierChoice({
+        startOnStandard: BANK_UPSELL_SOURCES.includes(source),
+    });
     const [preselectedPlan] = useState(pricing.defaultPlan);
     const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const terms = planTerms(

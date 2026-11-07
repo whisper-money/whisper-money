@@ -4323,5 +4323,7 @@
     "Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al año; hoy solo pagas la diferencia por lo que queda de este periodo.",
     "Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al mes; hoy solo pagas la diferencia por lo que queda de este periodo.",
     "Switch to the standard plan": "Cambiar al plan estándar",
-    "You are on the standard plan now. You can connect your banks.": "Ya tienes el plan estándar. Puedes conectar tus bancos."
+    "You are on the standard plan now. You can connect your banks.": "Ya tienes el plan estándar. Puedes conectar tus bancos.",
+    "Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al año, que se cobra cuando acabe tu prueba.",
+    "Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.": "Tu plan no incluye conexión bancaria. El plan estándar la añade por :total al mes, que se cobra cuando acabe tu prueba."
 }

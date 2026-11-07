@@ -83,14 +83,14 @@ export default function Paywall() {
     // cannot drift apart.
     const freeDoorOpen = gate !== 'soft' && canEscapeToFreePlan;
 
+    // The tier first quoted, so conversion can be split by region: the
+    // signed-in user's assigned one, not whichever they switch to afterwards.
+    const offeredTier = useOfferedPriceTier();
+
     // This is the highest-leverage screen in the product and it carried no
     // instrumentation at all, so moving the escape hatch to first paint would
     // have shipped unmeasurable. `paywall_seen_at` is stamped on view, so it
     // cannot stand in for the choice.
-    // The tier first quoted, so conversion can be split by region. It is the
-    // signed-in user's assigned tier, known on first render.
-    const offeredTier = useOfferedPriceTier();
-
     useEffect(() => {
         captureEvent('paywall_viewed', { gate, price_tier: offeredTier });
     }, [gate, offeredTier]);

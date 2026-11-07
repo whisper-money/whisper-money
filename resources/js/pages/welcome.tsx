@@ -2,6 +2,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
+import { PriceTierSwitch } from '@/components/subscription/plan-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -3517,6 +3518,11 @@ export default function Welcome({
                                 <div
                                     className={cn(
                                         'grid w-full gap-6',
+                                        // Held back until the browser's
+                                        // timezone is known, so a visitor in
+                                        // Latin America never sees one price
+                                        // swapped for another under them.
+                                        tierChoice.isPending && 'invisible',
                                         displayedPlanEntries.length + 1 === 1 &&
                                             'mx-auto max-w-md',
                                         displayedPlanEntries.length + 1 === 2 &&
@@ -3557,28 +3563,10 @@ export default function Welcome({
                                     ))}
                                 </div>
 
-                                {tierChoice.canSwitch && (
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            tierChoice.setTier(
-                                                tierChoice.tier === 'latam'
-                                                    ? 'standard'
-                                                    : 'latam',
-                                            )
-                                        }
-                                        className="-mt-2 text-sm text-[#706f6c] underline underline-offset-2 hover:text-[#1b1b18] sm:-mt-6 dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
-                                        data-testid="switch-price-tier"
-                                    >
-                                        {tierChoice.tier === 'latam'
-                                            ? __(
-                                                  'Need your bank connected? See the standard plan',
-                                              )
-                                            : __(
-                                                  'No need to connect a bank? See the plan without it',
-                                              )}
-                                    </button>
-                                )}
+                                <PriceTierSwitch
+                                    choice={tierChoice}
+                                    className="-mt-2 text-sm text-[#706f6c] hover:text-[#1b1b18] sm:-mt-6 dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
+                                />
                             </div>
                         </section>
                     )}

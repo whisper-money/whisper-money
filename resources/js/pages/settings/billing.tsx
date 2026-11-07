@@ -259,6 +259,36 @@ interface SubscriptionInfo {
     standardUpgrade: PlanPrice | null;
 }
 
+function standardUpgradeTerms(
+    upgrade: PlanPrice,
+    onTrial: boolean,
+    total: string,
+): string {
+    const isYearly = upgrade.billing_period === 'year';
+
+    if (onTrial) {
+        return isYearly
+            ? __(
+                  'Your plan has no bank connection. The standard plan adds it for :total a year, charged when your trial ends.',
+                  { total },
+              )
+            : __(
+                  'Your plan has no bank connection. The standard plan adds it for :total a month, charged when your trial ends.',
+                  { total },
+              );
+    }
+
+    return isYearly
+        ? __(
+              'Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.',
+              { total },
+          )
+        : __(
+              'Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.',
+              { total },
+          );
+}
+
 /**
  * The way off the latam price, for a subscriber who wants their bank
  * connected: the standard price of the same period, with the difference for
@@ -266,10 +296,13 @@ interface SubscriptionInfo {
  */
 function StandardUpgradeCard({
     upgrade,
+    onTrial,
     currency,
     locale,
 }: {
     upgrade: PlanPrice;
+    /** Nothing is charged during a trial, so there is no difference to pay today. */
+    onTrial: boolean;
     currency: string;
     locale: string;
 }) {
@@ -284,12 +317,10 @@ function StandardUpgradeCard({
             {
                 preserveScroll: true,
                 onSuccess: (page) => {
-                    const message = (
-                        page.props as { flash?: { success?: string } }
-                    ).flash?.success;
+                    const { flash } = page.props as unknown as SharedData;
 
-                    if (message) {
-                        toast.success(message);
+                    if (flash?.success) {
+                        toast.success(flash.success);
                     }
                 },
                 onFinish: () => setProcessing(false),
@@ -311,15 +342,7 @@ function StandardUpgradeCard({
                         {__('Connect your bank with the standard plan')}
                     </h4>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        {upgrade.billing_period === 'year'
-                            ? __(
-                                  'Your plan has no bank connection. The standard plan adds it for :total a year; you only pay the difference for the rest of this period, today.',
-                                  { total },
-                              )
-                            : __(
-                                  'Your plan has no bank connection. The standard plan adds it for :total a month; you only pay the difference for the rest of this period, today.',
-                                  { total },
-                              )}
+                        {standardUpgradeTerms(upgrade, onTrial, total)}
                     </p>
                 </div>
             </div>
@@ -563,6 +586,7 @@ function SubscribedSection({
             {subscription?.standardUpgrade && !isSharedAccount && (
                 <StandardUpgradeCard
                     upgrade={subscription.standardUpgrade}
+                    onTrial={subscription.onTrial}
                     currency={currency}
                     locale={locale}
                 />

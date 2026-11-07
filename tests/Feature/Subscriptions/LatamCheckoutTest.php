@@ -69,6 +69,31 @@ test('a user offered latam checks out at the latam price when they ask for it', 
     'yearly' => ['yearly', 'price_latam_yearly'],
 ]);
 
+test('a latam checkout tags the subscription with its tier, a standard one does not', function (?string $tier, ?array $metadata) {
+    $user = userCheckingOut(PriceTiers::LATAM, null);
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+    $builder = Mockery::mock(SubscriptionBuilder::class)->shouldIgnoreMissing();
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    if ($metadata === null) {
+        $builder->shouldNotReceive('withMetadata');
+    } else {
+        $builder->shouldReceive('withMetadata')->once()->with($metadata)->andReturnSelf();
+    }
+
+    $user->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class)
+        ->actingAs($user)
+        ->get(route('subscribe.checkout', array_filter(['plan' => 'monthly', 'tier' => $tier])))
+        ->assertRedirect();
+})->with([
+    'latam' => ['latam', ['price_tier' => 'latam']],
+    'standard' => [null, null],
+]);
+
 test('a user offered latam can still buy the standard price', function () {
     $this->withoutMiddleware(HandleInertiaRequests::class)
         ->actingAs(userCheckingOut(PriceTiers::LATAM, 'price_high_yearly'))

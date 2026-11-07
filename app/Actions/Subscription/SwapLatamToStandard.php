@@ -31,9 +31,10 @@ class SwapLatamToStandard
 
     /**
      * The standard plan a subscription would be swapped to, or null when it
-     * cannot be swapped: it is not paying the latam price, it is cancelled or
-     * waiting on a payment (a swap would silently resume the first and Stripe
-     * refuses the second), or no standard plan bills over the same period.
+     * cannot be swapped: the account must never reach Stripe (a seeded one),
+     * it is not paying the latam price, it is cancelled or waiting on a payment
+     * (a swap would silently resume the first and Stripe refuses the second),
+     * or no standard plan bills over the same period.
      *
      * @return array<string, mixed>|null
      */
@@ -41,6 +42,7 @@ class SwapLatamToStandard
     {
         if (
             $subscription === null
+            || $user->cannotUseStripe()
             || ! $subscription->valid()
             || $subscription->onGracePeriod()
             || $subscription->hasIncompletePayment()
