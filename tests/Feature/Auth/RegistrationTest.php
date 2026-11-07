@@ -176,3 +176,45 @@ test('a region the browser asks for outranks the timezone', function (string $he
     'a British browser on holiday in Spain' => ['en-GB,en;q=0.9', 'Europe/Madrid', 'GBP'],
     'a Mexican browser in the US' => ['es-MX,es;q=0.9', 'America/Los_Angeles', 'MXN'],
 ]);
+
+test('new users from Latin America are placed at the latam price while it is offered', function (string $header, ?string $timezone, ?string $priceArm) {
+    Queue::fake();
+    config(['subscriptions.latam_pricing' => true]);
+
+    $this->withHeader('Accept-Language', $header)->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => $timezone,
+    ]);
+
+    expect(User::where('email', 'test@example.com')->first()->price_arm)->toBe($priceArm);
+})->with([
+    'Colombia, browsing in US English' => ['en-US,en;q=0.9', 'America/Bogota', 'latam'],
+    'Ecuador, whose currency is the dollar' => ['es', 'America/Guayaquil', 'latam'],
+    'Brazil' => ['pt-BR,pt;q=0.9', 'America/Sao_Paulo', 'latam'],
+    // The timezone wins over the currency: a Mexican browser in the US is not.
+    'a Mexican browser in the US' => ['es-MX,es;q=0.9', 'America/Los_Angeles', null],
+    'Canada' => ['en-CA,en;q=0.9', 'America/Toronto', null],
+    'Greenland' => ['da-DK,da;q=0.9', 'America/Nuuk', null],
+    'Spain' => ['es-ES,es;q=0.9', 'Europe/Madrid', null],
+    // With no timezone, the currency read off the browser decides.
+    'no timezone, a Mexican browser' => ['es-MX,es;q=0.9', null, 'latam'],
+    'no timezone, a Spanish browser' => ['es-ES,es;q=0.9', null, null],
+]);
+
+test('nobody is placed at the latam price while it is not offered', function () {
+    Queue::fake();
+    config(['subscriptions.latam_pricing' => false]);
+
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'America/Bogota',
+    ]);
+
+    expect(User::where('email', 'test@example.com')->first()->price_arm)->toBeNull();
+});
