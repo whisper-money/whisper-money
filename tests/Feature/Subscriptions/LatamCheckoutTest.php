@@ -11,8 +11,11 @@ use App\Support\PricingRegion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Checkout;
+use Laravel\Cashier\Exceptions\IncompletePayment;
+use Laravel\Cashier\Payment;
 use Laravel\Cashier\Subscription;
 use Laravel\Cashier\SubscriptionBuilder;
+use Stripe\PaymentIntent;
 
 beforeEach(function () {
     config([
@@ -189,6 +192,18 @@ test('a latam subscriber moves to the standard plan of the same period', functio
     'yearly, switch on' => ['price_latam_yearly', 'year', true],
     'yearly, switch off' => ['price_latam_yearly', 'year', false],
 ]);
+
+test('a swap whose card needs confirming goes to the payment page and back to billing', function () {
+    $swap = Mockery::mock(SwapLatamToStandard::class, [app(SubscribedPlan::class), app(StripePriceIds::class)])->makePartial();
+    $swap->shouldReceive('handle')->once()->andThrow(
+        IncompletePayment::requiresAction(new Payment(PaymentIntent::constructFrom(['id' => 'pi_qa_3ds']))),
+    );
+    app()->instance(SwapLatamToStandard::class, $swap);
+
+    $this->actingAs(subscriberPaying('price_latam_yearly'))
+        ->post(route('settings.billing.swap-to-standard'))
+        ->assertRedirect(route('cashier.payment', ['pi_qa_3ds', 'redirect' => route('settings.billing')]));
+});
 
 test('the swap is refused to anyone not on latam', function (string $stripePrice, array $attributes) {
     expectSwapTo(null);

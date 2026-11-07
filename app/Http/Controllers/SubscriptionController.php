@@ -463,7 +463,7 @@ class SubscriptionController extends Controller
             // The card needs confirming (3DS). Cashier's own page does it and
             // comes back here.
             return redirect()->route('cashier.payment', [
-                $exception->payment->id,
+                $exception->payment->asStripePaymentIntent()->id,
                 'redirect' => route('settings.billing'),
             ]);
         }
