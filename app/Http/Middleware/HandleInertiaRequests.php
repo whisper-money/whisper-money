@@ -23,7 +23,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
 use Inertia\OnceProp;
-use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
