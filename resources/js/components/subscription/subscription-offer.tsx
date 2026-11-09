@@ -15,8 +15,9 @@ import { useState } from 'react';
 
 /**
  * Which screen an offer is being made on. It is only ever attribution — the
- * plans, the price and the trial are the same wherever the user is asked — but the two onboarding gates also carry the AI consent and a way back
- * into the wizard, and the server reads them off this.
+ * plans, the price and the trial are the same wherever the user is asked —
+ * but the two onboarding gates also carry the AI consent and a way back into
+ * the wizard, and the server reads them off this.
  *
  * Mirrors the App\Enums\UpsellSource cases that appear on these screens.
  */

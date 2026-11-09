@@ -17,8 +17,7 @@ use Laravel\Cashier\Cashier;
  *   missing, with no discount;
  * - someone who paid and asked to end it gets the same kind of note, worded
  *   for a paying customer and also without a discount, because the Stripe
- *   customer portal already offered them COMEBACK30 on the way out (or they
- *   asked for a refund, which a discount does not answer);
+ *   customer portal already offered them COMEBACK30 on the way out;
  * - someone who paid and lost the plan any other way (a failed renewal, a
  *   dispute, a reason Stripe does not give) never saw that offer, so they get
  *   the win-back email with COMEBACK30.
@@ -30,7 +29,7 @@ class SendSubscriptionCancelledEmailJob extends SendDripEmailJob
     /**
      * The `cancellation_details.reason` Stripe gives when the subscription was
      * ended on request rather than by a failed or disputed payment: the
-     * customer portal, and our own API cancels (the in-app refund) too.
+     * customer portal, and our own API cancels too.
      */
     private const string CANCELLED_BY_CUSTOMER = 'cancellation_requested';
 

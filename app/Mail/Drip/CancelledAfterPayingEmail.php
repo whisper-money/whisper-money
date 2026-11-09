@@ -6,9 +6,7 @@ namespace App\Mail\Drip;
  * The note for a user who paid and then asked to end the subscription. Most
  * leave through the Stripe customer portal, where the retention offer already
  * showed them COMEBACK30, so this one carries no discount: repeating the offer
- * here would teach that leaving gets a better price. The few who leave through
- * the in-app refund asked for their money back, and a discount is no answer to
- * that either.
+ * here would teach that leaving gets a better price.
  */
 class CancelledAfterPayingEmail extends WhatWasMissingEmail
 {
