@@ -27,7 +27,7 @@ export const pageProps: {
                 original_price: 107.88,
                 stripe_lookup_key: null,
                 billing_period: 'year',
-                trial_days: 0,
+                trial_days: 14,
                 features: [],
             },
         },
@@ -35,6 +35,5 @@ export const pageProps: {
         bestValuePlan: 'yearly',
         promo: { enabled: false, code: '', description: '', badge: '' },
         currency: 'EUR',
-        refundWindowDays: 3,
     },
 };

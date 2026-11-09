@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Features\OnboardingGateCopy;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -21,15 +23,11 @@ use function Pest\Laravel\actingAs;
  * former-subscriber gates are pinned in paywall.test.tsx and PayNowGatesTest.
  */
 beforeEach(function () {
-    config([
-        'subscriptions.enabled' => true,
-        'subscriptions.refund_window_days' => 3,
-        // These are the pay-now screens, so they are captured with pay-now on:
-        // `SUBSCRIPTION_PAY_NOW` ships off, and off there is no charge today and
-        // so no money-back row to photograph.
-        'subscriptions.plans.monthly.trial_days' => 0,
-        'subscriptions.plans.yearly.trial_days' => 0,
-    ]);
+    config(['subscriptions.enabled' => true]);
+
+    // The plain gate, not one of the `OnboardingGateCopy` arms: an arm is drawn
+    // from the user id, and a screenshot must not change with it.
+    Feature::for(null)->deactivate(OnboardingGateCopy::class);
 });
 
 function gateUser(): User
@@ -83,15 +81,12 @@ it('captures the gate in front of the bank picker', function () {
         ->assertSee('Everything you’ve done so far stays free')
         ->assertSee('€53.94')
         ->assertSee('€8.99')
-        // The refund window, in the one colour this interface spends.
-        ->assertSee('3 days to change your mind')
-        ->assertSee('Refunded in full, banks disconnected, imported data kept')
         // The disclosure that earns the right to switch the AI on with the plan.
         ->assertSee('Automatic sorting comes on with it')
         ->assertSee('never your balance, your name or your account number')
-        ->assertSee('Start Standard — €53.94 today')
+        ->assertSee('Start Standard — free for 14 days')
         ->assertSee('Not now — I’ll add accounts by hand')
-        ->assertSee('Charged today. Full refund from Settings within 3 days.')
+        ->assertSee('Free for 14 days. Cancel before then and you are not charged.')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'gate-bank')
         ->assertNoJavascriptErrors();
@@ -113,7 +108,6 @@ it('captures the gate in front of the AI', function () {
         ->assertSee('It reads all 903 movements')
         ->assertSee('What leaves your account')
         ->assertSee('never your balance, your name or your account number')
-        ->assertSee('3 days to change your mind')
         ->assertSee('Or keep sorting by hand')
         ->assertSee('I’ll sort them myself')
         ->assertScript(ANIMATIONS_SETTLED)

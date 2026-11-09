@@ -43,7 +43,6 @@
         "Tests\\Browser\\RealEstateAccountTest": 7.2332,
         "Tests\\Browser\\SavingsGoalFlowTest": 6.5694,
         "Tests\\Browser\\SplitTransactionTest": 1.8754,
-        "Tests\\Browser\\SubscriptionRefundTest": 5.1707,
         "Tests\\Browser\\TransactionRowContextMenuTest": 1.7973,
         "Tests\\Browser\\TransactionsBulkActionsTest": 11.2176,
         "Tests\\Browser\\TransactionsCompactListTest": 3.4601,

@@ -378,7 +378,9 @@ describe('Billing – upgrade section', () => {
             /[?&]plan=monthly&preselected_plan=monthly/,
         );
         expect(
-            screen.getByText('€8.99 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 7 days, then €8.99 a month. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
     });
 

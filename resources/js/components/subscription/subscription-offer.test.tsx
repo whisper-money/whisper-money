@@ -15,7 +15,7 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-/** The same two plans, with the trial `SUBSCRIPTION_PAY_NOW` decides applied. */
+/** The same two plans, each with the trial given. */
 function pricingWithTrial(monthly: number, yearly: number): PricingConfig {
     return {
         ...pricingFixture,
@@ -41,30 +41,11 @@ function standardTier(): PriceTierChoice {
 }
 
 describe('SubscriptionOffer', () => {
-    it('promises the money back when the plan charges today', () => {
-        mocks.pricing.current = pricingWithTrial(0, 0);
-
-        render(
-            <SubscriptionOffer
-                selectedPlan="yearly"
-                onSelect={vi.fn()}
-                tierChoice={standardTier()}
-            />,
-        );
-
-        expect(
-            screen.getByText('3 days to change your mind'),
-        ).toBeInTheDocument();
-    });
-
     /**
-     * Nothing has been charged during a trial, so there is nothing to give
-     * back. Shown anyway it sits next to "free for 15 days" and answers the
-     * same question twice, in two different ways.
+     * Every plan opens on a trial, so nothing has been charged and there is
+     * nothing to give back: no refund promise sits next to "free for 14 days".
      */
-    it('says nothing about refunds when the plan starts a trial', () => {
-        mocks.pricing.current = pricingWithTrial(7, 15);
-
+    it('lists the plans without a refund promise', () => {
         render(
             <SubscriptionOffer
                 selectedPlan="yearly"
@@ -73,33 +54,7 @@ describe('SubscriptionOffer', () => {
             />,
         );
 
-        expect(screen.queryByText(/days to change your mind/)).toBeNull();
-    });
-
-    /** It follows the plan in hand, not whichever one happens to be cheapest. */
-    it('follows the selected plan when only one of them has a trial', () => {
-        mocks.pricing.current = pricingWithTrial(0, 15);
-
-        const { rerender } = render(
-            <SubscriptionOffer
-                selectedPlan="monthly"
-                onSelect={vi.fn()}
-                tierChoice={standardTier()}
-            />,
-        );
-
-        expect(
-            screen.getByText('3 days to change your mind'),
-        ).toBeInTheDocument();
-
-        rerender(
-            <SubscriptionOffer
-                selectedPlan="yearly"
-                onSelect={vi.fn()}
-                tierChoice={standardTier()}
-            />,
-        );
-
+        expect(screen.getByText(/53[.,]94/)).toBeInTheDocument();
         expect(screen.queryByText(/days to change your mind/)).toBeNull();
     });
 });
@@ -117,24 +72,10 @@ function Offer() {
 }
 
 /**
- * The button names the charge and the line under it names the commitment, so
- * they answer the same question and cannot be allowed to disagree: a trial that
- * takes no money today must not sit under a button promising a sum today.
+ * The button names the trial and the line under it names the commitment, so
+ * they answer the same question and cannot be allowed to disagree.
  */
 describe('useOffer', () => {
-    it('puts the amount on the button when it is charged today', () => {
-        mocks.pricing.current = pricingWithTrial(0, 0);
-
-        render(<Offer />);
-
-        expect(screen.getByRole('link')).toHaveTextContent(/53[.,]94/);
-        expect(
-            screen.getByText(
-                'Charged today. Full refund from Settings within 3 days.',
-            ),
-        ).toBeInTheDocument();
-    });
-
     it('starts on the configured default plan', () => {
         mocks.pricing.current = {
             ...pricingWithTrial(7, 14),
@@ -151,7 +92,7 @@ describe('useOffer', () => {
         );
     });
 
-    it('names the trial instead when nothing is charged today', () => {
+    it('names the trial on the button and in the terms', () => {
         mocks.pricing.current = pricingWithTrial(7, 15);
 
         render(<Offer />);

@@ -95,9 +95,7 @@ describe('StepAiSuggestions gate', () => {
         expect(
             screen.getByText(/never your balance, your name or your account/),
         ).toBeInTheDocument();
-        expect(
-            screen.getByText('3 days to change your mind'),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/^Free for 14 days/)).toBeInTheDocument();
     });
 
     it('leaves the step when the user would rather sort by hand', async () => {

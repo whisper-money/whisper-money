@@ -110,7 +110,9 @@ describe('UpgradeDialog', () => {
             expect.stringContaining('preselected_plan=monthly'),
         );
         expect(
-            screen.getByText('€8.99 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 7 days, then €8.99 a month. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
     });
 
@@ -153,13 +155,17 @@ describe('UpgradeDialog', () => {
         renderDialog('connections');
 
         expect(
-            screen.getByText('€53.94 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 14 days, then €53.94 a year. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByTestId('switch-price-tier'));
 
         expect(
-            screen.getByText('€23.88 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 14 days, then €23.88 a year. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
     });
 
@@ -173,7 +179,9 @@ describe('UpgradeDialog', () => {
             ),
         ).toBeInTheDocument();
         expect(
-            screen.getByText('€23.88 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 14 days, then €23.88 a year. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
 
         const link = screen.getByRole('link', { name: /Start a plan/ });
@@ -188,7 +196,9 @@ describe('UpgradeDialog', () => {
         fireEvent.click(screen.getByTestId('switch-price-tier'));
 
         expect(
-            screen.getByText('€53.94 charged today. Cancel any time.'),
+            screen.getByText(
+                'Free for 14 days, then €53.94 a year. Cancel before then and you are not charged.',
+            ),
         ).toBeInTheDocument();
         expect(
             screen

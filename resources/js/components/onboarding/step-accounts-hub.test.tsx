@@ -330,9 +330,7 @@ describe('StepAccountsHub bank gate', () => {
         expect(
             screen.getByText('Automatic sorting comes on with it'),
         ).toBeInTheDocument();
-        expect(
-            screen.getByText('3 days to change your mind'),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/^Free for 14 days/)).toBeInTheDocument();
     });
 
     it('opens the bank picker directly once there is a plan', () => {

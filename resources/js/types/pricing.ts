@@ -21,8 +21,6 @@ export interface PricingConfig {
     bestValuePlan: string | null;
     promo: PromoConfig;
     currency: string;
-    /** Days after the charge in which the refund can still be self-served. */
-    refundWindowDays: number;
     /**
      * The regional latam price, present only while it is offered
      * (`SUBSCRIPTION_LATAM_PRICING`). Pick the tier to show through
