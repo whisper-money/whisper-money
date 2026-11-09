@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
-use App\Features\CalculateBalancesOnImport;
 use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -24,7 +23,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
 use Inertia\OnceProp;
-use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -420,18 +418,13 @@ class HandleInertiaRequests extends Middleware
         if (! $user) {
             return [
                 'cashflow' => true,
-                'calculateBalancesOnImport' => false,
                 'fullImport' => false,
                 'fullImportSettings' => false,
             ];
         }
 
-        // One query for every flag, however many of them get read below.
-        Feature::for($user)->load([CalculateBalancesOnImport::class]);
-
         return [
             'cashflow' => true,
-            'calculateBalancesOnImport' => Feature::for($user)->active(CalculateBalancesOnImport::class),
             // Two answers, because Settings keeps the page past the window for
             // as long as an import can still be undone, while starting one is
             // only offered inside it. The second costs a query once the window

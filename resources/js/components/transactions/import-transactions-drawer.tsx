@@ -1,4 +1,3 @@
-import { index as indexBalances } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import { AiColumnDetection } from '@/components/ai-column-detection';
 import AlertError from '@/components/alert-error';
@@ -19,7 +18,6 @@ import {
 } from '@/lib/ai-import-mapping';
 import { describeColumns } from '@/lib/column-shape';
 import {
-    calculateBalancesFromTransactions,
     convertRowsToTransactions,
     isInAccountCurrency,
 } from '@/lib/file-parser';
@@ -46,7 +44,7 @@ import {
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import { ImportStepMapping } from './import-step-mapping';
@@ -87,10 +85,6 @@ const EMPTY_STATE: ImportState = {
     dateFormat: DateFormat.YearMonthDay,
     dateFormatDetected: false,
     transactions: [],
-    calculateBalances: false,
-    referenceBalance: null,
-    referenceBalanceDate: null,
-    referenceBalancePrefilled: false,
 };
 
 interface ImportError {
@@ -113,7 +107,7 @@ export function ImportTransactionsDrawer({
     initialAccountId = null,
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
-    const { locale, features, currencies } = usePage<SharedData>().props;
+    const { locale, currencies } = usePage<SharedData>().props;
     const supportedCurrencies = useMemo(
         () => currencies.accounts.map((currency) => currency.code),
         [currencies],
@@ -302,124 +296,14 @@ export function ImportTransactionsDrawer({
         value: string | string[],
     ) => {
         ai.touch(field);
-        setState((prev) => {
-            const next = {
-                ...prev,
-                columnMapping: {
-                    ...prev.columnMapping,
-                    [field]: value,
-                },
-            };
-            // Setting a balance column disables the calculate-balances option
-            if (field === 'balance' && value) {
-                next.calculateBalances = false;
-                next.referenceBalance = null;
-                next.referenceBalanceDate = null;
-                next.referenceBalancePrefilled = false;
-            }
-            return next;
-        });
-    };
-
-    const handleCalculateBalancesChange = (enabled: boolean) => {
         setState((prev) => ({
             ...prev,
-            calculateBalances: enabled,
-            referenceBalance: enabled ? prev.referenceBalance : null,
-            referenceBalancePrefilled: enabled
-                ? prev.referenceBalancePrefilled
-                : false,
+            columnMapping: {
+                ...prev.columnMapping,
+                [field]: value,
+            },
         }));
     };
-
-    const handleReferenceBalanceChange = (balanceInCents: number) => {
-        setState((prev) => ({
-            ...prev,
-            referenceBalance: balanceInCents,
-            referenceBalancePrefilled: false,
-        }));
-    };
-
-    const handleLatestDateChange = useCallback((date: string | null) => {
-        setState((prev) => {
-            if (prev.referenceBalanceDate === date) {
-                return prev;
-            }
-            return {
-                ...prev,
-                referenceBalanceDate: date,
-                referenceBalance: null,
-                referenceBalancePrefilled: false,
-            };
-        });
-    }, []);
-
-    // Try to pre-fill the reference balance from an existing balance record
-    // on that date. If found, no need to ask the user.
-    useEffect(() => {
-        if (
-            !tracksBalance ||
-            !state.calculateBalances ||
-            !state.referenceBalanceDate ||
-            !state.selectedAccountId ||
-            state.referenceBalance !== null
-        ) {
-            return;
-        }
-
-        let cancelled = false;
-
-        (async () => {
-            try {
-                const response = await fetch(
-                    indexBalances.url(state.selectedAccountId as string, {
-                        query: { page: '1' },
-                    }),
-                    { headers: { Accept: 'application/json' } },
-                );
-                if (!response.ok) {
-                    return;
-                }
-                const json = (await response.json()) as {
-                    data: { balance_date: string; balance: number }[];
-                };
-                if (cancelled) {
-                    return;
-                }
-                const match = json.data.find(
-                    (b) => b.balance_date === state.referenceBalanceDate,
-                );
-                if (match) {
-                    setState((prev) => {
-                        if (
-                            prev.referenceBalanceDate !==
-                                state.referenceBalanceDate ||
-                            prev.referenceBalance !== null
-                        ) {
-                            return prev;
-                        }
-                        return {
-                            ...prev,
-                            referenceBalance: match.balance,
-                            referenceBalancePrefilled: true,
-                        };
-                    });
-                }
-            } catch (err) {
-                console.error('Failed to load reference balance:', err);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        tracksBalance,
-        state.calculateBalances,
-        state.referenceBalanceDate,
-        state.selectedAccountId,
-        state.referenceBalance,
-    ]);
 
     const handleDateFormatChange = (format: DateFormat) => {
         setState((prev) => ({ ...prev, dateFormat: format }));
@@ -461,42 +345,13 @@ export function ImportTransactionsDrawer({
                 parsedTransactions,
             );
 
-            let transactionsWithDuplicateCheck = parsedTransactions.map(
+            const transactionsWithDuplicateCheck = parsedTransactions.map(
                 (transaction, index) => ({
                     ...transaction,
                     isDuplicate: duplicateFlags[index],
                     selected: !duplicateFlags[index],
                 }),
             );
-
-            // When calculate-balances is enabled and no balance column is
-            // mapped, derive balances from the reference balance for every
-            // distinct transaction date.
-            const shouldCalculate =
-                state.calculateBalances &&
-                !state.columnMapping.balance &&
-                state.referenceBalanceDate !== null &&
-                state.referenceBalance !== null;
-
-            if (shouldCalculate) {
-                const calculatedBalances = calculateBalancesFromTransactions(
-                    transactionsWithDuplicateCheck.filter(carriesBalance),
-                    state.referenceBalanceDate as string,
-                    state.referenceBalance as number,
-                );
-
-                transactionsWithDuplicateCheck =
-                    transactionsWithDuplicateCheck.map((transaction) => ({
-                        ...transaction,
-                        balance: carriesBalance(transaction)
-                            ? (calculatedBalances.get(
-                                  transaction.transaction_date,
-                              ) ??
-                              transaction.balance ??
-                              null)
-                            : null,
-                    }));
-            }
 
             setState((prev) => ({
                 ...prev,
@@ -728,23 +583,8 @@ export function ImportTransactionsDrawer({
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         supportedCurrencies={supportedCurrencies}
                         tracksBalance={tracksBalance}
-                        calculateBalances={
-                            tracksBalance && state.calculateBalances
-                        }
-                        referenceBalance={state.referenceBalance}
-                        referenceBalancePrefilled={
-                            state.referenceBalancePrefilled
-                        }
-                        calculateBalancesAvailable={
-                            features.calculateBalancesOnImport
-                        }
                         onMappingChange={handleMappingChange}
                         onDateFormatChange={handleDateFormatChange}
-                        onCalculateBalancesChange={
-                            handleCalculateBalancesChange
-                        }
-                        onReferenceBalanceChange={handleReferenceBalanceChange}
-                        onLatestDateChange={handleLatestDateChange}
                         onNext={handlePreviewTransactions}
                         onBack={() => moveToStep(ImportStep.UploadFile)}
                         aiDetection={

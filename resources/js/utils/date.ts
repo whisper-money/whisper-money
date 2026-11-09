@@ -1,9 +1,4 @@
-import { __ } from '@/utils/i18n';
-import {
-    isToday as dateFnsIsToday,
-    isYesterday as dateFnsIsYesterday,
-    isValid,
-} from 'date-fns';
+import { isValid } from 'date-fns';
 
 /**
  * The date-fns tokens this app uses, as the `Intl` option each one asks for.
@@ -165,39 +160,6 @@ export function formatDateMedium(
 
     // Capitalize first letter (important for Spanish dates)
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-}
-
-/**
- * Format a date from YYYY-MM-DD string using relative wording when close to
- * the current date. Returns "Today" or "Yesterday" when appropriate, otherwise
- * a long weekday-based label like "Monday, 3 of Jun".
- */
-export function formatRelativeDate(
-    dateStr: string,
-    locale: string = 'en-US',
-): string {
-    const date = toLocalDate(dateStr);
-
-    if (!isValid(date)) {
-        return dateStr;
-    }
-
-    if (dateFnsIsToday(date)) {
-        return __('Today');
-    }
-
-    if (dateFnsIsYesterday(date)) {
-        return __('Yesterday');
-    }
-
-    const weekday = formatDate(date, 'EEEE', locale);
-    const day = formatDate(date, 'd', locale);
-    const month = formatDate(date, 'MMM', locale);
-    const capitalizedWeekday =
-        weekday.charAt(0).toUpperCase() + weekday.slice(1);
-    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-
-    return `${capitalizedWeekday}, ${day} ${__('of')} ${capitalizedMonth}`;
 }
 
 /**

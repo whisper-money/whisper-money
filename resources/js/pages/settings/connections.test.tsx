@@ -35,7 +35,6 @@ vi.mock('@inertiajs/react', () => ({
             openBankingEnabled: mocks.openBankingEnabled,
             features: {
                 cashflow: true,
-                calculateBalancesOnImport: false,
             },
             locale: 'en',
         },
