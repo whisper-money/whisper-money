@@ -45,15 +45,8 @@ function renderStep(
             currencyCode="EUR"
             supportedCurrencies={['EUR']}
             tracksBalance={tracksBalance}
-            calculateBalances={false}
-            referenceBalance={null}
-            referenceBalancePrefilled={false}
-            calculateBalancesAvailable
             onMappingChange={onMappingChange}
             onDateFormatChange={vi.fn()}
-            onCalculateBalancesChange={vi.fn()}
-            onReferenceBalanceChange={vi.fn()}
-            onLatestDateChange={vi.fn()}
             onNext={vi.fn()}
             onBack={vi.fn()}
         />,
@@ -65,7 +58,7 @@ function openOptionalFields() {
 }
 
 describe('ImportStepMapping', () => {
-    it('offers the balance column and the calculate toggle for an account with a balance', () => {
+    it('offers the balance column for an account with a balance', () => {
         renderStep(true);
 
         expect(
@@ -73,7 +66,6 @@ describe('ImportStepMapping', () => {
         ).not.toBeNull();
         openOptionalFields();
         expect(document.getElementById('balance-column')).not.toBeNull();
-        expect(document.getElementById('calculate-balances')).not.toBeNull();
     });
 
     it('hides every balance control for a credit card', () => {
@@ -84,7 +76,6 @@ describe('ImportStepMapping', () => {
         ).not.toBeNull();
         openOptionalFields();
         expect(document.getElementById('balance-column')).toBeNull();
-        expect(document.getElementById('calculate-balances')).toBeNull();
         expect(document.getElementById('creditor-column')).not.toBeNull();
     });
 

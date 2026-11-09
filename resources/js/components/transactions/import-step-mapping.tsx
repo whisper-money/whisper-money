@@ -3,7 +3,6 @@ import {
     FOOTNOTE,
     HEAD_CELL,
 } from '@/components/transactions/import-section';
-import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -20,7 +19,6 @@ import {
     buildMappingReport,
     collectTypeValues,
     detectExpenseTypes,
-    getLatestTransactionDate,
     isSameTypeValue,
 } from '@/lib/file-parser';
 import {
@@ -38,10 +36,10 @@ import {
     formatCurrency,
     toMajorUnits,
 } from '@/utils/currency';
-import { formatDateMedium, formatRelativeDate } from '@/utils/date';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, Check, XCircle } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 const NONE = '__none__';
 
@@ -72,18 +70,11 @@ interface ImportStepMappingProps {
     supportedCurrencies: string[];
     /** False for a credit card: it has no balance to map or work out. */
     tracksBalance: boolean;
-    calculateBalances: boolean;
-    referenceBalance: number | null;
-    referenceBalancePrefilled: boolean;
-    calculateBalancesAvailable: boolean;
     onMappingChange: (
         field: keyof ColumnMapping,
         value: string | string[],
     ) => void;
     onDateFormatChange: (format: DateFormat) => void;
-    onCalculateBalancesChange: (enabled: boolean) => void;
-    onReferenceBalanceChange: (balanceInCents: number) => void;
-    onLatestDateChange: (date: string | null) => void;
     onNext: () => void;
     onBack: () => void;
     /** The AI badge or button, shown above the fields. */
@@ -398,15 +389,8 @@ export function ImportStepMapping({
     currencyCode,
     supportedCurrencies,
     tracksBalance,
-    calculateBalances,
-    referenceBalance,
-    referenceBalancePrefilled,
-    calculateBalancesAvailable,
     onMappingChange,
     onDateFormatChange,
-    onCalculateBalancesChange,
-    onReferenceBalanceChange,
-    onLatestDateChange,
     onNext,
     onBack,
     aiDetection,
@@ -424,20 +408,6 @@ export function ImportStepMapping({
                   : [],
         [columnMapping.description],
     );
-
-    const balanceColumnSet = !!columnMapping.balance;
-    const effectiveCalculate = calculateBalances && !balanceColumnSet;
-
-    const latestDate = useMemo(() => {
-        if (!effectiveCalculate) {
-            return null;
-        }
-        return getLatestTransactionDate(parsedData, columnMapping, dateFormat);
-    }, [effectiveCalculate, parsedData, columnMapping, dateFormat]);
-
-    useEffect(() => {
-        onLatestDateChange(latestDate);
-    }, [latestDate, onLatestDateChange]);
 
     const baseMappingValid =
         !!columnMapping.transaction_date &&
@@ -468,12 +438,7 @@ export function ImportStepMapping({
     ]);
 
     const isValid =
-        baseMappingValid &&
-        (report === null || report.readyCount > 0) &&
-        (!effectiveCalculate ||
-            (latestDate !== null &&
-                referenceBalance !== null &&
-                referenceBalance !== undefined));
+        baseMappingValid && (report === null || report.readyCount > 0);
 
     const mappedOptional = [
         columnMapping.currency && __('Currency'),
@@ -755,78 +720,16 @@ export function ImportStepMapping({
                         <Label htmlFor="balance-column" className="md:pt-2.5">
                             {__('Balance')}
                         </Label>
-                        <div className="flex flex-col gap-3">
-                            <ColumnSelect
-                                id="balance-column"
-                                value={columnMapping.balance}
-                                placeholder={__('Select balance column')}
-                                optional
-                                columnOptions={columnOptions}
-                                onChange={(value) =>
-                                    onMappingChange('balance', value)
-                                }
-                            />
-
-                            {calculateBalancesAvailable && (
-                                <div className="flex flex-col gap-3">
-                                    <div className="flex items-start gap-2">
-                                        <Checkbox
-                                            id="calculate-balances"
-                                            checked={
-                                                balanceColumnSet
-                                                    ? false
-                                                    : calculateBalances
-                                            }
-                                            disabled={balanceColumnSet}
-                                            onCheckedChange={(checked) =>
-                                                onCalculateBalancesChange(
-                                                    checked === true,
-                                                )
-                                            }
-                                            className="mt-0.5"
-                                        />
-                                        <Label
-                                            htmlFor="calculate-balances"
-                                            className={`cursor-pointer font-normal ${balanceColumnSet ? 'opacity-50' : ''}`}
-                                        >
-                                            {__(
-                                                'Work balances out from the transactions instead',
-                                            )}
-                                        </Label>
-                                    </div>
-
-                                    {effectiveCalculate && latestDate && (
-                                        <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                                            <Label htmlFor="reference-balance">
-                                                {__('Balance on')}{' '}
-                                                {formatRelativeDate(
-                                                    latestDate,
-                                                    locale,
-                                                )}{' '}
-                                                <span className="text-destructive">
-                                                    *
-                                                </span>
-                                            </Label>
-                                            <AmountInput
-                                                id="reference-balance"
-                                                value={referenceBalance ?? 0}
-                                                onChange={
-                                                    onReferenceBalanceChange
-                                                }
-                                                currencyCode={currencyCode}
-                                            />
-                                            {referenceBalancePrefilled && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {__(
-                                                        'Pre-filled from an existing balance for this date.',
-                                                    )}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        <ColumnSelect
+                            id="balance-column"
+                            value={columnMapping.balance}
+                            placeholder={__('Select balance column')}
+                            optional
+                            columnOptions={columnOptions}
+                            onChange={(value) =>
+                                onMappingChange('balance', value)
+                            }
+                        />
                         {columnMapping.currency && (
                             <p className="text-xs text-muted-foreground md:pt-2.5">
                                 {__(
