@@ -10,6 +10,11 @@
  * (system/fixtures.ts; never real user data). Register it below once per
  * locale. App components see a mocked Inertia page (system/inertia-mock.tsx),
  * so pick ones that render from props rather than fetching their own data.
+ * Shots aim at fixed coordinates measured off a still: re-measure them when
+ * the components a video shows change size.
+ *
+ * Both scripts run `php artisan wayfinder:generate` first, since app
+ * components import the generated routes; run them from the repo root.
  *
  * Music is generated: `node videos/scripts/generate-music.mjs` rewrites
  * public/music/background.wav. Remotion's licence is free for individuals and

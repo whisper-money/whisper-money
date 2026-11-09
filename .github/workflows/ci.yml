@@ -345,6 +345,12 @@ jobs:
       - name: Frontend Tests
         run: bun run test
 
+      # The feature videos (videos/) are type-clean, so unlike the app's
+      # check above this one gates. Runs after the tests, whose Vite plugin
+      # generates the Wayfinder routes the videos import.
+      - name: Type Check Videos
+        run: bun run video:types
+
       # Ratchet: fails when copy-paste duplication climbs above the threshold
       # in .jscpd.json. Lower the threshold as clones get extracted; never
       # raise it to make a red build pass.

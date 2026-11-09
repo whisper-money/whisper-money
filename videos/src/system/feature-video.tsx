@@ -25,6 +25,8 @@ export interface FeatureVideoProps extends Record<string, unknown> {
 }
 
 const FADE_FRAMES = 12;
+/** Music sits under the visuals rather than over them. */
+const MUSIC_VOLUME = 0.6;
 const MUSIC_FADE_IN = seconds(1);
 const MUSIC_FADE_OUT = seconds(2);
 /** Background music, from videos/public. */
@@ -61,6 +63,8 @@ function Music({ src }: { src: string }) {
     return (
         <Html5Audio
             src={staticFile(src)}
+            // The generated track is 32s: a longer video loops it.
+            loop
             volume={(frame) =>
                 interpolate(
                     frame,
@@ -70,7 +74,7 @@ function Music({ src }: { src: string }) {
                         durationInFrames - MUSIC_FADE_OUT,
                         durationInFrames,
                     ],
-                    [0, 0.6, 0.6, 0],
+                    [0, MUSIC_VOLUME, MUSIC_VOLUME, 0],
                     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
                 )
             }

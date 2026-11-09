@@ -19,6 +19,7 @@
         "test:coverage": "vitest run --coverage",
         "types": "tsc --noEmit",
         "video:studio": "php artisan wayfinder:generate --with-form && remotion studio videos/src/index.ts --config=videos/remotion.config.ts",
+        "video:types": "tsc --noEmit -p videos",
         "video:render": "php artisan wayfinder:generate --with-form && remotion render videos/src/index.ts --config=videos/remotion.config.ts"
     },
     "devDependencies": {

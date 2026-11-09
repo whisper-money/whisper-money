@@ -1,7 +1,9 @@
 /**
  * Stands in for `@inertiajs/react` inside videos (aliased in remotion.config.ts).
  * A video has no server to boot a page from, so `usePage()` reads the props
- * <AppFrame> sets, links render as plain anchors and navigation does nothing.
+ * <VideoRoot> sets, links render as plain anchors and navigation does nothing.
+ * Only these exports exist: a component using another one (useForm, Form,
+ * usePoll...) fails to bundle, so add it here or render a different piece.
  */
 import { type AnchorHTMLAttributes, type ReactNode } from 'react';
 

@@ -12,8 +12,6 @@ export const VIDEO = {
 export const BRAND = {
     /** The app's dark --background (oklch(0.225 0 0)). */
     background: '#1f1f1f',
-    /** Green the app uses for positive figures (text-green-400). */
-    positive: '#4ade80',
     url: 'whisper.money',
 } as const;
 

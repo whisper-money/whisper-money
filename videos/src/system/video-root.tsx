@@ -39,12 +39,14 @@ export function VideoRoot({
     children: ReactNode;
 }) {
     useFontsReady();
-    // Set during render, before any child reads them: a video renders one
-    // locale per tab, so there is no other page to leak into.
-    applyLocale(locale);
     // On <html> as in the app: the theme tokens resolve their variables there,
     // so a `dark` class further down would not reach them.
-    document.documentElement.classList.add('dark');
+    useEffect(() => {
+        document.documentElement.classList.add('dark');
+    }, []);
+    // Set during render, before any child reads them, and again on every
+    // render: switching compositions in the studio re-renders this first.
+    applyLocale(locale);
     setPageProps({
         locale: FORMAT_LOCALE[locale],
         auth: { user: { currency_code: currency } },
