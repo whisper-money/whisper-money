@@ -228,7 +228,6 @@ export default function CashflowPage() {
                         previous={summary.previous}
                         loading={showPlaceholders}
                         currency={auth.user.currency_code}
-                        showContributionSplit
                     />
 
                     <AvailableCard

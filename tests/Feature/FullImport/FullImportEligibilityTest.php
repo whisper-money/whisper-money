@@ -23,11 +23,8 @@ it('is open while onboarding and for the first 15 days after it', function (?int
     'onboarded 40 days ago' => [40, false],
 ]);
 
-it('stays closed past the window, with no date to show', function () {
-    $user = fullImportUserOnboarded(40);
-
-    expect($user->canUseFullImport())->toBeFalse()
-        ->and($user->fullImportWindowEndsAt())->toBeNull();
+it('has no closing date to show once the window has closed', function () {
+    expect(fullImportUserOnboarded(40)->fullImportWindowEndsAt())->toBeNull();
 });
 
 it('says when the window closes while it is open', function () {

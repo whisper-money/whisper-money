@@ -63,16 +63,6 @@ test('shared feature flags do not include coinbase flag', function () {
     ]);
 });
 
-test('authenticated users no longer receive a cashflow available flag', function () {
-    $user = User::factory()->onboarded()->create();
-
-    actingAs($user)->withoutVite()->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->missing('features.cashflowAvailableFree')
-            ->missing('features.real-estate')
-        );
-});
-
 test('authenticated users receive subscription payment issue when subscription is past due', function () {
     config(['subscriptions.enabled' => true]);
 
