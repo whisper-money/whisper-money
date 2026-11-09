@@ -1,10 +1,8 @@
 <?php
 
-use App\Features\FullImport;
 use App\Models\Import;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Pennant\Feature;
 use Tests\Support\FullImportFixtures as Fixtures;
 
 function fullImportUserOnboarded(?int $daysAgo): User
@@ -25,12 +23,10 @@ it('is open while onboarding and for the first 15 days after it', function (?int
     'onboarded 40 days ago' => [40, false],
 ]);
 
-it('opens past the window with the FullImport flag', function () {
+it('stays closed past the window, with no date to show', function () {
     $user = fullImportUserOnboarded(40);
 
-    Feature::for($user)->activate(FullImport::class);
-
-    expect($user->canUseFullImport())->toBeTrue()
+    expect($user->canUseFullImport())->toBeFalse()
         ->and($user->fullImportWindowEndsAt())->toBeNull();
 });
 

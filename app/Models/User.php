@@ -6,7 +6,6 @@ use App\Enums\DripEmailType;
 use App\Enums\PaywallGate;
 use App\Enums\PlanFeature;
 use App\Enums\TransactionSource;
-use App\Features\FullImport;
 use App\Models\Concerns\HasPrefixedApiTokens;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
@@ -476,22 +475,14 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
     /**
      * Whether the user may start a full import from another app: while still
-     * onboarding, for the first days after it, or with the `FullImport` flag
-     * on. Never on an account whose credentials are public. With the master
-     * switch off (`full_import.enabled`) only the flag opens it. The one place
-     * both the shared prop and the endpoints read it from.
+     * onboarding or for the first days after it, and only with the master
+     * switch (`full_import.enabled`) on. Never on an account whose credentials
+     * are public. The one place both the shared prop and the endpoints read it
+     * from.
      */
     public function canUseFullImport(): bool
     {
-        if ($this->isRestrictedSharedAccount()) {
-            return false;
-        }
-
-        if ($this->isInFullImportWindow()) {
-            return true;
-        }
-
-        return $this->features()->active(FullImport::class);
+        return ! $this->isRestrictedSharedAccount() && $this->isInFullImportWindow();
     }
 
     /**
@@ -530,8 +521,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * Whether the onboarding window alone keeps the import open: the switch
-     * is on, and the user is still onboarding or onboarded recently.
+     * Whether the onboarding window keeps the import open: the switch is on,
+     * and the user is still onboarding or onboarded recently.
      */
     private function isInFullImportWindow(): bool
     {
@@ -543,9 +534,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * The day the onboarding window closes, or null when the window is not
-     * what keeps the import open: before onboarding ends, once the flag is the
-     * only reason left, or with the master switch off.
+     * The day the onboarding window closes, or null when there is no date to
+     * show: before onboarding ends, once the window has closed, or with the
+     * master switch off.
      */
     public function fullImportWindowEndsAt(): ?Carbon
     {

@@ -1,13 +1,11 @@
 <?php
 
 use App\Enums\ImportStatus;
-use App\Features\FullImport;
 use App\Jobs\ProcessFullImportJob;
 use App\Models\Import;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Pennant\Feature;
 use Tests\Support\FullImportFixtures as Fixtures;
 
 it('closes the import to an in-window user when the switch is off, with the same answers as for anyone not eligible', function () {
@@ -40,21 +38,6 @@ it('closes it during onboarding too', function () {
     config(['full_import.enabled' => false]);
 
     expect($user->canUseFullImport())->toBeFalse();
-});
-
-it('keeps it open to a user with the FullImport flag, so it can still be tried in production', function () {
-    $user = Fixtures::user(['onboarded_at' => now()->subDays(2)]);
-    Feature::for($user)->activate(FullImport::class);
-
-    config(['full_import.enabled' => false]);
-
-    expect($user->canUseFullImport())->toBeTrue();
-
-    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
-        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
-    ]);
-
-    expect($import->status)->toBe(ImportStatus::Completed);
 });
 
 it('lets an import already running finish', function () {

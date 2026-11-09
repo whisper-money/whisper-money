@@ -59,12 +59,10 @@ export interface AchievementsProgress {
 export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
-    /** May start a full import from another app (onboarding window or flag). */
+    /** May start a full import from another app (onboarding window). */
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
-    /** Cashflow shows the Available card and the savings/investments split. */
-    cashflowAvailableFree: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {
