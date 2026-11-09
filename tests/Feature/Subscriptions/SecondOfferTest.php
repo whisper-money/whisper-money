@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -79,6 +80,18 @@ test('a user who already had transactions when they saw the paywall is not eligi
     'before the paywall' => ['-1 hour'],
     'at the paywall' => ['+0 seconds'],
 ]);
+
+test('a user ruled out for having had data at the paywall is not queried again', function () {
+    $user = freeUserPastThePaywall();
+    giveTransactionCreatedAt($user, $user->paywall_seen_at->copy()->subHour());
+
+    expect($user->isEligibleForSecondOffer())->toBeFalse();
+
+    DB::enableQueryLog();
+    expect($user->isEligibleForSecondOffer())->toBeFalse();
+
+    expect(collect(DB::getQueryLog())->pluck('query')->filter(fn (string $sql) => str_contains($sql, 'transactions')))->toBeEmpty();
+});
 
 test('a subscriber is not eligible', function () {
     $user = User::factory()->onboarded()->subscribed()->create(['paywall_seen_at' => now()->subWeek()]);

@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -161,6 +162,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * Read on every Inertia request, so the cheap checks run first and only a
      * user still in the running pays for the single transactions query: there
      * must be transactions now, and the earliest must postdate the paywall.
+     * A user who already had transactions at the paywall is ruled out for
+     * good, and remembered as such so the query is not repeated.
      */
     public function isEligibleForSecondOffer(): bool
     {
@@ -168,10 +171,28 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return false;
         }
 
-        $firstTransactionAt = $this->transactions()->min('created_at');
+        $ruledOutKey = "second-offer:ruled-out:{$this->id}";
 
-        return $firstTransactionAt !== null
-            && Carbon::parse($firstTransactionAt)->greaterThan($this->paywall_seen_at);
+        if (Cache::has($ruledOutKey)) {
+            return false;
+        }
+
+        /** @var Carbon|null $firstTransactionAt */
+        $firstTransactionAt = $this->transactions()->oldest()->value('created_at');
+
+        if ($firstTransactionAt === null) {
+            return false;
+        }
+
+        if ($firstTransactionAt->lessThanOrEqualTo($this->paywall_seen_at)) {
+            // Already had data at the paywall: that never changes, so the
+            // query is not worth paying again on every request.
+            Cache::put($ruledOutKey, true, now()->addDays(30));
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
