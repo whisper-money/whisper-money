@@ -82,7 +82,11 @@ export function StepAiSuggestions({
     onAddAccount,
     onComplete,
 }: StepAiSuggestionsProps) {
-    const { auth, subscriptionsEnabled } = usePage<SharedData>().props;
+    const {
+        auth,
+        subscriptionsEnabled,
+        asksToPayOnlyWithData = false,
+    } = usePage<SharedData & { asksToPayOnlyWithData?: boolean }>().props;
     // Everyone who connected a bank paid at that gate, so this only catches the
     // user who came the manual way and has reached the one paid thing left.
     const needsPlan = subscriptionsEnabled && !auth.hasProPlan;
@@ -203,6 +207,12 @@ export function StepAiSuggestions({
                 // abandoned checkout can leave a consent behind without a plan,
                 // and starting a run on it would only be refused.
                 if (needsPlan) {
+                    // Nothing imported means nothing to sort, so nothing to
+                    // pay for yet: Pro is offered once there is data instead.
+                    if (asksToPayOnlyWithData && data.transaction_count === 0) {
+                        onCompleteRef.current();
+                    }
+
                     return;
                 }
 
@@ -429,6 +439,10 @@ export function StepAiSuggestions({
     // user, the consent screen is the plan's own disclosure, and the rules are
     // what the plan buys. The gate is the step for this user.
     if (needsPlan) {
+        if (asksToPayOnlyWithData && state.transaction_count === 0) {
+            return null;
+        }
+
         return (
             <StepGate
                 kind="ai"

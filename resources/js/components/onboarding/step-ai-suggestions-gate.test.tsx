@@ -46,10 +46,29 @@ async function setPlan(hasProPlan: boolean): Promise<void> {
     pageProps.auth.hasProPlan = hasProPlan;
 }
 
+async function setAsksToPayOnlyWithData(enabled: boolean): Promise<void> {
+    const { pageProps } = await import('@/lib/onboarding-page-props');
+    (pageProps as { asksToPayOnlyWithData?: boolean }).asksToPayOnlyWithData =
+        enabled;
+}
+
+function renderStep(onComplete = vi.fn()) {
+    return render(
+        <StepAiSuggestions
+            categories={[]}
+            hasConnectedAccount={false}
+            onAddAccount={vi.fn()}
+            onComplete={onComplete}
+        />,
+    );
+}
+
 describe('StepAiSuggestions gate', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         state.consented = false;
         state.run = null;
+        state.transaction_count = 903;
+        await setAsksToPayOnlyWithData(false);
     });
 
     it('sells the plan to a user who arrived without one', async () => {
@@ -118,5 +137,41 @@ describe('StepAiSuggestions gate', () => {
         expect(
             screen.queryByText('AI sorting needs Standard'),
         ).not.toBeInTheDocument();
+    });
+
+    it('skips the gate for a user with nothing imported, once Pro waits for data', async () => {
+        await setPlan(false);
+        await setAsksToPayOnlyWithData(true);
+        state.transaction_count = 0;
+        const onComplete = vi.fn();
+
+        renderStep(onComplete);
+
+        await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
+        expect(
+            screen.queryByText('AI sorting needs Standard'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('still sells the plan to a user with data, once Pro waits for data', async () => {
+        await setPlan(false);
+        await setAsksToPayOnlyWithData(true);
+
+        renderStep();
+
+        expect(
+            await screen.findByText('AI sorting needs Standard'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the gate for a user with nothing imported while the flag is off', async () => {
+        await setPlan(false);
+        state.transaction_count = 0;
+
+        renderStep();
+
+        expect(
+            await screen.findByText('AI sorting needs Standard'),
+        ).toBeInTheDocument();
     });
 });

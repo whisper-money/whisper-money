@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { SubscriptionPaymentIssueBanner } from '@/components/subscription/payment-issue-banner';
+import { SecondOfferDialog } from '@/components/subscription/second-offer-dialog';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
@@ -26,6 +27,7 @@ export default function AppSidebarLayout({
                     mobileLeading={mobileLeading}
                 />
                 <SubscriptionPaymentIssueBanner />
+                <SecondOfferDialog />
                 <div
                     className="mx-auto flex w-full max-w-page flex-1 flex-col"
                     data-testid="page-content"

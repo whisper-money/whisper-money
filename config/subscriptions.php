@@ -135,6 +135,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Second Offer
+    |--------------------------------------------------------------------------
+    |
+    | Whether Pro is only asked for once the user has data of their own
+    | (`User::asksToPayOnlyWithData()`). On, a user with no transactions is
+    | not sent to the paywall nor shown the onboarding AI gate; the paywall
+    | greets them once their first transactions land. And a free user who met
+    | the paywall with nothing imported is offered Pro once more, in an in-app
+    | dialog, after importing (`User::isEligibleForSecondOffer()`). Off, which
+    | is the default, nothing changes for anyone.
+    |
+    */
+
+    'second_offer' => filter_var(env('SUBSCRIPTION_SECOND_OFFER', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    |--------------------------------------------------------------------------
     | Free Plan Escape Delay
     |--------------------------------------------------------------------------
     |

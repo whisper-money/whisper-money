@@ -39,6 +39,7 @@ use App\Http\Controllers\ReEvaluateTransactionRulesController;
 use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SavingsGoalController;
+use App\Http\Controllers\SecondOfferController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
@@ -215,6 +216,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // drawn wherever the app shell is, so silencing it has to be too.
         Route::post('progress/uncategorized/snooze', UncategorizedPromptController::class)
             ->name('achievements.uncategorized.snooze');
+
+        // The second Pro offer, seen once after a free user's first import.
+        // Outside the paywall like the snooze above: the dialog is drawn by the
+        // app shell, wherever the user lands.
+        Route::post('subscribe/second-offer/shown', SecondOfferController::class)
+            ->name('subscribe.second-offer.shown');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');

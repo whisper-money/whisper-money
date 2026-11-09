@@ -102,6 +102,7 @@ class HandleInertiaRequests extends Middleware
             'openBankingEnabled' => (bool) config('services.enablebanking.enabled'),
             'demoCredentials' => $this->demoCredentials($request, $user),
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
+            'showSecondOffer' => fn (): bool => $this->showsSecondOffer($request, $user),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'aiImportMappingEnabled' => $user !== null && $this->aiImportMappingGate->allows($user),
             'pricing' => [
@@ -183,6 +184,19 @@ class HandleInertiaRequests extends Middleware
             ],
             'offeredTier' => $user?->offeredPriceTier(),
         ];
+    }
+
+    /**
+     * Whether the app shell puts the second Pro offer in front of the user:
+     * only once they are past onboarding and away from the paywall's own
+     * pages, where the dialog would argue with the screen it sits on.
+     */
+    private function showsSecondOffer(Request $request, ?User $user): bool
+    {
+        return $user !== null
+            && $user->isOnboarded()
+            && ! $this->isSubscriptionFlow($request)
+            && $user->isEligibleForSecondOffer();
     }
 
     /**

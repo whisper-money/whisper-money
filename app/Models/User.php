@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -46,6 +47,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
  * @property ?Carbon $uncategorized_prompt_snoozed_until
+ * @property ?Carbon $second_offer_shown_at
  * @property int $achievements_count
  * @property int $visit_streak
  * @property int $longest_visit_streak
@@ -120,6 +122,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'onboarded_at' => 'datetime',
             'onboarding_answers' => 'array',
             'paywall_seen_at' => 'datetime',
+            'second_offer_shown_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
             'transactions_last_visited_at' => 'datetime',
@@ -148,6 +151,101 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function hasSeenPaywall(): bool
     {
         return $this->paywall_seen_at !== null;
+    }
+
+    /**
+     * Whether this user is offered Pro once more, now that their first
+     * transactions are in: the paywall reached them before they had imported
+     * anything, when the app had nothing of theirs to show, and they stayed on
+     * the free plan. Only someone who never paid, and only once.
+     *
+     * Read on every Inertia request, so the cheap checks run first and only a
+     * user still in the running pays for the single transactions query: there
+     * must be transactions now, and the earliest must postdate the paywall.
+     * A user who already had transactions at the paywall is ruled out for
+     * good, and remembered as such so the query is not repeated.
+     */
+    public function isEligibleForSecondOffer(): bool
+    {
+        if (! $this->mayStillGetSecondOffer()) {
+            return false;
+        }
+
+        $ruledOutKey = "second-offer:ruled-out:{$this->id}";
+
+        if (Cache::has($ruledOutKey)) {
+            return false;
+        }
+
+        /** @var Carbon|null $firstTransactionAt */
+        $firstTransactionAt = $this->transactions()->oldest()->value('created_at');
+
+        if ($firstTransactionAt === null) {
+            return false;
+        }
+
+        if ($firstTransactionAt->lessThanOrEqualTo($this->paywall_seen_at)) {
+            // Already had data at the paywall: that never changes, so the
+            // query is not worth paying again on every request.
+            Cache::put($ruledOutKey, true, now()->addDays(30));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * The part of {@see isEligibleForSecondOffer()} that needs no query of its
+     * own: the flags, the offer not shown yet, the paywall seen, and a user
+     * who has never paid and can be sent to Stripe.
+     */
+    private function mayStillGetSecondOffer(): bool
+    {
+        if (! self::asksToPayOnlyWithData()) {
+            return false;
+        }
+
+        if ($this->second_offer_shown_at !== null || $this->paywall_seen_at === null) {
+            return false;
+        }
+
+        return ! $this->hasProPlan()
+            && ! $this->hasCanceledSubscription()
+            && ! $this->cannotUseStripe();
+    }
+
+    /**
+     * Whether Pro is only asked for once the user has data of their own: the
+     * paywall and the onboarding AI gate wait for the first transactions, and
+     * a free user who met the paywall empty is offered Pro once more after
+     * importing. Both halves of `subscriptions.second_offer`, which only means
+     * anything while subscriptions are sold at all.
+     */
+    public static function asksToPayOnlyWithData(): bool
+    {
+        return config('subscriptions.second_offer') && config('subscriptions.enabled');
+    }
+
+    /**
+     * Whether the paywall should hold off for now: the user has no
+     * transactions, so no bank connected and nothing for the AI to sort —
+     * nothing the paid plan would do for them yet.
+     */
+    public function hasNothingToPayForYet(): bool
+    {
+        return self::asksToPayOnlyWithData() && ! $this->transactions()->exists();
+    }
+
+    /**
+     * Record that the second offer was put in front of the user, so it is
+     * never shown again (idempotent).
+     */
+    public function markSecondOfferShown(): void
+    {
+        if ($this->second_offer_shown_at === null) {
+            $this->forceFill(['second_offer_shown_at' => now()])->save();
+        }
     }
 
     /**

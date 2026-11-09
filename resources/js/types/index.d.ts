@@ -230,6 +230,11 @@ export interface SharedData {
     includeLoansInNetWorthChart: boolean;
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
+    /**
+     * Whether the app shell offers Pro once more: a free user whose first
+     * transactions landed after they met the paywall. Shown once.
+     */
+    showSecondOffer: boolean;
     demoEnabled: boolean;
     /** False when the install carries no EnableBanking credentials. */
     openBankingEnabled: boolean;

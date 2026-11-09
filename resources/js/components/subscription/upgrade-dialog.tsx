@@ -20,7 +20,11 @@ import { useState } from 'react';
  * The upsell entry point a checkout starts from. Mirrors the PHP
  * App\Enums\UpsellSource so revenue can be attributed per point.
  */
-export type UpsellSource = 'ai_categorization' | 'connections' | 'accounts';
+export type UpsellSource =
+    | 'ai_categorization'
+    | 'connections'
+    | 'accounts'
+    | 'second_offer';
 
 /** The upsell points whose copy sells a bank connection. */
 const BANK_UPSELL_SOURCES: UpsellSource[] = ['connections', 'accounts'];
@@ -28,7 +32,8 @@ const BANK_UPSELL_SOURCES: UpsellSource[] = ['connections', 'accounts'];
 /**
  * A contextual "this is a paid feature" dialog with a plan picker that starts
  * Stripe checkout. Reused across upsell points (AI categorization, bank
- * connections, connected accounts); each passes its own copy and `source`.
+ * connections, connected accounts, the second offer after a first import);
+ * each passes its own copy and `source`.
  */
 export function UpgradeDialog({
     open,
