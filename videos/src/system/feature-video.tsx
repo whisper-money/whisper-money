@@ -17,6 +17,8 @@ export interface Scene {
     id: string;
     durationInFrames: number;
     content: ReactNode;
+    /** Frames it fades through black at each end; 0 for scenes that animate their own way in and out. */
+    fade?: number;
 }
 
 /** Props every feature video composition takes. */
@@ -40,18 +42,23 @@ export function durationOf(scenes: Scene[]): number {
 /** Fades a scene in from black and back out to it. */
 function SceneFade({
     durationInFrames,
+    fade,
     children,
 }: {
     durationInFrames: number;
+    fade: number;
     children: ReactNode;
 }) {
     const frame = useCurrentFrame();
-    const opacity = interpolate(
-        frame,
-        [0, FADE_FRAMES, durationInFrames - FADE_FRAMES, durationInFrames],
-        [0, 1, 1, 0],
-        { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
-    );
+    const opacity =
+        fade === 0
+            ? 1
+            : interpolate(
+                  frame,
+                  [0, fade, durationInFrames - fade, durationInFrames],
+                  [0, 1, 1, 0],
+                  { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
+              );
 
     return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 }
@@ -82,9 +89,33 @@ function Music({ src }: { src: string }) {
     );
 }
 
+/** The scenes one after another, built once the locale is applied. */
+function SceneSeries({ scenes }: { scenes: () => Scene[] }) {
+    return (
+        <Series>
+            {scenes().map((scene) => (
+                <Series.Sequence
+                    key={scene.id}
+                    name={scene.id}
+                    durationInFrames={scene.durationInFrames}
+                >
+                    <SceneFade
+                        durationInFrames={scene.durationInFrames}
+                        fade={scene.fade ?? FADE_FRAMES}
+                    >
+                        {scene.content}
+                    </SceneFade>
+                </Series.Sequence>
+            ))}
+        </Series>
+    );
+}
+
 /**
  * The template a feature video is: its scenes one after another on the dark
- * canvas, each fading through black, under background music.
+ * canvas, each fading through black unless it brings its own transition,
+ * under background music. `scenes` is called inside <VideoRoot>, so copy read
+ * with `__()` while building them is already in the video's language.
  */
 export function FeatureVideo({
     locale,
@@ -94,24 +125,12 @@ export function FeatureVideo({
 }: {
     locale: VideoLocale;
     currency: string;
-    scenes: Scene[];
+    scenes: () => Scene[];
     music?: string | null;
 }) {
     return (
         <VideoRoot locale={locale} currency={currency}>
-            <Series>
-                {scenes.map((scene) => (
-                    <Series.Sequence
-                        key={scene.id}
-                        name={scene.id}
-                        durationInFrames={scene.durationInFrames}
-                    >
-                        <SceneFade durationInFrames={scene.durationInFrames}>
-                            {scene.content}
-                        </SceneFade>
-                    </Series.Sequence>
-                ))}
-            </Series>
+            <SceneSeries scenes={scenes} />
             {music && <Music src={music} />}
         </VideoRoot>
     );

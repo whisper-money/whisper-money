@@ -5,13 +5,13 @@
  *   bun run video:render <id> videos/out/<file>.mp4
  *
  * A new video lives in src/videos/<feature>/: a component that hands
- * <FeatureVideo> its scenes (TitleCard, an <AppFrame> around real components
- * under a <Camera>, Captions and Callouts, OutroCard), fed made-up figures
- * (system/fixtures.ts; never real user data). Register it below once per
- * locale. App components see a mocked Inertia page (system/inertia-mock.tsx),
+ * <FeatureVideo> its scenes, fed made-up figures (system/fixtures.ts; never
+ * real user data). The usual ones: a TitleCard, then one spotlightScene() per
+ * real component (it isolates it on the canvas; useCountUp() counts its
+ * figures up and <Choreography> reveals its inner rows and bars by selector),
+ * an <AppFrame> of everything together under a <Camera> with a <Caption>, and
+ * the OutroCard. Register it below once per locale. App components see a mocked Inertia page (system/inertia-mock.tsx),
  * so pick ones that render from props rather than fetching their own data.
- * Shots aim at fixed coordinates measured off a still: re-measure them when
- * the components a video shows change size.
  *
  * Both scripts run `php artisan wayfinder:generate` first, since app
  * components import the generated routes; run them from the repo root.

@@ -1,5 +1,6 @@
 import {
     CURRENT_MONTH,
+    moneyFlowFor,
     PREVIOUS_MONTH,
 } from '../videos/cashflow-available/fixtures';
 import { countUp, money } from './fixtures';
@@ -38,6 +39,26 @@ describe('cashflow available fixtures', () => {
                 (month.net / month.income) * 100,
                 1,
             );
+        },
+    );
+});
+
+describe('cashflow available money flow', () => {
+    it.each(['es', 'en'] as const)(
+        'flows the month the cards show (%s)',
+        (locale) => {
+            const flow = moneyFlowFor(locale);
+            const sum = (amounts: { amount: number }[]) =>
+                amounts.reduce((total, { amount }) => total + amount, 0);
+
+            expect(flow.total_income).toBe(CURRENT_MONTH.income);
+            expect(sum(flow.income_categories)).toBe(flow.total_income);
+            expect(flow.total_expense).toBe(
+                CURRENT_MONTH.expense +
+                    CURRENT_MONTH.savings +
+                    CURRENT_MONTH.investments,
+            );
+            expect(sum(flow.expense_categories)).toBe(flow.total_expense);
         },
     );
 });

@@ -39,10 +39,11 @@ export function VideoRoot({
     children: ReactNode;
 }) {
     useFontsReady();
-    // On <html> as in the app: the theme tokens resolve their variables there,
-    // so a `dark` class further down would not reach them.
+    // On <html> as in the app: the theme tokens and the chart palette resolve
+    // their variables there, so neither would reach them further down.
     useEffect(() => {
         document.documentElement.classList.add('dark');
+        document.documentElement.dataset.chartColor = 'colorful';
     }, []);
     // Set during render, before any child reads them, and again on every
     // render: switching compositions in the studio re-renders this first.
@@ -50,6 +51,7 @@ export function VideoRoot({
     setPageProps({
         locale: FORMAT_LOCALE[locale],
         auth: { user: { currency_code: currency } },
+        chartColorScheme: 'colorful',
     });
 
     return (

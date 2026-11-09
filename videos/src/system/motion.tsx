@@ -1,5 +1,12 @@
 import { type CSSProperties, type ReactNode } from 'react';
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import {
+    Easing,
+    interpolate,
+    spring,
+    useCurrentFrame,
+    useVideoConfig,
+} from 'remotion';
+import { countUp } from './fixtures';
 
 /** 0 → 1 spring that starts `delay` frames into the current sequence. */
 export function useEntrance(delay = 0, damping = 200): number {
@@ -9,14 +16,23 @@ export function useEntrance(delay = 0, damping = 200): number {
     return spring({ frame: frame - delay, fps, config: { damping } });
 }
 
-/** 0 → 1 linear progress between two frames of the current sequence, clamped. */
-export function useProgress(from: number, to: number): number {
+/**
+ * A fixture whose figures count up from 0 over `frames`, easing out, starting
+ * `from` frames into the sequence: feed it to a real component.
+ */
+export function useCountUp<T extends object>(
+    value: T,
+    from: number,
+    frames = 45,
+): T {
     const frame = useCurrentFrame();
-
-    return interpolate(frame, [from, to], [0, 1], {
+    const progress = interpolate(frame, [from, from + frames], [0, 1], {
+        easing: Easing.out(Easing.cubic),
         extrapolateLeft: 'clamp',
         extrapolateRight: 'clamp',
     });
+
+    return countUp(value, progress);
 }
 
 /** Fades and lifts its children in, `delay` frames into the sequence. */
