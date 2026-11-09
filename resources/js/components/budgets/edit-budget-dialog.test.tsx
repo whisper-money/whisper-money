@@ -1,17 +1,12 @@
 import type { Budget } from '@/types/budget';
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { EditBudgetDialog } from './edit-budget-dialog';
-
-const pageProps = vi.hoisted(() => ({
-    current: { features: { cashflowAvailableFree: false } },
-}));
 
 vi.mock('@inertiajs/react', () => ({
     router: {
         patch: vi.fn(),
     },
-    usePage: () => ({ props: pageProps.current }),
 }));
 
 vi.mock('@/actions/App/Http/Controllers/BudgetController', () => ({
@@ -53,10 +48,6 @@ function renderDialog(budget: Budget = makeBudget()) {
 }
 
 describe('EditBudgetDialog', () => {
-    beforeEach(() => {
-        pageProps.current = { features: { cashflowAvailableFree: false } };
-    });
-
     it('explains locked budget period and carry-over fields', () => {
         renderDialog();
 
@@ -67,15 +58,7 @@ describe('EditBudgetDialog', () => {
         ).toBeInTheDocument();
     });
 
-    it('hides the expense type while cashflow is not available', () => {
-        renderDialog();
-
-        expect(screen.queryByLabelText('Expense Type')).not.toBeInTheDocument();
-    });
-
-    it('shows the budget expense type when cashflow is available', () => {
-        pageProps.current = { features: { cashflowAvailableFree: true } };
-
+    it('shows the budget expense type', () => {
         renderDialog();
 
         expect(screen.getByLabelText('Expense Type')).toHaveTextContent(
@@ -84,8 +67,6 @@ describe('EditBudgetDialog', () => {
     });
 
     it('does not offer an expense type for a catch-all budget', () => {
-        pageProps.current = { features: { cashflowAvailableFree: true } };
-
         renderDialog(makeBudget({ is_catch_all: true }));
 
         expect(screen.queryByLabelText('Expense Type')).not.toBeInTheDocument();

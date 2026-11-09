@@ -92,13 +92,12 @@ describe('SavedInvestedCard', () => {
         expect(screen.queryByTestId('comparison-trend-down')).toBeNull();
     });
 
-    it("shows each side's share of what was contributed when the split is on", () => {
+    it("shows each side's share of what was contributed", () => {
         render(
             <SavedInvestedCard
                 current={summary(200000, 120000, 80000, 40, 30000, 10000)}
                 previous={summary(0, 0, 0, 0, 0, 0)}
                 currency="EUR"
-                showContributionSplit
             />,
         );
 
@@ -109,19 +108,6 @@ describe('SavedInvestedCard', () => {
                 name: 'Contributed split: 75% saved, 25% invested',
             }),
         ).toBeTruthy();
-    });
-
-    it('leaves the split out when it is off', () => {
-        render(
-            <SavedInvestedCard
-                current={summary(200000, 120000, 80000, 40, 30000, 10000)}
-                previous={summary(0, 0, 0, 0, 0, 0)}
-                currency="EUR"
-            />,
-        );
-
-        expect(screen.queryByText('75%')).toBeNull();
-        expect(screen.queryByRole('img')).toBeNull();
     });
 
     it.each([
@@ -143,7 +129,6 @@ describe('SavedInvestedCard', () => {
                     )}
                     previous={summary(0, 0, 0, 0, 0, 0)}
                     currency="EUR"
-                    showContributionSplit
                 />,
             );
 

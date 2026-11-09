@@ -23,9 +23,8 @@ import {
     CASHFLOW_BLOCKS,
     cashflowBlockTransactionsUrl,
 } from '@/lib/cashflow-block';
-import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
-import { BreadcrumbItem, Features } from '@/types';
+import { BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
@@ -129,10 +128,8 @@ export default function CashflowPage() {
         auth,
         period: initialPeriod,
         periodType: initialPeriodType,
-        features,
     } = usePage<{
         auth: { user: { currency_code: string } };
-        features: Features;
         period: string | null;
         periodType: CashflowPeriodType;
     }>().props;
@@ -170,7 +167,6 @@ export default function CashflowPage() {
     // the banner explains why. Showing them would be answering a question about
     // someone's money with a number we do not have.
     const showPlaceholders = isLoading || hasError;
-    const showAvailable = features.cashflowAvailableFree;
     const [detailsOpen, setDetailsOpen] = useState(false);
     const locale = useLocale();
     const blockHrefs = useMemo(() => blockTransactionsHrefs(period), [period]);
@@ -219,12 +215,7 @@ export default function CashflowPage() {
                 )}
 
                 {/* Summary Cards */}
-                <div
-                    className={cn(
-                        'grid gap-6 md:grid-cols-2',
-                        showAvailable && 'xl:grid-cols-4',
-                    )}
-                >
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                     <NetCashflowCard
                         current={summary.current}
                         previous={summary.previous}
@@ -237,46 +228,39 @@ export default function CashflowPage() {
                         previous={summary.previous}
                         loading={showPlaceholders}
                         currency={auth.user.currency_code}
-                        showContributionSplit={showAvailable}
                     />
 
-                    {showAvailable && (
-                        <>
-                            <AvailableCard
-                                current={summary.current}
-                                previous={summary.previous}
-                                loading={showPlaceholders}
-                                currency={auth.user.currency_code}
-                            />
-                            <ExpensesCard
-                                current={summary.current}
-                                loading={showPlaceholders}
-                                currency={auth.user.currency_code}
-                                hrefs={blockHrefs}
-                                onViewDetails={() => setDetailsOpen(true)}
-                            />
-                        </>
-                    )}
-                </div>
-
-                {showAvailable && (
-                    <CashflowDetailsDrawer
-                        // Closed while the figures load or fail: it would
-                        // otherwise answer with the zeros in their place.
-                        open={detailsOpen && !showPlaceholders}
-                        onOpenChange={setDetailsOpen}
+                    <AvailableCard
                         current={summary.current}
                         previous={summary.previous}
+                        loading={showPlaceholders}
                         currency={auth.user.currency_code}
-                        periodType={periodType}
-                        hrefs={blockHrefs}
-                        periodLabel={formatPeriodLabel(
-                            currentDate,
-                            periodType,
-                            locale,
-                        )}
                     />
-                )}
+                    <ExpensesCard
+                        current={summary.current}
+                        loading={showPlaceholders}
+                        currency={auth.user.currency_code}
+                        hrefs={blockHrefs}
+                        onViewDetails={() => setDetailsOpen(true)}
+                    />
+                </div>
+
+                <CashflowDetailsDrawer
+                    // Closed while the figures load or fail: it would
+                    // otherwise answer with the zeros in their place.
+                    open={detailsOpen && !showPlaceholders}
+                    onOpenChange={setDetailsOpen}
+                    current={summary.current}
+                    previous={summary.previous}
+                    currency={auth.user.currency_code}
+                    periodType={periodType}
+                    hrefs={blockHrefs}
+                    periodLabel={formatPeriodLabel(
+                        currentDate,
+                        periodType,
+                        locale,
+                    )}
+                />
 
                 {/* Only a month lines up with a monthly goal's target. */}
                 {periodType === 'month' && (
@@ -311,9 +295,7 @@ export default function CashflowPage() {
                                 height={400}
                                 currency={auth.user.currency_code}
                                 period={period}
-                                centerLabel={
-                                    showAvailable ? __('Available') : undefined
-                                }
+                                centerLabel={__('Available')}
                             />
                         )}
                     </CardContent>
