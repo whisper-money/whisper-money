@@ -1,0 +1,5 @@
+/* The app's own stylesheet: tokens, dark theme and fonts, as the app ships them. */
+@import '../../resources/css/app.css';
+
+@source '../../resources/js';
+@source '.';

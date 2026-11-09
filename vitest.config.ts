@@ -8,7 +8,10 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         globals: true,
-        include: ['resources/js/**/*.test.{ts,tsx}'],
+        include: [
+            'resources/js/**/*.test.{ts,tsx}',
+            'videos/src/**/*.test.{ts,tsx}',
+        ],
         setupFiles: ['./vitest.setup.ts'],
     },
     resolve: {
