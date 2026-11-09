@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Support\PriceTiers;
+
 /**
- * `SUBSCRIPTION_LATAM_PRICING` and `SUBSCRIPTION_PRICE_TIER` are read once
- * while the config file is evaluated, so they are exercised by evaluating that
- * file again with the environment set.
+ * `SUBSCRIPTION_LATAM_PRICING` is read once while the config file is
+ * evaluated, so it is exercised by evaluating that file again with the
+ * environment set.
  *
  * @param  array<string, string|null>  $environment
  * @return array<string, mixed>
@@ -53,16 +55,13 @@ it('offers the latam price when the switch is on', function (string $value, bool
     'blank' => ['', false],
 ]);
 
-it('names the configured tier, never latam', function (?string $value, string $expected) {
-    $config = subscriptionsConfigWith(['SUBSCRIPTION_PRICE_TIER' => $value]);
+// The old `SUBSCRIPTION_PRICE_TIER` selector is gone: a value left behind in a
+// hosting panel must not move anybody off the high price.
+it('quotes the high price whatever the retired tier selector says', function () {
+    $config = subscriptionsConfigWith(['SUBSCRIPTION_PRICE_TIER' => 'low']);
 
-    expect($config['price_tier'])->toBe($expected)
-        ->and($config['plans']['monthly']['stripe_lookup_key'])->not->toContain('latam');
-})->with([
-    'absent' => [null, 'high'],
-    'low' => ['low', 'low'],
-    'a typo' => ['hgih', 'high'],
-    // The regional price is offered on top of the configured one, never
-    // switched to for everybody.
-    'latam' => ['latam', 'high'],
-]);
+    expect($config)->not->toHaveKey('price_tier')
+        ->and(array_column($config['plans'], 'stripe_lookup_key'))
+        ->toBe(array_column(PriceTiers::plansFor(PriceTiers::DEFAULT), 'stripe_lookup_key'))
+        ->and(array_column($config['plans'], 'price'))->toBe([8.99, 53.94]);
+});

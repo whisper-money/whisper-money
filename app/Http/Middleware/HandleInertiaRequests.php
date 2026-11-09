@@ -154,7 +154,7 @@ class HandleInertiaRequests extends Middleware
      * sees it: a signed-in user's tier was fixed at signup, so it is handed
      * down as is; an anonymous visitor is placed by the browser's timezone,
      * checked against the backend's own list so the rule exists once. Off,
-     * nothing is shared and every screen quotes the configured tier.
+     * nothing is shared and every screen quotes the default price.
      *
      * The latam plans leave out the bank-connection feature line, because
      * that is the one thing the price does not include.
