@@ -28,7 +28,7 @@ test('rejects an out-of-range percentage', function () {
 });
 
 test('rejects a feature that does not exist', function () {
-    $this->artisan('feature:enable', ['feature' => 'CalculateBalancesOnImport', 'target' => 'all'])
-        ->expectsOutputToContain("Feature 'CalculateBalancesOnImport' not found.")
+    $this->artisan('feature:enable', ['feature' => 'NoSuchFeature', 'target' => 'all'])
+        ->expectsOutputToContain("Feature 'NoSuchFeature' not found.")
         ->assertFailed();
 });
