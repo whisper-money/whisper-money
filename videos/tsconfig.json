@@ -1,0 +1,17 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "baseUrl": "..",
+        "resolveJsonModule": true,
+        "types": ["vitest/globals", "node"],
+        "paths": {
+            "@/*": ["./resources/js/*"]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "remotion.config.ts",
+        "../resources/js/**/*.d.ts"
+    ]
+}
