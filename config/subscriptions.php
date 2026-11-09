@@ -135,6 +135,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Second Offer
+    |--------------------------------------------------------------------------
+    |
+    | Whether a free user who met the paywall with nothing imported is offered
+    | Pro once more, in an in-app dialog, after their first transactions land
+    | (`User::isEligibleForSecondOffer()`). The paywall itself is unchanged:
+    | this only adds the one dialog afterwards. Off, which is the default,
+    | nobody sees it.
+    |
+    */
+
+    'second_offer' => filter_var(env('SUBSCRIPTION_SECOND_OFFER', false), FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    |--------------------------------------------------------------------------
     | Free Plan Escape Delay
     |--------------------------------------------------------------------------
     |

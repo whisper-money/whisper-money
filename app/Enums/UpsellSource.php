@@ -22,6 +22,7 @@ enum UpsellSource: string
     case OnboardingBank = 'onboarding_bank';
     case OnboardingBroker = 'onboarding_broker';
     case OnboardingAi = 'onboarding_ai';
+    case SecondOffer = 'second_offer';
 
     /**
      * Where a checkout started from this point sends the user once the plan is

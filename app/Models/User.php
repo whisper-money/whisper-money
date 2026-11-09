@@ -46,6 +46,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
  * @property ?Carbon $uncategorized_prompt_snoozed_until
+ * @property ?Carbon $second_offer_shown_at
  * @property int $achievements_count
  * @property int $visit_streak
  * @property int $longest_visit_streak
@@ -120,6 +121,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'onboarded_at' => 'datetime',
             'onboarding_answers' => 'array',
             'paywall_seen_at' => 'datetime',
+            'second_offer_shown_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
             'transactions_last_visited_at' => 'datetime',
@@ -148,6 +150,59 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function hasSeenPaywall(): bool
     {
         return $this->paywall_seen_at !== null;
+    }
+
+    /**
+     * Whether this user is offered Pro once more, now that their first
+     * transactions are in: the paywall reached them before they had imported
+     * anything, when the app had nothing of theirs to show, and they stayed on
+     * the free plan. Only someone who never paid, and only once.
+     *
+     * Read on every Inertia request, so the cheap checks run first and only a
+     * user still in the running pays for the single transactions query: there
+     * must be transactions now, and the earliest must postdate the paywall.
+     */
+    public function isEligibleForSecondOffer(): bool
+    {
+        if (! $this->mayStillGetSecondOffer()) {
+            return false;
+        }
+
+        $firstTransactionAt = $this->transactions()->min('created_at');
+
+        return $firstTransactionAt !== null
+            && Carbon::parse($firstTransactionAt)->greaterThan($this->paywall_seen_at);
+    }
+
+    /**
+     * The part of {@see isEligibleForSecondOffer()} that needs no query of its
+     * own: the flags, the offer not shown yet, the paywall seen, and a user
+     * who has never paid and can be sent to Stripe.
+     */
+    private function mayStillGetSecondOffer(): bool
+    {
+        if (! config('subscriptions.second_offer') || ! config('subscriptions.enabled')) {
+            return false;
+        }
+
+        if ($this->second_offer_shown_at !== null || $this->paywall_seen_at === null) {
+            return false;
+        }
+
+        return ! $this->hasProPlan()
+            && ! $this->hasCanceledSubscription()
+            && ! $this->cannotUseStripe();
+    }
+
+    /**
+     * Record that the second offer was put in front of the user, so it is
+     * never shown again (idempotent).
+     */
+    public function markSecondOfferShown(): void
+    {
+        if ($this->second_offer_shown_at === null) {
+            $this->forceFill(['second_offer_shown_at' => now()])->save();
+        }
     }
 
     /**

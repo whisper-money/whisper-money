@@ -572,7 +572,7 @@ test('checkout applies each plan its own trial days', function (string $planKey,
     'yearly' => ['yearly', 14],
 ]);
 
-test('checkout tags the subscription with a valid upsell source', function () {
+test('checkout tags the subscription with a valid upsell source', function (string $source) {
     config([
         'subscriptions.plans.monthly.trial_days' => 0,
         'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
@@ -584,7 +584,7 @@ test('checkout tags the subscription with a valid upsell source', function () {
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
     $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
-    $builder->shouldReceive('withMetadata')->once()->with(['upsell_source' => 'connections'])->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->with(['upsell_source' => $source])->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn($checkout);
 
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
@@ -598,8 +598,8 @@ test('checkout tags the subscription with a valid upsell source', function () {
     $this->withoutMiddleware(HandleInertiaRequests::class);
     $this->actingAs($user);
 
-    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => 'connections']))->assertRedirect();
-});
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => $source]))->assertRedirect();
+})->with(['connections', 'second_offer']);
 
 test('checkout ignores an unknown upsell source', function () {
     config([

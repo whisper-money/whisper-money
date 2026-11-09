@@ -3265,5 +3265,8 @@
     "Banks are available on the standard plan. Brokers, exchanges and Wise are included in yours.": "Les banques sont disponibles avec le forfait Standard. Les courtiers, les plateformes d'échange et Wise sont inclus dans le vôtre.",
     "This bank no longer syncs: bank connections are available on the standard plan.": "Cette banque ne se synchronise plus : les connexions bancaires sont disponibles avec le forfait Standard.",
     "Is your bank in Europe or the UK? See the standard plan": "Votre banque est en Europe ou au Royaume-Uni ? Voir le forfait Standard",
-    "Bank connections are available on the standard plan.": "Les connexions bancaires sont disponibles avec le forfait Standard."
+    "Bank connections are available on the standard plan.": "Les connexions bancaires sont disponibles avec le forfait Standard.",
+    "Your transactions are in": "Vos transactions sont arrivées",
+    "Let Pro categorize them with AI and sync your bank automatically, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et synchroniser votre banque automatiquement, pour que les nouvelles transactions arrivent toutes seules.",
+    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et garder vos intégrations directes synchronisées, pour que les nouvelles transactions arrivent toutes seules."
 }
