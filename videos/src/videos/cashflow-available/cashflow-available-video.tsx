@@ -194,10 +194,7 @@ function OverviewScene({ copy }: { copy: Copy }) {
                             <NetCashflowCard {...props} />
                         </Reveal>
                         <Reveal delay={4} className="grid">
-                            <SavedInvestedCard
-                                {...props}
-                                showContributionSplit
-                            />
+                            <SavedInvestedCard {...props} />
                         </Reveal>
                         <Reveal delay={8} className="grid">
                             <AvailableCard {...props} />
@@ -285,9 +282,7 @@ function scenesFor(locale: VideoLocale): Scene[] {
                             stagger: 6,
                         },
                     ]}
-                    render={(props) => (
-                        <SavedInvestedCard {...props} showContributionSplit />
-                    )}
+                    render={(props) => <SavedInvestedCard {...props} />}
                 />
             ),
         }),
