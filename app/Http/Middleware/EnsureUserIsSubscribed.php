@@ -24,7 +24,9 @@ class EnsureUserIsSubscribed
         }
 
         if ($user && ! $user->hasPaidFeaturesToGiveUp()) {
-            if (! $user->hasSeenPaywall()) {
+            // Without a single transaction there is nothing yet for the plan
+            // to do, so the paywall waits until the first ones land.
+            if (! $user->hasSeenPaywall() && ! $user->hasNothingToPayForYet()) {
                 return redirect()->route('subscribe');
             }
 

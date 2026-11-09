@@ -202,7 +202,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      */
     private function mayStillGetSecondOffer(): bool
     {
-        if (! config('subscriptions.second_offer') || ! config('subscriptions.enabled')) {
+        if (! self::asksToPayOnlyWithData()) {
             return false;
         }
 
@@ -213,6 +213,28 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return ! $this->hasProPlan()
             && ! $this->hasCanceledSubscription()
             && ! $this->cannotUseStripe();
+    }
+
+    /**
+     * Whether Pro is only asked for once the user has data of their own: the
+     * paywall and the onboarding AI gate wait for the first transactions, and
+     * a free user who met the paywall empty is offered Pro once more after
+     * importing. Both halves of `subscriptions.second_offer`, which only means
+     * anything while subscriptions are sold at all.
+     */
+    public static function asksToPayOnlyWithData(): bool
+    {
+        return config('subscriptions.second_offer') && config('subscriptions.enabled');
+    }
+
+    /**
+     * Whether the paywall should hold off for now: the user has no
+     * transactions, so no bank connected and nothing for the AI to sort —
+     * nothing the paid plan would do for them yet.
+     */
+    public function hasNothingToPayForYet(): bool
+    {
+        return self::asksToPayOnlyWithData() && ! $this->transactions()->exists();
     }
 
     /**

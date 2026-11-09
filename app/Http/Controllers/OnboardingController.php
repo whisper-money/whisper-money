@@ -115,6 +115,9 @@ class OnboardingController extends Controller
             // language: a third of `es-ES` signups live in America.
             'timezoneCountry' => TimezoneCountry::of($user->timezone),
             'gateCopyArm' => $this->gateCopyArm($user, $signupPlan),
+            // The AI gate is skipped for a user who imported nothing: there is
+            // nothing to sort, so nothing to pay for yet.
+            'asksToPayOnlyWithData' => User::asksToPayOnlyWithData(),
         ]);
     }
 

@@ -168,3 +168,33 @@ test('the app shell is not told to show the offer while the flag is off', functi
     actingAs($user)->withoutVite()->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page->where('showSecondOffer', false));
 });
+
+test('the paywall waits for a user with no transactions', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))->assertOk();
+
+    expect($user->fresh()->paywall_seen_at)->toBeNull();
+});
+
+test('the paywall greets a user once their first transactions are in', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveTransactionCreatedAt($user, now());
+
+    actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('the paywall greets a user with no transactions while the flag is off', function () {
+    config(['subscriptions.second_offer' => false]);
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+
+    actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('onboarding is told whether Pro waits for data', function (bool $enabled) {
+    config(['subscriptions.second_offer' => $enabled]);
+    $user = User::factory()->notOnboarded()->create();
+
+    actingAs($user)->withoutVite()->get(route('onboarding'))
+        ->assertInertia(fn (Assert $page) => $page->where('asksToPayOnlyWithData', $enabled));
+})->with(['on' => true, 'off' => false]);
