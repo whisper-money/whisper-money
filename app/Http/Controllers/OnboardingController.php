@@ -126,24 +126,14 @@ class OnboardingController extends Controller
      * {@see OnboardingGateCopy}). Only drawn for someone the gate can reach:
      * nothing is sold on a self-hosted instance, and a free-plan signup is
      * never offered a connection.
-     *
-     * The trial arms say "free for N days", which is only true while every
-     * plan starts with a trial. With `SUBSCRIPTION_PAY_NOW` on, nobody is in
-     * the experiment and everybody gets the plain gate.
      */
     private function gateCopyArm(User $user, ?SignupPlan $signupPlan): ?string
     {
-        if (! config('subscriptions.enabled') || $signupPlan === SignupPlan::Free || ! $this->everyPlanHasTrial()) {
+        if (! config('subscriptions.enabled') || $signupPlan === SignupPlan::Free) {
             return null;
         }
 
         return OnboardingGateCopy::armFor($user);
-    }
-
-    private function everyPlanHasTrial(): bool
-    {
-        return collect(config('subscriptions.plans', []))
-            ->every(fn (array $plan): bool => ($plan['trial_days'] ?? 0) > 0);
     }
 
     /**

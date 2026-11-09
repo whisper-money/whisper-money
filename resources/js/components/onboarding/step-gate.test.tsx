@@ -26,20 +26,11 @@ vi.mock('@/lib/posthog', () => ({
     unregisterProperty: mocks.unregisterProperty,
 }));
 
-/** The plans as they ship with `SUBSCRIPTION_PAY_NOW` off: 7 and 14 days. */
-const withTrial: PricingConfig = {
-    ...pricingFixture,
-    plans: {
-        monthly: { ...pricingFixture.plans.monthly, trial_days: 7 },
-        yearly: { ...pricingFixture.plans.yearly, trial_days: 14 },
-    },
-};
-
 function renderGate(
     arm: GateCopyArm | null,
     {
         kind = 'bank',
-        pricing = withTrial,
+        pricing = pricingFixture,
     }: { kind?: 'bank' | 'broker' | 'ai'; pricing?: PricingConfig } = {},
 ) {
     mocks.props.current = { pricing, gateCopyArm: arm };
@@ -126,7 +117,7 @@ describe('StepGate copy experiment', () => {
      */
     it('preselects the configured default with no arm', () => {
         renderGate(null, {
-            pricing: { ...withTrial, defaultPlan: 'monthly' },
+            pricing: { ...pricingFixture, defaultPlan: 'monthly' },
         });
 
         expect(checkoutHref()).toMatch(/[?&]plan=monthly/);
@@ -180,7 +171,7 @@ describe('StepGate copy experiment', () => {
 
     /**
      * No arm is what the server hands down once the experiment is switched
-     * off, or while the plans charge today. A browser tagged before stops
+     * off. A browser tagged before stops
      * reporting the arm it no longer sees.
      */
     it('draws the plain gate, unlabelled, when no arm is handed down', () => {

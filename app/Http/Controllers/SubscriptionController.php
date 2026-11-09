@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\CancelSubscriptionNow;
-use App\Actions\Subscription\RefundSelfServe;
 use App\Actions\Subscription\SwapLatamToStandard;
 use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
@@ -13,8 +12,6 @@ use App\Http\Requests\StoreFreePlanSurveyResponseRequest;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
-use App\Services\Discord\DiscordWebhook;
-use App\Services\Subscriptions\RefundWindow;
 use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
 use App\Support\PriceTiers;
@@ -36,9 +33,7 @@ class SubscriptionController extends Controller
     private const RETURN_SESSION_KEY = 'subscription.onboarding_return';
 
     public function __construct(
-        private RefundWindow $refundWindow,
         private SubscribedPlan $subscribedPlan,
-        private DiscordWebhook $discord,
         private StripePriceIds $priceIds,
         private SwapLatamToStandard $swapLatamToStandard,
     ) {}
@@ -406,7 +401,6 @@ class SubscriptionController extends Controller
         }
 
         $user = $request->user();
-        $canSelfRefund = $this->refundWindow->isOpenFor($user);
         $subscription = $user->subscription('default');
 
         return Inertia::render('settings/billing', [
@@ -420,12 +414,6 @@ class SubscriptionController extends Controller
                 // The standard price a latam subscriber can move up to, for the
                 // button that does it; null for everyone else.
                 'standardUpgrade' => $this->standardUpgradeFor($user, $subscription),
-            ],
-            'refund' => [
-                'canSelfRefund' => $canSelfRefund,
-                'deadline' => $canSelfRefund
-                    ? $this->refundWindow->deadlineFor($user->subscription('default'))->toIso8601String()
-                    : null,
             ],
         ]);
     }
@@ -470,56 +458,6 @@ class SubscriptionController extends Controller
 
         return redirect()->route('settings.billing')
             ->with('success', __('You are on the standard plan now. You can connect your banks.'));
-    }
-
-    public function refund(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-
-        if (! $this->refundWindow->isOpenFor($user)) {
-            return redirect()->route('settings.billing')
-                ->withErrors(['refund' => __('This subscription is no longer eligible for a self-service refund.')]);
-        }
-
-        try {
-            app(RefundSelfServe::class)->handle($user);
-        } catch (\Throwable $exception) {
-            $this->discord->send('', [$this->refundEmbed($user, success: false, detail: $exception->getMessage())]);
-
-            throw $exception;
-        }
-
-        $this->discord->send('', [$this->refundEmbed($user, success: true)]);
-
-        return redirect()->route('settings.billing')
-            ->with('status', __('Your payment was refunded, your subscription was canceled, and your bank connections were disconnected.'));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function refundEmbed(User $user, bool $success, ?string $detail = null): array
-    {
-        if (! $success) {
-            return [
-                'title' => '🔴 Self-service refund FAILED',
-                'description' => 'A self-service refund threw — the user may have been charged without a refund. Check Stripe and Sentry now.',
-                'color' => 0xED4245,
-                'fields' => [
-                    ['name' => 'User', 'value' => $user->email, 'inline' => false],
-                    ['name' => 'Error', 'value' => substr((string) $detail, 0, 1000), 'inline' => false],
-                ],
-            ];
-        }
-
-        return [
-            'title' => '💸 Self-service refund processed',
-            'description' => 'A user refunded within the money-back window — subscription canceled and bank connections disconnected.',
-            'color' => 0xFAA61A,
-            'fields' => [
-                ['name' => 'User', 'value' => $user->email, 'inline' => false],
-            ],
-        ];
     }
 
     /**

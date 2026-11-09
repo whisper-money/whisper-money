@@ -16,7 +16,7 @@ export const pricingFixture: PricingConfig = {
             original_price: null,
             stripe_lookup_key: 'monthly',
             billing_period: 'month',
-            trial_days: 0,
+            trial_days: 7,
             features: [],
         },
         yearly: {
@@ -25,7 +25,7 @@ export const pricingFixture: PricingConfig = {
             original_price: 107.88,
             stripe_lookup_key: 'yearly',
             billing_period: 'year',
-            trial_days: 0,
+            trial_days: 14,
             features: [],
         },
     },
@@ -33,5 +33,4 @@ export const pricingFixture: PricingConfig = {
     bestValuePlan: 'yearly',
     promo: { enabled: false, code: '', description: '', badge: '' },
     currency: 'EUR',
-    refundWindowDays: 3,
 };

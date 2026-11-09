@@ -299,8 +299,8 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->where('stripe_lookup_key', 'whisper_pro_monthly_high')
                 ->where('billing_period', 'month')
-                // What ships: `SUBSCRIPTION_PAY_NOW` is off by default, so the
-                // plans carry their trial and the checkout takes nothing today.
+                // What ships: every plan starts with a free trial, so the
+                // checkout takes nothing today.
                 ->where('trial_days', 7)
                 ->has('features')
             )

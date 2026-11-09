@@ -85,8 +85,8 @@ export function StepGate({
     const { gateCopyArm = null, pricing } = usePage<
         SharedData & { gateCopyArm?: GateCopyArm | null }
     >().props;
-    // The server hands down no arm where the experiment is off, pay-now
-    // included; the AI gate is never in it.
+    // The server hands down no arm where the experiment is off; the AI gate
+    // is never in it.
     const arm = isAi ? null : gateCopyArm;
     const trialPlan = arm ? TRIAL_ARM_PLAN[arm] : null;
     // Every event this screen sends names the arm, so the funnel splits by it

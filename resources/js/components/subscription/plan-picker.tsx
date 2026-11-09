@@ -228,14 +228,6 @@ export function planTerms(
 
     const total = formatCurrency(plan.price * 100, currency, locale);
 
-    if (plan.trial_days <= 0) {
-        // A plan with no billing period is bought once, so there is nothing to
-        // cancel and nothing to renew.
-        return plan.billing_period === null
-            ? __(':total charged today. Yours for good.', { total })
-            : __(':total charged today. Cancel any time.', { total });
-    }
-
     if (plan.billing_period === 'year') {
         return __(
             'Free for :days days, then :total a year. Cancel before then and you are not charged.',

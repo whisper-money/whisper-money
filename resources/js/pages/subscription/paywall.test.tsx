@@ -146,19 +146,19 @@ describe('Paywall', () => {
         expect(screen.getByText('€8.99 a month')).toBeInTheDocument();
     });
 
-    // The amount is on the button, so it is readable with the plan rows
+    // The trial is on the button, so it is readable with the plan rows
     // scrolled off or hidden behind the sticky footer.
-    it('names the amount on the button that charges it', () => {
+    it('names the trial on the button that starts it', () => {
         render(<Paywall />);
 
         expect(screen.getByTestId('start-plan')).toHaveTextContent(
-            'Start Standard — €53.94 today',
+            'Start Standard — free for 14 days',
         );
 
         fireEvent.click(screen.getByText('Monthly'));
 
         expect(screen.getByTestId('start-plan')).toHaveTextContent(
-            'Start Standard — €8.99 today',
+            'Start Standard — free for 7 days',
         );
     });
 
@@ -182,14 +182,6 @@ describe('Paywall', () => {
                 screen.getByText(
                     /Nothing is locked and nothing is about to be/,
                 ),
-            ).toBeInTheDocument();
-        });
-
-        it('promises the money back before it asks for any', () => {
-            render(<Paywall />);
-
-            expect(
-                screen.getByText('3 days to change your mind'),
             ).toBeInTheDocument();
         });
 

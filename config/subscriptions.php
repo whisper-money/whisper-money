@@ -18,41 +18,6 @@ use App\Support\PriceTiers;
 $tier = PriceTiers::plansFor(PriceTiers::DEFAULT);
 
 /*
-|--------------------------------------------------------------------------
-| Pay Now
-|--------------------------------------------------------------------------
-|
-| Whether the paid plan is charged in full at signup, for everybody. Off, which
-| is the default, the plans carry the trial they have always carried and the
-| checkout takes no money today. On, the trial is 0 on both plans, the charge
-| lands immediately and the way back out is the self-service refund window
-| declared below — the three days and the button that spends them.
-|
-| It is a switch on `trial_days` and nothing else, because `trial_days` is what
-| every other part reads: the checkout sends it to Stripe, and the checkout
-| screens say "charged today" or "free for N days" off the selected plan. One
-| value to flip, and no second source of truth to disagree with it.
-|
-| It is only the *default*: `STRIPE_PRO_*_TRIAL_DAYS` still wins where it is
-| set. There is deliberately no `subscriptions.pay_now` key to read — nothing
-| downstream asks what the environment is set to, it reads the trial that came
-| out of it. The refund button is the one thing that does not follow this
-| switch at all: it reads the subscription's own `trial_ends_at`, so someone
-| charged upfront keeps their window even after the trial is put back.
-|
-*/
-
-$payNow = filter_var(env('SUBSCRIPTION_PAY_NOW', false), FILTER_VALIDATE_BOOLEAN);
-
-/*
-| A trial of 0 is a real value, so `env()`'s own default cannot be used: it only
-| applies when the variable is absent, and `?:` would swallow the deliberate 0
-| as well. Present-but-blank counts as absent, the way clearing a value in a
-| hosting panel is meant to.
-*/
-$trialDays = static fn (string $key, int $default): int => is_numeric($raw = env($key)) ? (int) $raw : $default;
-
-/*
 | The plan preselected on every pricing surface, checked against the tier's own
 | plan keys (the same keys as `plans` below) further down. See "Default Plan".
 */
@@ -72,23 +37,6 @@ return [
     */
 
     'enabled' => env('SUBSCRIPTIONS_ENABLED', false),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Refund Window
-    |--------------------------------------------------------------------------
-    |
-    | How many days after subscribing the self-service refund stays available.
-    | It is the promise the pay-now screens make ("full refund within N days"),
-    | so the number shown and the number the button enforces are this one value.
-    |
-    | It applies to whoever was actually charged at signup — a subscription with
-    | no trial — rather than to whoever the plans would charge today, so turning
-    | the trial back on never retracts a window somebody is already inside.
-    |
-    */
-
-    'refund_window_days' => (int) env('SUBSCRIPTION_REFUND_WINDOW_DAYS', 3),
 
     /*
     |--------------------------------------------------------------------------
@@ -179,9 +127,9 @@ return [
     |
     | Supported billing_period values: 'month', 'year', null (for lifetime)
     |
-    | `trial_days` comes from the `SUBSCRIPTION_PAY_NOW` switch above: the trial
-    | the plans have always carried while it is off, 0 while it is on. Setting
-    | `STRIPE_PRO_*_TRIAL_DAYS` pins a plan's trial regardless of the switch.
+    | `trial_days` is the free trial every new subscription to the plan starts
+    | with: the checkout sends it to Stripe and the checkout screens quote it.
+    | The latam price inherits it (`PriceTiers::configuredPlansFor()`).
     |
     | `price`, `original_price` and `stripe_lookup_key` all come from the price
     | at the top and move as one unit — never hardcode one of them here, or the
@@ -202,7 +150,7 @@ return [
             'original_price' => $tier['monthly']['original_price'],
             'stripe_lookup_key' => $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
-            'trial_days' => $trialDays('STRIPE_PRO_MONTHLY_TRIAL_DAYS', $payNow ? 0 : 7),
+            'trial_days' => 7,
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',
@@ -221,7 +169,7 @@ return [
             'original_price' => $tier['yearly']['original_price'],
             'stripe_lookup_key' => $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
-            'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 14),
+            'trial_days' => 14,
             'features' => [
                 'Connect bank accounts',
                 'AI Suggestions',

@@ -17,7 +17,6 @@ import { billing } from '@/routes/settings';
 import {
     cancelUnpaid,
     portal,
-    refund as refundRoute,
     swapToStandard,
 } from '@/routes/settings/billing';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -164,83 +163,6 @@ function UpgradeSection({
                     </a>
                 </Button>
             </div>
-        </div>
-    );
-}
-
-interface RefundInfo {
-    canSelfRefund: boolean;
-    deadline: string | null;
-}
-
-function RefundCard({
-    deadline,
-    locale,
-}: {
-    deadline: string | null;
-    locale: string;
-}) {
-    const [confirming, setConfirming] = useState(false);
-    const [processing, setProcessing] = useState(false);
-
-    const deadlineLabel = deadline
-        ? new Date(deadline).toLocaleDateString(locale, {
-              day: 'numeric',
-              month: 'long',
-          })
-        : null;
-
-    const submit = () => {
-        setProcessing(true);
-        router.post(
-            refundRoute.url(),
-            {},
-            { onFinish: () => setProcessing(false) },
-        );
-    };
-
-    return (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
-            <h4 className="font-medium text-amber-900 dark:text-amber-200">
-                {__('Money-back guarantee')}
-            </h4>
-            <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-300/80">
-                {deadlineLabel
-                    ? __(
-                          'Changed your mind? Request a full refund until :date. This cancels your subscription and disconnects your bank accounts — the data you already imported is kept.',
-                          { date: deadlineLabel },
-                      )
-                    : __(
-                          'Changed your mind? Request a full refund. This cancels your subscription and disconnects your bank accounts — the data you already imported is kept.',
-                      )}
-            </p>
-
-            {confirming ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                        variant="destructive"
-                        disabled={processing}
-                        onClick={submit}
-                    >
-                        {__('Confirm refund')}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        disabled={processing}
-                        onClick={() => setConfirming(false)}
-                    >
-                        {__('Keep my plan')}
-                    </Button>
-                </div>
-            ) : (
-                <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => setConfirming(true)}
-                >
-                    {__('Request a refund')}
-                </Button>
-            )}
         </div>
     );
 }
@@ -531,7 +453,6 @@ function SubscribedSection({
     subscription,
     currency,
     locale,
-    refund,
 }: {
     isSharedAccount: boolean;
     /** The payment-failure alert above already links to the portal. */
@@ -540,7 +461,6 @@ function SubscribedSection({
     subscription?: SubscriptionInfo | null;
     currency: string;
     locale: string;
-    refund?: RefundInfo;
 }) {
     return (
         <div className="space-y-6">
@@ -590,10 +510,6 @@ function SubscribedSection({
                     currency={currency}
                     locale={locale}
                 />
-            )}
-
-            {refund?.canSelfRefund && (
-                <RefundCard deadline={refund.deadline} locale={locale} />
             )}
         </div>
     );
@@ -734,14 +650,12 @@ export default function Billing() {
         pricing,
         locale,
         hasAiConsent,
-        refund,
         subscription,
         hasUnpaidSubscription,
     } = usePage<
         SharedData & {
             hasAiConsent: boolean;
             hasUnpaidSubscription: boolean;
-            refund?: RefundInfo;
             subscription?: SubscriptionInfo | null;
         }
     >().props;
@@ -777,7 +691,6 @@ export default function Billing() {
                             subscription={subscription}
                             currency={pricing.currency}
                             locale={locale}
-                            refund={refund}
                         />
                     ) : showsPaymentFailure ? null : (
                         <UpgradeSection
