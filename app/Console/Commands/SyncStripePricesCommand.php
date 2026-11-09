@@ -62,9 +62,9 @@ class SyncStripePricesCommand extends Command
 
     /**
      * The configured plans, then the regional latam tier's: it is offered
-     * alongside the configured tier rather than instead of it, so its prices
-     * have to exist whatever `SUBSCRIPTION_PRICE_TIER` says. A latam plan whose
-     * key the configured plans already carry is not synced twice.
+     * alongside the default price rather than instead of it, so its prices
+     * have to exist too. A latam plan whose key the configured plans already
+     * carry is not synced twice.
      *
      * @return array<string, array<string, mixed>>
      */

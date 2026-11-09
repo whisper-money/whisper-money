@@ -162,9 +162,7 @@ test('returns success and warns when no plans are configured', function () {
         ->assertSuccessful();
 });
 
-test('creates the latam prices even though the configured tier is another one', function () {
-    config(['subscriptions.price_tier' => 'high']);
-
+test('creates the latam prices alongside the default ones', function () {
     $priceService = Mockery::mock(PriceService::class);
     $priceService->shouldReceive('all')->andReturnUsing(fn (array $params): Collection => match ($params['lookup_keys'][0]) {
         'whisper_pro_monthly' => makePriceCollection(makeStripePrice('price_monthly', 399, 'eur', 'month')),

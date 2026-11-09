@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Subscription;
 
 beforeEach(function () {
-    config(['subscriptions.enabled' => true, 'subscriptions.price_tier' => 'high']);
+    config(['subscriptions.enabled' => true]);
 
     // The price-to-lookup-key map Stripe would answer with, so nothing reaches it.
     Cache::put('stripe_lookup_keys_by_price_id', [
@@ -15,7 +15,6 @@ beforeEach(function () {
         'price_low_monthly' => 'whisper_pro_monthly',
         'price_latam_monthly' => 'whisper_pro_latam_monthly',
         'price_latam_yearly' => 'whisper_pro_latam_yearly',
-        'price_overridden' => 'whisper_pro_monthly_custom',
     ], now()->addDay());
 });
 
@@ -46,13 +45,6 @@ test('a subscription\'s tier is the one of the price it pays', function (string 
     'a price no tier declares' => ['price_unknown', null],
 ]);
 
-test('a lookup key overridden through the environment belongs to the configured tier', function () {
-    config(['subscriptions.plans.monthly.stripe_lookup_key' => 'whisper_pro_monthly_custom']);
-    $subscription = subscriptionPaying('price_overridden');
-
-    expect(app(SubscribedPlan::class)->tierFor($subscription->user, $subscription))->toBe('high');
-});
-
 test('a seeded subscription has no tier, and never reaches Stripe', function () {
     Cache::forget('stripe_lookup_keys_by_price_id');
     $subscription = subscriptionPaying('price_latam_monthly', 'sub_demo_1');
@@ -77,11 +69,11 @@ test('a user placed in latam at signup is offered the latam tier only while it i
     'latam pricing off' => [false, 'high'],
 ]);
 
-test('everyone else is offered the configured tier', function (?string $priceArm) {
-    config(['subscriptions.latam_pricing' => true, 'subscriptions.price_tier' => 'low']);
+test('everyone else is offered the high price', function (?string $priceArm) {
+    config(['subscriptions.latam_pricing' => true]);
     $user = User::factory()->create(['price_arm' => $priceArm]);
 
-    expect($user->offeredPriceTier())->toBe('low');
+    expect($user->offeredPriceTier())->toBe('high');
 })->with([
     'never placed' => [null],
     'an arm left over from the #980 experiment' => ['control'],
@@ -100,11 +92,8 @@ test('a latam user is offered the configured plans at the latam prices', functio
         ->and($plans['yearly']['trial_days'])->toBe(config('subscriptions.plans.yearly.trial_days'));
 });
 
-test('a user offered the configured tier gets the configured plans untouched', function () {
-    config([
-        'subscriptions.latam_pricing' => true,
-        'subscriptions.plans.monthly.stripe_lookup_key' => 'whisper_pro_monthly_custom',
-    ]);
+test('a user offered the high price gets the configured plans untouched', function () {
+    config(['subscriptions.latam_pricing' => true]);
     $user = User::factory()->create(['price_arm' => null]);
 
     expect($user->offeredPlans())->toBe(config('subscriptions.plans'));

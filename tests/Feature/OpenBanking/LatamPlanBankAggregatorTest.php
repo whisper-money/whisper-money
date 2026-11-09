@@ -19,7 +19,6 @@ use Inertia\Testing\AssertableInertia as Assert;
 beforeEach(function () {
     config([
         'subscriptions.enabled' => true,
-        'subscriptions.price_tier' => 'high',
         'subscriptions.latam_pricing' => true,
     ]);
 

@@ -51,16 +51,7 @@ class SubscribedPlan
     {
         $lookupKey = $this->lookupKeyFor($user, $subscription);
 
-        if ($lookupKey === null) {
-            return null;
-        }
-
-        // A key overridden through the environment is declared by no tier, and
-        // belongs to the configured one, the only tier whose keys can be.
-        $configuredKeys = array_column(config('subscriptions.plans', []), 'stripe_lookup_key');
-
-        return PriceTiers::tierOfLookupKey($lookupKey)
-            ?? (in_array($lookupKey, $configuredKeys, true) ? config('subscriptions.price_tier') : null);
+        return $lookupKey === null ? null : PriceTiers::tierOfLookupKey($lookupKey);
     }
 
     /**
@@ -108,15 +99,13 @@ class SubscribedPlan
     }
 
     /**
-     * The configured plans first, so a lookup key overridden through the
-     * environment is still recognised, then every tier's.
+     * Every tier's plans, the legacy ones included, so a subscription still
+     * paying a price that is no longer offered is recognised.
      *
      * @return iterable<string, array{price: float|int, stripe_lookup_key: string}>
      */
     private function candidatePlans(): iterable
     {
-        yield from config('subscriptions.plans');
-
         foreach (PriceTiers::names() as $tier) {
             yield from PriceTiers::plansFor($tier);
         }

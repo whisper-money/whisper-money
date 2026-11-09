@@ -4,27 +4,18 @@ use App\Support\PriceTiers;
 
 /*
 |--------------------------------------------------------------------------
-| Price Tier
+| Price
 |--------------------------------------------------------------------------
 |
-| Which of the pre-declared price tiers the app quotes and charges. `high` is
-| the current price; `low` is the pre-experiment one. The tier supplies the
-| displayed price, the struck-through price and the Stripe lookup key as one
-| unit, so what is shown is always what is charged (env-only, no deploy —
-| `php artisan config:clear` after changing it). An unknown value falls back
-| to `high`, and so does `latam`: that is the regional price offered on top
-| of this one (see "LATAM Pricing"), never a tier to switch everybody to. The
-| tiers themselves live in `App\Support\PriceTiers`.
+| The price the app quotes and charges everybody: the default tier of
+| `App\Support\PriceTiers`, which supplies the displayed price, the
+| struck-through price and the Stripe lookup key as one unit, so what is shown
+| is always what is charged. The regional `latam` price is offered on top of
+| it (see "LATAM Pricing").
 |
 */
 
-$tierName = PriceTiers::normalize(env('SUBSCRIPTION_PRICE_TIER', PriceTiers::DEFAULT));
-
-if ($tierName === PriceTiers::LATAM) {
-    $tierName = PriceTiers::DEFAULT;
-}
-
-$tier = PriceTiers::plansFor($tierName);
+$tier = PriceTiers::plansFor(PriceTiers::DEFAULT);
 
 /*
 |--------------------------------------------------------------------------
@@ -101,31 +92,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Price Tier Name
-    |--------------------------------------------------------------------------
-    |
-    | The name of the tier selected by `SUBSCRIPTION_PRICE_TIER` (see "Price
-    | Tier" at the top), already normalized, so code that needs to tell the
-    | configured tier from the regional one does not re-parse the environment.
-    |
-    */
-
-    'price_tier' => $tierName,
-
-    /*
-    |--------------------------------------------------------------------------
     | LATAM Pricing
     |--------------------------------------------------------------------------
     |
     | Whether the regional `latam` price (`App\Support\PriceTiers`) is offered
     | to users detected in Latin America (`App\Support\PricingRegion`). Off,
     | which is the default, nobody is assigned to it at signup and every
-    | pricing surface quotes the configured tier.
+    | pricing surface quotes the default price.
     |
     | It only governs *offering* the price. What a subscriber can use always
     | follows the Stripe price they actually pay, so turning this off never
     | changes anything for someone already subscribed at the latam price, and
-    | a user marked `latam` at signup is simply quoted the configured tier
+    | a user marked `latam` at signup is simply quoted the default price
     | again while it is off (env-only, no deploy — `php artisan config:clear`
     | after changing it).
     |
@@ -188,17 +166,9 @@ return [
     | the plans have always carried while it is off, 0 while it is on. Setting
     | `STRIPE_PRO_*_TRIAL_DAYS` pins a plan's trial regardless of the switch.
     |
-    | `price`, `original_price` and `stripe_lookup_key` all come from the tier
-    | selected above and move as one unit — never hardcode one of them here, or
-    | the price shown stops matching the price Stripe charges. Overriding
-    | `STRIPE_PRO_*_LOOKUP_KEY` breaks that welding too, so only do it for a key
-    | that genuinely differs per environment.
-    |
-    | Those overrides fall back with `?:`, not with `env()`'s default, because a
-    | variable that is present but blank yields '' rather than the default — and
-    | an empty lookup key makes checkout abort with "Invalid plan selected" for
-    | everyone. Blanking the value in a hosting panel is the ordinary way to
-    | clear an override, so it has to mean the same as removing the line.
+    | `price`, `original_price` and `stripe_lookup_key` all come from the price
+    | at the top and move as one unit — never hardcode one of them here, or the
+    | price shown stops matching the price Stripe charges.
     |
     | The default tier's lookup keys still carry the `_high` suffix they were
     | given as the price experiment's variant tier, which won and became the
@@ -213,7 +183,7 @@ return [
             'name' => 'Standard Monthly',
             'price' => $tier['monthly']['price'],
             'original_price' => $tier['monthly']['original_price'],
-            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY') ?: $tier['monthly']['stripe_lookup_key'],
+            'stripe_lookup_key' => $tier['monthly']['stripe_lookup_key'],
             'billing_period' => 'month',
             'trial_days' => $trialDays('STRIPE_PRO_MONTHLY_TRIAL_DAYS', $payNow ? 0 : 7),
             'features' => [
@@ -232,7 +202,7 @@ return [
             'name' => 'Standard Yearly',
             'price' => $tier['yearly']['price'],
             'original_price' => $tier['yearly']['original_price'],
-            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY') ?: $tier['yearly']['stripe_lookup_key'],
+            'stripe_lookup_key' => $tier['yearly']['stripe_lookup_key'],
             'billing_period' => 'year',
             'trial_days' => $trialDays('STRIPE_PRO_YEARLY_TRIAL_DAYS', $payNow ? 0 : 14),
             'features' => [

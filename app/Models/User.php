@@ -613,7 +613,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     /**
      * The price tier this user is quoted and may check out at: the regional
      * `latam` one while it is offered and they were placed in it at signup,
-     * the configured tier otherwise. Only what they are *offered* — what a
+     * the default one otherwise. Only what they are *offered* — what a
      * subscriber can use follows the price they pay (`SubscribedPlan::tierFor`).
      */
     public function offeredPriceTier(): string
@@ -622,7 +622,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return PriceTiers::LATAM;
         }
 
-        return config('subscriptions.price_tier');
+        return PriceTiers::DEFAULT;
     }
 
     /**
