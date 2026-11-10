@@ -43,7 +43,7 @@ class AnnualRenewalEmail extends DripMail
     {
         return [
             'renewsAtLocal' => $this->localRenewal(),
-            'amount' => Money::format($this->amountInCents, $this->currency),
+            'amount' => Money::formatIn($this->amountInCents, $this->currency, $this->user->formatLocale()),
             'recap' => app(YearInReview::class)->linesFor($this->user, $this->renewsAt->subYear()),
         ];
     }

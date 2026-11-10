@@ -4364,7 +4364,7 @@
     "Your annual plan renews soon, :name": "Tu plan anual se renueva pronto, :name",
     "Hi! It's Víctor and Álvaro, the founders of Whisper Money. A quick heads-up so nothing catches you by surprise: your annual plan renews on :date, and we'll charge :amount to your saved payment method.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Un aviso rápido para que nada te pille por sorpresa: tu plan anual se renueva el :date y cobraremos :amount en tu método de pago guardado.",
     "Your year with Whisper Money": "Tu año con Whisper Money",
-    "Here's what you've put together over the last twelve months:": "Esto es lo que has montado en los últimos doce meses:",
+    "Here's what you've built in Whisper Money so far:": "Esto es lo que has construido en Whisper Money hasta ahora:",
     "If you want to carry on, there is nothing to do. To change your plan, update your card or cancel, head to your billing settings before :date.": "Si quieres seguir, no tienes que hacer nada. Para cambiar de plan, actualizar la tarjeta o cancelar, entra en tus ajustes de facturación antes del :date.",
     "If something isn't working for you, reply to this email and tell us. We read every reply ourselves.": "Si algo no te está funcionando, responde a este email y cuéntanoslo. Leemos todas las respuestas nosotros mismos.",
     "{1}:count account tracked|[2,*]:count accounts tracked": "{1}:count cuenta controlada|[2,*]:count cuentas controladas",

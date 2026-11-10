@@ -6,7 +6,7 @@
 @if (count($recap) > 0)
 ## {{ __('Your year with Whisper Money') }}
 
-{{ __("Here's what you've put together over the last twelve months:") }}
+{{ __("Here's what you've built in Whisper Money so far:") }}
 
 @foreach ($recap as $line)
 - {{ $line }}

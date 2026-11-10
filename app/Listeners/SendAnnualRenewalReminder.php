@@ -69,9 +69,9 @@ class SendAnnualRenewalReminder
     private function buildJob(array $invoice): ?SendAnnualRenewalEmailJob
     {
         $amount = (int) ($invoice['amount_due'] ?? 0);
-        $renewsAt = $this->renewalTimestamp($invoice);
+        $renewsAt = $this->yearlyLine($invoice)['period']['start'] ?? null;
 
-        if ($amount <= 0 || $renewsAt === null || ! $this->billsYearly($invoice)) {
+        if ($amount <= 0 || ! is_int($renewsAt)) {
             return null;
         }
 
@@ -90,8 +90,9 @@ class SendAnnualRenewalReminder
      * theirs and still renews. The invoice does not say whether the
      * subscription is set to cancel at period end, so that is read from the
      * local copy Cashier keeps in step through its own webhooks: a scheduled
-     * cancellation shows there as an `ends_at`. A subscription still in its
-     * trial is left to the trial-ending email.
+     * cancellation shows there as an `ends_at`. Only an `active` one renews: a
+     * trial is left to the trial-ending email, and a past-due or unpaid one has
+     * a bigger problem than its renewal date.
      *
      * @param  array<string, mixed>  $invoice
      */
@@ -109,7 +110,7 @@ class SendAnnualRenewalReminder
         /** @var Subscription|null $subscription */
         $subscription = $user?->subscriptions()->where('stripe_id', $subscriptionId)->first();
 
-        if ($subscription === null || $subscription->ends_at !== null || $subscription->onTrial()) {
+        if ($subscription?->stripe_status !== 'active' || $subscription->ends_at !== null) {
             return null;
         }
 
@@ -117,39 +118,27 @@ class SendAnnualRenewalReminder
     }
 
     /**
+     * The line that renews a yearly price, whose period start is the renewal
+     * date. Picked out rather than taking the first line, since an upcoming
+     * invoice can also carry proration or one-off items that start today.
      * Older API versions put the price on each line; newer ones only send its
      * id, so the length of the billing period decides instead.
      *
      * @param  array<string, mixed>  $invoice
+     * @return array<string, mixed>|null
      */
-    private function billsYearly(array $invoice): bool
+    private function yearlyLine(array $invoice): ?array
     {
         foreach ($invoice['lines']['data'] ?? [] as $line) {
             $interval = $line['price']['recurring']['interval'] ?? $line['plan']['interval'] ?? null;
             $period = (int) ($line['period']['end'] ?? 0) - (int) ($line['period']['start'] ?? 0);
 
             if ($interval === 'year' || ($interval === null && $period >= self::MIN_YEARLY_PERIOD_SECONDS)) {
-                return true;
+                return $line;
             }
         }
 
-        return false;
-    }
-
-    /**
-     * When the new period starts, which is when the card is charged. The line
-     * period is exact; the invoice's own fields are the fallback.
-     *
-     * @param  array<string, mixed>  $invoice
-     */
-    private function renewalTimestamp(array $invoice): ?int
-    {
-        $timestamp = $invoice['lines']['data'][0]['period']['start']
-            ?? $invoice['next_payment_attempt']
-            ?? $invoice['period_end']
-            ?? null;
-
-        return is_int($timestamp) ? $timestamp : null;
+        return null;
     }
 
     /**

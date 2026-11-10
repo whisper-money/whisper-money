@@ -1,10 +1,13 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
 use App\Enums\DripEmailType;
 use App\Listeners\SendAnnualRenewalReminder;
 use App\Mail\Drip\AnnualRenewalEmail;
 use App\Models\Account;
 use App\Models\AutomationRule;
+use App\Models\BankingConnection;
+use App\Models\Budget;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Contracts\Bus\Dispatcher;
@@ -105,6 +108,28 @@ test('a yearly price on the line is recognised on older API versions', function 
     ]));
 
     Mail::assertQueued(AnnualRenewalEmail::class);
+});
+
+test('the renewal date comes from the yearly line, not a proration line listed first', function () {
+    annualSubscriber();
+
+    $payload = upcomingInvoicePayload();
+    array_unshift($payload['data']['object']['lines']['data'], [
+        'amount' => 150,
+        'period' => ['start' => now()->getTimestamp(), 'end' => now()->getTimestamp()],
+    ]);
+
+    handleUpcomingInvoice($payload);
+
+    Mail::assertQueued(AnnualRenewalEmail::class, fn (AnnualRenewalEmail $mail) => $mail->renewsAt->toDateString() === now()->addDays(14)->toDateString());
+});
+
+test('a past-due subscription sends nothing', function () {
+    annualSubscriber(['stripe_status' => 'past_due']);
+
+    handleUpcomingInvoice(upcomingInvoicePayload());
+
+    Mail::assertNothingQueued();
 });
 
 test('a monthly renewal sends nothing', function () {
@@ -251,9 +276,24 @@ test('the email states the date and amount and recaps the year without money amo
         ->and($body)->toContain('/settings/billing?');
 });
 
+test('the recap leaves out archived records and broken bank connections', function () {
+    $user = annualSubscriber();
+    Account::factory()->for($user)->create(['archived_at' => now()]);
+    Budget::factory()->for($user)->create(['archived_at' => now()]);
+    BankingConnection::factory()->for($user)->create(['status' => BankingConnectionStatus::Expired]);
+
+    handleUpcomingInvoice(upcomingInvoicePayload());
+
+    expect(Mail::queued(AnnualRenewalEmail::class)->first()->render())
+        ->not->toContain('account tracked')
+        ->not->toContain('budget')
+        ->not->toContain('syncing on its own')
+        ->not->toContain('Your year with Whisper Money');
+});
+
 test('the email is translated for a Spanish reader', function () {
     $user = annualSubscriber();
-    $user->forceFill(['locale' => 'es'])->save();
+    $user->forceFill(['locale' => 'es', 'format_locale' => 'es-ES'])->save();
     Account::factory()->count(2)->for($user)->create();
 
     handleUpcomingInvoice(upcomingInvoicePayload());
@@ -263,5 +303,6 @@ test('the email is translated for a Spanish reader', function () {
 
     expect($mail->render())
         ->toContain('Tu año con Whisper Money')
-        ->toContain('2 cuentas controladas');
+        ->toContain('2 cuentas controladas')
+        ->toContain('53,94');
 });
