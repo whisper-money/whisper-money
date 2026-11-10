@@ -4326,5 +4326,22 @@
     "Your Standard plan": "Tu plan Standard",
     "You're enjoying all the benefits of Standard": "Estás disfrutando de todas las ventajas de Standard",
     "That figure did not come out of nowhere, and Standard tells you where from: what moved it, what is going to repeat next month, and which budget is about to fall short.": "Esa cifra no sale de la nada, y con Standard te contamos de dónde: qué la ha movido, qué se va a repetir el mes que viene y qué presupuesto se te va a quedar corto.",
-    "See Standard": "Ver Standard"
+    "See Standard": "Ver Standard",
+    "Your transactions are in": "Tus transacciones ya están aquí",
+    "Let Pro categorize them with AI and sync your bank automatically, so new transactions arrive on their own.": "Deja que Pro las categorice con IA y sincronice tu banco automáticamente, para que las nuevas transacciones lleguen solas.",
+    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Deja que Pro las categorice con IA y mantenga tus integraciones directas sincronizadas, para que las nuevas transacciones lleguen solas.",
+    ":month · your estimate": ":month · tu estimación",
+    "Your basics come to :amount a month": "Lo básico te cuesta :amount al mes",
+    "You guessed :guess. The other :gap is the part nobody remembers — coffees, Amazon, the odd dinner. It shows up once your real movements are in.": "Calculaste :guess. Los otros :gap son lo que nadie recuerda: cafés, Amazon, alguna cena. Aparecen en cuanto entren tus movimientos reales.",
+    "That’s what you typed for last month. Your real movements will fill in the rest.": "Es lo que escribiste para el mes pasado. Tus movimientos reales completarán el resto.",
+    "Basics :amount of a :guess guess; :gap not found yet": "Lo básico, :amount de los :guess que calculaste; faltan :gap por encontrar",
+    "Basics :amount": "Lo básico :amount",
+    "Not found yet :gap": "Sin encontrar aún :gap",
+    "Saved as estimates. Bring last month in from your bank whenever you like and we swap them for the real thing.": "Guardados como estimaciones. Trae el mes pasado de tu banco cuando quieras y los cambiamos por los reales.",
+    "That’s the balance side. The spending side — where last month actually went — needs a month of movements.": "Ese es el lado del saldo. El lado del gasto —adónde fue de verdad el mes pasado— necesita un mes de movimientos.",
+    "Add last month in round figures": "Añadir el mes pasado en cifras redondas",
+    "Continue without it": "Continuar sin ello",
+    "You guessed": "Calculaste",
+    ":guess a month": ":guess al mes",
+    "Two minutes of round figures for :account and we can tell you how close you were.": "Dos minutos de cifras redondas para :account y te decimos cuánto te acercaste."
 }

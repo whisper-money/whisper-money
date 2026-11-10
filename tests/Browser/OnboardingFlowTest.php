@@ -88,10 +88,11 @@ it('allows continuing with existing accounts', function () {
         // Nothing to sync, so the syncing step hands straight over to the
         // reveal, which has no movements to reveal for this user.
         ->assertSee('You’re worth')
-        // The reveal's own button, which is just "Continue" for a reader with
-        // no month to read: the step after it depends on their plan, so what is
-        // asserted here is that the flow leaves the reveal at all.
-        ->click('Continue')
+        // The reveal's own way past, for a reader with no month to read and a
+        // hand-kept account to type one into: the step after it depends on
+        // their plan, so what is asserted here is that the flow leaves the
+        // reveal at all.
+        ->click('Continue without it')
         ->assertDontSee('You’re worth')
         ->assertNoJavascriptErrors();
 });
@@ -368,9 +369,11 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click("That's everything — continue");
 
     // The reveal: five movements in one month is under the bar, so this user
-    // gets the balances variant.
+    // gets the balances variant — with the offer to type last month in, since
+    // the account is kept by hand. Declining it carries on.
     $page->assertSee('You’re worth')
-        ->click('Continue');
+        ->assertSee('Add last month in round figures')
+        ->click('Continue without it');
 
     // AI Suggestions - the AI cannot be switched on without a plan, so this
     // user meets the gate rather than the consent prompt. Decline it and the

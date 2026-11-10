@@ -1,4 +1,5 @@
 import { StepButton } from '@/components/onboarding/step-button';
+import { StepImportQuickExpenses } from '@/components/onboarding/step-import-quick-expenses';
 import {
     StepList,
     StepRow,
@@ -6,6 +7,7 @@ import {
 } from '@/components/onboarding/step-list';
 import {
     StepCallout,
+    StepEmphasis,
     StepFilled,
     StepScreen,
 } from '@/components/onboarding/step-screen';
@@ -13,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLocale } from '@/hooks/use-locale';
 import { captureEvent } from '@/lib/posthog';
 import { reveal } from '@/routes/onboarding';
+import { type UUID } from '@/types/uuid';
 import {
     formatCurrency,
     getCurrencySymbol,
@@ -44,6 +47,10 @@ interface SpendingReveal {
     merchant_count: number;
     /** Merchants that charged the same amount three months running. */
     recurring_count: number;
+    /** Every outgoing of the month is a round figure the user typed in. */
+    is_estimate: boolean;
+    /** Those figures, biggest first. Only on an estimated month. */
+    estimates?: RevealMerchant[];
 }
 
 /** What the user is worth, for the user who brought no movements at all. */
@@ -57,6 +64,15 @@ interface AssetsReveal {
      * account they already have.
      */
     has_spending_accounts: boolean;
+    /**
+     * A hand-kept account last month can be typed into, so the reader whose
+     * movements gave us no month gets a second way to one.
+     */
+    quick_expenses_account: {
+        id: UUID;
+        name: string;
+        currency_code: string;
+    } | null;
     net_worth: number;
     accounts: {
         id: string;
@@ -94,6 +110,11 @@ export function StepReveal({
     onAddAccount,
 }: StepRevealProps) {
     const [data, setData] = useState<RevealData | null>(null);
+    // Typing last month in from the assets variant swaps the screen for the
+    // quick expenses one, and coming back asks for the reveal again: a month
+    // of estimates turns it into a spending one.
+    const [addingExpenses, setAddingExpenses] = useState(false);
+    const [reloads, setReloads] = useState(0);
     const onContinueRef = useRef(onContinue);
     onContinueRef.current = onContinue;
 
@@ -124,6 +145,8 @@ export function StepReveal({
                         data.variant === 'spending'
                             ? data.merchant_count
                             : null,
+                    is_estimate:
+                        data.variant === 'spending' && data.is_estimate,
                 });
             })
             .catch(() => {
@@ -138,23 +161,58 @@ export function StepReveal({
         return () => {
             cancelled = true;
         };
-    }, [spendingGuess]);
+    }, [spendingGuess, reloads]);
 
     if (data === null) {
         return <RevealSkeleton />;
     }
 
-    return data.variant === 'spending' ? (
-        <RevealSpending
+    if (data.variant === 'spending') {
+        return data.is_estimate ? (
+            <RevealEstimate
+                data={data}
+                spendingGuess={spendingGuess}
+                onContinue={onContinue}
+            />
+        ) : (
+            <RevealSpending
+                data={data}
+                spendingGuess={spendingGuess}
+                onContinue={onContinue}
+            />
+        );
+    }
+
+    const account = data.quick_expenses_account;
+
+    if (addingExpenses && account) {
+        return (
+            <StepImportQuickExpenses
+                accountId={account.id}
+                currencyCode={account.currency_code}
+                spendingGuess={spendingGuess}
+                onBack={() => setAddingExpenses(false)}
+                // Skipping here is the same answer as "Continue without it":
+                // sending them back to the screen that offered it would ask
+                // the question twice.
+                onSkip={onContinue}
+                onComplete={() => {
+                    setAddingExpenses(false);
+                    setData(null);
+                    setReloads((count) => count + 1);
+                }}
+                source="reveal"
+            />
+        );
+    }
+
+    return (
+        <RevealAssets
             data={data}
             spendingGuess={spendingGuess}
             onContinue={onContinue}
-        />
-    ) : (
-        <RevealAssets
-            data={data}
-            onContinue={onContinue}
             onAddAccount={onAddAccount}
+            onAddExpenses={() => setAddingExpenses(true)}
         />
     );
 }
@@ -382,13 +440,159 @@ function sectionLabel(data: SpendingReveal, locale: string): string {
 }
 
 /** The revealed month, named, for an import that is not last month's. */
-function monthName(month: string, locale: string): string {
+function monthName(month: string, locale: string, withYear = true): string {
     const [year, index] = month.split('-').map(Number);
 
     return new Intl.DateTimeFormat(locale, {
         month: 'long',
-        year: 'numeric',
+        ...(withYear ? { year: 'numeric' } : {}),
     }).format(new Date(year, index - 1, 1));
+}
+
+/**
+ * The spending variant for a month made only of the round figures the user
+ * typed in. It is their own answer read back, so the screen says so: the
+ * figure is their basics, and what sits between it and the guess is the small
+ * spending nobody types in — not a verdict on the guess.
+ */
+function RevealEstimate({
+    data,
+    spendingGuess,
+    onContinue,
+}: {
+    data: SpendingReveal;
+    spendingGuess?: number;
+    onContinue: () => void;
+}) {
+    const locale = useLocale();
+    const money = (amount: number) =>
+        formatCurrency(amount, data.currency_code, locale, 0, 0);
+    const estimates = data.estimates ?? [];
+    // What the basics leave of the guess, when they leave anything.
+    const shortfall =
+        spendingGuess !== undefined && data.spent < spendingGuess
+            ? { guess: spendingGuess, gap: spendingGuess - data.spent }
+            : null;
+
+    return (
+        <StepScreen
+            footer={<StepButton text={__('Continue')} onClick={onContinue} />}
+        >
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2.5">
+                    <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                        {__(':month · your estimate', {
+                            month: monthName(data.month, locale, false),
+                        })}
+                    </span>
+                    <h1 className="text-3xl leading-[1.14] font-semibold tracking-tight text-balance md:text-[2rem]">
+                        {__('Your basics come to :amount a month', {
+                            amount: money(data.spent),
+                        })}
+                    </h1>
+                    <p className="text-[15px] leading-relaxed text-pretty text-muted-foreground">
+                        {shortfall !== null ? (
+                            <StepEmphasis
+                                sentence={__(
+                                    'You guessed :guess. The other :gap is the part nobody remembers — coffees, Amazon, the odd dinner. It shows up once your real movements are in.',
+                                    { guess: money(shortfall.guess) },
+                                )}
+                                word={money(shortfall.gap)}
+                            />
+                        ) : (
+                            __(
+                                'That’s what you typed for last month. Your real movements will fill in the rest.',
+                            )
+                        )}
+                    </p>
+                </div>
+
+                {shortfall !== null && (
+                    <BasicsBar
+                        spent={data.spent}
+                        gap={shortfall.gap}
+                        money={money}
+                    />
+                )}
+
+                {estimates.length > 0 && (
+                    <StepList>
+                        {estimates.map((estimate, index) => (
+                            <div
+                                key={`${estimate.name}-${index}`}
+                                className="flex items-center justify-between gap-3.5 py-3"
+                            >
+                                <span className="truncate text-[15px] font-medium">
+                                    {estimate.name}
+                                </span>
+                                <span className="text-[15px] font-semibold tabular-nums">
+                                    {money(estimate.amount)}
+                                </span>
+                            </div>
+                        ))}
+                    </StepList>
+                )}
+
+                <StepCallout>
+                    {__(
+                        'Saved as estimates. Bring last month in from your bank whenever you like and we swap them for the real thing.',
+                    )}
+                </StepCallout>
+            </div>
+        </StepScreen>
+    );
+}
+
+/**
+ * The basics against the guess, as one bar: the part the user typed in solid,
+ * the part nothing accounts for yet hatched.
+ */
+function BasicsBar({
+    spent,
+    gap,
+    money,
+}: {
+    spent: number;
+    gap: number;
+    money: (amount: number) => string;
+}) {
+    const share = (spent / (spent + gap)) * 100;
+
+    return (
+        <figure className="flex flex-col gap-2.5">
+            <div
+                role="img"
+                aria-label={__(
+                    'Basics :amount of a :guess guess; :gap not found yet',
+                    {
+                        amount: money(spent),
+                        guess: money(spent + gap),
+                        gap: money(gap),
+                    },
+                )}
+                className="flex h-10 overflow-hidden rounded-lg border"
+            >
+                <div className="bg-foreground" style={{ width: `${share}%` }} />
+                <div
+                    className="flex-1 bg-muted"
+                    style={{
+                        backgroundImage:
+                            'repeating-linear-gradient(135deg, transparent 0 6px, var(--border) 6px 8px)',
+                    }}
+                />
+            </div>
+            <figcaption className="flex justify-between gap-3 text-[13px] tabular-nums">
+                <span className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-xs bg-foreground" />
+                    {__('Basics :amount', { amount: money(spent) })}
+                </span>
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="size-2.5 rounded-xs border border-muted-foreground/50 bg-muted" />
+                    {__('Not found yet :gap', { gap: money(gap) })}
+                </span>
+            </figcaption>
+        </figure>
+    );
 }
 
 /**
@@ -404,15 +608,29 @@ function monthName(month: string, locale: string): string {
  */
 function RevealAssets({
     data,
+    spendingGuess,
     onContinue,
     onAddAccount,
+    onAddExpenses,
 }: {
     data: AssetsReveal;
+    spendingGuess?: number;
     onContinue: () => void;
     onAddAccount: () => void;
+    /** Type last month in, for the reader with a hand-kept account to put it in. */
+    onAddExpenses: () => void;
 }) {
     const locale = useLocale();
     const awaitingMovements = data.has_spending_accounts;
+    // The second chance: a month typed in by hand lands the spending reveal
+    // this reader came for. Only where there is an account to type it into.
+    const offerAccount = awaitingMovements ? data.quick_expenses_account : null;
+    // The guess is in the user's currency; typed into an account in another
+    // one, the screen behind the offer cannot set the two side by side.
+    const guess =
+        offerAccount?.currency_code === data.currency_code
+            ? spendingGuess
+            : undefined;
 
     return (
         <StepScreen
@@ -426,16 +644,32 @@ function RevealAssets({
                 ),
             })}
             description={
-                awaitingMovements
+                offerAccount
                     ? __(
-                          'Not enough has left these accounts yet to read a month back to you. That number is still one most people have never seen in one place.',
+                          'That’s the balance side. The spending side — where last month actually went — needs a month of movements.',
                       )
-                    : __(
-                          'No movements to read here — these accounts move as single numbers. That number is still one most people have never seen in one place.',
-                      )
+                    : awaitingMovements
+                      ? __(
+                            'Not enough has left these accounts yet to read a month back to you. That number is still one most people have never seen in one place.',
+                        )
+                      : __(
+                            'No movements to read here — these accounts move as single numbers. That number is still one most people have never seen in one place.',
+                        )
             }
             footer={
-                awaitingMovements ? (
+                offerAccount ? (
+                    <>
+                        <StepButton
+                            text={__('Add last month in round figures')}
+                            onClick={onAddExpenses}
+                        />
+                        <StepButton
+                            text={__('Continue without it')}
+                            variant="ghost"
+                            onClick={onContinue}
+                        />
+                    </>
+                ) : awaitingMovements ? (
                     <StepButton text={__('Continue')} onClick={onContinue} />
                 ) : (
                     <>
@@ -478,15 +712,43 @@ function RevealAssets({
                     ))}
                 </StepList>
 
-                <StepCallout>
-                    {awaitingMovements
-                        ? __(
-                              'Once a month of movements is in, this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
-                          )
-                        : __(
-                              'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
-                          )}
-                </StepCallout>
+                {offerAccount && guess !== undefined ? (
+                    <div className="flex flex-col gap-3 rounded-lg border p-4.5">
+                        <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                            {__('You guessed')}
+                        </span>
+                        <span className="text-[28px] leading-none font-semibold tracking-tight tabular-nums">
+                            <StepFilled
+                                sentence={__(':guess a month')}
+                                values={{
+                                    guess: formatCurrency(
+                                        guess,
+                                        data.currency_code,
+                                        locale,
+                                        0,
+                                        0,
+                                    ),
+                                }}
+                            />
+                        </span>
+                        <span className="text-sm leading-normal text-pretty text-muted-foreground">
+                            {__(
+                                'Two minutes of round figures for :account and we can tell you how close you were.',
+                                { account: offerAccount.name },
+                            )}
+                        </span>
+                    </div>
+                ) : (
+                    <StepCallout>
+                        {awaitingMovements
+                            ? __(
+                                  'Once a month of movements is in, this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                              )
+                            : __(
+                                  'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                              )}
+                    </StepCallout>
+                )}
             </div>
         </StepScreen>
     );
