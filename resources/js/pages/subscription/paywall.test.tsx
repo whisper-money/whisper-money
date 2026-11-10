@@ -360,10 +360,10 @@ describe('Paywall', () => {
                 ),
             ).toBeInTheDocument();
             expect(
-                screen.getByText(
+                screen.getAllByText(
                     'We’ll email you 3 days before the first charge. Cancel anytime from Settings.',
                 ),
-            ).toBeInTheDocument();
+            ).toHaveLength(1);
         });
 
         it('promises no trial when the plan has none', () => {
@@ -525,9 +525,10 @@ describe('Paywall', () => {
             expect(
                 screen.queryByText('Your data is never sold or shared.'),
             ).not.toBeInTheDocument();
+            // One reminder, under the button, as #1285 placed it.
             expect(
-                screen.queryByText(/We’ll email you 3 days before/),
-            ).not.toBeInTheDocument();
+                screen.getAllByText(/We’ll email you 3 days before/),
+            ).toHaveLength(1);
             expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
                 gate: 'former-subscriber',
                 price_tier: 'standard',
