@@ -2,13 +2,14 @@
 
 namespace App\Services\Subscriptions;
 
+use App\Actions\Subscription\PauseSubscription;
 use App\Enums\CancellationOffer;
 use App\Enums\CancellationReason;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Support\PriceTiers;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
-use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Subscription as StripeSubscription;
 
@@ -27,6 +28,9 @@ class CancellationOffers
 {
     private const MONTHS_PER_YEAR = 12;
 
+    /** The pause lengths offered, in months; the flow picks the first. */
+    public const PAUSE_MONTHS = [1, 2, 3];
+
     /** How many months one invoice of each billing period covers. */
     private const MONTHS_PER_INVOICE = ['month' => 1, 'year' => self::MONTHS_PER_YEAR];
 
@@ -37,8 +41,8 @@ class CancellationOffers
 
     /**
      * The subscription the cancel flow works on: the user's own `default` one,
-     * running (trial or paid), not already set to cancel, not waiting on a
-     * payment, and real — a seeded subscription never reaches Stripe.
+     * running (trial, paid or paused), not already set to cancel, not waiting
+     * on a payment, and real — a seeded subscription never reaches Stripe.
      */
     public function cancellableSubscription(User $user): ?Subscription
     {
@@ -64,6 +68,13 @@ class CancellationOffers
      */
     public function offersFor(User $user, Subscription $subscription, CancellationReason $reason): array
     {
+        // With a pause set, Stripe voids every invoice until it ends: the
+        // yearly switch would hand out a free year, and a discount would be
+        // spent on voided months. Nothing to offer but the cancellation.
+        if ($subscription->hasPause()) {
+            return [];
+        }
+
         $offers = match ($reason) {
             CancellationReason::TooExpensive => [
                 $this->retentionCoupon($user, $subscription),
@@ -72,10 +83,9 @@ class CancellationOffers
             CancellationReason::MissingFeature => [['offer' => CancellationOffer::Roadmap]],
             CancellationReason::BankConnectionProblems,
             CancellationReason::TooComplex => [['offer' => CancellationOffer::Support]],
-            // The slot for the pause offer, once pausing exists. Until then
-            // there is none: the free plan cannot be offered to someone still
-            // paying, and the confirm step already tells them their data stays.
-            CancellationReason::NotUsingEnough => [],
+            // No fallback after it: the free plan cannot be offered to someone
+            // still paying, and the confirm step already says their data stays.
+            CancellationReason::NotUsingEnough => [$this->pause($user, $subscription)],
             // Not something an offer answers: straight on to the confirmation.
             default => [],
         };
@@ -123,6 +133,64 @@ class CancellationOffers
             'months' => $months,
             'savedAmount' => round($plan['price'] * $percentOff / 100 * $invoices, 2),
         ];
+    }
+
+    /**
+     * A pause of a few months, starting when the period already paid for
+     * ends, with the day each length would resume on and the price it
+     * resumes at. Null when `pauseStartsAt()` says there is none to offer.
+     *
+     * @return array{offer: CancellationOffer, startsAt: string, price: float, options: list<array{months: int, resumesAt: string}>}|null
+     */
+    public function pause(User $user, Subscription $subscription): ?array
+    {
+        $startsAt = $this->pauseStartsAt($user, $subscription);
+        $plan = $this->subscribedPlan->for($user, $subscription);
+
+        if ($startsAt === null || $plan === null) {
+            return null;
+        }
+
+        return [
+            'offer' => CancellationOffer::Pause,
+            'startsAt' => $startsAt->toIso8601String(),
+            'price' => (float) $plan['price'],
+            'options' => array_map(fn (int $months): array => [
+                'months' => $months,
+                'resumesAt' => PauseSubscription::resumesAt($startsAt, $months)->toIso8601String(),
+            ], self::PAUSE_MONTHS),
+        ];
+    }
+
+    /**
+     * When a pause would start: the end of the period the user has paid for.
+     * Null when there is nothing to pause:
+     *
+     * - a trial has paid for nothing yet (cancelling it already costs nothing);
+     * - a yearly plan would skip a whole year's invoice for a pause of months,
+     *   because a voided renewal is not billed again until the next one;
+     * - a pause is already set, here or in Stripe;
+     * - Stripe cannot tell us the period end, or the plan is unknown.
+     */
+    public function pauseStartsAt(User $user, Subscription $subscription): ?CarbonInterface
+    {
+        if (
+            $subscription->onTrial()
+            || $subscription->hasPause()
+            || ($this->subscribedPlan->for($user, $subscription)['billing_period'] ?? null) !== 'month'
+        ) {
+            return null;
+        }
+
+        $stripeSubscription = $this->stripeSubscription($subscription);
+
+        if ($stripeSubscription === null || ! empty($stripeSubscription->pause_collection)) {
+            return null;
+        }
+
+        $startsAt = $this->nextChargeAt($subscription);
+
+        return $startsAt !== null && $startsAt->isFuture() ? $startsAt : null;
     }
 
     /**
@@ -175,11 +243,16 @@ class CancellationOffers
 
     /**
      * The day the plan would stop if cancelled now: the trial end for a trial,
-     * the end of the paid period otherwise. Null when Stripe cannot say, and
+     * today inside a pause, the end of the paid period otherwise. Null when Stripe cannot say, and
      * the flow then talks about "the end of your billing period" instead.
      */
     public function endsAt(Subscription $subscription): ?string
     {
+        // Inside a pause the plan is off already, and cancelling ends it today.
+        if ($subscription->isPaused()) {
+            return now()->toIso8601String();
+        }
+
         return $this->nextChargeAt($subscription)?->toIso8601String();
     }
 

@@ -22,6 +22,9 @@ class ChooseFreePlanRequest extends FormRequest
         return config('subscriptions.enabled')
             && $user !== null
             && ! $user->hasProPlan()
+            // Paused is not free: going down would disconnect the banks the
+            // pause promised to keep.
+            && ! $user->hasPausedSubscription()
             && $user->canEscapeToFreePlan();
     }
 

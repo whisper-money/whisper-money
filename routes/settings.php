@@ -20,6 +20,7 @@ use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SubscriptionCancellationController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SubscriptionPauseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -143,6 +144,9 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/billing/resume', [SubscriptionController::class, 'resume'])
         ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
         ->name('settings.billing.resume');
+    Route::post('settings/billing/pause/resume', [SubscriptionPauseController::class, 'resume'])
+        ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
+        ->name('settings.billing.pause.resume');
     Route::post('settings/billing/swap-to-standard', [SubscriptionController::class, 'swapToStandard'])
         ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
         ->name('settings.billing.swap-to-standard');
@@ -159,6 +163,9 @@ Route::middleware('auth')->group(function () {
             Route::post('{cancellationSurveyResponse}/switch-to-yearly', [SubscriptionCancellationController::class, 'switchToYearly'])
                 ->whereUuid('cancellationSurveyResponse')
                 ->name('switch-to-yearly');
+            Route::post('{cancellationSurveyResponse}/pause', [SubscriptionCancellationController::class, 'pause'])
+                ->whereUuid('cancellationSurveyResponse')
+                ->name('pause');
             Route::post('{cancellationSurveyResponse}/cancel', [SubscriptionCancellationController::class, 'cancel'])
                 ->whereUuid('cancellationSurveyResponse')
                 ->name('cancel');

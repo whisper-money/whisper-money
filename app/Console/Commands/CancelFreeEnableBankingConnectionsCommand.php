@@ -48,7 +48,9 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
                     return;
                 }
 
-                if ($user->hasProPlan()) {
+                // A paused plan is not the free plan: the pause promised the
+                // banks would still be there when it ends.
+                if ($user->hasProPlan() || $user->hasPausedSubscription()) {
                     $skipped += $userConnections->count();
 
                     return;

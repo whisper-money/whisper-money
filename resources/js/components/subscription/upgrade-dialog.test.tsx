@@ -7,11 +7,16 @@ const mocks = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     defaultPlan: { current: 'yearly' },
     latam: { current: false },
+    pausedSubscription: {
+        current: null as { resumesAt: string | null } | null,
+    },
+    visit: vi.fn(),
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
 
 vi.mock('@inertiajs/react', () => ({
+    router: { visit: mocks.visit },
     usePage: () => ({
         props: {
             pricing: {
@@ -36,7 +41,10 @@ vi.mock('@inertiajs/react', () => ({
                       }
                     : {}),
             },
-            auth: { user: { id: 'user-1' } },
+            auth: {
+                user: { id: 'user-1' },
+                pausedSubscription: mocks.pausedSubscription.current,
+            },
             locale: 'en',
         },
     }),
@@ -55,6 +63,24 @@ describe('UpgradeDialog', () => {
         vi.clearAllMocks();
         mocks.defaultPlan.current = 'yearly';
         mocks.latam.current = false;
+        mocks.pausedSubscription.current = null;
+    });
+
+    it('sends a paused user to resume rather than selling the plan again', () => {
+        mocks.pausedSubscription.current = {
+            resumesAt: '2026-12-25T09:00:00+00:00',
+        };
+        renderDialog('ai_categorization');
+
+        expect(screen.getByText('Your plan is paused')).toBeInTheDocument();
+        expect(
+            screen.getByText(/Standard comes back on Dec 25, 2026/),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(CTA)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('See my plan'));
+
+        expect(mocks.visit).toHaveBeenCalledWith('/settings/billing');
     });
 
     it.each([

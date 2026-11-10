@@ -9,6 +9,12 @@ export interface Auth {
     user: User;
     hasProPlan: boolean;
     /**
+     * Set inside a pause, when the plan is off without being for sale: the
+     * upsells point at resuming instead. `resumesAt` is null only for a pause
+     * with no end.
+     */
+    pausedSubscription: { resumesAt: string | null } | null;
+    /**
      * A paying user whose plan (latam) leaves the bank aggregator out. Banks
      * show locked behind the standard plan; direct integrations stay open.
      * False for free users, who meet the regular paywall instead.

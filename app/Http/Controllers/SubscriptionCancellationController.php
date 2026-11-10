@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Actions\Subscription\ApplyRetentionCoupon;
 use App\Actions\Subscription\CancelAtPeriodEnd;
+use App\Actions\Subscription\PauseSubscription;
 use App\Actions\Subscription\SwitchToYearly;
 use App\Enums\CancellationOffer;
 use App\Http\Requests\ContinueCancellationFlowRequest;
+use App\Http\Requests\PauseSubscriptionRequest;
 use App\Http\Requests\StoreCancellationSurveyResponseRequest;
 use App\Models\CancellationSurveyResponse;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Subscriptions\CancellationOffers;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +22,6 @@ use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Laravel\Cashier\Exceptions\InvalidCoupon;
-use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
@@ -65,6 +68,8 @@ class SubscriptionCancellationController extends Controller
             'offers' => $offers,
             'endsAt' => $this->offers->endsAt($subscription),
             'onTrial' => $subscription->onTrial(),
+            // Inside a pause the cancellation ends the plan today.
+            'paused' => $subscription->isPaused(),
         ], 201);
     }
 
@@ -140,6 +145,40 @@ class SubscriptionCancellationController extends Controller
     }
 
     /**
+     * Pause for a few months instead of cancelling. The plan stays on until
+     * the paid period ends, then nothing is charged and there is no plan
+     * until the pause ends.
+     */
+    public function pause(PauseSubscriptionRequest $request, PauseSubscription $pauseSubscription): SymfonyResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->takeStep($request, function (CancellationSurveyResponse $response, Subscription $subscription) use ($user, $request, $pauseSubscription): SymfonyResponse {
+            $startsAt = $this->offers->pauseStartsAt($user, $subscription);
+
+            if ($startsAt === null) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
+
+            try {
+                $pauseSubscription->handle($subscription, $startsAt, $request->months());
+            } catch (ApiErrorException $exception) {
+                report($exception);
+
+                return $this->backToBilling(error: __('We could not update your plan. Please try again in a few minutes.'));
+            }
+
+            $response->markSaved(CancellationOffer::Pause);
+
+            return $this->backToBilling(success: __('Done: Standard stays on until :start, then pauses until :end.', [
+                'start' => $this->localDate($user, $startsAt),
+                'end' => $this->localDate($user, $subscription->pause_resumes_at),
+            ]));
+        });
+    }
+
+    /**
      * Confirm: cancel at the end of the period, never right away. The billing
      * page then shows the scheduled cancellation and the way to take it back.
      */
@@ -194,6 +233,14 @@ class SubscriptionCancellationController extends Controller
         } finally {
             $lock->release();
         }
+    }
+
+    private function localDate(User $user, CarbonInterface $date): string
+    {
+        return $date->toImmutable()
+            ->setTimezone($user->localTimezone())
+            ->locale(app()->getLocale())
+            ->isoFormat('LL');
     }
 
     private function backToBilling(?string $error = null, ?string $success = null): RedirectResponse

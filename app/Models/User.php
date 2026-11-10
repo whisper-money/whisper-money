@@ -35,7 +35,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Cashier\Cashier;
-use Laravel\Cashier\Subscription;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
 use Stripe\Subscription as StripeSubscription;
@@ -675,13 +674,48 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->mailLogs()->where('email_type', $type)->exists();
     }
 
+    /**
+     * Whether the plan is on right now. Every Pro check goes through here
+     * (the `subscribed` middleware, `canUseFeature()`, the shared props), so
+     * a paused subscription, which Stripe and Cashier keep `active`, is taken
+     * out here and nowhere else.
+     */
     public function hasProPlan(): bool
     {
         if (! config('subscriptions.enabled')) {
             return true;
         }
 
-        return $this->subscribed('default');
+        return $this->subscribed('default') && ! $this->hasPausedSubscription();
+    }
+
+    /**
+     * The `default` subscription while it is inside its paused window: no
+     * plan, no charge, everything the user put in kept. Null otherwise,
+     * including a pause still to come, which leaves the plan on until the
+     * paid period ends.
+     */
+    public function pausedSubscription(): ?Subscription
+    {
+        if (! config('subscriptions.enabled')) {
+            return null;
+        }
+
+        $subscription = $this->subscription('default');
+
+        return $subscription instanceof Subscription && $subscription->valid() && $subscription->isPaused()
+            ? $subscription
+            : null;
+    }
+
+    /**
+     * Whether the user paused their plan and is inside the pause. They are not
+     * on the free plan: their banks stay connected (only the syncing stops)
+     * and they are never offered the way down to it.
+     */
+    public function hasPausedSubscription(): bool
+    {
+        return $this->pausedSubscription() !== null;
     }
 
     /**

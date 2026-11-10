@@ -1,6 +1,10 @@
 import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
 import { CancelSubscriptionFlow } from '@/components/subscription/cancel-subscription-flow';
+import {
+    PausedPlanNotice,
+    type SubscriptionPause,
+} from '@/components/subscription/paused-plan-notice';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { checkoutHref } from '@/components/subscription/subscription-offer';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
@@ -190,6 +194,8 @@ interface SubscriptionInfo {
      * to cancel nor waiting on a payment.
      */
     canCancel: boolean;
+    /** A pause running or still to come; null when none is set. */
+    pause: SubscriptionPause | null;
 }
 
 function standardUpgradeTerms(
@@ -630,6 +636,14 @@ function SubscribedSection({
                     />
                 )}
 
+            {subscription?.pause && !isSharedAccount && (
+                <PausedPlanNotice
+                    pause={subscription.pause}
+                    currency={currency}
+                    locale={locale}
+                />
+            )}
+
             <BenefitsGrid />
 
             <div className="rounded-lg border bg-card p-5">
@@ -665,6 +679,65 @@ function SubscribedSection({
                     currency={currency}
                     locale={locale}
                 />
+            )}
+        </div>
+    );
+}
+
+/**
+ * Inside a pause there is no plan, but nothing to sell either: the pause, the
+ * way out of it, and the portal and the cancel flow as for any subscriber.
+ */
+function PausedSection({
+    isSharedAccount,
+    subscription,
+    pause,
+    currency,
+    locale,
+}: {
+    isSharedAccount: boolean;
+    subscription: SubscriptionInfo;
+    pause: SubscriptionPause;
+    currency: string;
+    locale: string;
+}) {
+    return (
+        <div className="space-y-6">
+            <HeadingSmall
+                title={__('Your Standard plan')}
+                description={__('Your plan is paused')}
+            />
+
+            {isSharedAccount ? (
+                <Alert>
+                    <InfoIcon className="h-4 w-4" />
+                    <AlertDescription>
+                        {__(
+                            'Billing management is not available on this shared account.',
+                        )}
+                    </AlertDescription>
+                </Alert>
+            ) : (
+                <>
+                    <PausedPlanNotice
+                        pause={pause}
+                        currency={currency}
+                        locale={locale}
+                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                        <ManageSubscriptionButton
+                            source="manage"
+                            variant="outline"
+                        />
+                        {subscription.canCancel && (
+                            <CancelSubscriptionButton
+                                onTrial={subscription.onTrial}
+                                currency={currency}
+                                locale={locale}
+                            />
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );
@@ -819,6 +892,11 @@ export default function Billing() {
     const defaultPlan = pricing.plans[pricing.defaultPlan];
     const [showAiUpgrade, setShowAiUpgrade] = useState(false);
     const showsPaymentFailure = hasUnpaidSubscription && !isSharedAccount;
+    // Inside a pause the plan is off, yet there is nothing to sell.
+    const pausedSubscription =
+        subscription?.pause?.active === true
+            ? { ...subscription, pause: subscription.pause }
+            : null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -838,7 +916,15 @@ export default function Billing() {
 
                     {showsPaymentFailure && <UnpaidSubscriptionSection />}
 
-                    {hasProPlan ? (
+                    {pausedSubscription ? (
+                        <PausedSection
+                            isSharedAccount={isSharedAccount}
+                            subscription={pausedSubscription}
+                            pause={pausedSubscription.pause}
+                            currency={pricing.currency}
+                            locale={locale}
+                        />
+                    ) : hasProPlan ? (
                         <SubscribedSection
                             isSharedAccount={isSharedAccount}
                             showsPaymentFailure={showsPaymentFailure}
