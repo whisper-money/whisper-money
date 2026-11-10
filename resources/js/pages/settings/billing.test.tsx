@@ -683,7 +683,7 @@ describe('Billing – a paused plan', () => {
             ),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/Resuming now charges €8\.99 a month today/),
+            screen.getByText(/Resuming now charges €8\.99 today/),
         ).toBeInTheDocument();
         expect(screen.getByTestId('resume-paused-plan')).toHaveTextContent(
             'Resume now',

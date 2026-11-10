@@ -136,13 +136,14 @@ export function resumeNowTerms(
         return null;
     }
 
-    const price = resumePrice(pause, currency, locale);
-
-    if (!price) {
+    if (!pause.plan) {
         return __(
             "Resuming now charges your plan's price today, and your plan renews on this day from then on.",
         );
     }
+
+    // The amount alone: what is charged today is one charge, not a rate.
+    const price = formatCurrency(pause.plan.price * 100, currency, locale);
 
     return __(
         'Resuming now charges :price today, and your plan renews on this day from then on.',

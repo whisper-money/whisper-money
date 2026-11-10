@@ -50,7 +50,7 @@ describe('Paused', () => {
             screen.getByText('Your plan is paused until Dec 25, 2026'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/Resuming now charges €8\.99 a month today/),
+            screen.getByText(/Resuming now charges €8\.99 today/),
         ).toBeInTheDocument();
         expect(screen.queryByText(/free for/)).not.toBeInTheDocument();
         expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
