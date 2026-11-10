@@ -42,7 +42,8 @@ the numbers too:
       [#1272](https://github.com/whisper-money/whisper-money/pull/1272): latam
       price tier and region detection (2026-11-07).
     - [#1275](https://github.com/whisper-money/whisper-money/pull/1275): ask for
-      Pro only once the user has data, behind a flag (2026-11-09).
+      Pro only once the user has data, behind a flag (2026-11-09). Estimates count
+      as data, so it changes what an estimate-only user sees after onboarding.
     - [#1276](https://github.com/whisper-money/whisper-money/pull/1276): the high
       price is the price, the tier switch is gone (2026-11-09).
     - [#1279](https://github.com/whisper-money/whisper-money/pull/1279): no pay-now
@@ -135,9 +136,11 @@ Baseline **11%**. Target **≥ 20%**.
   reached the import screen and fired `onboarding_import_completed`. Baseline
   **20%**. The footer now offers a way out of uploading a file; it must not
   take users who had one.
-- **Week-4 activity of starters.** Users with `last_active_at ≥ created_at + 21
-days`, from the production database. An estimate that lands the reveal but
-  leaves an empty app is worth nothing.
+- **Week-4 activity of starters.** Users with `last_active_at ≥ created_at + 21 days`,
+  from the production database, cross-checked with a `$pageview` in days 21–28
+  in PostHog. An estimate that lands the reveal but leaves an empty app is worth
+  nothing. The pricing changes listed above land on the same users, so read this
+  guardrail as "no clear drop", not as a precise delta.
 - **Estimates followed by real movements.** Share of estimate-only users who
   import real movements within 30 days: any transaction that does not carry the
   estimate label. The label is the one `App\Services\Transactions\EstimateTransactions`
@@ -152,14 +155,25 @@ All PostHog queries are HogQL: paste them in _SQL_ (or `execute-sql` in the
 MCP). Replace every `{deploy_at}` with the annotation date and every `{window}`
 with the cohort length in days (35 by default, see [When to run](#when-to-run)).
 
-They compare two exclusive cohorts of **starters**, people whose first
-onboarding event is a `promise` view:
+They compare two exclusive cohorts of **starters**: people who viewed the
+`promise` step, dated by their first `onboarding_step_viewed` (the same
+definition as the baseline):
 
 - `before`: started in `[deploy_at − window, deploy_at)`
 - `after`: started in `[deploy_at, deploy_at + window)`
 
 Events are scanned from 30 days before the `before` window, so someone who
-started earlier and comes back is not counted as a new starter.
+started earlier and comes back is not counted as a new starter. The PostHog
+project runs in UTC, like the app, so `{deploy_at}` means the same instant in
+both systems.
+
+The `starters` CTE is repeated in every query on purpose, so each block pastes
+on its own. If you change the cohort definition, change it in all of them.
+
+`is_estimate` and `source` come with the redesign. Before the first read,
+confirm in PostHog (_Data management → Properties_) that they are captured
+under those names: a renamed property fails silently here, every reveal would
+read as `real` and every source as empty.
 
 ### Starters and funnel by device
 
@@ -212,8 +226,11 @@ Drop `device` from the `SELECT` and the `GROUP BY` for the totals.
 ### Primary: spending reveal, split by `is_estimate`
 
 A person counts as `estimate_only` when every spending reveal they saw was an
-estimate, and as `real` when at least one was not. `is_estimate` does not exist
-before the deploy, so every `before` reveal reads as `real`.
+estimate, and as `real` when at least one was not. Only reveals within 7 days of
+the person's start count, so both cohorts get the same follow-up whenever the
+query runs. `is_estimate` does not exist before the deploy, so every `before`
+reveal reads as `real`, including the ones from the first quick-expenses version
+(#1267): the `before` split is a mixed cohort.
 
 ```sql
 WITH starters AS (
@@ -232,12 +249,13 @@ WITH starters AS (
 reveals AS (
     SELECT
         person_id,
-        countIf(toString(properties.variant) = 'spending') > 0 AS spending,
-        countIf(
+        minIf(timestamp, toString(properties.variant) = 'spending') AS first_spending,
+        minIf(
+            timestamp,
             toString(properties.variant) = 'spending'
-            AND coalesce(toString(properties.is_estimate), 'false') != 'true'
-        ) > 0 AS spending_real,
-        countIf(toString(properties.variant) = 'assets') > 0 AS assets
+                AND coalesce(toString(properties.is_estimate), 'false') != 'true'
+        ) AS first_spending_real,
+        minIf(timestamp, toString(properties.variant) = 'assets') AS first_assets
     FROM events
     WHERE event = 'onboarding_reveal_shown'
         AND timestamp >= toDateTime('{deploy_at}') - toIntervalDay({window})
@@ -246,25 +264,34 @@ reveals AS (
 SELECT
     s.period AS period,
     count() AS started,
-    countIf(r.spending) AS spending_reveal,
+    -- within 7 days of the start; a person with no such event reads 1970 and fails it
+    countIf(r.first_spending BETWEEN s.first_seen AND s.first_seen + toIntervalDay(7)) AS spending_reveal,
     round(100 * spending_reveal / started, 1) AS spending_reveal_pct,
-    countIf(r.spending AND r.spending_real) AS spending_real,
-    countIf(r.spending AND NOT r.spending_real) AS spending_estimate_only,
-    countIf(r.assets) AS assets_reveal
+    countIf(r.first_spending_real BETWEEN s.first_seen AND s.first_seen + toIntervalDay(7)) AS spending_real,
+    spending_reveal - spending_real AS spending_estimate_only,
+    countIf(r.first_assets BETWEEN s.first_seen AND s.first_seen + toIntervalDay(7)) AS assets_reveal
 FROM starters AS s
 LEFT JOIN reveals AS r ON r.person_id = s.person_id
 GROUP BY period
 ORDER BY period DESC
 ```
 
-`spending_reveal_pct` is the primary metric.
+`spending_reveal_pct` is the primary metric. `spending_reveal` and `assets_reveal`
+can overlap: a person who used the second chance on the assets reveal (D) is in
+both.
+
+For the significance check of the decision rule, a two-proportion z-test on
+`spending_reveal / started` of both rows is enough; any online calculator does
+it. Report the 95% confidence interval of `after − before`.
 
 ### Secondary: quick expenses by source
 
 Each person is attributed to the `source` of the last `opened` before their
 first submit (or of their last `opened` if they never submitted). `opened`
-counts people who opened or submitted the form. A null `source` is an open from
-before the deploy, when the event had no `source`.
+counts people who opened or submitted the form. An empty or null `source` is
+either an open from before the deploy, when the event had no `source`, or a
+submit with no `opened` before it; after the deploy it should be rare, so report
+its size if it is not.
 
 ```sql
 WITH starters AS (
@@ -321,12 +348,22 @@ ORDER BY period DESC, opened DESC
 ### Guardrails in the production database
 
 Run them with `php artisan agent:db --prod` (see the `querying-the-database`
-skill). The database has no onboarding events, so these cohorts are users by
-`created_at` rather than by first `promise` view; they are the same people within
-a few minutes. Replace `{deploy_at}` and `{window}` as above.
+skill). The database has no onboarding events, so these cohorts are every
+signup by `created_at`, not starters: they include people who never reached
+`promise` (the baseline had 1023 signups for 830 starters). Compare the rows by
+segment, and don't put the database numbers in the same denominator as the
+PostHog ones. Replace `{deploy_at}` and `{window}` as above.
 
 **Week-4 activity**, by period and by what the user ended up with. A user is
-active in week 4 when `last_active_at ≥ created_at + 21 days`.
+active in week 4 when `last_active_at ≥ created_at + 21 days`. The query also
+returns activity after day 7, the definition the 10% baseline uses, so the
+decision rule compares like with like.
+
+`last_active_at` only keeps the latest visit, so a `before` user, who is older
+when you run this, has had longer to come back. The query drops users younger
+than 28 days, but it cannot equalise follow-up. Use the PostHog query after this
+one, which counts a visit in days 21–28 only, for the overall verdict, and this
+one for the split by segment.
 
 ```sql
 SELECT
@@ -348,25 +385,71 @@ SELECT
         ELSE 'no transactions'
     END AS segment,
     COUNT(*) AS users,
+    ROUND(100 * SUM(u.last_active_at >= u.created_at + INTERVAL 7 DAY) / COUNT(*), 1) AS active_after_day_7_pct,
     SUM(u.last_active_at >= u.created_at + INTERVAL 21 DAY) AS active_week_4,
     ROUND(100 * SUM(u.last_active_at >= u.created_at + INTERVAL 21 DAY) / COUNT(*), 1) AS active_week_4_pct
 FROM users u
 WHERE u.created_at >= '{deploy_at}' - INTERVAL {window} DAY
     AND u.created_at < '{deploy_at}' + INTERVAL {window} DAY
-GROUP BY period, segment
+    -- only users who have had the chance to be active in week 4
+    AND u.created_at < NOW() - INTERVAL 28 DAY
+GROUP BY period, segment WITH ROLLUP
 ORDER BY period DESC, segment
 ```
 
-The segment is read today, so a user who typed estimates and later imported a
-file shows up as `real transactions`. That is the point of the next query.
+The rows with a null `segment` are the totals per period. The segment is read
+today, so a user who typed estimates and later imported a file shows up as
+`real transactions`. That is the point of the last query.
+
+**Week-4 activity in PostHog** (HogQL), with the same follow-up for both
+cohorts: starters with a `$pageview` between day 21 and day 28 after their start.
+
+```sql
+WITH starters AS (
+    SELECT
+        person_id,
+        min(timestamp) AS first_seen,
+        if(first_seen < toDateTime('{deploy_at}'), 'before', 'after') AS period
+    FROM events
+    WHERE event = 'onboarding_step_viewed'
+        AND timestamp >= toDateTime('{deploy_at}') - toIntervalDay({window} + 30)
+    GROUP BY person_id
+    HAVING countIf(properties.step = 'promise') > 0
+        AND first_seen >= toDateTime('{deploy_at}') - toIntervalDay({window})
+        AND first_seen < toDateTime('{deploy_at}') + toIntervalDay({window})
+        -- only starters whose week 4 is over
+        AND first_seen < now() - toIntervalDay(28)
+),
+visits AS (
+    SELECT person_id, groupArray(timestamp) AS seen_at
+    FROM events
+    WHERE event = '$pageview'
+        AND timestamp >= toDateTime('{deploy_at}') - toIntervalDay({window} - 21)
+        AND person_id IN (SELECT person_id FROM starters)
+    GROUP BY person_id
+)
+SELECT
+    s.period AS period,
+    count() AS started,
+    countIf(arrayExists(
+        t -> t >= s.first_seen + toIntervalDay(21) AND t < s.first_seen + toIntervalDay(28),
+        v.seen_at
+    )) AS active_week_4,
+    round(100 * active_week_4 / started, 1) AS active_week_4_pct
+FROM starters AS s
+LEFT JOIN visits AS v ON v.person_id = s.person_id
+GROUP BY period
+ORDER BY period DESC
+```
 
 **Estimates followed by real movements within 30 days.** Users of the `after`
-cohort who have an estimate, and how many added a transaction without the
-estimate label within 30 days of signing up.
+cohort who finished onboarding with estimates and nothing real, and how many
+added a transaction without the estimate label within 30 days of signing up.
+Users younger than 30 days are left out.
 
 ```sql
 SELECT
-    COUNT(*) AS users_with_estimates,
+    COUNT(*) AS estimate_only_users,
     SUM(EXISTS (
         SELECT 1 FROM transactions t
         WHERE t.user_id = u.id AND t.deleted_at IS NULL
@@ -380,11 +463,25 @@ SELECT
 FROM users u
 WHERE u.created_at >= '{deploy_at}'
     AND u.created_at < '{deploy_at}' + INTERVAL {window} DAY
+    AND u.created_at < NOW() - INTERVAL 30 DAY
+    AND u.onboarded_at IS NOT NULL
+    -- estimates at the end of onboarding
     AND EXISTS (
         SELECT 1 FROM transactions t
         JOIN label_transaction lt ON lt.transaction_id = t.id
         JOIN labels l ON l.id = lt.label_id
-        WHERE t.user_id = u.id AND l.source = 'estimate'
+        WHERE t.user_id = u.id AND t.deleted_at IS NULL AND l.source = 'estimate'
+            AND t.created_at <= u.onboarded_at
+    )
+    -- and nothing real yet
+    AND NOT EXISTS (
+        SELECT 1 FROM transactions t
+        WHERE t.user_id = u.id AND t.created_at <= u.onboarded_at
+            AND NOT EXISTS (
+                SELECT 1 FROM label_transaction lt
+                JOIN labels l ON l.id = lt.label_id
+                WHERE lt.transaction_id = t.id AND l.source = 'estimate'
+            )
     )
 ```
 
@@ -405,7 +502,9 @@ About 470 people start onboarding a month. Detecting a move from 11% to 20% at
 - **Full 35-day comparison: deploy + 6 weeks**, with `{window} = 35`.
 - **Retention guardrail: deploy + 9 weeks** (5 weeks of cohort plus 4 of
   follow-up), with `{window} = 35`. Week-4 activity needs every user of the
-  cohort to be at least 28 days old.
+  cohort to be at least 28 days old; the queries drop the ones who are not.
+- **Estimates followed by real movements: deploy + 10 weeks**, so the last users
+  of the cohort have had their 30 days. Read earlier, the query leaves them out.
 
 Use exclusive cohorts with full follow-up. Never count an immature cohort as
 churned: a user who signed up 10 days ago has not had the chance to be active in
@@ -416,12 +515,20 @@ read the whole window.
 
 ## Decision rule
 
-- **Keep** when the primary metric reaches **≥ 20%** and the guardrails hold:
-  desktop file-import completion does not drop below the `before` cohort's, and
-  week-4 activity of the `after` starters is not below the `before` starters'.
-- **Investigate** when the primary moves but week-4 activity of estimate-only
-  users is **≤ 10%**, the baseline of users onboarded without transactions: the
-  reveal is landing, but estimates are not turning into use.
+- **Keep** when the primary metric reaches **≥ 20%**, the lift over `before` is
+  significant (the 95% interval of `after − before` excludes zero) and the
+  guardrails hold: desktop file-import completion does not clearly drop below
+  the `before` cohort's, and week-4 activity of the `after` starters is not
+  clearly below the `before` starters'. A retention delta inside the noise is a
+  pass.
+- **Investigate** when the primary moves but the activity of estimate-only users
+  is **≤ 10%**, the baseline of users onboarded without transactions. Compare
+  like with like: that 10% is activity after day 7, so read
+  `active_after_day_7_pct` of the `estimates only` row. The reveal is landing,
+  but estimates are not turning into use.
+- **Judgement call** when the lift is significant but short of 20% (say 14–19%):
+  the path works, less than hoped. Keep it if the guardrails hold, and look at
+  the quick-expenses-by-source split for the weakest entry point.
 - **Revisit** when the primary does not move: the path is there, but users are
   not taking it. Look at the quick-expenses-by-source split for which entry
   point fails.
@@ -435,23 +542,25 @@ next to the numbers.
 
 **Deploy marker**: `{deploy_at}` = … · **Read on**: … · **`{window}`**: …
 
-| Metric                                          | Baseline             | Before | After | Δ   | Verdict |
-| ----------------------------------------------- | -------------------- | ------ | ----- | --- | ------- |
-| Starters (desktop / mobile / tablet)            | 830 (457 / 362 / 11) |        |       |     |         |
-| **Spending reveal / starters** (primary)        | 11%                  |        |       |     |         |
-| — real                                          | 11%                  |        |       |     |         |
-| — estimate-only                                 | —                    |        |       |     |         |
-| Quick expenses submitted / starters — `upload`  | —                    |        |       |     |         |
-| Quick expenses submitted / starters — `default` | —                    |        |       |     |         |
-| Quick expenses submitted / starters — `reveal`  | —                    |        |       |     |         |
-| Onboarding completion                           | 49%                  |        |       |     |         |
-| Desktop file-import completion (guardrail)      | 20%                  |        |       |     |         |
-| Week-4 activity, all starters (guardrail)       | —                    |        |       |     |         |
-| Week-4 activity, estimate-only (guardrail)      | 10%¹                 |        |       |     |         |
-| Estimate-only → real movements in 30 days       | —                    | —      |       |     |         |
+| Metric                                              | Baseline             | Before | After | Δ (95% CI) | Verdict |
+| --------------------------------------------------- | -------------------- | ------ | ----- | ---------- | ------- |
+| Starters (desktop / mobile / tablet)                | 830 (457 / 362 / 11) |        |       |            |         |
+| **Spending reveal / starters** (primary)            | 11%                  |        |       |            |         |
+| — real                                              | 11%                  |        |       |            |         |
+| — estimate-only                                     | —                    |        |       |            |         |
+| Quick expenses submitted / starters — `upload`      | —                    |        |       |            |         |
+| Quick expenses submitted / starters — `default`     | —                    |        |       |            |         |
+| Quick expenses submitted / starters — `reveal`      | —                    |        |       |            |         |
+| Quick expenses submitted / starters — no source     | —                    |        |       |            |         |
+| Onboarding completion                               | 49%                  |        |       |            |         |
+| Desktop file-import completion (guardrail)          | 20%                  |        |       |            |         |
+| Week-4 activity, all starters — PostHog (guardrail) | —                    |        |       |            |         |
+| Week-4 activity by segment — database               | —                    |        |       |            |         |
+| Active after day 7, estimate-only (guardrail)       | 10%¹                 | —      |       |            |         |
+| Estimate-only → real movements in 30 days           | —                    | —      |       |            |         |
 
 ¹ Users onboarded without transactions, active after day 7 — the closest
-baseline there is.
+baseline there is, measured the same way.
 
 **Confounders seen during the windows**: …
 
