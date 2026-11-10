@@ -353,7 +353,7 @@ function ReasonStep({
     return (
         <>
             <DialogHeader>
-                <DialogTitle>{title}</DialogTitle>
+                <DialogTitle className="pr-6">{title}</DialogTitle>
                 <DialogDescription>
                     {__(
                         "Why are you cancelling? One answer is enough, and it won't stop you from cancelling.",
@@ -434,7 +434,7 @@ function ConfirmStep({
     return (
         <>
             <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="pr-6">
                     {date
                         ? __('Your plan stays on until :date', { date })
                         : __(

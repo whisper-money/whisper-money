@@ -206,7 +206,7 @@ function OfferCard({
                 <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                     <Icon className="size-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <DialogTitle>{title}</DialogTitle>
+                <DialogTitle className="pr-6">{title}</DialogTitle>
                 <DialogDescription>{body}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
