@@ -64,12 +64,15 @@ export interface Features {
     fullImportSettings: boolean;
 }
 
-export interface ExpiredBankingConnectionNotification {
+/** A bank connection that stopped syncing until the user reconnects it. */
+export interface BankConnectionIssue {
     id: UUID;
     aspsp_name: string;
     provider: string;
-    valid_until: string | null;
-    reconnect_url: string;
+    /** `error`: a failure the scheduled sync gave up retrying. */
+    reason: 'expired' | 'error';
+    /** The bank's consent flow; null for API-key providers, fixed on the connections page. */
+    reconnect_url: string | null;
 }
 
 export interface SubscriptionPaymentIssueNotification {
@@ -250,7 +253,7 @@ export interface SharedData {
     challenges: Challenges | null;
     /** Whether the header offers its own add-transaction button. */
     showHeaderAddTransaction: boolean;
-    expiredBankingConnections: ExpiredBankingConnectionNotification[];
+    bankConnectionIssues: BankConnectionIssue[];
     locale: string;
     translations: Record<string, string>;
     currencies: {

@@ -1651,7 +1651,6 @@
     "Ready to take control of your finances?": "¿Listo para tomar el control de tus finanzas?",
     "Real Estate": "Bienes Raíces",
     "Reconnect": "Reconectar",
-    "Reconnect to resume automatic syncing.": "Reconecta para reanudar la sincronización automática.",
     "Recovery Codes": "Códigos de Recuperación",
     "Recovery codes": "Códigos de recuperación",
     "Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.": "Los códigos de recuperación te permiten recuperar acceso si pierdes tu dispositivo 2FA. Guárdalos en un administrador de contraseñas seguro.",
@@ -2295,7 +2294,6 @@
     "You can\\n                                    request a copy of the personal data we hold\\n                                    about you": "Puedes solicitar una copia de los datos personales que tenemos sobre ti",
     "You can\\n                                    request deletion of your personal data\\n                                    (right to be forgotten)": "Puedes solicitar la eliminación de tus datos personales (derecho al olvido)",
     "You get your personal referral link.": "Obtienes tu enlace personal de referidos.",
-    "You have :count expired bank connections.": "Tienes :count conexiones bancarias caducadas.",
     "You may cancel your subscription at any time. Upon cancellation, you will retain access until the end of your current billing period, after which your subscription will not renew.": "Puedes cancelar tu suscripción en cualquier momento. Al cancelar, mantendrás acceso hasta el final de tu período de facturación actual, después del cual tu suscripción no se renovará.",
     "You may cancel your subscription at any time.\\n                                Upon cancellation, you will retain access until\\n                                the end of your current billing period, after\\n                                which your subscription will not renew.": "Puedes cancelar tu suscripción en cualquier momento. Tras la cancelación, mantendrás el acceso hasta el final de tu período de facturación actual, después del cual tu suscripción no se renovará.",
     "You may not use the service to engage in any illegal activity, transmit malicious code, attempt to gain unauthorized access to our systems, or interfere with the proper functioning of the service.": "No puedes usar el servicio para participar en ninguna actividad ilegal, transmitir código malicioso, intentar obtener acceso no autorizado a nuestros sistemas o interferir con el funcionamiento adecuado del servicio.",
@@ -2327,7 +2325,6 @@
     "You've used 90% of your budget": "Has usado el 90% de tu presupuesto",
     "You\\n                                    can request correction of inaccurate or\\n                                    incomplete data": "Puedes solicitar la corrección de datos inexactos o incompletos",
     "You\\n                                    can request restriction of processing in\\n                                    certain circumstances": "Puedes solicitar la restricción del procesamiento en determinadas circunstancias",
-    "Your :provider connection has expired.": "Tu conexión con :provider ha caducado.",
     "Your :provider connection needs attention": "Tu conexión con :provider necesita atención",
     "Your Accounts": "Tus Cuentas",
     "Your bank is taking longer than expected. We’ll keep trying in the background and your transactions will show up automatically.": "Tu banco está tardando más de lo previsto. Seguiremos intentándolo en segundo plano y tus transacciones aparecerán automáticamente.",
@@ -4319,5 +4316,9 @@
     "Bank connections are available on the standard plan.": "Las conexiones bancarias están disponibles en el plan estándar.",
     "Your transactions are in": "Tus transacciones ya están aquí",
     "Let Pro categorize them with AI and sync your bank automatically, so new transactions arrive on their own.": "Deja que Pro las categorice con IA y sincronice tu banco automáticamente, para que las nuevas transacciones lleguen solas.",
-    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Deja que Pro las categorice con IA y mantenga tus integraciones directas sincronizadas, para que las nuevas transacciones lleguen solas."
+    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Deja que Pro las categorice con IA y mantenga tus integraciones directas sincronizadas, para que las nuevas transacciones lleguen solas.",
+    "Your :bank connection stopped syncing.": "Tu conexión con :bank ha dejado de sincronizarse.",
+    ":banks stopped syncing.": ":banks han dejado de sincronizarse.",
+    "Your balances and transactions are not updating. Reconnect to resume automatic syncing.": "Tus saldos y movimientos no se están actualizando. Reconecta para reanudar la sincronización automática.",
+    "Review connections": "Revisar conexiones"
 }

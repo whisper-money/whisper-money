@@ -6,7 +6,6 @@ import {
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
 import { accountActionPill } from '@/components/full-import/step-accounts';
-import { joinNames } from '@/components/full-import/step-existing';
 import { UnreadableRows } from '@/components/full-import/unreadable-rows';
 import { Checkbox } from '@/components/ui/checkbox';
 import { type DuplicateEstimate } from '@/hooks/use-duplicate-estimate';
@@ -21,6 +20,7 @@ import {
     OWN_TRANSFER_KEY,
     type BuiltImport,
 } from '@/lib/full-import-plan';
+import { joinNames } from '@/lib/join-names';
 import {
     type AccountPlanEntry,
     type ContextAccount,
