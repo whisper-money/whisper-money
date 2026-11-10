@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
+use App\Mail\Drip\InactiveBankedEmail;
 use App\Mail\Drip\InactiveNoBankEmail;
 use App\Mail\Drip\OnboardingReminderEmail;
 use App\Mail\Drip\PromoCodeEmail;
@@ -46,6 +47,8 @@ class SendTestEmails extends Command
             'Onboarding Reminder Email' => new OnboardingReminderEmail($user),
             'Promo Code Email' => new PromoCodeEmail($user),
             'Inactive No Bank Email' => new InactiveNoBankEmail($user),
+            'Inactive Banked Email' => new InactiveBankedEmail($user, ['newTransactions' => 37, 'uncategorized' => 5, 'spendingChange' => -12.0]),
+            'Inactive Banked Email (nothing synced)' => new InactiveBankedEmail($user, ['newTransactions' => 0, 'uncategorized' => 0, 'spendingChange' => null]),
         ];
 
         foreach ($emails as $name => $mailable) {

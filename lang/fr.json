@@ -3267,5 +3267,21 @@
     "Review connections": "Vérifier les connexions",
     "Dismiss": "Ignorer",
     "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Vos soldes et transactions ne sont plus mis à jour. Vérifiez vos connexions pour relancer la synchronisation.",
-    ":list and :last": ":list et :last"
+    ":list and :last": ":list et :last",
+    "Nothing has synced from your bank in two weeks": "Rien n'a été synchronisé depuis votre banque depuis deux semaines",
+    "{1} 1 new transaction came in while you were away|[2,*] :count new transactions came in while you were away": "{1} 1 nouvelle transaction est arrivée pendant votre absence|[2,*] :count nouvelles transactions sont arrivées pendant votre absence",
+    "So far this month you have spent about the same as by this point last month.": "Depuis le début du mois, vous avez dépensé à peu près autant qu'à la même date le mois dernier.",
+    "So far this month you have spent :rate more than by this point last month.": "Depuis le début du mois, vous avez dépensé :rate de plus qu'à la même date le mois dernier.",
+    "So far this month you have spent :rate less than by this point last month.": "Depuis le début du mois, vous avez dépensé :rate de moins qu'à la même date le mois dernier.",
+    "While you were away, :name": "Pendant votre absence, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You have not stopped by in two weeks, but your bank kept syncing in the background. Here is what you missed.": "Bonjour ! Ici Víctor et Álvaro, les fondateurs de Whisper Money. Vous n'êtes pas passé depuis deux semaines, mais votre banque a continué à se synchroniser en arrière-plan. Voici ce que vous avez manqué.",
+    "{1} **1 new transaction** came in from your bank.|[2,*] **:count new transactions** came in from your bank.": "{1} **1 nouvelle transaction** est arrivée de votre banque.|[2,*] **:count nouvelles transactions** sont arrivées de votre banque.",
+    "{1} **1** of them still needs a category.|[2,*] **:count** of them still need a category.": "{1} **1** d'entre elles attend encore une catégorie.|[2,*] **:count** d'entre elles attendent encore une catégorie.",
+    "All of them are already categorized.": "Elles sont toutes déjà catégorisées.",
+    "See What Came In": "Voir ce qui est arrivé",
+    "Your bank has gone quiet, :name": "Votre banque est silencieuse, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You have not stopped by in two weeks, and in that time not a single transaction has synced from your bank. That usually means the connection needs renewing: banks only let us sync for a limited time.": "Bonjour ! Ici Víctor et Álvaro, les fondateurs de Whisper Money. Vous n'êtes pas passé depuis deux semaines, et pendant ce temps aucune transaction n'a été synchronisée depuis votre banque. Cela signifie généralement que la connexion doit être renouvelée : les banques ne nous autorisent à synchroniser que pour une durée limitée.",
+    "Reconnecting takes a couple of minutes, and everything you missed is synced in again.": "La reconnexion prend quelques minutes, et tout ce que vous avez manqué est de nouveau synchronisé.",
+    "Check My Connections": "Vérifier mes connexions",
+    "If something is not working the way you expected, reply to this email and tell us. We read every reply ourselves.": "Si quelque chose ne fonctionne pas comme prévu, répondez à cet e-mail pour nous le dire. Nous lisons chaque réponse nous-mêmes."
 }

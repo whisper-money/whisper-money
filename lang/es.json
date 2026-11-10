@@ -4327,5 +4327,21 @@
     ":banks stopped syncing.": ":banks han dejado de sincronizarse.",
     "Your balances and transactions are not updating. Reconnect to resume automatic syncing.": "Tus saldos y movimientos no se están actualizando. Reconecta para reanudar la sincronización automática.",
     "Review connections": "Revisar conexiones",
-    "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Tus saldos y movimientos no se están actualizando. Revisa tus conexiones para que vuelvan a sincronizarse."
+    "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Tus saldos y movimientos no se están actualizando. Revisa tus conexiones para que vuelvan a sincronizarse.",
+    "Nothing has synced from your bank in two weeks": "Tu banco lleva dos semanas sin sincronizar nada",
+    "{1} 1 new transaction came in while you were away|[2,*] :count new transactions came in while you were away": "{1} Mientras no estabas llegó 1 movimiento nuevo|[2,*] Mientras no estabas llegaron :count movimientos nuevos",
+    "So far this month you have spent about the same as by this point last month.": "En lo que va de mes has gastado más o menos lo mismo que a estas alturas del mes pasado.",
+    "So far this month you have spent :rate more than by this point last month.": "En lo que va de mes has gastado un :rate más que a estas alturas del mes pasado.",
+    "So far this month you have spent :rate less than by this point last month.": "En lo que va de mes has gastado un :rate menos que a estas alturas del mes pasado.",
+    "While you were away, :name": "Mientras no estabas, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You have not stopped by in two weeks, but your bank kept syncing in the background. Here is what you missed.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Llevas dos semanas sin pasarte, pero tu banco ha seguido sincronizando en segundo plano. Esto es lo que te has perdido.",
+    "{1} **1 new transaction** came in from your bank.|[2,*] **:count new transactions** came in from your bank.": "{1} Ha llegado **1 movimiento nuevo** de tu banco.|[2,*] Han llegado **:count movimientos nuevos** de tu banco.",
+    "{1} **1** of them still needs a category.|[2,*] **:count** of them still need a category.": "{1} **1** de ellos todavía necesita categoría.|[2,*] **:count** de ellos todavía necesitan categoría.",
+    "All of them are already categorized.": "Todos están ya categorizados.",
+    "See What Came In": "Ver lo que ha llegado",
+    "Your bank has gone quiet, :name": "Tu banco se ha quedado en silencio, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You have not stopped by in two weeks, and in that time not a single transaction has synced from your bank. That usually means the connection needs renewing: banks only let us sync for a limited time.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Llevas dos semanas sin pasarte y en ese tiempo no se ha sincronizado ni un solo movimiento de tu banco. Eso suele significar que hay que renovar la conexión: los bancos solo nos dejan sincronizar durante un tiempo limitado.",
+    "Reconnecting takes a couple of minutes, and everything you missed is synced in again.": "Reconectar lleva un par de minutos, y todo lo que te has perdido se vuelve a sincronizar.",
+    "Check My Connections": "Revisar mis conexiones",
+    "If something is not working the way you expected, reply to this email and tell us. We read every reply ourselves.": "Si algo no funciona como esperabas, responde a este email y cuéntanoslo. Leemos cada respuesta nosotros mismos."
 }
