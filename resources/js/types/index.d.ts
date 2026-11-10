@@ -106,7 +106,8 @@ export interface TrialEndingBanner {
 }
 
 export interface SubscriptionPaymentIssueNotification {
-    status: 'past_due';
+    /** `requires_action`: the bank holds the payment for 3D Secure. */
+    status: 'past_due' | 'requires_action';
     action_url: string;
 }
 

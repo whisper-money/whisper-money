@@ -30,6 +30,7 @@ use Laravel\Cashier\Checkout;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\InvalidRequestException;
 
 class SubscriptionController extends Controller
 {
@@ -426,6 +427,8 @@ class SubscriptionController extends Controller
         return Inertia::render('settings/billing', [
             'hasAiConsent' => $user->hasActiveAiConsent(),
             'hasUnpaidSubscription' => $user->unpaidSubscription() !== null,
+            // Cashier's page for a payment the bank holds for 3D Secure.
+            'paymentConfirmationUrl' => $user->paymentAwaitingConfirmation()?->confirmationUrl(),
             'subscription' => $subscription === null ? null : [
                 'onTrial' => $subscription->onTrial(),
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
@@ -559,6 +562,36 @@ class SubscriptionController extends Controller
             $user->createAsStripeCustomer();
         }
 
+        if ($request->query('flow') === 'payment_method_update') {
+            return $this->redirectToPaymentMethodUpdate($user);
+        }
+
         return $user->redirectToBillingPortal(route('settings.billing'));
+    }
+
+    /**
+     * Straight to the portal's "update payment method" page, which the
+     * failed-payment emails and banner link to: a reader chasing a declined
+     * card should not have to find it. Stripe refuses the flow when the
+     * portal configuration has payment method updates off, and then the
+     * portal's home page is still better than an error.
+     */
+    private function redirectToPaymentMethodUpdate(User $user): RedirectResponse
+    {
+        try {
+            return $user->redirectToBillingPortal(route('settings.billing'), [
+                'flow_data' => [
+                    'type' => 'payment_method_update',
+                    'after_completion' => [
+                        'type' => 'redirect',
+                        'redirect' => ['return_url' => route('settings.billing')],
+                    ],
+                ],
+            ]);
+        } catch (InvalidRequestException $exception) {
+            report($exception);
+
+            return $user->redirectToBillingPortal(route('settings.billing'));
+        }
     }
 }

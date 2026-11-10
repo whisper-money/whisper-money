@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { leavePage } from '@/lib/leave-page';
 import { captureEvent } from '@/lib/posthog';
 import {
     destroy as revokeConsent,
@@ -372,7 +373,13 @@ function ManageSubscriptionButton({
     return (
         <Button variant={variant} asChild>
             <a
-                href={portal.url()}
+                href={
+                    source === 'payment_failed'
+                        ? portal.url({
+                              query: { flow: 'payment_method_update' },
+                          })
+                        : portal.url()
+                }
                 onClick={() =>
                     captureEvent('billing_portal_opened', { source })
                 }
@@ -507,8 +514,16 @@ function ScheduledCancellationSection({
  * Stripe is still chasing the invoice, so stopping it has to be one click away
  * here. Stripe's portal is offered only to pay — an `incomplete` subscription is
  * not even listed there — and never as the only way to cancel.
+ *
+ * A payment the bank holds for 3D Secure is not fixed by a retry nor a new
+ * card, so then the alert leads with confirming it on Cashier's payment page,
+ * which leaves the SPA.
  */
-function UnpaidSubscriptionSection() {
+function UnpaidSubscriptionSection({
+    confirmationUrl,
+}: {
+    confirmationUrl: string | null;
+}) {
     const { errors } = usePage<{ errors: Record<string, string> }>().props;
     const [confirming, setConfirming] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -536,12 +551,20 @@ function UnpaidSubscriptionSection() {
             className="border-destructive/30 bg-destructive/10"
         >
             <TriangleAlertIcon className="h-4 w-4" />
-            <AlertTitle>{__('Your payment failed')}</AlertTitle>
+            <AlertTitle>
+                {confirmationUrl
+                    ? __('Your bank needs you to confirm the payment')
+                    : __('Your payment failed')}
+            </AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-3">
                 <span>
-                    {__(
-                        'We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Standard.',
-                    )}
+                    {confirmationUrl
+                        ? __(
+                              'Your bank asked you to approve the charge for your subscription before it goes through. Confirm it to keep Standard, or cancel and we stop trying to charge you.',
+                          )
+                        : __(
+                              'We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Standard.',
+                          )}
                 </span>
                 {errors.subscription && (
                     <span role="alert">{errors.subscription}</span>
@@ -573,8 +596,18 @@ function UnpaidSubscriptionSection() {
                         </>
                     ) : (
                         <>
+                            {confirmationUrl && (
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => leavePage(confirmationUrl)}
+                                >
+                                    {__('Confirm payment')}
+                                </Button>
+                            )}
                             <Button
-                                variant="destructive"
+                                variant={
+                                    confirmationUrl ? 'ghost' : 'destructive'
+                                }
                                 onClick={() => setConfirming(true)}
                             >
                                 {__('Cancel subscription')}
@@ -880,10 +913,12 @@ export default function Billing() {
         hasAiConsent,
         subscription,
         hasUnpaidSubscription,
+        paymentConfirmationUrl,
     } = usePage<
         SharedData & {
             hasAiConsent: boolean;
             hasUnpaidSubscription: boolean;
+            paymentConfirmationUrl: string | null;
             subscription?: SubscriptionInfo | null;
         }
     >().props;
@@ -914,7 +949,11 @@ export default function Billing() {
                         />
                     )}
 
-                    {showsPaymentFailure && <UnpaidSubscriptionSection />}
+                    {showsPaymentFailure && (
+                        <UnpaidSubscriptionSection
+                            confirmationUrl={paymentConfirmationUrl}
+                        />
+                    )}
 
                     {pausedSubscription ? (
                         <PausedSection

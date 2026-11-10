@@ -7,6 +7,7 @@ import Billing from './billing';
 const mocks = vi.hoisted(() => ({
     routerPost: vi.fn(),
     captureEvent: vi.fn(),
+    leavePage: vi.fn(),
     axiosPost: vi.fn(() => Promise.resolve({ data: {} })),
     axiosDelete: vi.fn(() => Promise.resolve({ data: {} })),
     state: {
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
         isSharedAccount: false,
         subscription: null as Record<string, unknown> | null,
         hasUnpaidSubscription: false,
+        paymentConfirmationUrl: null as string | null,
         errors: {} as Record<string, string>,
         defaultPlan: 'yearly',
     },
@@ -51,12 +53,14 @@ vi.mock('@inertiajs/react', () => ({
             hasAiConsent: mocks.state.hasAiConsent,
             subscription: mocks.state.subscription,
             hasUnpaidSubscription: mocks.state.hasUnpaidSubscription,
+            paymentConfirmationUrl: mocks.state.paymentConfirmationUrl,
             errors: mocks.state.errors,
         },
     }),
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
+vi.mock('@/lib/leave-page', () => ({ leavePage: mocks.leavePage }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 vi.mock('@/layouts/app-layout', () => ({
@@ -256,8 +260,36 @@ describe('Billing – a subscription whose charge failed', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: /Update payment method/ }),
-        ).toHaveAttribute('href', '/settings/billing/portal');
+        ).toHaveAttribute(
+            'href',
+            '/settings/billing/portal?flow=payment_method_update',
+        );
         expect(screen.queryByText(/Upgrade to Pro/i)).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Confirm payment' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('leads with confirming a payment the bank holds for 3D Secure', () => {
+        mocks.state.paymentConfirmationUrl =
+            '/stripe/payment/pi_123?redirect=%2Fsettings%2Fbilling';
+
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Your bank needs you to confirm the payment'),
+        ).toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm payment' }),
+        );
+        expect(mocks.leavePage).toHaveBeenCalledWith(
+            '/stripe/payment/pi_123?redirect=%2Fsettings%2Fbilling',
+        );
+        expect(
+            screen.getByRole('button', { name: 'Cancel subscription' }),
+        ).toBeInTheDocument();
+
+        mocks.state.paymentConfirmationUrl = null;
     });
 
     it('cancels only once the user confirms', () => {

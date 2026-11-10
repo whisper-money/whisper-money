@@ -27,6 +27,8 @@ enum DripEmailType: string
     case MonthlySummary = 'monthly_summary';
     case MonthlySummaryReminder = 'monthly_summary_reminder';
     case AchievementsUnlocked = 'achievements_unlocked';
+    case PaymentFailed = 'payment_failed';
+    case PaymentActionRequired = 'payment_action_required';
 
     /**
      * Emails that sell the app rather than run it: the onboarding sequence, the
