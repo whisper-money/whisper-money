@@ -83,10 +83,31 @@ it('captures the file screen, and what it promises about the file', function () 
         ->waitForText('Bring in your history', 10)
         ->assertSee('Drop the file here')
         ->assertSee('in your browser')
-        // The way past the step for someone with no file to hand.
-        ->assertSee("I don't have one yet")
+        // The ways past the step for someone with no file to hand.
+        ->assertSee('No file? Type last month in round figures')
+        ->assertSee('Skip for now')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'import-upload')
+        ->assertNoJavascriptErrors();
+});
+
+it('opens on the round figures on a phone, with the file one row away', function () {
+    $user = userWithOneAccount();
+    $user->onboarding_answers = ['spending_guess' => 200000];
+    $user->save();
+
+    actingAs($user);
+
+    visit('/onboarding?step=import-transactions')
+        ->on()->iPhone14Pro()
+        ->waitForText('Last month, in round figures', 10)
+        ->assertSee('of the €2,000 you guessed')
+        ->assertSee('Have the bank file?')
+        ->assertSee('Rather do it on a computer?')
+        ->assertScript(ANIMATIONS_SETTLED)
+        ->screenshot(filename: 'import-quick-expenses')
+        ->click('Have the bank file?')
+        ->waitForText('Bring in your history', 10)
         ->assertNoJavascriptErrors();
 });
 

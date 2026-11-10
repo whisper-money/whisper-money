@@ -23,6 +23,7 @@ vi.mock('axios', () => ({
 }));
 
 const LINK_ROW = /Email me a link to import from my computer/;
+const QUICK_EXPENSES = 'No file? Type last month in round figures';
 
 function renderUpload() {
     const onSent = vi.fn();
@@ -50,7 +51,9 @@ describe('the import link option', () => {
     it('is offered on a phone, beside the quick expenses', () => {
         renderUpload();
 
-        expect(screen.getByText('No file at hand?')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: QUICK_EXPENSES }),
+        ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: LINK_ROW }),
         ).toBeInTheDocument();
@@ -60,7 +63,9 @@ describe('the import link option', () => {
         isMobile.value = false;
         renderUpload();
 
-        expect(screen.getByText('No file at hand?')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: QUICK_EXPENSES }),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: LINK_ROW })).toBeNull();
     });
 
@@ -97,6 +102,46 @@ describe('the import link option', () => {
         // Still there to try again.
         expect(
             screen.getByRole('button', { name: LINK_ROW }),
+        ).toBeInTheDocument();
+    });
+});
+
+describe('the upload screen without a file', () => {
+    it('offers the round figures, then a way to skip, as the buttons under the file', () => {
+        const onSkip = vi.fn();
+        const onQuickExpenses = vi.fn();
+        isMobile.value = false;
+
+        render(
+            <StepImportUpload
+                onFileSelect={vi.fn()}
+                onSkip={onSkip}
+                onQuickExpenses={onQuickExpenses}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Choose a file' }),
+        ).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: QUICK_EXPENSES }));
+        expect(onQuickExpenses).toHaveBeenCalledOnce();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+        expect(onSkip).toHaveBeenCalledOnce();
+
+        expect(screen.queryByText('No file at hand?')).toBeNull();
+        isMobile.value = true;
+    });
+
+    it('leaves the round figures out when there is no account to save them to', () => {
+        render(<StepImportUpload onFileSelect={vi.fn()} onSkip={vi.fn()} />);
+
+        expect(
+            screen.queryByRole('button', { name: QUICK_EXPENSES }),
+        ).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Skip for now' }),
         ).toBeInTheDocument();
     });
 });

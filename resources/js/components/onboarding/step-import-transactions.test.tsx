@@ -14,6 +14,7 @@ const {
     parseImportFile,
     accounts,
     post,
+    viewport,
 } = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     checkDuplicates: vi.fn(),
@@ -23,12 +24,17 @@ const {
     parseImportFile: vi.fn(),
     accounts: { current: [] as Partial<Account>[] },
     post: vi.fn(),
+    viewport: { mobile: false },
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
-// A phone, so the upload screen also offers the link to a computer.
-vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => true }));
+// A computer unless a test says otherwise: a phone opens on the round figures
+// and offers the link to a computer.
+vi.mock('@/hooks/use-mobile', () => ({
+    useIsMobile: () => viewport.mobile,
+    isMobileViewport: () => viewport.mobile,
+}));
 
 // Only the link request is stubbed; every other call keeps the real client.
 vi.mock('axios', async (original) => {
@@ -47,7 +53,9 @@ vi.mock('@inertiajs/react', () => ({
             automationRules: [],
             locale: 'en-US',
             currencies: { accounts: [{ code: 'EUR' }] },
-            auth: { user: { email: 'ana@example.com' } },
+            auth: {
+                user: { email: 'ana@example.com', currency_code: 'EUR' },
+            },
         },
     }),
 }));
@@ -154,6 +162,7 @@ async function confirmColumns() {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    viewport.mobile = false;
     accounts.current = [CHECKING];
     parseImportFile.mockResolvedValue({
         file: new File([''], 'movements.csv'),
@@ -273,7 +282,7 @@ describe('StepImportTransactions file handling', () => {
     it('lets someone with no file past the step', async () => {
         const { onComplete } = renderStep();
 
-        fireEvent.click(await screen.findByText("I don't have one yet"));
+        fireEvent.click(await screen.findByText('Skip for now'));
 
         expect(onComplete).toHaveBeenCalled();
     });
@@ -435,16 +444,87 @@ describe('StepImportTransactions without a file', () => {
     it('offers the main expenses instead, on the account the file would go to', async () => {
         renderStep();
 
-        fireEvent.click(await screen.findByText('No file at hand?'));
+        fireEvent.click(
+            await screen.findByText(
+                'No file? Type last month in round figures',
+            ),
+        );
 
         expect(
-            await screen.findByText('Your main monthly expenses'),
+            await screen.findByText('Last month, in round figures'),
         ).toBeTruthy();
         expect(captureEvent).toHaveBeenCalledWith(
             'onboarding_quick_expenses_opened',
+            { source: 'upload' },
         );
 
-        fireEvent.click(screen.getByText('Back to the file'));
+        fireEvent.click(screen.getByText('Have the bank file?'));
+
+        expect(await screen.findByText('Bring in your history')).toBeTruthy();
+    });
+
+    it('sets the figures against the guess made earlier', async () => {
+        render(
+            <StepImportTransactions
+                account={undefined}
+                spendingGuess={200000}
+                onComplete={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(
+            await screen.findByText(
+                'No file? Type last month in round figures',
+            ),
+        );
+
+        expect(
+            await screen.findByText('of the €2,000 you guessed'),
+        ).toBeTruthy();
+    });
+});
+
+describe('StepImportTransactions on a phone', () => {
+    beforeEach(() => {
+        viewport.mobile = true;
+    });
+
+    it('opens on the round figures, with the file one row away', async () => {
+        renderStep();
+
+        expect(
+            await screen.findByText('Last month, in round figures'),
+        ).toBeTruthy();
+        expect(captureEvent).toHaveBeenCalledOnce();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_quick_expenses_opened',
+            { source: 'default' },
+        );
+
+        fireEvent.click(screen.getByText('Have the bank file?'));
+
+        expect(await screen.findByText('Bring in your history')).toBeTruthy();
+    });
+
+    it('still asks which account first when there is a choice', async () => {
+        accounts.current = [CHECKING, SAVINGS];
+
+        renderStep();
+
+        fireEvent.click(
+            await screen.findByText('Which account is this file from?'),
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        expect(
+            await screen.findByText('Last month, in round figures'),
+        ).toBeTruthy();
+    });
+
+    it('opens the file when an emailed link brought them here', async () => {
+        accounts.current = [CHECKING, SAVINGS];
+
+        renderStep(vi.fn(), undefined, 'account-3');
 
         expect(await screen.findByText('Bring in your history')).toBeTruthy();
     });
@@ -452,13 +532,12 @@ describe('StepImportTransactions without a file', () => {
 
 describe('StepImportTransactions with a link to a computer', () => {
     it('confirms the link and lets the onboarding go on without a file', async () => {
+        viewport.mobile = true;
         post.mockResolvedValue({ status: 202 });
         const { onComplete } = renderStep();
 
         fireEvent.click(
-            await screen.findByText(
-                'Email me a link to import from my computer instead',
-            ),
+            await screen.findByText('Email me a link to import from there'),
         );
 
         expect(await screen.findByText('Link sent')).toBeTruthy();
@@ -475,9 +554,11 @@ describe('StepImportTransactions with a link to a computer', () => {
     });
 
     it('still offers the main expenses once the link is on its way', async () => {
+        viewport.mobile = true;
         post.mockResolvedValue({ status: 202 });
         renderStep();
 
+        fireEvent.click(await screen.findByText('Have the bank file?'));
         fireEvent.click(
             await screen.findByText(
                 'Email me a link to import from my computer instead',
@@ -488,7 +569,7 @@ describe('StepImportTransactions with a link to a computer', () => {
         );
 
         expect(
-            await screen.findByText('Your main monthly expenses'),
+            await screen.findByText('Last month, in round figures'),
         ).toBeTruthy();
     });
 

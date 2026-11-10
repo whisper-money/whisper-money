@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 interface ImportLinkRowProps {
     accountId: UUID;
     onSent: () => void;
+    /** The row's wording, for the screens that ask the question their own way. */
+    title?: string;
+    description?: string;
 }
 
 /**
@@ -21,7 +24,12 @@ interface ImportLinkRowProps {
  * of the bank is the hard part, so the step offers to pick it up on a computer
  * instead of ending there.
  */
-export function ImportLinkRow({ accountId, onSent }: ImportLinkRowProps) {
+export function ImportLinkRow({
+    accountId,
+    onSent,
+    title,
+    description,
+}: ImportLinkRowProps) {
     const [isSending, setIsSending] = useState(false);
 
     const handleSend = () => {
@@ -49,10 +57,11 @@ export function ImportLinkRow({ accountId, onSent }: ImportLinkRowProps) {
     return (
         <StepRow
             icon={Laptop}
-            title={__('On your phone?')}
-            description={__(
-                'Email me a link to import from my computer instead',
-            )}
+            title={title ?? __('On your phone?')}
+            description={
+                description ??
+                __('Email me a link to import from my computer instead')
+            }
             trailing={
                 isSending ? (
                     <Spinner className="size-4 text-muted-foreground" />
