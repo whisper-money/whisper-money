@@ -3303,5 +3303,22 @@
     "What leaves your account": "Ce qui quitte votre compte",
     "Merchant names and amounts, one line at a time — never your balance, your name or your account number. One tap in Settings turns it off.": "Noms des commerçants et montants, une ligne à la fois — jamais votre solde, votre nom ni votre numéro de compte. Un geste dans les Réglages suffit pour le désactiver.",
     "And the rest of Standard": "Et le reste de Standard",
-    "Bank sync, unlimited accounts, daily updates": "Synchronisation bancaire, comptes illimités, mises à jour quotidiennes"
+    "Bank sync, unlimited accounts, daily updates": "Synchronisation bancaire, comptes illimités, mises à jour quotidiennes",
+    "Your transactions are in": "Vos transactions sont arrivées",
+    "Let Pro categorize them with AI and sync your bank automatically, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et synchroniser votre banque automatiquement, pour que les nouvelles transactions arrivent toutes seules.",
+    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et garder vos intégrations directes synchronisées, pour que les nouvelles transactions arrivent toutes seules.",
+    ":month · your estimate": ":month · votre estimation",
+    "Your basics come to :amount a month": "L’essentiel vous coûte :amount par mois",
+    "You guessed :guess. The other :gap is the part nobody remembers — coffees, Amazon, the odd dinner. It shows up once your real movements are in.": "Vous aviez estimé :guess. Les :gap restants, c’est ce que personne ne retient — cafés, Amazon, un dîner de temps en temps. Ils apparaissent dès que vos vrais mouvements sont là.",
+    "That’s what you typed for last month. Your real movements will fill in the rest.": "C’est ce que vous avez saisi pour le mois dernier. Vos vrais mouvements compléteront le reste.",
+    "Basics :amount of a :guess guess; :gap not found yet": "L’essentiel, :amount sur les :guess estimés ; :gap pas encore trouvés",
+    "Basics :amount": "L’essentiel :amount",
+    "Not found yet :gap": "Pas encore trouvé :gap",
+    "Saved as estimates. Bring last month in from your bank whenever you like and we swap them for the real thing.": "Enregistrés comme estimations. Importez le mois dernier depuis votre banque quand vous voulez et nous les remplaçons par les vrais.",
+    "That’s the balance side. The spending side — where last month actually went — needs a month of movements.": "Ça, c’est le côté solde. Le côté dépenses — où est vraiment passé le mois dernier — demande un mois de mouvements.",
+    "Add last month in round figures": "Ajouter le mois dernier en chiffres ronds",
+    "Continue without it": "Continuer sans",
+    "You guessed": "Vous aviez estimé",
+    ":guess a month": ":guess par mois",
+    "Two minutes of round figures for :account and we can tell you how close you were.": "Deux minutes de chiffres ronds pour :account et nous vous disons à quel point vous étiez proche."
 }

@@ -299,3 +299,114 @@ it('does not let someone still onboarding delete another user’s transaction', 
 
     expect($foreign->fresh()->trashed())->toBeFalse();
 });
+
+it('reads a month of estimates back as an estimate, biggest first', function () {
+    $user = quickExpensesUser();
+    $account = manualAccount($user);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/quick-expenses', [
+            'account_id' => $account->id,
+            'expenses' => [
+                ['kind' => 'groceries', 'amount' => 35000],
+                ['kind' => 'rent', 'amount' => 90000],
+            ],
+        ])
+        ->assertCreated();
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'spending',
+            'is_estimate' => true,
+            'estimates' => [
+                ['name' => 'Rent', 'amount' => 90000],
+                ['name' => 'Groceries', 'amount' => 35000],
+            ],
+        ]);
+});
+
+it('does not call a month an estimate once real movements are in it', function () {
+    $user = quickExpensesUser();
+    $account = manualAccount($user);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/quick-expenses', [
+            'account_id' => $account->id,
+            'expenses' => [['kind' => 'rent', 'amount' => 90000]],
+        ])
+        ->assertCreated();
+
+    Transaction::factory()->for($user)->for($account)->create([
+        'transaction_date' => now()->startOfMonth()->subMonth()->addDays(3),
+        'amount' => -1000,
+        'currency_code' => 'EUR',
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson(['variant' => 'spending', 'is_estimate' => false])
+        ->assertJsonMissingPath('estimates');
+});
+
+it('does not call a month of real movements an estimate', function () {
+    $user = quickExpensesUser();
+    $account = manualAccount($user);
+
+    foreach (range(1, 5) as $day) {
+        Transaction::factory()->for($user)->for($account)->create([
+            'transaction_date' => now()->startOfMonth()->subMonth()->addDays($day),
+            'amount' => -1000,
+            'currency_code' => 'EUR',
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson(['variant' => 'spending', 'is_estimate' => false])
+        ->assertJsonMissingPath('estimates');
+});
+
+it('offers the first hand-kept current account for last month in round figures', function () {
+    $user = quickExpensesUser();
+    $connection = BankingConnection::factory()->for($user)->create();
+    Account::factory()->for($user)->create([
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+        'banking_connection_id' => $connection->id,
+        'created_at' => now()->subDays(2),
+    ]);
+    Account::factory()->for($user)->create(['type' => 'retirement', 'currency_code' => 'EUR', 'created_at' => now()->subDay()]);
+    $manual = manualAccount($user);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson([
+            'variant' => 'assets',
+            'has_spending_accounts' => true,
+            'quick_expenses_account' => [
+                'id' => $manual->id,
+                'name' => $manual->name,
+                'currency_code' => 'EUR',
+            ],
+        ]);
+});
+
+it('offers no account to type into when every current account is a bank’s', function () {
+    $user = quickExpensesUser();
+    $connection = BankingConnection::factory()->for($user)->create();
+    Account::factory()->for($user)->create([
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJson(['variant' => 'assets', 'quick_expenses_account' => null]);
+});

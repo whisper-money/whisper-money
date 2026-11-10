@@ -98,6 +98,7 @@ class OnboardingRevealService
         $currency = $user->currency_code;
         $this->preloadExchangeRates($outgoings, $currency);
         $recurring = $this->recurringCharges($byMonth, $month);
+        $isEstimate = $this->isEstimated($user, $byMonth[$month]);
 
         return [
             'variant' => 'spending',
@@ -116,7 +117,43 @@ class OnboardingRevealService
             // What the repeat charges come to in a month, which is the figure
             // step 10 sets a first target against.
             'recurring_amount' => -$this->sumConvertedAmounts($recurring->values(), $currency),
+            // A month made only of the round figures the user typed in is their
+            // own answer read back to them, and the screen says so rather than
+            // presenting it as what the bank saw.
+            'is_estimate' => $isEstimate,
+            ...($isEstimate ? ['estimates' => $this->estimateLines($byMonth[$month], $currency)] : []),
         ];
+    }
+
+    /**
+     * Whether every outgoing of the month is an estimate. A month mixing them
+     * with real movements is a real month with a few blanks filled in.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     */
+    private function isEstimated(User $user, Collection $transactions): bool
+    {
+        $estimateIds = $this->estimates->idsFor($user, $this->windowStart());
+
+        return $transactions->every(fn (Transaction $transaction): bool => in_array($transaction->id, $estimateIds, true));
+    }
+
+    /**
+     * The expenses the user typed in for the month, biggest first.
+     *
+     * @param  Collection<int, Transaction>  $transactions
+     * @return list<array{name: string, amount: int}>
+     */
+    private function estimateLines(Collection $transactions, string $currency): array
+    {
+        return $transactions
+            ->map(fn (Transaction $transaction): array => [
+                'name' => $transaction->description,
+                'amount' => -$this->convertTransactionAmount($transaction, $currency),
+            ])
+            ->sortByDesc('amount')
+            ->values()
+            ->all();
     }
 
     /**
@@ -289,6 +326,9 @@ class OnboardingRevealService
             'has_spending_accounts' => $accounts->contains(
                 fn (Account $account): bool => in_array($account->type, $this->spendingTypes(), true)
             ),
+            // Where the reveal can offer to type last month in, for the reader
+            // whose current account brought no month to read.
+            'quick_expenses_account' => $this->quickExpensesAccount($accounts),
             'net_worth' => $this->netWorth->at($accounts, $lookup, $today, $currency, $excluded),
             // Only what the total is made of: a credit card listed under a
             // figure it was left out of is a figure that does not add up.
@@ -303,6 +343,26 @@ class OnboardingRevealService
                 ->sortByDesc('balance')
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * The first account the user can type last month's expenses into: one that
+     * keeps a ledger and is not fed by a bank.
+     *
+     * @param  Collection<int, Account>  $accounts
+     * @return array{id: string, name: string, currency_code: string}|null
+     */
+    private function quickExpensesAccount(Collection $accounts): ?array
+    {
+        $account = $accounts
+            ->sortBy('created_at')
+            ->first(fn (Account $account): bool => $account->acceptsManualMovements());
+
+        return $account === null ? null : [
+            'id' => $account->id,
+            'name' => $account->name,
+            'currency_code' => $account->currency_code,
         ];
     }
 }

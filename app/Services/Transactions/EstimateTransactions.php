@@ -128,6 +128,20 @@ class EstimateTransactions
     }
 
     /**
+     * The ids of the estimates a user holds since the given date.
+     *
+     * @return list<string>
+     */
+    public function idsFor(User $user, CarbonInterface $since): array
+    {
+        return $this->estimates()
+            ->where('user_id', $user->id)
+            ->where('transaction_date', '>=', $since->toDateString())
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
      * @return Builder<Transaction>
      */
     private function estimates(): Builder

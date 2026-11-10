@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepReveal } from './step-reveal';
 
@@ -14,8 +14,12 @@ vi.mock('axios', () => ({
 }));
 
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { locale: 'en-US' } }),
+    usePage: () => ({
+        props: { locale: 'en-US', auth: { user: { currency_code: 'EUR' } } },
+    }),
 }));
+
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 /** The spending payload, with the month it is written about already current. */
 function spending(overrides: Record<string, unknown> = {}) {
@@ -33,9 +37,57 @@ function spending(overrides: Record<string, unknown> = {}) {
             ],
             merchant_count: 147,
             recurring_count: 9,
+            is_estimate: false,
             ...overrides,
         },
     };
+}
+
+/** A month made only of the round figures the user typed in. */
+function estimate(overrides: Record<string, unknown> = {}) {
+    return spending({
+        spent: 124000,
+        is_estimate: true,
+        merchants: [{ name: 'Rent', amount: 75000 }],
+        estimates: [
+            { name: 'Rent', amount: 75000 },
+            { name: 'Groceries', amount: 49000 },
+        ],
+        ...overrides,
+    });
+}
+
+/** The assets payload of a reader whose current account gave us no month. */
+function awaitingMovements(overrides: Record<string, unknown> = {}) {
+    return {
+        data: {
+            variant: 'assets',
+            currency_code: 'EUR',
+            has_spending_accounts: true,
+            quick_expenses_account: {
+                id: 'a1',
+                name: 'Main account',
+                currency_code: 'EUR',
+            },
+            net_worth: 1240000,
+            accounts: [
+                {
+                    id: 'a1',
+                    name: 'Main account',
+                    connected: false,
+                    balance: 1240000,
+                },
+            ],
+            ...overrides,
+        },
+    };
+}
+
+/** Let a pending request resolve. */
+async function settle() {
+    await act(async () => {
+        await Promise.resolve();
+    });
 }
 
 /** Render and let the request that fills the screen resolve. */
@@ -240,6 +292,145 @@ describe('StepReveal', () => {
         expect(
             screen.getByText(/Not enough has left these accounts yet/),
         ).toBeInTheDocument();
+        expect(screen.getByText('Continue')).toBeInTheDocument();
+    });
+
+    it('reads a month of estimates back as the user’s basics, against the guess', async () => {
+        get.mockResolvedValue(estimate());
+
+        await renderReveal({ spendingGuess: 200000 });
+
+        expect(screen.getByText('August · your estimate')).toBeInTheDocument();
+        expect(
+            screen.getByText('Your basics come to €1,240 a month'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/The other/)).toHaveTextContent(
+            'You guessed €2,000. The other €760 is the part nobody remembers',
+        );
+        expect(
+            screen.getByRole('img', {
+                name: 'Basics €1,240 of a €2,000 guess; €760 not found yet',
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Not found yet €760')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+        expect(screen.getByText('€490')).toBeInTheDocument();
+        expect(screen.getByText(/Saved as estimates/)).toBeInTheDocument();
+        // None of the bank-month wording, which the figures cannot back.
+        expect(screen.queryByText('Sort my merchants')).toBeNull();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_reveal_shown',
+            expect.objectContaining({ variant: 'spending', is_estimate: true }),
+        );
+    });
+
+    it('draws no gap when the estimates already cover the guess', async () => {
+        get.mockResolvedValue(estimate());
+
+        await renderReveal({ spendingGuess: 100000 });
+
+        expect(
+            screen.getByText(
+                'That’s what you typed for last month. Your real movements will fill in the rest.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('img')).toBeNull();
+    });
+
+    it('draws no gap without a guess', async () => {
+        get.mockResolvedValue(estimate());
+
+        await renderReveal();
+
+        expect(screen.getByText(/That’s what you typed/)).toBeInTheDocument();
+        expect(screen.queryByRole('img')).toBeNull();
+    });
+
+    it('reports a bank month as no estimate', async () => {
+        get.mockResolvedValue(spending());
+
+        await renderReveal({ spendingGuess: 120000 });
+
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_reveal_shown',
+            expect.objectContaining({ is_estimate: false }),
+        );
+    });
+
+    it('offers a reader with no month to type last month in, guess beside it', async () => {
+        get.mockResolvedValue(awaitingMovements());
+
+        await renderReveal({ spendingGuess: 200000 });
+
+        expect(screen.getByText(/That’s the balance side/)).toBeInTheDocument();
+        expect(screen.getByText('You guessed')).toBeInTheDocument();
+        expect(screen.getByText('€2,000 a month')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Two minutes of round figures for Main account and we can tell you how close you were.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Add last month in round figures'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Continue without it')).toBeInTheDocument();
+    });
+
+    it('opens the round figures in place, and reads the reveal again after', async () => {
+        get.mockResolvedValueOnce(awaitingMovements());
+        const onContinue = vi.fn();
+
+        await renderReveal({ spendingGuess: 200000, onContinue });
+
+        fireEvent.click(screen.getByText('Add last month in round figures'));
+
+        expect(
+            screen.getByText('Last month, in round figures'),
+        ).toBeInTheDocument();
+        expect(captureEvent).toHaveBeenCalledWith(
+            'onboarding_quick_expenses_opened',
+            { source: 'reveal' },
+        );
+
+        // Back leaves the reveal as it was, with nothing asked again.
+        fireEvent.click(screen.getByText('Back'));
+        expect(screen.getByText('Continue without it')).toBeInTheDocument();
+        expect(get).toHaveBeenCalledTimes(1);
+
+        fireEvent.click(screen.getByText('Add last month in round figures'));
+        get.mockResolvedValueOnce(estimate());
+        fireEvent.click(screen.getByText('Skip for now'));
+        await settle();
+
+        expect(get).toHaveBeenCalledTimes(2);
+        expect(
+            screen.getByText('Your basics come to €1,240 a month'),
+        ).toBeInTheDocument();
+        expect(onContinue).not.toHaveBeenCalled();
+    });
+
+    it('keeps the plain card-free offer when no guess was made', async () => {
+        get.mockResolvedValue(awaitingMovements());
+
+        await renderReveal();
+
+        expect(screen.queryByText('You guessed')).toBeNull();
+        expect(
+            screen.getByText('Add last month in round figures'),
+        ).toBeInTheDocument();
+    });
+
+    it('offers no round figures when every account is a bank’s', async () => {
+        get.mockResolvedValue(
+            awaitingMovements({ quick_expenses_account: null }),
+        );
+
+        await renderReveal({ spendingGuess: 200000 });
+
+        expect(
+            screen.queryByText('Add last month in round figures'),
+        ).toBeNull();
+        expect(screen.queryByText('You guessed')).toBeNull();
         expect(screen.getByText('Continue')).toBeInTheDocument();
     });
 });
