@@ -167,12 +167,18 @@ class SubscriptionController extends Controller
      * theirs, the accounts are the ones that stopped moving, and the date is
      * when they did.
      *
-     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, rulesCount: int, connectionsCount: int, endedAt: ?string}
+     * The soft gate argues with the other two: the movements still waiting for
+     * a category (the same backlog the second offer names) and the accounts
+     * kept up to date by hand, which are what Standard would take off them.
+     *
+     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, rulesCount: int, connectionsCount: int, uncategorizedCount: int, manualAccountsCount: int, endedAt: ?string}
      */
     private function getUserStats(User $user): array
     {
         return [
             ...$this->setupStats->for($user),
+            'uncategorizedCount' => $user->transactions()->pendingAiCategorization()->count(),
+            'manualAccountsCount' => $user->accounts()->notArchived()->whereNull('banking_connection_id')->count(),
             'endedAt' => $user->subscription('default')?->ends_at?->toIso8601String(),
         ];
     }
