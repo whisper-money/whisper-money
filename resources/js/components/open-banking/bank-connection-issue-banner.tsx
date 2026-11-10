@@ -13,31 +13,56 @@ import { useEffect, useMemo, useState } from 'react';
 const DISMISSED_KEY = 'bank-issue-banner-dismissed';
 const VIEWED_KEY = 'bank-issue-banner-viewed';
 
-/**
- * What a dismissal hides: the broken connections it was shown for, on the day
- * it was clicked. A new day, or another connection breaking, brings it back.
- */
-function dismissalFingerprint(issues: BankConnectionIssue[]): string {
-    const today = new Date().toLocaleDateString('en-CA');
-    const ids = issues
-        .map((issue) => issue.id)
-        .sort()
-        .join(',');
+type Dismissal = { day: string; ids: string[] };
 
-    return `${today}|${ids}`;
+/**
+ * Whether a dismissal still covers what is broken: it was clicked today, for
+ * every connection that is broken now. A new day, or another connection
+ * breaking, brings the banner back; fixing one of several does not.
+ */
+function isCoveredBy(
+    dismissal: Dismissal | null,
+    issues: BankConnectionIssue[],
+): boolean {
+    return (
+        dismissal !== null &&
+        dismissal.day === localDateKey(new Date()) &&
+        issues.every((issue) => dismissal.ids.includes(issue.id))
+    );
 }
 
-function readStorage(storage: () => Storage, key: string): string | null {
+function parseDismissal(raw: string | null): Dismissal | null {
     try {
-        return storage().getItem(key);
+        const parsed = raw ? JSON.parse(raw) : null;
+
+        return typeof parsed?.day === 'string' && Array.isArray(parsed?.ids)
+            ? parsed
+            : null;
     } catch {
         return null;
     }
 }
 
-function writeStorage(storage: () => Storage, key: string, value: string) {
+/** The local calendar day as YYYY-MM-DD, so "today" ends at the user's midnight. */
+function localDateKey(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+type StorageArea = 'localStorage' | 'sessionStorage';
+
+function readStorage(area: StorageArea, key: string): string | null {
     try {
-        storage().setItem(key, value);
+        return window[area].getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeStorage(area: StorageArea, key: string, value: string) {
+    try {
+        window[area].setItem(key, value);
     } catch {
         // Private mode or a full quota: the banner simply shows again.
     }
@@ -49,9 +74,10 @@ function writeStorage(storage: () => Storage, key: string, value: string) {
  * sync gave up retrying. Left alone, the data goes stale without a word, so
  * this replaces the one-off toast that used to be the only sign in the app.
  *
- * One connection gets its own way back (the bank's consent flow, or the
- * connections page for an API-key provider, whose credentials are updated
- * there); several send the user to the connections page to pick.
+ * A single Enable Banking connection gets a Reconnect straight into the bank's
+ * consent flow. An API-key provider is fixed on the connections page (new
+ * credentials, or a sync), and several connections send the user there to
+ * pick, so those get "Review connections" instead.
  *
  * Dismissible for the rest of the day, since a bank the user cannot reach
  * right now should not block every page; it returns the next day, or as soon
@@ -61,63 +87,63 @@ function writeStorage(storage: () => Storage, key: string, value: string) {
 export function BankConnectionIssueBanner() {
     const {
         url,
-        props: { bankConnectionIssues },
+        props: { bankConnectionIssues, auth },
     } = usePage<SharedData>();
+    // Per user, so one person's dismissal on a shared browser hides nothing for another.
+    const dismissedKey = `${DISMISSED_KEY}:${auth.user?.id ?? 'guest'}`;
+    const viewedKey = `${VIEWED_KEY}:${auth.user?.id ?? 'guest'}`;
     const issues = useMemo(
         () => bankConnectionIssues ?? [],
         [bankConnectionIssues],
     );
-    const fingerprint = dismissalFingerprint(issues);
     const onConnectionsPage = url.split('?')[0] === connectionsIndex.url();
 
     // Unknown until mounted: storage does not exist during SSR.
-    const [dismissedFingerprint, setDismissedFingerprint] = useState<
-        string | null | undefined
-    >(undefined);
+    const [dismissal, setDismissal] = useState<Dismissal | null | undefined>(
+        undefined,
+    );
 
     useEffect(() => {
-        setDismissedFingerprint(
-            readStorage(() => window.localStorage, DISMISSED_KEY),
-        );
-    }, []);
+        setDismissal(parseDismissal(readStorage('localStorage', dismissedKey)));
+    }, [dismissedKey]);
 
     const visible =
         issues.length > 0 &&
         !onConnectionsPage &&
-        dismissedFingerprint !== undefined &&
-        dismissedFingerprint !== fingerprint;
+        dismissal !== undefined &&
+        !isCoveredBy(dismissal, issues);
 
     useEffect(() => {
-        if (
-            !visible ||
-            readStorage(() => window.sessionStorage, VIEWED_KEY) !== null
-        ) {
+        if (!visible || readStorage('sessionStorage', viewedKey) !== null) {
             return;
         }
 
-        writeStorage(() => window.sessionStorage, VIEWED_KEY, '1');
+        writeStorage('sessionStorage', viewedKey, '1');
         captureEvent('bank_issue_banner_viewed', {
             connections_count: issues.length,
             providers: issues.map((issue) => issue.provider),
             reasons: issues.map((issue) => issue.reason),
         });
-    }, [visible, issues]);
+    }, [visible, issues, viewedKey]);
 
     if (!visible) {
         return null;
     }
 
     const single = issues.length === 1 ? issues[0] : null;
+    // Only an Enable Banking connection has a consent to renew; anything else is
+    // fixed on the connections page, and the button says so.
+    const reconnectUrl = single?.reconnect_url ?? null;
 
     const reconnect = () => {
         captureEvent('bank_issue_banner_reconnect_clicked', {
             connections_count: issues.length,
-            destination: single?.reconnect_url ? 'bank' : 'connections_page',
+            destination: reconnectUrl ? 'bank' : 'connections_page',
         });
 
-        if (single?.reconnect_url) {
+        if (reconnectUrl) {
             // The reconnect route redirects to the bank, which Inertia cannot follow.
-            leavePage(single.reconnect_url);
+            leavePage(reconnectUrl);
 
             return;
         }
@@ -126,8 +152,13 @@ export function BankConnectionIssueBanner() {
     };
 
     const dismiss = () => {
-        writeStorage(() => window.localStorage, DISMISSED_KEY, fingerprint);
-        setDismissedFingerprint(fingerprint);
+        const dismissed: Dismissal = {
+            day: localDateKey(new Date()),
+            ids: issues.map((issue) => issue.id),
+        };
+
+        writeStorage('localStorage', dismissedKey, JSON.stringify(dismissed));
+        setDismissal(dismissed);
     };
 
     return (
@@ -147,12 +178,18 @@ export function BankConnectionIssueBanner() {
                 </AlertTitle>
                 <AlertDescription className="text-amber-900/80 dark:text-amber-100/80">
                     <p>
-                        {__(
-                            'Your balances and transactions are not updating. Reconnect to resume automatic syncing.',
-                        )}
+                        {reconnectUrl
+                            ? __(
+                                  'Your balances and transactions are not updating. Reconnect to resume automatic syncing.',
+                              )
+                            : __(
+                                  'Your balances and transactions are not updating. Review your connections to get them syncing again.',
+                              )}
                     </p>
                     <Button size="sm" className="mt-1" onClick={reconnect}>
-                        {single ? __('Reconnect') : __('Review connections')}
+                        {reconnectUrl
+                            ? __('Reconnect')
+                            : __('Review connections')}
                     </Button>
                 </AlertDescription>
                 <Button

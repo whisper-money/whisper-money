@@ -4320,5 +4320,6 @@
     "Your :bank connection stopped syncing.": "Tu conexión con :bank ha dejado de sincronizarse.",
     ":banks stopped syncing.": ":banks han dejado de sincronizarse.",
     "Your balances and transactions are not updating. Reconnect to resume automatic syncing.": "Tus saldos y movimientos no se están actualizando. Reconecta para reanudar la sincronización automática.",
-    "Review connections": "Revisar conexiones"
+    "Review connections": "Revisar conexiones",
+    "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Tus saldos y movimientos no se están actualizando. Revisa tus conexiones para que vuelvan a sincronizarse."
 }

@@ -14,7 +14,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         url: mocks.url,
-        props: { bankConnectionIssues: mocks.issues },
+        props: {
+            bankConnectionIssues: mocks.issues,
+            auth: { user: { id: 'user-1' } },
+        },
     }),
     router: { visit: mocks.visit },
 }));
@@ -101,7 +104,12 @@ describe('BankConnectionIssueBanner', () => {
         ];
 
         render(<BankConnectionIssueBanner />);
-        fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+        expect(
+            screen.queryByRole('button', { name: 'Reconnect' }),
+        ).not.toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Review connections' }),
+        );
 
         expect(mocks.leavePage).not.toHaveBeenCalled();
         expect(mocks.visit).toHaveBeenCalledWith('/settings/connections');
@@ -168,6 +176,19 @@ describe('BankConnectionIssueBanner', () => {
         expect(
             screen.getByText('Santander and ING stopped syncing.'),
         ).toBeInTheDocument();
+    });
+
+    it('stays dismissed when one of the dismissed connections is fixed', () => {
+        mocks.issues = [issue({}), issue({ id: 'conn-2', aspsp_name: 'ING' })];
+
+        const first = render(<BankConnectionIssueBanner />);
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+        first.unmount();
+
+        mocks.issues = [issue({ id: 'conn-2', aspsp_name: 'ING' })];
+        const { container } = render(<BankConnectionIssueBanner />);
+
+        expect(container).toBeEmptyDOMElement();
     });
 
     it('comes back the next day while the connection is still broken', () => {

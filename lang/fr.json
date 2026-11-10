@@ -3259,5 +3259,7 @@
     ":banks stopped syncing.": ":banks ne se synchronisent plus.",
     "Your balances and transactions are not updating. Reconnect to resume automatic syncing.": "Vos soldes et transactions ne sont plus mis à jour. Reconnectez-vous pour reprendre la synchronisation automatique.",
     "Review connections": "Vérifier les connexions",
-    "Dismiss": "Ignorer"
+    "Dismiss": "Ignorer",
+    "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Vos soldes et transactions ne sont plus mis à jour. Vérifiez vos connexions pour relancer la synchronisation.",
+    ":list and :last": ":list et :last"
 }

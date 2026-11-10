@@ -241,3 +241,15 @@ test('a latam subscriber is not asked to reconnect banks their plan does not syn
             ->where('bankConnectionIssues.0.id', $kraken->id)
         );
 });
+
+test('a user without a plan is not asked to reconnect connections only a plan can fix', function () {
+    $user = userPaying(null);
+    BankingConnection::factory()->expired()->create(['user_id' => $user->id]);
+    BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
+    ]);
+
+    $this->actingAs($user)->withoutVite()->get(route('settings.connections.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('bankConnectionIssues', 0));
+});

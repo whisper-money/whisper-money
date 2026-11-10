@@ -144,6 +144,20 @@ test('bank connection issues list expired and stuck connections with a way to re
     );
 });
 
+test('an errored bank connection whose consent has also lapsed reads as expired', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'valid_until' => now()->subDay(),
+    ]);
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('bankConnectionIssues', 1)
+            ->where('bankConnectionIssues.0.reason', 'expired')
+        );
+});
+
 test('bank connection issues leave out healthy, recovering, unfinished and disconnected connections', function () {
     $user = User::factory()->onboarded()->create();
     BankingConnection::factory()->create([

@@ -28,6 +28,9 @@ class HandleInertiaRequests extends Middleware
     /** The plan feature line (`subscriptions.plans.*.features`) the latam price does not include. */
     private const BANK_CONNECTION_FEATURE = 'Connect bank accounts';
 
+    /** Enough for the banner to name every bank in practice, bounded on every response. */
+    private const BANK_CONNECTION_ISSUES_LIMIT = 10;
+
     public function __construct(
         private CurrencyOptions $currencyOptions,
         private FormatLocaleOptions $formatLocales,
@@ -340,8 +343,10 @@ class HandleInertiaRequests extends Middleware
      * restarts its consent at the bank; one through an API-key provider is fixed
      * by updating its credentials on the connections page, so it carries none.
      *
-     * A latam payer's bank connections are left out: their plan neither syncs
-     * nor reconnects them, so there is nothing they could do about the warning.
+     * Connections through a provider the user's plan does not include are left
+     * out (a lapsed subscription, or the bank aggregator on the latam price):
+     * the plan neither syncs nor reconnects them, so the warning would only
+     * lead to a paywall the user never asked about.
      *
      * @return list<array{id: string, aspsp_name: string, provider: string, reason: 'expired'|'error', reconnect_url: string|null}>
      */
@@ -349,8 +354,12 @@ class HandleInertiaRequests extends Middleware
     {
         return $user->bankingConnections()
             ->needingReconnect()
-            ->when($user->paysLatamPrice(), fn ($query) => $query->where('provider', '!=', BankingProvider::EnableBanking))
+            ->whereNotIn('provider', array_values(array_filter(
+                BankingProvider::cases(),
+                fn (BankingProvider $provider): bool => ! $user->canUseFeature($provider->planFeature()),
+            )))
             ->orderBy('aspsp_name')
+            ->limit(self::BANK_CONNECTION_ISSUES_LIMIT)
             ->get(['id', 'aspsp_name', 'provider', 'status', 'valid_until'])
             ->map(fn (BankingConnection $connection): array => [
                 'id' => $connection->id,
