@@ -17,6 +17,8 @@ interface ImportLinkRowProps {
     /** The row's wording, for the screens that ask the question their own way. */
     title?: string;
     description?: string;
+    /** While something else on the screen is saving. */
+    disabled?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ export function ImportLinkRow({
     onSent,
     title,
     description,
+    disabled = false,
 }: ImportLinkRowProps) {
     const [isSending, setIsSending] = useState(false);
 
@@ -69,7 +72,7 @@ export function ImportLinkRow({
                     <StepChevron />
                 )
             }
-            onClick={isSending ? undefined : handleSend}
+            onClick={isSending || disabled ? undefined : handleSend}
         />
     );
 }

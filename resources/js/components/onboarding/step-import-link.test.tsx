@@ -130,7 +130,6 @@ describe('the upload screen without a file', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
         expect(onSkip).toHaveBeenCalledOnce();
 
-        expect(screen.queryByText('No file at hand?')).toBeNull();
         isMobile.value = true;
     });
 

@@ -263,6 +263,7 @@ export function StepImportQuickExpenses({
                                 description={__(
                                     'Email me a link to import from there',
                                 )}
+                                disabled={isSaving}
                             />
                         )}
                     </StepList>

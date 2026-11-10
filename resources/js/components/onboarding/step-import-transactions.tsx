@@ -174,6 +174,25 @@ export function StepImportTransactions({
         }
     }, [accounts.length, awaitingAccount]);
 
+    const openQuickExpenses = useCallback((source: QuickExpensesSource) => {
+        setQuickExpensesSource(source);
+        setScreen('quick-expenses');
+    }, []);
+
+    /**
+     * Where the step starts once the account is settled. On a phone, getting a
+     * file out of the bank is where most people stop, so the round figures come
+     * first and the file is one row away; a computer keeps the file first.
+     */
+    const openFirstScreen = useCallback(() => {
+        if (isMobileViewport()) {
+            openQuickExpenses('default');
+            return;
+        }
+
+        setScreen('upload');
+    }, [openQuickExpenses]);
+
     // Which screen opens the step is a question about the accounts, and they
     // arrive with the reload above — so it is answered once they are here.
     useEffect(() => {
@@ -209,8 +228,6 @@ export function StepImportTransactions({
         }
 
         setScreen('pick-account');
-        // openFirstScreen only reads setters and the viewport.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         screen,
         accounts.length,
@@ -219,6 +236,7 @@ export function StepImportTransactions({
         account?.id,
         linkedAccountId,
         onComplete,
+        openFirstScreen,
     ]);
 
     /**
@@ -471,25 +489,6 @@ export function StepImportTransactions({
         setFailures([]);
         setScreen('upload');
     }, []);
-
-    function openQuickExpenses(source: QuickExpensesSource) {
-        setQuickExpensesSource(source);
-        setScreen('quick-expenses');
-    }
-
-    /**
-     * Where the step starts once the account is settled. On a phone, getting a
-     * file out of the bank is where most people stop, so the round figures come
-     * first and the file is one row away; a computer keeps the file first.
-     */
-    function openFirstScreen() {
-        if (isMobileViewport()) {
-            openQuickExpenses('default');
-            return;
-        }
-
-        setScreen('upload');
-    }
 
     const importLink = selectedAccount
         ? {
