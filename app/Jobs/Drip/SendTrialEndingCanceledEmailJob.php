@@ -37,12 +37,15 @@ class SendTrialEndingCanceledEmailJob extends SendDripEmailJob
     }
 
     /**
-     * Someone who took the cancellation back before the queue got here is
-     * paying now, and an email asking them to keep the plan would read as if
-     * the click had not worked.
+     * Only while the trial is still running and still set to cancel. Someone
+     * who took the cancellation back before the queue got here is paying now,
+     * and an email asking them to keep the plan would read as if the click had
+     * not worked.
      */
     protected function shouldSend(): bool
     {
-        return $this->user->subscription('default')?->onGracePeriod() ?? false;
+        $subscription = $this->user->subscription('default');
+
+        return $subscription !== null && $subscription->onTrial() && $subscription->onGracePeriod();
     }
 }

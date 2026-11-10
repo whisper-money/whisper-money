@@ -409,6 +409,8 @@ function ScheduledCancellationSection({
                         toast.success(flash.success);
                     }
                 },
+                onError: () =>
+                    captureEvent('subscription_resume_failed', analytics),
                 onFinish: () => setProcessing(false),
             },
         );
@@ -417,24 +419,21 @@ function ScheduledCancellationSection({
     return (
         <Alert data-testid="scheduled-cancellation">
             <CalendarClockIcon className="h-4 w-4" />
-            <AlertTitle>
-                {onTrial
-                    ? __('Your trial ends on :date', { date })
-                    : __('Your plan ends on :date', { date })}
-            </AlertTitle>
+            <AlertTitle>{__('Pro stops on :date', { date })}</AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-3">
                 <span>
                     {onTrial
                         ? __(
-                              'On that day bank sync, AI categorization and the rest of Pro stop.',
+                              'Bank sync and AI categorization stop that day. Keep your plan and your first charge is on :date.',
+                              { date },
                           )
                         : __(
-                              "You canceled your plan, so you won't be charged again. On that day bank sync, AI categorization and the rest of Pro stop.",
+                              "You won't be charged again. Bank sync and AI categorization stop that day. Keep your plan and it renews as usual.",
                           )}
                 </span>
-                {errors.subscription && (
+                {errors.resume && (
                     <span role="alert" className="text-destructive">
-                        {errors.subscription}
+                        {errors.resume}
                     </span>
                 )}
                 <Button

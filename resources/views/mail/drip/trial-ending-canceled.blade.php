@@ -16,7 +16,7 @@
 @endif
 @endif
 
-{{ __('If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Pro. Nothing is charged until :date.', ['date' => $trialEndsAtLocal->isoFormat('LL')]) }}
+{{ __('If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Pro. Your first charge would then be on :date.', ['date' => $trialEndsAtLocal->isoFormat('LL')]) }}
 
 <x-mail::button :url="route('settings.billing', $emailUtm + ['utm_content' => 'keep-plan'])">
 {{ __('Keep my plan') }}

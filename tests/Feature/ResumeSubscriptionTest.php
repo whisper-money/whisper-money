@@ -102,7 +102,7 @@ test('nothing is resumed when there is no scheduled cancellation', function (?ar
 
     $this->actingAs($user)
         ->post(route('settings.billing.resume'))
-        ->assertSessionHasErrors('subscription')
+        ->assertSessionHasErrors('resume')
         ->assertRedirect(route('settings.billing'));
 })->with([
     'no subscription' => [null],
@@ -121,7 +121,7 @@ test('only the signed-in user\'s own subscription can be resumed', function () {
     // caller's own, and this caller has none set to cancel.
     $this->actingAs($intruder)
         ->post(route('settings.billing.resume'), ['subscription' => $ownersSubscription->id])
-        ->assertSessionHasErrors('subscription');
+        ->assertSessionHasErrors('resume');
 
     expect($ownersSubscription->fresh()->ends_at)->not->toBeNull();
 });
@@ -133,7 +133,7 @@ test('a Stripe error keeps the cancellation and tells the user', function () {
 
     $this->actingAs($user)
         ->post(route('settings.billing.resume'))
-        ->assertSessionHasErrors('subscription')
+        ->assertSessionHasErrors('resume')
         ->assertRedirect(route('settings.billing'));
 
     expect($subscription->fresh()->ends_at)->not->toBeNull();
@@ -147,7 +147,7 @@ test('a seeded subscription is never sent to Stripe', function () {
 
     $this->actingAs($user)
         ->post(route('settings.billing.resume'))
-        ->assertSessionHasErrors('subscription');
+        ->assertSessionHasErrors('resume');
 });
 
 test('guests cannot resume a subscription', function () {

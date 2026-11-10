@@ -494,10 +494,6 @@ class SubscriptionController extends Controller
      * own `default` subscription is ever touched, and only while Cashier has it
      * on its grace period (cancelled, not yet ended) — Stripe refuses to resume
      * anything else, and so do we, before asking it.
-     *
-     * Until now the only way back was Stripe's portal, where "renew" sits under
-     * the plan details. Most trial cancellations happen in the first hour, as a
-     * precaution, so the way back has to be as plain as the way out.
      */
     public function resume(Request $request): RedirectResponse
     {
@@ -507,7 +503,7 @@ class SubscriptionController extends Controller
 
         if ($subscription === null || ! $subscription->onGracePeriod() || $user->cannotUseStripe()) {
             return redirect()->route('settings.billing')
-                ->withErrors(['subscription' => __('There is no cancellation to undo on this plan.')]);
+                ->withErrors(['resume' => __('There is no cancellation to undo on this plan.')]);
         }
 
         try {
@@ -516,7 +512,7 @@ class SubscriptionController extends Controller
             report($exception);
 
             return redirect()->route('settings.billing')
-                ->withErrors(['subscription' => __('We could not keep your plan. Please try again in a few minutes.')]);
+                ->withErrors(['resume' => __('We could not keep your plan. Please try again in a few minutes.')]);
         }
 
         return redirect()->route('settings.billing')

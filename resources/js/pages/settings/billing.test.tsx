@@ -446,7 +446,10 @@ describe('Billing – a plan set to cancel', () => {
         render(<Billing />);
 
         expect(
-            screen.getByText('Your trial ends on Nov 5, 2026'),
+            screen.getByText('Pro stops on Nov 5, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/your first charge is on Nov 5, 2026/),
         ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Keep my plan' }),
@@ -463,10 +466,10 @@ describe('Billing – a plan set to cancel', () => {
         render(<Billing />);
 
         expect(
-            screen.getByText('Your plan ends on Dec 20, 2026'),
+            screen.getByText('Pro stops on Dec 20, 2026'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(/so you won't be charged again/),
+            screen.getByText(/You won't be charged again/),
         ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Keep my plan' }),
@@ -500,9 +503,29 @@ describe('Billing – a plan set to cancel', () => {
         );
     });
 
+    it('reports a resume Stripe refused', () => {
+        mocks.state.subscription = canceledTrial;
+        render(<Billing />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Keep my plan' }));
+        const options = mocks.routerPost.mock.calls[0][2] as {
+            onError: () => void;
+        };
+        options.onError();
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'subscription_resume_failed',
+            { on_trial: true },
+        );
+        expect(mocks.captureEvent).not.toHaveBeenCalledWith(
+            'subscription_resumed',
+            expect.anything(),
+        );
+    });
+
     it('shows why the plan could not be kept', () => {
         mocks.state.subscription = canceledTrial;
-        mocks.state.errors = { subscription: 'Stripe is down' };
+        mocks.state.errors = { resume: 'Stripe is down' };
         render(<Billing />);
 
         expect(screen.getByText('Stripe is down')).toBeInTheDocument();
