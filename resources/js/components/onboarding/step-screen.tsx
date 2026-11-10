@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, type LucideIcon } from 'lucide-react';
 import { Fragment, type PropsWithChildren, type ReactNode } from 'react';
 
 interface StepScreenProps {
@@ -116,11 +116,25 @@ export function StepNote({
  * The muted block that carries a caveat worth reading but not acting on — what
  * a connection will not bring in, what a failure did not leave behind.
  */
-export function StepCallout({ children }: PropsWithChildren) {
+export function StepCallout({
+    icon: Icon,
+    children,
+}: PropsWithChildren<{ icon?: LucideIcon }>) {
+    const text = 'text-sm leading-normal text-pretty text-muted-foreground';
+
+    if (!Icon) {
+        return (
+            <p className={cn('rounded-lg bg-muted px-4.5 py-4', text)}>
+                {children}
+            </p>
+        );
+    }
+
     return (
-        <p className="rounded-lg bg-muted px-4.5 py-4 text-sm leading-normal text-pretty text-muted-foreground">
-            {children}
-        </p>
+        <div className="flex items-start gap-3 rounded-lg bg-muted px-4.5 py-4">
+            <Icon className="size-5 shrink-0 text-muted-foreground" />
+            <p className={text}>{children}</p>
+        </div>
     );
 }
 

@@ -68,6 +68,42 @@ test('paywall page includes user stats', function () {
         );
 });
 
+test('paywall stats count the uncategorized movements and the accounts kept by hand', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $manual = Account::factory()->for($user)->create(['currency_code' => 'EUR']);
+    Account::factory()->for($user)->create(['currency_code' => 'EUR', 'archived_at' => now()]);
+    Account::factory()->for($user)->connected()->create(['currency_code' => 'EUR']);
+    $category = Category::factory()->for($user)->create();
+    Transaction::factory()->count(2)->for($user)->for($manual)->create(['category_id' => null]);
+    Transaction::factory()->for($user)->for($manual)->create(['category_id' => $category->id]);
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('stats.uncategorizedCount', 2)
+            ->where('stats.manualAccountsCount', 1)
+        );
+
+    // The soft gate is still marked as seen on view, as before.
+    expect($user->fresh()->paywall_seen_at)->not->toBeNull();
+});
+
+test('paywall stats are zero for a user with nothing to sort and nothing kept by hand', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('stats.uncategorizedCount', 0)
+            ->where('stats.manualAccountsCount', 0)
+        );
+});
+
 test('subscribed users are redirected from paywall to dashboard', function () {
     $user = User::factory()->onboarded()->create();
 

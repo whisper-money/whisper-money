@@ -3351,5 +3351,21 @@
     "{1}:count automation rule doing the sorting for you|[2,*]:count automation rules doing the sorting for you": "{1}:count règle automatique qui trie pour vous|[2,*]:count règles automatiques qui trient pour vous",
     "{1}:count budget|[2,*]:count budgets": "{1}:count budget|[2,*]:count budgets",
     "{1}:count savings goal|[2,*]:count savings goals": "{1}:count objectif d'épargne|[2,*]:count objectifs d'épargne",
-    "{1}:count achievement unlocked this year|[2,*]:count achievements unlocked this year": "{1}:count succès débloqué cette année|[2,*]:count succès débloqués cette année"
+    "{1}:count achievement unlocked this year|[2,*]:count achievements unlocked this year": "{1}:count succès débloqué cette année|[2,*]:count succès débloqués cette année",
+    "Try Standard free for :days days": "Essayez Standard gratuitement pendant :days jours",
+    "Start my :days-day free trial": "Commencer mon essai gratuit de :days jours",
+    "Your data is never sold or shared.": "Vos données ne sont jamais vendues ni partagées.",
+    "With your data": "Avec vos données",
+    "1 movement without a category": "1 opération sans catégorie",
+    ":count movements without a category": ":count opérations sans catégorie",
+    "The AI files them in about a minute and writes the rules that keep doing it": "L'IA les classe en une minute environ et écrit les règles qui continuent de le faire",
+    "1 account you update by hand": "1 compte que vous mettez à jour à la main",
+    ":count accounts you update by hand": ":count comptes que vous mettez à jour à la main",
+    "Connect the bank and new movements arrive every day": "Connectez la banque et les nouvelles opérations arrivent chaque jour",
+    "Connect your broker or exchange and new movements arrive on their own": "Connectez votre courtier ou votre plateforme d'échange et les nouvelles opérations arrivent toutes seules",
+    "Standard sorts your movements for you and brings the new ones in on their own.": "Standard classe vos opérations pour vous et fait arriver les nouvelles toutes seules.",
+    "1 movement is in. Standard sorts it for you and brings the new ones in on their own.": "1 opération est arrivée. Standard la classe pour vous et fait arriver les nouvelles toutes seules.",
+    ":count movements are in. Standard sorts them for you and brings the new ones in on their own.": ":count opérations sont arrivées. Standard les classe pour vous et fait arriver les nouvelles toutes seules.",
+    "Try Standard": "Essayez Standard",
+    "Start Standard": "Commencer Standard"
 }

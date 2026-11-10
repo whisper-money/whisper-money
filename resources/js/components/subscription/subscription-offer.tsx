@@ -94,8 +94,11 @@ export function checkoutHref(
 interface OfferOptions {
     /** The plan to start on instead of the configured default. */
     initialPlan?: string;
-    /** Replaces the label that names the charge, e.g. "Start free trial". */
-    buttonText?: string;
+    /**
+     * Replaces the label that names the charge, e.g. "Start free trial". A
+     * function is handed the selected plan, for a label that names its trial.
+     */
+    buttonText?: string | ((plan: Plan | undefined) => string);
     /**
      * Runs on the way out to checkout, with the plan being bought, the one the
      * picker had preselected and the tier it is quoted at.
@@ -143,7 +146,11 @@ export function useOffer(
         hasPlans: plan !== undefined,
         button: (
             <StepButton
-                text={buttonText ?? checkoutLabel(plan)}
+                text={
+                    typeof buttonText === 'function'
+                        ? buttonText(plan)
+                        : (buttonText ?? checkoutLabel(plan))
+                }
                 href={checkoutHref(
                     selectedPlan,
                     preselectedPlan,

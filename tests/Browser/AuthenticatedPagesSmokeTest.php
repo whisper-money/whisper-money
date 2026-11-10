@@ -241,6 +241,6 @@ it('opens the paywall for a reader without a plan', function (): void {
     actingAs($user);
 
     visit('/subscribe')
-        ->assertSee('One thing left to decide')
+        ->assertSee('Try Standard free for 14 days')
         ->assertNoJavascriptErrors();
 });

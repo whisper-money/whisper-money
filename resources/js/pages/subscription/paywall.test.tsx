@@ -10,10 +10,34 @@ const emptyStats = {
     categoriesCount: 12,
     rulesCount: 5,
     connectionsCount: 3,
+    uncategorizedCount: 214,
+    manualAccountsCount: 3,
     endedAt: '2025-08-12T00:00:00+00:00',
 };
 
+const latamPricing = {
+    ...pricing,
+    latam: {
+        plans: {
+            monthly: { ...pricing.plans.monthly, price: 3.99 },
+            yearly: { ...pricing.plans.yearly, price: 23.88 },
+        },
+        timezones: null,
+    },
+    offeredTier: 'latam',
+};
+
+const noTrialPricing = {
+    ...pricing,
+    plans: {
+        monthly: { ...pricing.plans.monthly, trial_days: 0 },
+        yearly: { ...pricing.plans.yearly, trial_days: 0 },
+    },
+};
+
 const mocks = vi.hoisted(() => ({
+    latam: { current: false },
+    noTrial: { current: false },
     visit: vi.fn(),
     post: vi.fn(),
     httpPost: vi.fn(),
@@ -28,6 +52,8 @@ const mocks = vi.hoisted(() => ({
             categoriesCount: 12,
             rulesCount: 5,
             connectionsCount: 3,
+            uncategorizedCount: 214,
+            manualAccountsCount: 3,
             endedAt: '2025-08-12T00:00:00+00:00',
         },
     },
@@ -63,7 +89,11 @@ vi.mock('@inertiajs/react', async () => ({
         props: {
             auth: { user: { id: '1', name: 'Ada', email: 'ada@example.test' } },
             locale: 'en',
-            pricing,
+            pricing: mocks.latam.current
+                ? latamPricing
+                : mocks.noTrial.current
+                  ? noTrialPricing
+                  : pricing,
             ...mocks.props,
         },
     }),
@@ -72,6 +102,8 @@ vi.mock('@inertiajs/react', async () => ({
 describe('Paywall', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.latam.current = false;
+        mocks.noTrial.current = false;
         mocks.httpPost.mockResolvedValue(undefined);
         mocks.props.canUseFreePlan = false;
         mocks.props.canEscapeToFreePlan = false;
@@ -191,17 +223,178 @@ describe('Paywall', () => {
             mocks.props.canUseFreePlan = true;
         });
 
-        it('opens by saying nothing is locked', () => {
+        it('offers the trial of the preselected plan, and counts what is in', () => {
             render(<Paywall />);
 
             expect(
-                screen.getByText('One thing left to decide'),
+                screen.getByText('Try Standard free for 14 days'),
             ).toBeInTheDocument();
             expect(
                 screen.getByText(
-                    /Nothing is locked and nothing is about to be/,
+                    '1,284 movements are in. Standard sorts them for you and brings the new ones in on their own.',
                 ),
             ).toBeInTheDocument();
+
+            // Comparing plans does not rewrite the headline.
+            fireEvent.click(screen.getByText('Monthly'));
+
+            expect(
+                screen.getByText('Try Standard free for 14 days'),
+            ).toBeInTheDocument();
+        });
+
+        it('says a single movement in the singular', () => {
+            mocks.props.stats = { ...emptyStats, transactionsCount: 1 };
+
+            render(<Paywall />);
+
+            expect(
+                screen.getByText(
+                    '1 movement is in. Standard sorts it for you and brings the new ones in on their own.',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('names no count when nothing is in yet', () => {
+            mocks.props.stats = { ...emptyStats, transactionsCount: 0 };
+
+            render(<Paywall />);
+
+            expect(
+                screen.getByText(
+                    'Standard sorts your movements for you and brings the new ones in on their own.',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('argues with the user’s own data', () => {
+            render(<Paywall />);
+
+            expect(screen.getByText('With your data')).toBeInTheDocument();
+            expect(
+                screen.getByText('214 movements without a category'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('3 accounts you update by hand'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    'Connect the bank and new movements arrive every day',
+                ),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByText('Free keeps working'),
+            ).not.toBeInTheDocument();
+        });
+
+        it('shows each row only when there is something to count', () => {
+            mocks.props.stats = {
+                ...emptyStats,
+                uncategorizedCount: 0,
+                manualAccountsCount: 1,
+            };
+
+            render(<Paywall />);
+
+            expect(
+                screen.queryByText(/without a category/),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.getByText('1 account you update by hand'),
+            ).toBeInTheDocument();
+        });
+
+        it('sells a broker or an exchange on the latam price, not a bank', () => {
+            mocks.latam.current = true;
+
+            render(<Paywall />);
+
+            expect(
+                screen.getByText(
+                    'Connect your broker or exchange and new movements arrive on their own',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('says that the data is never sold, and gives no user counts', () => {
+            render(<Paywall />);
+
+            expect(
+                screen.getByText('Your data is never sold or shared.'),
+            ).toBeInTheDocument();
+            expect(screen.queryByText(/people/)).not.toBeInTheDocument();
+        });
+
+        it('names the trial on the button, which goes to the paywall checkout', () => {
+            render(<Paywall />);
+
+            const cta = screen.getByTestId('start-plan');
+
+            expect(cta).toHaveTextContent('Start my 14-day free trial');
+            expect(cta).toHaveAttribute(
+                'href',
+                expect.stringMatching(/[?&]source=paywall(&|$)/),
+            );
+
+            fireEvent.click(screen.getByText('Monthly'));
+
+            expect(screen.getByTestId('start-plan')).toHaveTextContent(
+                'Start my 7-day free trial',
+            );
+        });
+
+        it('keeps the way out on screen from the first paint', () => {
+            render(<Paywall />);
+
+            expect(screen.getByTestId('carry-on-free')).toHaveTextContent(
+                'Carry on free',
+            );
+        });
+
+        it('says what happens before the first charge', () => {
+            render(<Paywall />);
+
+            expect(
+                screen.getByText(
+                    'Free for 14 days, then €53.94 a year. Cancel before then and you are not charged.',
+                ),
+            ).toBeInTheDocument();
+            expect(
+                screen.getAllByText(
+                    'We’ll email you 3 days before the first charge. Cancel anytime from Settings.',
+                ),
+            ).toHaveLength(1);
+        });
+
+        it('promises no trial when the plan has none', () => {
+            mocks.noTrial.current = true;
+
+            render(<Paywall />);
+
+            expect(screen.getByText('Try Standard')).toBeInTheDocument();
+            expect(screen.getByTestId('start-plan')).toHaveTextContent(
+                'Start Standard',
+            );
+            expect(
+                screen.queryByText(/We’ll email you 3 days before/),
+            ).not.toBeInTheDocument();
+        });
+
+        it('marks its events as the personalized screen', () => {
+            render(<Paywall />);
+
+            fireEvent.click(screen.getByTestId('start-plan'));
+
+            expect(mocks.captureEvent).toHaveBeenCalledWith(
+                'paywall_checkout_started',
+                {
+                    gate: 'soft',
+                    plan: 'yearly',
+                    preselected_plan: 'yearly',
+                    price_tier: 'standard',
+                    variant: 'personalized',
+                },
+            );
         });
 
         it('asks why before walking out, with nothing to confirm', () => {
@@ -259,8 +452,18 @@ describe('Paywall', () => {
             expect(mocks.visit).toHaveBeenCalledWith('/dashboard');
         });
 
-        it('names what free keeps and what the plan adds', () => {
+        it('names what free keeps and what the plan adds when there is nothing to count', () => {
+            mocks.props.stats = {
+                ...emptyStats,
+                uncategorizedCount: 0,
+                manualAccountsCount: 0,
+            };
+
             render(<Paywall />);
+
+            expect(
+                screen.queryByText('With your data'),
+            ).not.toBeInTheDocument();
 
             expect(screen.getByText('Free keeps working')).toBeInTheDocument();
             expect(
@@ -274,6 +477,7 @@ describe('Paywall', () => {
             expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
                 gate: 'soft',
                 price_tier: 'standard',
+                variant: 'personalized',
             });
 
             fireEvent.click(screen.getByTestId('carry-on-free'));
@@ -307,6 +511,28 @@ describe('Paywall', () => {
                 screen.getByText('Still here, still categorised'),
             ).toBeInTheDocument();
             expect(screen.getByText('5 rules')).toBeInTheDocument();
+        });
+
+        it('keeps its own screen, without the soft gate’s argument', () => {
+            render(<Paywall />);
+
+            expect(screen.getByTestId('start-plan')).toHaveTextContent(
+                'Start Standard — free for 14 days',
+            );
+            expect(
+                screen.queryByText('With your data'),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByText('Your data is never sold or shared.'),
+            ).not.toBeInTheDocument();
+            // One reminder, under the button, as #1285 placed it.
+            expect(
+                screen.getAllByText(/We’ll email you 3 days before/),
+            ).toHaveLength(1);
+            expect(mocks.captureEvent).toHaveBeenCalledWith('paywall_viewed', {
+                gate: 'former-subscriber',
+                price_tier: 'standard',
+            });
         });
 
         // Losing the date should cost the sentence the date, not the sentence.
