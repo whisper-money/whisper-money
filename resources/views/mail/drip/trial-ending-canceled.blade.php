@@ -9,10 +9,10 @@
 {{ __("Here's what you've set up so far, and it stays yours:") }}
 
 @if ($stats['accountsCount'] > 0)
-- {{ trans_choice(':count account|:count accounts', $stats['accountsCount'], ['count' => $stats['accountsCount']]) }}
+- {{ trans_choice(':count account|:count accounts', $stats['accountsCount'], ['count' => \Illuminate\Support\Number::format($stats['accountsCount'], locale: app()->getLocale())]) }}
 @endif
 @if ($stats['transactionsCount'] > 0)
-- {{ trans_choice(':count transaction|:count transactions', $stats['transactionsCount'], ['count' => $stats['transactionsCount']]) }}
+- {{ trans_choice(':count transaction|:count transactions', $stats['transactionsCount'], ['count' => \Illuminate\Support\Number::format($stats['transactionsCount'], locale: app()->getLocale())]) }}
 @endif
 @endif
 

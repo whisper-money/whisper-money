@@ -432,9 +432,7 @@ function ScheduledCancellationSection({
                           )}
                 </span>
                 {errors.resume && (
-                    <span role="alert" className="text-destructive">
-                        {errors.resume}
-                    </span>
+                    <span className="text-destructive">{errors.resume}</span>
                 )}
                 <Button
                     disabled={processing}
