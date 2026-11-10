@@ -13,9 +13,13 @@ use Carbon\CarbonImmutable;
  */
 class RuleSuggestionAvailability
 {
+    /**
+     * Onboarding estimates are left out: they are already sorted, one row per
+     * category, so they give the AI nothing to learn from.
+     */
     public function transactionCount(User $user): int
     {
-        return $user->transactions()->count();
+        return $user->transactions()->withoutEstimates()->count();
     }
 
     public function minTransactions(): int

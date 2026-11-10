@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -37,6 +38,17 @@ function giveTransactionCreatedAt(User $user, CarbonInterface $createdAt): Trans
     return $transaction;
 }
 
+/**
+ * An onboarding estimate: a round monthly figure carrying the "Estimate" label.
+ */
+function giveEstimateCreatedAt(User $user, CarbonInterface $createdAt): Transaction
+{
+    $transaction = giveTransactionCreatedAt($user, $createdAt);
+    $transaction->labels()->attach(Label::factory()->for($user)->estimate()->create());
+
+    return $transaction;
+}
+
 test('a free user whose first transactions came after the paywall is eligible', function () {
     $user = freeUserPastThePaywall();
     giveTransactionCreatedAt($user, now()->subDay());
@@ -62,6 +74,13 @@ test('nobody is eligible while subscriptions are off', function () {
 
 test('a user without transactions is not eligible', function () {
     expect(freeUserPastThePaywall()->isEligibleForSecondOffer())->toBeFalse();
+});
+
+test('estimates created after the paywall do not make a user eligible', function () {
+    $user = freeUserPastThePaywall();
+    giveEstimateCreatedAt($user, now()->subDay());
+
+    expect($user->isEligibleForSecondOffer())->toBeFalse();
 });
 
 test('a user who never saw the paywall is not eligible', function () {
@@ -180,6 +199,32 @@ test('the paywall waits for a user with no transactions', function () {
 
 test('the paywall greets a user once their first transactions are in', function () {
     $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveTransactionCreatedAt($user, now());
+
+    actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('the paywall keeps waiting for a user with only onboarding estimates', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveEstimateCreatedAt($user, now());
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))->assertOk();
+
+    expect($user->fresh()->paywall_seen_at)->toBeNull();
+});
+
+test('the paywall keeps waiting after the user deletes the Estimate label', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveEstimateCreatedAt($user, now())->labels()->first()->delete();
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))->assertOk();
+
+    expect($user->fresh()->paywall_seen_at)->toBeNull();
+});
+
+test('the paywall greets a user with estimates once a real transaction arrives', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveEstimateCreatedAt($user, now()->subDay());
     giveTransactionCreatedAt($user, now());
 
     actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscribe'));

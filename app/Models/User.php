@@ -181,7 +181,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         }
 
         /** @var Carbon|null $firstTransactionAt */
-        $firstTransactionAt = $this->transactions()->oldest()->value('created_at');
+        $firstTransactionAt = $this->transactions()->withoutEstimates()->oldest()->value('created_at');
 
         if ($firstTransactionAt === null) {
             return false;
@@ -233,11 +233,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     /**
      * Whether the paywall should hold off for now: the user has no
      * transactions, so no bank connected and nothing for the AI to sort —
-     * nothing the paid plan would do for them yet.
+     * nothing the paid plan would do for them yet. Onboarding estimates do not
+     * count: they are already sorted, one row per category.
      */
     public function hasNothingToPayForYet(): bool
     {
-        return self::asksToPayOnlyWithData() && ! $this->transactions()->exists();
+        return self::asksToPayOnlyWithData() && ! $this->transactions()->withoutEstimates()->exists();
     }
 
     /**

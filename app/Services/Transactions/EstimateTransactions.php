@@ -130,8 +130,7 @@ class EstimateTransactions
      */
     private function estimates(): Builder
     {
-        return Transaction::query()
-            ->whereHas('labels', fn (Builder $query) => $query->where('source', LabelSource::Estimate));
+        return Transaction::query()->estimates();
     }
 
     /**

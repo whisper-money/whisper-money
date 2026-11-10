@@ -5,6 +5,7 @@ use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\BankingConnection;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\RuleSuggestion;
 use App\Models\SuggestionRun;
 use App\Models\Transaction;
@@ -35,6 +36,18 @@ function seedTransactions(User $user, Account $account, int $mercadona = 6, int 
             'creditor_name' => null, 'description' => "UNIQUE MERCHANT {$i}", 'amount' => -1000,
         ]);
     }
+}
+
+/**
+ * Rows like the ones the onboarding quick-expenses step stores: one per
+ * category, carrying the "Estimate" label.
+ */
+function seedEstimates(User $user, Account $account, int $count): void
+{
+    $label = Label::factory()->for($user)->estimate()->create();
+
+    Transaction::factory()->for($user)->count($count)->create(['account_id' => $account->id])
+        ->each(fn (Transaction $transaction) => $transaction->labels()->attach($label));
 }
 
 function fakeGeneratorReturning(string $categoryId): void
@@ -71,6 +84,26 @@ it('reports ineligible users with too few transactions', function () {
         ->postJson(route('ai.rule-suggestions.generate'))
         ->assertStatus(422)
         ->assertJson(['eligible' => false, 'transaction_count' => 8]);
+});
+
+it('leaves onboarding estimates out of the transaction count', function () {
+    seedEstimates($this->user, $this->account, 5);
+
+    $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk()
+        ->assertJson(['transaction_count' => 0]);
+});
+
+it('does not count onboarding estimates toward eligibility', function () {
+    $this->user->recordAiConsent();
+    seedTransactions($this->user, $this->account, mercadona: 6, filler: 40); // 46 real
+    seedEstimates($this->user, $this->account, 10);
+
+    $this->actingAs($this->user)
+        ->postJson(route('ai.rule-suggestions.generate'))
+        ->assertStatus(422)
+        ->assertJson(['eligible' => false, 'transaction_count' => 46]);
 });
 
 it('generates, persists and returns suggestions for an eligible user', function () {
