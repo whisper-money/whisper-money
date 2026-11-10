@@ -19,6 +19,7 @@ enum DripEmailType: string
     case BankNotice = 'bank_notice';
     case ConnectionExpiring = 'connection_expiring';
     case InactiveNoBank = 'inactive_no_bank';
+    case InactiveBanked = 'inactive_banked';
     case TrialEnding = 'trial_ending';
     case MonthlySummary = 'monthly_summary';
     case MonthlySummaryReminder = 'monthly_summary_reminder';
@@ -52,6 +53,7 @@ enum DripEmailType: string
             self::SubscriptionCancelled,
             self::AiConsentFollowUp,
             self::Update,
+            self::InactiveBanked,
         ];
     }
 
@@ -76,6 +78,7 @@ enum DripEmailType: string
             self::PaywallFollowUp,
             self::AiConsentFollowUp,
             self::InactiveNoBank,
+            self::InactiveBanked,
             self::MonthlySummaryReminder,
         ];
     }
