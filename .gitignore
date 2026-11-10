@@ -42,3 +42,6 @@ yarn-error.log
 
 # Rendered feature videos (see videos/src/root.tsx)
 /videos/out
+
+# Local agent task queue (pending/recurring follow-ups, not committed)
+/.tasks
