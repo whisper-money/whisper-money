@@ -62,7 +62,8 @@ function startCheckout(User $user, ?string $source): TestResponse
 /**
  * The consent travels with the plan only where the screen that sold it said
  * what leaves the account: the bank and AI gates, the broker gate, which
- * carries the same row, and the in-app AI categorization dialog. Everywhere else the user is asked on its own terms, on
+ * carries the same row, the in-app AI categorization dialog and the second
+ * offer. Everywhere else the user is asked on its own terms, on
  * the screen that asks.
  */
 it('grants the AI consent the gate disclosed, with the purchase', function (string $source) {
@@ -75,6 +76,7 @@ it('grants the AI consent the gate disclosed, with the purchase', function (stri
     'AI gate' => ['onboarding_ai'],
     'broker gate' => ['onboarding_broker'],
     'AI categorization dialog' => ['ai_categorization'],
+    'second offer' => ['second_offer'],
 ]);
 
 it('grants no consent from a checkout that disclosed nothing', function (?string $source) {

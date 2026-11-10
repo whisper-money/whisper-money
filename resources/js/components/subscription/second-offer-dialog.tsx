@@ -75,8 +75,8 @@ export function SecondOfferDialog() {
 
 /**
  * The user's own latest uncategorized movements, as they are now. Nothing is
- * guessed for them: without a plan there is no AI run and no consent to send
- * them anywhere, so the preview only shows what is waiting.
+ * guessed for them: the AI only runs once the plan (and the consent its
+ * checkout grants) is in place, so the preview only shows what is waiting.
  */
 function WaitingForACategory({
     movements,

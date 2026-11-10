@@ -12,10 +12,13 @@ it('sends a checkout started outside the wizard nowhere special and asks for no 
     'MCP settings' => [UpsellSource::Mcp],
 ]);
 
-it('switches the AI consent on from the AI categorization dialog, which discloses it, without a way back into the wizard', function () {
-    expect(UpsellSource::AiCategorization->grantsAiConsent())->toBeTrue()
-        ->and(UpsellSource::AiCategorization->onboardingReturn())->toBeNull();
-});
+it('switches the AI consent on from the in-app dialogs that disclose it, without a way back into the wizard', function (UpsellSource $source) {
+    expect($source->grantsAiConsent())->toBeTrue()
+        ->and($source->onboardingReturn())->toBeNull();
+})->with([
+    'AI categorization dialog' => [UpsellSource::AiCategorization],
+    'second offer' => [UpsellSource::SecondOffer],
+]);
 
 it('maps the paywall, billing, API and MCP points to their query values', function () {
     expect(UpsellSource::tryFrom('paywall'))->toBe(UpsellSource::Paywall)

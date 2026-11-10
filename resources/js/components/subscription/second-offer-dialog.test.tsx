@@ -121,8 +121,28 @@ describe('SecondOfferDialog', () => {
         expect(screen.getByText('REPSOL E.S. 2281')).toBeInTheDocument();
         expect(screen.getByText('-€48.20')).toBeInTheDocument();
         expect(screen.getAllByText('Needs a category')).toHaveLength(3);
-        // No AI ran: no consent, no plan. Nothing pretends otherwise.
-        expect(screen.queryByText('What leaves your account')).toBeNull();
+        // No AI ran yet: nothing is guessed for them.
+        expect(screen.queryByText(/Groceries|Subscriptions/)).toBeNull();
+    });
+
+    it('says what leaves the account, since its checkout switches the AI on', async () => {
+        await renderDialog();
+
+        expect(
+            screen.getByText('What leaves your account'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Merchant names and amounts, one line at a time/),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the disclosure when there is no backlog to preview', async () => {
+        mocks.backlog.current = { count: 0, recent: [] };
+        await renderDialog();
+
+        expect(
+            screen.getByText('What leaves your account'),
+        ).toBeInTheDocument();
     });
 
     it('speaks of a single movement in the singular', async () => {

@@ -56,14 +56,15 @@ enum UpsellSource: string
      * Whether the screen behind this point discloses, in a row the user cannot
      * miss, what the AI sorting sends out — and so is allowed to switch the
      * consent on with the plan instead of asking for it again a step later. The
-     * onboarding gates and the in-app AI categorization dialog carry that row;
-     * every other checkout leaves the consent to the screen that asks for it on
-     * its own terms.
+     * onboarding gates, the in-app AI categorization dialog and the second offer
+     * (which promises to file the user's backlog) carry that row; every other
+     * checkout leaves the consent to the screen that asks for it on its own
+     * terms.
      */
     public function grantsAiConsent(): bool
     {
         return match ($this) {
-            self::OnboardingBank, self::OnboardingBroker, self::OnboardingAi, self::AiCategorization => true,
+            self::OnboardingBank, self::OnboardingBroker, self::OnboardingAi, self::AiCategorization, self::SecondOffer => true,
             default => false,
         };
     }

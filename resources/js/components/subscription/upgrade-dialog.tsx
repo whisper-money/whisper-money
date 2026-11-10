@@ -150,8 +150,8 @@ function ctaLabel(source: UpsellSource, plan: Plan | undefined): string {
  * accounts, the API and MCP settings, the second offer after a first import);
  * each passes only its `source`, and the dialog writes the copy for it.
  *
- * The AI categorization point carries the same disclosure row as the
- * onboarding AI gate: its checkout switches the consent on with the plan
+ * The AI categorization point and the second offer carry the same disclosure
+ * row as the onboarding AI gate: their checkout switches the consent on with the plan
  * (`UpsellSource::grantsAiConsent()`), which is only honest when the screen
  * says what leaves the account.
  */
@@ -186,7 +186,10 @@ export function UpgradeDialog({
     const plan = tierChoice.plans[selectedPlan];
     const terms = planTerms(plan, pricing.currency, locale);
     const copy = upsellCopy(source, offeredTier, uncategorizedCount);
-    const discloses = source === 'ai_categorization';
+    // The sources whose checkout switches the AI consent on with the plan
+    // (`UpsellSource::grantsAiConsent()`), so they have to say what leaves.
+    const discloses =
+        source === 'ai_categorization' || source === 'second_offer';
     // The latam price has no bank sync to promise.
     const sellsTheRest = !children && tierChoice.tier === 'standard';
     const rows =
