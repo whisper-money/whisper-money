@@ -1,3 +1,4 @@
+import InputError from '@/components/input-error';
 import {
     OfferStep,
     type CancellationOffer,
@@ -309,11 +310,11 @@ export function CancelSubscriptionFlow({
                     data-testid="cancel-flow"
                 >
                     {content}
-                    {errors.cancellation && (
-                        <p className="text-sm text-destructive">
-                            {errors.cancellation}
-                        </p>
-                    )}
+                    <InputError
+                        message={errors.cancellation}
+                        role="alert"
+                        className="text-center sm:text-right"
+                    />
                 </DialogContent>
             </Dialog>
             {auth?.user && (
