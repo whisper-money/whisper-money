@@ -20,10 +20,12 @@ import {
 } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
 import { type PriceTier } from '@/lib/price-tier';
+import { billing } from '@/routes/settings';
 import { type SharedData } from '@/types';
 import { type Plan } from '@/types/pricing';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
@@ -174,7 +176,7 @@ export function UpgradeDialog({
      */
     children?: ReactNode;
 }) {
-    const { pricing, locale } = usePage<SharedData>().props;
+    const { auth, pricing, locale } = usePage<SharedData>().props;
     const offeredTier = useOfferedPriceTier();
     // The bank-connection upsells open on the price that includes a bank; the
     // latam one stays a click away for whoever wanted a direct integration.
@@ -207,6 +209,18 @@ export function UpgradeDialog({
                 )}
             </StepList>
         ) : null;
+
+    // Someone who paused is not sold the plan again: the way back is resuming.
+    if (auth?.pausedSubscription) {
+        return (
+            <PausedPlanDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                resumesAt={auth.pausedSubscription.resumesAt}
+                locale={locale}
+            />
+        );
+    }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,6 +267,57 @@ export function UpgradeDialog({
                     />
 
                     {terms && <StepNote emphasis>{terms}</StepNote>}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/**
+ * The upsell for a user inside a pause: what they reached for comes back when
+ * the pause ends, or today from the billing page, where resuming says what it
+ * charges.
+ */
+function PausedPlanDialog({
+    open,
+    onOpenChange,
+    resumesAt,
+    locale,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    resumesAt: string | null;
+    locale: string;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent data-testid="paused-upgrade-dialog">
+                <DialogHeader>
+                    <DialogTitle>{__('Your plan is paused')}</DialogTitle>
+                    <DialogDescription>
+                        {resumesAt
+                            ? __(
+                                  'Standard comes back on :date. To have it back today, resume your plan from the billing page.',
+                                  { date: formatDateMedium(resumesAt, locale) },
+                              )
+                            : __(
+                                  'To have Standard back, resume your plan from the billing page.',
+                              )}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2.5">
+                    <StepButton
+                        text={__('See my plan')}
+                        onClick={() => {
+                            onOpenChange(false);
+                            router.visit(billing.url());
+                        }}
+                    />
+                    <StepButton
+                        text={__('Maybe later')}
+                        variant="ghost"
+                        onClick={() => onOpenChange(false)}
+                    />
                 </div>
             </DialogContent>
         </Dialog>

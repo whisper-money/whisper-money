@@ -91,6 +91,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
+                // Set inside a pause, so the upsells say the plan is paused
+                // instead of selling it again. `resumesAt` is null only for a
+                // pause with no end.
+                'pausedSubscription' => $this->pausedSubscriptionFor($user),
                 'bankAggregatorLocked' => $user?->paysLatamPrice() ?? false,
                 'isDemoAccount' => $user?->isRestrictedDemoAccount() ?? false,
                 'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
@@ -479,6 +483,16 @@ class HandleInertiaRequests extends Middleware
         }
 
         return $props;
+    }
+
+    /**
+     * @return array{resumesAt: ?string}|null
+     */
+    private function pausedSubscriptionFor(?User $user): ?array
+    {
+        $paused = $user?->pausedSubscription();
+
+        return $paused === null ? null : ['resumesAt' => $paused->pause_resumes_at?->toIso8601String()];
     }
 
     /**

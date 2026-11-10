@@ -270,14 +270,22 @@ class BankingConnection extends Model
     }
 
     /**
-     * Whether the owner's paid plan leaves this connection out: a bank through
-     * the aggregator, owned by someone paying the latam price. It is neither
-     * synced nor reconnected; the direct integrations of the same plan are.
+     * Whether the owner's paid plan leaves this connection out right now: a
+     * bank through the aggregator, owned by someone paying the latam price,
+     * or any connection of an owner who paused their plan. It is neither
+     * synced nor reconnected; the direct integrations of the latam plan are.
+     * A paused owner's connections stay open, and sync again once the pause
+     * ends.
+     *
      * Free users are not covered here: `banking:cancel-free-enablebanking`
      * closes their banks.
      */
     public function isOffOwnersPlan(): bool
     {
+        if ($this->user?->hasPausedSubscription() === true) {
+            return true;
+        }
+
         return $this->provider->planFeature() === PlanFeature::BankAggregator
             && $this->user?->paysLatamPrice() === true;
     }

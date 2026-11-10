@@ -42,6 +42,7 @@ Schedule::command('email:ai-consent-follow-up')->dailyAt('10:15')->timezone('Eur
 Schedule::command('email:inactive-no-bank')->dailyAt('09:45')->timezone('Europe/Madrid');
 Schedule::command('email:inactive-banked')->dailyAt('09:47')->timezone('Europe/Madrid');
 Schedule::command('email:connection-expiring')->dailyAt('09:50')->timezone('Europe/Madrid');
+Schedule::command('email:subscription-resuming')->dailyAt('09:55')->timezone('Europe/Madrid');
 Schedule::command('email:user-emails-report')->monthlyOn(1, '09:05')->timezone('Europe/Madrid');
 Schedule::command('banking:health --email')->dailyAt('09:30')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');

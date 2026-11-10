@@ -55,6 +55,16 @@ const YEARLY: CancellationOffer = {
     price: 53.94,
     savings: 53.94,
 };
+const PAUSE: CancellationOffer = {
+    offer: 'pause',
+    startsAt: '2026-11-25T10:00:00+00:00',
+    price: 8.99,
+    options: [
+        { months: 1, resumesAt: '2026-12-25T09:00:00+00:00' },
+        { months: 2, resumesAt: '2027-01-25T09:00:00+00:00' },
+        { months: 3, resumesAt: '2027-02-25T09:00:00+00:00' },
+    ],
+};
 
 function answerWith(
     offers: CancellationOffer[],
@@ -65,6 +75,7 @@ function answerWith(
         offers,
         endsAt: '2026-11-25T10:00:00+00:00',
         onTrial: false,
+        paused: false,
         ...overrides,
     };
 }
@@ -248,6 +259,82 @@ describe('CancelSubscriptionFlow', () => {
         ]);
         expect(onOpenChange).toHaveBeenCalledWith(false);
         expect(eventsNamed('cancel_flow_abandoned')).toEqual([]);
+    });
+
+    it('offers a month of pause by default, with the day it resumes and the price', async () => {
+        mocks.post.mockResolvedValue(answerWith([PAUSE]));
+        renderFlow();
+
+        await answer('not_using_enough');
+
+        expect(screen.getByText('Pause your plan instead')).toBeInTheDocument();
+        expect(
+            screen.getByText(/Standard stays on until Nov 25, 2026/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByTestId('cancel-flow-pause-resumes'),
+        ).toHaveTextContent(
+            'Resumes on its own on Dec 25, 2026 at €8.99 a month',
+        );
+        expect(screen.getByTestId('cancel-flow-accept')).toHaveTextContent(
+            'Pause for 1 month',
+        );
+        expect(screen.getByTestId('cancel-flow-decline')).toBeInTheDocument();
+        expect(eventsNamed('cancel_flow_offer_shown')).toEqual([
+            { on_trial: false, offer: 'pause' },
+        ]);
+    });
+
+    it('pauses for the length picked, and reports it once applied', async () => {
+        mocks.post.mockResolvedValue(answerWith([PAUSE]));
+        const onOpenChange = renderFlow();
+
+        await answer('not_using_enough');
+        fireEvent.click(screen.getByTestId('cancel-flow-pause-3'));
+
+        expect(
+            screen.getByTestId('cancel-flow-pause-resumes'),
+        ).toHaveTextContent('Feb 25, 2027');
+
+        fireEvent.click(screen.getByTestId('cancel-flow-accept'));
+
+        expect(mocks.routerPost).toHaveBeenCalledWith(
+            '/settings/billing/cancellation/answer-1/pause',
+            { months: 3 },
+            expect.anything(),
+        );
+        expect(eventsNamed('cancel_flow_offer_accepted')).toEqual([
+            { on_trial: false, offer: 'pause', months: 3 },
+        ]);
+        expect(eventsNamed('subscription_paused')).toEqual([
+            { months: 3, source: 'cancel_flow' },
+        ]);
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it('goes on to the confirmation when the pause is declined', async () => {
+        mocks.post.mockResolvedValue(answerWith([PAUSE]));
+        renderFlow();
+
+        await answer('not_using_enough');
+        fireEvent.click(screen.getByTestId('cancel-flow-decline'));
+
+        expect(screen.getByTestId('cancel-flow-confirm')).toBeInTheDocument();
+        expect(eventsNamed('cancel_flow_offer_declined')).toEqual([
+            { on_trial: false, offer: 'pause' },
+        ]);
+    });
+
+    it('tells a paused plan it ends today', async () => {
+        mocks.post.mockResolvedValue(answerWith([], { paused: true }));
+        renderFlow();
+
+        await answer('other');
+
+        expect(screen.getByText('Your plan ends today')).toBeInTheDocument();
+        expect(
+            screen.queryByText(/Your plan stays on until/),
+        ).not.toBeInTheDocument();
     });
 
     it('counts a discount as accepted only once the server applied it', async () => {

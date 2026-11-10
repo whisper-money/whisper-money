@@ -638,3 +638,144 @@ describe('Billing – the in-app cancel flow', () => {
         ).not.toBeInTheDocument();
     });
 });
+
+describe('Billing – a paused plan', () => {
+    const paid = {
+        onTrial: false,
+        trialEndsAt: null,
+        onGracePeriod: false,
+        endsAt: null,
+        plan: { price: 8.99, billing_period: 'month' },
+        standardUpgrade: null,
+        canCancel: true,
+    };
+    const running = {
+        active: true,
+        startsAt: '2026-11-01T10:00:00+00:00',
+        resumesAt: '2026-12-25T09:00:00+00:00',
+        plan: { price: 8.99, billing_period: 'month' },
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.routerPost.mockReset();
+        mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
+        mocks.state.hasUnpaidSubscription = false;
+        mocks.state.errors = {};
+    });
+
+    afterEach(() => {
+        mocks.state.subscription = null;
+    });
+
+    it('says until when, at what price it resumes, and what resuming now costs', () => {
+        mocks.state.hasProPlan = false;
+        mocks.state.subscription = { ...paid, pause: running };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Paused until Dec 25, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /resumes on its own on Dec 25, 2026 at €8\.99 a month/,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Resuming now charges €8\.99 today/),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('resume-paused-plan')).toHaveTextContent(
+            'Resume now',
+        );
+        // Nothing to sell: no checkout, but the portal and the cancel flow stay.
+        expect(
+            screen.queryByText(/Upgrade to Standard/),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText('Manage Subscription')).toBeInTheDocument();
+        expect(screen.getByTestId('cancel-subscription')).toBeInTheDocument();
+    });
+
+    it('resumes now and reports it once the server did', () => {
+        mocks.state.hasProPlan = false;
+        mocks.state.subscription = { ...paid, pause: running };
+        mocks.routerPost.mockImplementation(
+            (
+                _url: string,
+                _data: unknown,
+                options: { onSuccess?: (page: unknown) => void },
+            ) => options.onSuccess?.({ props: { flash: {}, errors: {} } }),
+        );
+        render(<Billing />);
+
+        fireEvent.click(screen.getByTestId('resume-paused-plan'));
+
+        expect(mocks.routerPost).toHaveBeenCalledWith(
+            '/settings/billing/pause/resume',
+            {},
+            expect.anything(),
+        );
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'subscription_pause_resumed_early',
+            { source: 'billing', was_paused: true },
+        );
+    });
+
+    it('does not report a resume the server refused', () => {
+        mocks.state.hasProPlan = false;
+        mocks.state.subscription = { ...paid, pause: running };
+        mocks.routerPost.mockImplementation(
+            (
+                _url: string,
+                _data: unknown,
+                options: { onSuccess?: (page: unknown) => void },
+            ) =>
+                options.onSuccess?.({
+                    props: { flash: {}, errors: { pause: 'declined' } },
+                }),
+        );
+        render(<Billing />);
+
+        fireEvent.click(screen.getByTestId('resume-paused-plan'));
+
+        expect(mocks.captureEvent).not.toHaveBeenCalledWith(
+            'subscription_pause_resumed_early',
+            expect.anything(),
+        );
+    });
+
+    it('shows a pause still to come next to the running plan, and lets it be dropped', () => {
+        mocks.state.hasProPlan = true;
+        mocks.state.subscription = {
+            ...paid,
+            pause: {
+                ...running,
+                active: false,
+                startsAt: '2026-11-25T10:00:00+00:00',
+            },
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Your plan pauses on Nov 25, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Standard stays on until Nov 25, 2026/),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('resume-paused-plan')).toHaveTextContent(
+            'Cancel the pause',
+        );
+        expect(screen.getByText('Your Standard plan')).toBeInTheDocument();
+    });
+
+    it('shows the error the server sent back', () => {
+        mocks.state.hasProPlan = false;
+        mocks.state.subscription = { ...paid, pause: running };
+        mocks.state.errors = { pause: 'We could not charge your card.' };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('We could not charge your card.'),
+        ).toBeInTheDocument();
+    });
+});

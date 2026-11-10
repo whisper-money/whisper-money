@@ -22,6 +22,6 @@ class SendImportHelpEmailJob extends SendDripEmailJob
     {
         return $this->user->isOnboarded()
             && ! $this->user->transactions()->exists()
-            && ! $this->user->hasProPlan();
+            && $this->user->isOnFreePlan();
     }
 }

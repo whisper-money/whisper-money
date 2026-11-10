@@ -2,6 +2,7 @@ import InputError from '@/components/input-error';
 import {
     OfferStep,
     type CancellationOffer,
+    type OfferAcceptance,
 } from '@/components/subscription/cancel-flow-offer-step';
 import { SupportDialog } from '@/components/support-dialog';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { captureEvent } from '@/lib/posthog';
 import {
     cancel as cancelRoute,
+    pause as pauseRoute,
     retentionCoupon as retentionCouponRoute,
     store as storeRoute,
     switchToYearly as switchToYearlyRoute,
@@ -63,6 +65,8 @@ export interface CancellationFlowAnswer {
     /** The day the plan would stop; null when Stripe could not say. */
     endsAt: string | null;
     onTrial: boolean;
+    /** Inside a pause, where cancelling ends the plan today. */
+    paused: boolean;
 }
 
 type Step =
@@ -175,37 +179,37 @@ export function CancelSubscriptionFlow({
         return false;
     };
 
-    const post = (url: string, onSuccess: () => void) => {
+    const post = (
+        url: string,
+        onSuccess: () => void,
+        data: Record<string, number> = {},
+    ) => {
         setProcessing(true);
-        router.post(
-            url,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { flash } = page.props as unknown as SharedData;
+        router.post(url, data, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const { flash } = page.props as unknown as SharedData;
 
-                    onSuccess();
+                onSuccess();
 
-                    if (flash?.success) {
-                        toast.success(flash.success);
-                    }
-                },
-                onHttpException: reportFailure,
-                onNetworkError: reportFailure,
-                onFinish: () => setProcessing(false),
+                if (flash?.success) {
+                    toast.success(flash.success);
+                }
             },
-        );
+            onHttpException: reportFailure,
+            onNetworkError: reportFailure,
+            onFinish: () => setProcessing(false),
+        });
     };
 
     /**
      * `action` tells apart the two ways a help offer can be taken: the
      * support dialog, or the link to the bank connections (which navigates
-     * away by itself).
+     * away by itself). `months` is the length of a pause.
      */
     const acceptOffer = (
         offer: CancellationOffer,
-        action?: 'contact' | 'connections',
+        { action, months }: OfferAcceptance = {},
     ) => {
         if (answer === null) {
             return;
@@ -216,21 +220,44 @@ export function CancelSubscriptionFlow({
                 ...analytics,
                 offer: offer.offer,
                 ...(action ? { action } : {}),
+                ...(months ? { months } : {}),
             });
 
         // The offers that keep the plan count once the server has applied
         // them; the help offers as soon as they are followed.
-        const takeSavingOffer = (url: string) =>
-            post(url, () => {
-                reportAccepted();
-                end();
-            });
+        const takeSavingOffer = (
+            url: string,
+            data?: Record<string, number>,
+            onApplied?: () => void,
+        ) =>
+            post(
+                url,
+                () => {
+                    reportAccepted();
+                    onApplied?.();
+                    end();
+                },
+                data,
+            );
 
         switch (offer.offer) {
             case 'retention_coupon':
                 return takeSavingOffer(retentionCouponRoute.url(answer.id));
             case 'switch_to_yearly':
                 return takeSavingOffer(switchToYearlyRoute.url(answer.id));
+            case 'pause': {
+                const length = months ?? offer.options[0]?.months ?? 1;
+
+                return takeSavingOffer(
+                    pauseRoute.url(answer.id),
+                    { months: length },
+                    () =>
+                        captureEvent('subscription_paused', {
+                            months: length,
+                            source: 'cancel_flow',
+                        }),
+                );
+            }
             case 'support':
                 reportAccepted();
                 end();
@@ -432,6 +459,16 @@ function ConfirmStep({
 }) {
     const date = answer.endsAt ? formatDateMedium(answer.endsAt, locale) : null;
 
+    if (answer.paused) {
+        return (
+            <PausedConfirmStep
+                processing={processing}
+                onConfirm={onConfirm}
+                onKeep={onKeep}
+            />
+        );
+    }
+
     return (
         <>
             <DialogHeader>
@@ -464,6 +501,56 @@ function ConfirmStep({
                 <li>
                     {__(
                         'Changed your mind? Keep your plan from this page any time before it ends.',
+                    )}
+                </li>
+            </ul>
+            <DialogFooter>
+                <Button variant="ghost" onClick={onKeep} disabled={processing}>
+                    {__('Keep my plan')}
+                </Button>
+                <Button
+                    variant="destructive"
+                    onClick={onConfirm}
+                    disabled={processing}
+                    data-testid="cancel-flow-confirm"
+                >
+                    {processing && <Spinner />}
+                    {__('Cancel subscription')}
+                </Button>
+            </DialogFooter>
+        </>
+    );
+}
+
+/**
+ * Cancelling inside a pause: the plan is off already and the month running
+ * now was never charged, so it ends today, with nothing lost by not waiting.
+ */
+function PausedConfirmStep({
+    processing,
+    onConfirm,
+    onKeep,
+}: {
+    processing: boolean;
+    onConfirm: () => void;
+    onKeep: () => void;
+}) {
+    return (
+        <>
+            <DialogHeader>
+                <DialogTitle className="pr-6">
+                    {__('Your plan ends today')}
+                </DialogTitle>
+                <DialogDescription>
+                    {__(
+                        "Your plan is paused, so you lose nothing by ending it now. You won't be charged again.",
+                    )}
+                </DialogDescription>
+            </DialogHeader>
+            <ul className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-4 text-sm">
+                <li>
+                    {__(
+                        'Your accounts, transactions, categories and rules stay yours, on the free plan.',
                     )}
                 </li>
             </ul>

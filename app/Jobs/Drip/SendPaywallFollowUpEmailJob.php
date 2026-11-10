@@ -20,7 +20,7 @@ class SendPaywallFollowUpEmailJob extends SendDripEmailJob
 
     protected function shouldSend(): bool
     {
-        return ! $this->user->hasProPlan()
+        return $this->user->isOnFreePlan()
             && $this->user->hasSeenPaywall();
     }
 }

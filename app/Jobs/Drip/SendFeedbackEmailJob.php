@@ -20,6 +20,6 @@ class SendFeedbackEmailJob extends SendDripEmailJob
 
     protected function shouldSend(): bool
     {
-        return ! $this->user->hasProPlan();
+        return $this->user->isOnFreePlan();
     }
 }

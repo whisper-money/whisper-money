@@ -16,6 +16,7 @@ use App\Models\UserLead;
 use App\Services\Subscriptions\CancellationOffers;
 use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
+use App\Services\Subscriptions\SubscriptionPauseDetails;
 use App\Services\Subscriptions\UserSetupStats;
 use App\Support\PriceTiers;
 use App\Support\SubscriptionPlans;
@@ -41,6 +42,7 @@ class SubscriptionController extends Controller
         private SwapLatamToStandard $swapLatamToStandard,
         private UserSetupStats $setupStats,
         private CancellationOffers $cancellationOffers,
+        private SubscriptionPauseDetails $pauseDetails,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -49,7 +51,18 @@ class SubscriptionController extends Controller
         $user = $request->user();
 
         if ($user->hasProPlan()) {
+            // Kept for the dashboard: "Resume now" on the paused screen comes
+            // back here with its confirmation.
+            $request->session()->reflash();
+
             return redirect()->route('dashboard');
+        }
+
+        // A paused plan is not one to sell again: the way back is resuming it.
+        if ($user->hasPausedSubscription()) {
+            return Inertia::render('subscription/paused', [
+                'pause' => $this->pauseDetails->for($user),
+            ]);
         }
 
         $hasBankConnections = $user->bankingConnections()->exists();
@@ -427,6 +440,8 @@ class SubscriptionController extends Controller
                 // Whether the in-app cancel flow can run on it: a running plan
                 // not already set to cancel nor waiting on a payment.
                 'canCancel' => $this->cancellationOffers->cancellableSubscription($user) !== null,
+                // A pause set on it, running or still to come; null when none is.
+                'pause' => $this->pauseDetails->for($user),
             ],
         ]);
     }

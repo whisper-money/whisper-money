@@ -11,6 +11,7 @@ use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Responses\OAuthConsentResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Mcp\OAuthRegistrar;
+use App\Models\Subscription;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
@@ -39,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         Cashier::keepPastDueSubscriptionsActive();
+        // Adds the pause window, which Cashier knows nothing about.
+        Cashier::useSubscriptionModel(Subscription::class);
 
         $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
 
