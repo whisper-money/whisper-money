@@ -24,7 +24,7 @@ class SubscriptionResumingEmail extends DripMail
 
     protected function dripSubject(): string
     {
-        return __('Your Whisper Money plan resumes in 3 days');
+        return __('Your Whisper Money plan resumes on :date', ['date' => $this->resumesOn()]);
     }
 
     protected function template(): string
@@ -46,11 +46,19 @@ class SubscriptionResumingEmail extends DripMail
     protected function contentData(): array
     {
         return [
-            'resumesOn' => $this->resumesAt
-                ->setTimezone($this->user->localTimezone())
-                ->locale(app()->getLocale())
-                ->isoFormat('LL'),
+            'resumesOn' => $this->resumesOn(),
             'amount' => Money::format($this->amountInCents, $this->currency),
         ];
+    }
+
+    /**
+     * The day the plan resumes, as the reader's calendar has it.
+     */
+    private function resumesOn(): string
+    {
+        return $this->resumesAt
+            ->setTimezone($this->user->localTimezone())
+            ->locale(app()->getLocale())
+            ->isoFormat('LL');
     }
 }

@@ -1,6 +1,5 @@
 <?php
 
-use App\Actions\Subscription\PauseSubscription;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\CancellationOffer;
 use App\Enums\CancellationOutcome;
@@ -86,8 +85,13 @@ function pausedSubscriber(?CarbonImmutable $startsAt = null, ?CarbonImmutable $r
  *
  * @param  array<string, mixed>|null  $pauseCollection  What Stripe already has set.
  */
-function fakeStripeForPause(int $periodEnd = 0, ?array $pauseCollection = null, ?Throwable $updateFailure = null): ArrayObject
-{
+function fakeStripeForPause(
+    int $periodEnd = 0,
+    ?array $pauseCollection = null,
+    ?Throwable $updateFailure = null,
+    ?int $billingCycleAnchor = null,
+    array $discounts = [],
+): ArrayObject {
     $sent = new ArrayObject(['updates' => [], 'cancels' => 0]);
     $periodEnd = $periodEnd ?: now()->addDays(10)->getTimestamp();
 
@@ -95,8 +99,9 @@ function fakeStripeForPause(int $periodEnd = 0, ?array $pauseCollection = null, 
     $subscriptions->shouldReceive('retrieve')->andReturnUsing(fn (string $id) => StripeSubscription::constructFrom([
         'id' => $id,
         'status' => 'active',
-        'discounts' => [],
+        'discounts' => $discounts,
         'pause_collection' => $pauseCollection,
+        'billing_cycle_anchor' => $billingCycleAnchor ?? $periodEnd,
         'items' => ['object' => 'list', 'data' => [['id' => 'si_x', 'current_period_end' => $periodEnd]]],
     ]));
 
@@ -141,15 +146,17 @@ function openAnswer(User $user, CancellationReason $reason = CancellationReason:
     ]);
 }
 
+/**
+ * A `customer.subscription.updated` event, with Stripe answering the re-read
+ * with the given pause. The event's own payload is deliberately stale.
+ */
 function pauseWebhook(string $stripeId, ?array $pauseCollection, int $periodEnd = 0): void
 {
+    fakeStripeForPause(periodEnd: $periodEnd, pauseCollection: $pauseCollection);
+
     app(SyncSubscriptionPauseFromStripe::class)->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
-        'data' => ['object' => [
-            'id' => $stripeId,
-            'pause_collection' => $pauseCollection,
-            'items' => ['data' => [['current_period_end' => $periodEnd ?: now()->addDays(10)->getTimestamp()]]],
-        ]],
+        'data' => ['object' => ['id' => $stripeId, 'pause_collection' => null]],
     ]));
 }
 
@@ -166,7 +173,7 @@ describe('the pause offer', function () {
             ->assertJsonPath('offers.0.startsAt', $periodEnd->toIso8601String())
             ->assertJsonPath('offers.0.price', 8.99)
             ->assertJsonPath('offers.0.options.0.months', 1)
-            ->assertJsonPath('offers.0.options.0.resumesAt', PauseSubscription::resumesAt($periodEnd, 1)->toIso8601String())
+            ->assertJsonPath('offers.0.options.0.resumesAt', $periodEnd->addMonthNoOverflow()->toIso8601String())
             ->assertJsonPath('offers.0.options.2.months', 3)
             ->assertJsonCount(1, 'offers')
             ->assertJsonPath('paused', false);
@@ -197,6 +204,34 @@ describe('the pause offer', function () {
         'a pause still to come' => [fn () => pausedSubscriber(now()->addDays(3)->toImmutable(), now()->addMonth()->toImmutable()), null],
         'a pause set in Stripe' => [fn () => pausableSubscriber(), ['behavior' => 'void', 'resumes_at' => now()->addMonth()->getTimestamp()]],
     ]);
+
+    test('is not offered over a discount, whose months a pause would spend', function () {
+        $user = pausableSubscriber();
+        fakeStripeForPause(discounts: [['id' => 'di_founder']]);
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'not_using_enough'])
+            ->assertJsonPath('offers', []);
+    });
+
+    test('resumes on the billing anchor day, as Stripe renews', function () {
+        $this->travelTo(CarbonImmutable::parse('2027-02-20 08:00', 'UTC'));
+        // Travelling expired the cached price map the suite set up.
+        Cache::put('stripe_lookup_keys_by_price_id', ['price_high_monthly' => 'whisper_pro_monthly_high'], now()->addDay());
+        $user = pausableSubscriber();
+        // Anchored on January 31: the period ends on February 28, and Stripe
+        // renews on March 31 and April 30, not March 28.
+        fakeStripeForPause(
+            periodEnd: CarbonImmutable::parse('2027-02-28 14:30', 'UTC')->getTimestamp(),
+            billingCycleAnchor: CarbonImmutable::parse('2027-01-31 14:30', 'UTC')->getTimestamp(),
+        );
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'not_using_enough'])
+            ->assertJsonPath('offers.0.options.0.resumesAt', '2027-03-31T14:30:00+00:00')
+            ->assertJsonPath('offers.0.options.1.resumesAt', '2027-04-30T14:30:00+00:00')
+            ->assertJsonPath('offers.0.options.2.resumesAt', '2027-05-31T14:30:00+00:00');
+    });
 
     test('the cancel flow does not run on a plan in its grace period or past due', function (array $attributes) {
         $user = pausableSubscriber($attributes);
@@ -229,23 +264,22 @@ describe('taking the pause', function () {
         $periodEnd = now()->addDays(10)->toImmutable();
         $sent = fakeStripeForPause(periodEnd: $periodEnd->getTimestamp());
         $answer = openAnswer($user);
-        $resumesAt = PauseSubscription::resumesAt($periodEnd, $months);
+        $resumesAt = $periodEnd->addMonthsNoOverflow($months);
 
         $this->actingAs($user)
             ->post(route('settings.billing.cancellation.pause', $answer), ['months' => $months])
             ->assertRedirect(route('settings.billing'))
             ->assertSessionHas('success');
 
+        // Stripe collects again an hour before the renewal, so it is charged.
         expect($sent['updates'])->toBe([[
-            'pause_collection' => ['behavior' => 'void', 'resumes_at' => $resumesAt->getTimestamp()],
+            'pause_collection' => ['behavior' => 'void', 'resumes_at' => $resumesAt->subHour()->getTimestamp()],
         ]]);
 
         $subscription = $user->subscription('default')->refresh();
 
         expect($subscription->pause_starts_at->equalTo($periodEnd))->toBeTrue()
-            ->and($subscription->pause_resumes_at->equalTo($resumesAt))->toBeTrue()
-            // The renewal ending the pause is collected: Stripe resumes just before it.
-            ->and($resumesAt->equalTo($periodEnd->addMonthsNoOverflow($months)->subHour()))->toBeTrue();
+            ->and($subscription->pause_resumes_at->equalTo($resumesAt))->toBeTrue();
 
         $answer->refresh();
 
@@ -351,6 +385,21 @@ describe('access while paused', function () {
                 ->where('auth.pausedSubscription.resumesAt', $user->subscription('default')->pause_resumes_at->toIso8601String()));
     });
 
+    test('every gated page says paused, even with nothing connected', function () {
+        $user = pausedSubscriber();
+        $user->forceFill(['paywall_seen_at' => now()->subMonths(2)])->save();
+
+        $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('subscribe'));
+    });
+
+    test('a paused user is not a free user to the free-user mail', function () {
+        $user = pausedSubscriber();
+
+        expect($user->isOnFreePlan())->toBeFalse()
+            ->and(pausableSubscriber()->isOnFreePlan())->toBeFalse()
+            ->and(User::factory()->create()->isOnFreePlan())->toBeTrue();
+    });
+
     test('a paused user is never offered the way down to the free plan', function () {
         $user = pausedSubscriber();
         $user->forceFill(['onboarded_at' => now()->subMonths(3)])->save();
@@ -420,6 +469,41 @@ describe('syncing from Stripe', function () {
             ->and($subscription->pause_resumes_at->equalTo($resumesAt))->toBeTrue();
     });
 
+    test('a pause the app set is kept as the app stored it', function () {
+        $startsAt = now()->addDays(10)->toImmutable();
+        $resumesAt = $startsAt->addMonth();
+        $user = pausedSubscriber($startsAt, $resumesAt);
+        $subscription = $user->subscription('default');
+
+        pauseWebhook($subscription->stripe_id, ['behavior' => 'void', 'resumes_at' => $resumesAt->subHour()->getTimestamp()]);
+
+        $subscription->refresh();
+
+        expect($subscription->pause_starts_at->equalTo($startsAt))->toBeTrue()
+            ->and($subscription->pause_resumes_at->equalTo($resumesAt))->toBeTrue();
+    });
+
+    test('an old event cannot lift a pause Stripe still has', function () {
+        $user = pausedSubscriber();
+        $subscription = $user->subscription('default');
+        $resumesAt = $subscription->pause_resumes_at;
+
+        // The payload says no pause; Stripe, asked again, says there is one.
+        pauseWebhook($subscription->stripe_id, ['behavior' => 'void', 'resumes_at' => $resumesAt->copy()->subHour()->getTimestamp()]);
+
+        expect($user->fresh()->hasPausedSubscription())->toBeTrue();
+    });
+
+    test('a pause set after one that ended starts afresh', function () {
+        $user = pausedSubscriber(now()->subMonths(3)->toImmutable(), now()->subMonth()->toImmutable());
+        $subscription = $user->subscription('default');
+        $periodEnd = now()->addDays(10)->toImmutable();
+
+        pauseWebhook($subscription->stripe_id, ['behavior' => 'void', 'resumes_at' => now()->addMonths(2)->getTimestamp()], $periodEnd->getTimestamp());
+
+        expect($subscription->refresh()->pause_starts_at->equalTo($periodEnd))->toBeTrue();
+    });
+
     test('a pause moved elsewhere keeps the start the app gave it', function () {
         $startsAt = now()->subDays(5)->toImmutable();
         $user = pausedSubscriber($startsAt, now()->addDays(20)->toImmutable());
@@ -454,6 +538,7 @@ describe('resuming early', function () {
         $sent = fakeStripeForPause();
 
         $this->actingAs($user)
+            ->from(route('settings.billing'))
             ->post(route('settings.billing.pause.resume'))
             ->assertRedirect(route('settings.billing'))
             ->assertSessionHas('success');

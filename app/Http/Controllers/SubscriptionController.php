@@ -91,7 +91,7 @@ class SubscriptionController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->hasProPlan() || $user->hasPausedSubscription() || ! $user->canEscapeToFreePlan()) {
+        if ($user->hasProPlan() || ! $user->canEscapeToFreePlan()) {
             return redirect()->route('subscribe');
         }
 

@@ -2,12 +2,12 @@
 
 namespace App\Services\Subscriptions;
 
-use App\Actions\Subscription\PauseSubscription;
 use App\Enums\CancellationOffer;
 use App\Enums\CancellationReason;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\PriceTiers;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Stripe\Exception\ApiErrorException;
@@ -157,7 +157,7 @@ class CancellationOffers
             'price' => (float) $plan['price'],
             'options' => array_map(fn (int $months): array => [
                 'months' => $months,
-                'resumesAt' => PauseSubscription::resumesAt($startsAt, $months)->toIso8601String(),
+                'resumesAt' => $this->pauseResumesAt($subscription, $startsAt, $months)->toIso8601String(),
             ], self::PAUSE_MONTHS),
         ];
     }
@@ -170,6 +170,9 @@ class CancellationOffers
      * - a yearly plan would skip a whole year's invoice for a pause of months,
      *   because a voided renewal is not billed again until the next one;
      * - a pause is already set, here or in Stripe;
+     * - the subscription carries a discount: its months run on the calendar,
+     *   so a pause would spend them on voided invoices, and the price the
+     *   pause resumes at is not the one we would quote;
      * - Stripe cannot tell us the period end, or the plan is unknown.
      */
     public function pauseStartsAt(User $user, Subscription $subscription): ?CarbonInterface
@@ -184,13 +187,24 @@ class CancellationOffers
 
         $stripeSubscription = $this->stripeSubscription($subscription);
 
-        if ($stripeSubscription === null || ! empty($stripeSubscription->pause_collection)) {
+        if ($stripeSubscription === null || ! empty($stripeSubscription->pause_collection) || $this->hasDiscount($subscription)) {
             return null;
         }
 
         $startsAt = $this->nextChargeAt($subscription);
 
         return $startsAt !== null && $startsAt->isFuture() ? $startsAt : null;
+    }
+
+    /**
+     * The renewal a pause of so many months from `$startsAt` ends on, on
+     * Stripe's billing anchor day (see `Subscription::renewalAfter()`).
+     */
+    public function pauseResumesAt(Subscription $subscription, CarbonInterface $startsAt, int $months): CarbonImmutable
+    {
+        $anchor = $this->stripeSubscription($subscription)?->billing_cycle_anchor;
+
+        return Subscription::renewalAfter($startsAt, $months, is_int($anchor) ? Carbon::createFromTimestamp($anchor) : null);
     }
 
     /**

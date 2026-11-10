@@ -33,7 +33,7 @@ class SendPaywallFollowUpEmailsCommand extends Command
 
         $query->chunkById(100, function ($users) use (&$queued): void {
             foreach ($users as $user) {
-                if ($user->hasProPlan()) {
+                if (! $user->isOnFreePlan()) {
                     continue;
                 }
 

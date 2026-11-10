@@ -132,10 +132,16 @@ export function resumeNowTerms(
     currency: string,
     locale: string,
 ): string | null {
+    if (!pause.active) {
+        return null;
+    }
+
     const price = resumePrice(pause, currency, locale);
 
-    if (!pause.active || !price) {
-        return null;
+    if (!price) {
+        return __(
+            "Resuming now charges your plan's price today, and your plan renews on this day from then on.",
+        );
     }
 
     return __(

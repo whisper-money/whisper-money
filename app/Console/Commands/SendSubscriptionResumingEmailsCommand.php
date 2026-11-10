@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Subscriptions\SubscribedPlan;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
+use Stripe\Subscription as StripeSubscription;
 
 class SendSubscriptionResumingEmailsCommand extends Command
 {
@@ -35,6 +36,7 @@ class SendSubscriptionResumingEmailsCommand extends Command
         Subscription::query()
             ->where('type', 'default')
             ->whereNull('ends_at')
+            ->where('stripe_status', StripeSubscription::STATUS_ACTIVE)
             ->whereNotNull('pause_starts_at')
             ->where('pause_resumes_at', '>', now())
             ->where('pause_resumes_at', '<=', now()->addDays(self::WARNING_DAYS))

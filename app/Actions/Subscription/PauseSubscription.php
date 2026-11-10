@@ -3,7 +3,6 @@
 namespace App\Actions\Subscription;
 
 use App\Models\Subscription;
-use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Stripe\Exception\ApiErrorException;
 
@@ -18,28 +17,23 @@ use Stripe\Exception\ApiErrorException;
  * ends, and the user keeps the plan until then. Pausing by status needs
  * Stripe's flexible billing mode, which our subscriptions do not use.
  *
- * Collection resumes a little before the renewal that ends the pause, so the
- * invoice created at that renewal is collected rather than voided as one more
- * paused month.
+ * Stripe resumes collecting just before the renewal that ends the pause, so
+ * that renewal is charged (see `Subscription::stripeResumesAt()`).
  */
 class PauseSubscription
 {
-    /** How long before the renewal Stripe starts collecting again. */
-    private const RESUME_AHEAD_MINUTES = 60;
-
     /**
      * @param  CarbonInterface  $startsAt  The end of the period already paid for.
+     * @param  CarbonInterface  $resumesAt  The renewal that ends the pause.
      *
      * @throws ApiErrorException
      */
-    public function handle(Subscription $subscription, CarbonInterface $startsAt, int $months): void
+    public function handle(Subscription $subscription, CarbonInterface $startsAt, CarbonInterface $resumesAt): void
     {
-        $resumesAt = self::resumesAt($startsAt, $months);
-
         $subscription->updateStripeSubscription([
             'pause_collection' => [
                 'behavior' => 'void',
-                'resumes_at' => $resumesAt->getTimestamp(),
+                'resumes_at' => Subscription::stripeResumesAt($resumesAt)->getTimestamp(),
             ],
         ]);
 
@@ -47,16 +41,5 @@ class PauseSubscription
             'pause_starts_at' => $startsAt,
             'pause_resumes_at' => $resumesAt,
         ])->save();
-    }
-
-    /**
-     * When a pause of so many months from the given day hands the plan back:
-     * just before the renewal that many months on.
-     */
-    public static function resumesAt(CarbonInterface $startsAt, int $months): CarbonImmutable
-    {
-        return $startsAt->toImmutable()
-            ->addMonthsNoOverflow($months)
-            ->subMinutes(self::RESUME_AHEAD_MINUTES);
     }
 }

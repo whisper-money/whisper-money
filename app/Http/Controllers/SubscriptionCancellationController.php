@@ -162,7 +162,8 @@ class SubscriptionCancellationController extends Controller
             }
 
             try {
-                $pauseSubscription->handle($subscription, $startsAt, $request->months());
+                $resumesAt = $this->offers->pauseResumesAt($subscription, $startsAt, $request->months());
+                $pauseSubscription->handle($subscription, $startsAt, $resumesAt);
             } catch (ApiErrorException $exception) {
                 report($exception);
 
@@ -173,14 +174,16 @@ class SubscriptionCancellationController extends Controller
 
             return $this->backToBilling(success: __('Done: Standard stays on until :start, then pauses until :end.', [
                 'start' => $this->localDate($user, $startsAt),
-                'end' => $this->localDate($user, $subscription->pause_resumes_at),
+                'end' => $this->localDate($user, $resumesAt),
             ]));
         });
     }
 
     /**
-     * Confirm: cancel at the end of the period, never right away. The billing
-     * page then shows the scheduled cancellation and the way to take it back.
+     * Confirm: cancel at the end of the period, never right away, except
+     * inside a pause, where there is no plan left to run (`CancelAtPeriodEnd`).
+     * The billing page then shows the scheduled cancellation and the way to
+     * take it back.
      */
     public function cancel(ContinueCancellationFlowRequest $request, CancelAtPeriodEnd $cancelAtPeriodEnd): SymfonyResponse
     {

@@ -264,7 +264,7 @@ function PauseOfferStep({
             icon={PauseIcon}
             title={__('Pause your plan instead')}
             body={__(
-                'Take a break without losing anything. Standard stays on until :date, then nothing is charged and bank sync and AI categorization rest until the pause ends. Everything you set up stays.',
+                'Take a break without losing anything. Standard stays on until :date, then nothing is charged and bank sync and AI categorization rest until the pause ends. Your banks stay connected and everything you set up stays.',
                 { date: formatDateMedium(offer.startsAt, locale) },
             )}
             action={

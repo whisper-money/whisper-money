@@ -3452,7 +3452,6 @@
     "Standard comes back on :date. To have it back today, resume your plan from the billing page.": "Standard revient le :date. Pour le retrouver dès aujourd'hui, reprenez votre forfait depuis la page de facturation.",
     "Standard stays on until :start. Nothing is charged during the pause, and it resumes on its own on :end at :price.": "Standard reste actif jusqu'au :start. Rien n'est prélevé pendant la pause, et il reprend tout seul le :end à :price.",
     "Standard stays on until :start. Nothing is charged during the pause.": "Standard reste actif jusqu'au :start. Rien n'est prélevé pendant la pause.",
-    "Take a break without losing anything. Standard stays on until :date, then nothing is charged and bank sync and AI categorization rest until the pause ends. Everything you set up stays.": "Faites une pause sans rien perdre. Standard reste actif jusqu'au :date ; ensuite, rien n'est prélevé et la synchronisation bancaire et la catégorisation par IA sont en pause jusqu'à la fin de la pause. Tout ce que vous avez configuré reste.",
     "To have Standard back, resume your plan from the billing page.": "Pour retrouver Standard, reprenez votre forfait depuis la page de facturation.",
     "Your banks stay connected and sync again when the plan resumes": "Vos banques restent connectées et se synchronisent à nouveau à la reprise du forfait",
     "Your plan ends today": "Votre forfait se termine aujourd'hui",
@@ -3462,14 +3461,16 @@
     "Your plan pauses on :date": "Votre forfait se met en pause le :date",
     "Done: Standard stays on until :start, then pauses until :end.": "C'est fait : Standard reste actif jusqu'au :start, puis se met en pause jusqu'au :end.",
     "There is no pause to undo on this plan.": "Il n'y a aucune pause à annuler sur ce forfait.",
-    "We could not charge your card, so your plan is still paused. Update your payment method and try again.": "Nous n'avons pas pu débiter votre carte, votre forfait reste donc en pause. Mettez à jour votre moyen de paiement et réessayez.",
     "We could not resume your plan. Please try again in a few minutes.": "Nous n'avons pas pu reprendre votre forfait. Réessayez dans quelques minutes.",
     "Welcome back: Standard is on again.": "Bon retour : Standard est de nouveau actif.",
     "Your plan will not pause. It renews as usual.": "Votre forfait ne sera pas mis en pause. Il se renouvelle comme d'habitude.",
-    "Your Whisper Money plan resumes in 3 days": "Votre forfait Whisper Money reprend dans 3 jours",
     "Your plan resumes on :date, :name": "Votre forfait reprend le :date, :name",
     "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You paused your plan, and the pause ends on :date. That day Standard comes back on its own, and we'll charge :amount to your card.": "Bonjour ! Ici Víctor et Álvaro, les fondateurs de Whisper Money. Vous avez mis votre forfait en pause, et la pause se termine le :date. Ce jour-là, Standard revient tout seul et nous prélèverons :amount sur votre carte.",
     "Bank sync picks up where it left off, and everything you set up is still there.": "La synchronisation bancaire reprend là où elle s'était arrêtée, et tout ce que vous avez configuré est toujours là.",
     "If you would rather not carry on, you can cancel from your billing page before :date and nothing will be charged.": "Si vous préférez ne pas continuer, vous pouvez annuler depuis votre page de facturation avant le :date et rien ne sera prélevé.",
-    "Manage my plan": "Gérer mon forfait"
+    "Manage my plan": "Gérer mon forfait",
+    "Take a break without losing anything. Standard stays on until :date, then nothing is charged and bank sync and AI categorization rest until the pause ends. Your banks stay connected and everything you set up stays.": "Faites une pause sans rien perdre. Standard reste actif jusqu'au :date ; ensuite, rien n'est prélevé et la synchronisation bancaire et la catégorisation par IA sont en pause jusqu'à la fin de la pause. Vos banques restent connectées et tout ce que vous avez configuré reste.",
+    "Resuming now charges your plan's price today, and your plan renews on this day from then on.": "Reprendre maintenant prélève le prix de votre forfait aujourd'hui, et il se renouvelle ensuite à cette date.",
+    "We could not take the payment, so your plan is still paused. Check your payment method under Manage Subscription and try again.": "Nous n'avons pas pu encaisser le paiement, votre forfait reste donc en pause. Vérifiez votre moyen de paiement dans Gérer l'abonnement et réessayez.",
+    "Your Whisper Money plan resumes on :date": "Votre forfait Whisper Money reprend le :date"
 }

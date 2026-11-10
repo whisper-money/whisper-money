@@ -276,10 +276,13 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * finished connecting a bank gets to choose a plan before being invited to
      * throw that away. Without an `onboarded_at` there is no window to be past
      * — a half-onboarded user reaching the paywall is not offered the door.
+     * Nor is a user inside a pause.
      */
     public function canEscapeToFreePlan(): bool
     {
-        if ($this->onboarded_at === null) {
+        // Paused is not free: going down would disconnect the banks the
+        // pause promised to keep.
+        if ($this->onboarded_at === null || $this->hasPausedSubscription()) {
             return false;
         }
 
@@ -716,6 +719,17 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function hasPausedSubscription(): bool
     {
         return $this->pausedSubscription() !== null;
+    }
+
+    /**
+     * Whether the user is on the free plan: no plan, and no pause either. The
+     * mail and the clean-up meant for free users (the offers, the month-end
+     * closing of their banks) go by this, never by `! hasProPlan()`, which a
+     * paused subscriber also answers.
+     */
+    public function isOnFreePlan(): bool
+    {
+        return ! $this->hasProPlan() && ! $this->hasPausedSubscription();
     }
 
     /**

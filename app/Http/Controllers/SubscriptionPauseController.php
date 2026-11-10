@@ -11,13 +11,18 @@ use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\CardException;
 
 /**
- * "Resume now" on a paused plan, from the billing page and the paused screen.
+ * "Resume now" on a paused plan, from the billing page and from the paused
+ * screen every gated page leads to. Its own controller rather than
+ * `SubscriptionController::resume()`, which takes back a scheduled
+ * cancellation, a different thing with a different Stripe call.
  */
 class SubscriptionPauseController extends Controller
 {
     /**
      * Take the pause back. Inside it, the plan is charged today and comes back
      * at once; a pause still to come is simply dropped (`ResumePausedSubscription`).
+     * Back to the page it was pressed on either way: from the paused screen,
+     * a plan that is on again moves on to the dashboard by itself.
      */
     public function resume(Request $request, ResumePausedSubscription $resumePausedSubscription): RedirectResponse
     {
@@ -26,8 +31,7 @@ class SubscriptionPauseController extends Controller
         $subscription = $user->subscription('default');
 
         if (! $subscription instanceof Subscription || ! $subscription->hasPause() || $user->cannotUseStripe()) {
-            return redirect()->route('settings.billing')
-                ->withErrors(['pause' => __('There is no pause to undo on this plan.')]);
+            return $this->backWithError(__('There is no pause to undo on this plan.'));
         }
 
         $wasPaused = $subscription->isPaused();
@@ -35,17 +39,20 @@ class SubscriptionPauseController extends Controller
         try {
             $resumePausedSubscription->handle($subscription);
         } catch (CardException) {
-            return redirect()->route('settings.billing')
-                ->withErrors(['pause' => __('We could not charge your card, so your plan is still paused. Update your payment method and try again.')]);
+            return $this->backWithError(__('We could not take the payment, so your plan is still paused. Check your payment method under Manage Subscription and try again.'));
         } catch (ApiErrorException $exception) {
             report($exception);
 
-            return redirect()->route('settings.billing')
-                ->withErrors(['pause' => __('We could not resume your plan. Please try again in a few minutes.')]);
+            return $this->backWithError(__('We could not resume your plan. Please try again in a few minutes.'));
         }
 
-        return redirect()->route('settings.billing')->with('success', $wasPaused
+        return back()->with('success', $wasPaused
             ? __('Welcome back: Standard is on again.')
             : __('Your plan will not pause. It renews as usual.'));
+    }
+
+    private function backWithError(string $message): RedirectResponse
+    {
+        return back()->withErrors(['pause' => $message]);
     }
 }

@@ -23,6 +23,12 @@ class EnsureUserIsSubscribed
             return $next($request);
         }
 
+        // A paused plan is neither on nor free: every gated page says it is
+        // paused and offers to resume it, whatever the user has connected.
+        if ($user?->hasPausedSubscription()) {
+            return redirect()->route('subscribe');
+        }
+
         if ($user && ! $user->hasPaidFeaturesToGiveUp()) {
             // Without a single transaction there is nothing yet for the plan
             // to do, so the paywall waits until the first ones land.
