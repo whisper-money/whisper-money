@@ -34,7 +34,7 @@ it('blocks read tools when subscriptions are enabled and the user has no paid pl
     WhisperMoneyServer::actingAs($user)
         ->tool(ListSpaces::class)
         ->assertHasErrors()
-        ->assertSee('Standard');
+        ->assertSee('A paid (Standard) plan is required to use the Whisper Money MCP.');
 });
 
 it('allows read tools for a user on a paid plan', function () {
