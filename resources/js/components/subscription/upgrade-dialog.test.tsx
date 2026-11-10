@@ -115,6 +115,23 @@ describe('UpgradeDialog', () => {
         ).toBeInTheDocument();
     });
 
+    it('keeps the AI disclosure when a caller adds its own rows', () => {
+        render(
+            <UpgradeDialog
+                open
+                onOpenChange={vi.fn()}
+                source="ai_categorization"
+            >
+                <p>Custom preview</p>
+            </UpgradeDialog>,
+        );
+
+        expect(screen.getByText('Custom preview')).toBeInTheDocument();
+        expect(
+            screen.getByText('What leaves your account'),
+        ).toBeInTheDocument();
+    });
+
     it.each(['connections', 'accounts', 'api', 'mcp'] as const)(
         'carries no AI disclosure on the %s upsell',
         (source) => {

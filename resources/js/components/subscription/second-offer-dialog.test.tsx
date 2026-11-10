@@ -143,6 +143,25 @@ describe('SecondOfferDialog', () => {
 
         expect(screen.getByText('Your movements are in')).toBeInTheDocument();
         expect(screen.queryByText('Waiting for a category')).toBeNull();
+        expect(
+            screen.getByText('And the rest of Standard'),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the backlog it opened with once the next visit shares none', async () => {
+        const { rerender } = await renderDialog();
+        const { SecondOfferDialog } = await import('./second-offer-dialog');
+
+        // The "shown" stamp makes the user ineligible: the next props carry
+        // no offer and no backlog, while the dialog is still open.
+        mocks.showSecondOffer.current = false;
+        mocks.backlog.current = null;
+        rerender(<SecondOfferDialog />);
+
+        expect(
+            screen.getByText('214 of your movements need a category'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('MERCADONA VALENCIA')).toBeInTheDocument();
     });
 
     it('promises a bank sync to a user offered the standard price', async () => {

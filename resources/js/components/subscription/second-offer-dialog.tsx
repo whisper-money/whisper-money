@@ -29,6 +29,10 @@ export function SecondOfferDialog() {
     const { showSecondOffer, secondOfferBacklog } = usePage<SharedData>().props;
     const tier = useOfferedPriceTier();
     const [open, setOpen] = useState(false);
+    // Kept as it was when the dialog opened: the "shown" stamp makes the user
+    // ineligible, so the next visit shares no backlog, and the open dialog
+    // must not switch its copy or drop its preview under them.
+    const [backlog, setBacklog] = useState<SecondOfferBacklog | null>(null);
 
     useEffect(() => {
         if (!showSecondOffer || openedThisSession) {
@@ -36,11 +40,13 @@ export function SecondOfferDialog() {
         }
 
         openedThisSession = true;
+        setBacklog(secondOfferBacklog);
         setOpen(true);
         captureEvent('second_offer_shown', { price_tier: tier });
         // Nothing to do with the answer: if it never lands, the offer simply
         // comes back on the next page load.
         void axios.post(shown.url()).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSecondOffer, tier]);
 
     function handleOpenChange(next: boolean): void {
@@ -51,16 +57,18 @@ export function SecondOfferDialog() {
         setOpen(next);
     }
 
-    const recent = secondOfferBacklog?.recent ?? [];
+    const recent = backlog?.recent ?? [];
 
     return (
         <UpgradeDialog
             open={open}
             onOpenChange={handleOpenChange}
             source="second_offer"
-            uncategorizedCount={secondOfferBacklog?.count ?? 0}
+            uncategorizedCount={backlog?.count ?? 0}
         >
-            {recent.length > 0 && <WaitingForACategory movements={recent} />}
+            {recent.length > 0 ? (
+                <WaitingForACategory movements={recent} />
+            ) : undefined}
         </UpgradeDialog>
     );
 }

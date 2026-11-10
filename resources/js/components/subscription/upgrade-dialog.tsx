@@ -167,7 +167,11 @@ export function UpgradeDialog({
     source: UpsellSource;
     /** How many movements still have no category. Only the second offer uses it. */
     uncategorizedCount?: number;
-    /** Drawn under the copy in place of the default rows, e.g. a preview. */
+    /**
+     * Drawn under the copy in place of the "rest of Standard" row, e.g. a
+     * preview. Never in place of the AI disclosure, which has to stay on the
+     * screen whose checkout grants the consent.
+     */
     children?: ReactNode;
 }) {
     const { pricing, locale } = usePage<SharedData>().props;
@@ -184,7 +188,7 @@ export function UpgradeDialog({
     const copy = upsellCopy(source, offeredTier, uncategorizedCount);
     const discloses = source === 'ai_categorization';
     // The latam price has no bank sync to promise.
-    const sellsTheRest = tierChoice.tier === 'standard';
+    const sellsTheRest = !children && tierChoice.tier === 'standard';
     const rows =
         discloses || sellsTheRest ? (
             <StepList>
@@ -209,7 +213,8 @@ export function UpgradeDialog({
                     <DialogDescription>{copy.description}</DialogDescription>
                 </DialogHeader>
 
-                {children ?? rows}
+                {children}
+                {rows}
 
                 <PlanPicker
                     plans={tierChoice.plans}

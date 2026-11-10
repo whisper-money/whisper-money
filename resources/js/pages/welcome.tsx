@@ -3606,7 +3606,7 @@ export default function Welcome({
                                         'Can I connect my bank accounts directly?',
                                     )}
                                     answer={__(
-                                        'Yes. Bank connections use secure Open Banking and never require your bank credentials, so transactions can sync automatically. This is a Pro feature; free users can import everything, but only through the CSV/Excel importer.',
+                                        'Yes. Bank connections use secure Open Banking and never require your bank credentials, so transactions can sync automatically. They come with Standard; free users can import everything, but only through the CSV/Excel importer.',
                                     )}
                                 />
                                 <FaqItem
