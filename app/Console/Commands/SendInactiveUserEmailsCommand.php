@@ -38,7 +38,9 @@ abstract class SendInactiveUserEmailsCommand extends Command
     abstract protected function dispatchFor(User $user, string $dormantOn): void;
 
     /**
-     * A per-user check the query cannot express cheaply.
+     * A per-user check the query cannot express cheaply. The job re-runs it at
+     * send time; checking here as well keeps ineligible users out of the queue
+     * and out of the count the command reports.
      */
     protected function isEligible(User $user): bool
     {

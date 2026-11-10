@@ -34,12 +34,13 @@ class SendInactiveBankedEmailsCommand extends SendInactiveUserEmailsCommand
     }
 
     /**
-     * Only the users Pro is paying for, or about to: they are the ones who can
-     * still cancel.
+     * Only users still being billed, on a trial or a live subscription: they
+     * are the ones who can still cancel. Someone already in a grace period has
+     * cancelled, and a "look what you missed" email is not what they need.
      */
     protected function isEligible(User $user): bool
     {
-        return $user->hasProPlan();
+        return $user->hasActiveSubscriptionOrTrial();
     }
 
     protected function dispatchFor(User $user, string $dormantOn): void

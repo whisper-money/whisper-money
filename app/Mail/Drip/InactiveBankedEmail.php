@@ -32,10 +32,10 @@ class InactiveBankedEmail extends DripMail
             return __('Nothing has synced from your bank in two weeks');
         }
 
-        return trans_choice(
+        return $this->countLine(
             '{1} 1 new transaction came in while you were away|[2,*] :count new transactions came in while you were away',
             $this->recap['newTransactions'],
-            ['count' => Figures::count($this->recap['newTransactions'], app()->getLocale())],
+            app()->getLocale(),
         );
     }
 
@@ -58,12 +58,25 @@ class InactiveBankedEmail extends DripMail
 
         return [
             'hasNewTransactions' => $this->hasNewTransactions(),
-            'newTransactions' => Figures::count($this->recap['newTransactions'], $locale),
-            'newTransactionsCount' => $this->recap['newTransactions'],
-            'uncategorized' => Figures::count($this->recap['uncategorized'], $locale),
-            'uncategorizedCount' => $this->recap['uncategorized'],
+            'newTransactionsLine' => $this->countLine(
+                '{1} **1 new transaction** came in from your bank.|[2,*] **:count new transactions** came in from your bank.',
+                $this->recap['newTransactions'],
+                $locale,
+            ),
+            'uncategorizedLine' => $this->recap['uncategorized'] > 0
+                ? $this->countLine(
+                    '{1} **1** of them still needs a category.|[2,*] **:count** of them still need a category.',
+                    $this->recap['uncategorized'],
+                    $locale,
+                )
+                : __('All of them are already categorized.'),
             'spendingLine' => $this->spendingLine($locale),
         ];
+    }
+
+    private function countLine(string $key, int $count, string $locale): string
+    {
+        return trans_choice($key, $count, ['count' => Figures::count($count, $locale)]);
     }
 
     private function hasNewTransactions(): bool

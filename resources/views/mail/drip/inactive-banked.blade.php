@@ -4,12 +4,8 @@
 
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. You have not stopped by in two weeks, but your bank kept syncing in the background. Here is what you missed.") }}
 
-- {{ trans_choice('{1} **1 new transaction** came in from your bank.|[2,*] **:count new transactions** came in from your bank.', $newTransactionsCount, ['count' => $newTransactions]) }}
-@if ($uncategorizedCount > 0)
-- {{ trans_choice('{1} **1** of them still needs a category.|[2,*] **:count** of them still need a category.', $uncategorizedCount, ['count' => $uncategorized]) }}
-@else
-- {{ __('All of them are already categorized.') }}
-@endif
+- {{ $newTransactionsLine }}
+- {{ $uncategorizedLine }}
 @if ($spendingLine)
 - {{ $spendingLine }}
 @endif

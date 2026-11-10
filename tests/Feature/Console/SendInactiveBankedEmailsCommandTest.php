@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\Mail;
 
 // The 20th, so the month-to-date comparison has enough days behind it, and
 // frozen so the day-relative timestamps cannot straddle midnight.
-beforeEach(fn () => $this->travelTo(CarbonImmutable::parse('2026-11-20 10:00:00')));
+beforeEach(function () {
+    config(['subscriptions.enabled' => true]);
+    $this->travelTo(CarbonImmutable::parse('2026-11-20 10:00:00'));
+});
 
 /**
  * An onboarded user with a bank connected whose last visit was
@@ -108,7 +111,6 @@ describe('selection', function () {
     });
 
     it('skips users without Pro', function () {
-        config(['subscriptions.enabled' => true]);
         Bus::fake();
 
         $user = User::factory()->onboarded()->create(['last_active_at' => now()->subDays(14)]);
@@ -119,8 +121,18 @@ describe('selection', function () {
         Bus::assertNotDispatched(SendInactiveBankedEmailJob::class);
     });
 
+    it('skips users who already cancelled and are in their grace period', function () {
+        Bus::fake();
+
+        $user = dormantBankedUser();
+        $user->subscription('default')->update(['ends_at' => now()->addDays(10)]);
+
+        $this->artisan('email:inactive-banked')->assertSuccessful();
+
+        Bus::assertNotDispatched(SendInactiveBankedEmailJob::class);
+    });
+
     it('includes users on a trial', function () {
-        config(['subscriptions.enabled' => true]);
         Bus::fake();
 
         $user = User::factory()->onboarded()->subscribed('trialing')->create(['last_active_at' => now()->subDays(14)]);
@@ -173,7 +185,6 @@ describe('sending', function () {
     });
 
     it('does not send once Pro has lapsed', function () {
-        config(['subscriptions.enabled' => true]);
         Mail::fake();
 
         $user = dormantBankedUser();
@@ -247,6 +258,17 @@ describe('recap', function () {
         expect($recap['spendingChange'])->toBe(-20.0);
     });
 
+    it('skips the comparison when nothing has been spent yet this month', function () {
+        $user = dormantBankedUser();
+        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+
+        syncedExpense($user, -10000, '2026-10-10', $category);
+
+        $recap = app(WhileAwayRecap::class)->for($user, CarbonImmutable::parse($user->last_active_at));
+
+        expect($recap['spendingChange'])->toBeNull();
+    });
+
     it('skips the comparison early in the month', function () {
         $this->travelTo(CarbonImmutable::parse('2026-11-03 10:00:00'));
         $user = dormantBankedUser();
@@ -316,8 +338,8 @@ describe('content', function () {
             'spendingChange' => 30.0,
         ]);
 
-        expect($mail->envelope()->subject)->toBe('Mientras no estabas llegó 1 movimiento nuevo')
-            ->and($mail->render())->toContain('1 movimiento nuevo')
+        expect($mail->envelope()->subject)->toBe('Mientras no estabas llegó 1 transacción nueva')
+            ->and($mail->render())->toContain('1 transacción nueva')
             ->toContain('un 30');
     });
 });

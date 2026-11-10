@@ -39,14 +39,17 @@ class WhileAwayRecap
     public function __construct(private CashflowSummaryService $summaries) {}
 
     /**
+     * Rows count by when they were stored, not by their transaction date: the
+     * point is what arrived while the user was away.
+     *
      * @return array{newTransactions: int, uncategorized: int, spendingChange: ?float}
      */
-    public function for(User $user, CarbonInterface $since): array
+    public function for(User $user, CarbonInterface $syncedSince): array
     {
         $synced = $user->transactions()
             ->whereIn('source', self::SYNCED_SOURCES)
             ->whereNull('split_parent_id')
-            ->where('created_at', '>=', $since);
+            ->where('created_at', '>=', $syncedSince);
 
         return [
             'newTransactions' => (clone $synced)->count(),
@@ -77,7 +80,7 @@ class WhileAwayRecap
         $spent = $summary['current']['expense'];
         $spentBefore = $summary['previous']['expense'];
 
-        if ($spentBefore <= 0 || $spent < 0) {
+        if ($spentBefore <= 0 || $spent <= 0) {
             return null;
         }
 
