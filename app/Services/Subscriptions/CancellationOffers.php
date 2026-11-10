@@ -193,7 +193,7 @@ class CancellationOffers
             return $subscription->trial_ends_at;
         }
 
-        $periodEnd = $this->stripeSubscription($subscription)?->items?->data[0]?->current_period_end ?? null;
+        $periodEnd = $this->stripeSubscription($subscription)?->items->data[0]->current_period_end ?? null;
 
         return $periodEnd === null ? null : Carbon::createFromTimestamp($periodEnd);
     }

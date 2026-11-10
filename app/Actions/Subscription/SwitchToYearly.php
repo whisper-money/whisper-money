@@ -5,6 +5,7 @@ namespace App\Actions\Subscription;
 use App\Services\Subscriptions\StripePriceIds;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Laravel\Cashier\Subscription;
+use Stripe\Exception\ApiErrorException;
 
 /**
  * Moves a monthly subscriber onto the yearly plan of their tier, the cancel
@@ -19,7 +20,11 @@ class SwitchToYearly
     /**
      * @param  array<string, mixed>  $yearlyPlan  What `CancellationOffers::yearlyPlanFor()` returned.
      *
+     * Cashier does not declare it, but the swap goes straight to Stripe and
+     * throws whatever Stripe answers with.
+     *
      * @throws IncompletePayment When the card needs confirming.
+     * @throws ApiErrorException
      */
     public function handle(Subscription $subscription, array $yearlyPlan): void
     {
