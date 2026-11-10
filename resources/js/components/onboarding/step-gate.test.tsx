@@ -190,4 +190,18 @@ describe('StepGate copy experiment', () => {
             'onboarding_gate_arm',
         );
     });
+
+    it('promises the reminder before the first charge on every arm', () => {
+        const reminder =
+            'We’ll email you 3 days before the first charge. Cancel anytime from Settings.';
+
+        for (const arm of ['trial_yearly', 'trial_monthly', null] as const) {
+            const { unmount } = renderGate(arm);
+            expect(screen.getByText(reminder)).toBeTruthy();
+            unmount();
+        }
+
+        renderGate(null, { kind: 'ai' });
+        expect(screen.getByText(reminder)).toBeTruthy();
+    });
 });

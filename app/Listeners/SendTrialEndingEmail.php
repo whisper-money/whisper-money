@@ -2,6 +2,8 @@
 
 namespace App\Listeners;
 
+use App\Jobs\Drip\SendDripEmailJob;
+use App\Jobs\Drip\SendTrialEndingCanceledEmailJob;
 use App\Jobs\Drip\SendTrialEndingEmailJob;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -58,34 +60,46 @@ class SendTrialEndingEmail
 
     /**
      * Turn the subscription object into the email to send, or null when this
-     * subscription is not one to warn about: already set to cancel, missing the
-     * fields we quote to the user, or not a customer we know.
+     * subscription is not one to warn about: missing the fields we quote to
+     * the user, or not a customer we know.
+     *
+     * A trial already set to cancel gets an email of its own: no charge is
+     * coming, so instead of the amount it says what stops on the day and how
+     * to keep the plan.
      *
      * @param  array<string, mixed>  $object
      */
-    private function buildJob(array $object): ?SendTrialEndingEmailJob
+    private function buildJob(array $object): ?SendDripEmailJob
     {
-        if (($object['cancel_at_period_end'] ?? false) === true) {
+        $user = $this->customer($object['customer'] ?? null);
+        $trialEnd = $object['trial_end'] ?? null;
+
+        if ($user === null || ! is_int($trialEnd)) {
             return null;
         }
 
-        $customerId = $this->stringOrNull($object['customer'] ?? null);
-        $trialEnd = $object['trial_end'] ?? null;
+        $trialEndsAt = CarbonImmutable::createFromTimestamp($trialEnd);
+
+        if (($object['cancel_at_period_end'] ?? false) === true) {
+            return new SendTrialEndingCanceledEmailJob($user, $trialEndsAt);
+        }
+
         $price = $object['items']['data'][0]['price'] ?? $object['plan'] ?? [];
         $amount = (int) ($price['unit_amount'] ?? $price['amount'] ?? 0);
 
-        if ($customerId === null || ! is_int($trialEnd) || $amount <= 0) {
-            return null;
-        }
-
-        $user = User::query()->where('stripe_id', $customerId)->first();
-
-        return $user === null ? null : new SendTrialEndingEmailJob(
+        return $amount <= 0 ? null : new SendTrialEndingEmailJob(
             $user,
-            CarbonImmutable::createFromTimestamp($trialEnd),
+            $trialEndsAt,
             $amount,
             (string) ($price['currency'] ?? 'eur'),
         );
+    }
+
+    private function customer(mixed $customerId): ?User
+    {
+        $customerId = $this->stringOrNull($customerId);
+
+        return $customerId === null ? null : User::query()->where('stripe_id', $customerId)->first();
     }
 
     /**

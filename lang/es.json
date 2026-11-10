@@ -4343,5 +4343,22 @@
     "Continue without it": "Continuar sin ello",
     "You guessed": "Calculaste",
     ":guess a month": ":guess al mes",
-    "Two minutes of round figures for :account and we can tell you how close you were.": "Dos minutos de cifras redondas para :account y te decimos cuánto te acercaste."
+    "Two minutes of round figures for :account and we can tell you how close you were.": "Dos minutos de cifras redondas para :account y te decimos cuánto te acercaste.",
+    "We’ll email you 3 days before the first charge. Cancel anytime from Settings.": "Te avisaremos por email 3 días antes del primer cobro. Cancela cuando quieras desde Ajustes.",
+    "You canceled your plan, so you won't be charged again. On that day bank sync, AI categorization and the rest of Pro stop.": "Has cancelado tu plan, así que no se te volverá a cobrar. Ese día se detienen la sincronización bancaria, la categorización con IA y el resto de Pro.",
+    "On that day bank sync, AI categorization and the rest of Pro stop.": "Ese día se detienen la sincronización bancaria, la categorización con IA y el resto de Pro.",
+    "Your plan ends on :date": "Tu plan termina el :date",
+    "Your trial ends on :date": "Tu prueba termina el :date",
+    "There is no cancellation to undo on this plan.": "No hay ninguna cancelación que deshacer en este plan.",
+    "We could not keep your plan. Please try again in a few minutes.": "No hemos podido mantener tu plan. Inténtalo de nuevo en unos minutos.",
+    "Your plan is back on. Nothing else changes.": "Tu plan sigue activo. No cambia nada más.",
+    "Your Pro trial ends in 3 days": "Tu prueba de Pro termina en 3 días",
+    "Your Pro trial ends on :date, :name": "Tu prueba de Pro termina el :date, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You canceled your plan, so you won't be charged anything. We just wanted you to know what happens on :date, when your trial ends.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Has cancelado tu plan, así que no se te cobrará nada. Solo queríamos contarte qué pasa el :date, cuando termina tu prueba.",
+    "From that day, bank sync, AI categorization and the rest of Pro stop. Your movements no longer arrive on their own.": "A partir de ese día se detienen la sincronización bancaria, la categorización con IA y el resto de Pro. Tus movimientos dejan de llegar solos.",
+    "Here's what you've set up so far, and it stays yours:": "Esto es lo que has configurado hasta ahora, y sigue siendo tuyo:",
+    ":count account|:count accounts": ":count cuenta|:count cuentas",
+    ":count transaction|:count transactions": ":count transacción|:count transacciones",
+    "If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Pro. Nothing is charged until :date.": "Si cancelaste solo por si acaso, el botón de abajo te lleva a tu página de facturación, donde un clic mantiene Pro. No se cobra nada hasta el :date.",
+    "If something didn't work for you, reply to this email and tell us. We read every reply ourselves.": "Si algo no te ha funcionado, responde a este email y cuéntanoslo. Leemos cada respuesta nosotros mismos."
 }

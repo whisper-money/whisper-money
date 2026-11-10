@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { captureEvent } from '@/lib/posthog';
 import {
     destroy as revokeConsent,
     store as storeConsent,
@@ -17,6 +18,7 @@ import { billing } from '@/routes/settings';
 import {
     cancelUnpaid,
     portal,
+    resume,
     swapToStandard,
 } from '@/routes/settings/billing';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -27,6 +29,7 @@ import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
+    CalendarClockIcon,
     CheckIcon,
     CreditCardIcon,
     InfinityIcon,
@@ -173,6 +176,8 @@ interface SubscriptionInfo {
     onTrial: boolean;
     trialEndsAt: string | null;
     onGracePeriod: boolean;
+    /** When a scheduled cancellation takes effect; null when none is. */
+    endsAt: string | null;
     plan: PlanPrice | null;
     /**
      * The standard price a subscriber on the latam price can move up to, to
@@ -345,17 +350,102 @@ function PlanStatus({
 function ManageSubscriptionButton({
     label = __('Manage Subscription'),
     variant = 'default',
+    source,
 }: {
     label?: string;
     variant?: 'default' | 'outline';
+    /** Which of the page's ways into the portal was taken, for analytics. */
+    source: 'manage' | 'payment_failed';
 }) {
     return (
         <Button variant={variant} asChild>
-            <a href={portal.url()}>
+            <a
+                href={portal.url()}
+                onClick={() =>
+                    captureEvent('billing_portal_opened', { source })
+                }
+            >
                 <CreditCardIcon className="size-4" />
                 {label}
             </a>
         </Button>
+    );
+}
+
+/**
+ * For a plan the user set to cancel and that is still running (Cashier's grace
+ * period): what stops and when, and the way back, one click away. Most trial
+ * cancellations happen within the first hour, as a precaution, and until now
+ * the only way to take one back was buried in Stripe's portal.
+ */
+function ScheduledCancellationSection({
+    onTrial,
+    endsAt,
+    locale,
+}: {
+    onTrial: boolean;
+    endsAt: string;
+    locale: string;
+}) {
+    const { errors } = usePage<{ errors: Record<string, string> }>().props;
+    const [processing, setProcessing] = useState(false);
+    const date = formatDateMedium(endsAt, locale);
+    const analytics = { on_trial: onTrial };
+
+    const keepPlan = () => {
+        captureEvent('subscription_resume_clicked', analytics);
+        setProcessing(true);
+        router.post(
+            resume.url(),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { flash } = page.props as unknown as SharedData;
+
+                    captureEvent('subscription_resumed', analytics);
+
+                    if (flash?.success) {
+                        toast.success(flash.success);
+                    }
+                },
+                onFinish: () => setProcessing(false),
+            },
+        );
+    };
+
+    return (
+        <Alert data-testid="scheduled-cancellation">
+            <CalendarClockIcon className="h-4 w-4" />
+            <AlertTitle>
+                {onTrial
+                    ? __('Your trial ends on :date', { date })
+                    : __('Your plan ends on :date', { date })}
+            </AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-3">
+                <span>
+                    {onTrial
+                        ? __(
+                              'On that day bank sync, AI categorization and the rest of Pro stop.',
+                          )
+                        : __(
+                              "You canceled your plan, so you won't be charged again. On that day bank sync, AI categorization and the rest of Pro stop.",
+                          )}
+                </span>
+                {errors.subscription && (
+                    <span role="alert" className="text-destructive">
+                        {errors.subscription}
+                    </span>
+                )}
+                <Button
+                    disabled={processing}
+                    onClick={keepPlan}
+                    data-testid="resume-subscription"
+                >
+                    {__('Keep my plan')}
+                </Button>
+            </AlertDescription>
+        </Alert>
     );
 }
 
@@ -439,6 +529,7 @@ function UnpaidSubscriptionSection() {
                             <ManageSubscriptionButton
                                 label={__('Update payment method')}
                                 variant="outline"
+                                source="payment_failed"
                             />
                         </>
                     )}
@@ -482,6 +573,16 @@ function SubscribedSection({
                 </Alert>
             )}
 
+            {subscription?.onGracePeriod &&
+                subscription.endsAt &&
+                !isSharedAccount && (
+                    <ScheduledCancellationSection
+                        onTrial={subscription.onTrial}
+                        endsAt={subscription.endsAt}
+                        locale={locale}
+                    />
+                )}
+
             <BenefitsGrid />
 
             <div className="rounded-lg border bg-card p-5">
@@ -498,7 +599,7 @@ function SubscribedSection({
                 </p>
                 {!isSharedAccount && !showsPaymentFailure && (
                     <div className="mt-4">
-                        <ManageSubscriptionButton />
+                        <ManageSubscriptionButton source="manage" />
                     </div>
                 )}
             </div>

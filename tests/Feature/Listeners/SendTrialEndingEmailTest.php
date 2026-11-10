@@ -2,7 +2,9 @@
 
 use App\Enums\DripEmailType;
 use App\Listeners\SendTrialEndingEmail;
+use App\Mail\Drip\TrialEndingCanceledEmail;
 use App\Mail\Drip\TrialEndingEmail;
+use App\Models\Account;
 use App\Models\User;
 use App\Models\UserMailLog;
 use Illuminate\Contracts\Bus\Dispatcher;
@@ -10,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Cashier\Events\WebhookReceived;
+use Laravel\Cashier\Subscription;
 
 beforeEach(function () {
     Mail::fake();
@@ -40,6 +43,22 @@ function trialWillEndPayload(array $overrides = [], string $eventId = 'evt_trial
 afterEach(function () {
     Carbon::setTestNow();
 });
+
+/**
+ * The local row Cashier keeps for a trial the user set to cancel, which the
+ * job reads to check the cancellation still stands when it runs.
+ */
+function canceledTrialSubscription(User $user): Subscription
+{
+    return $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_123',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_trial_test',
+        'trial_ends_at' => now()->addDays(3),
+        'ends_at' => now()->addDays(3),
+    ]);
+}
 
 function handleTrialWillEnd(array $payload): void
 {
@@ -108,12 +127,68 @@ test('nothing is sent to a user who cannot receive emails', function () {
     Mail::assertNothingQueued();
 });
 
-test('nothing is sent when the subscription is already set to cancel', function () {
-    User::factory()->create(['stripe_id' => 'cus_123']);
+test('a trial already set to cancel gets the keep-your-plan email instead', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
+
+    Mail::assertNotQueued(TrialEndingEmail::class);
+    Mail::assertQueued(TrialEndingCanceledEmail::class, fn ($mail) => $mail->hasTo($user->email));
+
+    $this->assertDatabaseHas('user_mail_logs', [
+        'user_id' => $user->id,
+        'email_type' => DripEmailType::TrialEndingCanceled->value,
+        'email_identifier' => now()->addDays(3)->toDateString(),
+    ]);
+});
+
+test('a trial set to cancel needs no amount in the payload', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true, 'items' => ['data' => []]]));
+
+    Mail::assertQueued(TrialEndingCanceledEmail::class);
+});
+
+test('a redelivered webhook for a trial set to cancel sends one email', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true], eventId: 'evt_trial_1'));
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true], eventId: 'evt_trial_1'));
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true], eventId: 'evt_trial_2'));
+
+    Mail::assertQueuedCount(1);
+});
+
+test('a trial resumed before the email goes out is not asked to keep its plan', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user)->update(['ends_at' => null]);
 
     handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
 
     Mail::assertNothingQueued();
+});
+
+test('the keep-your-plan email states the end date, what was set up and links to the billing page', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123', 'timezone' => 'Europe/Madrid']);
+    canceledTrialSubscription($user);
+    Account::factory()->count(2)->for($user)->create();
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
+
+    $mail = Mail::queued(TrialEndingCanceledEmail::class)->first();
+    $body = $mail->render();
+
+    expect($body)
+        ->toContain($mail->trialEndsAt->setTimezone($user->timezone)->isoFormat('LL'))
+        ->toContain('2 accounts')
+        ->toContain('/settings/billing?')
+        ->toContain('utm_campaign=trial-ending-canceled')
+        ->not->toContain('/settings/billing/portal')
+        ->not->toContain('€');
 });
 
 test('nothing is sent for an unknown Stripe customer', function () {

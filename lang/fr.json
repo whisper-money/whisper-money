@@ -3320,5 +3320,22 @@
     "Continue without it": "Continuer sans",
     "You guessed": "Vous aviez estimé",
     ":guess a month": ":guess par mois",
-    "Two minutes of round figures for :account and we can tell you how close you were.": "Deux minutes de chiffres ronds pour :account et nous vous disons à quel point vous étiez proche."
+    "Two minutes of round figures for :account and we can tell you how close you were.": "Deux minutes de chiffres ronds pour :account et nous vous disons à quel point vous étiez proche.",
+    "We’ll email you 3 days before the first charge. Cancel anytime from Settings.": "Nous vous enverrons un e-mail 3 jours avant le premier prélèvement. Annulez à tout moment depuis les Paramètres.",
+    "You canceled your plan, so you won't be charged again. On that day bank sync, AI categorization and the rest of Pro stop.": "Vous avez annulé votre abonnement, vous ne serez donc plus prélevé. Ce jour-là, la synchronisation bancaire, la catégorisation par IA et le reste de Pro s'arrêtent.",
+    "On that day bank sync, AI categorization and the rest of Pro stop.": "Ce jour-là, la synchronisation bancaire, la catégorisation par IA et le reste de Pro s'arrêtent.",
+    "Your plan ends on :date": "Votre abonnement se termine le :date",
+    "Your trial ends on :date": "Votre essai se termine le :date",
+    "There is no cancellation to undo on this plan.": "Il n'y a aucune annulation à annuler sur cet abonnement.",
+    "We could not keep your plan. Please try again in a few minutes.": "Nous n'avons pas pu conserver votre abonnement. Réessayez dans quelques minutes.",
+    "Your plan is back on. Nothing else changes.": "Votre abonnement est réactivé. Rien d'autre ne change.",
+    "Your Pro trial ends in 3 days": "Votre essai Pro se termine dans 3 jours",
+    "Your Pro trial ends on :date, :name": "Votre essai Pro se termine le :date, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You canceled your plan, so you won't be charged anything. We just wanted you to know what happens on :date, when your trial ends.": "Bonjour ! C'est Víctor et Álvaro, les fondateurs de Whisper Money. Vous avez annulé votre abonnement, vous ne serez donc pas prélevé. Nous voulions simplement vous dire ce qui se passe le :date, à la fin de votre essai.",
+    "From that day, bank sync, AI categorization and the rest of Pro stop. Your movements no longer arrive on their own.": "À partir de ce jour, la synchronisation bancaire, la catégorisation par IA et le reste de Pro s'arrêtent. Vos mouvements n'arrivent plus tout seuls.",
+    "Here's what you've set up so far, and it stays yours:": "Voici ce que vous avez configuré jusqu'ici, et cela reste à vous :",
+    ":count account|:count accounts": ":count compte|:count comptes",
+    ":count transaction|:count transactions": ":count transaction|:count transactions",
+    "If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Pro. Nothing is charged until :date.": "Si vous avez annulé par précaution, le bouton ci-dessous vous mène à votre page de facturation, où un clic suffit pour garder Pro. Rien n'est prélevé avant le :date.",
+    "If something didn't work for you, reply to this email and tell us. We read every reply ourselves.": "Si quelque chose n'a pas fonctionné pour vous, répondez à cet e-mail et dites-le-nous. Nous lisons chaque réponse nous-mêmes."
 }
