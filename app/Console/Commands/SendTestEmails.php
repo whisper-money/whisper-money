@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\Drip\AnnualRenewalEmail;
 use App\Mail\Drip\FeedbackEmail;
 use App\Mail\Drip\ImportHelpEmail;
 use App\Mail\Drip\InactiveBankedEmail;
@@ -10,6 +11,7 @@ use App\Mail\Drip\OnboardingReminderEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\WelcomeEmail;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
@@ -49,6 +51,7 @@ class SendTestEmails extends Command
             'Inactive No Bank Email' => new InactiveNoBankEmail($user),
             'Inactive Banked Email' => new InactiveBankedEmail($user, ['newTransactions' => 37, 'uncategorized' => 5, 'spendingChange' => -12.0]),
             'Inactive Banked Email (nothing synced)' => new InactiveBankedEmail($user, ['newTransactions' => 0, 'uncategorized' => 0, 'spendingChange' => null]),
+            'Annual Renewal Email' => new AnnualRenewalEmail($user, CarbonImmutable::now()->addDays(14), 5394, 'eur'),
         ];
 
         foreach ($emails as $name => $mailable) {

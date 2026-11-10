@@ -3336,5 +3336,20 @@
     "Standard stops on :date": "Standard s'arrête le :date",
     "Bank sync and AI categorization stop that day. Keep your plan and your first charge is on :date.": "Ce jour-là, la synchronisation bancaire et la catégorisation par IA s'arrêtent. Gardez votre abonnement et votre premier prélèvement aura lieu le :date.",
     "You won't be charged again. Bank sync and AI categorization stop that day. Keep your plan and it renews as usual.": "Vous ne serez plus prélevé. Ce jour-là, la synchronisation bancaire et la catégorisation par IA s'arrêtent. Gardez votre abonnement et il se renouvelle comme d'habitude.",
-    "If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Standard. Your first charge would then be on :date.": "Si vous avez annulé par précaution, le bouton ci-dessous vous mène à votre page de facturation, où un clic suffit pour garder Standard. Votre premier prélèvement aurait alors lieu le :date."
+    "If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Standard. Your first charge would then be on :date.": "Si vous avez annulé par précaution, le bouton ci-dessous vous mène à votre page de facturation, où un clic suffit pour garder Standard. Votre premier prélèvement aurait alors lieu le :date.",
+    "Your Whisper Money annual plan renews on :date": "Votre abonnement annuel Whisper Money se renouvelle le :date",
+    "Your annual plan renews soon, :name": "Votre abonnement annuel se renouvelle bientôt, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. A quick heads-up so nothing catches you by surprise: your annual plan renews on :date, and we'll charge :amount to your saved payment method.": "Bonjour ! C'est Victor et Alvaro, les fondateurs de Whisper Money. Un petit mot pour que rien ne vous prenne par surprise : votre abonnement annuel se renouvelle le :date et nous prélèverons :amount sur votre moyen de paiement enregistré.",
+    "Your year with Whisper Money": "Votre année avec Whisper Money",
+    "Here's what you've built in Whisper Money so far:": "Voici ce que vous avez construit dans Whisper Money jusqu'ici :",
+    "If you want to carry on, there is nothing to do. To change your plan, update your card or cancel, head to your billing settings before :date.": "Si vous souhaitez continuer, vous n'avez rien à faire. Pour changer d'abonnement, mettre à jour votre carte ou résilier, rendez-vous dans vos paramètres de facturation avant le :date.",
+    "If something isn't working for you, reply to this email and tell us. We read every reply ourselves.": "Si quelque chose ne vous convient pas, répondez à cet e-mail pour nous le dire. Nous lisons chaque réponse nous-mêmes.",
+    "{1}:count account tracked|[2,*]:count accounts tracked": "{1}:count compte suivi|[2,*]:count comptes suivis",
+    "{1}:count bank connection syncing on its own|[2,*]:count bank connections syncing on their own": "{1}:count connexion bancaire synchronisée automatiquement|[2,*]:count connexions bancaires synchronisées automatiquement",
+    "{1}:count transaction added this year|[2,*]:count transactions added this year": "{1}:count transaction ajoutée cette année|[2,*]:count transactions ajoutées cette année",
+    "{1}:count transaction categorized this year|[2,*]:count transactions categorized this year": "{1}:count transaction catégorisée cette année|[2,*]:count transactions catégorisées cette année",
+    "{1}:count automation rule doing the sorting for you|[2,*]:count automation rules doing the sorting for you": "{1}:count règle automatique qui trie pour vous|[2,*]:count règles automatiques qui trient pour vous",
+    "{1}:count budget|[2,*]:count budgets": "{1}:count budget|[2,*]:count budgets",
+    "{1}:count savings goal|[2,*]:count savings goals": "{1}:count objectif d'épargne|[2,*]:count objectifs d'épargne",
+    "{1}:count achievement unlocked this year|[2,*]:count achievements unlocked this year": "{1}:count succès débloqué cette année|[2,*]:count succès débloqués cette année"
 }
