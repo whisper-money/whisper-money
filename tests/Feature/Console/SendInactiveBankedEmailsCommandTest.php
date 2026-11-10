@@ -237,7 +237,14 @@ describe('recap', function () {
         syncedExpense($user, -1000, '2026-11-15', $category, now()->subDays(5));
         syncedExpense($user, -1000, '2026-11-16', null, now()->subDays(4));
         syncedExpense($user, -1000, '2026-11-01', null, now()->subDays(20));
-        Transaction::factory()->create(['user_id' => $user->id, 'category_id' => null]);
+        // A manual row in the user's currency: a foreign one would make the
+        // month-to-date comparison reach for exchange rates.
+        Transaction::factory()->create([
+            'user_id' => $user->id,
+            'account_id' => Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR'])->id,
+            'category_id' => null,
+            'currency_code' => 'EUR',
+        ]);
 
         $recap = app(WhileAwayRecap::class)->for($user, CarbonImmutable::parse($user->last_active_at));
 
