@@ -45,6 +45,7 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionExportController;
 use App\Http\Controllers\TransactionSplitController;
+use App\Http\Controllers\TrialBannerDismissalController;
 use App\Http\Controllers\UncategorizedPromptController;
 use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
@@ -222,6 +223,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // app shell, wherever the user lands.
         Route::post('subscribe/second-offer/shown', SecondOfferController::class)
             ->name('subscribe.second-offer.shown');
+
+        // The trial-ending banner, drawn by the app shell like the dialog above.
+        Route::post('trial-banner/dismiss', TrialBannerDismissalController::class)
+            ->name('trial-banner.dismiss');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.list');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');

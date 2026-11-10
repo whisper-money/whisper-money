@@ -5,6 +5,7 @@ import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { BankConnectionIssueBanner } from '@/components/open-banking/bank-connection-issue-banner';
 import { SubscriptionPaymentIssueBanner } from '@/components/subscription/payment-issue-banner';
 import { SecondOfferDialog } from '@/components/subscription/second-offer-dialog';
+import { TrialEndingBanner } from '@/components/subscription/trial-ending-banner';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
@@ -29,6 +30,7 @@ export default function AppSidebarLayout({
                 />
                 <SubscriptionPaymentIssueBanner />
                 <BankConnectionIssueBanner />
+                <TrialEndingBanner />
                 <SecondOfferDialog />
                 <div
                     className="mx-auto flex w-full max-w-page flex-1 flex-col"
