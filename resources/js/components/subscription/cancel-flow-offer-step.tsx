@@ -209,17 +209,21 @@ function OfferCard({
                 <DialogTitle className="pr-6">{title}</DialogTitle>
                 <DialogDescription>{body}</DialogDescription>
             </DialogHeader>
-            <DialogFooter>
+            {/* The offer's own actions on one row, right-aligned and free to
+                wrap (the help offer has two); the way past it on a row of its
+                own, so it can never be pushed out of the dialog. */}
+            <div className="flex flex-col gap-3">
+                <DialogFooter className="sm:flex-wrap">{action}</DialogFooter>
                 <Button
-                    variant="ghost"
+                    variant="link"
+                    className="h-auto self-center p-0 text-muted-foreground sm:self-end"
                     onClick={onDecline}
                     disabled={processing}
                     data-testid="cancel-flow-decline"
                 >
                     {__('No thanks, continue cancelling')}
                 </Button>
-                {action}
-            </DialogFooter>
+            </div>
         </>
     );
 }
