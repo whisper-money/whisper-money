@@ -13,6 +13,7 @@ use App\Http\Requests\StoreFreePlanSurveyResponseRequest;
 use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
+use App\Services\Subscriptions\CancellationOffers;
 use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
 use App\Services\Subscriptions\UserSetupStats;
@@ -39,6 +40,7 @@ class SubscriptionController extends Controller
         private StripePriceIds $priceIds,
         private SwapLatamToStandard $swapLatamToStandard,
         private UserSetupStats $setupStats,
+        private CancellationOffers $cancellationOffers,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -422,6 +424,9 @@ class SubscriptionController extends Controller
                 // The standard price a latam subscriber can move up to, for the
                 // button that does it; null for everyone else.
                 'standardUpgrade' => $this->standardUpgradeFor($user, $subscription),
+                // Whether the in-app cancel flow can run on it: a running plan
+                // not already set to cancel nor waiting on a payment.
+                'canCancel' => $this->cancellationOffers->cancellableSubscription($user) !== null,
             ],
         ]);
     }

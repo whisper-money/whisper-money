@@ -60,6 +60,20 @@ class EnsureLaunchCouponsCommand extends Command
                 'duration' => 'once',
                 'applies_to' => ['products' => [$yearlyProductId]],
             ],
+            // Offered by the cancel flow to a subscriber who finds the plan too
+            // expensive (`subscriptions.retention_coupon`).
+            [
+                'id' => (string) config('subscriptions.retention_coupon.id'),
+                'name' => sprintf(
+                    'WM Retention – %d%% off for %d months',
+                    config('subscriptions.retention_coupon.percent_off'),
+                    config('subscriptions.retention_coupon.duration_in_months'),
+                ),
+                'percent_off' => (int) config('subscriptions.retention_coupon.percent_off'),
+                'duration' => 'repeating',
+                'duration_in_months' => (int) config('subscriptions.retention_coupon.duration_in_months'),
+                'applies_to' => null,
+            ],
         ];
 
         foreach ($coupons as $config) {

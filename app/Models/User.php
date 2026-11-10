@@ -48,6 +48,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $uncategorized_prompt_snoozed_until
  * @property ?Carbon $second_offer_shown_at
  * @property ?string $trial_banner_dismissed_for
+ * @property ?Carbon $retention_coupon_redeemed_at
  * @property int $achievements_count
  * @property int $visit_streak
  * @property int $longest_visit_streak
@@ -123,6 +124,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'onboarding_answers' => 'array',
             'paywall_seen_at' => 'datetime',
             'second_offer_shown_at' => 'datetime',
+            'retention_coupon_redeemed_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
             'transactions_last_visited_at' => 'datetime',
@@ -545,6 +547,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function freePlanSurveyResponses(): HasMany
     {
         return $this->hasMany(FreePlanSurveyResponse::class);
+    }
+
+    /** @return HasMany<CancellationSurveyResponse, $this> */
+    public function cancellationSurveyResponses(): HasMany
+    {
+        return $this->hasMany(CancellationSurveyResponse::class);
     }
 
     /** @return HasMany<MonthlySummary, $this> */
