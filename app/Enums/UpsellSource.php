@@ -27,6 +27,8 @@ enum UpsellSource: string
     case SecondOffer = 'second_offer';
     case Paywall = 'paywall';
     case Billing = 'billing';
+    case Api = 'api';
+    case Mcp = 'mcp';
 
     /**
      * Where a checkout started from this point sends the user once the plan is
@@ -53,14 +55,15 @@ enum UpsellSource: string
     /**
      * Whether the screen behind this point discloses, in a row the user cannot
      * miss, what the AI sorting sends out — and so is allowed to switch the
-     * consent on with the plan instead of asking for it again a step later. Only
-     * the onboarding gates carry that row; every other checkout leaves the
-     * consent to the screen that asks for it on its own terms.
+     * consent on with the plan instead of asking for it again a step later. The
+     * onboarding gates and the in-app AI categorization dialog carry that row;
+     * every other checkout leaves the consent to the screen that asks for it on
+     * its own terms.
      */
     public function grantsAiConsent(): bool
     {
         return match ($this) {
-            self::OnboardingBank, self::OnboardingBroker, self::OnboardingAi => true,
+            self::OnboardingBank, self::OnboardingBroker, self::OnboardingAi, self::AiCategorization => true,
             default => false,
         };
     }

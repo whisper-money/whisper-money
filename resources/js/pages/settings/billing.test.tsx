@@ -82,7 +82,7 @@ describe('Billing – AI categorization toggle', () => {
         fireEvent.click(checkbox);
 
         expect(
-            await screen.findByText('AI categorization is a paid feature'),
+            await screen.findByText('Let the AI sort your movements'),
         ).toBeInTheDocument();
         // The consent must NOT be recorded — that is what would lock the free
         // user behind the paywall on the next navigation.
@@ -98,7 +98,7 @@ describe('Billing – AI categorization toggle', () => {
 
         await waitFor(() => expect(mocks.axiosPost).toHaveBeenCalledTimes(1));
         expect(
-            screen.queryByText('AI categorization is a paid feature'),
+            screen.queryByText('Let the AI sort your movements'),
         ).not.toBeInTheDocument();
     });
 
@@ -128,7 +128,7 @@ describe('Billing – AI categorization toggle', () => {
         await waitFor(() => expect(mocks.axiosDelete).toHaveBeenCalledTimes(1));
         expect(mocks.axiosPost).not.toHaveBeenCalled();
         expect(
-            screen.queryByText('AI categorization is a paid feature'),
+            screen.queryByText('Let the AI sort your movements'),
         ).not.toBeInTheDocument();
     });
 });
@@ -158,7 +158,9 @@ describe('Billing – plan status', () => {
         expect(
             screen.getByText('First charge of €8.99/month on Nov 5, 2026.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Pro Plan Active')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Standard plan active'),
+        ).not.toBeInTheDocument();
     });
 
     it('tells a subscriber who canceled the trial that they will not be charged', () => {
@@ -201,7 +203,7 @@ describe('Billing – plan status', () => {
         };
         render(<Billing />);
 
-        expect(screen.getByText('Pro Plan Active')).toBeInTheDocument();
+        expect(screen.getByText('Standard plan active')).toBeInTheDocument();
         expect(screen.getByText('— €8.99/month')).toBeInTheDocument();
     });
 
@@ -312,7 +314,7 @@ describe('Billing – a subscription whose charge failed', () => {
         expect(
             screen.getByRole('button', { name: 'Cancel subscription' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Pro Plan Active')).toBeInTheDocument();
+        expect(screen.getByText('Standard plan active')).toBeInTheDocument();
         // The alert already links to the portal; a second button is noise.
         expect(
             screen.queryByRole('link', { name: /Manage Subscription/ }),

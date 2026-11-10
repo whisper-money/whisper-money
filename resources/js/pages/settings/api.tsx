@@ -54,7 +54,6 @@ interface ApiPageProps {
     connectedApps: ConnectedAppRow[];
     baseUrl: string;
     docsUrl: string;
-    subscribeUrl: string;
     newToken: string | null;
 }
 
@@ -129,15 +128,9 @@ function CreateApiTokenDialog({ disabled }: { disabled: boolean }) {
 }
 
 export default function Api() {
-    const {
-        tokens,
-        connectedApps,
-        baseUrl,
-        docsUrl,
-        subscribeUrl,
-        newToken,
-        auth,
-    } = usePage<SharedData & ApiPageProps>().props;
+    const { tokens, connectedApps, baseUrl, docsUrl, newToken, auth } = usePage<
+        SharedData & ApiPageProps
+    >().props;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -155,14 +148,7 @@ export default function Api() {
                         <ProBadge className="mt-1 shrink-0" />
                     </div>
 
-                    {!auth.hasProPlan && (
-                        <ProUpsellAlert
-                            subscribeUrl={subscribeUrl}
-                            description={__(
-                                'The API is available on a paid plan. Upgrade to create or rotate tokens; you can still revoke the ones you have.',
-                            )}
-                        />
-                    )}
+                    {!auth.hasProPlan && <ProUpsellAlert source="api" />}
 
                     {newToken && <NewTokenAlert token={newToken} />}
 

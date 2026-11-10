@@ -202,7 +202,7 @@ dataset('authenticated pages (smoke)', [
     'bank account settings' => ['/settings/accounts', 'Bank accounts'],
     'appearance settings' => ['/settings/appearance', 'Appearance settings'],
     'automation rule settings' => ['/settings/automation-rules', 'Automation rules settings'],
-    'billing settings' => ['/settings/billing', 'Your Pro Plan'],
+    'billing settings' => ['/settings/billing', 'Your Standard plan'],
     'category settings' => ['/settings/categories', 'Categories settings'],
     'connection settings' => ['/settings/connections', 'Bank Connections'],
     'label settings' => ['/settings/labels', 'Labels settings'],

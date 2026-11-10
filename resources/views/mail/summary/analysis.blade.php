@@ -20,7 +20,7 @@
         <td style="background:#fafafa;padding:18px 20px;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
                 <td style="font-size:10px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#a1a1aa;padding-right:9px;">{{ __('Why this happened') }}</td>
-                <td><span style="display:inline-block;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;background:#18181b;color:#ffffff;padding:3px 6px;border-radius:3px;">{{ __('Pro') }}</span></td>
+                <td><span style="display:inline-block;font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;background:#18181b;color:#ffffff;padding:3px 6px;border-radius:3px;">Standard</span></td>
             </tr></table>
 
             <p style="margin:12px 0 0;font-size:14px;line-height:1.55;color:#52525b;">{{ $analysisTeaser }}</p>

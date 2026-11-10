@@ -231,7 +231,7 @@ export function StepGate({
  * promise on the website is that the data is never sold or shared with
  * advertisers, and this is where part of it does reach an AI provider.
  */
-function AiDisclosure({ kind }: { kind: GateKind }) {
+export function AiDisclosure({ kind }: { kind: GateKind }) {
     return (
         <StepRow
             icon={Sparkles}

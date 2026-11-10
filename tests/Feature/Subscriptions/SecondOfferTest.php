@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -198,3 +199,54 @@ test('onboarding is told whether Pro waits for data', function (bool $enabled) {
     actingAs($user)->withoutVite()->get(route('onboarding'))
         ->assertInertia(fn (Assert $page) => $page->where('asksToPayOnlyWithData', $enabled));
 })->with(['on' => true, 'off' => false]);
+
+test('the offer carries the uncategorized backlog, latest first', function () {
+    $user = freeUserPastThePaywall();
+    $account = Account::factory()->for($user)->create();
+    $make = fn (string $date, string $description, int $amount, ?string $categoryId = null) => Transaction::factory()
+        ->for($user)
+        ->for($account)
+        ->create([
+            'transaction_date' => $date,
+            'description' => $description,
+            'amount' => $amount,
+            'currency_code' => 'EUR',
+            'category_id' => $categoryId,
+        ]);
+
+    $make('2026-11-01', 'OLDEST', -100);
+    $make('2026-11-05', 'MERCADONA', -4820);
+    $make('2026-11-04', 'NETFLIX.COM', -1399);
+    $make('2026-11-03', 'REPSOL', -6105);
+    $make('2026-11-06', 'CATEGORIZED', -500, Category::factory()->for($user)->create()->id);
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('showSecondOffer', true)
+            ->where('secondOfferBacklog.count', 4)
+            ->has('secondOfferBacklog.recent', 3)
+            ->where('secondOfferBacklog.recent.0.description', 'MERCADONA')
+            ->where('secondOfferBacklog.recent.0.amount', -4820)
+            ->where('secondOfferBacklog.recent.0.currency_code', 'EUR')
+            ->where('secondOfferBacklog.recent.1.description', 'NETFLIX.COM')
+            ->where('secondOfferBacklog.recent.2.description', 'REPSOL'));
+});
+
+test('the backlog is not read for a user the offer is not shown to', function () {
+    $user = freeUserPastThePaywall();
+    giveTransactionCreatedAt($user, now()->subDay())->update(['category_id' => null]);
+    $user->markSecondOfferShown();
+
+    DB::enableQueryLog();
+
+    actingAs($user->fresh())->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('showSecondOffer', false)
+            ->where('secondOfferBacklog', null));
+
+    // The backlog's queries filter on nothing but the owner and the missing
+    // category; the dashboard's own uncategorized count also bounds the dates.
+    expect(collect(DB::getQueryLog())->pluck('query')->filter(
+        fn (string $sql) => preg_match('/`category_id` is null and `transactions`.`deleted_at` is null/', $sql) === 1,
+    ))->toBeEmpty();
+});

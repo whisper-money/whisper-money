@@ -61,8 +61,8 @@ function startCheckout(User $user, ?string $source): TestResponse
 
 /**
  * The consent travels with the plan only where the screen that sold it said
- * what leaves the account: the bank and AI gates, and the broker gate, which
- * carries the same row. Everywhere else the user is asked on its own terms, on
+ * what leaves the account: the bank and AI gates, the broker gate, which
+ * carries the same row, and the in-app AI categorization dialog. Everywhere else the user is asked on its own terms, on
  * the screen that asks.
  */
 it('grants the AI consent the gate disclosed, with the purchase', function (string $source) {
@@ -74,6 +74,7 @@ it('grants the AI consent the gate disclosed, with the purchase', function (stri
     'bank gate' => ['onboarding_bank'],
     'AI gate' => ['onboarding_ai'],
     'broker gate' => ['onboarding_broker'],
+    'AI categorization dialog' => ['ai_categorization'],
 ]);
 
 it('grants no consent from a checkout that disclosed nothing', function (?string $source) {
@@ -85,6 +86,8 @@ it('grants no consent from a checkout that disclosed nothing', function (?string
     'connections upsell' => ['connections'],
     'paywall' => ['paywall'],
     'billing settings' => ['billing'],
+    'API settings' => ['api'],
+    'MCP settings' => ['mcp'],
     'no upsell point at all' => [null],
 ]);
 
@@ -114,6 +117,8 @@ it('parks nothing for a checkout started outside the wizard', function (string $
     'connections upsell' => ['connections'],
     'paywall' => ['paywall'],
     'billing settings' => ['billing'],
+    'AI categorization dialog' => ['ai_categorization'],
+    'API settings' => ['api'],
 ]);
 
 // A checkout the user walked away from with the browser's Back button never

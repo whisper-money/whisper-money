@@ -125,14 +125,14 @@ class MonthlySummaryEmail extends DripMail
 
     private function lockedPitch(): string
     {
-        return __('That figure did not come out of nowhere, and Pro tells you where from: what moved it, what is going to repeat next month, and which budget is about to fall short.');
+        return __('That figure did not come out of nowhere, and Standard tells you where from: what moved it, what is going to repeat next month, and which budget is about to fall short.');
     }
 
     private function lockedAction(): string
     {
         return $this->user->hasProPlan()
             ? __('Turn AI on in Settings')
-            : __('See Pro');
+            : __('See Standard');
     }
 
     private function lockedUrl(): string

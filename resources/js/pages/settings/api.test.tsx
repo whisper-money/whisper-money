@@ -1,6 +1,7 @@
 import { type ConnectedAppRow } from '@/components/access-tokens/connected-app-list';
 import { type AccessTokenRow } from '@/components/access-tokens/token-list';
-import { render, screen } from '@testing-library/react';
+import { pricingFixture } from '@/lib/pricing-fixture';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ApiPage from './api';
@@ -12,14 +13,17 @@ const { PassThrough } = vi.hoisted(() => ({
 vi.mock('@/layouts/app-layout', () => ({ default: PassThrough }));
 vi.mock('@/layouts/settings/layout', () => ({ default: PassThrough }));
 
+vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
+
 const page = vi.hoisted(() => ({
     props: {
-        auth: { hasProPlan: true },
+        auth: { hasProPlan: true, user: { id: 'user-1' } },
+        pricing: null as unknown as typeof pricingFixture,
+        locale: 'en',
         tokens: [] as AccessTokenRow[],
         connectedApps: [] as ConnectedAppRow[],
         baseUrl: 'https://whisper.money/api/v1',
         docsUrl: '/documentation',
-        subscribeUrl: '/subscribe',
         newToken: null as string | null,
     },
 }));
@@ -55,6 +59,7 @@ function apiToken(overrides: Partial<AccessTokenRow>): AccessTokenRow {
 describe('API settings page', () => {
     beforeEach(() => {
         page.props.auth.hasProPlan = true;
+        page.props.pricing = pricingFixture;
         page.props.tokens = [];
         page.props.connectedApps = [];
         page.props.newToken = null;
@@ -100,7 +105,12 @@ describe('API settings page', () => {
 
         render(<ApiPage />);
 
-        expect(screen.getByText('This is a Pro feature')).toBeTruthy();
+        expect(screen.getByText('Create tokens with Standard')).toBeTruthy();
+        expect(
+            screen.getByText(
+                'Free for 14 days. You can still revoke the tokens you have.',
+            ),
+        ).toBeTruthy();
         expect(
             (
                 screen.getByRole('button', {
@@ -110,6 +120,27 @@ describe('API settings page', () => {
         ).toBe(true);
         expect(screen.queryByRole('button', { name: 'Rotate' })).toBeNull();
         expect(screen.getByRole('button', { name: 'Revoke' })).toBeTruthy();
+    });
+
+    it('opens the upgrade dialog in place, attributed to the API settings', () => {
+        page.props.auth.hasProPlan = false;
+
+        render(<ApiPage />);
+
+        expect(
+            screen.queryByText('Build on your data with Standard'),
+        ).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: 'See plans' }));
+
+        expect(
+            screen.getByText('Build on your data with Standard'),
+        ).toBeTruthy();
+        expect(
+            screen
+                .getByRole('link', { name: /Start Standard — free for/ })
+                .getAttribute('href'),
+        ).toContain('source=api');
     });
 
     it('lists the connected apps with when each was last used', () => {

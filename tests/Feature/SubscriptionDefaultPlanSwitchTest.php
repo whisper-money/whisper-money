@@ -122,6 +122,16 @@ test('checkout stamps the preselected plan next to the upsell source', function 
     ]))->assertRedirect();
 });
 
+test('checkout attributes a subscription started from the API and MCP settings', function (string $source) {
+    expectCheckoutMetadata(['upsell_source' => $source, 'preselected_plan' => 'monthly']);
+
+    $this->get(route('subscribe.checkout', [
+        'plan' => 'monthly',
+        'source' => $source,
+        'preselected_plan' => 'monthly',
+    ]))->assertRedirect();
+})->with(['api', 'mcp']);
+
 test('checkout drops a preselected plan that is not one of the plans', function (string $value) {
     expectCheckoutMetadata(null);
 
