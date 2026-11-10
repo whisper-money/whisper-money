@@ -333,27 +333,38 @@ class Transaction extends Model
 
     /**
      * Rows the user typed in as round monthly figures during onboarding: they
-     * carry the "Estimate" label, not a bank or a file behind them.
+     * carry the "Estimate" label, not a bank or a file behind them. The row
+     * stays an estimate when the user deletes that label: it is soft-deleted
+     * and the link to it survives, and the figure is still a round guess.
      *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
      */
     public function scopeEstimates(Builder $query): Builder
     {
-        return $query->whereHas('labels', fn (Builder $label) => $label->where('source', LabelSource::Estimate));
+        return $query->whereHas('labels', self::estimateLabel(...));
     }
 
     /**
-     * Rows that came from a bank, a file or a manual entry: everything but
-     * {@see self::scopeEstimates()}. What the AI can sort and Pro is worth
-     * paying for.
+     * Rows not carrying an Estimate-source label: everything but
+     * {@see self::scopeEstimates()}, i.e. what came from a bank, a file or a
+     * manual entry. What the AI can sort and Pro is worth paying for.
      *
      * @param  Builder<Transaction>  $query
      * @return Builder<Transaction>
      */
     public function scopeWithoutEstimates(Builder $query): Builder
     {
-        return $query->whereDoesntHave('labels', fn (Builder $label) => $label->where('source', LabelSource::Estimate));
+        return $query->whereDoesntHave('labels', self::estimateLabel(...));
+    }
+
+    /**
+     * @param  Builder<Label>  $label
+     * @return Builder<Label>
+     */
+    private static function estimateLabel(Builder $label): Builder
+    {
+        return $label->withTrashed()->where('source', LabelSource::Estimate);
     }
 
     /**

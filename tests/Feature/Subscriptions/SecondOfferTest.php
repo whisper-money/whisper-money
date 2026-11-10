@@ -213,6 +213,15 @@ test('the paywall keeps waiting for a user with only onboarding estimates', func
     expect($user->fresh()->paywall_seen_at)->toBeNull();
 });
 
+test('the paywall keeps waiting after the user deletes the Estimate label', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
+    giveEstimateCreatedAt($user, now())->labels()->first()->delete();
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))->assertOk();
+
+    expect($user->fresh()->paywall_seen_at)->toBeNull();
+});
+
 test('the paywall greets a user with estimates once a real transaction arrives', function () {
     $user = User::factory()->onboarded()->create(['paywall_seen_at' => null]);
     giveEstimateCreatedAt($user, now()->subDay());
