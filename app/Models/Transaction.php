@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\CashflowBlock;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Enums\LabelSource;
 use App\Enums\RuleOrigin;
 use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
@@ -328,6 +329,31 @@ class Transaction extends Model
             ->orWhere(fn (Builder $uncategorized) => $uncategorized
                 ->whereNull('transactions.category_id')
                 ->where('transactions.amount', '<', 0)));
+    }
+
+    /**
+     * Rows the user typed in as round monthly figures during onboarding: they
+     * carry the "Estimate" label, not a bank or a file behind them.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeEstimates(Builder $query): Builder
+    {
+        return $query->whereHas('labels', fn (Builder $label) => $label->where('source', LabelSource::Estimate));
+    }
+
+    /**
+     * Rows that came from a bank, a file or a manual entry: everything but
+     * {@see self::scopeEstimates()}. What the AI can sort and Pro is worth
+     * paying for.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeWithoutEstimates(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('labels', fn (Builder $label) => $label->where('source', LabelSource::Estimate));
     }
 
     /**
