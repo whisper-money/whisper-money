@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DismissTrialBannerRequest;
 use App\Services\Subscriptions\TrialEndingBanner;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
@@ -12,9 +12,9 @@ use Illuminate\Http\Response;
  */
 class TrialBannerDismissalController extends Controller
 {
-    public function __invoke(Request $request, TrialEndingBanner $banner): Response
+    public function __invoke(DismissTrialBannerRequest $request, TrialEndingBanner $banner): Response
     {
-        $banner->dismiss($request->user());
+        $banner->dismiss($request->user(), $request->string('dismissal_key')->toString());
 
         return response()->noContent();
     }

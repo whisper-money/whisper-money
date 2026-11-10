@@ -3,7 +3,7 @@
 
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. A quick heads-up so nothing catches you by surprise: your free trial ends on :date, and we'll charge :amount to the card you signed up with.", ['date' => $trialEndsAtLocal->isoFormat('LL'), 'amount' => $amount]) }}
 
-@if ($progress['synced'] > 1)
+@if ($progress !== null)
 **{{ __('In your trial so far') }}**
 
 - {{ __(':count movements synced from your bank', ['count' => \Illuminate\Support\Number::format($progress['synced'], locale: app()->getLocale())]) }}

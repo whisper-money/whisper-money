@@ -4,6 +4,7 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Subscriptions\TrialEndingBanner;
 use App\Support\PriceTiers;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -36,11 +37,11 @@ afterEach(function () {
  *
  * @param  array<string, mixed>  $subscription
  */
-function trialingUser(int $daysLeft, array $subscription = []): User
+function trialingUser(int $daysLeft, array $subscription = [], ?int $firstCharge = 3599): User
 {
     $user = User::factory()->onboarded()->create(['timezone' => 'Europe/Madrid']);
 
-    $user->subscriptions()->create([
+    $created = $user->subscriptions()->create([
         'type' => 'default',
         'stripe_id' => 'sub_trial_banner_'.$user->id,
         'stripe_status' => 'trialing',
@@ -48,7 +49,13 @@ function trialingUser(int $daysLeft, array $subscription = []): User
         // Late afternoon in Madrid, so a trial ending today is still running.
         'trial_ends_at' => now()->addDays($daysLeft)->addHours(4),
         ...$subscription,
-    ])->forceFill(['created_at' => now()->subWeek()])->save();
+    ]);
+    $created->forceFill(['created_at' => $subscription['created_at'] ?? now()->subWeek()])->save();
+
+    // Stripe's preview of the invoice the trial ends with, as the banner caches it.
+    Cache::put(TrialEndingBanner::FIRST_CHARGE_CACHE_PREFIX.$created->id, [
+        'invoice' => $firstCharge === null ? null : ['amount' => $firstCharge, 'currency' => 'eur'],
+    ]);
 
     return $user->fresh();
 }
@@ -77,20 +84,18 @@ function trialBannerProp(User $user): mixed
     return $banner;
 }
 
-test('a trial at a threshold gets the banner with the first charge', function (int $daysLeft, int $threshold) {
+test('a trial at a threshold gets the banner with the first charge Stripe will take', function (int $daysLeft, int $threshold) {
     $user = trialingUser($daysLeft);
-    $yearly = PriceTiers::plansFor(PriceTiers::DEFAULT)['yearly'];
+    $trialEndsOn = now()->addDays($daysLeft)->setTimezone('Europe/Madrid')->toDateString();
 
     expect(trialBannerProp($user))->toMatchArray([
         'daysLeft' => $daysLeft,
         'threshold' => $threshold,
-        'trialEndsOn' => now()->addDays($daysLeft)->setTimezone('Europe/Madrid')->toDateString(),
+        'trialEndsOn' => $trialEndsOn,
+        'dismissalKey' => "{$trialEndsOn}:{$threshold}",
         'canceled' => false,
-        'charge' => [
-            'amount' => (int) round($yearly['price'] * 100),
-            'currency' => 'EUR',
-            'period' => 'year',
-        ],
+        // The invoice's amount, discounts included, not the list price.
+        'charge' => ['amount' => 3599, 'currency' => 'EUR', 'period' => 'year'],
     ]);
 })->with([
     'seven days out' => [7, 7],
@@ -102,6 +107,14 @@ test('a trial at a threshold gets the banner with the first charge', function (i
 
 test('no banner before the first threshold', function () {
     expect(trialBannerProp(trialingUser(8)))->toBeNull();
+});
+
+test('a threshold the trial started inside is skipped, so a 7-day trial is first reminded at 3 days', function () {
+    $user = trialingUser(7, ['created_at' => now()]);
+    expect(trialBannerProp($user))->toBeNull();
+
+    Carbon::setTestNow(now()->addDays(4));
+    expect(trialBannerProp($user->fresh()))->toMatchArray(['daysLeft' => 3, 'threshold' => 3]);
 });
 
 test('no banner for a user who is not trialing', function (Closure $makeUser) {
@@ -131,21 +144,28 @@ test('a user it does not apply to costs no query for it', function () {
     ))->toBeEmpty();
 });
 
-test('a trial set to cancel gets the banner without a charge', function () {
-    $user = trialingUser(3, ['ends_at' => now()->addDays(3)]);
+test('a trial set to cancel gets the banner without a charge, and nothing is counted for it', function () {
+    $user = trialingUser(3, ['ends_at' => now()->addDays(4)]);
+    syncedTransaction($user);
+    syncedTransaction($user);
 
     expect(trialBannerProp($user))->toMatchArray([
         'canceled' => true,
         'charge' => null,
+        'stats' => null,
         'threshold' => 3,
     ]);
 });
 
-test('an unknown price leaves the charge out rather than guess it', function () {
-    $user = trialingUser(3, ['stripe_price' => 'price_nobody_knows']);
+test('an unknown charge leaves the amount out rather than guess it', function (array $subscription, ?int $firstCharge) {
+    $user = trialingUser(3, $subscription, $firstCharge);
 
     expect(trialBannerProp($user))->toMatchArray(['canceled' => false, 'charge' => null]);
-});
+})->with([
+    'a price we cannot match' => [['stripe_price' => 'price_nobody_knows'], 3599],
+    'Stripe could not preview the invoice' => [[], null],
+    'nothing due' => [[], 0],
+]);
 
 test('the stats count what the bank synced during the trial and how much is sorted', function () {
     $user = trialingUser(3);
@@ -161,10 +181,18 @@ test('the stats count what the bank synced during the trial and how much is sort
     expect(trialBannerProp($user)['stats'])->toBe(['synced' => 3, 'categorizedPercent' => 66]);
 });
 
+test('a single synced movement makes no case, so no stats are sent', function () {
+    $user = trialingUser(3);
+    syncedTransaction($user);
+
+    expect(trialBannerProp($user)['stats'])->toBeNull();
+});
+
 test('closing the banner hides it until the next threshold, on every device', function () {
     $user = trialingUser(5);
+    $key = trialBannerProp($user)['dismissalKey'];
 
-    actingAs($user)->post(route('trial-banner.dismiss'))->assertNoContent();
+    actingAs($user)->post(route('trial-banner.dismiss'), ['dismissal_key' => $key])->assertNoContent();
 
     expect($user->fresh()->trial_banner_dismissed_for)->toBe(now()->addDays(5)->toDateString().':7')
         ->and(trialBannerProp($user->fresh()))->toBeNull();
@@ -174,12 +202,27 @@ test('closing the banner hides it until the next threshold, on every device', fu
     expect(trialBannerProp($user->fresh()))->toMatchArray(['threshold' => 3, 'daysLeft' => 3]);
 });
 
+test('a tab left open across a threshold cannot close the next banner unseen', function () {
+    $user = trialingUser(4);
+    $staleKey = trialBannerProp($user)['dismissalKey'];
+
+    Carbon::setTestNow(now()->addDay());
+    actingAs($user->fresh())->post(route('trial-banner.dismiss'), ['dismissal_key' => $staleKey])->assertNoContent();
+
+    expect($user->fresh()->trial_banner_dismissed_for)->toBeNull()
+        ->and(trialBannerProp($user->fresh()))->toMatchArray(['threshold' => 3]);
+});
+
 test('closing it outside a threshold records nothing', function () {
     $user = trialingUser(10);
 
-    actingAs($user)->post(route('trial-banner.dismiss'))->assertNoContent();
+    actingAs($user)->post(route('trial-banner.dismiss'), ['dismissal_key' => now()->addDays(10)->toDateString().':7'])->assertNoContent();
 
     expect($user->fresh()->trial_banner_dismissed_for)->toBeNull();
+});
+
+test('dismissing needs the key of the banner being closed', function () {
+    actingAs(trialingUser(3))->postJson(route('trial-banner.dismiss'))->assertJsonValidationErrors('dismissal_key');
 });
 
 test('a guest cannot dismiss it', function () {

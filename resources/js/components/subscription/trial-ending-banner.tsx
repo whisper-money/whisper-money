@@ -31,8 +31,14 @@ function endsIn(daysLeft: number): string {
 }
 
 function title(banner: Banner, locale: string, date: string): string {
-    if (banner.canceled || banner.charge === null) {
+    if (banner.canceled) {
         return endsIn(banner.daysLeft);
+    }
+
+    // The charge is unknown (a price we cannot match, Stripe unreachable):
+    // the date alone, rather than a guessed amount.
+    if (banner.charge === null) {
+        return `${endsIn(banner.daysLeft)} — ${__('on :date', { date })}`;
     }
 
     const amount = formatCurrency(
@@ -49,15 +55,15 @@ function title(banner: Banner, locale: string, date: string): string {
 }
 
 /**
- * What the plan did during the trial, or null when there is too little to
- * say: one synced movement, or none, makes no case, and a 0% is left out.
+ * What the plan did during the trial; the server sends no stats when there is
+ * too little to say, and a 0% sorted is left out rather than printed.
  */
 function progress(banner: Banner, locale: string): string | null {
-    const { synced, categorizedPercent } = banner.stats;
-
-    if (synced < 2) {
+    if (banner.stats === null) {
         return null;
     }
+
+    const { synced, categorizedPercent } = banner.stats;
 
     const count = new Intl.NumberFormat(locale).format(synced);
 
@@ -102,12 +108,10 @@ export function TrialEndingBanner() {
         subscriptionPaymentIssue !== null ||
         (bankConnectionIssues ?? []).length > 0 ||
         showSecondOffer;
-    const key = banner ? `${banner.trialEndsOn}:${banner.threshold}` : null;
-
     if (
         !banner ||
         outranked ||
-        dismissed === key ||
+        dismissed === banner.dismissalKey ||
         url.split('?')[0] === billing.url()
     ) {
         return null;
@@ -118,14 +122,18 @@ export function TrialEndingBanner() {
         canceled: banner.canceled,
     };
     const date = formatDateMedium(banner.trialEndsOn, locale);
-    const progressLine = banner.canceled ? null : progress(banner, locale);
+    const progressLine = progress(banner, locale);
 
     const dismiss = () => {
         captureEvent('trial_banner_dismissed', analytics);
-        setDismissed(key);
+        setDismissed(banner.dismissalKey);
         // Nothing to do with the answer: if it never lands, the banner simply
         // comes back on the next page load.
-        void axios.post(dismissTrialBanner.url()).catch(() => {});
+        void axios
+            .post(dismissTrialBanner.url(), {
+                dismissal_key: banner.dismissalKey,
+            })
+            .catch(() => {});
     };
 
     const keepPlan = () => {

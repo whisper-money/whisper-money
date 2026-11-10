@@ -4405,5 +4405,6 @@
     "You are not charged. Everything you imported stays yours; syncing and the AI stop.": "No te cobramos nada. Todo lo que importaste sigue siendo tuyo; la sincronización y la IA se detienen.",
     "Open Whisper Money": "Abrir Whisper Money",
     "Change or cancel your plan": "Cambiar o cancelar tu plan",
-    "Cancel before :date and you will not be charged anything at all.": "Si cancelas antes del :date, no te cobraremos nada."
+    "Cancel before :date and you will not be charged anything at all.": "Si cancelas antes del :date, no te cobraremos nada.",
+    "on :date": "el :date"
 }

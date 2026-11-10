@@ -54,7 +54,17 @@ class TrialEndingEmail extends DripMail
         return [
             'trialEndsAtLocal' => $this->localTrialEnd(),
             'amount' => Money::format($this->amountInCents, $this->currency),
-            'progress' => app(TrialProgress::class)->for($this->user, $this->user->subscription('default')),
+            'progress' => $this->progress(),
         ];
+    }
+
+    /**
+     * @return array{synced: int, categorizedPercent: int}|null
+     */
+    private function progress(): ?array
+    {
+        $subscription = $this->user->subscription('default');
+
+        return $subscription === null ? null : app(TrialProgress::class)->for($this->user, $subscription);
     }
 }

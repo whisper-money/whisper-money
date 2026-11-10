@@ -81,6 +81,8 @@ export interface TrialEndingBanner {
     threshold: 1 | 3 | 7;
     /** The trial's last day, YYYY-MM-DD in the user's timezone. */
     trialEndsOn: string;
+    /** Posted back on dismiss; the server only takes the one showing now. */
+    dismissalKey: string;
     /** The user already scheduled the cancellation: nothing will be charged. */
     canceled: boolean;
     /** The first charge; null when canceled or the price is unknown. */
@@ -89,11 +91,12 @@ export interface TrialEndingBanner {
         currency: string;
         period: 'month' | 'year';
     } | null;
+    /** Null when too little was synced to say, and for a canceled trial. */
     stats: {
         /** Movements bank connections synced since the trial started. */
         synced: number;
         categorizedPercent: number;
-    };
+    } | null;
 }
 
 export interface SubscriptionPaymentIssueNotification {

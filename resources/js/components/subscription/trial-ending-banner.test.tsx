@@ -68,6 +68,7 @@ function banner(overrides: Partial<Banner> = {}): Banner {
         daysLeft: 7,
         threshold: 7,
         trialEndsOn: '2026-11-17',
+        dismissalKey: '2026-11-17:7',
         canceled: false,
         charge: { amount: 3999, currency: 'EUR', period: 'year' },
         stats: { synced: 42, categorizedPercent: 87 },
@@ -133,6 +134,19 @@ describe('TrialEndingBanner', () => {
         ).toBeInTheDocument();
     });
 
+    it('names the date alone when the charge is unknown', () => {
+        mocks.banner = banner({ daysLeft: 3, threshold: 3, charge: null });
+
+        render(<TrialEndingBanner />);
+
+        expect(
+            screen.getByText(
+                'Your free trial ends in 3 days — on Nov 17, 2026',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/€/)).not.toBeInTheDocument();
+    });
+
     it('drops the stats it has nothing to say with', () => {
         mocks.banner = banner({ stats: { synced: 12, categorizedPercent: 0 } });
         const first = render(<TrialEndingBanner />);
@@ -141,7 +155,7 @@ describe('TrialEndingBanner', () => {
         ).toBeInTheDocument();
         first.unmount();
 
-        mocks.banner = banner({ stats: { synced: 0, categorizedPercent: 0 } });
+        mocks.banner = banner({ stats: null });
         render(<TrialEndingBanner />);
         expect(
             screen.getByText(
@@ -157,6 +171,7 @@ describe('TrialEndingBanner', () => {
             threshold: 3,
             canceled: true,
             charge: null,
+            stats: null,
         });
 
         render(<TrialEndingBanner />);
@@ -188,7 +203,9 @@ describe('TrialEndingBanner', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
         expect(container).toBeEmptyDOMElement();
-        expect(mocks.post).toHaveBeenCalledWith('/trial-banner/dismiss');
+        expect(mocks.post).toHaveBeenCalledWith('/trial-banner/dismiss', {
+            dismissal_key: '2026-11-17:7',
+        });
     });
 
     it.each([
