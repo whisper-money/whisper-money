@@ -103,6 +103,15 @@ describe('Paywall', () => {
         );
     });
 
+    it('attributes the checkout to the paywall', () => {
+        render(<Paywall />);
+
+        expect(screen.getByTestId('start-plan')).toHaveAttribute(
+            'href',
+            expect.stringMatching(/[?&]source=paywall(&|$)/),
+        );
+    });
+
     it('carries the plan the user picks into checkout', () => {
         render(<Paywall />);
 

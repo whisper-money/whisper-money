@@ -83,6 +83,8 @@ it('grants no consent from a checkout that disclosed nothing', function (?string
     startCheckout($user, $source)->assertRedirect();
 })->with([
     'connections upsell' => ['connections'],
+    'paywall' => ['paywall'],
+    'billing settings' => ['billing'],
     'no upsell point at all' => [null],
 ]);
 
@@ -102,13 +104,17 @@ it('parks the step that charged to come back to', function (string $source, arra
     'AI step' => ['onboarding_ai', ['step' => 'ai-suggestions']],
 ]);
 
-it('parks nothing for a checkout started outside the wizard', function () {
+it('parks nothing for a checkout started outside the wizard', function (string $source) {
     $user = checkoutUser();
 
-    startCheckout($user, 'connections')
+    startCheckout($user, $source)
         ->assertRedirect()
         ->assertSessionMissing(RETURN_KEY);
-});
+})->with([
+    'connections upsell' => ['connections'],
+    'paywall' => ['paywall'],
+    'billing settings' => ['billing'],
+]);
 
 // A checkout the user walked away from with the browser's Back button never
 // reaches success or cancel, so its return trip is still parked.

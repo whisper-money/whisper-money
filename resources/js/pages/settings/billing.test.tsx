@@ -384,6 +384,16 @@ describe('Billing – upgrade section', () => {
         ).toBeInTheDocument();
     });
 
+    it('attributes the checkout to the billing settings', () => {
+        render(<Billing />);
+
+        expect(
+            screen
+                .getByRole('link', { name: 'Start a plan' })
+                .getAttribute('href'),
+        ).toMatch(/[?&]source=billing(&|$)/);
+    });
+
     it('keeps the preselected plan when the user picks the other one', () => {
         mocks.state.defaultPlan = 'monthly';
         render(<Billing />);

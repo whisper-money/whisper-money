@@ -155,7 +155,7 @@ function UpgradeSection({
                         href={checkoutHref(
                             selectedPlan,
                             defaultPlan,
-                            null,
+                            'billing',
                             tierChoice.tier,
                         )}
                     >
