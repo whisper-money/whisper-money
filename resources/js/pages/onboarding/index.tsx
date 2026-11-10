@@ -282,6 +282,7 @@ export default function Onboarding({
                         account={lastAccount}
                         canConnectBank={!isFreePlan}
                         linkedAccountId={linkedAccountId}
+                        spendingGuess={answers.spending_guess}
                         onComplete={handleImportComplete}
                     />
                 );

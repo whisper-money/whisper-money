@@ -31,7 +31,7 @@ interface StepImportUploadProps {
     onFileSelect: (file: File) => void;
     /** The way past a step someone has no file for. */
     onSkip: () => void;
-    /** The other way past it: their main expenses, typed in by hand. */
+    /** The other way past it: last month's main expenses, typed in by hand. */
     onQuickExpenses?: () => void;
     /**
      * The account a link to finish the import on a computer would point at.
@@ -86,9 +86,20 @@ export function StepImportUpload({
                         text={__('Choose a file')}
                         onClick={() => inputRef.current?.click()}
                     />
+                    {onQuickExpenses && (
+                        <StepButton
+                            text={__(
+                                'No file? Type last month in round figures',
+                            )}
+                            variant="outline"
+                            icon={ListChecks}
+                            onClick={onQuickExpenses}
+                        />
+                    )}
                     <StepButton
-                        text={__("I don't have one yet")}
+                        text={__('Skip for now')}
                         variant="ghost"
+                        className="h-10 text-sm"
                         onClick={onSkip}
                     />
                 </>
@@ -125,26 +136,12 @@ export function StepImportUpload({
                     />
                 </label>
 
-                {/* The ways in without a file, one row each. */}
-                {(onQuickExpenses || importLink) && (
+                {importLink && (
                     <StepList>
-                        {onQuickExpenses && (
-                            <StepRow
-                                icon={ListChecks}
-                                title={__('No file at hand?')}
-                                description={__(
-                                    'Tell us your main monthly expenses instead',
-                                )}
-                                trailing={<StepChevron />}
-                                onClick={onQuickExpenses}
-                            />
-                        )}
-                        {importLink && (
-                            <ImportLinkRow
-                                accountId={importLink.accountId}
-                                onSent={importLink.onSent}
-                            />
-                        )}
+                        <ImportLinkRow
+                            accountId={importLink.accountId}
+                            onSent={importLink.onSent}
+                        />
                     </StepList>
                 )}
 

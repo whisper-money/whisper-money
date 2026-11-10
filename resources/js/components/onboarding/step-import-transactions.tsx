@@ -12,11 +12,15 @@ import {
 } from '@/components/onboarding/step-import-pick-account';
 import { StepImportPreview } from '@/components/onboarding/step-import-preview';
 import { StepImportProgress } from '@/components/onboarding/step-import-progress';
-import { StepImportQuickExpenses } from '@/components/onboarding/step-import-quick-expenses';
+import {
+    StepImportQuickExpenses,
+    type QuickExpensesSource,
+} from '@/components/onboarding/step-import-quick-expenses';
 import { StepImportUpload } from '@/components/onboarding/step-import-upload';
 import { StepScreen } from '@/components/onboarding/step-screen';
 import { Spinner } from '@/components/ui/spinner';
 import { useAiColumnSuggestion } from '@/hooks/use-ai-column-suggestion';
+import { isMobileViewport } from '@/hooks/use-mobile';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import {
     suggestedTransactionMapping,
@@ -84,6 +88,8 @@ interface StepImportTransactionsProps {
      * one just created, and goes straight to its file.
      */
     linkedAccountId?: UUID | null;
+    /** The monthly spending guessed earlier, in minor units of the user's currency. */
+    spendingGuess?: number;
     onComplete: () => void;
 }
 
@@ -91,6 +97,7 @@ export function StepImportTransactions({
     account,
     canConnectBank = true,
     linkedAccountId = null,
+    spendingGuess,
     onComplete,
 }: StepImportTransactionsProps) {
     const page = usePage<
@@ -112,6 +119,8 @@ export function StepImportTransactions({
     } = page.props;
 
     const [screen, setScreen] = useState<ImportScreen | null>(null);
+    const [quickExpensesSource, setQuickExpensesSource] =
+        useState<QuickExpensesSource>('upload');
     const [accountId, setAccountId] = useState<UUID | null>(null);
     const [parsed, setParsed] = useState<ParsedImportFile | null>(null);
     const [rejection, setRejection] = useState<FileRejection | null>(null);
@@ -165,6 +174,25 @@ export function StepImportTransactions({
         }
     }, [accounts.length, awaitingAccount]);
 
+    const openQuickExpenses = useCallback((source: QuickExpensesSource) => {
+        setQuickExpensesSource(source);
+        setScreen('quick-expenses');
+    }, []);
+
+    /**
+     * Where the step starts once the account is settled. On a phone, getting a
+     * file out of the bank is where most people stop, so the round figures come
+     * first and the file is one row away; a computer keeps the file first.
+     */
+    const openFirstScreen = useCallback(() => {
+        if (isMobileViewport()) {
+            openQuickExpenses('default');
+            return;
+        }
+
+        setScreen('upload');
+    }, [openQuickExpenses]);
+
     // Which screen opens the step is a question about the accounts, and they
     // arrive with the reload above — so it is answered once they are here.
     useEffect(() => {
@@ -185,14 +213,21 @@ export function StepImportTransactions({
             : eligible[0].account.id;
 
         setAccountId(preselected);
+
+        // An emailed link was opened to import the file, wherever it was opened.
+        if (preselected === linkedAccountId) {
+            setScreen('upload');
+            return;
+        }
+
         // One account is not a question worth asking; more than one is exactly
-        // the question the old drawer skipped and got wrong. An emailed link
-        // already answered it.
-        setScreen(
-            eligible.length === 1 || preselected === linkedAccountId
-                ? 'upload'
-                : 'pick-account',
-        );
+        // the question the old drawer skipped and got wrong.
+        if (eligible.length === 1) {
+            openFirstScreen();
+            return;
+        }
+
+        setScreen('pick-account');
     }, [
         screen,
         accounts.length,
@@ -201,6 +236,7 @@ export function StepImportTransactions({
         account?.id,
         linkedAccountId,
         onComplete,
+        openFirstScreen,
     ]);
 
     /**
@@ -454,10 +490,12 @@ export function StepImportTransactions({
         setScreen('upload');
     }, []);
 
-    function openQuickExpenses() {
-        captureEvent('onboarding_quick_expenses_opened');
-        setScreen('quick-expenses');
-    }
+    const importLink = selectedAccount
+        ? {
+              accountId: selectedAccount.id,
+              onSent: () => setScreen('link-sent'),
+          }
+        : undefined;
 
     if (screen === null) {
         return (
@@ -473,7 +511,7 @@ export function StepImportTransactions({
                 targets={targets}
                 selectedAccountId={accountId}
                 onSelect={setAccountId}
-                onContinue={() => setScreen('upload')}
+                onContinue={openFirstScreen}
             />
         );
     }
@@ -484,16 +522,11 @@ export function StepImportTransactions({
                 onFileSelect={handleFileSelect}
                 onSkip={onComplete}
                 onQuickExpenses={
-                    selectedAccount ? openQuickExpenses : undefined
-                }
-                importLink={
                     selectedAccount
-                        ? {
-                              accountId: selectedAccount.id,
-                              onSent: () => setScreen('link-sent'),
-                          }
+                        ? () => openQuickExpenses('upload')
                         : undefined
                 }
+                importLink={importLink}
             />
         );
     }
@@ -503,7 +536,7 @@ export function StepImportTransactions({
             <StepImportLinkSent
                 email={auth.user.email}
                 onContinue={onComplete}
-                onQuickExpenses={openQuickExpenses}
+                onQuickExpenses={() => openQuickExpenses('upload')}
             />
         );
     }
@@ -513,8 +546,11 @@ export function StepImportTransactions({
             <StepImportQuickExpenses
                 accountId={selectedAccount.id}
                 currencyCode={selectedAccount.currency_code}
+                spendingGuess={spendingGuess}
                 onComplete={onComplete}
-                onBack={() => setScreen('upload')}
+                onUpload={() => setScreen('upload')}
+                importLink={importLink}
+                source={quickExpensesSource}
             />
         );
     }
