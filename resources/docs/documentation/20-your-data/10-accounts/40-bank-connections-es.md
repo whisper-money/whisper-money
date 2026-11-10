@@ -147,7 +147,7 @@ En una conexión bancaria, **Gestionar cuentas** en el menú de la conexión mue
 
 El permiso de un banco dura un tiempo limitado, hasta 90 días. Una semana antes de que termine, la conexión muestra **Caduca pronto** y recibes un email. Haz clic en **Reconectar**, vuelve a dar permiso en tu banco y la sincronización sigue sin huecos.
 
-Si el permiso caduca antes, la conexión aparece como caducada y recibes un email. Haz clic en **Reconectar** junto a ella. Tus cuentas y su historial se quedan como estaban, y la siguiente sincronización recoge las transacciones que faltan.
+Si el permiso caduca antes, la conexión aparece como caducada, recibes un email y un aviso arriba de cada página nombra el banco hasta que la reconectes (puedes ocultarlo durante el resto del día). Haz clic en **Reconectar** en el aviso o junto a la conexión. Tus cuentas y su historial se quedan como estaban, y la siguiente sincronización recoge las transacciones que faltan.
 
 Las claves API no caducan por parte de Whisper Money. Siguen funcionando hasta que las revocas o las cambias en el proveedor.
 

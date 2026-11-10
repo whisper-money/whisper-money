@@ -145,7 +145,7 @@ For a bank connection, **Manage Accounts** in the connection's menu shows which 
 
 A bank's consent lasts a limited time, up to 90 days. A week before it ends, the connection shows **Expiring soon** and you get an email. Click **Reconnect**, approve access at your bank again, and syncing carries on without a gap.
 
-If the consent runs out first, the connection shows as expired and you get an email. Click **Reconnect** next to it. Your accounts and their history stay as they were, and the next sync picks up the transactions you missed.
+If the consent runs out first, the connection shows as expired, you get an email, and a banner at the top of every page names the bank until you reconnect it (you can hide it for the rest of the day). Click **Reconnect** in the banner or next to the connection. Your accounts and their history stay as they were, and the next sync picks up the transactions you missed.
 
 API keys do not expire on Whisper Money's side. They keep working until you revoke or change them at the provider.
 

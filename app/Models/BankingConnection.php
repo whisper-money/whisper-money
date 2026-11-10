@@ -200,6 +200,33 @@ class BankingConnection extends Model
     }
 
     /**
+     * Connections that stopped syncing for good until the user acts: expired
+     * ones (flagged, or an Enable Banking consent past its `valid_until` the
+     * sync has not flagged yet) and errored ones out of their scheduled retry
+     * budget, which no scheduled sync picks up again. An errored connection
+     * still inside the budget is left out: the next cycle may well recover it.
+     *
+     * @param  Builder<BankingConnection>  $query
+     * @return Builder<BankingConnection>
+     */
+    public function scopeNeedingReconnect(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->where('status', BankingConnectionStatus::Expired)
+                ->orWhere(function (Builder $query) {
+                    $query->where('provider', BankingProvider::EnableBanking)
+                        ->whereIn('status', [BankingConnectionStatus::Active, BankingConnectionStatus::Error])
+                        ->whereNotNull('valid_until')
+                        ->where('valid_until', '<=', now());
+                })
+                ->orWhere(function (Builder $query) {
+                    $query->where('status', BankingConnectionStatus::Error)
+                        ->where('consecutive_sync_failures', '>=', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+                });
+        });
+    }
+
+    /**
      * Connections that have not synced successfully since $since. Never-synced
      * connections count as not synced.
      *

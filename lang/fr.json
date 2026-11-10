@@ -1513,7 +1513,6 @@
     "Ready to take control of your finances?": "Prêt à prendre le contrôle de vos finances ?",
     "Real Estate": "Immobilier",
     "Reconnect": "Reconnecter",
-    "Reconnect to resume automatic syncing.": "Reconnectez-vous pour reprendre la synchronisation automatique.",
     "Recovery Codes": "Codes de récupération",
     "Recovery codes": "Codes de récupération",
     "Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.": "Les codes de récupération vous permettent de retrouver l'accès si vous perdez votre appareil 2FA. Stockez-les dans un gestionnaire de mots de passe sécurisé.",
@@ -2149,7 +2148,6 @@
     "You can\\n                                    request a copy of the personal data we hold\\n                                    about you": "Vous pouvez demander une copie des données personnelles que nous détenons à votre sujet",
     "You can\\n                                    request deletion of your personal data\\n                                    (right to be forgotten)": "Vous pouvez demander la suppression de vos données personnelles (droit à l'oubli)",
     "You get your personal referral link.": "Vous obtenez votre lien de parrainage personnel.",
-    "You have :count expired bank connections.": "Vous avez :count connexions bancaires expirées.",
     "You may cancel your subscription at any time. Upon cancellation, you will retain access until the end of your current billing period, after which your subscription will not renew.": "Vous pouvez annuler votre abonnement à tout moment. En cas d'annulation, vous conserverez l'accès jusqu'à la fin de votre période de facturation en cours, après quoi votre abonnement ne sera pas renouvelé.",
     "You may cancel your subscription at any time.\\n                                Upon cancellation, you will retain access until\\n                                the end of your current billing period, after\\n                                which your subscription will not renew.": "Vous pouvez annuler votre abonnement à tout moment. En cas d'annulation, vous conserverez l'accès jusqu'à la fin de votre période de facturation en cours, après quoi votre abonnement ne sera pas renouvelé.",
     "You may not use the service to engage in any illegal activity, transmit malicious code, attempt to gain unauthorized access to our systems, or interfere with the proper functioning of the service.": "Vous ne pouvez pas utiliser le Service pour vous livrer à une activité illégale, transmettre du code malveillant, tenter d'obtenir un accès non autorisé à nos systèmes ou interférer avec le bon fonctionnement du Service.",
@@ -2181,7 +2179,6 @@
     "You've used 90% of your budget": "Vous avez utilisé 90 % de votre budget",
     "You\\n                                    can request correction of inaccurate or\\n                                    incomplete data": "Vous pouvez demander la correction de données inexactes ou incomplètes",
     "You\\n                                    can request restriction of processing in\\n                                    certain circumstances": "Vous pouvez demander la limitation du traitement dans certaines circonstances",
-    "Your :provider connection has expired.": "Votre connexion à :provider a expiré.",
     "Your :provider connection needs attention": "Votre connexion avec :provider nécessite une attention particulière",
     "Your Accounts": "Vos comptes",
     "Your Categories Include:": "Vos catégories incluent :",
@@ -3263,5 +3260,12 @@
     "Bank connections are available on the standard plan.": "Les connexions bancaires sont disponibles avec le forfait Standard.",
     "Your transactions are in": "Vos transactions sont arrivées",
     "Let Pro categorize them with AI and sync your bank automatically, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et synchroniser votre banque automatiquement, pour que les nouvelles transactions arrivent toutes seules.",
-    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et garder vos intégrations directes synchronisées, pour que les nouvelles transactions arrivent toutes seules."
+    "Let Pro categorize them with AI and keep your direct integrations in sync, so new transactions arrive on their own.": "Laissez Pro les catégoriser avec l'IA et garder vos intégrations directes synchronisées, pour que les nouvelles transactions arrivent toutes seules.",
+    "Your :bank connection stopped syncing.": "Votre connexion à :bank ne se synchronise plus.",
+    ":banks stopped syncing.": ":banks ne se synchronisent plus.",
+    "Your balances and transactions are not updating. Reconnect to resume automatic syncing.": "Vos soldes et transactions ne sont plus mis à jour. Reconnectez-vous pour reprendre la synchronisation automatique.",
+    "Review connections": "Vérifier les connexions",
+    "Dismiss": "Ignorer",
+    "Your balances and transactions are not updating. Review your connections to get them syncing again.": "Vos soldes et transactions ne sont plus mis à jour. Vérifiez vos connexions pour relancer la synchronisation.",
+    ":list and :last": ":list et :last"
 }

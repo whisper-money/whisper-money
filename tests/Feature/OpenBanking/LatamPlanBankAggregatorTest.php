@@ -226,3 +226,30 @@ test('the frontend is told when banks are locked behind the standard plan', func
     'standard' => ['price_high_yearly', false],
     'free' => [null, false],
 ]);
+
+test('a latam subscriber is not asked to reconnect banks their plan does not sync', function () {
+    $user = userPaying('price_latam_monthly');
+    BankingConnection::factory()->expired()->create(['user_id' => $user->id]);
+    $kraken = BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
+    ]);
+
+    $this->actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('bankConnectionIssues', 1)
+            ->where('bankConnectionIssues.0.id', $kraken->id)
+        );
+});
+
+test('a user without a plan is not asked to reconnect connections only a plan can fix', function () {
+    $user = userPaying(null);
+    BankingConnection::factory()->expired()->create(['user_id' => $user->id]);
+    BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
+    ]);
+
+    $this->actingAs($user)->withoutVite()->get(route('settings.connections.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('bankConnectionIssues', 0));
+});

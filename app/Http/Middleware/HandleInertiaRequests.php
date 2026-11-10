@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
-use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
@@ -28,6 +27,9 @@ class HandleInertiaRequests extends Middleware
 {
     /** The plan feature line (`subscriptions.plans.*.features`) the latam price does not include. */
     private const BANK_CONNECTION_FEATURE = 'Connect bank accounts';
+
+    /** Enough for the banner to name every bank in practice, bounded on every response. */
+    private const BANK_CONNECTION_ISSUES_LIMIT = 10;
 
     public function __construct(
         private CurrencyOptions $currencyOptions,
@@ -291,7 +293,7 @@ class HandleInertiaRequests extends Middleware
     {
         if ($user === null) {
             return array_fill_keys([
-                'expiredBankingConnections',
+                'bankConnectionIssues',
                 'bankingConnections',
                 'accounts',
                 'categories',
@@ -302,26 +304,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         return [
-            'expiredBankingConnections' => fn () => $user->bankingConnections()
-                ->where('provider', BankingProvider::EnableBanking)
-                ->where(function ($query) {
-                    $query->where('status', BankingConnectionStatus::Expired)
-                        ->orWhere(function ($query) {
-                            $query->whereNotNull('valid_until')
-                                ->where('valid_until', '<=', now());
-                        });
-                })
-                ->orderBy('valid_until')
-                ->limit(5)
-                ->get(['id', 'aspsp_name', 'provider', 'valid_until'])
-                ->map(fn (BankingConnection $connection): array => [
-                    'id' => $connection->id,
-                    'aspsp_name' => $connection->aspsp_name,
-                    'provider' => $connection->provider->value,
-                    'valid_until' => $connection->valid_until?->toIso8601String(),
-                    'reconnect_url' => route('open-banking.reconnect', $connection),
-                ])
-                ->all(),
+            'bankConnectionIssues' => fn (): array => $this->bankConnectionIssuesFor($user),
             'bankingConnections' => fn () => $user->bankingConnections()
                 ->get(['id', 'aspsp_name', 'provider', 'status'])
                 ->map(fn (BankingConnection $connection): array => [
@@ -352,6 +335,42 @@ class HandleInertiaRequests extends Middleware
                     ->get(),
             ]),
         ];
+    }
+
+    /**
+     * The connections that stopped syncing until the user reconnects them, for
+     * the app-wide banner. An Enable Banking connection carries the URL that
+     * restarts its consent at the bank; one through an API-key provider is fixed
+     * by updating its credentials on the connections page, so it carries none.
+     *
+     * Connections through a provider the user's plan does not include are left
+     * out (a lapsed subscription, or the bank aggregator on the latam price):
+     * the plan neither syncs nor reconnects them, so the warning would only
+     * lead to a paywall the user never asked about.
+     *
+     * @return list<array{id: string, aspsp_name: string, provider: string, reason: 'expired'|'error', reconnect_url: string|null}>
+     */
+    private function bankConnectionIssuesFor(User $user): array
+    {
+        return $user->bankingConnections()
+            ->needingReconnect()
+            ->whereNotIn('provider', array_values(array_filter(
+                BankingProvider::cases(),
+                fn (BankingProvider $provider): bool => ! $user->canUseFeature($provider->planFeature()),
+            )))
+            ->orderBy('aspsp_name')
+            ->limit(self::BANK_CONNECTION_ISSUES_LIMIT)
+            ->get(['id', 'aspsp_name', 'provider', 'status', 'valid_until'])
+            ->map(fn (BankingConnection $connection): array => [
+                'id' => $connection->id,
+                'aspsp_name' => $connection->aspsp_name,
+                'provider' => $connection->provider->value,
+                'reason' => $connection->isExpired() ? 'expired' : 'error',
+                'reconnect_url' => $connection->isEnableBanking()
+                    ? route('open-banking.reconnect', $connection)
+                    : null,
+            ])
+            ->all();
     }
 
     /**
