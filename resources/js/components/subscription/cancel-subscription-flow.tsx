@@ -1,3 +1,7 @@
+import {
+    OfferStep,
+    type CancellationOffer,
+} from '@/components/subscription/cancel-flow-offer-step';
 import { SupportDialog } from '@/components/support-dialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,35 +15,26 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { captureEvent } from '@/lib/posthog';
-import { roadmap } from '@/routes';
 import {
     cancel as cancelRoute,
     retentionCoupon as retentionCouponRoute,
     store as storeRoute,
     switchToYearly as switchToYearlyRoute,
 } from '@/routes/settings/billing/cancellation';
-import { index as connections } from '@/routes/settings/connections';
 import { type SharedData } from '@/types';
-import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Link, router, useHttp, usePage } from '@inertiajs/react';
-import {
-    LifeBuoyIcon,
-    MapIcon,
-    PercentIcon,
-    RepeatIcon,
-    type LucideIcon,
-} from 'lucide-react';
-import { useRef, useState, type ReactNode } from 'react';
+import { router, useHttp, usePage } from '@inertiajs/react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+
+export type { CancellationOffer };
 
 /**
  * `App\Enums\CancellationReason`, in the order the flow lists them: the most
- * expected first, "Other" last. A record rather than a list, so a reason added
- * on one side without its label fails to type-check.
+ * expected first, "Other" last. Keep the two in step by hand: the server
+ * refuses a reason it does not know, and a reason missing here is never shown.
  */
 const REASON_LABELS = {
     not_using_enough: () => __("I'm not using it enough"),
@@ -60,21 +55,6 @@ const REASONS = Object.keys(REASON_LABELS) as CancellationReason[];
 
 /** Same cap as the server's, so the textarea stops where validation would. */
 const DETAILS_MAX_LENGTH = 1000;
-
-/**
- * What the server offers for the reason given (`CancellationOffers`). The
- * pause offer (T6) adds its own member here and its card in `OfferStep`.
- */
-export type CancellationOffer =
-    | {
-          offer: 'retention_coupon';
-          percentOff: number;
-          months: number;
-          savedAmount: number;
-      }
-    | { offer: 'switch_to_yearly'; price: number; savings: number }
-    | { offer: 'roadmap' }
-    | { offer: 'support' };
 
 export interface CancellationFlowAnswer {
     id: string;
@@ -114,7 +94,6 @@ export function CancelSubscriptionFlow({
     const { auth, errors } = usePage<
         SharedData & { errors: Record<string, string> }
     >().props;
-    const isMobile = useIsMobile();
     const http = useHttp<
         { reason: CancellationReason | ''; details: string },
         CancellationFlowAnswer
@@ -151,13 +130,14 @@ export function CancelSubscriptionFlow({
             return;
         }
 
-        captureEvent('cancel_flow_reason_selected', {
-            ...analytics,
-            reason: http.data.reason,
-        });
+        const reason = http.data.reason;
 
         http.post(storeRoute.url())
             .then((response) => {
+                captureEvent('cancel_flow_reason_selected', {
+                    ...analytics,
+                    reason,
+                });
                 setAnswer(response);
                 showOffer(0, response.offers);
             })
@@ -165,6 +145,12 @@ export function CancelSubscriptionFlow({
     };
 
     const close = () => {
+        // A request in flight may still save or cancel the plan: closing now
+        // would count that as walking away, and hide its outcome.
+        if (processing || http.processing) {
+            return;
+        }
+
         if (!ended.current) {
             captureEvent('cancel_flow_abandoned', {
                 ...analytics,
@@ -178,6 +164,14 @@ export function CancelSubscriptionFlow({
     const end = () => {
         ended.current = true;
         onOpenChange(false);
+    };
+
+    // Anything but an Inertia page (a 409 for a flow that already ended, a
+    // 429) would otherwise replace the page with Inertia's error modal.
+    const reportFailure = (): false => {
+        toast.error(__('Something went wrong.'));
+
+        return false;
     };
 
     const post = (url: string, onSuccess: () => void) => {
@@ -196,6 +190,8 @@ export function CancelSubscriptionFlow({
                         toast.success(flash.success);
                     }
                 },
+                onHttpException: reportFailure,
+                onNetworkError: reportFailure,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -210,23 +206,37 @@ export function CancelSubscriptionFlow({
         offer: CancellationOffer,
         action?: 'contact' | 'connections',
     ) => {
-        captureEvent('cancel_flow_offer_accepted', {
-            ...analytics,
-            offer: offer.offer,
-            ...(action ? { action } : {}),
-        });
-
         if (answer === null) {
             return;
         }
 
-        if (offer.offer === 'retention_coupon') {
-            post(retentionCouponRoute.url(answer.id), end);
-        } else if (offer.offer === 'switch_to_yearly') {
-            post(switchToYearlyRoute.url(answer.id), end);
-        } else if (offer.offer === 'support') {
-            end();
-            setSupportOpen(action === 'contact');
+        const reportAccepted = () =>
+            captureEvent('cancel_flow_offer_accepted', {
+                ...analytics,
+                offer: offer.offer,
+                ...(action ? { action } : {}),
+            });
+
+        // The offers that keep the plan count once the server has applied
+        // them; the help offers as soon as they are followed.
+        const takeSavingOffer = (url: string) =>
+            post(url, () => {
+                reportAccepted();
+                end();
+            });
+
+        switch (offer.offer) {
+            case 'retention_coupon':
+                return takeSavingOffer(retentionCouponRoute.url(answer.id));
+            case 'switch_to_yearly':
+                return takeSavingOffer(switchToYearlyRoute.url(answer.id));
+            case 'support':
+                reportAccepted();
+                end();
+
+                return setSupportOpen(action === 'contact');
+            case 'roadmap':
+                return reportAccepted();
         }
     };
 
@@ -263,7 +273,6 @@ export function CancelSubscriptionFlow({
                 details={http.data.details}
                 onReason={(reason) => http.setData('reason', reason)}
                 onDetails={(details) => http.setData('details', details)}
-                autoFocusDetails={!isMobile}
                 processing={http.processing}
                 onContinue={submitReason}
                 onKeep={close}
@@ -323,7 +332,6 @@ function ReasonStep({
     details,
     onReason,
     onDetails,
-    autoFocusDetails,
     processing,
     onContinue,
     onKeep,
@@ -332,7 +340,6 @@ function ReasonStep({
     details: string;
     onReason: (reason: CancellationReason) => void;
     onDetails: (details: string) => void;
-    autoFocusDetails: boolean;
     processing: boolean;
     onContinue: () => void;
     onKeep: () => void;
@@ -349,7 +356,7 @@ function ReasonStep({
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>
                     {__(
-                        'Why are you cancelling? One answer is enough, and you can still cancel whatever you pick.',
+                        "Why are you cancelling? One answer is enough, and it won't stop you from cancelling.",
                     )}
                 </DialogDescription>
             </DialogHeader>
@@ -384,8 +391,6 @@ function ReasonStep({
                         aria-label={detailsLabel}
                         maxLength={DETAILS_MAX_LENGTH}
                         rows={3}
-                        // On the phone the keyboard would cover the buttons.
-                        autoFocus={autoFocusDetails}
                         data-testid="cancel-flow-details"
                     />
                 )}
@@ -402,201 +407,6 @@ function ReasonStep({
                     {processing && <Spinner />}
                     {__('Continue')}
                 </Button>
-            </DialogFooter>
-        </>
-    );
-}
-
-/**
- * One offer, and always the plain way past it. The offers that keep the plan
- * running (a discount, the yearly price) are taken here; the ones that only
- * point at help leave the user free to come back and cancel.
- */
-function OfferStep({
-    offer,
-    onTrial,
-    endsAt,
-    currency,
-    locale,
-    processing,
-    onAccept,
-    onDecline,
-}: {
-    offer: CancellationOffer;
-    onTrial: boolean;
-    endsAt: string | null;
-    currency: string;
-    locale: string;
-    processing: boolean;
-    onAccept: (
-        offer: CancellationOffer,
-        action?: 'contact' | 'connections',
-    ) => void;
-    onDecline: () => void;
-}) {
-    const money = (amount: number) =>
-        formatCurrency(amount * 100, currency, locale);
-    const firstCharge =
-        onTrial && endsAt ? formatDateMedium(endsAt, locale) : null;
-    const accept = () => onAccept(offer);
-
-    const card = ((): OfferCardProps => {
-        switch (offer.offer) {
-            case 'retention_coupon':
-                return {
-                    icon: PercentIcon,
-                    title: __(':percent% off for the next :months months', {
-                        percent: String(offer.percentOff),
-                        months: String(offer.months),
-                    }),
-                    body: firstCharge
-                        ? __(
-                              'Stay and save :amount. The discount starts with your first charge on :date.',
-                              {
-                                  amount: money(offer.savedAmount),
-                                  date: firstCharge,
-                              },
-                          )
-                        : __(
-                              'Stay and save :amount on your next invoices. Nothing else about your plan changes.',
-                              { amount: money(offer.savedAmount) },
-                          ),
-                    action: (
-                        <Button
-                            onClick={accept}
-                            disabled={processing}
-                            data-testid="cancel-flow-accept"
-                        >
-                            {processing && <Spinner />}
-                            {__('Apply the discount')}
-                        </Button>
-                    ),
-                };
-            case 'switch_to_yearly':
-                return {
-                    icon: RepeatIcon,
-                    title: __('Pay yearly and save :amount', {
-                        amount: money(offer.savings),
-                    }),
-                    body: firstCharge
-                        ? __(
-                              'The yearly plan is :price a year, :savings less than paying monthly. You pay it when your trial ends, on :date.',
-                              {
-                                  price: money(offer.price),
-                                  savings: money(offer.savings),
-                                  date: firstCharge,
-                              },
-                          )
-                        : __(
-                              'The yearly plan is :price a year, :savings less than paying monthly. It is charged today, minus what is left of this month.',
-                              {
-                                  price: money(offer.price),
-                                  savings: money(offer.savings),
-                              },
-                          ),
-                    action: (
-                        <Button
-                            onClick={accept}
-                            disabled={processing}
-                            data-testid="cancel-flow-accept"
-                        >
-                            {processing && <Spinner />}
-                            {__('Switch to yearly')}
-                        </Button>
-                    ),
-                };
-            case 'roadmap':
-                return {
-                    icon: MapIcon,
-                    title: __('Thanks, we read every answer'),
-                    body: __(
-                        'See what we are building next on the roadmap, and vote for what you need most.',
-                    ),
-                    action: (
-                        <Button variant="outline" asChild>
-                            <a
-                                href={roadmap.url()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={accept}
-                                data-testid="cancel-flow-accept"
-                            >
-                                {__('Open the roadmap')}
-                            </a>
-                        </Button>
-                    ),
-                };
-            case 'support':
-                return {
-                    icon: LifeBuoyIcon,
-                    title: __('Let us help you sort it out'),
-                    body: __(
-                        'Most bank and setup problems are fixed in a few messages. Write to us, or check your bank connections first.',
-                    ),
-                    action: (
-                        <>
-                            <Button variant="outline" asChild>
-                                <Link
-                                    href={connections.url()}
-                                    onClick={() =>
-                                        onAccept(offer, 'connections')
-                                    }
-                                    data-testid="cancel-flow-connections"
-                                >
-                                    {__('Check bank connections')}
-                                </Link>
-                            </Button>
-                            <Button
-                                onClick={() => onAccept(offer, 'contact')}
-                                data-testid="cancel-flow-accept"
-                            >
-                                {__('Get help')}
-                            </Button>
-                        </>
-                    ),
-                };
-        }
-    })();
-
-    return (
-        <OfferCard {...card} onDecline={onDecline} processing={processing} />
-    );
-}
-
-interface OfferCardProps {
-    icon: LucideIcon;
-    title: string;
-    body: string;
-    action: ReactNode;
-}
-
-function OfferCard({
-    icon: Icon,
-    title,
-    body,
-    action,
-    onDecline,
-    processing,
-}: OfferCardProps & { onDecline: () => void; processing: boolean }) {
-    return (
-        <>
-            <DialogHeader>
-                <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                    <Icon className="size-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <DialogTitle>{title}</DialogTitle>
-                <DialogDescription>{body}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-                <Button
-                    variant="ghost"
-                    onClick={onDecline}
-                    disabled={processing}
-                    data-testid="cancel-flow-decline"
-                >
-                    {__('No thanks, continue cancelling')}
-                </Button>
-                {action}
             </DialogFooter>
         </>
     );

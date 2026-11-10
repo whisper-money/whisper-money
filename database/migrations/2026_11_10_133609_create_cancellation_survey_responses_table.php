@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * One row per run of the in-app cancel flow: why the user wanted to cancel,
  * the offer they were shown and how it ended. A row whose `outcome` is still
- * null is a flow the user walked away from.
+ * null is a flow the user walked away from, or left for one of the help
+ * offers without cancelling.
  */
 return new class extends Migration
 {
@@ -24,7 +25,9 @@ return new class extends Migration
             $table->text('details')->nullable();
             // `App\Enums\CancellationOffer`: the reason-matched offer, if any.
             $table->string('offer_shown', 64)->nullable();
-            // The offer the user took, which may be the fallback.
+            // The offer that kept the plan (the discount or the yearly switch),
+            // which may be the fallback. The help offers (roadmap, support)
+            // do not end the flow and are only tracked in analytics.
             $table->string('offer_accepted', 64)->nullable();
             // `App\Enums\CancellationOutcome`; null while the flow is open.
             $table->string('outcome', 32)->nullable();

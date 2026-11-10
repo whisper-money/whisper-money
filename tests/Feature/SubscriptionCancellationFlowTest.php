@@ -214,13 +214,32 @@ describe('the survey', function () {
             ->assertJsonPath('offers', fn (array $sent) => array_column($sent, 'offer') === ['switch_to_yearly']);
     });
 
-    test('no discount is offered on top of one the subscription already has', function () {
+    test('nothing is offered on top of a discount the subscription already has', function () {
         $user = cancellableSubscriber();
         fakeStripeForCancellation(discounts: [['id' => 'di_founder', 'coupon' => ['id' => 'wm_founder_forever']]]);
 
         $this->actingAs($user)
             ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'too_expensive'])
-            ->assertJsonPath('offers', fn (array $sent) => array_column($sent, 'offer') === ['switch_to_yearly']);
+            ->assertJsonPath('offers', []);
+    });
+
+    test('no discount is offered to a yearly plan that does not renew within its months', function () {
+        $user = cancellableSubscriber(paidSubscriberAttributes('price_high_yearly'));
+        fakeStripeForCancellation(periodEnd: now()->addMonths(7)->getTimestamp());
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'too_expensive'])
+            ->assertJsonPath('offers', []);
+    });
+
+    test('a monthly plan renewing in two months has two discounted invoices left in the window', function () {
+        $user = cancellableSubscriber(paidSubscriberAttributes());
+        fakeStripeForCancellation(periodEnd: now()->addMonths(2)->subDay()->getTimestamp());
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'too_expensive'])
+            // Renewals at ~2 months and ~3 months fall inside the three.
+            ->assertJsonPath('offers.0.savedAmount', 5.39);
     });
 
     test('a yearly subscriber gets the discount saving of one invoice and no yearly switch', function () {
@@ -322,6 +341,7 @@ describe('the yearly switch', function () {
     test('moves a monthly subscriber onto the yearly price of their tier', function (string $monthly, string $yearly) {
         $user = cancellableSubscriber(paidSubscriberAttributes($monthly));
         $response = pendingResponse($user);
+        fakeStripeForCancellation();
 
         $switch = Mockery::mock(SwitchToYearly::class, [app(StripePriceIds::class)])->makePartial();
         $switch->shouldReceive('handle')->once()->withArgs(
@@ -359,9 +379,15 @@ describe('the yearly switch', function () {
         );
         app()->instance(SwitchToYearly::class, $switch);
 
+        fakeStripeForCancellation();
+
+        // Cashier's payment page is no Inertia page: the browser has to leave for it.
         $this->actingAs($user)
-            ->post(route('settings.billing.cancellation.switch-to-yearly', $response))
-            ->assertRedirect(route('cashier.payment', ['pi_yearly_3ds', 'redirect' => route('settings.billing')]));
+            ->post(route('settings.billing.cancellation.switch-to-yearly', $response), [], ['X-Inertia' => 'true'])
+            ->assertStatus(409)
+            ->assertHeader('X-Inertia-Location', route('cashier.payment', ['pi_yearly_3ds', 'redirect' => route('settings.billing')]));
+
+        expect($response->fresh()->outcome)->toBe(CancellationOutcome::Saved);
     });
 
     test('is refused to a yearly subscriber', function () {
@@ -396,7 +422,8 @@ describe('the cancellation', function () {
 
         expect($sent['updates'])->toBe([
             ['cancel_at_period_end' => true],
-            ['cancellation_details' => ['feedback' => 'unused', 'comment' => 'not_using_enough: Busy month']],
+            // The reason only: the user's words never leave our database.
+            ['cancellation_details' => ['feedback' => 'unused', 'comment' => 'not_using_enough']],
         ])
             ->and($subscription->onGracePeriod())->toBeTrue()
             ->and($subscription->ends_at->equalTo($subscription->trial_ends_at))->toBeTrue()
@@ -441,6 +468,22 @@ describe('the cancellation', function () {
         $this->actingAs($user)
             ->post(route('settings.billing.cancellation.cancel', $response))
             ->assertStatus(409);
+    });
+
+    test('a step already running for the same answer is refused', function () {
+        $user = cancellableSubscriber();
+        $response = pendingResponse($user);
+        $sent = fakeStripeForCancellation();
+        $lock = Cache::lock("cancellation-flow:{$response->id}", 30);
+        $lock->get();
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.cancellation.cancel', $response))
+            ->assertStatus(409);
+
+        $lock->release();
+
+        expect($sent['updates'])->toBe([]);
     });
 
     test('a flow that has ended cannot be replayed', function () {

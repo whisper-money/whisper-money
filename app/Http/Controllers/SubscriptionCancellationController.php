@@ -11,12 +11,16 @@ use App\Http\Requests\StoreCancellationSurveyResponseRequest;
 use App\Models\CancellationSurveyResponse;
 use App\Models\User;
 use App\Services\Subscriptions\CancellationOffers;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Laravel\Cashier\Exceptions\InvalidCoupon;
 use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * The in-app cancel flow on the billing page: why the user is leaving, one
@@ -28,6 +32,9 @@ use Stripe\Exception\ApiErrorException;
  */
 class SubscriptionCancellationController extends Controller
 {
+    /** Longer than any Stripe call a step makes, so a lock never outlives a crash for long. */
+    private const STEP_LOCK_SECONDS = 30;
+
     public function __construct(private CancellationOffers $offers) {}
 
     /**
@@ -43,7 +50,7 @@ class SubscriptionCancellationController extends Controller
 
         abort_if($subscription === null, 409, 'There is no subscription to cancel on this account.');
 
-        $offers = $this->offers->for($user, $subscription, $request->reason());
+        $offers = $this->offers->offersFor($user, $subscription, $request->reason());
 
         $response = $user->cancellationSurveyResponses()->create([
             'stripe_subscription_id' => $subscription->stripe_id,
@@ -64,123 +71,139 @@ class SubscriptionCancellationController extends Controller
     /**
      * Take the retention discount instead of cancelling.
      */
-    public function applyRetentionCoupon(ContinueCancellationFlowRequest $request, ApplyRetentionCoupon $applyRetentionCoupon): RedirectResponse
+    public function applyRetentionCoupon(ContinueCancellationFlowRequest $request, ApplyRetentionCoupon $applyRetentionCoupon): SymfonyResponse
     {
         /** @var User $user */
         $user = $request->user();
-        [$response, $subscription] = $this->openFlow($request);
 
-        if ($this->offers->retentionCoupon($user, $subscription) === null) {
-            return $this->offerUnavailable();
-        }
+        return $this->takeStep($request, function (CancellationSurveyResponse $response, Subscription $subscription) use ($user, $applyRetentionCoupon): SymfonyResponse {
+            if ($this->offers->retentionCoupon($user, $subscription) === null) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
 
-        try {
-            $applied = $applyRetentionCoupon->handle($user, $subscription);
-        } catch (ApiErrorException|InvalidCoupon $exception) {
-            report($exception);
+            try {
+                $applied = $applyRetentionCoupon->handle($user, $subscription);
+            } catch (ApiErrorException|InvalidCoupon $exception) {
+                report($exception);
 
-            return $this->offerFailed();
-        }
+                return $this->backToBilling(error: __('We could not update your plan. Please try again in a few minutes.'));
+            }
 
-        if (! $applied) {
-            return $this->offerUnavailable();
-        }
+            if (! $applied) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
 
-        $response->markSaved(CancellationOffer::RetentionCoupon);
+            $response->markSaved(CancellationOffer::RetentionCoupon);
 
-        return redirect()->route('settings.billing')
-            ->with('success', __('Done: your discount is on. Your plan carries on as usual.'));
+            return $this->backToBilling(success: __('Done: your discount is on. Your plan carries on as usual.'));
+        });
     }
 
     /**
      * Move to the yearly plan instead of cancelling.
      */
-    public function switchToYearly(ContinueCancellationFlowRequest $request, SwitchToYearly $switchToYearly): RedirectResponse
+    public function switchToYearly(ContinueCancellationFlowRequest $request, SwitchToYearly $switchToYearly): SymfonyResponse
     {
         /** @var User $user */
         $user = $request->user();
-        [$response, $subscription] = $this->openFlow($request);
-        $yearlyPlan = $this->offers->yearlyPlanFor($user, $subscription);
 
-        if ($yearlyPlan === null) {
-            return $this->offerUnavailable();
-        }
+        return $this->takeStep($request, function (CancellationSurveyResponse $response, Subscription $subscription) use ($user, $switchToYearly): SymfonyResponse {
+            $yearlyPlan = $this->offers->yearlyPlanFor($user, $subscription);
 
-        try {
-            $switchToYearly->handle($subscription, $yearlyPlan);
-        } catch (IncompletePayment $exception) {
-            // The swap went through and the invoice waits on the card (3DS):
-            // the user did take the offer. Cashier's page confirms the payment.
+            if ($yearlyPlan === null) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
+
+            try {
+                $switchToYearly->handle($subscription, $yearlyPlan);
+            } catch (IncompletePayment $exception) {
+                // The swap went through and the invoice waits on the card
+                // (3DS): the user did take the offer. Cashier's page, which is
+                // not an Inertia page, confirms the payment, so the browser
+                // leaves the app for it rather than following an XHR redirect.
+                $response->markSaved(CancellationOffer::SwitchToYearly);
+
+                return Inertia::location(route('cashier.payment', [
+                    $exception->payment->asStripePaymentIntent()->id,
+                    'redirect' => route('settings.billing'),
+                ]));
+            } catch (ApiErrorException $exception) {
+                report($exception);
+
+                return $this->backToBilling(error: __('We could not update your plan. Please try again in a few minutes.'));
+            }
+
             $response->markSaved(CancellationOffer::SwitchToYearly);
 
-            return redirect()->route('cashier.payment', [
-                $exception->payment->asStripePaymentIntent()->id,
-                'redirect' => route('settings.billing'),
-            ]);
-        } catch (ApiErrorException $exception) {
-            report($exception);
-
-            return $this->offerFailed();
-        }
-
-        $response->markSaved(CancellationOffer::SwitchToYearly);
-
-        return redirect()->route('settings.billing')
-            ->with('success', __('You are on the yearly plan now.'));
+            return $this->backToBilling(success: __('You are on the yearly plan now.'));
+        });
     }
 
     /**
      * Confirm: cancel at the end of the period, never right away. The billing
      * page then shows the scheduled cancellation and the way to take it back.
      */
-    public function cancel(ContinueCancellationFlowRequest $request, CancelAtPeriodEnd $cancelAtPeriodEnd): RedirectResponse
+    public function cancel(ContinueCancellationFlowRequest $request, CancelAtPeriodEnd $cancelAtPeriodEnd): SymfonyResponse
     {
-        [$response, $subscription] = $this->openFlow($request);
+        return $this->takeStep($request, function (CancellationSurveyResponse $response, Subscription $subscription) use ($cancelAtPeriodEnd): SymfonyResponse {
+            try {
+                $cancelAtPeriodEnd->handle($subscription, $response);
+            } catch (ApiErrorException $exception) {
+                report($exception);
 
-        try {
-            $cancelAtPeriodEnd->handle($subscription, $response);
-        } catch (ApiErrorException $exception) {
-            report($exception);
+                return $this->backToBilling(error: __('We could not cancel your subscription. Please try again in a few minutes.'));
+            }
 
-            return redirect()->route('settings.billing')
-                ->withErrors(['cancellation' => __('We could not cancel your subscription. Please try again in a few minutes.')]);
-        }
+            $response->markCanceled();
 
-        $response->markCanceled();
-
-        return redirect()->route('settings.billing');
+            return $this->backToBilling();
+        });
     }
 
     /**
-     * The open answer in the URL and the subscription it was given for. A
-     * subscription that has changed since (cancelled elsewhere, ended, a new
-     * one) is not the one the user was answering about.
+     * Run one step that ends the flow, on the open answer in the URL and the
+     * subscription it was given for, and never twice at once: two tabs must
+     * not both reach Stripe (a yearly switch and a cancellation, say), so the
+     * answer is locked and checked again once the lock is held.
      *
-     * @return array{CancellationSurveyResponse, Subscription}
+     * A subscription that has changed since the answer (cancelled elsewhere,
+     * ended, a new one) is not the one the user was answering about.
+     *
+     * @param  Closure(CancellationSurveyResponse, Subscription): SymfonyResponse  $step
      */
-    private function openFlow(ContinueCancellationFlowRequest $request): array
+    private function takeStep(ContinueCancellationFlowRequest $request, Closure $step): SymfonyResponse
     {
         $response = $request->surveyResponse();
-        $subscription = $this->offers->cancellableSubscription($request->user());
+        $lock = Cache::lock("cancellation-flow:{$response->id}", self::STEP_LOCK_SECONDS);
 
-        abort_if(
-            $subscription === null || $subscription->stripe_id !== $response->stripe_subscription_id,
-            409,
-            'This subscription can no longer be changed from here.',
-        );
+        abort_unless($lock->get(), 409, 'This cancellation flow is already being handled.');
 
-        return [$response, $subscription];
+        try {
+            $response->refresh();
+            $subscription = $this->offers->cancellableSubscription($request->user());
+
+            abort_if(
+                ! $response->isPending()
+                    || $subscription === null
+                    || $subscription->stripe_id !== $response->stripe_subscription_id,
+                409,
+                'This subscription can no longer be changed from here.',
+            );
+
+            return $step($response, $subscription);
+        } finally {
+            $lock->release();
+        }
     }
 
-    private function offerUnavailable(): RedirectResponse
+    private function backToBilling(?string $error = null, ?string $success = null): RedirectResponse
     {
-        return redirect()->route('settings.billing')
-            ->withErrors(['cancellation' => __('This offer is no longer available on your plan.')]);
-    }
+        $redirect = redirect()->route('settings.billing');
 
-    private function offerFailed(): RedirectResponse
-    {
-        return redirect()->route('settings.billing')
-            ->withErrors(['cancellation' => __('We could not update your plan. Please try again in a few minutes.')]);
+        if ($error !== null) {
+            return $redirect->withErrors(['cancellation' => $error]);
+        }
+
+        return $success === null ? $redirect : $redirect->with('success', $success);
     }
 }

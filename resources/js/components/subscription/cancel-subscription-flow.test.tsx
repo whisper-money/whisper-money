@@ -250,6 +250,34 @@ describe('CancelSubscriptionFlow', () => {
         expect(eventsNamed('cancel_flow_abandoned')).toEqual([]);
     });
 
+    it('counts a discount as accepted only once the server applied it', async () => {
+        mocks.routerPost.mockImplementation(
+            (
+                _url: string,
+                _data: unknown,
+                options: { onHttpException?: () => boolean },
+            ) => options.onHttpException?.(),
+        );
+        mocks.post.mockResolvedValue(answerWith([COUPON]));
+        const onOpenChange = renderFlow();
+
+        await answer('too_expensive');
+        fireEvent.click(screen.getByTestId('cancel-flow-accept'));
+
+        expect(eventsNamed('cancel_flow_offer_accepted')).toEqual([]);
+        expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    });
+
+    it('reports the reason only once the answer is stored', async () => {
+        mocks.post.mockRejectedValue(new Error('429'));
+        renderFlow();
+
+        await answer('too_expensive');
+
+        expect(eventsNamed('cancel_flow_reason_selected')).toEqual([]);
+        expect(screen.getByTestId('cancel-flow-continue')).toBeInTheDocument();
+    });
+
     it('opens the support dialog for a help offer', async () => {
         mocks.post.mockResolvedValue(answerWith([{ offer: 'support' }]));
         renderFlow();

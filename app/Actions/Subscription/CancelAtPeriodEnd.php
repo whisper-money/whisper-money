@@ -3,7 +3,6 @@
 namespace App\Actions\Subscription;
 
 use App\Models\CancellationSurveyResponse;
-use Illuminate\Support\Str;
 use Laravel\Cashier\Subscription;
 use Stripe\Exception\ApiErrorException;
 
@@ -17,9 +16,6 @@ use Stripe\Exception\ApiErrorException;
  */
 class CancelAtPeriodEnd
 {
-    /** Stripe's limit on the comment. */
-    private const COMMENT_MAX_LENGTH = 5000;
-
     /**
      * @throws ApiErrorException When Stripe refuses the cancellation.
      */
@@ -33,11 +29,10 @@ class CancelAtPeriodEnd
             $subscription->updateStripeSubscription([
                 'cancellation_details' => [
                     'feedback' => $response->reason->stripeFeedback(),
-                    'comment' => Str::limit(
-                        trim($response->reason->value.': '.($response->details ?? ''), ': '),
-                        self::COMMENT_MAX_LENGTH,
-                        '',
-                    ),
+                    // Our own reason, finer than Stripe's feedback values. The
+                    // user's own words stay in our database: they are never
+                    // sent to a third party.
+                    'comment' => $response->reason->value,
                 ],
             ]);
         } catch (ApiErrorException $exception) {

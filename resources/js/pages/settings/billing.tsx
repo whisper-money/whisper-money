@@ -392,6 +392,9 @@ function CancelSubscriptionButton({
     locale: string;
 }) {
     const [open, setOpen] = useState(false);
+    // A new flow every time it opens: one that ended (an offer taken) or was
+    // walked away from must not reopen on its old step.
+    const [attempt, setAttempt] = useState(0);
 
     return (
         <>
@@ -400,6 +403,7 @@ function CancelSubscriptionButton({
                 className="text-muted-foreground"
                 onClick={() => {
                     captureEvent('cancel_flow_started', { on_trial: onTrial });
+                    setAttempt((current) => current + 1);
                     setOpen(true);
                 }}
                 data-testid="cancel-subscription"
@@ -407,6 +411,7 @@ function CancelSubscriptionButton({
                 {__('Cancel subscription')}
             </Button>
             <CancelSubscriptionFlow
+                key={attempt}
                 open={open}
                 onOpenChange={setOpen}
                 onTrial={onTrial}

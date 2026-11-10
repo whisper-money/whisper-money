@@ -7,8 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Any step after the survey: taking an offer, or confirming the cancellation.
- * The answer in the URL has to be the signed-in user's own, and still open —
- * a flow ends once, whichever way.
+ * The answer in the URL has to be the signed-in user's own. That it is still
+ * open — a flow ends once, whichever way — is checked under a lock by the
+ * controller (`SubscriptionCancellationController::takeStep()`).
  */
 class ContinueCancellationFlowRequest extends FormRequest
 {
@@ -27,12 +28,8 @@ class ContinueCancellationFlowRequest extends FormRequest
      */
     public function surveyResponse(): CancellationSurveyResponse
     {
-        $response = $this->user()
+        return $this->user()
             ->cancellationSurveyResponses()
             ->findOrFail((string) $this->route('cancellationSurveyResponse'));
-
-        abort_unless($response->isPending(), 409, 'This cancellation flow has already ended.');
-
-        return $response;
     }
 }
