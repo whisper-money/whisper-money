@@ -21,10 +21,10 @@ use Laravel\Cashier\Subscription;
 class TrialEndingBanner
 {
     /** The days left at which the banner comes back, smallest first. */
-    public const THRESHOLDS = [1, 3, 7];
+    private const THRESHOLDS = [1, 3, 7];
 
-    /** Followed by the subscription id; see {@see upcomingInvoice()}. */
-    public const FIRST_CHARGE_CACHE_PREFIX = 'trial-first-charge:';
+    /** Followed by the subscription id; see {@see upcomingInvoice()}. Tests seed it by name. */
+    private const FIRST_CHARGE_CACHE_PREFIX = 'trial-first-charge:';
 
     public function __construct(
         private SubscribedPlan $subscribedPlan,

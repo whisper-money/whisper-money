@@ -4,7 +4,6 @@ use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Subscriptions\TrialEndingBanner;
 use App\Support\PriceTiers;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -53,7 +52,7 @@ function trialingUser(int $daysLeft, array $subscription = [], ?int $firstCharge
     $created->forceFill(['created_at' => $subscription['created_at'] ?? now()->subWeek()])->save();
 
     // Stripe's preview of the invoice the trial ends with, as the banner caches it.
-    Cache::put(TrialEndingBanner::FIRST_CHARGE_CACHE_PREFIX.$created->id, [
+    Cache::put('trial-first-charge:'.$created->id, [
         'invoice' => $firstCharge === null ? null : ['amount' => $firstCharge, 'currency' => 'eur'],
     ]);
 
