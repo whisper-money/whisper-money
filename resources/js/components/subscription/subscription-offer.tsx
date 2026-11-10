@@ -1,6 +1,7 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepNote } from '@/components/onboarding/step-screen';
 import { PlanPicker } from '@/components/subscription/plan-picker';
+import { type UpsellSource } from '@/components/subscription/upgrade-dialog';
 import {
     type PriceTierChoice,
     usePriceTierChoice,
@@ -14,10 +15,10 @@ import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 /**
- * Which screen an offer is being made on. It is only ever attribution — the
- * plans, the price and the trial are the same wherever the user is asked —
- * but the two onboarding gates also carry the AI consent and a way back into
- * the wizard, and the server reads them off this.
+ * Which screen an offer is being made on: the onboarding gates or the paywall.
+ * It is only ever attribution — the plans, the price and the trial are the
+ * same wherever the user is asked — but the onboarding gates also carry the AI
+ * consent and a way back into the wizard, and the server reads them off this.
  *
  * Mirrors the App\Enums\UpsellSource cases that appear on these screens.
  */
@@ -27,6 +28,13 @@ export type OfferSource =
     | 'onboarding_ai'
     | 'paywall'
     | null;
+
+/**
+ * Every App\Enums\UpsellSource a checkout can be started from: the offer
+ * screens, the in-app upgrade dialog and the billing settings page. Typed so a
+ * misspelt point fails to compile instead of being dropped by the server.
+ */
+export type CheckoutSource = OfferSource | UpsellSource | 'billing';
 
 /**
  * The paid offer, as every screen that makes it renders it: the two plans.
@@ -70,7 +78,7 @@ export function SubscriptionOffer({
 export function checkoutHref(
     plan: string,
     preselectedPlan: string,
-    source?: string | null,
+    source: CheckoutSource = null,
     tier: PriceTier = 'standard',
 ): string {
     return checkout.url({
