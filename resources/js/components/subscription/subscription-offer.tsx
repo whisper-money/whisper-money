@@ -25,6 +25,7 @@ export type OfferSource =
     | 'onboarding_bank'
     | 'onboarding_broker'
     | 'onboarding_ai'
+    | 'paywall'
     | null;
 
 /**

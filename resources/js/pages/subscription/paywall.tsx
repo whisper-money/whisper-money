@@ -68,7 +68,7 @@ export default function Paywall() {
           : 'hard';
 
     const { selectedPlan, setSelectedPlan, hasPlans, button, tierChoice } =
-        useOffer(null, {
+        useOffer('paywall', {
             onCheckout: (plan, preselectedPlan, priceTier) =>
                 captureEvent('paywall_checkout_started', {
                     gate,

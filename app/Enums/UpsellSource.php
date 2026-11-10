@@ -11,8 +11,10 @@ namespace App\Enums;
  * Mirrored on the frontend by two unions, each covering the points its own
  * screens use: UpsellSource in components/subscription/upgrade-dialog.tsx for
  * the in-app dialog, and OfferSource in components/subscription/
- * subscription-offer.tsx for the onboarding gates. Keep the matching one in
- * sync when adding a point (an unknown value is silently dropped by tryFrom()).
+ * subscription-offer.tsx for the onboarding gates and the paywall. The billing
+ * settings page passes its point to checkoutHref() directly. Keep the matching
+ * one in sync when adding a point (an unknown value is silently dropped by
+ * tryFrom()).
  */
 enum UpsellSource: string
 {
@@ -23,6 +25,8 @@ enum UpsellSource: string
     case OnboardingBroker = 'onboarding_broker';
     case OnboardingAi = 'onboarding_ai';
     case SecondOffer = 'second_offer';
+    case Paywall = 'paywall';
+    case Billing = 'billing';
 
     /**
      * Where a checkout started from this point sends the user once the plan is

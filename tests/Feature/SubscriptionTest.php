@@ -599,7 +599,7 @@ test('checkout tags the subscription with a valid upsell source', function (stri
     $this->actingAs($user);
 
     $this->get(route('subscribe.checkout', ['plan' => 'monthly', 'source' => $source]))->assertRedirect();
-})->with(['connections', 'second_offer']);
+})->with(['connections', 'second_offer', 'paywall', 'billing']);
 
 test('checkout ignores an unknown upsell source', function () {
     config([
