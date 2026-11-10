@@ -23,7 +23,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 
 /**
- * Base for every Whisper Money write tool. On top of the McpTool Pro-plan gate
+ * Base for every Whisper Money write tool. On top of the McpTool Standard-plan gate
  * it gates write access: OAuth connections (Claude Desktop / ChatGPT) get
  * read+write, and Sanctum personal access tokens must carry the `mcp:write`
  * ability, so a read-only PAT can analyse data but never change it.

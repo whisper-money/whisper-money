@@ -81,7 +81,7 @@ class ApiTokenController extends Controller
      * name and abilities. The expiry keeps the same lifetime the token was
      * created with, counted from now (a 90-day token rotated today expires in
      * 90 days), and a token that never expired still never does. Like
-     * creating one, it needs a Pro plan; revoking does not.
+     * creating one, it needs a Standard plan; revoking does not.
      */
     public function rotate(Request $request, PersonalAccessToken $token): RedirectResponse
     {

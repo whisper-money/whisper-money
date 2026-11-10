@@ -102,7 +102,7 @@ curl https://whisper.money/api/v1/automation-rules \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
@@ -234,7 +234,7 @@ curl -X POST https://whisper.money/api/v1/automation-rules \
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -324,7 +324,7 @@ curl https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a8e-2f5c1
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -456,7 +456,7 @@ curl -X PATCH https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -506,7 +506,7 @@ curl -X DELETE https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-
 | Status | When |
 | --- | --- |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
@@ -632,7 +632,7 @@ curl -X POST https://whisper.money/api/v1/automation-rules/0199a3f2-6c1e-7b4d-9a
 | --- | --- |
 | `400` | A malformed request: an unknown pagination cursor (`invalid_cursor`) or an invalid `Idempotency-Key` (`invalid_idempotency_key`). |
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
-| `403` | The token lacks the scope (`insufficient_scope`), the account has no Pro plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `404` | No object with that id exists, or it belongs to someone else. |
 | `409` | A request with the same `Idempotency-Key` is still being processed. |
 | `422` | The request failed validation. |

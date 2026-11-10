@@ -36,7 +36,7 @@ return [
     'info' => [
         'version' => 'v1',
 
-        'description' => 'The Whisper Money REST API: your accounts, transactions and the rest of your data, for Pro users. '
+        'description' => 'The Whisper Money REST API: your accounts, transactions and the rest of your data, for users on the Standard plan. '
             .'Authenticate with a personal API token or an OAuth access token granted `api:use`. '
             .'Amounts are integers in the currency\'s minor unit. Guides: https://whisper.money/documentation/api',
     ],

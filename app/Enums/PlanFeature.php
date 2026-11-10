@@ -15,7 +15,7 @@ enum PlanFeature: string
     case ApiAccess = 'api_access';
 
     /**
-     * Whether access to this feature is gated behind a paid (Pro) plan.
+     * Whether access to this feature is gated behind a paid (Standard) plan.
      */
     public function requiresProPlan(): bool
     {

@@ -35,7 +35,7 @@ class EnsureApiAccess
             throw new ApiV1Exception(
                 403,
                 'plan_required',
-                'A paid (Pro) plan is required to use the Whisper Money API.',
+                'A paid (Standard) plan is required to use the Whisper Money API.',
                 ['subscribe_url' => route('subscribe')],
             );
         }

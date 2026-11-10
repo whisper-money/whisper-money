@@ -157,7 +157,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * Whether this user is offered Pro once more, now that their first
+     * Whether this user is offered Standard once more, now that their first
      * transactions are in: the paywall reached them before they had imported
      * anything, when the app had nothing of theirs to show, and they stayed on
      * the free plan. Only someone who never paid, and only once.
@@ -219,9 +219,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * Whether Pro is only asked for once the user has data of their own: the
+     * Whether Standard is only asked for once the user has data of their own: the
      * paywall and the onboarding AI gate wait for the first transactions, and
-     * a free user who met the paywall empty is offered Pro once more after
+     * a free user who met the paywall empty is offered Standard once more after
      * importing. Both halves of `subscriptions.second_offer`, which only means
      * anything while subscriptions are sold at all.
      */
@@ -680,7 +680,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * Whether the plan is on right now. Every Pro check goes through here
+     * Whether the plan is on right now. Every Standard check goes through here
      * (the `subscribed` middleware, `canUseFeature()`, the shared props), so
      * a paused subscription, which Stripe and Cashier keep `active`, is taken
      * out here and nowhere else.

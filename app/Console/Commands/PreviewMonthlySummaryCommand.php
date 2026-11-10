@@ -57,9 +57,9 @@ class PreviewMonthlySummaryCommand extends Command
      * with. The values are what the console prints beside each one.
      */
     private const CASES = [
-        'pro' => '1 · Pro, with the analysis',
+        'pro' => '1 · Standard, with the analysis',
         'free' => '2 · Free, analysis locked',
-        'pro-without-ai' => '3 · Pro without AI consent',
+        'pro-without-ai' => '3 · Standard without AI consent',
         'short-closed-month' => '4 · The month closed short',
         'first-month' => '5 · A first month',
         'reminder' => '6 · The 3rd-of-the-month reminder',

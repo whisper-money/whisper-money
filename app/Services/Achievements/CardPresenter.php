@@ -38,7 +38,7 @@ class CardPresenter
      *                                it, which writes the month and the copy: a
      *                                medal can read in English and count in
      *                                Mexican.
-     * @param  bool  $pro  Whether the footer carries the Pro member badge.
+     * @param  bool  $pro  Whether the footer carries the Standard member badge.
      * @return array<string, mixed>
      */
     public function viewData(

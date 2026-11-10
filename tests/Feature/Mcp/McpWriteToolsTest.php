@@ -1094,11 +1094,11 @@ it('rejects a write tool called with a read-only token', function (string $tool,
     ],
 ]);
 
-it('still enforces the Pro-plan gate on write tools', function (string $tool, Closure $arrange, Closure $untouched) {
+it('still enforces the Standard-plan gate on write tools', function (string $tool, Closure $arrange, Closure $untouched) {
     config(['subscriptions.enabled' => true]);
     $user = User::factory()->create();
 
-    callWriteTool($user, $tool, $arrange($user))->assertHasErrors(['Pro']);
+    callWriteTool($user, $tool, $arrange($user))->assertHasErrors(['Standard']);
 
     $untouched($user);
 })->with([
