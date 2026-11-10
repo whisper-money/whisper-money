@@ -59,7 +59,7 @@ const DETAILS_MAX_LENGTH = 1000;
 export interface CancellationFlowAnswer {
     id: string;
     offers: CancellationOffer[];
-    /** The day Pro would stop; null when Stripe could not say. */
+    /** The day the plan would stop; null when Stripe could not say. */
     endsAt: string | null;
     onTrial: boolean;
 }
@@ -413,7 +413,7 @@ function ReasonStep({
 }
 
 /**
- * The last word before cancelling: the day Pro stops, what stops with it, and
+ * The last word before cancelling: the day the plan stops, what stops with it, and
  * that everything the user put in stays. Nothing ends today.
  */
 function ConfirmStep({
@@ -444,10 +444,10 @@ function ConfirmStep({
                 <DialogDescription>
                     {answer.onTrial
                         ? __(
-                              "You won't be charged. Nothing stops today: you keep every Pro feature until then.",
+                              "You won't be charged. Nothing stops today: you keep every Standard feature until then.",
                           )
                         : __(
-                              "You won't be charged again. Nothing stops today: you keep every Pro feature until then.",
+                              "You won't be charged again. Nothing stops today: you keep every Standard feature until then.",
                           )}
                 </DialogDescription>
             </DialogHeader>
