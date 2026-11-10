@@ -129,8 +129,10 @@ export default function Paywall() {
         captureEvent('paywall_viewed', {
             gate,
             price_tier: offeredTier,
-            ...(gate === 'soft' ? { variant: 'personalized' } : {}),
+            ...variant,
         });
+        // `variant` is derived from `gate` alone.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gate, offeredTier]);
 
     if (!hasPlans) {
@@ -146,9 +148,11 @@ export default function Paywall() {
 
     const title = isFormer
         ? __('Your plan ended')
-        : __('Try Standard free for :days days', {
-              days: preselectedTrialDays,
-          });
+        : preselectedTrialDays > 0
+          ? __('Try Standard free for :days days', {
+                days: preselectedTrialDays,
+            })
+          : __('Try Standard');
 
     // The choice is made here and the event says so; the survey that opens
     // next only asks why, and every way out of it carries on to the dashboard.
@@ -325,7 +329,11 @@ function WhatIsLeft({
 
 /** The soft gate's button: the trial it starts, in the user's own words. */
 function softCheckoutLabel(plan: Plan | undefined): string {
-    return __('Start my :days-day free trial', { days: plan?.trial_days ?? 0 });
+    if (!plan?.trial_days) {
+        return __('Start Standard');
+    }
+
+    return __('Start my :days-day free trial', { days: plan.trial_days });
 }
 
 /**
@@ -412,7 +420,9 @@ function WithYourData({
                             manualAccountsCount === 1
                                 ? __('1 account you update by hand')
                                 : __(':count accounts you update by hand', {
-                                      count: manualAccountsCount,
+                                      count: manualAccountsCount.toLocaleString(
+                                          locale,
+                                      ),
                                   })
                         }
                         // The latam price has no bank connection to offer; it

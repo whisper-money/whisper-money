@@ -4386,5 +4386,6 @@
     "Connect your broker or exchange and new movements arrive on their own": "Conecta tu broker o exchange y los movimientos nuevos llegan solos",
     "Standard sorts your movements for you and brings the new ones in on their own.": "Standard clasifica tus movimientos por ti y hace que los nuevos lleguen solos.",
     "1 movement is in. Standard sorts it for you and brings the new ones in on their own.": "Ya tienes 1 movimiento. Standard lo clasifica por ti y hace que los nuevos lleguen solos.",
-    ":count movements are in. Standard sorts them for you and brings the new ones in on their own.": "Ya tienes :count movimientos. Standard los clasifica por ti y hace que los nuevos lleguen solos."
+    ":count movements are in. Standard sorts them for you and brings the new ones in on their own.": "Ya tienes :count movimientos. Standard los clasifica por ti y hace que los nuevos lleguen solos.",
+    "Try Standard": "Prueba Standard"
 }

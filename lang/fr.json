@@ -3365,5 +3365,7 @@
     "Connect your broker or exchange and new movements arrive on their own": "Connectez votre courtier ou votre plateforme d'échange et les nouvelles opérations arrivent toutes seules",
     "Standard sorts your movements for you and brings the new ones in on their own.": "Standard classe vos opérations pour vous et fait arriver les nouvelles toutes seules.",
     "1 movement is in. Standard sorts it for you and brings the new ones in on their own.": "1 opération est arrivée. Standard la classe pour vous et fait arriver les nouvelles toutes seules.",
-    ":count movements are in. Standard sorts them for you and brings the new ones in on their own.": ":count opérations sont arrivées. Standard les classe pour vous et fait arriver les nouvelles toutes seules."
+    ":count movements are in. Standard sorts them for you and brings the new ones in on their own.": ":count opérations sont arrivées. Standard les classe pour vous et fait arriver les nouvelles toutes seules.",
+    "Try Standard": "Essayez Standard",
+    "Start Standard": "Commencer Standard"
 }

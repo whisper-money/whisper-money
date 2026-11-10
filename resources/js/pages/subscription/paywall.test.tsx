@@ -27,8 +27,17 @@ const latamPricing = {
     offeredTier: 'latam',
 };
 
+const noTrialPricing = {
+    ...pricing,
+    plans: {
+        monthly: { ...pricing.plans.monthly, trial_days: 0 },
+        yearly: { ...pricing.plans.yearly, trial_days: 0 },
+    },
+};
+
 const mocks = vi.hoisted(() => ({
     latam: { current: false },
+    noTrial: { current: false },
     visit: vi.fn(),
     post: vi.fn(),
     httpPost: vi.fn(),
@@ -80,7 +89,11 @@ vi.mock('@inertiajs/react', async () => ({
         props: {
             auth: { user: { id: '1', name: 'Ada', email: 'ada@example.test' } },
             locale: 'en',
-            pricing: mocks.latam.current ? latamPricing : pricing,
+            pricing: mocks.latam.current
+                ? latamPricing
+                : mocks.noTrial.current
+                  ? noTrialPricing
+                  : pricing,
             ...mocks.props,
         },
     }),
@@ -90,6 +103,7 @@ describe('Paywall', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.latam.current = false;
+        mocks.noTrial.current = false;
         mocks.httpPost.mockResolvedValue(undefined);
         mocks.props.canUseFreePlan = false;
         mocks.props.canEscapeToFreePlan = false;
@@ -350,6 +364,20 @@ describe('Paywall', () => {
                     'We’ll email you 3 days before the first charge. Cancel anytime from Settings.',
                 ),
             ).toBeInTheDocument();
+        });
+
+        it('promises no trial when the plan has none', () => {
+            mocks.noTrial.current = true;
+
+            render(<Paywall />);
+
+            expect(screen.getByText('Try Standard')).toBeInTheDocument();
+            expect(screen.getByTestId('start-plan')).toHaveTextContent(
+                'Start Standard',
+            );
+            expect(
+                screen.queryByText(/We’ll email you 3 days before/),
+            ).not.toBeInTheDocument();
         });
 
         it('marks its events as the personalized screen', () => {
