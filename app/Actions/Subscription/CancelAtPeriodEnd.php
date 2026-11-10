@@ -31,6 +31,7 @@ class CancelAtPeriodEnd
             // the reason goes on first.
             $this->recordReason($subscription, $response);
             $subscription->cancelNow();
+            $subscription->forceFill(['pause_starts_at' => null, 'pause_resumes_at' => null])->save();
 
             return;
         }

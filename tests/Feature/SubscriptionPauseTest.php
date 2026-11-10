@@ -575,6 +575,21 @@ describe('resuming early', function () {
         expect($user->fresh()->hasPausedSubscription())->toBeTrue();
     });
 
+    test('from the paused screen, the confirmation follows the user to the dashboard', function () {
+        $user = pausedSubscriber();
+        fakeStripeForPause();
+
+        $this->actingAs($user)
+            ->from(route('subscribe'))
+            ->post(route('settings.billing.pause.resume'))
+            ->assertRedirect(route('subscribe'));
+
+        $this->actingAs($user)->get(route('subscribe'))->assertRedirect(route('dashboard'));
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page->where('flash.success', 'Welcome back: Standard is on again.'));
+    });
+
     test('there is nothing to resume without a pause', function () {
         $user = pausableSubscriber();
         $sent = fakeStripeForPause();
@@ -598,6 +613,7 @@ describe('cancelling while paused', function () {
         expect($sent['cancels'])->toBe(1)
             ->and($sent['updates'][0])->toHaveKey('cancellation_details')
             ->and($user->subscription('default')->refresh()->ended())->toBeTrue()
+            ->and($user->subscription('default')->pause_starts_at)->toBeNull()
             ->and($answer->refresh()->outcome)->toBe(CancellationOutcome::Canceled);
     });
 });

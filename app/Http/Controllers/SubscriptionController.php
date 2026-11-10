@@ -51,6 +51,10 @@ class SubscriptionController extends Controller
         $user = $request->user();
 
         if ($user->hasProPlan()) {
+            // Kept for the dashboard: "Resume now" on the paused screen comes
+            // back here with its confirmation.
+            $request->session()->reflash();
+
             return redirect()->route('dashboard');
         }
 
