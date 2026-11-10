@@ -144,6 +144,16 @@ describe('Paywall', () => {
         );
     });
 
+    it('promises the reminder before the first charge', () => {
+        render(<Paywall />);
+
+        expect(
+            screen.getByText(
+                'We’ll email you 3 days before the first charge. Cancel anytime from Settings.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('renders the price the server hands over', () => {
         render(<Paywall />);
 

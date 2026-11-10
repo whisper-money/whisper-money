@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\CancelSubscriptionNow;
+use App\Actions\Subscription\ResumeSubscription;
 use App\Actions\Subscription\SwapLatamToStandard;
 use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
+use App\Services\Subscriptions\UserSetupStats;
 use App\Support\PriceTiers;
 use App\Support\SubscriptionPlans;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +38,7 @@ class SubscriptionController extends Controller
         private SubscribedPlan $subscribedPlan,
         private StripePriceIds $priceIds,
         private SwapLatamToStandard $swapLatamToStandard,
+        private UserSetupStats $setupStats,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -169,11 +172,7 @@ class SubscriptionController extends Controller
     private function getUserStats(User $user): array
     {
         return [
-            'accountsCount' => $user->accounts()->count(),
-            'transactionsCount' => $user->transactions()->count(),
-            'categoriesCount' => $user->categories()->count(),
-            'rulesCount' => $user->automationRules()->count(),
-            'connectionsCount' => $user->bankingConnections()->count(),
+            ...$this->setupStats->for($user),
             'endedAt' => $user->subscription('default')?->ends_at?->toIso8601String(),
         ];
     }
@@ -410,6 +409,9 @@ class SubscriptionController extends Controller
                 'onTrial' => $subscription->onTrial(),
                 'trialEndsAt' => $subscription->trial_ends_at?->toIso8601String(),
                 'onGracePeriod' => $subscription->onGracePeriod(),
+                // When a scheduled cancellation takes effect: the trial end for
+                // a trial, the end of the paid period otherwise.
+                'endsAt' => $subscription->onGracePeriod() ? $subscription->ends_at?->toIso8601String() : null,
                 'plan' => $this->subscribedPlan->for($user, $subscription),
                 // The standard price a latam subscriber can move up to, for the
                 // button that does it; null for everyone else.
@@ -485,6 +487,37 @@ class SubscriptionController extends Controller
         }
 
         return redirect()->route('settings.billing');
+    }
+
+    /**
+     * Take back a cancellation the user scheduled: the plan carries on, and a
+     * trial still converts on the day it was always going to. Only the user's
+     * own `default` subscription is ever touched, and only while Cashier has it
+     * on its grace period (cancelled, not yet ended) — Stripe refuses to resume
+     * anything else, and so do we, before asking it.
+     */
+    public function resume(Request $request, ResumeSubscription $resumeSubscription): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $subscription = $user->subscription('default');
+
+        if ($subscription === null || ! $subscription->onGracePeriod() || $user->cannotUseStripe()) {
+            return redirect()->route('settings.billing')
+                ->withErrors(['resume' => __('There is no cancellation to undo on this plan.')]);
+        }
+
+        try {
+            $resumeSubscription->handle($subscription);
+        } catch (ApiErrorException $exception) {
+            report($exception);
+
+            return redirect()->route('settings.billing')
+                ->withErrors(['resume' => __('We could not keep your plan. Please try again in a few minutes.')]);
+        }
+
+        return redirect()->route('settings.billing')
+            ->with('success', __('Your plan is back on. Nothing else changes.'));
     }
 
     public function billingPortal(Request $request): RedirectResponse

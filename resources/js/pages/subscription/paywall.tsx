@@ -67,16 +67,22 @@ export default function Paywall() {
           ? 'soft'
           : 'hard';
 
-    const { selectedPlan, setSelectedPlan, hasPlans, button, tierChoice } =
-        useOffer('paywall', {
-            onCheckout: (plan, preselectedPlan, priceTier) =>
-                captureEvent('paywall_checkout_started', {
-                    gate,
-                    plan,
-                    preselected_plan: preselectedPlan,
-                    price_tier: priceTier,
-                }),
-        });
+    const {
+        selectedPlan,
+        setSelectedPlan,
+        hasPlans,
+        button,
+        reminder,
+        tierChoice,
+    } = useOffer('paywall', {
+        onCheckout: (plan, preselectedPlan, priceTier) =>
+            captureEvent('paywall_checkout_started', {
+                gate,
+                plan,
+                preselected_plan: preselectedPlan,
+                price_tier: priceTier,
+            }),
+    });
 
     // The gates that have something to disconnect, once the delay after
     // onboarding is up. Derived once so the button and the screen it opens
@@ -129,6 +135,7 @@ export default function Paywall() {
                 footer={
                     <>
                         {button}
+                        {reminder}
 
                         {/* On the soft gate the way out is here from the first
                             paint: there is nothing to disconnect and nothing to

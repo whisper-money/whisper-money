@@ -2,12 +2,15 @@
 
 namespace App\Mail\Drip;
 
+use App\Mail\Concerns\LocalisesTrialEnd;
 use App\Models\User;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
 
 class TrialEndingEmail extends DripMail
 {
+    use LocalisesTrialEnd;
+
     public function __construct(
         User $user,
         public CarbonImmutable $trialEndsAt,
@@ -47,19 +50,5 @@ class TrialEndingEmail extends DripMail
             'trialEndsAtLocal' => $this->localTrialEnd(),
             'amount' => Money::format($this->amountInCents, $this->currency),
         ];
-    }
-
-    /**
-     * Stripe reports the trial end in UTC, which can land on the previous or
-     * next day for the reader. Both write paths validate the stored timezone,
-     * so an unparseable one only comes from legacy rows and falls back to UTC.
-     */
-    private function localTrialEnd(): CarbonImmutable
-    {
-        return rescue(
-            fn () => $this->trialEndsAt->setTimezone($this->user->timezone ?? config('app.timezone')),
-            $this->trialEndsAt,
-            report: false,
-        );
     }
 }

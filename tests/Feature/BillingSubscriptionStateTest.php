@@ -81,6 +81,7 @@ test('a trialing subscriber gets the trial end and the plan they will be charged
             ->where('subscription.onTrial', true)
             ->where('subscription.trialEndsAt', $trialEndsAt->toIso8601String())
             ->where('subscription.onGracePeriod', false)
+            ->where('subscription.endsAt', null)
             ->where('subscription.plan', ['price' => 8.99, 'billing_period' => 'month'])
         );
 });
@@ -98,6 +99,7 @@ test('a trial canceled before it ends is on its grace period', function () use (
         ->assertInertia(fn (Assert $page) => $page
             ->where('subscription.onTrial', true)
             ->where('subscription.onGracePeriod', true)
+            ->where('subscription.endsAt', $trialEndsAt->toIso8601String())
         );
 });
 

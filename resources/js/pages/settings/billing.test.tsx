@@ -6,6 +6,7 @@ import Billing from './billing';
 
 const mocks = vi.hoisted(() => ({
     routerPost: vi.fn(),
+    captureEvent: vi.fn(),
     axiosPost: vi.fn(() => Promise.resolve({ data: {} })),
     axiosDelete: vi.fn(() => Promise.resolve({ data: {} })),
     state: {
@@ -47,6 +48,8 @@ vi.mock('@inertiajs/react', () => ({
         },
     }),
 }));
+
+vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
 
 vi.mock('@/layouts/app-layout', () => ({
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -407,5 +410,171 @@ describe('Billing – upgrade section', () => {
                 .getByRole('link', { name: 'Start a plan' })
                 .getAttribute('href'),
         ).toMatch(/[?&]plan=yearly&preselected_plan=monthly/);
+    });
+});
+
+describe('Billing – a plan set to cancel', () => {
+    const monthly = { price: 8.99, billing_period: 'month' };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.routerPost.mockReset();
+        mocks.state.hasProPlan = true;
+        mocks.state.hasAiConsent = false;
+        mocks.state.isSharedAccount = false;
+        mocks.state.hasUnpaidSubscription = false;
+        mocks.state.errors = {};
+    });
+
+    afterEach(() => {
+        mocks.state.subscription = null;
+        mocks.state.isSharedAccount = false;
+        mocks.state.errors = {};
+    });
+
+    const canceledTrial = {
+        onTrial: true,
+        trialEndsAt: '2026-11-05T12:00:00+00:00',
+        onGracePeriod: true,
+        endsAt: '2026-11-05T12:00:00+00:00',
+        plan: monthly,
+        standardUpgrade: null,
+    };
+
+    it('tells a canceled trial when Pro stops and offers to keep it', () => {
+        mocks.state.subscription = canceledTrial;
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Standard stops on Nov 5, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/your first charge is on Nov 5, 2026/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Keep my plan' }),
+        ).toBeInTheDocument();
+    });
+
+    it('tells a canceled paid plan when it ends and offers to keep it', () => {
+        mocks.state.subscription = {
+            ...canceledTrial,
+            onTrial: false,
+            trialEndsAt: null,
+            endsAt: '2026-12-20T12:00:00+00:00',
+        };
+        render(<Billing />);
+
+        expect(
+            screen.getByText('Standard stops on Dec 20, 2026'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/You won't be charged again/),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Keep my plan' }),
+        ).toBeInTheDocument();
+    });
+
+    it('resumes the plan and reports the click and the success', () => {
+        mocks.state.subscription = canceledTrial;
+        render(<Billing />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Keep my plan' }));
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'subscription_resume_clicked',
+            { on_trial: true },
+        );
+        expect(mocks.routerPost).toHaveBeenCalledWith(
+            '/settings/billing/resume',
+            {},
+            expect.any(Object),
+        );
+
+        const options = mocks.routerPost.mock.calls[0][2] as {
+            onSuccess: (page: { props: unknown }) => void;
+        };
+        options.onSuccess({ props: { flash: { success: 'Back on' } } });
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'subscription_resumed',
+            { on_trial: true },
+        );
+    });
+
+    it('reports a resume Stripe refused', () => {
+        mocks.state.subscription = canceledTrial;
+        render(<Billing />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Keep my plan' }));
+        const options = mocks.routerPost.mock.calls[0][2] as {
+            onError: () => void;
+        };
+        options.onError();
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'subscription_resume_failed',
+            { on_trial: true },
+        );
+        expect(mocks.captureEvent).not.toHaveBeenCalledWith(
+            'subscription_resumed',
+            expect.anything(),
+        );
+    });
+
+    it('shows why the plan could not be kept', () => {
+        mocks.state.subscription = canceledTrial;
+        mocks.state.errors = { resume: 'Stripe is down' };
+        render(<Billing />);
+
+        expect(screen.getByText('Stripe is down')).toBeInTheDocument();
+    });
+
+    it('offers nothing to resume on a running plan', () => {
+        mocks.state.subscription = {
+            ...canceledTrial,
+            onGracePeriod: false,
+            endsAt: null,
+        };
+        render(<Billing />);
+
+        expect(
+            screen.queryByRole('button', { name: 'Keep my plan' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('offers nothing to resume on a shared account', () => {
+        mocks.state.subscription = canceledTrial;
+        mocks.state.isSharedAccount = true;
+        render(<Billing />);
+
+        expect(
+            screen.queryByRole('button', { name: 'Keep my plan' }),
+        ).not.toBeInTheDocument();
+    });
+});
+
+describe('Billing – billing portal analytics', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.state.hasProPlan = true;
+        mocks.state.isSharedAccount = false;
+        mocks.state.hasUnpaidSubscription = false;
+        mocks.state.subscription = null;
+    });
+
+    it('reports opening the portal from Manage Subscription', () => {
+        render(<Billing />);
+
+        const link = screen.getByRole('link', { name: /Manage Subscription/ });
+        // jsdom cannot follow it; only the click matters here.
+        link.addEventListener('click', (event) => event.preventDefault());
+        fireEvent.click(link);
+
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'billing_portal_opened',
+            { source: 'manage' },
+        );
     });
 });

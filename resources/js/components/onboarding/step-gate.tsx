@@ -99,6 +99,7 @@ export function StepGate({
         hasPlans,
         button,
         terms,
+        reminder,
         tierChoice,
     } = useOffer(source, {
         initialPlan: trialPlan ?? undefined,
@@ -190,6 +191,7 @@ export function StepGate({
                     ) : (
                         terms
                     )}
+                    {reminder}
                 </>
             }
         >

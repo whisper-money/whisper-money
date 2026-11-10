@@ -4343,5 +4343,21 @@
     "Continue without it": "Continuar sin ello",
     "You guessed": "Calculaste",
     ":guess a month": ":guess al mes",
-    "Two minutes of round figures for :account and we can tell you how close you were.": "Dos minutos de cifras redondas para :account y te decimos cuánto te acercaste."
+    "Two minutes of round figures for :account and we can tell you how close you were.": "Dos minutos de cifras redondas para :account y te decimos cuánto te acercaste.",
+    "We’ll email you 3 days before the first charge. Cancel anytime from Settings.": "Te avisaremos por email 3 días antes del primer cobro. Cancela cuando quieras desde Ajustes.",
+    "There is no cancellation to undo on this plan.": "No hay ninguna cancelación que deshacer en este plan.",
+    "We could not keep your plan. Please try again in a few minutes.": "No hemos podido mantener tu plan. Inténtalo de nuevo en unos minutos.",
+    "Your plan is back on. Nothing else changes.": "Tu plan sigue activo. No cambia nada más.",
+    "Your Standard trial ends in 3 days": "Tu prueba de Standard termina en 3 días",
+    "Your Standard trial ends on :date, :name": "Tu prueba de Standard termina el :date, :name",
+    "Hi! It's Víctor and Álvaro, the founders of Whisper Money. You canceled your plan, so you won't be charged anything. We just wanted you to know what happens on :date, when your trial ends.": "¡Hola! Somos Víctor y Álvaro, los fundadores de Whisper Money. Has cancelado tu plan, así que no se te cobrará nada. Solo queríamos contarte qué pasa el :date, cuando termina tu prueba.",
+    "From that day, bank sync, AI categorization and the rest of Standard stop. Your movements no longer arrive on their own.": "A partir de ese día se detienen la sincronización bancaria, la categorización con IA y el resto de Standard. Tus movimientos dejan de llegar solos.",
+    "Here's what you've set up so far, and it stays yours:": "Esto es lo que has configurado hasta ahora, y sigue siendo tuyo:",
+    ":count account|:count accounts": ":count cuenta|:count cuentas",
+    ":count transaction|:count transactions": ":count transacción|:count transacciones",
+    "If something didn't work for you, reply to this email and tell us. We read every reply ourselves.": "Si algo no te ha funcionado, responde a este email y cuéntanoslo. Leemos cada respuesta nosotros mismos.",
+    "Standard stops on :date": "Standard se detiene el :date",
+    "Bank sync and AI categorization stop that day. Keep your plan and your first charge is on :date.": "Ese día se detienen la sincronización bancaria y la categorización con IA. Si mantienes tu plan, tu primer cobro será el :date.",
+    "You won't be charged again. Bank sync and AI categorization stop that day. Keep your plan and it renews as usual.": "No se te volverá a cobrar. Ese día se detienen la sincronización bancaria y la categorización con IA. Si mantienes tu plan, se renueva como siempre.",
+    "If you canceled just to be safe, the button below takes you to your billing page, where one click keeps Standard. Your first charge would then be on :date.": "Si cancelaste solo por si acaso, el botón de abajo te lleva a tu página de facturación, donde un clic mantiene Standard. Tu primer cobro sería entonces el :date."
 }

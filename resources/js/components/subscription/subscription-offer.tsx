@@ -163,6 +163,7 @@ export function useOffer(
             />
         ),
         terms: <CheckoutTerms plan={plan} />,
+        reminder: <TrialReminderNote plan={plan} />,
     };
 }
 
@@ -193,6 +194,26 @@ function CheckoutTerms({ plan }: { plan: Plan | undefined }) {
             {__(
                 'Free for :days days. Cancel before then and you are not charged.',
                 { days: plan.trial_days },
+            )}
+        </StepNote>
+    );
+}
+
+/**
+ * What happens before the trial turns into a charge, said where the trial is
+ * started. Most trial cancellations land within the first hour, as a
+ * precaution against being charged without warning; the warning is already
+ * on its way (Stripe's `trial_will_end`, three days out), so the screen says so.
+ */
+export function TrialReminderNote({ plan }: { plan: Plan | undefined }) {
+    if (!plan?.trial_days) {
+        return null;
+    }
+
+    return (
+        <StepNote>
+            {__(
+                'We’ll email you 3 days before the first charge. Cancel anytime from Settings.',
             )}
         </StepNote>
     );

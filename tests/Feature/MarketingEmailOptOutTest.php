@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DripEmailType;
+use App\Jobs\Drip\SendTrialEndingCanceledEmailJob;
 use App\Jobs\Drip\SendTrialEndingEmailJob;
 use App\Jobs\Drip\SendWelcomeEmailJob;
 use App\Jobs\SendUpdateEmailJob;
@@ -62,6 +63,24 @@ it('still sends billing mail once the category is off', function (): void {
     Mail::fake();
 
     (new SendTrialEndingEmailJob(userWithoutMarketing(), CarbonImmutable::now()->addDays(3), 899, 'eur'))->handle();
+
+    Mail::assertQueuedCount(1);
+});
+
+it('still warns a trial set to cancel once the category is off', function (): void {
+    Mail::fake();
+
+    $user = userWithoutMarketing();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_opt_out_trial',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_opt_out_trial',
+        'trial_ends_at' => now()->addDays(3),
+        'ends_at' => now()->addDays(3),
+    ]);
+
+    (new SendTrialEndingCanceledEmailJob($user, CarbonImmutable::now()->addDays(3)))->handle();
 
     Mail::assertQueuedCount(1);
 });
