@@ -49,7 +49,7 @@ class CancellationOffers
         $subscription = $user->subscription('default');
 
         if (
-            $subscription === null
+            ! $subscription instanceof Subscription
             || $user->cannotUseStripe()
             || ! $subscription->valid()
             || $subscription->onGracePeriod()

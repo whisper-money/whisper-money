@@ -13,7 +13,7 @@ use Stripe\Subscription as StripeSubscription;
 class SendSubscriptionResumingEmailsCommand extends Command
 {
     /** How long before a pause ends the user hears about the charge. */
-    public const WARNING_DAYS = 3;
+    private const WARNING_DAYS = 3;
 
     protected $signature = 'email:subscription-resuming';
 

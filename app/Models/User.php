@@ -7,6 +7,7 @@ use App\Enums\PaywallGate;
 use App\Enums\PlanFeature;
 use App\Enums\TransactionSource;
 use App\Models\Concerns\HasPrefixedApiTokens;
+use App\Models\Subscription as PausableSubscription;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
 use App\Services\Subscriptions\SubscribedPlan;
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
 use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Subscription;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
 use Stripe\Subscription as StripeSubscription;
@@ -698,7 +700,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
      * including a pause still to come, which leaves the plan on until the
      * paid period ends.
      */
-    public function pausedSubscription(): ?Subscription
+    public function pausedSubscription(): ?PausableSubscription
     {
         if (! config('subscriptions.enabled')) {
             return null;
@@ -706,7 +708,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
         $subscription = $this->subscription('default');
 
-        return $subscription instanceof Subscription && $subscription->valid() && $subscription->isPaused()
+        return $subscription instanceof PausableSubscription && $subscription->valid() && $subscription->isPaused()
             ? $subscription
             : null;
     }

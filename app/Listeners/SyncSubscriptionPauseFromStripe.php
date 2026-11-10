@@ -38,7 +38,7 @@ class SyncSubscriptionPauseFromStripe
             ? Subscription::query()->where('stripe_id', $stripeId)->first()
             : null;
 
-        if ($subscription === null || $subscription->owner?->cannotUseStripe() !== false) {
+        if ($subscription === null || $subscription->owner->cannotUseStripe()) {
             return;
         }
 
