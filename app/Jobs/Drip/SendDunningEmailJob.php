@@ -27,6 +27,24 @@ abstract class SendDunningEmailJob extends SendDripEmailJob
         parent::__construct($user);
     }
 
+    /**
+     * The email for where the invoice is: a payment the bank holds for 3D
+     * Secure is not fixed by a new card, so it is asked to be confirmed.
+     */
+    public static function for(FailedInvoice $invoice, DunningStep $step): self
+    {
+        return $invoice->action_required_at !== null
+            ? new SendPaymentActionRequiredEmailJob($invoice->user, $invoice, $step)
+            : new SendPaymentFailedEmailJob($invoice->user, $invoice, $step);
+    }
+
+    /**
+     * Subscription statuses the first email of the sequence goes out in.
+     *
+     * @return list<string>
+     */
+    abstract protected function firstEmailStatuses(): array;
+
     protected function emailIdentifier(): string
     {
         return $this->invoice->stripe_invoice_id.':'.$this->step->value;
@@ -42,23 +60,12 @@ abstract class SendDunningEmailJob extends SendDripEmailJob
             return false;
         }
 
-        return $this->step->isReminder()
-            ? $this->stillDunning($subscription)
-            : $this->subscriptionAllowsFirstEmail($subscription);
-    }
+        // A reminder only while Stripe is still retrying, which is what
+        // `past_due` means, and not to someone who already chose to leave.
+        if ($this->step->isReminder()) {
+            return $subscription->stripe_status === StripeSubscription::STATUS_PAST_DUE && ! $subscription->canceled();
+        }
 
-    /**
-     * A reminder only while Stripe is still retrying, which is what
-     * `past_due` means, and not to someone who already chose to leave.
-     */
-    private function stillDunning(Subscription $subscription): bool
-    {
-        return $subscription->stripe_status === StripeSubscription::STATUS_PAST_DUE
-            && ! $subscription->canceled();
-    }
-
-    protected function subscriptionAllowsFirstEmail(Subscription $subscription): bool
-    {
-        return true;
+        return in_array($subscription->stripe_status, $this->firstEmailStatuses(), true);
     }
 }

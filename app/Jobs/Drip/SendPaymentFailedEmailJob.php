@@ -4,7 +4,6 @@ namespace App\Jobs\Drip;
 
 use App\Enums\DripEmailType;
 use App\Mail\Drip\PaymentFailedEmail;
-use App\Models\Subscription;
 use Illuminate\Mail\Mailable;
 use Stripe\Subscription as StripeSubscription;
 
@@ -31,14 +30,15 @@ class SendPaymentFailedEmailJob extends SendDunningEmailJob
     }
 
     /**
-     * An `incomplete` subscription never started: the reader is still at
-     * checkout, which shows the decline itself, and Stripe does not retry it.
+     * Only once Stripe has moved the subscription to `past_due`, the state it
+     * retries in. That also keeps the email from a customer whose payment
+     * went through before a late failure event arrived, and from an
+     * `incomplete` subscription, whose checkout shows the decline itself.
+     *
+     * @return list<string>
      */
-    protected function subscriptionAllowsFirstEmail(Subscription $subscription): bool
+    protected function firstEmailStatuses(): array
     {
-        return ! in_array($subscription->stripe_status, [
-            StripeSubscription::STATUS_INCOMPLETE,
-            StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
-        ], true);
+        return [StripeSubscription::STATUS_PAST_DUE];
     }
 }

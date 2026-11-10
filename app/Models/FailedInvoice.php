@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $amount_due
  * @property string $currency
  * @property ?string $billing_interval
- * @property bool $is_first_charge
+ * @property bool $is_first_charge_after_trial
  * @property int $attempt_count
  * @property ?string $payment_intent_id
  * @property CarbonInterface $first_failed_at
@@ -44,7 +44,7 @@ class FailedInvoice extends Model
         'amount_due',
         'currency',
         'billing_interval',
-        'is_first_charge',
+        'is_first_charge_after_trial',
         'attempt_count',
         'payment_intent_id',
         'first_failed_at',
@@ -57,7 +57,7 @@ class FailedInvoice extends Model
     {
         return [
             'amount_due' => 'integer',
-            'is_first_charge' => 'boolean',
+            'is_first_charge_after_trial' => 'boolean',
             'attempt_count' => 'integer',
             'first_failed_at' => 'datetime',
             'next_payment_attempt_at' => 'datetime',
@@ -101,12 +101,14 @@ class FailedInvoice extends Model
     }
 
     /**
-     * Whether the bank asked the customer to confirm the payment (3D Secure)
-     * and the payment page has something to show them.
+     * Invoices the bank holds for a 3D Secure confirmation, with a payment
+     * intent for Cashier's payment page to confirm.
+     *
+     * @param  Builder<self>  $query
      */
-    public function awaitsConfirmation(): bool
+    public function scopeAwaitingConfirmation(Builder $query): void
     {
-        return $this->action_required_at !== null && $this->payment_intent_id !== null;
+        $query->whereNotNull('action_required_at')->whereNotNull('payment_intent_id');
     }
 
     /**

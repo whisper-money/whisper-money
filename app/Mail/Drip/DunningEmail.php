@@ -49,7 +49,7 @@ abstract class DunningEmail extends DripMail
         return [
             'amount' => Money::formatIn($this->invoice->amount_due, $this->invoice->currency, $this->user->formatLocale()),
             'planName' => $this->planName(),
-            'isFirstCharge' => $this->invoice->is_first_charge,
+            'isFirstChargeAfterTrial' => $this->invoice->is_first_charge_after_trial,
             'isReminder' => $this->step->isReminder(),
             'isFinalNotice' => $this->step === DunningStep::FinalNotice,
         ];

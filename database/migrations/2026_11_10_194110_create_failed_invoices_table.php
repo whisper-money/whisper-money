@@ -25,7 +25,7 @@ return new class extends Migration
             $table->unsignedInteger('amount_due');
             $table->string('currency', 3);
             $table->string('billing_interval', 10)->nullable();
-            $table->boolean('is_first_charge')->default(false);
+            $table->boolean('is_first_charge_after_trial')->default(false);
             $table->unsignedSmallInteger('attempt_count')->default(0);
             $table->string('payment_intent_id')->nullable();
             $table->timestamp('first_failed_at');

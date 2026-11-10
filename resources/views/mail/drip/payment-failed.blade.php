@@ -6,11 +6,11 @@
 @elseif ($isReminder)
 # {{ __('Your payment is still pending, :name', ['name' => $userName]) }}
 
-{{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. We still haven't been able to charge :amount for your :plan: your bank keeps declining the card. We'll keep trying for a while longer, and you keep full access in the meantime.", ['amount' => $amount, 'plan' => $planName]) }}
+{{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. We still haven't been able to charge :amount for your :plan. We'll keep trying for a while longer, and you keep full access in the meantime.", ['amount' => $amount, 'plan' => $planName]) }}
 @else
-# {{ $isFirstCharge ? __('Your first payment didn\'t go through, :name', ['name' => $userName]) : __('Your payment didn\'t go through, :name', ['name' => $userName]) }}
+# {{ $isFirstChargeAfterTrial ? __('Your first payment didn\'t go through, :name', ['name' => $userName]) : __('Your payment didn\'t go through, :name', ['name' => $userName]) }}
 
-@if ($isFirstCharge)
+@if ($isFirstChargeAfterTrial)
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. Your free trial has ended, and when we tried to charge the first payment of :amount for your :plan, your bank declined the card.", ['amount' => $amount, 'plan' => $planName]) }}
 @else
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. We tried to charge :amount for your :plan, and your bank declined the card.", ['amount' => $amount, 'plan' => $planName]) }}
@@ -19,7 +19,7 @@
 {{ __('It happens, usually because of a temporary limit or not enough funds on the day. We will try again automatically over the coming days, and you keep full access to Whisper Money in the meantime.') }}
 @endif
 
-{{ __("Rather not wait? Update your payment method and we'll charge the new one.") }}
+{{ __("Card changed or about to? Update your payment method and we'll use it for the next attempt.") }}
 
 <x-mail::button :url="$updatePaymentUrl">
 {{ __('Update payment method') }}

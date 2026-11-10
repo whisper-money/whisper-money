@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     Mail::fake();
+    // The reminders count calendar days, so the clock is pinned to midday.
+    Carbon::setTestNow('2026-11-10 12:00:00');
 
     config(['mail.drip_emails_enabled' => true]);
 });
@@ -94,6 +96,17 @@ test('the sequence walks through every step over the retry window', function () 
     Mail::assertQueuedCount(3);
     Mail::assertQueued(PaymentFailedEmail::class, fn (PaymentFailedEmail $mail) => $mail->step === DunningStep::FinalNotice
         && $mail->envelope()->subject === 'Last notice: update your card to keep Whisper Money');
+});
+
+test('days are counted on the calendar, not in hours since the failure', function () {
+    Carbon::setTestNow('2026-11-07 23:30:00');
+    $invoice = failedInvoiceDaysAgo(0);
+    $invoice->forceFill(['first_failed_at' => now()])->save();
+
+    Carbon::setTestNow('2026-11-10 10:05:00');
+    $this->artisan('email:payment-failed-reminders');
+
+    Mail::assertQueued(PaymentFailedEmail::class, fn (PaymentFailedEmail $mail) => $mail->step === DunningStep::Reminder);
 });
 
 test('a missed run sends only the latest step due', function () {

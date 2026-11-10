@@ -3,13 +3,12 @@
 namespace App\Listeners;
 
 use App\Enums\DunningStep;
-use App\Jobs\Drip\SendPaymentActionRequiredEmailJob;
-use App\Jobs\Drip\SendPaymentFailedEmailJob;
+use App\Jobs\Drip\SendDunningEmailJob;
 use App\Models\FailedInvoice;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Stripe\InvoicePayload;
 use App\Services\Stripe\InvoicePaymentIntentResolver;
-use Carbon\CarbonImmutable;
 use Laravel\Cashier\Events\WebhookReceived;
 
 /**
@@ -21,7 +20,7 @@ use Laravel\Cashier\Events\WebhookReceived;
  * - `invoice.payment_failed` opens the row (every retry updates it) and, on
  *   the first failure, queues the "payment failed" email.
  * - `invoice.payment_action_required` marks the bank asking for a 3D Secure
- *   confirmation and queues the "confirm your payment" email.
+ *   confirmation and queues the "confirm your payment" email instead.
  * - A paid, voided or written-off invoice, or a deleted subscription, closes
  *   it: nothing is chased after that.
  *
@@ -31,9 +30,11 @@ use Laravel\Cashier\Events\WebhookReceived;
 class SyncFailedInvoicesFromStripe
 {
     /**
-     * Long enough for `invoice.payment_action_required`, which Stripe sends
-     * alongside the failure when the bank wants a confirmation, to land first
-     * and replace the "declined" email with the confirmation one.
+     * The first email waits this long, for two reasons: Stripe sends
+     * `invoice.payment_action_required` alongside the failure when the bank
+     * wants a confirmation, which must replace the "declined" email; and the
+     * subscription's own update to `past_due`, which the email requires, may
+     * land after the invoice event.
      */
     private const FIRST_EMAIL_DELAY_MINUTES = 10;
 
@@ -41,56 +42,38 @@ class SyncFailedInvoicesFromStripe
 
     private const RESOLVING_EVENTS = ['invoice.paid', 'invoice.payment_succeeded', 'invoice.voided', 'invoice.marked_uncollectible'];
 
-    /** A renewal this close to the trial end is the first charge after the trial. */
-    private const TRIAL_END_TOLERANCE_SECONDS = 86400;
-
     public function __construct(private InvoicePaymentIntentResolver $paymentIntents) {}
 
     public function handle(WebhookReceived $event): void
     {
         $type = $event->payload['type'] ?? null;
         $object = $event->payload['data']['object'] ?? [];
+        $stripeId = is_string($object['id'] ?? null) ? $object['id'] : '';
 
         match (true) {
-            $type === 'invoice.payment_failed' => $this->recordFailure($object),
-            $type === 'invoice.payment_action_required' => $this->recordActionRequired($object),
-            in_array($type, self::RESOLVING_EVENTS, true) => $this->resolve('stripe_invoice_id', $object['id'] ?? null),
-            $type === 'customer.subscription.deleted' => $this->resolve('stripe_subscription_id', $object['id'] ?? null),
+            $type === 'invoice.payment_failed' => $this->recordFailure(new InvoicePayload($object)),
+            $type === 'invoice.payment_action_required' => $this->recordActionRequired(new InvoicePayload($object)),
+            in_array($type, self::RESOLVING_EVENTS, true) => $this->resolveInvoice($stripeId),
+            $type === 'customer.subscription.deleted' => $this->resolveSubscription($stripeId),
             default => null,
         };
     }
 
-    /**
-     * @param  array<string, mixed>  $invoice
-     */
-    private function recordFailure(array $invoice): void
+    private function recordFailure(InvoicePayload $invoice): void
     {
-        $failedInvoice = $this->open($invoice);
-
-        if ($failedInvoice === null) {
-            return;
-        }
+        $failedInvoice = $this->syncOpenRow($invoice);
 
         // A redelivered first failure still gets its email; a later retry's
-        // failure does not restart the sequence.
-        if ($failedInvoice->wasRecentlyCreated || $failedInvoice->attempt_count <= 1) {
-            $this->queue(
-                new SendPaymentFailedEmailJob($failedInvoice->user, $failedInvoice, DunningStep::First),
-                delayMinutes: self::FIRST_EMAIL_DELAY_MINUTES,
-            );
+        // failure does not restart the sequence. A row first seen on a later
+        // retry (one that failed before this shipped) starts it.
+        if ($failedInvoice !== null && ($failedInvoice->wasRecentlyCreated || $invoice->attemptCount() <= 1)) {
+            $this->queueFirstEmail($failedInvoice);
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $invoice
-     */
-    private function recordActionRequired(array $invoice): void
+    private function recordActionRequired(InvoicePayload $invoice): void
     {
-        if ($this->isOnSessionCheckout($invoice)) {
-            return;
-        }
-
-        $failedInvoice = $this->open($invoice);
+        $failedInvoice = $invoice->isOnSessionCheckout() ? null : $this->syncOpenRow($invoice);
 
         if ($failedInvoice === null) {
             return;
@@ -98,20 +81,18 @@ class SyncFailedInvoicesFromStripe
 
         $failedInvoice->forceFill([
             'action_required_at' => $failedInvoice->action_required_at ?? now(),
-            'payment_intent_id' => $this->paymentIntents->for($invoice) ?? $failedInvoice->payment_intent_id,
+            'payment_intent_id' => $this->paymentIntents->for($invoice->invoice) ?? $failedInvoice->payment_intent_id,
         ])->save();
 
-        $this->queue(new SendPaymentActionRequiredEmailJob($failedInvoice->user, $failedInvoice, DunningStep::First));
+        $this->queueFirstEmail($failedInvoice);
     }
 
     /**
      * The row for a dunned invoice, created on its first failure and brought
      * up to date on every later one. Null for an invoice we do not dun, and
      * for one already closed, which an out-of-order event must not reopen.
-     *
-     * @param  array<string, mixed>  $invoice
      */
-    private function open(array $invoice): ?FailedInvoice
+    private function syncOpenRow(InvoicePayload $invoice): ?FailedInvoice
     {
         $subscription = $this->dunnedSubscription($invoice);
 
@@ -119,22 +100,31 @@ class SyncFailedInvoicesFromStripe
             return null;
         }
 
-        $progress = [
-            'attempt_count' => (int) ($invoice['attempt_count'] ?? 1),
-            'next_payment_attempt_at' => $this->timestamp($invoice['next_payment_attempt'] ?? null),
-        ];
-
         $failedInvoice = FailedInvoice::query()->createOrFirst(
-            ['stripe_invoice_id' => $invoice['id']],
-            [...$this->describe($invoice, $subscription), ...$progress],
+            ['stripe_invoice_id' => $invoice->id()],
+            [
+                'user_id' => $subscription->user_id,
+                'stripe_subscription_id' => $subscription->stripe_id,
+                'amount_due' => $invoice->amountDue(),
+                'currency' => $invoice->currency(),
+                'billing_interval' => $invoice->billingInterval(),
+                'is_first_charge_after_trial' => $invoice->startsAfterTrial($subscription),
+                'attempt_count' => $invoice->attemptCount(),
+                'first_failed_at' => $invoice->firstFailedAt(),
+                'next_payment_attempt_at' => $invoice->nextPaymentAttemptAt(),
+            ],
         );
 
         if (! $failedInvoice->isOpen()) {
             return null;
         }
 
-        if (! $failedInvoice->wasRecentlyCreated) {
-            $failedInvoice->forceFill($progress)->save();
+        // A late redelivery of an earlier retry must not wind the count back.
+        if (! $failedInvoice->wasRecentlyCreated && $invoice->attemptCount() >= $failedInvoice->attempt_count) {
+            $failedInvoice->forceFill([
+                'attempt_count' => $invoice->attemptCount(),
+                'next_payment_attempt_at' => $invoice->nextPaymentAttemptAt(),
+            ])->save();
         }
 
         return $failedInvoice;
@@ -142,122 +132,45 @@ class SyncFailedInvoicesFromStripe
 
     /**
      * The local subscription a dunned invoice bills: a renewal or first charge
-     * with an amount, of a subscription that belongs to the customer we know.
-     *
-     * @param  array<string, mixed>  $invoice
+     * with an amount, still owed, of a subscription that belongs to the
+     * customer we know.
      */
-    private function dunnedSubscription(array $invoice): ?Subscription
+    private function dunnedSubscription(InvoicePayload $invoice): ?Subscription
     {
-        $subscriptionId = $invoice['subscription'] ?? $invoice['parent']['subscription_details']['subscription'] ?? null;
-        $customerId = $invoice['customer'] ?? null;
+        $isDunned = $invoice->id() !== null
+            && $invoice->amountDue() > 0
+            && $invoice->isOpen()
+            && in_array($invoice->billingReason(), self::DUNNED_BILLING_REASONS, true);
 
-        if (! is_string($invoice['id'] ?? null)
-            || ! is_string($subscriptionId) || ! is_string($customerId)
-            || (int) ($invoice['amount_due'] ?? 0) <= 0
-            || ! in_array($invoice['billing_reason'] ?? null, self::DUNNED_BILLING_REASONS, true)) {
+        if (! $isDunned || $invoice->customerId() === null || $invoice->subscriptionId() === null) {
             return null;
         }
 
-        $user = User::query()->where('stripe_id', $customerId)->first();
+        $user = User::query()->where('stripe_id', $invoice->customerId())->first();
 
         /** @var Subscription|null */
-        return $user?->subscriptions()->where('stripe_id', $subscriptionId)->first();
+        return $user?->subscriptions()->where('stripe_id', $invoice->subscriptionId())->first();
     }
 
-    /**
-     * What the emails quote, fixed when the invoice first fails.
-     *
-     * @param  array<string, mixed>  $invoice
-     * @return array<string, mixed>
-     */
-    private function describe(array $invoice, Subscription $subscription): array
+    private function resolveInvoice(string $invoiceId): void
     {
-        $line = $invoice['lines']['data'][0] ?? [];
-
-        return [
-            'user_id' => $subscription->user_id,
-            'stripe_subscription_id' => $subscription->stripe_id,
-            'amount_due' => (int) $invoice['amount_due'],
-            'currency' => (string) ($invoice['currency'] ?? config('cashier.currency', 'eur')),
-            'billing_interval' => $this->billingInterval($line),
-            'is_first_charge' => $this->isFirstCharge($invoice, $line, $subscription),
-            'first_failed_at' => now(),
-        ];
+        FailedInvoice::query()->open()->where('stripe_invoice_id', $invoiceId)->update(['resolved_at' => now()]);
     }
 
-    /**
-     * The first charge is the invoice that creates the subscription or, after
-     * a trial, the renewal that starts the first paid period.
-     *
-     * @param  array<string, mixed>  $invoice
-     * @param  array<string, mixed>  $line
-     */
-    private function isFirstCharge(array $invoice, array $line, Subscription $subscription): bool
+    private function resolveSubscription(string $subscriptionId): void
     {
-        if ($invoice['billing_reason'] === 'subscription_create') {
-            return true;
-        }
-
-        $periodStart = $line['period']['start'] ?? $invoice['period_end'] ?? null;
-
-        return $subscription->trial_ends_at !== null
-            && is_int($periodStart)
-            && abs($periodStart - $subscription->trial_ends_at->getTimestamp()) <= self::TRIAL_END_TOLERANCE_SECONDS;
+        FailedInvoice::query()->open()->where('stripe_subscription_id', $subscriptionId)->update(['resolved_at' => now()]);
     }
 
-    /**
-     * Older API versions put the price on the line; newer ones only send its
-     * id, so the length of the period decides instead (the shortest yearly
-     * one is 365 days, the longest monthly 31).
-     *
-     * @param  array<string, mixed>  $line
-     */
-    private function billingInterval(array $line): ?string
-    {
-        $interval = $line['price']['recurring']['interval'] ?? $line['plan']['interval'] ?? null;
-
-        if (is_string($interval)) {
-            return $interval;
-        }
-
-        $period = (int) ($line['period']['end'] ?? 0) - (int) ($line['period']['start'] ?? 0);
-
-        return $period <= 0 ? null : ($period >= 300 * 86400 ? 'year' : 'month');
-    }
-
-    /**
-     * A payment confirmed during checkout: the customer is on the page that
-     * asks for the confirmation, so an email would only repeat it.
-     *
-     * @param  array<string, mixed>  $invoice
-     */
-    private function isOnSessionCheckout(array $invoice): bool
-    {
-        return (bool) ($invoice['metadata']['is_on_session_checkout']
-            ?? $invoice['parent']['subscription_details']['metadata']['is_on_session_checkout']
-            ?? false);
-    }
-
-    private function resolve(string $column, mixed $stripeId): void
-    {
-        if (! is_string($stripeId) || $stripeId === '') {
-            return;
-        }
-
-        FailedInvoice::query()->open()->where($column, $stripeId)->update(['resolved_at' => now()]);
-    }
-
-    private function queue(SendPaymentFailedEmailJob|SendPaymentActionRequiredEmailJob $job, int $delayMinutes = 0): void
+    private function queueFirstEmail(FailedInvoice $failedInvoice): void
     {
         if (! config('mail.drip_emails_enabled')) {
             return;
         }
 
-        dispatch($job->delay($delayMinutes > 0 ? now()->addMinutes($delayMinutes) : null));
-    }
-
-    private function timestamp(mixed $value): ?CarbonImmutable
-    {
-        return is_int($value) ? CarbonImmutable::createFromTimestamp($value) : null;
+        dispatch(
+            SendDunningEmailJob::for($failedInvoice, DunningStep::First)
+                ->delay(now()->addMinutes(self::FIRST_EMAIL_DELAY_MINUTES)),
+        );
     }
 }

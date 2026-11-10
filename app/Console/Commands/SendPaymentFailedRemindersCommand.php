@@ -3,8 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\DunningStep;
-use App\Jobs\Drip\SendPaymentActionRequiredEmailJob;
-use App\Jobs\Drip\SendPaymentFailedEmailJob;
+use App\Jobs\Drip\SendDunningEmailJob;
 use App\Models\FailedInvoice;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -39,7 +38,7 @@ class SendPaymentFailedRemindersCommand extends Command
         // again and drops a step it already sent.
         FailedInvoice::query()
             ->open()
-            ->where('first_failed_at', '<=', now()->subDays(DunningStep::Reminder->daysAfterFailure()))
+            ->where('first_failed_at', '<', today()->subDays(DunningStep::Reminder->daysAfterFailure() - 1))
             ->where('first_failed_at', '>', now()->subDays(self::GIVE_UP_AFTER_DAYS))
             ->whereHas('subscription', fn (Builder $subscription) => $subscription
                 ->where('stripe_status', StripeSubscription::STATUS_PAST_DUE)
@@ -49,17 +48,15 @@ class SendPaymentFailedRemindersCommand extends Command
             ->chunkById(100, function (Collection $invoices) use (&$queued): void {
                 foreach ($invoices as $invoice) {
                     /** @var FailedInvoice $invoice */
-                    $step = DunningStep::reminderDueAfter((int) $invoice->first_failed_at->diffInDays(now()));
+                    // Calendar days, so a failure late in the day is not
+                    // reminded a day later than one in the morning.
+                    $step = DunningStep::reminderDueAfter((int) $invoice->first_failed_at->copy()->startOfDay()->diffInDays(today()));
 
                     if ($step === null) {
                         continue;
                     }
 
-                    // A payment waiting on the bank's confirmation is not
-                    // fixed by a new card, so it is reminded to confirm.
-                    dispatch($invoice->action_required_at !== null
-                        ? new SendPaymentActionRequiredEmailJob($invoice->user, $invoice, $step)
-                        : new SendPaymentFailedEmailJob($invoice->user, $invoice, $step));
+                    dispatch(SendDunningEmailJob::for($invoice, $step));
                     $queued++;
                 }
             });

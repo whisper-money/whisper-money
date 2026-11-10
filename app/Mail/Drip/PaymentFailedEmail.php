@@ -17,7 +17,7 @@ class PaymentFailedEmail extends DunningEmail
         return match (true) {
             $this->step === DunningStep::FinalNotice => __('Last notice: update your card to keep Whisper Money'),
             $this->step->isReminder() => __('Reminder: your Whisper Money payment is still pending'),
-            $this->invoice->is_first_charge => __('Your first Whisper Money payment didn\'t go through'),
+            $this->invoice->is_first_charge_after_trial => __('Your first Whisper Money payment didn\'t go through'),
             default => __('Your Whisper Money payment didn\'t go through'),
         };
     }

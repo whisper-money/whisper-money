@@ -83,7 +83,7 @@ test('the first failure records the invoice and sends the payment failed email o
     Mail::assertQueuedCount(1);
     Mail::assertQueued(PaymentFailedEmail::class, fn (PaymentFailedEmail $mail) => $mail->hasTo($user->email)
         && $mail->invoice->stripe_invoice_id === 'in_dunning'
-        && ! $mail->invoice->is_first_charge);
+        && ! $mail->invoice->is_first_charge_after_trial);
 
     expect(FailedInvoice::query()->sole())
         ->user_id->toBe($user->id)
@@ -123,10 +123,57 @@ test('the first charge after the trial is worded as such', function () {
     Mail::assertQueued(PaymentFailedEmail::class, function (PaymentFailedEmail $mail) {
         $html = $mail->render();
 
-        return $mail->invoice->is_first_charge
+        return $mail->invoice->is_first_charge_after_trial
             && $mail->envelope()->subject === "Your first Whisper Money payment didn't go through"
             && str_contains($html, 'Your free trial has ended');
     });
+});
+
+test('a subscription created without a trial is not told its trial ended', function () {
+    dunningSubscriber();
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed', ['billing_reason' => 'subscription_create']));
+
+    Mail::assertQueued(PaymentFailedEmail::class, fn (PaymentFailedEmail $mail) => ! $mail->invoice->is_first_charge_after_trial
+        && ! str_contains($mail->render(), 'free trial'));
+});
+
+test('a failure arriving after the payment went through sends nothing', function () {
+    dunningSubscriber(['stripe_status' => 'active']);
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed'));
+
+    Mail::assertNothingQueued();
+});
+
+test('a payload of an invoice no longer open opens nothing', function () {
+    dunningSubscriber();
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed', ['status' => 'paid']));
+
+    expect(FailedInvoice::query()->count())->toBe(0);
+});
+
+test('an invoice first seen on a later retry keeps Stripe\'s calendar and gets the first email', function () {
+    dunningSubscriber();
+    $finalizedAt = now()->subDays(4)->startOfSecond();
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed', [
+        'attempt_count' => 3,
+        'status_transitions' => ['finalized_at' => $finalizedAt->getTimestamp()],
+    ]));
+
+    expect(FailedInvoice::query()->sole()->first_failed_at->toDateTimeString())->toBe($finalizedAt->toDateTimeString());
+    Mail::assertQueued(PaymentFailedEmail::class);
+});
+
+test('a late redelivery of an earlier retry does not wind the attempt count back', function () {
+    dunningSubscriber();
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed', ['attempt_count' => 3]));
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_failed', ['attempt_count' => 2]));
+
+    expect(FailedInvoice::query()->sole()->attempt_count)->toBe(3);
 });
 
 test('the email quotes the amount and plan and links to updating the card', function () {
@@ -288,6 +335,28 @@ test('the payment intent is asked from Stripe when the payload does not carry it
     handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_action_required'));
 
     expect(FailedInvoice::query()->sole()->payment_intent_id)->toBe('pi_fetched');
+    Mail::assertQueued(PaymentActionRequiredEmail::class);
+});
+
+test('a first payment held by the bank outside checkout asks for the confirmation', function () {
+    dunningSubscriber(['stripe_status' => 'incomplete']);
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_action_required', [
+        'payment_intent' => 'pi_3ds',
+        'billing_reason' => 'subscription_create',
+    ]));
+
+    Mail::assertQueued(PaymentActionRequiredEmail::class);
+});
+
+test('a renewal still carrying the checkout tag is not mistaken for checkout', function () {
+    dunningSubscriber();
+
+    handleStripeInvoiceEvent(stripeInvoiceEvent('invoice.payment_action_required', [
+        'payment_intent' => 'pi_3ds',
+        'parent' => ['subscription_details' => ['subscription' => 'sub_dunning', 'metadata' => ['is_on_session_checkout' => true]]],
+    ]));
+
     Mail::assertQueued(PaymentActionRequiredEmail::class);
 });
 

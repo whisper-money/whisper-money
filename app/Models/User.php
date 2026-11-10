@@ -850,9 +850,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
         return FailedInvoice::query()
             ->open()
+            ->awaitingConfirmation()
             ->where('stripe_subscription_id', $subscription->stripe_id)
-            ->whereNotNull('action_required_at')
-            ->whereNotNull('payment_intent_id')
             ->latest('action_required_at')
             ->first();
     }

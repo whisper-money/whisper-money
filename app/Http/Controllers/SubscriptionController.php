@@ -578,20 +578,22 @@ class SubscriptionController extends Controller
      */
     private function redirectToPaymentMethodUpdate(User $user): RedirectResponse
     {
+        $billingUrl = route('settings.billing');
+
         try {
-            return $user->redirectToBillingPortal(route('settings.billing'), [
+            return $user->redirectToBillingPortal($billingUrl, [
                 'flow_data' => [
                     'type' => 'payment_method_update',
                     'after_completion' => [
                         'type' => 'redirect',
-                        'redirect' => ['return_url' => route('settings.billing')],
+                        'redirect' => ['return_url' => $billingUrl],
                     ],
                 ],
             ]);
         } catch (InvalidRequestException $exception) {
             report($exception);
 
-            return $user->redirectToBillingPortal(route('settings.billing'));
+            return $user->redirectToBillingPortal($billingUrl);
         }
     }
 }

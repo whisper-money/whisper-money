@@ -10,7 +10,7 @@
 @else
 # {{ __('Your bank needs you to confirm a payment, :name', ['name' => $userName]) }}
 
-@if ($isFirstCharge)
+@if ($isFirstChargeAfterTrial)
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. Your free trial has ended, and your bank wants you to confirm the first payment of :amount for your :plan before it goes through.", ['amount' => $amount, 'plan' => $planName]) }}
 @else
 {{ __("Hi! It's Víctor and Álvaro, the founders of Whisper Money. Your bank wants you to confirm the payment of :amount for your :plan before it goes through.", ['amount' => $amount, 'plan' => $planName]) }}

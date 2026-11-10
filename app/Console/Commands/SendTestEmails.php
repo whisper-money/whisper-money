@@ -56,7 +56,7 @@ class SendTestEmails extends Command
             'Inactive Banked Email' => new InactiveBankedEmail($user, ['newTransactions' => 37, 'uncategorized' => 5, 'spendingChange' => -12.0]),
             'Inactive Banked Email (nothing synced)' => new InactiveBankedEmail($user, ['newTransactions' => 0, 'uncategorized' => 0, 'spendingChange' => null]),
             'Annual Renewal Email' => new AnnualRenewalEmail($user, CarbonImmutable::now()->addDays(14), 5394, 'eur'),
-            'Payment Failed Email (first charge after trial)' => new PaymentFailedEmail($user, $this->sampleFailedInvoice($user, isFirstCharge: true), DunningStep::First),
+            'Payment Failed Email (first charge after trial)' => new PaymentFailedEmail($user, $this->sampleFailedInvoice($user, isFirstChargeAfterTrial: true), DunningStep::First),
             'Payment Failed Email (renewal)' => new PaymentFailedEmail($user, $this->sampleFailedInvoice($user), DunningStep::First),
             'Payment Failed Email (reminder)' => new PaymentFailedEmail($user, $this->sampleFailedInvoice($user), DunningStep::Reminder),
             'Payment Failed Email (last notice)' => new PaymentFailedEmail($user, $this->sampleFailedInvoice($user), DunningStep::FinalNotice),
@@ -85,7 +85,7 @@ class SendTestEmails extends Command
      * An unsaved invoice for the dunning emails, so testing them leaves
      * nothing behind for the reminders to pick up.
      */
-    private function sampleFailedInvoice(User $user, bool $isFirstCharge = false, ?string $paymentIntentId = null): FailedInvoice
+    private function sampleFailedInvoice(User $user, bool $isFirstChargeAfterTrial = false, ?string $paymentIntentId = null): FailedInvoice
     {
         return new FailedInvoice([
             'user_id' => $user->id,
@@ -94,7 +94,7 @@ class SendTestEmails extends Command
             'amount_due' => 599,
             'currency' => 'eur',
             'billing_interval' => 'month',
-            'is_first_charge' => $isFirstCharge,
+            'is_first_charge_after_trial' => $isFirstChargeAfterTrial,
             'attempt_count' => 1,
             'payment_intent_id' => $paymentIntentId,
             'first_failed_at' => now(),

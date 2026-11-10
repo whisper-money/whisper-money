@@ -25,7 +25,7 @@ class FailedInvoiceFactory extends Factory
             'amount_due' => 599,
             'currency' => 'eur',
             'billing_interval' => 'month',
-            'is_first_charge' => false,
+            'is_first_charge_after_trial' => false,
             'attempt_count' => 1,
             'payment_intent_id' => null,
             'first_failed_at' => now(),
