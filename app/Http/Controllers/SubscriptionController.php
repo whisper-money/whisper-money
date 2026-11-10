@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Actions\Subscription\CancelSubscriptionNow;
+use App\Actions\Subscription\ResumeSubscription;
 use App\Actions\Subscription\SwapLatamToStandard;
 use App\Enums\PaywallGate;
 use App\Enums\UpsellSource;
@@ -495,7 +496,7 @@ class SubscriptionController extends Controller
      * on its grace period (cancelled, not yet ended) — Stripe refuses to resume
      * anything else, and so do we, before asking it.
      */
-    public function resume(Request $request): RedirectResponse
+    public function resume(Request $request, ResumeSubscription $resumeSubscription): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -507,7 +508,7 @@ class SubscriptionController extends Controller
         }
 
         try {
-            $subscription->resume();
+            $resumeSubscription->handle($subscription);
         } catch (ApiErrorException $exception) {
             report($exception);
 
