@@ -75,6 +75,30 @@ export interface BankConnectionIssue {
     reconnect_url: string | null;
 }
 
+export interface TrialEndingBanner {
+    /** Whole days left on the user's calendar (0 on the last day). */
+    daysLeft: number;
+    threshold: 1 | 3 | 7;
+    /** The trial's last day, YYYY-MM-DD in the user's timezone. */
+    trialEndsOn: string;
+    /** Posted back on dismiss; the server only takes the one showing now. */
+    dismissalKey: string;
+    /** The user already scheduled the cancellation: nothing will be charged. */
+    canceled: boolean;
+    /** The first charge; null when canceled or the price is unknown. */
+    charge: {
+        amount: number;
+        currency: string;
+        period: 'month' | 'year';
+    } | null;
+    /** Null when too little was synced to say, and for a canceled trial. */
+    stats: {
+        /** Movements bank connections synced since the trial started. */
+        synced: number;
+        categorizedPercent: number;
+    } | null;
+}
+
 export interface SubscriptionPaymentIssueNotification {
     status: 'past_due';
     action_url: string;
@@ -259,6 +283,11 @@ export interface SharedData {
     /** Whether the import wizards may ask the AI which column holds each field. */
     aiImportMappingEnabled: boolean;
     subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
+    /**
+     * The trial-ending reminder, only 7, 3 and 1 days before the trial ends
+     * and until closed for that threshold; null for everyone else.
+     */
+    trialEndingBanner: TrialEndingBanner | null;
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;

@@ -47,6 +47,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $ai_consent_prompt_dismissed_at
  * @property ?Carbon $uncategorized_prompt_snoozed_until
  * @property ?Carbon $second_offer_shown_at
+ * @property ?string $trial_banner_dismissed_for
  * @property int $achievements_count
  * @property int $visit_streak
  * @property int $longest_visit_streak

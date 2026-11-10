@@ -5,6 +5,8 @@ use App\Listeners\SendTrialEndingEmail;
 use App\Mail\Drip\TrialEndingCanceledEmail;
 use App\Mail\Drip\TrialEndingEmail;
 use App\Models\Account;
+use App\Models\Category;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
 use Illuminate\Contracts\Bus\Dispatcher;
@@ -258,3 +260,42 @@ test('a failed dispatch hands the event back so Stripe can redeliver it', functi
 
     expect(Cache::has('trial-ending:stripe-event:evt_trial_1'))->toBeFalse();
 });
+
+test('the email is titled by the trial end date and says what keeping or canceling means', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123', 'timezone' => 'Europe/Madrid']);
+    $mail = new TrialEndingEmail($user, now()->addDays(3)->toImmutable(), 899, 'eur');
+    $date = $mail->trialEndsAt->setTimezone('Europe/Madrid')->isoFormat('LL');
+
+    $mail->assertHasSubject("Your free trial ends on {$date}");
+    expect($mail->render())
+        ->toContain('If you keep it')
+        ->toContain('You are not charged. Everything you imported stays yours; syncing and the AI stop.')
+        ->toContain('Open Whisper Money')
+        ->toContain('Change or cancel your plan')
+        ->toContain('/settings/billing/portal')
+        // Nothing synced yet: no stats block rather than a row of zeros.
+        ->not->toContain('In your trial so far');
+});
+
+test('the email shows what the bank synced during the trial, leaving out a 0%', function (bool $categorized, bool $showsShare) {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_123',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_trial_test',
+        'trial_ends_at' => now()->addDays(3),
+    ])->forceFill(['created_at' => now()->subWeek()])->save();
+    $category = $categorized ? Category::factory()->for($user)->create() : null;
+    Transaction::factory()->count(4)->enableBanking()
+        ->for($user)->for(Account::factory()->for($user))
+        ->create(['category_id' => $category?->id]);
+
+    $body = (new TrialEndingEmail($user, now()->addDays(3)->toImmutable(), 899, 'eur'))->render();
+
+    expect($body)->toContain('In your trial so far')->toContain('4 movements synced from your bank');
+    expect(str_contains($body, '100% of them sorted into a category'))->toBe($showsShare);
+})->with([
+    'all sorted' => [true, true],
+    'none sorted' => [false, false],
+]);

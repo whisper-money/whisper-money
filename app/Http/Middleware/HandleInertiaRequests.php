@@ -14,6 +14,7 @@ use App\Services\Ai\AiImportMappingGate;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
+use App\Services\Subscriptions\TrialEndingBanner;
 use App\Services\UserCollectionVersions;
 use App\Support\PriceTiers;
 use App\Support\PricingRegion;
@@ -40,6 +41,7 @@ class HandleInertiaRequests extends Middleware
         private Challenges $challenges,
         private AiImportMappingGate $aiImportMappingGate,
         private UserCollectionVersions $collectionVersions,
+        private TrialEndingBanner $trialEndingBanner,
     ) {}
 
     /**
@@ -104,6 +106,7 @@ class HandleInertiaRequests extends Middleware
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'showSecondOffer' => $showsSecondOffer,
             'secondOfferBacklog' => fn (): ?array => $showsSecondOffer() ? $this->uncategorizedBacklog($user) : null,
+            'trialEndingBanner' => fn (): ?array => $this->trialEndingBannerFor($request, $user),
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'aiImportMappingEnabled' => $user !== null && $this->aiImportMappingGate->allows($user),
             'pricing' => [
@@ -195,6 +198,22 @@ class HandleInertiaRequests extends Middleware
             && $user->isOnboarded()
             && ! $this->isSubscriptionFlow($request)
             && $user->isEligibleForSecondOffer();
+    }
+
+    /**
+     * The trial-ending reminder, for the app shell only: never on the
+     * subscription screens or to a reader still onboarding, whose pages draw
+     * no shell to put it in.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function trialEndingBannerFor(Request $request, ?User $user): ?array
+    {
+        if ($user === null || ! $user->isOnboarded() || $this->isSubscriptionFlow($request)) {
+            return null;
+        }
+
+        return $this->trialEndingBanner->for($user);
     }
 
     /**

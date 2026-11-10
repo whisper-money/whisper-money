@@ -4,6 +4,7 @@ namespace App\Mail\Drip;
 
 use App\Mail\Concerns\LocalisesTrialEnd;
 use App\Models\User;
+use App\Services\Subscriptions\TrialProgress;
 use App\Support\Money;
 use Carbon\CarbonImmutable;
 
@@ -22,7 +23,7 @@ class TrialEndingEmail extends DripMail
 
     protected function dripSubject(): string
     {
-        return __('Your free trial ends in 3 days');
+        return __('Your free trial ends on :date', ['date' => $this->localTrialEnd()->isoFormat('LL')]);
     }
 
     protected function template(): string
@@ -36,6 +37,10 @@ class TrialEndingEmail extends DripMail
     }
 
     /**
+     * The trial's progress is counted when the email is rendered rather than
+     * when the webhook landed, so the numbers are the ones the reader finds if
+     * they open the app.
+     *
      * Deliberately not called `trialEndsAt`: a Mailable's public properties are
      * assigned to the view *after* the data passed to Content::with, so a key
      * that shares a name with the promoted `$trialEndsAt` above is silently
@@ -49,6 +54,17 @@ class TrialEndingEmail extends DripMail
         return [
             'trialEndsAtLocal' => $this->localTrialEnd(),
             'amount' => Money::format($this->amountInCents, $this->currency),
+            'progress' => $this->progress(),
         ];
+    }
+
+    /**
+     * @return array{synced: int, categorizedPercent: int}|null
+     */
+    private function progress(): ?array
+    {
+        $subscription = $this->user->subscription('default');
+
+        return $subscription === null ? null : app(TrialProgress::class)->for($this->user, $subscription);
     }
 }
