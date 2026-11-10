@@ -71,7 +71,8 @@ class OnboardingRevealService
 
         // A month the user typed their main expenses into is a whole month by
         // construction, however few rows it took to say so.
-        $estimated = $this->estimates->monthsFor($user, $this->windowStart());
+        $estimates = $this->estimates->monthsById($user, $this->windowStart());
+        $estimated = $estimates->unique()->values()->all();
 
         $candidates = $byMonth->keys()
             ->sortDesc()
@@ -98,7 +99,9 @@ class OnboardingRevealService
         $currency = $user->currency_code;
         $this->preloadExchangeRates($outgoings, $currency);
         $recurring = $this->recurringCharges($byMonth, $month);
-        $isEstimate = $this->isEstimated($user, $byMonth[$month]);
+        // Every outgoing of the month an estimate: a month mixing them with real
+        // movements is a real month with a few blanks filled in.
+        $isEstimate = $byMonth[$month]->every(fn (Transaction $transaction): bool => $estimates->has($transaction->id));
 
         return [
             'variant' => 'spending',
@@ -123,19 +126,6 @@ class OnboardingRevealService
             'is_estimate' => $isEstimate,
             ...($isEstimate ? ['estimates' => $this->estimateLines($byMonth[$month], $currency)] : []),
         ];
-    }
-
-    /**
-     * Whether every outgoing of the month is an estimate. A month mixing them
-     * with real movements is a real month with a few blanks filled in.
-     *
-     * @param  Collection<int, Transaction>  $transactions
-     */
-    private function isEstimated(User $user, Collection $transactions): bool
-    {
-        $estimateIds = $this->estimates->idsFor($user, $this->windowStart());
-
-        return $transactions->every(fn (Transaction $transaction): bool => in_array($transaction->id, $estimateIds, true));
     }
 
     /**
@@ -303,6 +293,9 @@ class OnboardingRevealService
         $today = now();
         $lookup = BalanceLookup::forAccounts($accounts->pluck('id'), $today, $today);
         $currency = $user->currency_code;
+        $hasSpendingAccounts = $accounts->contains(
+            fn (Account $account): bool => in_array($account->type, $this->spendingTypes(), true)
+        );
 
         // Everything, with no chart preference applied. `excludedTypesFor()`
         // answers for the dashboard's net worth chart, where a mortgage is off
@@ -323,12 +316,11 @@ class OnboardingRevealService
             // "move as single numbers", then offering to add the current
             // account they just connected, is the screen answering somebody
             // else's situation.
-            'has_spending_accounts' => $accounts->contains(
-                fn (Account $account): bool => in_array($account->type, $this->spendingTypes(), true)
-            ),
+            'has_spending_accounts' => $hasSpendingAccounts,
             // Where the reveal can offer to type last month in, for the reader
-            // whose current account brought no month to read.
-            'quick_expenses_account' => $this->quickExpensesAccount($accounts),
+            // whose current account brought no month to read. The reader with
+            // no current account at all is offered one instead.
+            'quick_expenses_account' => $hasSpendingAccounts ? $this->quickExpensesAccount($accounts) : null,
             'net_worth' => $this->netWorth->at($accounts, $lookup, $today, $currency, $excluded),
             // Only what the total is made of: a credit card listed under a
             // figure it was left out of is a figure that does not add up.
@@ -347,8 +339,8 @@ class OnboardingRevealService
     }
 
     /**
-     * The first account the user can type last month's expenses into: one that
-     * keeps a ledger and is not fed by a bank.
+     * The account the user can type last month's expenses into: one that keeps
+     * a ledger and is not fed by a bank, a current account before any other.
      *
      * @param  Collection<int, Account>  $accounts
      * @return array{id: string, name: string, currency_code: string}|null
@@ -356,7 +348,13 @@ class OnboardingRevealService
     private function quickExpensesAccount(Collection $accounts): ?array
     {
         $account = $accounts
-            ->sortBy('created_at')
+            // A current account first: it is where last month's rent and
+            // groceries actually went, and the screen names it.
+            ->sortBy([
+                fn (Account $first, Account $second): int => ($first->type !== AccountType::Checking) <=> ($second->type !== AccountType::Checking),
+                ['created_at', 'asc'],
+                ['id', 'asc'],
+            ])
             ->first(fn (Account $account): bool => $account->acceptsManualMovements());
 
         return $account === null ? null : [

@@ -192,6 +192,10 @@ export function StepReveal({
                 currencyCode={account.currency_code}
                 spendingGuess={spendingGuess}
                 onBack={() => setAddingExpenses(false)}
+                // Skipping here is the same answer as "Continue without it":
+                // sending them back to the screen that offered it would ask
+                // the question twice.
+                onSkip={onContinue}
                 onComplete={() => {
                     setAddingExpenses(false);
                     setData(null);
@@ -463,9 +467,11 @@ function RevealEstimate({
     const locale = useLocale();
     const money = (amount: number) =>
         formatCurrency(amount, data.currency_code, locale, 0, 0);
-    const gap =
+    const estimates = data.estimates ?? [];
+    // What the basics leave of the guess, when they leave anything.
+    const shortfall =
         spendingGuess !== undefined && data.spent < spendingGuess
-            ? spendingGuess - data.spent
+            ? { guess: spendingGuess, gap: spendingGuess - data.spent }
             : null;
 
     return (
@@ -485,13 +491,13 @@ function RevealEstimate({
                         })}
                     </h1>
                     <p className="text-[15px] leading-relaxed text-pretty text-muted-foreground">
-                        {gap !== null && spendingGuess !== undefined ? (
+                        {shortfall !== null ? (
                             <StepEmphasis
                                 sentence={__(
                                     'You guessed :guess. The other :gap is the part nobody remembers — coffees, Amazon, the odd dinner. It shows up once your real movements are in.',
-                                    { guess: money(spendingGuess) },
+                                    { guess: money(shortfall.guess) },
                                 )}
-                                word={money(gap)}
+                                word={money(shortfall.gap)}
                             />
                         ) : (
                             __(
@@ -501,15 +507,19 @@ function RevealEstimate({
                     </p>
                 </div>
 
-                {gap !== null && (
-                    <BasicsBar spent={data.spent} gap={gap} money={money} />
+                {shortfall !== null && (
+                    <BasicsBar
+                        spent={data.spent}
+                        gap={shortfall.gap}
+                        money={money}
+                    />
                 )}
 
-                {(data.estimates ?? []).length > 0 && (
+                {estimates.length > 0 && (
                     <StepList>
-                        {(data.estimates ?? []).map((estimate) => (
+                        {estimates.map((estimate, index) => (
                             <div
-                                key={estimate.name}
+                                key={`${estimate.name}-${index}`}
                                 className="flex items-center justify-between gap-3.5 py-3"
                             >
                                 <span className="truncate text-[15px] font-medium">
@@ -615,6 +625,12 @@ function RevealAssets({
     // The second chance: a month typed in by hand lands the spending reveal
     // this reader came for. Only where there is an account to type it into.
     const offerAccount = awaitingMovements ? data.quick_expenses_account : null;
+    // The guess is in the user's currency; typed into an account in another
+    // one, the screen behind the offer cannot set the two side by side.
+    const guess =
+        offerAccount?.currency_code === data.currency_code
+            ? spendingGuess
+            : undefined;
 
     return (
         <StepScreen
@@ -696,7 +712,7 @@ function RevealAssets({
                     ))}
                 </StepList>
 
-                {offerAccount && spendingGuess !== undefined ? (
+                {offerAccount && guess !== undefined ? (
                     <div className="flex flex-col gap-3 rounded-lg border p-4.5">
                         <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
                             {__('You guessed')}
@@ -706,7 +722,7 @@ function RevealAssets({
                                 sentence={__(':guess a month')}
                                 values={{
                                     guess: formatCurrency(
-                                        spendingGuess,
+                                        guess,
                                         data.currency_code,
                                         locale,
                                         0,

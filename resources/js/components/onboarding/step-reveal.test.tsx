@@ -2,15 +2,16 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepReveal } from './step-reveal';
 
-const { get, captureEvent } = vi.hoisted(() => ({
+const { get, post, captureEvent } = vi.hoisted(() => ({
     get: vi.fn(),
+    post: vi.fn(),
     captureEvent: vi.fn(),
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 vi.mock('axios', () => ({
-    default: { get, isAxiosError: () => false },
+    default: { get, post, isAxiosError: () => false },
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -108,6 +109,7 @@ async function renderReveal(props: Record<string, unknown> = {}) {
 describe('StepReveal', () => {
     afterEach(() => {
         get.mockReset();
+        post.mockReset();
         captureEvent.mockReset();
     });
 
@@ -398,8 +400,13 @@ describe('StepReveal', () => {
         expect(get).toHaveBeenCalledTimes(1);
 
         fireEvent.click(screen.getByText('Add last month in round figures'));
+        fireEvent.change(screen.getByLabelText('Rent'), {
+            target: { value: '750' },
+        });
+        post.mockResolvedValueOnce({ data: {} });
         get.mockResolvedValueOnce(estimate());
-        fireEvent.click(screen.getByText('Skip for now'));
+        fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+        await settle();
         await settle();
 
         expect(get).toHaveBeenCalledTimes(2);
@@ -407,6 +414,40 @@ describe('StepReveal', () => {
             screen.getByText('Your basics come to €1,240 a month'),
         ).toBeInTheDocument();
         expect(onContinue).not.toHaveBeenCalled();
+    });
+
+    // Skipping is the same answer as "Continue without it", so it is not
+    // asked a second time.
+    it('moves on when the round figures are skipped', async () => {
+        get.mockResolvedValue(awaitingMovements());
+        const onContinue = vi.fn();
+
+        await renderReveal({ spendingGuess: 200000, onContinue });
+
+        fireEvent.click(screen.getByText('Add last month in round figures'));
+        fireEvent.click(screen.getByText('Skip for now'));
+
+        expect(onContinue).toHaveBeenCalled();
+        expect(get).toHaveBeenCalledTimes(1);
+    });
+
+    it('promises no comparison when the account is in another currency', async () => {
+        get.mockResolvedValue(
+            awaitingMovements({
+                quick_expenses_account: {
+                    id: 'a1',
+                    name: 'Main account',
+                    currency_code: 'USD',
+                },
+            }),
+        );
+
+        await renderReveal({ spendingGuess: 200000 });
+
+        expect(screen.queryByText('You guessed')).toBeNull();
+        expect(
+            screen.getByText('Add last month in round figures'),
+        ).toBeInTheDocument();
     });
 
     it('keeps the plain card-free offer when no guess was made', async () => {

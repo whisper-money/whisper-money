@@ -73,6 +73,8 @@ interface StepImportQuickExpensesProps {
     spendingGuess?: number;
     /** Called once the expenses are saved, and when the screen is skipped. */
     onComplete: () => void;
+    /** Skipping, when it should not count as finishing the screen. */
+    onSkip?: () => void;
     onBack?: () => void;
     /** Back to the file, for someone who turns out to have one. */
     onUpload?: () => void;
@@ -91,6 +93,7 @@ export function StepImportQuickExpenses({
     currencyCode,
     spendingGuess,
     onComplete,
+    onSkip = onComplete,
     onBack,
     onUpload,
     importLink: importLinkOption,
@@ -195,7 +198,7 @@ export function StepImportQuickExpenses({
                         variant="ghost"
                         className="h-10 text-sm"
                         disabled={isSaving}
-                        onClick={onComplete}
+                        onClick={onSkip}
                     />
                     {onBack && (
                         <StepButton

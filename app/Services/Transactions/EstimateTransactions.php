@@ -109,36 +109,19 @@ class EstimateTransactions
     }
 
     /**
-     * The months (`Y-m`) since the given date a user holds estimates in. A
-     * month of estimates is a whole month by construction, however few rows it
-     * has.
+     * The estimates a user holds since the given date, as the month (`Y-m`)
+     * each one is in, keyed by its id: enough to tell which months hold
+     * estimates and whether a month holds nothing else.
      *
-     * @return list<string>
+     * @return Collection<string, string>
      */
-    public function monthsFor(User $user, CarbonInterface $since): array
+    public function monthsById(User $user, CarbonInterface $since): Collection
     {
         return $this->estimates()
             ->where('user_id', $user->id)
             ->where('transaction_date', '>=', $since->toDateString())
-            ->pluck('transaction_date')
-            ->map(fn (Carbon $date): string => $date->format('Y-m'))
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * The ids of the estimates a user holds since the given date.
-     *
-     * @return list<string>
-     */
-    public function idsFor(User $user, CarbonInterface $since): array
-    {
-        return $this->estimates()
-            ->where('user_id', $user->id)
-            ->where('transaction_date', '>=', $since->toDateString())
-            ->pluck('id')
-            ->all();
+            ->pluck('transaction_date', 'id')
+            ->map(fn (Carbon $date): string => $date->format('Y-m'));
     }
 
     /**

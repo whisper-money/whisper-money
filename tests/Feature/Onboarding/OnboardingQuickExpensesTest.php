@@ -410,3 +410,19 @@ it('offers no account to type into when every current account is a bank’s', fu
         ->assertOk()
         ->assertJson(['variant' => 'assets', 'quick_expenses_account' => null]);
 });
+
+it('offers a current account before an older savings one', function () {
+    $user = quickExpensesUser();
+    Account::factory()->for($user)->create([
+        'type' => 'savings',
+        'currency_code' => 'EUR',
+        'banking_connection_id' => null,
+        'created_at' => now()->subDays(3),
+    ]);
+    $checking = manualAccount($user);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/reveal')
+        ->assertOk()
+        ->assertJsonPath('quick_expenses_account.id', $checking->id);
+});
