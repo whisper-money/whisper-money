@@ -695,10 +695,6 @@ export default function ConnectionsPage({ connections }: Props) {
                 <UpgradeDialog
                     open={upgradeDialogOpen}
                     onOpenChange={setUpgradeDialogOpen}
-                    title={__('Bank connections are a paid feature')}
-                    description={__(
-                        'Subscribe to a plan to automatically sync your transactions and balances straight from your bank.',
-                    )}
                     source="connections"
                 />
 

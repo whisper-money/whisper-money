@@ -33,7 +33,6 @@ class McpTokenController extends Controller
                 ->all(),
             'serverUrl' => url('/mcp'),
             'oauthUrl' => url('/mcp/oauth'),
-            'subscribeUrl' => route('subscribe'),
             'newToken' => $request->session()->get('mcp_token'),
         ]);
     }

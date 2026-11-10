@@ -1,16 +1,20 @@
 import { type ConnectedAppRow } from '@/components/access-tokens/connected-app-list';
+import { pricingFixture } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import McpPage from './mcp';
 
+vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
+
 const pageProps = vi.hoisted(() => ({
-    auth: { hasProPlan: true },
+    auth: { hasProPlan: true, user: { id: 'user-1' } },
+    pricing: null as unknown as typeof pricingFixture,
+    locale: 'en',
     tokens: [],
     connectedApps: [] as ConnectedAppRow[],
     serverUrl: 'https://whisper.money/mcp',
     oauthUrl: 'https://whisper.money/mcp/oauth',
-    subscribeUrl: '/subscribe',
     newToken: null as string | null,
 }));
 
@@ -40,6 +44,31 @@ describe('MCP settings page', () => {
     beforeEach(() => {
         pageProps.newToken = null;
         pageProps.connectedApps = [];
+        pageProps.auth.hasProPlan = true;
+        pageProps.pricing = pricingFixture;
+    });
+
+    it('upsells a free account and opens the upgrade dialog in place, attributed to MCP', () => {
+        pageProps.auth.hasProPlan = false;
+
+        render(<McpPage />);
+
+        expect(
+            screen.getByText('Connect assistants with Standard'),
+        ).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: 'See plans' }));
+
+        expect(
+            screen.getByText(
+                'Create tokens to connect AI assistants to your data.',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen
+                .getByRole('link', { name: /Start Standard — free for/ })
+                .getAttribute('href'),
+        ).toContain('source=mcp');
     });
 
     it('lists the assistants connected through OAuth', () => {

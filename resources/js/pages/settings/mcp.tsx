@@ -56,7 +56,6 @@ interface McpPageProps {
     connectedApps: ConnectedAppRow[];
     serverUrl: string;
     oauthUrl: string;
-    subscribeUrl: string;
     newToken: string | null;
 }
 
@@ -100,15 +99,8 @@ const CLAUDE_CODE_PLUGIN_COMMANDS = [
 type ConnectorApp = 'claude' | 'chatgpt' | 'perplexity';
 
 export default function Mcp() {
-    const {
-        tokens,
-        connectedApps,
-        serverUrl,
-        oauthUrl,
-        subscribeUrl,
-        newToken,
-        auth,
-    } = usePage<SharedData & McpPageProps>().props;
+    const { tokens, connectedApps, serverUrl, oauthUrl, newToken, auth } =
+        usePage<SharedData & McpPageProps>().props;
     const [connector, setConnector] = useState<ConnectorApp>('claude');
     // A freshly minted token means the user just used the developer flow, so
     // keep that section open; otherwise it starts collapsed for everyone else.
@@ -199,14 +191,7 @@ export default function Mcp() {
                         <ProBadge className="mt-1 shrink-0" />
                     </div>
 
-                    {!auth.hasProPlan && (
-                        <ProUpsellAlert
-                            subscribeUrl={subscribeUrl}
-                            description={__(
-                                'You can set it up now, but it only works on a paid plan.',
-                            )}
-                        />
-                    )}
+                    {!auth.hasProPlan && <ProUpsellAlert source="mcp" />}
 
                     <Alert>
                         <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />

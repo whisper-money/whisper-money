@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Enums\BankingProvider;
 use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Achievements\Catalog;
 use App\Services\Achievements\Challenges;
@@ -70,6 +71,7 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $showsSecondOffer = $this->memoize(fn (): bool => $this->showsSecondOffer($request, $user));
 
         return [
             ...parent::share($request),
@@ -100,7 +102,8 @@ class HandleInertiaRequests extends Middleware
             'openBankingEnabled' => (bool) config('services.enablebanking.enabled'),
             'demoCredentials' => $this->demoCredentials($request, $user),
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
-            'showSecondOffer' => fn (): bool => $this->showsSecondOffer($request, $user),
+            'showSecondOffer' => $showsSecondOffer,
+            'secondOfferBacklog' => fn (): ?array => $showsSecondOffer() ? $this->uncategorizedBacklog($user) : null,
             'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'aiImportMappingEnabled' => $user !== null && $this->aiImportMappingGate->allows($user),
             'pricing' => [
@@ -182,7 +185,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Whether the app shell puts the second Pro offer in front of the user:
+     * Whether the app shell puts the second offer in front of the user:
      * only once they are past onboarding and away from the paywall's own
      * pages, where the dialog would argue with the screen it sits on.
      */
@@ -192,6 +195,58 @@ class HandleInertiaRequests extends Middleware
             && $user->isOnboarded()
             && ! $this->isSubscriptionFlow($request)
             && $user->isEligibleForSecondOffer();
+    }
+
+    /**
+     * What the second offer argues with: how many of the user's movements still
+     * have no category, and the three latest of them to show by name. Only
+     * read while the offer is on screen, so nobody else pays for the queries.
+     *
+     * @return array{count: int, recent: list<array{id: string, description: string, amount: int, currency_code: string}>}
+     */
+    private function uncategorizedBacklog(User $user): array
+    {
+        $uncategorized = fn () => $user->transactions()->pendingAiCategorization();
+
+        return [
+            'count' => $uncategorized()->count(),
+            'recent' => $uncategorized()
+                ->orderByDesc('transaction_date')
+                ->orderByDesc('created_at')
+                ->limit(3)
+                ->get(['id', 'description', 'amount', 'currency_code'])
+                ->map(fn (Transaction $transaction): array => [
+                    'id' => $transaction->id,
+                    'description' => (string) $transaction->description,
+                    'amount' => $transaction->amount,
+                    'currency_code' => $transaction->currency_code,
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * A closure that runs `$resolve` the first time it is called and hands back
+     * the same answer after that, for a lazy prop another one depends on.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $resolve
+     * @return Closure(): T
+     */
+    private function memoize(Closure $resolve): Closure
+    {
+        $resolved = false;
+        $value = null;
+
+        return function () use ($resolve, &$resolved, &$value): mixed {
+            if (! $resolved) {
+                $value = $resolve();
+                $resolved = true;
+            }
+
+            return $value;
+        };
     }
 
     /**

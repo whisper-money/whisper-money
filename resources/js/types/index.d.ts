@@ -219,6 +219,18 @@ export interface Flash {
 
 export type ChartColorScheme = 'neutral' | 'colorful' | 'blue' | 'pink';
 
+export interface SecondOfferBacklog {
+    /** How many of the user's movements still have no category. */
+    count: number;
+    /** The three latest of them, amounts in minor units. */
+    recent: {
+        id: string;
+        description: string;
+        amount: number;
+        currency_code: string;
+    }[];
+}
+
 export interface SharedData {
     name: string;
     appUrl: string;
@@ -231,10 +243,15 @@ export interface SharedData {
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
     /**
-     * Whether the app shell offers Pro once more: a free user whose first
+     * Whether the app shell offers the plan once more: a free user whose first
      * transactions landed after they met the paywall. Shown once.
      */
     showSecondOffer: boolean;
+    /**
+     * The uncategorized movements the second offer names, only while
+     * `showSecondOffer` is true (null otherwise, and never queried).
+     */
+    secondOfferBacklog: SecondOfferBacklog | null;
     demoEnabled: boolean;
     /** False when the install carries no EnableBanking credentials. */
     openBankingEnabled: boolean;

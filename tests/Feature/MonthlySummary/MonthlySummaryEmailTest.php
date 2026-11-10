@@ -290,21 +290,21 @@ it('locks the analysis behind the same block for everyone without one', function
     $rendered = (new MonthlySummaryEmail($summary->user, $summary))->render();
 
     expect($rendered)
-        ->toContain('Pro tells you where from')
-        ->toContain('See Pro')
+        ->toContain('Standard tells you where from')
+        ->toContain('See Standard')
         ->not->toContain('never from your individual transactions');
 });
 
 it('points a paying reader at the AI setting instead of at the paywall', function (): void {
     // A Pro reader who never granted AI consent gets the same locked block, but
-    // sending them to a "See Pro" button for something they already pay for
+    // sending them to a "See Standard" button for something they already pay for
     // would be absurd. Billing off means everyone is Pro, which is this branch.
     config(['subscriptions.enabled' => false]);
     $summary = sentSummaryFor();
 
     $rendered = (new MonthlySummaryEmail($summary->user, $summary))->render();
 
-    expect($rendered)->toContain('Turn AI on in Settings')->not->toContain('See Pro');
+    expect($rendered)->toContain('Turn AI on in Settings')->not->toContain('See Standard');
 });
 
 it('says the analysis could not be written rather than selling Pro to someone who has it', function (): void {
@@ -318,9 +318,9 @@ it('says the analysis could not be written rather than selling Pro to someone wh
 
     expect($rendered)
         ->toContain('We could not write your analysis this month')
-        ->not->toContain('Pro tells you where from')
+        ->not->toContain('Standard tells you where from')
         ->not->toContain('Turn AI on in Settings')
-        ->not->toContain('See Pro');
+        ->not->toContain('See Standard');
 });
 
 it('says so when the month was reported incomplete', function (): void {
@@ -606,7 +606,7 @@ it('leaves the analysis section out of the email while it is switched off', func
     expect($rendered)
         ->not->toContain('Why this happened')
         ->not->toContain('We could not write your analysis this month')
-        ->not->toContain('Pro tells you where from');
+        ->not->toContain('Standard tells you where from');
 })->with(['pro' => true, 'free' => false]);
 
 it('still points at an analysis already written before it was switched off', function (): void {

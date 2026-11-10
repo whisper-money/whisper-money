@@ -359,10 +359,6 @@ export function CreateAccountDialog({
             <UpgradeDialog
                 open={upgradeDialogOpen}
                 onOpenChange={setUpgradeDialogOpen}
-                title={__('Connected accounts are a paid feature')}
-                description={__(
-                    'Subscribe to a plan to link a bank account and keep it synced automatically.',
-                )}
                 source="accounts"
             />
 

@@ -1,7 +1,7 @@
 import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { UpgradeDialog } from './upgrade-dialog';
+import { UpgradeDialog, type UpsellSource } from './upgrade-dialog';
 
 const mocks = vi.hoisted(() => ({
     captureEvent: vi.fn(),
@@ -42,17 +42,11 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
-function renderDialog(
-    source: 'connections' | 'ai_categorization' = 'connections',
-) {
+const CTA = /Start Standard — free for/;
+
+function renderDialog(source: UpsellSource = 'connections') {
     return render(
-        <UpgradeDialog
-            open
-            onOpenChange={vi.fn()}
-            title="Bank connections are a paid feature"
-            description="Subscribe to sync your bank."
-            source={source}
-        />,
+        <UpgradeDialog open onOpenChange={vi.fn()} source={source} />,
     );
 }
 
@@ -63,14 +57,105 @@ describe('UpgradeDialog', () => {
         mocks.latam.current = false;
     });
 
-    it('renders the per-feature title and description', () => {
+    it.each([
+        [
+            'ai_categorization',
+            'Let the AI sort your movements',
+            'Standard files every new movement for you and writes the rules that keep doing it. It switches on with your plan — no extra step.',
+        ],
+        [
+            'connections',
+            'Connect your bank and stop typing movements',
+            'Standard keeps your accounts in sync, so new movements arrive on their own every day.',
+        ],
+        [
+            'accounts',
+            'Connect your bank and stop typing movements',
+            'Standard keeps your accounts in sync, so new movements arrive on their own every day.',
+        ],
+        [
+            'api',
+            'Build on your data with Standard',
+            'Create API tokens for your own scripts and integrations.',
+        ],
+        [
+            'mcp',
+            'Build on your data with Standard',
+            'Create tokens to connect AI assistants to your data.',
+        ],
+    ] as const)('writes the %s copy itself', (source, title, description) => {
+        renderDialog(source);
+
+        expect(screen.getByText(title)).toBeInTheDocument();
+        expect(screen.getByText(description)).toBeInTheDocument();
+        expect(
+            screen.getByText('And the rest of Standard'),
+        ).toBeInTheDocument();
+    });
+
+    it('names the trial on the button, never another plan name', () => {
         renderDialog();
 
         expect(
-            screen.getByText('Bank connections are a paid feature'),
+            screen.getByRole('link', {
+                name: 'Start Standard — free for 14 days',
+            }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/\bPro\b/)).toBeNull();
+    });
+
+    it('says what leaves the account only where the checkout grants the AI consent', () => {
+        renderDialog('ai_categorization');
+
+        expect(
+            screen.getByText('What leaves your account'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText('Subscribe to sync your bank.'),
+            screen.getByText(/Merchant names and amounts, one line at a time/),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the AI disclosure when a caller adds its own rows', () => {
+        render(
+            <UpgradeDialog
+                open
+                onOpenChange={vi.fn()}
+                source="ai_categorization"
+            >
+                <p>Custom preview</p>
+            </UpgradeDialog>,
+        );
+
+        expect(screen.getByText('Custom preview')).toBeInTheDocument();
+        expect(
+            screen.getByText('What leaves your account'),
+        ).toBeInTheDocument();
+    });
+
+    it.each(['connections', 'accounts', 'api', 'mcp'] as const)(
+        'carries no AI disclosure on the %s upsell',
+        (source) => {
+            renderDialog(source);
+
+            expect(screen.queryByText('What leaves your account')).toBeNull();
+        },
+    );
+
+    it('attributes an API checkout to the API settings', () => {
+        renderDialog('api');
+
+        expect(
+            screen.getByRole('link', { name: CTA }).getAttribute('href'),
+        ).toContain('source=api');
+    });
+
+    it('promises no bank sync on the latam price', () => {
+        mocks.latam.current = true;
+        renderDialog('ai_categorization');
+
+        expect(screen.queryByText('And the rest of Standard')).toBeNull();
+        expect(
+            screen.getByText('What leaves your account'),
         ).toBeInTheDocument();
     });
 
@@ -79,7 +164,7 @@ describe('UpgradeDialog', () => {
 
         // The CTA is the anchor itself — checkout is a server redirect into
         // Stripe, so it cannot be an Inertia visit.
-        const link = screen.getByRole('link', { name: /Start a plan/ });
+        const link = screen.getByRole('link', { name: CTA });
         // Default plan is the configured default (yearly), and the source rides
         // along so the subscription can be attributed to this upsell point.
         expect(link).toHaveAttribute(
@@ -100,7 +185,7 @@ describe('UpgradeDialog', () => {
         mocks.defaultPlan.current = 'monthly';
         renderDialog();
 
-        const link = screen.getByRole('link', { name: /Start a plan/ });
+        const link = screen.getByRole('link', { name: CTA });
         expect(link).toHaveAttribute(
             'href',
             expect.stringMatching(/[?&]plan=monthly/),
@@ -121,7 +206,7 @@ describe('UpgradeDialog', () => {
         renderDialog();
 
         fireEvent.click(screen.getByText('Yearly'));
-        fireEvent.click(screen.getByRole('link', { name: /Start a plan/ }));
+        fireEvent.click(screen.getByRole('link', { name: CTA }));
 
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'upgrade_checkout_started',
@@ -137,7 +222,7 @@ describe('UpgradeDialog', () => {
     it('captures a checkout-started event tagged with the source', () => {
         renderDialog();
 
-        fireEvent.click(screen.getByRole('link', { name: /Start a plan/ }));
+        fireEvent.click(screen.getByRole('link', { name: CTA }));
 
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'upgrade_checkout_started',
@@ -184,7 +269,7 @@ describe('UpgradeDialog', () => {
             ),
         ).toBeInTheDocument();
 
-        const link = screen.getByRole('link', { name: /Start a plan/ });
+        const link = screen.getByRole('link', { name: CTA });
         expect(link.getAttribute('href')).toContain('tier=latam');
 
         fireEvent.click(link);
@@ -201,9 +286,7 @@ describe('UpgradeDialog', () => {
             ),
         ).toBeInTheDocument();
         expect(
-            screen
-                .getByRole('link', { name: /Start a plan/ })
-                .getAttribute('href'),
+            screen.getByRole('link', { name: CTA }).getAttribute('href'),
         ).not.toContain('tier=');
     });
 

@@ -304,7 +304,9 @@ function PlanStatus({
         return (
             <div className="flex items-center gap-2">
                 <CheckIcon className="size-5 text-emerald-500" />
-                <span className="font-medium">{__('Pro Plan Active')}</span>
+                <span className="font-medium">
+                    {__('Standard plan active')}
+                </span>
                 {price && (
                     <span className="text-muted-foreground">{`\u2014 ${price}`}</span>
                 )}
@@ -327,7 +329,7 @@ function PlanStatus({
             <p className="mt-2 text-sm">
                 {subscription.onGracePeriod
                     ? __(
-                          "You canceled your plan, so you won't be charged. Pro stays on until the trial ends.",
+                          "You canceled your plan, so you won't be charged. Standard stays on until the trial ends.",
                       )
                     : price
                       ? __('First charge of :price on :date.', {
@@ -395,7 +397,7 @@ function UnpaidSubscriptionSection() {
             <AlertDescription className="flex flex-col items-start gap-3">
                 <span>
                     {__(
-                        'We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Pro.',
+                        'We could not charge your card for your subscription. Cancel it and we stop trying to charge you, or update your payment method to keep Standard.',
                     )}
                 </span>
                 {errors.subscription && (
@@ -465,10 +467,8 @@ function SubscribedSection({
     return (
         <div className="space-y-6">
             <HeadingSmall
-                title={__('Your Pro Plan')}
-                description={__(
-                    "You're enjoying all the benefits of Whisper Money Pro",
-                )}
+                title={__('Your Standard plan')}
+                description={__("You're enjoying all the benefits of Standard")}
             />
 
             {isSharedAccount && (
@@ -704,10 +704,6 @@ export default function Billing() {
                         <UpgradeDialog
                             open={showAiUpgrade}
                             onOpenChange={setShowAiUpgrade}
-                            title={__('AI categorization is a paid feature')}
-                            description={__(
-                                'Subscribe to a plan to let AI categorize your transactions automatically. You can enable AI right after subscribing.',
-                            )}
                             source="ai_categorization"
                         />
                     )}

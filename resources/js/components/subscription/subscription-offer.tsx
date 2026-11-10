@@ -172,7 +172,7 @@ export function useOffer(
  * the terms underneath say the same thing, and the two cannot be allowed to
  * disagree on the one screen that asks for money.
  */
-function checkoutLabel(plan: Plan | undefined): string {
+export function checkoutLabel(plan: Plan | undefined): string {
     if (!plan) {
         return __('Start Standard');
     }
