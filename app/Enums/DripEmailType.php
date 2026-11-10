@@ -22,6 +22,7 @@ enum DripEmailType: string
     case InactiveBanked = 'inactive_banked';
     case TrialEnding = 'trial_ending';
     case TrialEndingCanceled = 'trial_ending_canceled';
+    case AnnualRenewal = 'annual_renewal';
     case MonthlySummary = 'monthly_summary';
     case MonthlySummaryReminder = 'monthly_summary_reminder';
     case AchievementsUnlocked = 'achievements_unlocked';
