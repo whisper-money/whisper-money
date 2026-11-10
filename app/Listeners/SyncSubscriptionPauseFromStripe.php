@@ -33,12 +33,17 @@ class SyncSubscriptionPauseFromStripe
             return;
         }
 
-        $stripeId = $event->payload['data']['object']['id'] ?? null;
+        $object = $event->payload['data']['object'] ?? [];
+        $stripeId = $object['id'] ?? null;
         $subscription = is_string($stripeId) && $stripeId !== ''
             ? Subscription::query()->where('stripe_id', $stripeId)->first()
             : null;
 
-        if ($subscription === null || $subscription->owner->cannotUseStripe()) {
+        // Nothing to sync when neither side has a pause: most events are about
+        // something else, and they are not worth a call to Stripe.
+        $involvesPause = ! empty($object['pause_collection']) || $subscription?->pause_starts_at !== null;
+
+        if ($subscription === null || ! $involvesPause || $subscription->owner->cannotUseStripe()) {
             return;
         }
 

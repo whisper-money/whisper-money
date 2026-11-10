@@ -148,15 +148,19 @@ function openAnswer(User $user, CancellationReason $reason = CancellationReason:
 
 /**
  * A `customer.subscription.updated` event, with Stripe answering the re-read
- * with the given pause. The event's own payload is deliberately stale.
+ * with the given pause. The payload carries the same pause unless told
+ * otherwise, as a stale event would.
+ *
+ * @param  array<string, mixed>|null  $pauseCollection
+ * @param  array<string, mixed>|null|false  $payloadPause  False: the same as Stripe's.
  */
-function pauseWebhook(string $stripeId, ?array $pauseCollection, int $periodEnd = 0): void
+function pauseWebhook(string $stripeId, ?array $pauseCollection, int $periodEnd = 0, array|null|false $payloadPause = false): void
 {
     fakeStripeForPause(periodEnd: $periodEnd, pauseCollection: $pauseCollection);
 
     app(SyncSubscriptionPauseFromStripe::class)->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
-        'data' => ['object' => ['id' => $stripeId, 'pause_collection' => null]],
+        'data' => ['object' => ['id' => $stripeId, 'pause_collection' => $payloadPause === false ? $pauseCollection : $payloadPause]],
     ]));
 }
 
@@ -489,7 +493,7 @@ describe('syncing from Stripe', function () {
         $resumesAt = $subscription->pause_resumes_at;
 
         // The payload says no pause; Stripe, asked again, says there is one.
-        pauseWebhook($subscription->stripe_id, ['behavior' => 'void', 'resumes_at' => $resumesAt->copy()->subHour()->getTimestamp()]);
+        pauseWebhook($subscription->stripe_id, ['behavior' => 'void', 'resumes_at' => $resumesAt->copy()->subHour()->getTimestamp()], payloadPause: null);
 
         expect($user->fresh()->hasPausedSubscription())->toBeTrue();
     });
@@ -530,6 +534,20 @@ describe('syncing from Stripe', function () {
             ->and($subscription->pause_resumes_at)->toBeNull()
             ->and($user->fresh()->hasProPlan())->toBeTrue();
     });
+});
+
+test('an event with no pause on either side never reaches Stripe', function () {
+    $user = pausableSubscriber();
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->shouldNotReceive('getService');
+    app()->bind(StripeClient::class, fn () => $stripe);
+
+    app(SyncSubscriptionPauseFromStripe::class)->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => ['id' => $user->subscription('default')->stripe_id, 'pause_collection' => null]],
+    ]));
+
+    expect($user->subscription('default')->refresh()->pause_starts_at)->toBeNull();
 });
 
 describe('resuming early', function () {
