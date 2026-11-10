@@ -101,6 +101,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Retention Coupon
+    |--------------------------------------------------------------------------
+    |
+    | The discount the in-app cancel flow offers to a subscriber who says the
+    | plan is too expensive, once per user. `stripe:ensure-launch-coupons`
+    | creates it in Stripe from these values, and the flow quotes the saving
+    | from them, so the two always agree.
+    |
+    | A repeating coupon runs from the day it is applied, so on a trial it
+    | covers the first charges after the trial ends: three monthly invoices,
+    | or the one yearly invoice.
+    |
+    */
+
+    'retention_coupon' => [
+        'id' => env('STRIPE_RETENTION_COUPON_ID', 'wm_retention_30_3m'),
+        'percent_off' => 30,
+        'duration_in_months' => 3,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Stripe Product IDs
     |--------------------------------------------------------------------------
     |

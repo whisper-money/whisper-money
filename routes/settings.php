@@ -18,6 +18,7 @@ use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
+use App\Http\Controllers\SubscriptionCancellationController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -145,6 +146,23 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/billing/swap-to-standard', [SubscriptionController::class, 'swapToStandard'])
         ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
         ->name('settings.billing.swap-to-standard');
+
+    // The in-app cancel flow: the survey first, then an offer or the cancellation.
+    Route::middleware(['throttle:10,1', 'block-demo', 'block-shared'])
+        ->prefix('settings/billing/cancellation')
+        ->name('settings.billing.cancellation.')
+        ->group(function () {
+            Route::post('/', [SubscriptionCancellationController::class, 'store'])->name('store');
+            Route::post('{cancellationSurveyResponse}/retention-coupon', [SubscriptionCancellationController::class, 'applyRetentionCoupon'])
+                ->whereUuid('cancellationSurveyResponse')
+                ->name('retention-coupon');
+            Route::post('{cancellationSurveyResponse}/switch-to-yearly', [SubscriptionCancellationController::class, 'switchToYearly'])
+                ->whereUuid('cancellationSurveyResponse')
+                ->name('switch-to-yearly');
+            Route::post('{cancellationSurveyResponse}/cancel', [SubscriptionCancellationController::class, 'cancel'])
+                ->whereUuid('cancellationSurveyResponse')
+                ->name('cancel');
+        });
 
     Route::get('settings/delete-account', function (Request $request) {
         return Inertia::render('settings/delete-account', [

@@ -31,6 +31,13 @@ vi.mock('axios', () => ({
 
 vi.mock('@inertiajs/react', () => ({
     Head: ({ title }: { title: string }) => <title>{title}</title>,
+    Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useHttp: () => ({
+        data: { reason: '', details: '' },
+        processing: false,
+        setData: vi.fn(),
+        post: vi.fn(),
+    }),
     router: { post: mocks.routerPost, visit: vi.fn() },
     usePage: () => ({
         props: {
@@ -50,6 +57,7 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: mocks.captureEvent }));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 vi.mock('@/layouts/app-layout', () => ({
     default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -576,5 +584,57 @@ describe('Billing – billing portal analytics', () => {
             'billing_portal_opened',
             { source: 'manage' },
         );
+    });
+});
+
+describe('Billing – the in-app cancel flow', () => {
+    const running = {
+        onTrial: true,
+        trialEndsAt: '2026-11-25T12:00:00+00:00',
+        onGracePeriod: false,
+        endsAt: null,
+        plan: { price: 8.99, billing_period: 'month' },
+        standardUpgrade: null,
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.state.hasProPlan = true;
+        mocks.state.isSharedAccount = false;
+        mocks.state.hasUnpaidSubscription = false;
+        mocks.state.errors = {};
+    });
+
+    it('opens from the billing page and reports that it started', () => {
+        mocks.state.subscription = { ...running, canCancel: true };
+        render(<Billing />);
+
+        fireEvent.click(screen.getByTestId('cancel-subscription'));
+
+        expect(screen.getByTestId('cancel-flow')).toBeInTheDocument();
+        expect(mocks.captureEvent).toHaveBeenCalledWith('cancel_flow_started', {
+            on_trial: true,
+        });
+        // The portal stays, for the card and the invoices.
+        expect(screen.getByText('Manage Subscription')).toBeInTheDocument();
+    });
+
+    it('is not offered when the plan cannot be cancelled from here', () => {
+        mocks.state.subscription = { ...running, canCancel: false };
+        render(<Billing />);
+
+        expect(
+            screen.queryByTestId('cancel-subscription'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('is not offered on a shared account', () => {
+        mocks.state.isSharedAccount = true;
+        mocks.state.subscription = { ...running, canCancel: true };
+        render(<Billing />);
+
+        expect(
+            screen.queryByTestId('cancel-subscription'),
+        ).not.toBeInTheDocument();
     });
 });

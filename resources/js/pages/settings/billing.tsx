@@ -1,5 +1,6 @@
 import HeadingSmall from '@/components/heading-small';
 import { ProBadge } from '@/components/pro-badge';
+import { CancelSubscriptionFlow } from '@/components/subscription/cancel-subscription-flow';
 import { PlanPicker, planTerms } from '@/components/subscription/plan-picker';
 import { checkoutHref } from '@/components/subscription/subscription-offer';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
@@ -184,6 +185,11 @@ interface SubscriptionInfo {
      * get bank connections. Null for everyone else.
      */
     standardUpgrade: PlanPrice | null;
+    /**
+     * Whether the in-app cancel flow can run: a running plan, not already set
+     * to cancel nor waiting on a payment.
+     */
+    canCancel: boolean;
 }
 
 function standardUpgradeTerms(
@@ -369,6 +375,45 @@ function ManageSubscriptionButton({
                 {label}
             </a>
         </Button>
+    );
+}
+
+/**
+ * The way into the in-app cancel flow. The portal button next to it stays for
+ * the card and the invoices.
+ */
+function CancelSubscriptionButton({
+    onTrial,
+    currency,
+    locale,
+}: {
+    onTrial: boolean;
+    currency: string;
+    locale: string;
+}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <>
+            <Button
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={() => {
+                    captureEvent('cancel_flow_started', { on_trial: onTrial });
+                    setOpen(true);
+                }}
+                data-testid="cancel-subscription"
+            >
+                {__('Cancel subscription')}
+            </Button>
+            <CancelSubscriptionFlow
+                open={open}
+                onOpenChange={setOpen}
+                onTrial={onTrial}
+                currency={currency}
+                locale={locale}
+            />
+        </>
     );
 }
 
@@ -595,8 +640,15 @@ function SubscribedSection({
                     )}
                 </p>
                 {!isSharedAccount && !showsPaymentFailure && (
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
                         <ManageSubscriptionButton source="manage" />
+                        {subscription?.canCancel && (
+                            <CancelSubscriptionButton
+                                onTrial={subscription.onTrial}
+                                currency={currency}
+                                locale={locale}
+                            />
+                        )}
                     </div>
                 )}
             </div>
