@@ -446,7 +446,7 @@ describe('Billing – a plan set to cancel', () => {
         render(<Billing />);
 
         expect(
-            screen.getByText('Pro stops on Nov 5, 2026'),
+            screen.getByText('Standard stops on Nov 5, 2026'),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/your first charge is on Nov 5, 2026/),
@@ -466,7 +466,7 @@ describe('Billing – a plan set to cancel', () => {
         render(<Billing />);
 
         expect(
-            screen.getByText('Pro stops on Dec 20, 2026'),
+            screen.getByText('Standard stops on Dec 20, 2026'),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/You won't be charged again/),

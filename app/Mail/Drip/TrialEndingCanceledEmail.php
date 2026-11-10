@@ -26,7 +26,7 @@ class TrialEndingCanceledEmail extends DripMail
 
     protected function dripSubject(): string
     {
-        return __('Your Pro trial ends in 3 days');
+        return __('Your Standard trial ends in 3 days');
     }
 
     protected function template(): string

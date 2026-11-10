@@ -419,7 +419,7 @@ function ScheduledCancellationSection({
     return (
         <Alert data-testid="scheduled-cancellation">
             <CalendarClockIcon className="h-4 w-4" />
-            <AlertTitle>{__('Pro stops on :date', { date })}</AlertTitle>
+            <AlertTitle>{__('Standard stops on :date', { date })}</AlertTitle>
             <AlertDescription className="flex flex-col items-start gap-3">
                 <span>
                     {onTrial
