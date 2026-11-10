@@ -113,15 +113,16 @@ class EstimateTransactions
      * each one is in, keyed by its id: enough to tell which months hold
      * estimates and whether a month holds nothing else.
      *
-     * @return Collection<string, string>
+     * @return array<string, string>
      */
-    public function monthsById(User $user, CarbonInterface $since): Collection
+    public function monthsById(User $user, CarbonInterface $since): array
     {
         return $this->estimates()
             ->where('user_id', $user->id)
             ->where('transaction_date', '>=', $since->toDateString())
-            ->pluck('transaction_date', 'id')
-            ->map(fn (Carbon $date): string => $date->format('Y-m'));
+            ->get(['id', 'transaction_date'])
+            ->mapWithKeys(fn (Transaction $estimate): array => [$estimate->id => $estimate->transaction_date->format('Y-m')])
+            ->all();
     }
 
     /**

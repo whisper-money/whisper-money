@@ -72,7 +72,7 @@ class OnboardingRevealService
         // A month the user typed their main expenses into is a whole month by
         // construction, however few rows it took to say so.
         $estimates = $this->estimates->monthsById($user, $this->windowStart());
-        $estimated = $estimates->unique()->values()->all();
+        $estimated = array_values(array_unique($estimates));
 
         $candidates = $byMonth->keys()
             ->sortDesc()
@@ -101,7 +101,7 @@ class OnboardingRevealService
         $recurring = $this->recurringCharges($byMonth, $month);
         // Every outgoing of the month an estimate: a month mixing them with real
         // movements is a real month with a few blanks filled in.
-        $isEstimate = $byMonth[$month]->every(fn (Transaction $transaction): bool => $estimates->has($transaction->id));
+        $isEstimate = $byMonth[$month]->every(fn (Transaction $transaction): bool => isset($estimates[$transaction->id]));
 
         return [
             'variant' => 'spending',
