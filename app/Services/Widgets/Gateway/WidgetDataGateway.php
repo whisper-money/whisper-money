@@ -7,7 +7,6 @@ use App\Http\ApiV1\ErrorRenderer;
 use App\Http\ApiV1\Listing;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
@@ -97,7 +96,7 @@ class WidgetDataGateway
             unset($params[$name]);
         }
 
-        $request = $this->request($endpoint, $user, $path, $params);
+        $request = $endpoint->validate($this->request($endpoint, $user, $path, $params));
         $result = $endpoint->handle($request, $user, $path);
 
         if ($result instanceof Listing) {
@@ -114,10 +113,12 @@ class WidgetDataGateway
     }
 
     /**
-     * The request the endpoint's controller would get, signed in as $user and
-     * validated by its form request, without ever being dispatched: the
-     * parameters go through a query string and the global middleware that
-     * trims them, as they would over HTTP.
+     * The request the endpoint's controller would get, signed in as $user,
+     * without ever being dispatched: the parameters go through a query string
+     * and the global middleware that trims them, as they would over HTTP.
+     * Keep the list in step with the global input middleware of
+     * bootstrap/app.php (Laravel's defaults today); the parity test sends
+     * padded and blank strings through both.
      *
      * @param  array<string, string>  $path
      * @param  array<string, mixed>  $params
@@ -133,16 +134,7 @@ class WidgetDataGateway
             app($middleware)->handle($request, fn (Request $request): Request => $request);
         }
 
-        if ($endpoint->request === null) {
-            return $request;
-        }
-
-        /** @var FormRequest $formRequest */
-        $formRequest = $endpoint->request::createFrom($request);
-        $formRequest->setContainer(app())->setRedirector(app('redirect'));
-        $formRequest->validateResolved();
-
-        return $formRequest;
+        return $request;
     }
 
     /**
@@ -164,7 +156,9 @@ class WidgetDataGateway
 
     /**
      * The error the API would answer: Laravel's validation body, or the
-     * `/api/v1` error shape. Anything else is a bug and is not hidden.
+     * `/api/v1` error shape. An unexpected error is reported and answered as
+     * the API's generic 500, for this call only: the dashboard's other
+     * widgets still get their data.
      *
      * @return array{status: int, body: array<mixed>}
      */
@@ -179,7 +173,7 @@ class WidgetDataGateway
         }
 
         if (! $exception instanceof HttpExceptionInterface) {
-            throw $exception;
+            report($exception);
         }
 
         $response = $this->errors->render($exception) ?? throw $exception;

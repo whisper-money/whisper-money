@@ -28,6 +28,12 @@ class ManifestValidator
      */
     private const int MaxCalls = 20;
 
+    /**
+     * Identifiers a widget cannot destructure from useWidgetData(), or that
+     * would reach an object's prototype.
+     */
+    private const array ReservedKeys = ['__proto__', 'constructor', 'prototype', 'default', 'class', 'function', 'const', 'let', 'var', 'new', 'delete', 'this', 'return', 'import', 'export'];
+
     public function __construct(private EndpointRegistry $endpoints) {}
 
     /**
@@ -98,8 +104,8 @@ class ManifestValidator
      */
     private function checkCall(ValidatorInstance $validator, string $key, array $call): void
     {
-        if (preg_match('/^[A-Za-z_$][A-Za-z0-9_$]*$/', $key) !== 1) {
-            $validator->errors()->add("data.{$key}", "The data key \"{$key}\" must be a JavaScript identifier, such as \"spending\": the widget reads it from useWidgetData().");
+        if (preg_match('/^[A-Za-z_$][A-Za-z0-9_$]*$/', $key) !== 1 || in_array($key, self::ReservedKeys, true)) {
+            $validator->errors()->add("data.{$key}", "The data key \"{$key}\" must be a JavaScript identifier that is not a reserved word, such as \"spending\": the widget reads it from useWidgetData().");
         }
 
         $endpoint = $this->endpoint($validator, $key, $call['endpoint']);

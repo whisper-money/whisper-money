@@ -135,6 +135,8 @@ class AppServiceProvider extends ServiceProvider
         // The widget data gateway counts every API call it makes for a
         // dashboard's widgets, apart from the public API's 60 a minute so
         // opening a dashboard does not spend the user's integrations' budget.
+        // It takes the User, not a Request: it counts internal calls, so it
+        // is never a route's `throttle:` middleware.
         RateLimiter::for(WidgetDataGateway::Limiter, function (User $user): Limit {
             return Limit::perMinute((int) config('widgets.gateway.calls_per_minute'))->by((string) $user->getAuthIdentifier());
         });

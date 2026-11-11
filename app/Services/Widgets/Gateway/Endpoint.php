@@ -25,18 +25,35 @@ final readonly class Endpoint
 
     /**
      * @param  string  $path  as in the API reference, path parameters in braces: `/accounts/{account}/balances`
-     * @param  class-string<FormRequest>|null  $request  validates the parameters, as on the controller; null when the controller takes none
+     * @param  class-string<FormRequest>|null  $formRequest  validates the parameters, as on the controller; null when the controller takes none
      * @param  bool  $scopedToSpace  takes the optional `space` parameter
      * @param  bool  $listable  a cursor-paginated list, which `paginate: "all"` can read whole
      * @param  Closure  $handler  takes the request (the form request when there is one), the user and the path parameters, and answers a resource or a Listing
      */
     public function __construct(
         private string $path,
-        public ?string $request,
+        private ?string $formRequest,
         private bool $scopedToSpace,
         public bool $listable,
         private Closure $handler,
     ) {}
+
+    /**
+     * $request as the endpoint's controller would get it: validated by its
+     * form request, which throws the API's ValidationException otherwise.
+     */
+    public function validate(Request $request): Request
+    {
+        if ($this->formRequest === null) {
+            return $request;
+        }
+
+        $formRequest = $this->formRequest::createFrom($request);
+        $formRequest->setContainer(app())->setRedirector(app('redirect'));
+        $formRequest->validateResolved();
+
+        return $formRequest;
+    }
 
     /**
      * Read the endpoint for $user.
@@ -90,12 +107,14 @@ final readonly class Endpoint
             $parameters += array_fill_keys(self::CursorParameters, 'value');
         }
 
-        $request = $this->request === null ? null : new $this->request;
-        $rules = $request !== null && method_exists($request, 'rules') ? $request->rules() : [];
+        $formRequest = $this->formRequest === null ? null : new $this->formRequest;
+        $rules = $formRequest !== null && method_exists($formRequest, 'rules') ? $formRequest->rules() : [];
 
         foreach ($rules as $field => $fieldRules) {
+            $fieldRules = is_string($fieldRules) ? explode('|', $fieldRules) : $fieldRules;
+
             if (! str_contains($field, '.')) {
-                $parameters[$field] = in_array('array', (array) $fieldRules, true) ? 'list' : 'value';
+                $parameters[$field] = in_array('array', $fieldRules, true) ? 'list' : 'value';
             }
         }
 

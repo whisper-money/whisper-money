@@ -26,11 +26,6 @@ final readonly class Listing
     public const array NewestFirst = [['created_at', 'desc'], ['id', 'desc']];
 
     /**
-     * How many rows all() reads per query.
-     */
-    private const int ChunkSize = 1000;
-
-    /**
      * @param  Builder<TModel>  $query
      * @param  list<array{0: string, 1: 'asc'|'desc'}>  $order  ending on the primary key
      * @param  class-string<JsonResource>  $resource
@@ -51,11 +46,13 @@ final readonly class Listing
 
     /**
      * The first $max rows of the list in its order, each shown as the
-     * endpoint shows it, read in chunks.
+     * endpoint shows it, read $chunkSize at a time. One row past $max is read
+     * to tell whether the list goes on. Chunks are read by offset, so a row
+     * written meanwhile can shift one between them, as when paging the API.
      *
      * @return array{data: list<mixed>, truncated: bool}
      */
-    public function all(Request $request, int $max): array
+    public function all(Request $request, int $max, int $chunkSize = 1000): array
     {
         $ordered = $this->query->clone()->reorder();
 
@@ -65,12 +62,12 @@ final readonly class Listing
 
         $rows = [];
 
-        for ($offset = 0; $offset <= $max; $offset += self::ChunkSize) {
-            $chunk = $ordered->clone()->offset($offset)->limit(min(self::ChunkSize, $max + 1 - $offset))->get();
+        for ($offset = 0; $offset <= $max; $offset += $chunkSize) {
+            $chunk = $ordered->clone()->offset($offset)->limit(min($chunkSize, $max + 1 - $offset))->get();
 
             array_push($rows, ...$this->resource::collection($chunk)->response($request)->getData(true)['data']);
 
-            if ($chunk->count() < self::ChunkSize) {
+            if ($chunk->count() < $chunkSize) {
                 break;
             }
         }

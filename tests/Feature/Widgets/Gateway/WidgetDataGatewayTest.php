@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\CategoryType;
+use App\Http\ApiV1\Listings;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\AutomationRule;
@@ -11,14 +12,17 @@ use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\SavingsGoals\SavingsGoalPeriodService;
 use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\Gateway\EndpointRegistry;
 use App\Services\Widgets\Gateway\WidgetDataGateway;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -122,6 +126,7 @@ function gatewayParityCases(): array
         'balances' => ['GET /accounts/{account}/balances', fn (array $f): array => ['account' => $f['account']->id], 200],
         'transactions' => ['GET /transactions', fn (array $f): array => ['from' => '2026-10-01', 'to' => '2026-10-31'], 200],
         'transactions, filtered' => ['GET /transactions', fn (array $f): array => ['category_id' => $f['category']->id, 'label_ids' => [$f['label']->id], 'max_amount' => 0, 'query' => '  coffee  '], 200],
+        'transactions, blank query' => ['GET /transactions', fn (array $f): array => ['query' => '   '], 422],
         'transactions, invalid' => ['GET /transactions', fn (array $f): array => ['account_id' => (string) Str::uuid(), 'from' => 'yesterday', 'min_amount' => 'many'], 422],
         'transaction' => ['GET /transactions/{transaction}', fn (array $f): array => ['transaction' => $f['transaction']->id], 200],
         'categories' => ['GET /categories', fn (array $f): array => [], 200],
@@ -258,6 +263,16 @@ describe('reading a whole list', function () {
             ->and(array_column($all['body']['data'], 'transaction_date'))->toBe(['2026-10-05', '2026-10-04', '2026-10-03']);
     });
 
+    it('reads the list in chunks', function () {
+        $listing = fn () => app(Listings::class)->transactions($this->user, $this->user->personalSpace, []);
+        $request = Request::create('/api/v1/transactions');
+
+        expect($listing()->all($request, 4, chunkSize: 2))->toBe(['data' => array_slice(gatewayCall($this->user, 'GET /transactions', [], 'all')['body']['data'], 0, 4), 'truncated' => true])
+            ->and($listing()->all($request, 10, chunkSize: 2)['truncated'])->toBeFalse()
+            ->and($listing()->all($request, 10, chunkSize: 2)['data'])->toHaveCount(5)
+            ->and($listing()->all($request, 5, chunkSize: 5))->toMatchArray(['truncated' => false]);
+    });
+
     it('still validates the filters', function () {
         expect(gatewayCall($this->user, 'GET /transactions', ['from' => 'soon'], 'all')['status'])->toBe(422);
     });
@@ -327,6 +342,21 @@ describe('limits', function () {
             ->and($queriesForTwo)->toBe($queriesForOne)
             ->and($past['again']['status'])->toBe(429);
     });
+});
+
+it('answers an unexpected error as a 500 for that call only, and reports it', function () {
+    Exceptions::fake();
+    $this->mock(CreditCardStatementService::class)->shouldReceive('liveUsageFor')->andThrow(new RuntimeException('Statement exploded'));
+    $user = User::factory()->create();
+
+    $answers = app(WidgetDataGateway::class)->resolve($user, [
+        'cards' => ['endpoint' => 'GET /analytics/credit-card-usage'],
+        'labels' => ['endpoint' => 'GET /labels'],
+    ], gatewayOctober());
+
+    expect($answers['cards'])->toBe(['status' => 500, 'body' => ['message' => 'Internal Server Error', 'code' => 'internal_server_error']])
+        ->and($answers['labels']['status'])->toBe(200);
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => $exception->getMessage() === 'Statement exploded');
 });
 
 it('resolves without HTTP and leaves the current request and sign-in alone', function () {

@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\Widgets\Gateway\Endpoint;
+use App\Services\Widgets\Gateway\EndpointRegistry;
 use App\Services\Widgets\Gateway\ManifestValidator;
 use Illuminate\Validation\ValidationException;
 
@@ -107,9 +109,17 @@ it('only reads a whole list from a list endpoint, without cursor parameters', fu
     ]);
 });
 
-it('names each call with a JavaScript identifier', function () {
-    expect(manifestErrors(manifestWith(['by month' => ['endpoint' => 'GET /labels']])))
-        ->toBe(['data.by month' => ['The data key "by month" must be a JavaScript identifier, such as "spending": the widget reads it from useWidgetData().']]);
+it('names each call with a JavaScript identifier', function (string $key) {
+    expect(manifestErrors(manifestWith([$key => ['endpoint' => 'GET /labels']])))
+        ->toBe(["data.{$key}" => ["The data key \"{$key}\" must be a JavaScript identifier that is not a reserved word, such as \"spending\": the widget reads it from useWidgetData()."]]);
+})->with(['by month', '1st', '__proto__', 'default', 'constructor']);
+
+it('knows the parameters of every registered endpoint', function () {
+    $parameters = collect(app(EndpointRegistry::class)->all())->map(fn (Endpoint $endpoint): array => $endpoint->parameters());
+
+    expect($parameters['GET /analytics/aggregate'])->toMatchArray(['space' => 'value', 'group_by' => 'list', 'from' => 'value', 'label_ids' => 'list'])
+        ->and($parameters['GET /accounts/{account}/balances'])->toBe(['account' => 'value', 'space' => 'value', 'limit' => 'value', 'starting_after' => 'value', 'ending_before' => 'value'])
+        ->and($parameters['GET /analytics/credit-card-usage'])->toBe([]);
 });
 
 it('refuses unknown keys in a call', function () {
