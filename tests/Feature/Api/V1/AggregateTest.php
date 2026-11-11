@@ -15,7 +15,7 @@ use function Pest\Laravel\withHeaders;
 /**
  * @param  array<string, mixed>  $attributes
  */
-function aggregateRow(Account $account, string $date, int $amount, ?Category $category = null, array $attributes = []): Transaction
+function apiAggregateRow(Account $account, string $date, int $amount, ?Category $category = null, array $attributes = []): Transaction
 {
     return Transaction::factory()->create([
         'user_id' => $account->user_id,
@@ -31,7 +31,7 @@ function aggregateRow(Account $account, string $date, int $amount, ?Category $ca
 /**
  * @param  array<string, mixed>  $query
  */
-function aggregateUrl(array $query): string
+function apiAggregateUrl(array $query): string
 {
     return '/api/v1/analytics/aggregate?'.http_build_query($query);
 }
@@ -42,7 +42,7 @@ function aggregateUrl(array $query): string
  *
  * @return array{user: User, account: Account, food: Category, groceries: Category, salary: Category}
  */
-function aggregateBook(): array
+function apiAggregateBook(): array
 {
     $user = User::factory()->create(['currency_code' => 'EUR']);
     $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Main']);
@@ -55,14 +55,14 @@ function aggregateBook(): array
 
 describe('grouping', function () {
     it('adds up the transactions by month and category', function () {
-        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = aggregateBook();
-        aggregateRow($account, '2026-09-03', -1_000, $food);
-        aggregateRow($account, '2026-09-20', -2_500, $food);
-        aggregateRow($account, '2026-09-28', 300_000, $salary);
-        aggregateRow($account, '2026-10-02', -4_000, $food);
+        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = apiAggregateBook();
+        apiAggregateRow($account, '2026-09-03', -1_000, $food);
+        apiAggregateRow($account, '2026-09-20', -2_500, $food);
+        apiAggregateRow($account, '2026-09-28', 300_000, $salary);
+        apiAggregateRow($account, '2026-10-02', -4_000, $food);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-09-01', 'to' => '2026-10-31', 'group_by' => ['month', 'category']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-09-01', 'to' => '2026-10-31', 'group_by' => ['month', 'category']]))
             ->assertOk()
             ->assertExactJson(['data' => [
                 'group_by' => ['month', 'category'],
@@ -79,13 +79,13 @@ describe('grouping', function () {
     });
 
     it('works out every metric', function () {
-        ['user' => $user, 'account' => $account] = aggregateBook();
-        aggregateRow($account, '2026-10-01', -1_000);
-        aggregateRow($account, '2026-10-02', -2_001);
-        aggregateRow($account, '2026-10-03', 500);
+        ['user' => $user, 'account' => $account] = apiAggregateBook();
+        apiAggregateRow($account, '2026-10-01', -1_000);
+        apiAggregateRow($account, '2026-10-02', -2_001);
+        apiAggregateRow($account, '2026-10-03', 500);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'metrics' => 'sum,count,avg,min,max']))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'metrics' => 'sum,count,avg,min,max']))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['currency' => 'EUR', 'sum' => -2_501, 'count' => 3, 'avg' => -834, 'min' => -2_001, 'max' => 500],
@@ -93,10 +93,10 @@ describe('grouping', function () {
     });
 
     it('fills every period of the range with zeros, in the user\'s currency when nothing was booked', function () {
-        ['user' => $user] = aggregateBook();
+        ['user' => $user] = apiAggregateBook();
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-08-15', 'to' => '2026-10-02', 'group_by' => ['month'], 'metrics' => ['sum', 'count', 'avg']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-08-15', 'to' => '2026-10-02', 'group_by' => ['month'], 'metrics' => ['sum', 'count', 'avg']]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['month' => '2026-08', 'currency' => 'EUR', 'sum' => 0, 'count' => 0, 'avg' => null],
@@ -106,11 +106,11 @@ describe('grouping', function () {
     });
 
     it('names a week by its Monday and a year by its number', function (string $dimension, array $periods) {
-        ['user' => $user, 'account' => $account] = aggregateBook();
-        aggregateRow($account, '2026-10-07', -1_000);
+        ['user' => $user, 'account' => $account] = apiAggregateBook();
+        apiAggregateRow($account, '2026-10-07', -1_000);
 
         $response = withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-12', 'group_by' => [$dimension]]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-12', 'group_by' => [$dimension]]))
             ->assertOk();
 
         expect(collect($response->json('data.buckets'))->pluck('sum', $dimension)->all())->toBe($periods);
@@ -121,16 +121,16 @@ describe('grouping', function () {
     ]);
 
     it('groups by type, reading an uncategorized row by its sign', function () {
-        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = aggregateBook();
+        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = apiAggregateBook();
         $savings = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Savings]);
-        aggregateRow($account, '2026-10-01', -1_000, $food);
-        aggregateRow($account, '2026-10-02', -200);
-        aggregateRow($account, '2026-10-03', 900);
-        aggregateRow($account, '2026-10-04', 100_000, $salary);
-        aggregateRow($account, '2026-10-05', -5_000, $savings);
+        apiAggregateRow($account, '2026-10-01', -1_000, $food);
+        apiAggregateRow($account, '2026-10-02', -200);
+        apiAggregateRow($account, '2026-10-03', 900);
+        apiAggregateRow($account, '2026-10-04', 100_000, $salary);
+        apiAggregateRow($account, '2026-10-05', -5_000, $savings);
 
         $response = withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['type']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['type']]))
             ->assertOk();
 
         expect(collect($response->json('data.buckets'))->pluck('sum', 'type')->all())
@@ -138,18 +138,18 @@ describe('grouping', function () {
     });
 
     it('reads a deleted category as no category, in one bucket and by the sign', function () {
-        ['user' => $user, 'account' => $account, 'salary' => $salary] = aggregateBook();
+        ['user' => $user, 'account' => $account, 'salary' => $salary] = apiAggregateBook();
         $savings = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Savings]);
         $gone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $alsoGone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income]);
-        aggregateRow($account, '2026-10-01', -100, $gone);
-        aggregateRow($savings, '2026-10-02', -200, $alsoGone);
-        aggregateRow($savings, '2026-10-03', 1_000, $salary);
+        apiAggregateRow($account, '2026-10-01', -100, $gone);
+        apiAggregateRow($savings, '2026-10-02', -200, $alsoGone);
+        apiAggregateRow($savings, '2026-10-03', 1_000, $salary);
         $gone->delete();
         $alsoGone->delete();
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['category']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['category']]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['category_id' => null, 'category_name' => null, 'currency' => 'EUR', 'sum' => -300, 'count' => 2],
@@ -157,7 +157,7 @@ describe('grouping', function () {
             ]);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['type']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['type']]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['type' => 'expense', 'currency' => 'EUR', 'sum' => -300, 'count' => 2],
@@ -166,15 +166,15 @@ describe('grouping', function () {
     });
 
     it('groups by label, counting a transaction once under each of its labels', function () {
-        ['user' => $user, 'account' => $account] = aggregateBook();
+        ['user' => $user, 'account' => $account] = apiAggregateBook();
         $holidays = Label::factory()->create(['user_id' => $user->id, 'name' => 'Holidays']);
         $work = Label::factory()->create(['user_id' => $user->id, 'name' => 'Work']);
-        aggregateRow($account, '2026-10-01', -1_000)->labels()->attach([$holidays->id, $work->id]);
-        aggregateRow($account, '2026-10-02', -300)->labels()->attach($work->id);
-        aggregateRow($account, '2026-10-03', -50);
+        apiAggregateRow($account, '2026-10-01', -1_000)->labels()->attach([$holidays->id, $work->id]);
+        apiAggregateRow($account, '2026-10-02', -300)->labels()->attach($work->id);
+        apiAggregateRow($account, '2026-10-03', -50);
 
         $response = withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['label']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['label']]))
             ->assertOk();
 
         expect(collect($response->json('data.buckets'))->map(fn (array $bucket): array => [$bucket['label_name'], $bucket['sum']])->all())
@@ -182,7 +182,7 @@ describe('grouping', function () {
 
         // Filtered by a label, only that label is listed.
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['label'], 'label_ids' => [$holidays->id]]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['label'], 'label_ids' => [$holidays->id]]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['label_id' => $holidays->id, 'label_name' => 'Holidays', 'currency' => 'EUR', 'sum' => -1_000, 'count' => 1],
@@ -190,14 +190,14 @@ describe('grouping', function () {
     });
 
     it('groups by account and keeps every currency apart', function () {
-        ['user' => $user, 'account' => $account] = aggregateBook();
+        ['user' => $user, 'account' => $account] = apiAggregateBook();
         $dollars = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'USD', 'name' => 'Dollars']);
-        aggregateRow($account, '2026-10-01', -1_000);
-        aggregateRow($dollars, '2026-10-01', -700);
-        aggregateRow($account, '2026-10-02', -300, null, ['currency_code' => 'USD']);
+        apiAggregateRow($account, '2026-10-01', -1_000);
+        apiAggregateRow($dollars, '2026-10-01', -700);
+        apiAggregateRow($account, '2026-10-02', -300, null, ['currency_code' => 'USD']);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['currency' => 'EUR', 'sum' => -1_000, 'count' => 1],
@@ -205,7 +205,7 @@ describe('grouping', function () {
             ]);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['account']]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['account']]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [
                 ['account_id' => $dollars->id, 'account_name' => 'Dollars', 'currency' => 'USD', 'sum' => -700, 'count' => 1],
@@ -215,15 +215,15 @@ describe('grouping', function () {
     });
 
     it('counts the user\'s share of the account and stops counting an archived account from its archive day', function () {
-        ['user' => $user] = aggregateBook();
+        ['user' => $user] = apiAggregateBook();
         $shared = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'ownership_percentage' => 50]);
         $archived = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'archived_at' => '2026-10-10 08:00:00']);
-        aggregateRow($shared, '2026-10-01', -1_001);
-        aggregateRow($archived, '2026-10-09', -200);
-        aggregateRow($archived, '2026-10-10', -9_999);
+        apiAggregateRow($shared, '2026-10-01', -1_001);
+        apiAggregateRow($archived, '2026-10-09', -200);
+        apiAggregateRow($archived, '2026-10-10', -9_999);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
             ->assertOk()
             ->assertJsonPath('data.buckets', [['currency' => 'EUR', 'sum' => -701, 'count' => 2]]);
     });
@@ -231,30 +231,30 @@ describe('grouping', function () {
 
 describe('filters', function () {
     it('narrows by category, with or without its subcategories', function () {
-        ['user' => $user, 'account' => $account, 'food' => $food, 'groceries' => $groceries, 'salary' => $salary] = aggregateBook();
-        aggregateRow($account, '2026-10-01', -1_000, $food);
-        aggregateRow($account, '2026-10-02', -2_000, $groceries);
-        aggregateRow($account, '2026-10-03', 50_000, $salary);
+        ['user' => $user, 'account' => $account, 'food' => $food, 'groceries' => $groceries, 'salary' => $salary] = apiAggregateBook();
+        apiAggregateRow($account, '2026-10-01', -1_000, $food);
+        apiAggregateRow($account, '2026-10-02', -2_000, $groceries);
+        apiAggregateRow($account, '2026-10-03', 50_000, $salary);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'category_ids' => [$food->id]]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'category_ids' => [$food->id]]))
             ->assertOk()
             ->assertJsonPath('data.buckets.0.sum', -3_000);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'category_ids' => [$food->id], 'include_subcategories' => 'false']))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'category_ids' => [$food->id], 'include_subcategories' => 'false']))
             ->assertOk()
             ->assertJsonPath('data.buckets.0.sum', -1_000);
     });
 
     it('narrows by date range, account, label, type and text', function (string $case, int $sum) {
-        ['user' => $user, 'account' => $account, 'salary' => $salary] = aggregateBook();
+        ['user' => $user, 'account' => $account, 'salary' => $salary] = apiAggregateBook();
         $other = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
         $label = Label::factory()->create(['user_id' => $user->id]);
-        aggregateRow($account, '2026-09-30', -1);
-        aggregateRow($account, '2026-10-01', -20, null, ['description' => 'Coffee shop']);
-        aggregateRow($other, '2026-10-02', -300)->labels()->attach($label->id);
-        aggregateRow($account, '2026-10-03', 4_000, $salary);
+        apiAggregateRow($account, '2026-09-30', -1);
+        apiAggregateRow($account, '2026-10-01', -20, null, ['description' => 'Coffee shop']);
+        apiAggregateRow($other, '2026-10-02', -300)->labels()->attach($label->id);
+        apiAggregateRow($account, '2026-10-03', 4_000, $salary);
 
         $filters = match ($case) {
             'range' => [],
@@ -265,7 +265,7 @@ describe('filters', function () {
         };
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', ...$filters]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', ...$filters]))
             ->assertOk()
             ->assertJsonPath('data.buckets.0.sum', $sum);
     })->with([
@@ -279,12 +279,12 @@ describe('filters', function () {
 
 describe('limits and validation', function () {
     it('refuses more buckets than the cap with a clear error', function (array $query) {
-        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = aggregateBook();
-        aggregateRow($account, '2026-01-01', -1_000, $food);
-        aggregateRow($account, '2026-01-01', 1_000, $salary);
+        ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = apiAggregateBook();
+        apiAggregateRow($account, '2026-01-01', -1_000, $food);
+        apiAggregateRow($account, '2026-01-01', 1_000, $salary);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl($query))
+            ->getJson(apiAggregateUrl($query))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['group_by' => 'more than 1000 buckets']);
     })->with([
@@ -293,10 +293,10 @@ describe('limits and validation', function () {
     ]);
 
     it('refuses bad parameters', function (array $query, string $field) {
-        ['user' => $user] = aggregateBook();
+        ['user' => $user] = apiAggregateBook();
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', ...$query]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', ...$query]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors($field);
     })->with([
@@ -315,24 +315,24 @@ describe('permissions', function () {
         $owner = User::factory()->create(['currency_code' => 'EUR']);
         $space = Space::factory()->create(['owner_id' => $owner->id, 'personal' => false]);
         $space->members()->attach($user->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
-        aggregateRow(Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'currency_code' => 'EUR']), '2026-10-01', -100);
-        aggregateRow(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'currency_code' => 'EUR']), '2026-10-01', -5_000);
-        aggregateRow(Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']), '2026-10-01', -7);
-        aggregateRow(Account::factory()->create(['user_id' => User::factory()->create()->id, 'currency_code' => 'EUR']), '2026-10-01', -9_000);
+        apiAggregateRow(Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'currency_code' => 'EUR']), '2026-10-01', -100);
+        apiAggregateRow(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'currency_code' => 'EUR']), '2026-10-01', -5_000);
+        apiAggregateRow(Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']), '2026-10-01', -7);
+        apiAggregateRow(Account::factory()->create(['user_id' => User::factory()->create()->id, 'currency_code' => 'EUR']), '2026-10-01', -9_000);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'space' => $space->id]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'space' => $space->id]))
             ->assertOk()
             ->assertJsonPath('data.buckets', [['currency' => 'EUR', 'sum' => -100, 'count' => 1]]);
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31']))
             ->assertOk()
             ->assertJsonPath('data.buckets', [['currency' => 'EUR', 'sum' => -7, 'count' => 1]]);
     });
 
     it('refuses an account, category or label that is not yours in the space', function (string $field) {
-        ['user' => $user] = aggregateBook();
+        ['user' => $user] = apiAggregateBook();
         $owner = User::factory()->create();
         $space = Space::factory()->create(['owner_id' => $owner->id, 'personal' => false]);
         $space->members()->attach($user->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
@@ -343,7 +343,7 @@ describe('permissions', function () {
         };
 
         withHeaders(apiV1Bearer($user))
-            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'space' => $space->id, $field => [$theirs->id]]))
+            ->getJson(apiAggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'space' => $space->id, $field => [$theirs->id]]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors("{$field}.0");
     })->with(['account_ids', 'category_ids', 'label_ids']);

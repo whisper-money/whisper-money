@@ -163,6 +163,7 @@ abstract class McpTool extends Tool
             return new Collection;
         }
 
+        /** @var Collection<int, TModel> $rows */
         $rows = app(SpaceResolver::class)->ownedInSpace($model::query(), $this->caller($request), $space)->whereIn('id', $ids)->get();
 
         if ($rows->count() !== count($ids)) {

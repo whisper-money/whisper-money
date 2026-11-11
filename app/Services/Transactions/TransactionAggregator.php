@@ -35,7 +35,7 @@ use stdClass;
 class TransactionAggregator
 {
     /** @var list<string> */
-    public const TIME_DIMENSIONS = ['day', 'week', 'month', 'year'];
+    private const TIME_DIMENSIONS = ['day', 'week', 'month', 'year'];
 
     /** @var list<string> */
     public const DIMENSIONS = [...self::TIME_DIMENSIONS, 'category', 'label', 'account', 'type'];
@@ -44,17 +44,17 @@ class TransactionAggregator
     public const METRICS = ['sum', 'count', 'avg', 'min', 'max'];
 
     /** @var list<string> */
-    public const DEFAULT_METRICS = ['sum', 'count'];
+    private const DEFAULT_METRICS = ['sum', 'count'];
 
-    public const MAX_DIMENSIONS = 2;
+    private const MAX_DIMENSIONS = 2;
 
     /**
      * The most buckets one response returns. A request that would return more
      * is refused rather than cut short, so a chart never silently misses data.
      */
-    public const MAX_BUCKETS = 1000;
+    private const MAX_BUCKETS = 1000;
 
-    public const MAX_IDS = 100;
+    private const MAX_IDS = 100;
 
     /** @var list<string> */
     private const LIST_PARAMETERS = ['group_by', 'metrics', 'types', 'category_ids', 'label_ids', 'account_ids'];
