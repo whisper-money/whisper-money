@@ -33,14 +33,16 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
-            // The user's own dashboards and the one on screen, with its widgets.
-            // Null is the system dashboard, which the page still draws until
-            // the dashboard picker ships.
-            'dashboards' => fn (): array => $request->user()->dashboards()
+            // The user's own dashboards, for the picker. Deferred with the page's
+            // data: the first paint only needs the dashboard on screen, and the
+            // list rides the follow-up request the page already makes.
+            'dashboards' => Inertia::defer(fn (): array => $request->user()->dashboards()
                 ->orderBy('position')
                 ->orderBy('created_at')
                 ->get(['id', 'name', 'position'])
-                ->toArray(),
+                ->toArray(), 'dashboard'),
+            // The dashboard on screen, with its widgets. Null is the system
+            // dashboard, which the page still draws until the picker ships.
             'defaultDashboardId' => fn (): ?string => $request->user()->default_dashboard_id,
             'selectedDashboard' => function () use ($request): ?array {
                 $dashboard = $this->selectedDashboard($request);

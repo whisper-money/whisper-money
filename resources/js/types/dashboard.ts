@@ -69,8 +69,8 @@ export interface DashboardProps extends SharedData {
     monthlySummary?: MonthlySummaryNoticeData | null;
     monthlySavingsGoals?: DashboardMonthlyGoal[];
     monthlySavingsLastMonth?: MonthlyVerdicts | null;
-    /** The user's own dashboards, in their order. */
-    dashboards: DashboardSummary[];
+    /** Deferred: the user's own dashboards, in their order. */
+    dashboards?: DashboardSummary[];
     /** The dashboard the app opens on; null is the system dashboard. */
     defaultDashboardId: string | null;
     /** The user dashboard on screen; null is the system dashboard. */

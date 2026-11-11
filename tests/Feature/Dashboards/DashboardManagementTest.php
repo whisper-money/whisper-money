@@ -356,12 +356,14 @@ describe('dashboard page', function () {
             ->get(route('dashboard'))
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('dashboard')
-                ->where('dashboards', [
-                    ['id' => $first->id, 'name' => 'A', 'position' => 0],
-                    ['id' => $second->id, 'name' => 'B', 'position' => 1],
-                ])
+                ->missing('dashboards')
                 ->where('defaultDashboardId', null)
-                ->where('selectedDashboard', null));
+                ->where('selectedDashboard', null)
+                ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload
+                    ->where('dashboards', [
+                        ['id' => $first->id, 'name' => 'A', 'position' => 0],
+                        ['id' => $second->id, 'name' => 'B', 'position' => 1],
+                    ])));
     });
 
     it('selects the default dashboard, or the one in the query string, with its widgets', function () {
