@@ -25,7 +25,7 @@ class SpendingByLabel extends McpTool
     {
         return [
             'from' => $schema->string()->description('Start date, YYYY-MM-DD.')->required(),
-            'to' => $schema->string()->description('End date, YYYY-MM-DD, not before from. The range can touch at most '.AnalyticsRangeRequest::MAX_MONTHS.' calendar months.')->required(),
+            'to' => $schema->string()->description('End date, YYYY-MM-DD, not before from. The range can touch at most '.AnalyticsRangeRequest::DEFAULT_MAX_MONTHS.' calendar months.')->required(),
         ];
     }
 
@@ -39,8 +39,8 @@ class SpendingByLabel extends McpTool
 
         // The same cap as the API's: two queries per call, but no reason to
         // let an agent read further back than an API user can.
-        if ($period->monthsTouched() > AnalyticsRangeRequest::MAX_MONTHS) {
-            throw ValidationException::withMessages(['to' => 'The range can touch at most '.AnalyticsRangeRequest::MAX_MONTHS.' calendar months.']);
+        if ($period->monthsTouched() > AnalyticsRangeRequest::DEFAULT_MAX_MONTHS) {
+            throw ValidationException::withMessages(['to' => 'The range can touch at most '.AnalyticsRangeRequest::DEFAULT_MAX_MONTHS.' calendar months.']);
         }
 
         $previous = $period->previous();

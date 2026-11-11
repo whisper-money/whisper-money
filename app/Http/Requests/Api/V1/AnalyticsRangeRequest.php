@@ -18,7 +18,13 @@ class AnalyticsRangeRequest extends FormRequest
      * The most calendar months a range may touch: every one of them is walked
      * through, so an unbounded range would be an unbounded amount of work.
      */
-    public const MAX_MONTHS = 120;
+    protected const MAX_MONTHS = self::DEFAULT_MAX_MONTHS;
+
+    /**
+     * The cap of every range that does not set its own, which the MCP tools
+     * share with the API.
+     */
+    public const DEFAULT_MAX_MONTHS = 120;
 
     /**
      * @return array<string, array<mixed>>

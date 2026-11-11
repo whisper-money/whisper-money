@@ -10,5 +10,5 @@ class CashflowRequest extends AnalyticsRangeRequest
      * The trend has one row per month the range touches, and no more than
      * these: a longer range is refused rather than its trend cut short.
      */
-    public const MAX_MONTHS = CashflowAnalyticsService::MAX_TREND_MONTHS;
+    protected const MAX_MONTHS = CashflowAnalyticsService::MAX_TREND_MONTHS;
 }
