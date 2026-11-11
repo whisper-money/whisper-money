@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Features\CustomDashboards;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\FailedInvoice;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -61,8 +63,22 @@ test('shared feature flags do not include coinbase flag', function () {
         'cashflow' => true,
         'fullImport' => false,
         'fullImportSettings' => false,
+        'customDashboards' => false,
     ]);
 });
+
+test('shared feature flags reflect the custom dashboards flag per user', function (bool $active) {
+    $user = User::factory()->onboarded()->create();
+
+    if ($active) {
+        Feature::for($user)->activate(CustomDashboards::class);
+    }
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', $active)
+        );
+})->with(['active' => true, 'inactive' => false]);
 
 test('authenticated users receive subscription payment issue when subscription is past due', function () {
     config(['subscriptions.enabled' => true]);
