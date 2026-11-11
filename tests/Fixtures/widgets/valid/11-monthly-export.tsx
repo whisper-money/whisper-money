@@ -26,7 +26,7 @@ export default function MonthlyExport() {
 
     return (
         <Card className="h-full gap-2 py-4">
-            <CardHeader className="flex items-center justify-between px-4">
+            <CardHeader className="flex-row items-center justify-between px-4">
                 <CardTitle className="text-sm">Exportar flujo</CardTitle>
                 <Button variant="outline" size="sm" onClick={exportCsv}>
                     <Download size={14} />

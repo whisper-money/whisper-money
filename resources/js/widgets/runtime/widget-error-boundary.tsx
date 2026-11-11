@@ -32,9 +32,9 @@ export function WidgetErrorState({ message }: { message: string }) {
         <div
             role="alert"
             data-slot="user-widget-error"
-            className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-destructive/40 p-4 text-center"
+            className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-destructive/40 p-4 text-center dark:border-red-400/40"
         >
-            <TriangleAlert className="size-5 text-destructive" />
+            <TriangleAlert className="size-5 text-destructive dark:text-red-400" />
             <p className="text-sm font-medium">
                 {__('This widget stopped working')}
             </p>
