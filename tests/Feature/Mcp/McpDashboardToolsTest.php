@@ -228,7 +228,12 @@ describe('widgets', function () {
     it('returns the last runtime error the dashboard caught, with its revision', function () {
         $user = User::factory()->create();
         $widget = savedMcpWidget($user);
-        app(WidgetDefinitionService::class)->recordError($widget, 1, ['phase' => 'render', 'message' => "Cannot read properties of undefined (reading 'length')", 'stack' => 'at Widget', 'component_stack' => null]);
+        app(WidgetDefinitionService::class)->recordError($widget, 1, [
+            'phase' => 'render',
+            'message' => "Cannot read properties of undefined (reading 'length')",
+            'stack' => "TypeError: Cannot read properties of undefined (reading 'length')\n    at k (data:text/javascript;charset=utf-8,import%7BuseMemo%20as%20g%7Dfrom%22data%3Atext%22;function%20k()%7B%7Dexport%7Bk%20as%20default%7D%3B:1:1816)",
+            'component_stack' => null,
+        ]);
 
         $json = dashboardToolJson(callDashboardTool($user, GetWidget::class, ['widget_id' => $widget->id])->assertOk());
 
@@ -236,6 +241,7 @@ describe('widgets', function () {
             'revision' => 1,
             'phase' => 'render',
             'message' => "Cannot read properties of undefined (reading 'length')",
+            'stack' => "TypeError: Cannot read properties of undefined (reading 'length')\n    at k (widget.js:1:1816)",
         ])->and($json['widget']['last_error']['at'])->not->toBeNull();
     });
 

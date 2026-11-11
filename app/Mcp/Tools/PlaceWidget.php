@@ -50,7 +50,7 @@ class PlaceWidget extends WriteTool
         try {
             $placement = app(WidgetDefinitionService::class)->place($dashboard, $widget, $size);
         } catch (InvalidWidget $exception) {
-            return $this->invalidWidget($exception);
+            return $this->invalidWidget($exception, 'placed');
         }
 
         return $this->json([

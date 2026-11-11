@@ -43,10 +43,10 @@ trait PresentsWidgets
      * agent fixes it from: where (`manifest.size.width`, `source:12:5`), what
      * is wrong, and sometimes a hint.
      */
-    protected function invalidWidget(InvalidWidget $exception): Response
+    protected function invalidWidget(InvalidWidget $exception, string $outcome = 'saved'): Response
     {
         return Response::error((string) json_encode([
-            'saved' => false,
+            $outcome => false,
             'errors' => $exception->errors,
             'next' => 'Fix every error listed and call the tool again. get_widget_sdk lists what widgets may use.',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -87,12 +87,23 @@ trait PresentsWidgets
             'size' => $widget->manifest['size'],
             'last_error' => $widget->last_error === null ? null : [
                 ...$widget->last_error,
+                'stack' => $this->readableStack($widget->last_error['stack']),
                 'at' => $widget->last_error_at?->toIso8601String(),
             ],
             'placements' => $widget->placements->sortBy('position')->values()
                 ->map(fn (DashboardWidget $placement): array => $this->presentPlacement($placement))
                 ->all(),
         ];
+    }
+
+    /**
+     * The stack the dashboard caught, with the module's own URL (a data: URL
+     * holding the whole compiled widget, thousands of characters) shortened
+     * to `widget.js`.
+     */
+    private function readableStack(?string $stack): ?string
+    {
+        return $stack === null ? null : preg_replace('#data:text/javascript[^\s]*?(?=:\d+:\d+)#', 'widget.js', $stack);
     }
 
     /**
