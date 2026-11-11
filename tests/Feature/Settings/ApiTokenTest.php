@@ -99,7 +99,7 @@ it('rejects a token without a name, or with an unknown scope or expiry', functio
     'unknown expiry' => [['name' => 'Bad', 'scope' => 'read', 'expiry' => '2_days'], 'expiry'],
 ]);
 
-it('requires a Pro plan to create or rotate a token, but not to revoke one', function () {
+it('requires a Standard plan to create or rotate a token, but not to revoke one', function () {
     config(['subscriptions.enabled' => true]);
     $user = User::factory()->create();
     $token = $user->createToken('Lapsed', ['api:read'])->accessToken;

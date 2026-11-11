@@ -159,7 +159,7 @@
         @if ($pro)
             <span class="badge mono">
                 @include('cards.partials.icon-sparkle', ['size' => 26, 'colour' => $dark ? '#18181b' : '#ffffff'])
-                {{ __('Pro member') }}
+                {{ __('Standard member') }}
             </span>
         @else
             <span></span>

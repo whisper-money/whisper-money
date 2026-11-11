@@ -131,7 +131,7 @@ describe('anything but a bearer token', function () {
 });
 
 describe('access gate', function () {
-    it('refuses a user without a Pro plan, pointing at the subscribe page, and keeps the token', function () {
+    it('refuses a user without a Standard plan, pointing at the subscribe page, and keeps the token', function () {
         config(['subscriptions.enabled' => true]);
         $user = User::factory()->create();
         $headers = apiV1Bearer($user);
@@ -140,7 +140,7 @@ describe('access gate', function () {
             ->getJson('/api/v1/spaces')
             ->assertForbidden()
             ->assertExactJson([
-                'message' => 'A paid (Pro) plan is required to use the Whisper Money API.',
+                'message' => 'A paid (Standard) plan is required to use the Whisper Money API.',
                 'code' => 'plan_required',
                 'subscribe_url' => route('subscribe'),
             ]);

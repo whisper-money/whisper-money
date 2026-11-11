@@ -16,7 +16,7 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 
 /**
- * Base for every Whisper Money read tool. Enforces the Pro-plan gate on each
+ * Base for every Whisper Money read tool. Enforces the Standard-plan gate on each
  * call (a lapsed subscription stops working without revoking the token) and
  * provides the shared space-resolution and JSON-encoding helpers.
  */
@@ -67,7 +67,7 @@ abstract class McpTool extends Tool
 
         if (! $user->canUseFeature(PlanFeature::McpAccess)) {
             return Response::error(
-                'A paid (Pro) plan is required to use the Whisper Money MCP. Upgrade your account at '.route('subscribe')
+                'A paid (Standard) plan is required to use the Whisper Money MCP. Upgrade your account at '.route('subscribe')
             );
         }
 

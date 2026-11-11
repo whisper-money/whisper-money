@@ -211,7 +211,7 @@ it('badges the card of a reader on the paid plan', function (): void {
         ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
         ->assertOk();
 
-    expect(drawnCardText())->toContain('Pro member');
+    expect(drawnCardText())->toContain('Standard member');
 });
 
 it('leaves the badge off a free reader\'s card', function (): void {
@@ -223,7 +223,7 @@ it('leaves the badge off a free reader\'s card', function (): void {
         ->get(route('achievements.card', ['medal' => 'streaks.2', 'format' => 'feed', 'theme' => 'light']))
         ->assertOk();
 
-    expect(drawnCardText())->not->toContain('Pro member');
+    expect(drawnCardText())->not->toContain('Standard member');
 });
 
 it('draws the badged and the unbadged cut as two different files', function (): void {
@@ -247,7 +247,7 @@ it('draws the badged and the unbadged cut as two different files', function (): 
     ), 2);
 
     expect(collect(test()->drawnHtml)->keys()->filter(
-        fn (string $path): bool => str_ends_with($path, '-pro.png'),
+        fn (string $path): bool => str_ends_with($path, '-standard.png'),
     ))->toHaveCount(1);
 });
 

@@ -151,7 +151,7 @@ Three things are worth knowing:
 - **Making the picture publishes nothing.** You get a file. Where it goes next
   is entirely up to you.
 
-On a paid plan, the picture also carries a **Pro member** badge at the bottom.
+On a paid plan, the picture also carries a **Standard member** badge at the bottom.
 
 That last point is the difference from a [monthly
 summary](/documentation/monthly-summary), which can also be shared as a public

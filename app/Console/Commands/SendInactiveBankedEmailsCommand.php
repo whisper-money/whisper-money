@@ -11,7 +11,7 @@ class SendInactiveBankedEmailsCommand extends SendInactiveUserEmailsCommand
 {
     protected $signature = 'email:inactive-banked';
 
-    protected $description = 'Queue the "while you were away" recap for Pro users with a bank connected who last used the app two weeks ago';
+    protected $description = 'Queue the "while you were away" recap for Standard users with a bank connected who last used the app two weeks ago';
 
     /**
      * Twice the no-bank wait: a connected bank keeps the numbers fresh on its

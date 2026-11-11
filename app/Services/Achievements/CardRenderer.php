@@ -97,22 +97,23 @@ class CardRenderer
      * language, read from the app exactly as {@see CardPresenter} reads it, so
      * the key and the copy inside the picture cannot disagree; and whether the
      * amount is on it, because that is the reader's choice and the two versions
-     * are different pictures. And the Pro badge, so a reader who upgrades gets a
-     * new file rather than yesterday's unbadged one. {@see DESIGN} sits above
-     * all of it, which is what a medal's own content never needing to be
+     * are different pictures. And the Standard badge, so a reader who upgrades
+     * gets a new file rather than yesterday's unbadged one. {@see DESIGN} sits
+     * above all of it, which is what a medal's own content never needing to be
      * invalidated buys: a row is written once and never revoked, so only the
      * design can go stale.
      *
-     * Adding the badge did NOT need a {@see DESIGN} bump: `-pro` is itself a
-     * complete invalidation. A Pro reader's file gains the suffix, so the old
-     * unbadged PNG is no longer named, and a free reader's card comes out
-     * byte-identical to before. Bumping would have redrawn every medal for
-     * everybody for nothing.
+     * Neither adding the badge nor renaming it needed a {@see DESIGN} bump: the
+     * suffix is itself a complete invalidation. A paid reader's file carries
+     * it, so changing it (`-pro` became `-standard` when the badge went from
+     * "Pro member" to "Standard member") leaves the old badged PNG unnamed,
+     * while a free reader's card keeps its name and is not redrawn. Bumping
+     * would have redrawn every medal for everybody for nothing.
      */
     private function pathFor(Achievement $achievement, string $formatLocale, CardFormat $format, CardTheme $theme, bool $amount, bool $pro): string
     {
         $locale = app()->getLocale();
-        $suffix = ($amount ? '' : '-plain').($pro ? '-pro' : '');
+        $suffix = ($amount ? '' : '-plain').($pro ? '-standard' : '');
 
         return $this->directoryFor($achievement->user_id)."/{$achievement->key}-{$format->value}-{$theme->value}-{$locale}-{$formatLocale}{$suffix}.png";
     }

@@ -58,7 +58,7 @@ test('demo:reset fails if a password is not passed alongside an explicit email',
     expect(User::where('email', 'openai-review@whisper.money')->exists())->toBeFalse();
 });
 
-test('demo:reset seeds a named reviewer account on the Pro plan with imported transactions', function () {
+test('demo:reset seeds a named reviewer account on the Standard plan with imported transactions', function () {
     config(['subscriptions.enabled' => true]);
 
     $this->artisan('demo:reset', [

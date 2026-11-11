@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 class StoreApiTokenRequest extends StoreAccessTokenRequest
 {
     /**
-     * Only a Pro account may create an API token: the API answers anyone else
+     * Only a Standard account may create an API token: the API answers anyone else
      * with a 403, so a token minted on a free plan would be useless.
      */
     public function authorize(): bool

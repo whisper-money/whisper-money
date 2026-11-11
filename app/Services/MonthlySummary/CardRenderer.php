@@ -112,15 +112,17 @@ class CardRenderer
 
     /**
      * Everything that changes what comes out of the browser is part of the cache
-     * key. The Pro badge, so a user who upgrades gets a new file rather than
-     * yesterday's unbadged one. The theme, so the light and dark cuts of the same
+     * key. The Standard badge, so a user who upgrades gets a new file rather
+     * than yesterday's unbadged one, and its suffix names the badge's wording:
+     * it went from `-pro` to `-standard` when the badge was renamed, so only
+     * badged cards are redrawn. The theme, so the light and dark cuts of the same
      * card do not overwrite each other. And the language — read from the app
      * rather than passed in, exactly like {@see CardPresenter} reads it, so the
      * key and the copy inside the picture cannot disagree.
      */
     private function pathFor(MonthlySummary $summary, MonthlySummaryCard $card, CardFormat $format, CardTheme $theme, bool $pro): string
     {
-        $suffix = $pro ? '-pro' : '';
+        $suffix = $pro ? '-standard' : '';
         $locale = app()->getLocale();
 
         return $this->directoryFor($summary->id)."/{$card->value}-{$format->value}-{$theme->value}-{$locale}{$suffix}.png";

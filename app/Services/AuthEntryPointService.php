@@ -28,7 +28,7 @@ class AuthEntryPointService
     public function guestRedirectRoute(Request $request): string
     {
         // Connecting ChatGPT or Claude needs an account that already exists on
-        // the Pro plan, so an OAuth authorization lands on the login form rather
+        // the Standard plan, so an OAuth authorization lands on the login form rather
         // than the sign-up form a first visit would otherwise get. So does an
         // emailed import link: only an existing account is ever sent one, and
         // it is usually opened on a computer that has never seen the app, and

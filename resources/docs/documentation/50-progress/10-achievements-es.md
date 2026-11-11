@@ -160,7 +160,7 @@ Tres cosas que conviene saber:
 - **Hacer la imagen no publica nada.** Lo que obtienes es un archivo. A dónde va
   después lo decides tú.
 
-En un plan de pago, la imagen lleva además una insignia de **Miembro Pro** en la
+En un plan de pago, la imagen lleva además una insignia de **Miembro Standard** en la
 parte de abajo.
 
 Eso último es la diferencia con un [resumen
