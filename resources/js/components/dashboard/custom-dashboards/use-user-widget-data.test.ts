@@ -115,8 +115,14 @@ describe('useUserWidgetData', () => {
         await waitFor(() => expect(result.current.status).toBe('ready'));
         rerender({ revision: 2 });
 
-        expect(result.current.status).toBe('loading');
-        await waitFor(() => expect(result.current.status).toBe('ready'));
+        // The widgets already drawn keep their data meanwhile.
+        expect(result.current).toMatchObject({
+            status: 'ready',
+            refreshing: true,
+        });
+        await waitFor(() =>
+            expect(result.current).toMatchObject({ refreshing: false }),
+        );
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Features\CustomDashboards;
 use App\Models\Account;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
@@ -19,6 +20,7 @@ use App\Services\SavingsGoals\CurrentMonthSavings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class DashboardController extends Controller
 {
@@ -63,8 +65,11 @@ class DashboardController extends Controller
                 return $dashboard === null ? [] : $this->presentUserWidgets($dashboard);
             }, 'dashboard'),
             // Every widget the user's agent wrote, for edit mode to place:
-            // names and sizes only, the modules load once placed.
-            'widgetDefinitions' => Inertia::defer(fn (): array => $this->presentWidgetDefinitions($request->user()), 'dashboard'),
+            // names and sizes only, the modules load once placed. Only edit
+            // mode reads it, and edit mode is behind the flag.
+            'widgetDefinitions' => Inertia::defer(fn (): array => Feature::for($request->user())->active(CustomDashboards::class)
+                ? $this->presentWidgetDefinitions($request->user())
+                : [], 'dashboard'),
             // The window the top categories and top labels cards report on, so
             // their links and drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),

@@ -68,6 +68,16 @@ describe('useWidgetErrorReporter', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('sends it again next time when the report did not land', async () => {
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 500 });
+        const { result } = renderHook(() => useWidgetErrorReporter(true));
+
+        await act(async () => result.current.report(definition(1), ERROR));
+        act(() => result.current.report(definition(1), ERROR));
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
     it('remembers it for the details, even when it cannot store it', () => {
         const { result } = renderHook(() => useWidgetErrorReporter(false));
 

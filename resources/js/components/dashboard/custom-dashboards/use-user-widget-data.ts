@@ -28,6 +28,8 @@ export type UserWidgetDataState =
     | {
           status: 'ready';
           widgets: DashboardWidgetsDataResponse['widgets'];
+          /** The data of the previous request, while a new one loads. */
+          refreshing: boolean;
       };
 
 /** What one widget gets to draw with, once its calls are read. */
@@ -116,7 +118,10 @@ export function useUserWidgetData(
         fetchJson<DashboardWidgetsDataResponse>(url).then(
             ({ widgets }) => {
                 if (current) {
-                    setState({ key, value: { status: 'ready', widgets } });
+                    setState({
+                        key,
+                        value: { status: 'ready', widgets, refreshing: false },
+                    });
                 }
             },
             () => {
@@ -133,7 +138,15 @@ export function useUserWidgetData(
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [key]);
 
-    return state !== null && state.key === key
-        ? state.value
+    if (state === null || key === null) {
+        return { status: 'loading' };
+    }
+
+    if (state.key === key) {
+        return state.value;
+    }
+
+    return state.value.status === 'ready'
+        ? { ...state.value, refreshing: true }
         : { status: 'loading' };
 }

@@ -27,36 +27,7 @@ import { CircleCheck, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { dashboardActions } from './dashboard-actions';
 import { widgetOriginLabel } from './labels';
-import { type CaughtWidgetError } from './use-widget-error-reporter';
-
-/** The error the details show: the one caught on this page, else the stored one. */
-export interface ShownWidgetError {
-    revision: number;
-    phase: 'load' | 'render';
-    message: string;
-    at: string | null;
-}
-
-/**
- * The newest error of the widget's current revision. One caught on this page
- * wins: the stored one is only as fresh as the page's last load.
- */
-export function currentWidgetError(
-    definition: UserWidgetDefinition,
-    caught: CaughtWidgetError | undefined,
-): ShownWidgetError | null {
-    if (caught !== undefined && caught.revision === definition.revision) {
-        return { ...caught, at: caught.caughtAt };
-    }
-
-    const stored = definition.last_error;
-
-    if (stored !== null && stored.revision === definition.revision) {
-        return { ...stored, at: definition.last_error_at };
-    }
-
-    return null;
-}
+import { type ShownWidgetError } from './use-widget-error-reporter';
 
 function formatWhen(iso: string | null, locale: string): string | null {
     if (iso === null) {

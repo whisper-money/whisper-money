@@ -23,11 +23,11 @@ import {
     type ResolvedWidgetData,
     type UserWidgetDataState,
 } from './use-user-widget-data';
-import { type CaughtWidgetError } from './use-widget-error-reporter';
 import {
     currentWidgetError,
-    UserWidgetDetailsDialog,
-} from './user-widget-details-dialog';
+    type CaughtWidgetError,
+} from './use-widget-error-reporter';
+import { UserWidgetDetailsDialog } from './user-widget-details-dialog';
 
 export interface UserWidgetCellProps {
     placement: PlacedUserWidget;
@@ -46,6 +46,7 @@ export interface UserWidgetCellProps {
 }
 
 type Content =
+    | { kind: 'off' }
     | { kind: 'loading' }
     | { kind: 'safe' }
     | { kind: 'data-failed'; message: string }
@@ -66,6 +67,10 @@ function useCellContent(
         [answers],
     );
 
+    if (gate.mode === 'off') {
+        return { kind: 'off' };
+    }
+
     if (gate.mode === 'safe') {
         return { kind: 'safe' };
     }
@@ -74,7 +79,11 @@ function useCellContent(
         return { kind: 'loading' };
     }
 
-    if (data.status === 'loading') {
+    // A widget just added has no data until the new request lands.
+    if (
+        data.status === 'loading' ||
+        (resolved === null && data.status === 'ready' && data.refreshing)
+    ) {
         return { kind: 'loading' };
     }
 
@@ -88,10 +97,7 @@ function useCellContent(
     const [failure] = resolved.failures;
 
     if (failure !== undefined) {
-        return {
-            kind: 'data-failed',
-            message: `${failure.key}: ${failure.message}`,
-        };
+        return { kind: 'data-failed', message: failure.message };
     }
 
     return { kind: 'ready', resolved };
@@ -127,6 +133,10 @@ export function UserWidgetCell({
             settle?.(placement.id);
         }
     }, [content.kind, settle, placement.id]);
+
+    if (content.kind === 'off') {
+        return null;
+    }
 
     return (
         <div

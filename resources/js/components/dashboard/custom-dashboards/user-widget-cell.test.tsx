@@ -46,8 +46,13 @@ const RUN: UserWidgetsGate = { mode: 'run', settle };
 
 function ready(
     data: Record<string, { status: number; body: unknown }>,
+    refreshing = false,
 ): UserWidgetDataState {
-    return { status: 'ready', widgets: { 'def-1': { revision: 2, data } } };
+    return {
+        status: 'ready',
+        widgets: { 'def-1': { revision: 2, data } },
+        refreshing,
+    };
 }
 
 function renderCell(overrides: Partial<UserWidgetCellProps> = {}) {
@@ -90,6 +95,25 @@ describe('<UserWidgetCell>', () => {
         expect(screen.queryByLabelText(/Options for/)).toBeNull();
     });
 
+    it('keeps drawing while the dashboard asks for its data again', () => {
+        renderCell({
+            data: ready({ rows: { status: 200, body: { data: [] } } }, true),
+        });
+        expect(screen.getByTestId('user-widget')).toBeTruthy();
+    });
+
+    it('waits for the new request when it was just added', () => {
+        renderCell({
+            data: { status: 'ready', widgets: {}, refreshing: true },
+        });
+        expect(cellState()).toBe('loading');
+    });
+
+    it('draws nothing when user widgets are off', () => {
+        const { container } = renderCell({ gate: { mode: 'off' } });
+        expect(container.innerHTML).toBe('');
+    });
+
     it('keeps a refused call to its own cell and counts it as settled', () => {
         settle.mockClear();
         renderCell({
@@ -98,9 +122,7 @@ describe('<UserWidgetCell>', () => {
             }),
         });
 
-        expect(screen.getByRole('alert').textContent).toContain(
-            'rows: Bad range.',
-        );
+        expect(screen.getByRole('alert').textContent).toContain('Bad range.');
         expect(screen.queryByTestId('user-widget')).toBeNull();
         expect(settle).toHaveBeenCalledWith('placement-1');
     });

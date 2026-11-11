@@ -2,10 +2,8 @@ import { type UserWidgetDefinition } from '@/types/dashboard';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dashboardActions } from './dashboard-actions';
-import {
-    currentWidgetError,
-    UserWidgetDetailsDialog,
-} from './user-widget-details-dialog';
+import { currentWidgetError } from './use-widget-error-reporter';
+import { UserWidgetDetailsDialog } from './user-widget-details-dialog';
 
 vi.mock('./dashboard-actions', () => ({
     dashboardActions: { revertUserWidget: vi.fn() },

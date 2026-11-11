@@ -10,6 +10,35 @@ export interface CaughtWidgetError extends WidgetRuntimeError {
     caughtAt: string;
 }
 
+/** The error the details show: the one caught on this page, else the stored one. */
+export interface ShownWidgetError {
+    revision: number;
+    phase: 'load' | 'render';
+    message: string;
+    at: string | null;
+}
+
+/**
+ * The newest error of the widget's current revision. One caught on this page
+ * wins: the stored one is only as fresh as the page's last load.
+ */
+export function currentWidgetError(
+    definition: UserWidgetDefinition,
+    caught: CaughtWidgetError | undefined,
+): ShownWidgetError | null {
+    if (caught !== undefined && caught.revision === definition.revision) {
+        return { ...caught, at: caught.caughtAt };
+    }
+
+    const stored = definition.last_error;
+
+    if (stored !== null && stored.revision === definition.revision) {
+        return { ...stored, at: definition.last_error_at };
+    }
+
+    return null;
+}
+
 /**
  * The revisions whose error this tab already sent, by `id@revision`. Kept for
  * the whole page session (Inertia visits included), so a widget that throws
@@ -68,8 +97,14 @@ export function useWidgetErrorReporter(canStore: boolean): {
             }
 
             reported.add(key);
-            // Best effort: the widget's cell already shows the error.
-            send(definition, error).catch(() => undefined);
+            // A report that did not land is sent again the next time the
+            // widget fails (the next dashboard load, at the latest).
+            const forget = () => reported.delete(key);
+            send(definition, error).then((response) => {
+                if (!response.ok) {
+                    forget();
+                }
+            }, forget);
         },
         [canStore],
     );
