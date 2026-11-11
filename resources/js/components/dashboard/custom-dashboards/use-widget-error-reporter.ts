@@ -1,5 +1,6 @@
 import { store as storeWidgetError } from '@/actions/App/Http/Controllers/Widgets/WidgetErrorController';
 import { getCsrfToken } from '@/lib/csrf';
+import { getStorage } from '@/lib/safe-storage';
 import { type UserWidgetDefinition } from '@/types/dashboard';
 import { type WidgetRuntimeError } from '@/widgets/runtime/widget-error-boundary';
 import { useCallback, useState } from 'react';
@@ -39,16 +40,60 @@ export function currentWidgetError(
     return null;
 }
 
+const REPORTED_KEY = 'wm:reported-widget-errors';
+
 /**
- * The revisions whose error this tab already sent, by `id@revision`. Kept for
- * the whole page session (Inertia visits included), so a widget that throws
- * on every render, or every time the dashboard opens, is stored once.
+ * The revisions whose error this tab already sent, by `id@revision`. Kept in
+ * sessionStorage for the tab's session (reloads included), so a widget that
+ * throws on every render, or every time the dashboard opens, is stored once.
+ * Without storage it lasts as long as the page.
  */
-const reported = new Set<string>();
+const reported = {
+    keys: null as Set<string> | null,
+
+    all(): Set<string> {
+        if (this.keys === null) {
+            try {
+                const stored = getStorage('session')?.getItem(REPORTED_KEY);
+                this.keys = new Set(stored ? JSON.parse(stored) : []);
+            } catch {
+                this.keys = new Set();
+            }
+        }
+
+        return this.keys;
+    },
+
+    has(key: string): boolean {
+        return this.all().has(key);
+    },
+
+    add(key: string): void {
+        this.all().add(key);
+        this.persist();
+    },
+
+    delete(key: string): void {
+        this.all().delete(key);
+        this.persist();
+    },
+
+    persist(): void {
+        try {
+            getStorage('session')?.setItem(
+                REPORTED_KEY,
+                JSON.stringify([...this.all()]),
+            );
+        } catch {
+            // Storage full or blocked: the page still remembers.
+        }
+    },
+};
 
 /** Forgets what was sent; for tests. */
 export function resetReportedWidgetErrors(): void {
-    reported.clear();
+    reported.keys = new Set();
+    getStorage('session')?.removeItem(REPORTED_KEY);
 }
 
 function send(definition: UserWidgetDefinition, error: WidgetRuntimeError) {
@@ -99,7 +144,9 @@ export function useWidgetErrorReporter(canStore: boolean): {
             reported.add(key);
             // A report that did not land is sent again the next time the
             // widget fails (the next dashboard load, at the latest).
-            const forget = () => reported.delete(key);
+            const forget = () => {
+                reported.delete(key);
+            };
             send(definition, error).then((response) => {
                 if (!response.ok) {
                     forget();

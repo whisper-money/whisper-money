@@ -68,6 +68,15 @@ describe('useWidgetErrorReporter', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('stores it once for the tab, across reloads', () => {
+        const { result } = renderHook(() => useWidgetErrorReporter(true));
+        act(() => result.current.report(definition(5), ERROR));
+
+        expect(
+            JSON.parse(sessionStorage.getItem('wm:reported-widget-errors')!),
+        ).toEqual(['widget-1@5']);
+    });
+
     it('sends it again next time when the report did not land', async () => {
         fetchMock.mockResolvedValueOnce({ ok: false, status: 500 });
         const { result } = renderHook(() => useWidgetErrorReporter(true));
