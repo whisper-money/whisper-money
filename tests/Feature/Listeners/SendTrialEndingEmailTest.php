@@ -193,6 +193,19 @@ test('the keep-your-plan email states the end date, what was set up and links to
         ->not->toContain('€');
 });
 
+test('the keep-your-plan email leaves onboarding estimates out of what was set up', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user);
+    Transaction::factory()->count(2)->for($user)->create();
+    giveOnboardingEstimates($user, 4);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
+
+    expect(Mail::queued(TrialEndingCanceledEmail::class)->first()->render())
+        ->toContain('2 transactions')
+        ->not->toContain('6 transactions');
+});
+
 test('nothing is sent for an unknown Stripe customer', function () {
     User::factory()->create(['stripe_id' => 'cus_other']);
 

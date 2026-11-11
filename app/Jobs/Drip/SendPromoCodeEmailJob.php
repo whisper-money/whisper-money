@@ -18,10 +18,14 @@ class SendPromoCodeEmailJob extends SendDripEmailJob
         return new PromoCodeEmail($this->user);
     }
 
+    /**
+     * Only for a user with real movements in the app. Onboarding estimates do
+     * not count: they are round guesses, not data the paid plan works on.
+     */
     protected function shouldSend(): bool
     {
         return $this->user->isOnboarded()
-            && $this->user->transactions()->exists()
+            && $this->user->transactions()->withoutEstimates()->exists()
             && $this->user->isOnFreePlan();
     }
 }

@@ -9,7 +9,8 @@ use App\Models\User;
  * emails that argue for keeping the paid plan: the paywall a former subscriber
  * lands on, and the warning to a trial that is set to cancel. Both make the
  * same case — this is yours, and it is the syncing that stops — so they count
- * the same things.
+ * the same things. Onboarding estimates are left out of the transactions: they
+ * are round guesses from the quick-expenses step, not movements the user built up.
  */
 class UserSetupStats
 {
@@ -20,7 +21,7 @@ class UserSetupStats
     {
         return [
             'accountsCount' => $user->accounts()->count(),
-            'transactionsCount' => $user->transactions()->count(),
+            'transactionsCount' => $user->transactions()->withoutEstimates()->count(),
             'categoriesCount' => $user->categories()->count(),
             'rulesCount' => $user->automationRules()->count(),
             'connectionsCount' => $user->bankingConnections()->count(),

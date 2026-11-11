@@ -107,7 +107,8 @@ class SubscriptionController extends Controller
 
         return Inertia::render('subscription/free-plan', [
             'banks' => $connections,
-            'transactionsCount' => $user->transactions()->count(),
+            // Onboarding estimates are left out, as in UserSetupStats.
+            'transactionsCount' => $user->transactions()->withoutEstimates()->count(),
             'hasAiConsent' => $user->hasActiveAiConsent(),
             // Which paywall screen sent the user here, for the analytics of the
             // survey asked on the way out. Only the two gates with something to
