@@ -6,8 +6,8 @@ use App\Contracts\SizedWidget;
 use App\Enums\WidgetHeight;
 use App\Enums\WidgetOrigin;
 use App\Enums\WidgetWidth;
-use App\Services\Widgets\WidgetDefinitionService;
 use Database\Factories\WidgetDefinitionFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * A widget the user's agent wrote: a manifest (what data it reads and the
  * sizes it admits) and TSX, compiled to the ES module the dashboard loads.
  * Its columns hold the current revision; {@see WidgetRevision} keeps them all.
- * Only {@see WidgetDefinitionService} writes it.
+ * Only App\Services\Widgets\WidgetDefinitionService writes it.
  *
  * @property string $id
  * @property string $user_id
@@ -36,6 +36,9 @@ class WidgetDefinition extends Model implements SizedWidget
 {
     /** @use HasFactory<WidgetDefinitionFactory> */
     use HasFactory, HasUuids;
+
+    /** How many widgets a user may keep. */
+    public const MAX_PER_USER = 100;
 
     protected $fillable = [
         'user_id',
@@ -83,6 +86,16 @@ class WidgetDefinition extends Model implements SizedWidget
     public function placements(): HasMany
     {
         return $this->hasMany(DashboardWidget::class);
+    }
+
+    /**
+     * The widgets placed on $dashboard, each once however many times it is placed.
+     *
+     * @param  Builder<WidgetDefinition>  $query
+     */
+    public function scopeOnDashboard(Builder $query, Dashboard $dashboard): void
+    {
+        $query->whereIn('id', $dashboard->widgets()->whereNotNull('widget_definition_id')->select('widget_definition_id'));
     }
 
     /** @return array{width: WidgetWidth, height: WidgetHeight} */

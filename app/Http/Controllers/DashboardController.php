@@ -136,7 +136,7 @@ class DashboardController extends Controller
     private function presentUserWidgets(Dashboard $dashboard): array
     {
         return WidgetDefinition::query()
-            ->whereIn('id', $dashboard->widgets()->whereNotNull('widget_definition_id')->select('widget_definition_id'))
+            ->onDashboard($dashboard)
             ->with(['revisions' => fn ($query) => $query->orderByDesc('number')->select(['id', 'widget_definition_id', 'number', 'created_via', 'restored_from', 'created_at'])])
             ->get()
             ->mapWithKeys(fn (WidgetDefinition $widget): array => [$widget->id => [

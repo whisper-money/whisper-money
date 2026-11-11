@@ -43,7 +43,7 @@ class WidgetDataController extends Controller
         $this->authorize('view', $dashboard);
 
         $widgets = WidgetDefinition::query()
-            ->whereIn('id', $dashboard->widgets()->whereNotNull('widget_definition_id')->select('widget_definition_id'))
+            ->onDashboard($dashboard)
             ->get();
 
         $data = $this->widgets->data($request->user(), $widgets, $request->variables());

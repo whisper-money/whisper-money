@@ -9,6 +9,7 @@ use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
 use App\Models\WidgetDefinition;
+use App\Models\WidgetRevision;
 use App\Policies\WidgetDefinitionPolicy;
 use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\Gateway\ManifestValidator;
@@ -50,22 +51,16 @@ class WidgetDefinitionService
      */
     public function create(User $user, array $manifest, string $source, WidgetOrigin $origin): WidgetDefinition
     {
-        [$manifest, $js] = $this->check($manifest, $source);
+        if ($user->widgetDefinitions()->count() >= WidgetDefinition::MAX_PER_USER) {
+            throw InvalidWidget::at('widget', 'You already have '.WidgetDefinition::MAX_PER_USER.' widgets, the most you can keep.', 'Update one of them instead of creating another.');
+        }
 
-        return DB::transaction(function () use ($user, $manifest, $source, $js, $origin): WidgetDefinition {
-            $widget = $user->widgetDefinitions()->create([
-                ...$this->content($manifest, $source, $js),
-                'revision' => 1,
-                'created_via' => $origin,
-            ]);
+        $content = $this->check($manifest, $source);
 
-            $widget->revisions()->create([
-                'number' => 1,
-                ...$this->revisionContent($manifest, $source, $js),
-                'created_via' => $origin,
-            ]);
+        return DB::transaction(function () use ($user, $content, $origin): WidgetDefinition {
+            $widget = $user->widgetDefinitions()->make(['created_via' => $origin, 'revision' => 0]);
 
-            return $widget;
+            return $this->saveRevision($widget, $content, $origin);
         });
     }
 
@@ -80,9 +75,11 @@ class WidgetDefinitionService
      */
     public function update(WidgetDefinition $widget, array $manifest, string $source, WidgetOrigin $origin): WidgetDefinition
     {
-        [$manifest, $js] = $this->check($manifest, $source);
+        $content = $this->check($manifest, $source);
 
-        return $this->saveRevision($widget, $manifest, $source, $js, $origin);
+        DB::transaction(fn (): WidgetDefinition => $this->saveRevision($this->locked($widget), $content, $origin));
+
+        return $widget->refresh();
     }
 
     /**
@@ -95,11 +92,13 @@ class WidgetDefinitionService
     public function revert(WidgetDefinition $widget, int $number, WidgetOrigin $origin): WidgetDefinition
     {
         $revision = $widget->revisions()->where('number', $number)->first()
-            ?? throw InvalidWidget::at('revision', "The widget has no revision {$number}. Its revisions go from 1 to {$widget->revision}.");
+            ?? throw InvalidWidget::at('revision', "The widget has no revision {$number}. Its revisions kept are: ".$widget->revisions()->orderBy('number')->pluck('number')->implode(', ').'.');
 
-        [$manifest, $js] = $this->check($revision->manifest, $revision->source);
+        $content = $this->check($revision->manifest, $revision->source);
 
-        return $this->saveRevision($widget, $manifest, $revision->source, $js, $origin, restoredFrom: $number);
+        DB::transaction(fn (): WidgetDefinition => $this->saveRevision($this->locked($widget), $content, $origin, restoredFrom: $number));
+
+        return $widget->refresh();
     }
 
     /**
@@ -183,11 +182,10 @@ class WidgetDefinitionService
      * The manifest once valid and the compiled module, or every reason why not.
      *
      * @param  array<mixed>  $manifest
-     * @return array{0: array{name: string, size: array<string, mixed>, data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>}, 1: string}
      *
      * @throws InvalidWidget
      */
-    private function check(array $manifest, string $source): array
+    private function check(array $manifest, string $source): WidgetContent
     {
         if (strlen($source) > self::MaxSourceBytes) {
             throw InvalidWidget::at(
@@ -219,38 +217,54 @@ class WidgetDefinitionService
             throw new InvalidWidget($errors ?: [['path' => 'source', 'message' => 'The widget could not be compiled.']]);
         }
 
-        return [$manifest, $compilation->js];
+        return new WidgetContent($manifest, $source, $compilation->js);
     }
 
     /**
-     * @param  array{name: string, size: array<string, mixed>, data: array<string, mixed>}  $manifest
+     * $widget locked for the rest of the transaction, so two saves at once
+     * cannot both take the same revision number.
      */
-    private function saveRevision(WidgetDefinition $widget, array $manifest, string $source, string $js, WidgetOrigin $origin, ?int $restoredFrom = null): WidgetDefinition
+    private function locked(WidgetDefinition $widget): WidgetDefinition
     {
-        return DB::transaction(function () use ($widget, $manifest, $source, $js, $origin, $restoredFrom): WidgetDefinition {
-            // Locked so two saves at once cannot both take the same number.
-            $locked = WidgetDefinition::query()->lockForUpdate()->findOrFail($widget->id);
-            $number = $locked->revision + 1;
+        return WidgetDefinition::query()->lockForUpdate()->findOrFail($widget->id);
+    }
 
-            $locked->update([
-                ...$this->content($manifest, $source, $js),
-                'revision' => $number,
-                // The error came from the code this revision replaces.
-                'last_error' => null,
-                'last_error_at' => null,
-            ]);
+    /**
+     * Make $content the widget's next revision. Runs inside a transaction.
+     */
+    private function saveRevision(WidgetDefinition $widget, WidgetContent $content, WidgetOrigin $origin, ?int $restoredFrom = null): WidgetDefinition
+    {
+        $number = $widget->revision + 1;
 
-            $locked->revisions()->create([
-                'number' => $number,
-                ...$this->revisionContent($manifest, $source, $js),
-                'created_via' => $origin,
-                'restored_from' => $restoredFrom,
-            ]);
+        $widget->fill([
+            'name' => $content->manifest['name'],
+            ...$content->attributes(),
+            'revision' => $number,
+            // The error came from the code this revision replaces.
+            'last_error' => null,
+            'last_error_at' => null,
+        ])->save();
 
-            $this->refitPlacements($locked);
+        $widget->revisions()->create([
+            'number' => $number,
+            ...$content->attributes(),
+            'created_via' => $origin,
+            'restored_from' => $restoredFrom,
+        ]);
 
-            return $locked;
-        });
+        $this->pruneRevisions($widget);
+        $this->refitPlacements($widget);
+
+        return $widget;
+    }
+
+    /**
+     * Keep the newest WidgetRevision::MAX_KEPT revisions: an agent fixing a
+     * widget in a loop saves one per try.
+     */
+    private function pruneRevisions(WidgetDefinition $widget): void
+    {
+        $widget->revisions()->where('number', '<=', $widget->revision - WidgetRevision::MAX_KEPT)->delete();
     }
 
     /**
@@ -262,23 +276,5 @@ class WidgetDefinitionService
         $widget->placements()->get()
             ->reject(fn (DashboardWidget $placement): bool => $widget->allowsSize($placement->width, $placement->height))
             ->each(fn (DashboardWidget $placement): bool => $placement->update($widget->defaultSize()));
-    }
-
-    /**
-     * @param  array{name: string, size: array<string, mixed>, data: array<string, mixed>}  $manifest
-     * @return array{name: string, manifest: array<string, mixed>, source: string, compiled_js: string}
-     */
-    private function content(array $manifest, string $source, string $js): array
-    {
-        return ['name' => $manifest['name'], ...$this->revisionContent($manifest, $source, $js)];
-    }
-
-    /**
-     * @param  array{name: string, size: array<string, mixed>, data: array<string, mixed>}  $manifest
-     * @return array{manifest: array<string, mixed>, source: string, compiled_js: string}
-     */
-    private function revisionContent(array $manifest, string $source, string $js): array
-    {
-        return ['manifest' => $manifest, 'source' => $source, 'compiled_js' => $js];
     }
 }

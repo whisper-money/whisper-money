@@ -2,6 +2,7 @@
 
 namespace App\Services\Widgets\Gateway;
 
+use App\Models\User;
 use Carbon\CarbonImmutable;
 
 /**
@@ -10,7 +11,7 @@ use Carbon\CarbonImmutable;
  * them; the endpoints and the other parameters stay as the manifest saved
  * them.
  *
- * @api built by the widget data routes from the dashboard's range
+ * Built by the widget data routes from the dashboard's range.
  */
 final readonly class DashboardVariables
 {
@@ -26,11 +27,13 @@ final readonly class DashboardVariables
         private CarbonImmutable $to,
     ) {}
 
-    public static function currentMonth(): self
+    /**
+     * The whole month $day falls in: pass the user's own today
+     * ({@see User::localToday()}), not the server's.
+     */
+    public static function forMonthOf(CarbonImmutable $day): self
     {
-        $today = CarbonImmutable::today();
-
-        return new self($today->startOfMonth(), $today->endOfMonth()->startOfDay());
+        return new self($day->startOfMonth(), $day->endOfMonth()->startOfDay());
     }
 
     /**

@@ -28,12 +28,15 @@ class InvalidWidget extends RuntimeException
     }
 
     /**
-     * The same errors for a web form, under `$field`.
+     * The same errors for a web form, under `$field`, each with where it is and what to do.
      */
     public function toValidationException(string $field): ValidationException
     {
         return ValidationException::withMessages([
-            $field => array_map(fn (array $error): string => $error['message'], $this->errors),
+            $field => array_map(
+                fn (array $error): string => trim("{$error['path']}: {$error['message']} ".($error['hint'] ?? '')),
+                $this->errors,
+            ),
         ]);
     }
 }

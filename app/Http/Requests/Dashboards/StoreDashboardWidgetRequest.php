@@ -7,6 +7,7 @@ use App\Enums\WidgetHeight;
 use App\Enums\WidgetWidth;
 use App\Http\Requests\Concerns\AuthorizesDashboardUpdate;
 use App\Http\Requests\Concerns\ValidatesWidgetSize;
+use App\Models\Dashboard;
 use App\Models\WidgetDefinition;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -46,6 +47,12 @@ class StoreDashboardWidgetRequest extends FormRequest
     {
         return [function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            if ($this->dashboard()->widgets()->count() >= Dashboard::MAX_WIDGETS) {
+                $validator->errors()->add('dashboard', __('A dashboard holds at most :count widgets.', ['count' => Dashboard::MAX_WIDGETS]));
+
                 return;
             }
 

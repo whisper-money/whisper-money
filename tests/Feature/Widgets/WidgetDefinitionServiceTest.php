@@ -8,6 +8,7 @@ use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
 use App\Models\WidgetDefinition;
+use App\Models\WidgetRevision;
 use App\Services\Widgets\InvalidWidget;
 use App\Services\Widgets\WidgetDefinitionService;
 
@@ -205,7 +206,19 @@ describe('revisions', function () {
         $errors = rejectionOf(fn () => widgetService()->revert($widget, 7, WidgetOrigin::Web));
 
         expect($errors[0]['path'])->toBe('revision')
-            ->and($errors[0]['message'])->toContain('from 1 to 1');
+            ->and($errors[0]['message'])->toContain('Its revisions kept are: 1.');
+    });
+
+    it('keeps only the newest revisions', function () {
+        $widget = WidgetDefinition::factory()->create();
+        WidgetRevision::factory()->for($widget)->count(WidgetRevision::MAX_KEPT - 1)->sequence(fn ($sequence) => ['number' => $sequence->index + 2])->create();
+        $widget->update(['revision' => WidgetRevision::MAX_KEPT]);
+
+        widgetService()->revert($widget, 1, WidgetOrigin::Mcp);
+
+        expect($widget->revisions()->min('number'))->toBe(2)
+            ->and($widget->revisions()->max('number'))->toBe(WidgetRevision::MAX_KEPT + 1)
+            ->and($widget->revisions()->count())->toBe(WidgetRevision::MAX_KEPT);
     });
 
     it('puts placements back at the default size when the new manifest no longer admits theirs', function () {
@@ -219,6 +232,16 @@ describe('revisions', function () {
             ->width->toBe(WidgetWidth::OneThird)
             ->height->toBe(WidgetHeight::Large);
     });
+});
+
+it('caps how many widgets a user keeps', function () {
+    $user = User::factory()->create();
+    WidgetDefinition::factory()->for($user)->count(WidgetDefinition::MAX_PER_USER)->create();
+
+    $errors = rejectionOf(fn () => widgetService()->create($user, widgetManifest(), validWidgetSource(), WidgetOrigin::Mcp));
+
+    expect($errors[0]['path'])->toBe('widget')
+        ->and($user->widgetDefinitions()->count())->toBe(WidgetDefinition::MAX_PER_USER);
 });
 
 describe('placing', function () {

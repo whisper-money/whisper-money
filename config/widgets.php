@@ -25,6 +25,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Widget runtime errors
+    |--------------------------------------------------------------------------
+    |
+    | How many runtime errors the dashboard may report for one widget a minute.
+    | Only the latest is kept, for the agent that wrote the widget to read.
+    |
+    */
+
+    'errors' => [
+        'reports_per_minute' => (int) env('WIDGET_ERRORS_PER_MINUTE', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Widget compiler
     |--------------------------------------------------------------------------
     |

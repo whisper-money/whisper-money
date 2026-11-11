@@ -100,6 +100,15 @@ describe('widget data', function () {
             ->assertJsonValidationErrors('range.to');
     });
 
+    it('refuses a range longer than ten years', function () {
+        $user = widgetOwner();
+
+        $this->actingAs($user)
+            ->getJson(route('widgets.data', ['widget' => transactionsWidget($user), 'range' => ['from' => '2000-01-01', 'to' => '2026-10-01']]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('range.to');
+    });
+
     it('does not exist for another user', function () {
         $this->actingAs(widgetOwner())
             ->getJson(route('widgets.data', transactionsWidget(widgetOwner())))
@@ -193,7 +202,7 @@ describe('runtime errors', function () {
             ->assertJsonValidationErrors(['message', 'phase']);
     });
 
-    it('is throttled', function () {
+    it('is throttled per widget', function () {
         $user = widgetOwner();
         $widget = transactionsWidget($user);
 
@@ -202,6 +211,7 @@ describe('runtime errors', function () {
         }
 
         $this->actingAs($user)->postJson(route('widgets.errors.store', $widget), runtimeError())->assertTooManyRequests();
+        $this->actingAs($user)->postJson(route('widgets.errors.store', transactionsWidget($user)), runtimeError())->assertNoContent();
     });
 });
 
@@ -236,6 +246,18 @@ describe('placing and reverting from the web', function () {
         $this->actingAs($user)
             ->patch(route('dashboards.widgets.update', [$dashboard, $placement]), ['width' => '1/2', 'height' => 'l'])
             ->assertSessionHasErrors('width');
+    });
+
+    it('caps a dashboard at its widget limit, system widgets included', function () {
+        $user = widgetOwner();
+        $dashboard = Dashboard::factory()->for($user)->create();
+        DashboardWidget::factory()->for($dashboard)->count(Dashboard::MAX_WIDGETS)->create(['system_widget' => null, 'widget_definition_id' => transactionsWidget($user)->id, 'width' => '1/2', 'height' => 'm']);
+
+        $this->actingAs($user)
+            ->post(route('dashboards.widgets.store', $dashboard), ['system_widget' => 'cashflow'])
+            ->assertSessionHasErrors('dashboard');
+
+        expect($dashboard->widgets()->count())->toBe(Dashboard::MAX_WIDGETS);
     });
 
     it('does not place another user\'s widget', function () {

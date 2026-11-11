@@ -27,6 +27,9 @@ class WidgetRevision extends Model
     /** @use HasFactory<WidgetRevisionFactory> */
     use HasFactory, HasUuids;
 
+    /** How many revisions of a widget are kept, the newest ones. */
+    public const MAX_KEPT = 50;
+
     protected $fillable = [
         'widget_definition_id',
         'number',
