@@ -19,7 +19,13 @@ export default defineConfig({
     },
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            // widgets.css is the precompiled stylesheet for user widgets, loaded
+            // only where they render (see resources/css/widgets.css).
+            input: [
+                'resources/css/app.css',
+                'resources/css/widgets.css',
+                'resources/js/app.tsx',
+            ],
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
