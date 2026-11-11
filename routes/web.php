@@ -13,6 +13,9 @@ use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\CreditCardDetailController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Dashboards\DashboardManagementController;
+use App\Http\Controllers\Dashboards\DashboardWidgetController;
+use App\Http\Controllers\Dashboards\DefaultDashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
 use App\Http\Controllers\IntegrationRequestController;
@@ -273,6 +276,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // The user's own dashboards and the system widgets placed on them. Not
+    // behind the CustomDashboards flag, which only hides the UI. Writes are
+    // closed to the demo and press accounts, whose dashboards everybody shares.
+    Route::middleware('block-shared')->prefix('dashboards')->name('dashboards.')->group(function () {
+        Route::post('/', [DashboardManagementController::class, 'store'])->name('store');
+        Route::patch('reorder', [DashboardManagementController::class, 'reorder'])->name('reorder');
+        Route::put('default', DefaultDashboardController::class)->name('default.update');
+        Route::patch('{dashboard}', [DashboardManagementController::class, 'update'])->name('update');
+        Route::delete('{dashboard}', [DashboardManagementController::class, 'destroy'])->name('destroy');
+
+        Route::scopeBindings()->prefix('{dashboard}/widgets')->name('widgets.')->group(function () {
+            Route::post('/', [DashboardWidgetController::class, 'store'])->name('store');
+            Route::patch('reorder', [DashboardWidgetController::class, 'reorder'])->name('reorder');
+            Route::patch('{widget}', [DashboardWidgetController::class, 'update'])->name('update');
+            Route::delete('{widget}', [DashboardWidgetController::class, 'destroy'])->name('destroy');
+        });
+    });
 
     // The monthly summaries a reader can look back at, and the cards they can
     // share. Behind the same feature flag as the email that produces them.
