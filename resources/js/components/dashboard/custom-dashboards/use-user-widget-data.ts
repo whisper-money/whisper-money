@@ -1,4 +1,5 @@
 import { dashboard as dashboardWidgetsData } from '@/actions/App/Http/Controllers/Widgets/WidgetDataController';
+import { trackWidgetDataLoaded } from '@/lib/custom-dashboards-telemetry';
 import { fetchJson } from '@/lib/fetch-json';
 import { type UserWidgetDefinition } from '@/types/dashboard';
 import { useEffect, useMemo, useState } from 'react';
@@ -117,6 +118,8 @@ export function useUserWidgetData(
 
         fetchJson<DashboardWidgetsDataResponse>(url).then(
             ({ widgets }) => {
+                trackWidgetDataLoaded(widgets);
+
                 if (current) {
                     setState({
                         key,

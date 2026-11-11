@@ -1,5 +1,6 @@
 import { store as storeWidgetError } from '@/actions/App/Http/Controllers/Widgets/WidgetErrorController';
 import { getCsrfToken } from '@/lib/csrf';
+import { trackWidgetRuntimeError } from '@/lib/custom-dashboards-telemetry';
 import { getStorage } from '@/lib/safe-storage';
 import { type UserWidgetDefinition } from '@/types/dashboard';
 import { type WidgetRuntimeError } from '@/widgets/runtime/widget-error-boundary';
@@ -142,6 +143,7 @@ export function useWidgetErrorReporter(canStore: boolean): {
             }
 
             reported.add(key);
+            trackWidgetRuntimeError(error.phase);
             // A report that did not land is sent again the next time the
             // widget fails (the next dashboard load, at the latest).
             const forget = () => {

@@ -27,7 +27,9 @@ import {
     placedWidgets,
 } from './grid-layout';
 import { systemDashboardName } from './labels';
+import { LockedDashboard } from './locked-dashboard';
 import { ManageDashboardsDialog } from './manage-dashboards-dialog';
+import { StandardPlanDialog } from './standard-plan-notice';
 import { useUserWidgetSlots } from './use-user-widget-slots';
 
 interface Props {
@@ -51,6 +53,7 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
     // Edit mode belongs to one dashboard: opening another one reads it.
     const [editingId, setEditingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
+    const [upselling, setUpselling] = useState(false);
     const [managing, setManaging] = useState(false);
 
     // The list is deferred; until it lands, the one on screen is all we know.
@@ -114,7 +117,9 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
                         canCreate={canEdit}
                         canManage={canManage}
                         isLoading={data.dashboards === undefined}
-                        onCreate={() => setCreating(true)}
+                        onCreate={() =>
+                            canEdit ? setCreating(true) : setUpselling(true)
+                        }
                         onManage={() => setManaging(true)}
                     />
                 </div>
@@ -127,6 +132,8 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
                     layout={SYSTEM_DASHBOARD_LAYOUT}
                     data={data}
                 />
+            ) : isLocked(data, selected) ? (
+                <LockedDashboard dashboard={selected} />
             ) : (
                 <UserDashboard
                     dashboard={selected}
@@ -139,6 +146,7 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
             )}
 
             <DashboardNameDialog open={creating} onOpenChange={setCreating} />
+            <StandardPlanDialog open={upselling} onOpenChange={setUpselling} />
             <ManageDashboardsDialog
                 open={managing}
                 onOpenChange={setManaging}
@@ -148,6 +156,15 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
             />
         </>
     );
+}
+
+/**
+ * One of the user's dashboards, opened off the paid plan: drawn as
+ * placeholders. An empty one has nothing to hide, and says why it cannot be
+ * filled.
+ */
+function isLocked(data: DashboardProps, dashboard: SelectedDashboard): boolean {
+    return !data.auth.hasProPlan && dashboard.widgets.length > 0;
 }
 
 function UserDashboard({
