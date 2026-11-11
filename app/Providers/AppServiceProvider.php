@@ -141,6 +141,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute((int) config('widgets.gateway.calls_per_minute'))->by((string) $user->getAuthIdentifier());
         });
 
+        // The runtime errors user widgets report from the dashboard. A widget
+        // that fails on every render would otherwise write on every render;
+        // only the latest error is kept, so a few a minute lose nothing.
+        RateLimiter::for('widget-errors', function (Request $request): Limit {
+            return Limit::perMinute(30)->by((string) $request->user()?->getAuthIdentifier());
+        });
+
         // AI column-mapping suggestions are asked once per imported file, so 20
         // a minute per user is plenty. A named limiter keeps its own bucket: a
         // plain `throttle:20,1` would share (and double-count) the key of the

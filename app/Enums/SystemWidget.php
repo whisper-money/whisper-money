@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Contracts\SizedWidget;
+
 /**
  * The widgets the app ships with, mirroring `SYSTEM_WIDGETS` in
  * `resources/js/components/dashboard/widgets/registry.ts`. The values are the
@@ -9,7 +11,7 @@ namespace App\Enums;
  * one orphans it on every saved dashboard. `SystemWidgetRegistryParityTest`
  * fails when this list and the TypeScript registry drift apart.
  */
-enum SystemWidget: string
+enum SystemWidget: string implements SizedWidget
 {
     case NetWorth = 'net-worth';
     case AccountBalances = 'account-balances';

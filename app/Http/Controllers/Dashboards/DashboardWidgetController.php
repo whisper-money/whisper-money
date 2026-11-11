@@ -8,24 +8,39 @@ use App\Http\Requests\Dashboards\StoreDashboardWidgetRequest;
 use App\Http\Requests\Dashboards\UpdateDashboardWidgetRequest;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
+use App\Models\WidgetDefinition;
+use App\Services\Widgets\InvalidWidget;
+use App\Services\Widgets\WidgetDefinitionService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Places system widgets on a dashboard, removes them, orders them and sizes
- * them. The `{widget}` binding is scoped to its `{dashboard}`, so a widget
+ * Places widgets on a dashboard (the system's and the user's own), removes
+ * them, orders them and sizes them. The `{widget}` binding is scoped to its `{dashboard}`, so a widget
  * from another dashboard is a 404.
  */
 class DashboardWidgetController extends Controller
 {
     use AuthorizesRequests;
 
-    public function store(StoreDashboardWidgetRequest $request, Dashboard $dashboard): RedirectResponse
+    public function store(StoreDashboardWidgetRequest $request, Dashboard $dashboard, WidgetDefinitionService $widgets): RedirectResponse
     {
+        $widget = $request->widget();
+
+        if ($widget instanceof WidgetDefinition) {
+            try {
+                $widgets->place($dashboard, $widget, $request->size($widget));
+            } catch (InvalidWidget $exception) {
+                throw $exception->toValidationException('widget_definition_id');
+            }
+
+            return back();
+        }
+
         $dashboard->widgets()->create([
-            'system_widget' => $request->systemWidget(),
-            ...$request->size($request->systemWidget()),
+            'system_widget' => $widget,
+            ...$request->size($widget),
             'position' => (int) $dashboard->widgets()->max('position') + 1,
         ]);
 

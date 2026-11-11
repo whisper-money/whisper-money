@@ -6,6 +6,8 @@ use App\Models\Account;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
+use App\Models\WidgetDefinition;
+use App\Models\WidgetRevision;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
@@ -52,6 +54,14 @@ class DashboardController extends Controller
 
                 return $dashboard === null ? null : $this->presentDashboard($dashboard);
             },
+            // The user widgets on the dashboard on screen, by id: the module to
+            // run, the manifest, the revisions to go back to and the last error.
+            // Deferred: the compiled modules are the heaviest part of the page.
+            'userWidgets' => Inertia::defer(function () use ($request): array {
+                $dashboard = $this->selectedDashboard($request);
+
+                return $dashboard === null ? [] : $this->presentUserWidgets($dashboard);
+            }, 'dashboard'),
             // The window the top categories and top labels cards report on, so
             // their links and drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
@@ -118,6 +128,33 @@ class DashboardController extends Controller
                 ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * @return array<string, array{id: string, name: string, revision: int, js: string, manifest: array<string, mixed>, last_error: array<string, mixed>|null, last_error_at: string|null, revisions: list<array{number: int, created_via: string, restored_from: int|null, created_at: string|null}>}>
+     */
+    private function presentUserWidgets(Dashboard $dashboard): array
+    {
+        return WidgetDefinition::query()
+            ->whereIn('id', $dashboard->widgets()->whereNotNull('widget_definition_id')->select('widget_definition_id'))
+            ->with(['revisions' => fn ($query) => $query->orderByDesc('number')->select(['id', 'widget_definition_id', 'number', 'created_via', 'restored_from', 'created_at'])])
+            ->get()
+            ->mapWithKeys(fn (WidgetDefinition $widget): array => [$widget->id => [
+                'id' => $widget->id,
+                'name' => $widget->name,
+                'revision' => $widget->revision,
+                'js' => $widget->compiled_js,
+                'manifest' => $widget->manifest,
+                'last_error' => $widget->last_error,
+                'last_error_at' => $widget->last_error_at?->toIso8601String(),
+                'revisions' => $widget->revisions->map(fn (WidgetRevision $revision): array => [
+                    'number' => $revision->number,
+                    'created_via' => $revision->created_via->value,
+                    'restored_from' => $revision->restored_from,
+                    'created_at' => $revision->created_at?->toIso8601String(),
+                ])->values()->all(),
+            ]])
+            ->all();
     }
 
     /**

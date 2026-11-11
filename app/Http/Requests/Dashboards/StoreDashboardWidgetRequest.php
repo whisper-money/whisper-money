@@ -7,10 +7,15 @@ use App\Enums\WidgetHeight;
 use App\Enums\WidgetWidth;
 use App\Http\Requests\Concerns\AuthorizesDashboardUpdate;
 use App\Http\Requests\Concerns\ValidatesWidgetSize;
+use App\Models\WidgetDefinition;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Places a system widget (`system_widget`) or one of the user's own
+ * (`widget_definition_id`) on the dashboard.
+ */
 class StoreDashboardWidgetRequest extends FormRequest
 {
     use AuthorizesDashboardUpdate, ValidatesWidgetSize;
@@ -23,7 +28,12 @@ class StoreDashboardWidgetRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'system_widget' => ['required', Rule::enum(SystemWidget::class)],
+            'system_widget' => ['required_without:widget_definition_id', 'prohibits:widget_definition_id', Rule::enum(SystemWidget::class)],
+            'widget_definition_id' => [
+                'required_without:system_widget',
+                'uuid',
+                Rule::exists('widget_definitions', 'id')->where('user_id', $this->user()->id),
+            ],
             'width' => ['required_with:height', Rule::enum(WidgetWidth::class)],
             'height' => ['required_with:width', Rule::enum(WidgetHeight::class)],
         ];
@@ -39,10 +49,10 @@ class StoreDashboardWidgetRequest extends FormRequest
                 return;
             }
 
-            $widget = $this->systemWidget();
+            $widget = $this->widget();
 
             // The registry draws each system widget once per dashboard.
-            if ($this->dashboard()->widgets()->where('system_widget', $widget->value)->exists()) {
+            if ($widget instanceof SystemWidget && $this->dashboard()->widgets()->where('system_widget', $widget->value)->exists()) {
                 $validator->errors()->add('system_widget', __('This widget is already on the dashboard.'));
 
                 return;
@@ -52,8 +62,13 @@ class StoreDashboardWidgetRequest extends FormRequest
         }];
     }
 
-    public function systemWidget(): SystemWidget
+    /**
+     * The widget asked for, once validated.
+     */
+    public function widget(): SystemWidget|WidgetDefinition
     {
-        return SystemWidget::from($this->validated('system_widget'));
+        return once(fn (): SystemWidget|WidgetDefinition => $this->filled('widget_definition_id')
+            ? WidgetDefinition::query()->findOrFail($this->validated('widget_definition_id'))
+            : SystemWidget::from($this->validated('system_widget')));
     }
 }
