@@ -545,7 +545,7 @@ The month in progress across your monthly savings goals that are not archived: w
 | `data.saved` | integer | What the running goals saved so far this month. A goal whose first month is partial (created in the month's last 5 days) is left out of `saved` and `target`. |
 | `data.target` | integer | What the running goals aim to save this month, each against its own target. |
 | `data.days_left` | integer | The days left in the month, today included. |
-| `data.goals` | array of object | Every monthly goal that is not archived, oldest first, with its month in progress as `GET /api/v1/savings-goals` gives it under `monthly.current` (`null` when the month has not opened for it yet). Goals of every space you are in count, but only yours. |
+| `data.goals` | array of object | Every monthly goal that is not archived, oldest first, with its month in progress as `GET /api/v1/savings-goals` gives it under `monthly.current` (`null` when the month has not opened for it yet). A goal whose month is `partial` is listed with what it saved but is not in `saved` and `target`. Goals of every space you are in count, but only yours. |
 | `data.goals[].id` | string |  |
 | `data.goals[].name` | string |  |
 | `data.goals[].current` | object or null |  |

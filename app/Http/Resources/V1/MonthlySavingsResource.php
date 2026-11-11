@@ -62,7 +62,7 @@ class MonthlySavingsResource extends JsonResource
              */
             'days_left' => $this->resource['days_left'],
             /**
-             * Every monthly goal that is not archived, oldest first, with its month in progress as `GET /api/v1/savings-goals` gives it under `monthly.current` (`null` when the month has not opened for it yet). Goals of every space you are in count, but only yours.
+             * Every monthly goal that is not archived, oldest first, with its month in progress as `GET /api/v1/savings-goals` gives it under `monthly.current` (`null` when the month has not opened for it yet). A goal whose month is `partial` is listed with what it saved but is not in `saved` and `target`. Goals of every space you are in count, but only yours.
              *
              * @var list<array{id: string, name: string, current: array{month: string, target: int, saved: int, difference: int, status: string, income_base: ?int, remaining: int, days_left: int}|null}>
              *

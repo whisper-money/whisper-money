@@ -18,7 +18,7 @@ class AnalyticsRangeRequest extends FormRequest
      * The most calendar months a range may touch: every one of them is walked
      * through, so an unbounded range would be an unbounded amount of work.
      */
-    protected const MAX_MONTHS = 120;
+    public const MAX_MONTHS = 120;
 
     /**
      * @return array<string, array<mixed>>
@@ -71,9 +71,7 @@ class AnalyticsRangeRequest extends FormRequest
      */
     protected function rangeRefusal(PeriodComparator $period): ?string
     {
-        $months = ($period->to->year - $period->from->year) * 12 + $period->to->month - $period->from->month + 1;
-
-        return $months > static::MAX_MONTHS
+        return $period->monthsTouched() > static::MAX_MONTHS
             ? 'The range can touch at most '.static::MAX_MONTHS.' calendar months.'
             : null;
     }

@@ -2,11 +2,13 @@
 
 namespace App\Mcp\Tools;
 
+use App\Http\Requests\Api\V1\AnalyticsRangeRequest;
 use App\Models\User;
 use App\Services\LabelSpendingService;
 use App\Services\PeriodComparator;
 use App\Support\Money;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -23,18 +25,33 @@ class SpendingByLabel extends McpTool
     {
         return [
             'from' => $schema->string()->description('Start date, YYYY-MM-DD.')->required(),
-            'to' => $schema->string()->description('End date, YYYY-MM-DD.')->required(),
+            'to' => $schema->string()->description('End date, YYYY-MM-DD, not before from. The range can touch at most '.AnalyticsRangeRequest::MAX_MONTHS.' calendar months.')->required(),
         ];
     }
 
     protected function respond(Request $request, User $user): Response
     {
-        $period = PeriodComparator::fromRequest($request->validate(PeriodComparator::rules()));
+        $rules = PeriodComparator::rules();
+        $period = PeriodComparator::fromRequest($request->validate([
+            'from' => [...$rules['from'], 'date_format:Y-m-d'],
+            'to' => [...$rules['to'], 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]));
+
+        // The same cap as the API's: two queries per call, but no reason to
+        // let an agent read further back than an API user can.
+        if ($period->monthsTouched() > AnalyticsRangeRequest::MAX_MONTHS) {
+            throw ValidationException::withMessages(['to' => 'The range can touch at most '.AnalyticsRangeRequest::MAX_MONTHS.' calendar months.']);
+        }
+
         $previous = $period->previous();
         $currency = $this->reportingCurrency($user);
+        $labels = app(LabelSpendingService::class)->comparedForPeriod($user->id, $period);
+        $total = $labels[0]['total_amount'] ?? 0;
 
         return $this->json([
             'currency' => $currency,
+            'total' => $total,
+            'total_formatted' => Money::format($total, $currency),
             'previous_from' => $previous->from->toDateString(),
             'previous_to' => $previous->to->toDateString(),
             'labels' => array_map(fn (array $label): array => [
@@ -44,7 +61,7 @@ class SpendingByLabel extends McpTool
                 'amount' => $label['amount'],
                 'amount_formatted' => Money::format($label['amount'], $currency),
                 'previous_amount' => $label['previous_amount'],
-            ], app(LabelSpendingService::class)->comparedForPeriod($user->id, $period)),
+            ], $labels),
         ]);
     }
 }

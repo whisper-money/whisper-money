@@ -47,16 +47,20 @@ it('ranks spending by label with formatted amounts, the caller\'s own only', fun
     WhisperMoneyServer::actingAs($user)
         ->tool(SpendingByLabel::class, ['from' => '2026-10-01', 'to' => '2026-10-31'])
         ->assertOk()
-        ->assertSee('"currency":"EUR","previous_from":"2026-09-01","previous_to":"2026-09-30"')
+        ->assertSee('"currency":"EUR","total":219888,"total_formatted":"€2,198.88","previous_from":"2026-09-01","previous_to":"2026-09-30"')
         ->assertSee('{"label_id":"'.$trip->id.'","name":"Trip","color":"'.$trip->color.'","amount":219888,"amount_formatted":"€2,198.88","previous_amount":0}')
         ->assertDontSee('9999');
 });
 
-it('needs a range for spending by label', function () {
+it('refuses a spending by label range the API would refuse', function (array $range, string $error) {
     WhisperMoneyServer::actingAs(User::factory()->create())
-        ->tool(SpendingByLabel::class, ['from' => '2026-10-01'])
-        ->assertHasErrors();
-});
+        ->tool(SpendingByLabel::class, $range)
+        ->assertHasErrors([$error]);
+})->with([
+    'no end' => [['from' => '2026-10-01'], 'to field is required'],
+    'reversed' => [['from' => '2026-10-31', 'to' => '2026-10-01'], 'must be a date after or equal to from'],
+    'too long' => [['from' => '2016-01-01', 'to' => '2026-10-31'], 'at most 120 calendar months'],
+]);
 
 it('gives the credit card usage the API gives, the caller\'s own cards only', function () {
     $user = User::factory()->create(['currency_code' => 'EUR']);

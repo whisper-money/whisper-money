@@ -39,7 +39,7 @@ class SpendingByLabelResource extends JsonResource
              *
              * @example 79250
              */
-            'total' => array_sum(array_column($this->resource['labels'], 'amount')),
+            'total' => $this->resource['labels'][0]['total_amount'] ?? 0,
             /**
              * The first day of the previous period `previous_amount` reads: the same number of days right before `from`, or the same number of whole months when the range is whole months.
              *
