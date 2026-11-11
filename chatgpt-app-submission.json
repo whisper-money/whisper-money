@@ -24,6 +24,14 @@
         "destructive_justification": "Read-only, so nothing can be changed or lost."
       }
     },
+    "aggregate_transactions": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Groups the user's own transactions by period, category, label, account or type, adds them up and returns the totals. It writes nothing.",
+        "open_world_justification": "Aggregates only the authenticated user's own Whisper Money data, a closed system. No external systems are touched.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
     "get_cashflow": {
       "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
       "justifications": {

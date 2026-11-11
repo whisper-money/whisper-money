@@ -9,6 +9,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Services\SpaceResolver;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -138,22 +139,39 @@ abstract class McpTool extends Tool
      */
     protected function labelsInSpace(Request $request, Space $space, string $key): Collection
     {
+        return $this->ownRowsInSpace($request, $space, $key, Label::class, 'label', 'list_labels');
+    }
+
+    /**
+     * Resolve every id of a $model passed under $key, asserting each is one of
+     * the caller's own in the space, as the app does. Returns an empty
+     * collection when the argument is absent or empty.
+     *
+     * @template TModel of Model
+     *
+     * @param  class-string<TModel>  $model
+     * @param  string  $noun  how a row is named in the message: `label`, `account`, `category`
+     * @param  string  $listTool  the tool that lists the valid ids
+     * @return Collection<int, TModel>
+     */
+    protected function ownRowsInSpace(Request $request, Space $space, string $key, string $model, string $noun, string $listTool): Collection
+    {
         $ids = $this->requestedIds($request, $key);
 
         if ($ids === []) {
-            /** @var Collection<int, Label> */
+            /** @var Collection<int, TModel> */
             return new Collection;
         }
 
-        $labels = app(SpaceResolver::class)->ownedInSpace(Label::query(), $this->caller($request), $space)->whereIn('id', $ids)->get();
+        $rows = app(SpaceResolver::class)->ownedInSpace($model::query(), $this->caller($request), $space)->whereIn('id', $ids)->get();
 
-        if ($labels->count() !== count($ids)) {
+        if ($rows->count() !== count($ids)) {
             throw ValidationException::withMessages([
-                $key => "One or more label ids are not labels of yours in space {$space->id}. Call list_labels to see valid ids.",
+                $key => "One or more {$noun} ids are not ".Str::plural($noun)." of yours in space {$space->id}. Call {$listTool} to see valid ids.",
             ]);
         }
 
-        return $labels;
+        return $rows;
     }
 
     /**

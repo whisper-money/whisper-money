@@ -115,13 +115,14 @@ A savings goal is tracked through a label: its contributions are the transaction
 
 ## Analytics
 
-Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category. They cover your whole account, not a space, and every amount is in the minor units of your account's currency, given as `currency`.
+Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category, which cover your whole account rather than a space, with every amount in the minor units of your account's currency, given as `currency`. Aggregates read your own transactions in a space instead, and give each currency its own bucket.
 
 | Endpoint | What it does |
 | --- | --- |
 | [`GET /api/v1/analytics/cashflow`](/documentation/api/reference/analytics#retrieve-the-cashflow) | Retrieve the cashflow |
 | [`GET /api/v1/analytics/net-worth`](/documentation/api/reference/analytics#retrieve-the-net-worth) | Retrieve the net worth |
 | [`GET /api/v1/analytics/spending-by-category`](/documentation/api/reference/analytics#retrieve-spending-by-category) | Retrieve spending by category |
+| [`GET /api/v1/analytics/aggregate`](/documentation/api/reference/analytics#aggregate-transactions) | Aggregate transactions |
 
 ## Achievements
 

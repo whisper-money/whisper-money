@@ -4,6 +4,15 @@ Every change to the API that could affect your code, newest first.
 
 {{TOC}}
 
+## 2026-11-11 · Aggregate transactions
+
+[`GET /api/v1/analytics/aggregate`](/documentation/api/reference/analytics#aggregate-transactions)
+groups your transactions in a space by up to two dimensions (day, week, month,
+year, category, label, account or type) and returns their sum, count, average,
+smallest and largest amount per group. Each currency gets its own bucket, and
+grouped by a period every period of the range comes back, zeros included. The
+AI Connector gets the same as the `aggregate_transactions` tool.
+
 ## 2026-10-28 · v1: initial release
 
 The first public version of the API, under `https://whisper.money/api/v1`. It

@@ -10,6 +10,7 @@ use Laravel\Mcp\Server\Tool;
 $readOnly = [
     'search_transactions',
     'spending_by_category',
+    'aggregate_transactions',
     'get_cashflow',
     'get_net_worth',
     'list_accounts',
