@@ -52,6 +52,10 @@ export function AccountBalancesWidget({ data }: SystemWidgetProps) {
     );
 }
 
+/**
+ * Split from the widget so its hooks only run once the deferred net worth has
+ * arrived, the way the page ran them inside its own `Deferred`.
+ */
 function AccountBalances({ data }: Pick<SystemWidgetProps, 'data'>) {
     const locale = useLocale();
     const netWorthEvolution = netWorthEvolutionOf(data);
