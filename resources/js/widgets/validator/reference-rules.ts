@@ -3,6 +3,7 @@ import {
     FORBIDDEN_PROPERTY_NAMES,
     SAFE_GLOBALS,
     SAFE_STATIC_METHODS,
+    SDK_MODULE,
 } from './allowlist';
 import {
     isAssignmentOperator,
@@ -10,6 +11,7 @@ import {
     literalKeyOf,
     unwrap,
 } from './ast-helpers';
+import { GET_FORBIDDEN_KEYS } from './sdk-spec';
 import type { ValidationContext } from './validation-context';
 
 const COMPUTED_KEY_HINT =
@@ -63,6 +65,30 @@ export function checkReference(
             `Only ${[...staticMethods].map((method) => `${name}.${method}`).join(', ')} are available from \`${name}\`.`,
         );
     }
+}
+
+/** `get(obj, 'view')`: a literal key `get` would reject at runtime anyway. */
+export function checkCall(
+    context: ValidationContext,
+    node: ts.CallExpression,
+): void {
+    const key = node.arguments[1]
+        ? literalKeyOf(unwrap(node.arguments[1]))
+        : null;
+
+    if (
+        key !== null &&
+        GET_FORBIDDEN_KEYS.has(key) &&
+        context.isImported(node.expression, SDK_MODULE, 'get')
+    ) {
+        context.report(
+            node.arguments[1],
+            'forbidden-property',
+            `get() cannot read "${key}": it leads to prototypes or the page. If your data has a field with this name, read it through Object.entries(row).`,
+        );
+    }
+
+    context.visitChildren(node);
 }
 
 export function checkPropertyAccess(
@@ -245,10 +271,14 @@ function checkPropertyName(
     name: string,
 ): void {
     if (FORBIDDEN_PROPERTY_NAMES.has(name)) {
+        const instead = GET_FORBIDDEN_KEYS.has(name)
+            ? 'If your data has a field with this name, read it through Object.entries(row).'
+            : `To read a data field called "${name}", use get(obj, '${name}') from the SDK.`;
+
         context.report(
             node,
             'forbidden-property',
-            `The property "${name}" is not available in widgets: it leads to prototypes or the page. If your data has a field with this name, read it through Object.entries(row).`,
+            `The property "${name}" is not available in widgets: it leads to prototypes or the page. ${instead}`,
         );
     }
 }

@@ -505,6 +505,37 @@ describe('validateWidget evasion battery', () => {
         ).toContain('@md:grid-cols-2');
     });
 
+    it('lets get() read data fields called target, and nothing else on the list', () => {
+        expect(
+            validateWidget(
+                widget(
+                    "<div>{String(get(goal.progress, 'target'))}</div>",
+                    'const goal = x;',
+                ),
+            ),
+        ).toEqual([]);
+
+        const dotted = validateWidget(
+            widget(
+                '<div>{String(goal.progress.target)}</div>',
+                'const goal = x;',
+            ),
+        );
+
+        expect(dotted).toEqual([
+            expect.objectContaining({ code: 'forbidden-property' }),
+        ]);
+        expect(dotted[0].message).toContain("use get(obj, 'target')");
+        expect(
+            validateWidget(widget("<div>{String(get(x, 'view'))}</div>")),
+        ).toEqual([expect.objectContaining({ code: 'forbidden-property' })]);
+        expect(
+            validateWidget(
+                widget("<div>{String(get(x, 'constructor'))}</div>"),
+            )[0].code,
+        ).toBe('forbidden-property');
+    });
+
     it('reports syntax errors', () => {
         expect(
             validateWidget('export default function W( { return <div> }')[0]

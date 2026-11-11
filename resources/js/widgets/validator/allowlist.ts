@@ -71,7 +71,8 @@ export const SAFE_STATIC_METHODS: ReadonlyMap<
  * literal key: they lead to prototypes, `Function` or the DOM. `$$typeof`,
  * `_owner` and `_store` are React element internals: with them a widget could
  * forge an element (`{ $$typeof, type: 'iframe', props }`) that JSX checks
- * never saw. The SDK's `get()` must reject the same names.
+ * never saw. The SDK's `get()` rejects them too, except `target`
+ * (GET_FORBIDDEN_KEYS in sdk-spec.ts).
  */
 export const FORBIDDEN_PROPERTY_NAMES: ReadonlySet<string> = new Set([
     'constructor',

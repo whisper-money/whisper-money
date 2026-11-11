@@ -13,6 +13,7 @@ import { checkJsxChild, checkJsxElement } from './jsx-rules';
 import {
     checkBinaryExpression,
     checkBindingElement,
+    checkCall,
     checkDeclaration,
     checkElementAccess,
     checkLoop,
@@ -66,6 +67,7 @@ const RULES: Partial<Record<ts.SyntaxKind, Rule>> = {
     [ts.SyntaxKind.ShorthandPropertyAssignment]: checkShorthandProperty,
     [ts.SyntaxKind.BindingElement]: checkBindingElement,
     [ts.SyntaxKind.BinaryExpression]: checkBinaryExpression,
+    [ts.SyntaxKind.CallExpression]: checkCall,
     [ts.SyntaxKind.ForOfStatement]: checkLoop,
     [ts.SyntaxKind.ForInStatement]: checkLoop,
     [ts.SyntaxKind.JsxElement]: checkJsxElement,

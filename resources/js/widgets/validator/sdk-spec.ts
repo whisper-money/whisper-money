@@ -1,3 +1,4 @@
+import { FORBIDDEN_PROPERTY_NAMES } from './allowlist';
 import type { ComponentProps } from './component-props';
 
 /**
@@ -9,7 +10,7 @@ import type { ComponentProps } from './component-props';
  * - `useWidgetData()`: the data the manifest declared, keyed by its names.
  * - `useWidgetEnv()`: `{ theme, width, height, isCompact, privacyMode, currency, locale }`.
  * - `formatMoney(minorUnits, currency, options?)`: amounts arrive in minor units.
- * - `get(obj, key)`: computed-key access; only own properties, forbidden keys rejected.
+ * - `get(obj, key)`: computed-key access; only own properties, GET_FORBIDDEN_KEYS rejected.
  * - `cn(...classes)`: joins literal classes (the validator reads its arguments).
  * - `wm`: `{ download(filename, content) }`, the only way to hand data to the user.
  */
@@ -21,6 +22,19 @@ export const SDK_VALUES: ReadonlySet<string> = new Set([
     'cn',
     'wm',
 ]);
+
+/**
+ * Keys `get(obj, key)` must reject at runtime (and the validator rejects when
+ * the key is a literal): every forbidden property name except `target`. Widgets
+ * never receive events (handlers take no parameters, Recharts handlers are not
+ * allowed) and `get` only reads own properties, so `get(obj, 'target')` is the
+ * documented way to read data fields called `target`, like
+ * SavingsGoalResource's `progress.target`. Dot and bracket access stay
+ * forbidden for all of them.
+ */
+export const GET_FORBIDDEN_KEYS: ReadonlySet<string> = new Set(
+    [...FORBIDDEN_PROPERTY_NAMES].filter((name) => name !== 'target'),
+);
 
 const KEY_AND_CLASS = { key: 'value', className: 'className' } as const;
 
