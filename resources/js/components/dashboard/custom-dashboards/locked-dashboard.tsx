@@ -50,7 +50,20 @@ export function LockedDashboard({
     }, [dashboard.id, dashboard.widgets.length]);
 
     return (
-        <div className="relative" data-testid="locked-dashboard">
+        <div
+            className="relative flex flex-col gap-6"
+            data-testid="locked-dashboard"
+        >
+            {/*
+             * Over the grid, sticky so the way out stays in view on a long
+             * dashboard. On a phone the bottom bar would cover it there, so it
+             * sits above the grid instead.
+             */}
+            <div className="sm:absolute sm:inset-0 sm:z-10 sm:px-4 sm:pt-16">
+                <div className="flex justify-center sm:sticky sm:top-24">
+                    <LockedDashboardNotice />
+                </div>
+            </div>
             <div
                 aria-hidden
                 inert
@@ -68,12 +81,6 @@ export function LockedDashboard({
                         <WidgetPlaceholder />
                     </div>
                 ))}
-            </div>
-            {/* Sticky, so the way out stays in view on a long dashboard. */}
-            <div className="absolute inset-0 px-4 pt-16">
-                <div className="sticky top-24 flex justify-center">
-                    <LockedDashboardNotice />
-                </div>
             </div>
         </div>
     );
