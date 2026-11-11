@@ -40,11 +40,13 @@ describe('DashboardGrid', () => {
                 data={{} as DashboardProps}
                 widgets={[
                     {
+                        kind: 'system',
                         id: 'a',
                         widget: 'net-worth',
                         size: { width: '1/1', height: 'l' },
                     },
                     {
+                        kind: 'system',
                         id: 'b',
                         widget: 'top-labels',
                         size: { width: '1/3', height: 'm' },
@@ -66,16 +68,19 @@ describe('DashboardGrid', () => {
                 data={{} as DashboardProps}
                 widgets={[
                     {
+                        kind: 'system',
                         id: 'a',
                         widget: 'cashflow',
                         size: { width: '1/2', height: 'm' },
                     },
                     {
+                        kind: 'system',
                         id: 'b',
                         widget: 'monthly-savings',
                         size: { width: '1/3', height: 'm' },
                     },
                     {
+                        kind: 'system',
                         id: 'c',
                         widget: 'top-labels',
                         size: { width: '1/2', height: 'm' },

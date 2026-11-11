@@ -83,7 +83,7 @@ export function isSystemWidgetId(id: string): id is SystemWidgetId {
 }
 
 export function isSizeAllowed(
-    widget: SystemWidgetDefinition,
+    widget: Pick<SystemWidgetDefinition, 'allowedWidths' | 'allowedHeights'>,
     size: WidgetSize,
 ): boolean {
     return (

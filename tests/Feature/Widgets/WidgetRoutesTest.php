@@ -343,4 +343,25 @@ describe('dashboard page', function () {
                     ->where("userWidgets.{$widget->id}.revisions.0.number", 1)
                 ));
     });
+
+    it('defers every widget of the user, named and sized, for edit mode to place', function () {
+        $user = widgetOwner();
+        $groceries = WidgetDefinition::factory()->for($user)->create(['name' => 'Groceries']);
+        $budget = WidgetDefinition::factory()->for($user)->create(['name' => 'Budget']);
+        WidgetDefinition::factory()->create(['name' => 'Someone else']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->missing('widgetDefinitions')
+                ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload
+                    ->has('widgetDefinitions', 2)
+                    ->where('widgetDefinitions.0', [
+                        'id' => $budget->id,
+                        'name' => 'Budget',
+                        'size' => ['width' => '1/2', 'height' => 'm', 'allowed_widths' => ['1/2', '1/1']],
+                    ])
+                    ->where('widgetDefinitions.1.id', $groceries->id)
+                ));
+    });
 });

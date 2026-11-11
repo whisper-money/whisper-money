@@ -1,9 +1,13 @@
 import { SYSTEM_WIDGET_IDS } from '@/components/dashboard/widgets/registry';
-import { type DashboardWidgetData } from '@/types/dashboard';
+import {
+    type DashboardWidgetData,
+    type UserWidgetDefinition,
+} from '@/types/dashboard';
 import { describe, expect, it } from 'vitest';
 import {
     missingSystemWidgets,
-    placedSystemWidgets,
+    missingUserWidgets,
+    placedWidgets,
     widgetSizeClassName,
 } from './grid-layout';
 
@@ -19,6 +23,22 @@ function placement(
         height: 'm',
         config: null,
         ...overrides,
+    };
+}
+
+function definition(
+    id: string,
+    size: UserWidgetDefinition['manifest']['size'],
+): UserWidgetDefinition {
+    return {
+        id,
+        name: id,
+        revision: 1,
+        js: '',
+        manifest: { size },
+        last_error: null,
+        last_error_at: null,
+        revisions: [],
     };
 }
 
@@ -54,9 +74,9 @@ describe('widgetSizeClassName', () => {
     });
 });
 
-describe('placedSystemWidgets', () => {
+describe('placedWidgets', () => {
     it('orders the placements by position', () => {
-        const placed = placedSystemWidgets([
+        const placed = placedWidgets([
             placement({
                 id: 'b',
                 system_widget: 'net-worth',
@@ -70,13 +90,8 @@ describe('placedSystemWidgets', () => {
         expect(placed[1].size).toEqual({ width: '1/1', height: 'l' });
     });
 
-    it('leaves out user widgets and widgets the registry no longer has', () => {
-        const placed = placedSystemWidgets([
-            placement({
-                id: 'user',
-                system_widget: null,
-                widget_definition_id: 'def',
-            }),
+    it('leaves out widgets the registry no longer has', () => {
+        const placed = placedWidgets([
             placement({ id: 'gone', system_widget: 'retired-widget' }),
             placement({ id: 'kept', system_widget: 'top-labels' }),
         ]);
@@ -84,8 +99,66 @@ describe('placedSystemWidgets', () => {
         expect(placed.map(({ id }) => id)).toEqual(['kept']);
     });
 
+    it('draws user widgets at their saved size until their manifests load', () => {
+        const placed = placedWidgets([
+            placement({
+                id: 'user',
+                system_widget: null,
+                widget_definition_id: 'def',
+                width: '1/3',
+            }),
+        ]);
+
+        expect(placed).toEqual([
+            {
+                kind: 'user',
+                id: 'user',
+                definitionId: 'def',
+                size: { width: '1/3', height: 'm' },
+            },
+        ]);
+    });
+
+    it('fits user widgets to their manifest and drops the ones that are gone', () => {
+        const placed = placedWidgets(
+            [
+                placement({
+                    id: 'fits',
+                    system_widget: null,
+                    widget_definition_id: 'a',
+                    width: '1/1',
+                }),
+                placement({
+                    id: 'refit',
+                    system_widget: null,
+                    widget_definition_id: 'b',
+                    width: '1/1',
+                    height: 'l',
+                }),
+                placement({
+                    id: 'gone',
+                    system_widget: null,
+                    widget_definition_id: 'deleted',
+                }),
+            ],
+            {
+                a: definition('a', {
+                    width: '1/2',
+                    height: 'm',
+                    allowed_widths: ['1/2', '1/1'],
+                }),
+                b: definition('b', { width: '1/3', height: 'm' }),
+            },
+        );
+
+        expect(placed.map(({ id, size }) => [id, size])).toEqual([
+            ['fits', { width: '1/1', height: 'm' }],
+            ['refit', { width: '1/3', height: 'm' }],
+        ]);
+    });
+
     it('falls back to the default size when the widget does not admit the stored one', () => {
-        const [cashflow] = placedSystemWidgets([
+        const [cashflow] = placedWidgets([
             placement({ system_widget: 'cashflow', width: '1/3', height: 'l' }),
         ]);
 
@@ -95,7 +168,7 @@ describe('placedSystemWidgets', () => {
 
 describe('missingSystemWidgets', () => {
     it('offers the system widgets not on the dashboard', () => {
-        const placed = placedSystemWidgets([
+        const placed = placedWidgets([
             placement({ system_widget: 'cashflow' }),
         ]);
 
@@ -103,5 +176,21 @@ describe('missingSystemWidgets', () => {
             SYSTEM_WIDGET_IDS.filter((id) => id !== 'cashflow'),
         );
         expect(missingSystemWidgets([])).toEqual([...SYSTEM_WIDGET_IDS]);
+    });
+});
+
+describe('missingUserWidgets', () => {
+    it('offers the user widgets not on the dashboard', () => {
+        const placed = placedWidgets([
+            placement({ system_widget: null, widget_definition_id: 'a' }),
+        ]);
+        const size = { width: '1/2', height: 'm' } as const;
+
+        expect(
+            missingUserWidgets(placed, [
+                { id: 'a', name: 'A', size },
+                { id: 'b', name: 'B', size },
+            ]).map(({ id }) => id),
+        ).toEqual(['b']);
     });
 });

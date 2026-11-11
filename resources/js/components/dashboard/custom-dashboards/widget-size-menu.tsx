@@ -19,7 +19,10 @@ import { Scaling } from 'lucide-react';
 import { widgetHeightLabel, widgetWidthLabel } from './labels';
 
 interface Props {
-    definition: SystemWidgetDefinition;
+    definition: Pick<
+        SystemWidgetDefinition,
+        'allowedWidths' | 'allowedHeights'
+    >;
     size: WidgetSize;
     /** The widget's name, for the trigger's accessible label. */
     label: string;

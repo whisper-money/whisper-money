@@ -39,6 +39,52 @@ export interface DashboardWidgetData {
     config: Record<string, unknown> | null;
 }
 
+/** The sizes a user widget's manifest admits, as the agent saved them. */
+export interface UserWidgetManifestSize {
+    width: WidgetWidth;
+    height: WidgetHeight;
+    allowed_widths?: WidgetWidth[];
+    allowed_heights?: WidgetHeight[];
+}
+
+/** A widget the user's agent wrote, as edit mode lists it to be placed. */
+export interface WidgetDefinitionSummary {
+    id: string;
+    name: string;
+    size: UserWidgetManifestSize;
+}
+
+/** The runtime error a user widget raised, as it was stored with it. */
+export interface UserWidgetError {
+    revision: number;
+    phase: 'load' | 'render';
+    message: string;
+    stack: string | null;
+    component_stack: string | null;
+}
+
+export interface UserWidgetRevision {
+    number: number;
+    created_via: string;
+    /** The revision this one restored, when it was a "go back". */
+    restored_from: number | null;
+    created_at: string | null;
+}
+
+/** A user widget placed on the dashboard on screen, ready to run. */
+export interface UserWidgetDefinition {
+    id: string;
+    name: string;
+    revision: number;
+    /** The compiled module. */
+    js: string;
+    manifest: { size: UserWidgetManifestSize } & Record<string, unknown>;
+    last_error: UserWidgetError | null;
+    last_error_at: string | null;
+    /** Newest first. */
+    revisions: UserWidgetRevision[];
+}
+
 /** The user dashboard on screen, with its widgets in order. */
 export interface SelectedDashboard {
     id: string;
@@ -75,4 +121,8 @@ export interface DashboardProps extends SharedData {
     defaultDashboardId: string | null;
     /** The user dashboard on screen; null is the system dashboard. */
     selectedDashboard: SelectedDashboard | null;
+    /** Deferred: the user widgets on the dashboard on screen, by id. */
+    userWidgets?: Record<string, UserWidgetDefinition>;
+    /** Deferred: every widget the user's agent wrote, to place one. */
+    widgetDefinitions?: WidgetDefinitionSummary[];
 }

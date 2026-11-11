@@ -5,8 +5,13 @@ import {
 } from '@/components/dashboard/widgets/registry';
 import { Button } from '@/components/ui/button';
 import { subscribe } from '@/routes';
-import { type DashboardProps, type SelectedDashboard } from '@/types/dashboard';
+import {
+    type DashboardProps,
+    type SelectedDashboard,
+    type WidgetDefinitionSummary,
+} from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
+import { SafeModeNotice } from '@/widgets/runtime/safe-mode-notice';
 import { Link } from '@inertiajs/react';
 import { Check, LayoutGrid, Pencil } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -17,11 +22,13 @@ import { DashboardNameDialog } from './dashboard-name-dialog';
 import { DashboardPicker } from './dashboard-picker';
 import {
     missingSystemWidgets,
-    type PlacedSystemWidget,
-    placedSystemWidgets,
+    missingUserWidgets,
+    type PlacedWidget,
+    placedWidgets,
 } from './grid-layout';
 import { systemDashboardName } from './labels';
 import { ManageDashboardsDialog } from './manage-dashboards-dialog';
+import { useUserWidgetSlots } from './use-user-widget-slots';
 
 interface Props {
     data: DashboardProps;
@@ -55,8 +62,8 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
 
     const isEditing = canEdit && selected !== null && editingId === selected.id;
     const placed = useMemo(
-        () => placedSystemWidgets(selected?.widgets ?? []),
-        [selected?.widgets],
+        () => placedWidgets(selected?.widgets ?? [], data.userWidgets),
+        [selected?.widgets, data.userWidgets],
     );
 
     return (
@@ -70,6 +77,16 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
                             available={missingSystemWidgets(placed)}
                             onAdd={(widget) =>
                                 dashboardActions.addWidget(selected.id, widget)
+                            }
+                            userWidgets={missingUserWidgets(
+                                placed,
+                                data.widgetDefinitions ?? [],
+                            )}
+                            onAddUserWidget={(definitionId) =>
+                                dashboardActions.addUserWidget(
+                                    selected.id,
+                                    definitionId,
+                                )
                             }
                         />
                     )}
@@ -142,50 +159,74 @@ function UserDashboard({
     onStartEditing,
 }: {
     dashboard: SelectedDashboard;
-    widgets: PlacedSystemWidget[];
+    widgets: PlacedWidget[];
     data: DashboardProps;
     isEditing: boolean;
     canEdit: boolean;
     onStartEditing: () => void;
 }) {
+    const { gate, slots } = useUserWidgetSlots({
+        dashboard,
+        placed: widgets,
+        data,
+        canEdit,
+    });
+
     if (widgets.length === 0) {
         return (
             <EmptyDashboard
                 canEdit={canEdit}
                 isSharedAccount={data.auth.isSharedAccount}
+                userWidgets={data.widgetDefinitions ?? []}
                 onAdd={(widget) => {
                     onStartEditing();
                     dashboardActions.addWidget(dashboard.id, widget);
+                }}
+                onAddUserWidget={(definitionId) => {
+                    onStartEditing();
+                    dashboardActions.addUserWidget(dashboard.id, definitionId);
                 }}
             />
         );
     }
 
-    if (!isEditing) {
-        return <DashboardGrid widgets={widgets} data={data} />;
-    }
-
     return (
-        <EditableDashboardGrid
-            widgets={widgets}
-            data={data}
-            onReorder={(ids) =>
-                dashboardActions.reorderWidgets(
-                    dashboard.id,
-                    withUndrawnPlacements(ids, dashboard),
-                )
-            }
-            onResize={(id, size) =>
-                dashboardActions.resizeWidget(dashboard.id, id, size)
-            }
-            onRemove={(id) => dashboardActions.removeWidget(dashboard.id, id)}
-        />
+        <>
+            {gate.mode === 'safe' && (
+                <SafeModeNotice reason={gate.reason} onExit={gate.exit} />
+            )}
+            {isEditing ? (
+                <EditableDashboardGrid
+                    widgets={widgets}
+                    data={data}
+                    userWidgets={slots}
+                    onReorder={(ids) =>
+                        dashboardActions.reorderWidgets(
+                            dashboard.id,
+                            withUndrawnPlacements(ids, dashboard),
+                        )
+                    }
+                    onResize={(id, size) =>
+                        dashboardActions.resizeWidget(dashboard.id, id, size)
+                    }
+                    onRemove={(id) =>
+                        dashboardActions.removeWidget(dashboard.id, id)
+                    }
+                />
+            ) : (
+                <DashboardGrid
+                    widgets={widgets}
+                    data={data}
+                    userWidgets={slots}
+                />
+            )}
+        </>
     );
 }
 
 /**
- * The new order with the placements the page does not draw (user widgets,
- * for now) kept after it, so every placement gets a position of its own.
+ * The new order with the placements the page does not draw (a widget that
+ * is gone) kept after it, so every placement gets a position of its own.
  */
 function withUndrawnPlacements(
     ids: string[],
@@ -205,11 +246,15 @@ function withUndrawnPlacements(
 function EmptyDashboard({
     canEdit,
     isSharedAccount,
+    userWidgets,
     onAdd,
+    onAddUserWidget,
 }: {
     canEdit: boolean;
     isSharedAccount: boolean;
+    userWidgets: WidgetDefinitionSummary[];
     onAdd: (widget: SystemWidgetId) => void;
+    onAddUserWidget: (definitionId: string) => void;
 }) {
     return (
         <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-16 text-center">
@@ -240,6 +285,8 @@ function EmptyDashboard({
                     variant="default"
                     available={missingSystemWidgets([])}
                     onAdd={onAdd}
+                    userWidgets={userWidgets}
+                    onAddUserWidget={onAddUserWidget}
                 />
             )}
         </div>
