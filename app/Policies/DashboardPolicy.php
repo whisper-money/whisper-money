@@ -35,6 +35,16 @@ class DashboardPolicy
         return $this->create($user);
     }
 
+    /**
+     * Read the data of the user widgets on it. Off the paid plan the
+     * dashboard still opens, with every widget a blurred placeholder, and no
+     * data is served.
+     */
+    public function readWidgetData(User $user, Dashboard $dashboard): Response
+    {
+        return $this->update($user, $dashboard);
+    }
+
     public function delete(User $user, Dashboard $dashboard): bool
     {
         return $this->view($user, $dashboard);

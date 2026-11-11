@@ -15,7 +15,8 @@ use Illuminate\Http\JsonResponse;
  * The data user widgets read, resolved server side from their saved
  * manifests as the signed-in user ({@see WidgetDataGateway}).
  * Each call answers with the status and body `/api/v1` would give it, so one
- * failing call does not take the others down.
+ * failing call does not take the others down. Off the paid plan nothing is
+ * served (403): the dashboard draws placeholders instead.
  */
 class WidgetDataController extends Controller
 {
@@ -28,7 +29,7 @@ class WidgetDataController extends Controller
      */
     public function show(WidgetDataRequest $request, WidgetDefinition $widget): JsonResponse
     {
-        $this->authorize('view', $widget);
+        $this->authorize('readData', $widget);
 
         $data = $this->widgets->data($request->user(), [$widget], $request->variables());
 
@@ -40,7 +41,7 @@ class WidgetDataController extends Controller
      */
     public function dashboard(WidgetDataRequest $request, Dashboard $dashboard): JsonResponse
     {
-        $this->authorize('view', $dashboard);
+        $this->authorize('readWidgetData', $dashboard);
 
         $widgets = WidgetDefinition::query()
             ->onDashboard($dashboard)

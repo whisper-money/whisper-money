@@ -59,15 +59,17 @@ class DashboardController extends Controller
             // The user widgets on the dashboard on screen, by id: the module to
             // run, the manifest, the revisions to go back to and the last error.
             // Deferred: the compiled modules are the heaviest part of the page.
+            // Off the paid plan none: the page draws a blurred placeholder in
+            // each widget's place, and no widget code reaches the browser.
             'userWidgets' => Inertia::defer(function () use ($request): array {
                 $dashboard = $this->selectedDashboard($request);
 
-                return $dashboard === null ? [] : $this->presentUserWidgets($dashboard);
+                return $dashboard === null || ! $request->user()->hasProPlan() ? [] : $this->presentUserWidgets($dashboard);
             }, 'dashboard'),
             // Every widget the user's agent wrote, for edit mode to place:
             // names and sizes only, the modules load once placed. Only edit
-            // mode reads it, and edit mode is behind the flag.
-            'widgetDefinitions' => Inertia::defer(fn (): array => Feature::for($request->user())->active(CustomDashboards::class)
+            // mode reads it, and edit mode is behind the flag and the plan.
+            'widgetDefinitions' => Inertia::defer(fn (): array => $request->user()->hasProPlan() && Feature::for($request->user())->active(CustomDashboards::class)
                 ? $this->presentWidgetDefinitions($request->user())
                 : [], 'dashboard'),
             // The window the top categories and top labels cards report on, so
