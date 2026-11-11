@@ -15,6 +15,7 @@ use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\Gateway\ManifestValidator;
 use App\Services\Widgets\Gateway\WidgetDataGateway;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -248,6 +249,19 @@ class WidgetDefinitionService
 
         $this->pruneRevisions($widget);
         $this->refitPlacements($widget);
+
+        // A count for the feature's metrics, once the revision is in: who
+        // wrote it and how, never its name or its code.
+        $action = match (true) {
+            $restoredFrom !== null => 'reverted',
+            $number === 1 => 'created',
+            default => 'updated',
+        };
+        DB::afterCommit(fn () => Log::info('User widget saved', [
+            'source' => $origin->value,
+            'action' => $action,
+            'revision' => $number,
+        ]));
 
         return $widget;
     }

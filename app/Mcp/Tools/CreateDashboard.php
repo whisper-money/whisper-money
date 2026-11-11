@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Enums\WidgetOrigin;
 use App\Http\Requests\Concerns\ValidatesDashboardName;
 use App\Mcp\Tools\Concerns\GuardsCustomDashboards;
 use App\Models\User;
@@ -30,7 +31,7 @@ class CreateDashboard extends WriteTool
     {
         $validated = $request->validate(['name' => $this->dashboardNameRules()]);
 
-        $dashboard = app(DashboardService::class)->create($user, $validated['name']);
+        $dashboard = app(DashboardService::class)->create($user, $validated['name'], WidgetOrigin::Mcp);
 
         return $this->json([
             'id' => $dashboard->id,
