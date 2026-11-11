@@ -88,6 +88,7 @@ trait PresentsWidgets
             'last_error' => $widget->last_error === null ? null : [
                 ...$widget->last_error,
                 'stack' => $this->readableStack($widget->last_error['stack']),
+                'component_stack' => $this->readableStack($widget->last_error['component_stack']),
                 'at' => $widget->last_error_at?->toIso8601String(),
             ],
             'placements' => $widget->placements->sortBy('position')->values()
@@ -97,13 +98,19 @@ trait PresentsWidgets
     }
 
     /**
-     * The stack the dashboard caught, with the module's own URL (a data: URL
-     * holding the whole compiled widget, thousands of characters) shortened
-     * to `widget.js`.
+     * A stack the dashboard caught, cut to its first frames, with the
+     * module's own URL (a data: URL holding the whole compiled widget,
+     * thousands of characters) shortened to `widget.js`.
      */
     private function readableStack(?string $stack): ?string
     {
-        return $stack === null ? null : preg_replace('#data:text/javascript[^\s]*?(?=:\d+:\d+)#', 'widget.js', $stack);
+        if ($stack === null) {
+            return null;
+        }
+
+        $lines = array_slice(explode("\n", $stack), 0, 8);
+
+        return (string) preg_replace('#data:text/javascript[^\s]*?(?=:\d+:\d+)#', 'widget.js', implode("\n", $lines));
     }
 
     /**
