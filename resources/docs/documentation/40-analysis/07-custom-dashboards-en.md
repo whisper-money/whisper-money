@@ -119,7 +119,7 @@ Widgets are built so that your data stays in Whisper Money:
   saved, and anything that could send data out (a request, a link, an image
   from another site) is refused.
 - **It only reads what you can read**, through Whisper Money itself, the same
-  way the app does, and only for the dashboard you have open. It cannot change
+  way the app does: your own data, never anybody else's. It cannot change
   anything.
 - **It is yours.** Nobody else sees your dashboards or widgets, and they are
   deleted with your account.

@@ -81,7 +81,7 @@ describe('custom dashboards telemetry', () => {
 
         expect(mocks.captureEvent.mock.calls).toEqual([
             ['custom_dashboard_created', { source: 'web' }],
-            ['user_widget_updated', { source: 'web', action: 'revert' }],
+            ['user_widget_updated', { source: 'web', action: 'reverted' }],
             ['user_widget_runtime_error', { phase: 'render' }],
             ['custom_dashboard_locked_viewed', { widgets: 3 }],
             [

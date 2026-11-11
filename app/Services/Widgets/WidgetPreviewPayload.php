@@ -2,6 +2,7 @@
 
 namespace App\Services\Widgets;
 
+use App\Enums\WidgetOrigin;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\WidgetDefinition;
@@ -37,7 +38,7 @@ class WidgetPreviewPayload
     public function for(User $user, WidgetDefinition $widget): array
     {
         $answers = $this->widgets
-            ->data($user, [$widget], DashboardVariables::forMonthOf(CarbonImmutable::instance($user->localToday())))[$widget->id];
+            ->data($user, [$widget], DashboardVariables::forMonthOf(CarbonImmutable::instance($user->localToday())), WidgetOrigin::Mcp)[$widget->id];
 
         $data = array_map(fn (array $answer): mixed => $answer['body'], $answers);
         $tooLarge = strlen((string) json_encode($data)) > self::MaxDataBytes;

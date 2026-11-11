@@ -18,9 +18,9 @@ function WidgetPlaceholder() {
             <div className="h-4 w-2/5 rounded bg-muted" />
             <div className="h-7 w-1/3 rounded bg-muted" />
             <div className="flex min-h-0 flex-1 items-end gap-2">
-                {PLACEHOLDER_BARS.map((height) => (
+                {PLACEHOLDER_BARS.map((height, index) => (
                     <div
-                        key={height}
+                        key={index}
                         className="flex-1 rounded-t bg-muted"
                         style={{ height: `${height}%` }}
                     />
@@ -69,8 +69,11 @@ export function LockedDashboard({
                     </div>
                 ))}
             </div>
-            <div className="absolute inset-0 flex items-start justify-center px-4 pt-16">
-                <LockedDashboardNotice />
+            {/* Sticky, so the way out stays in view on a long dashboard. */}
+            <div className="absolute inset-0 px-4 pt-16">
+                <div className="sticky top-24 flex justify-center">
+                    <LockedDashboardNotice />
+                </div>
             </div>
         </div>
     );

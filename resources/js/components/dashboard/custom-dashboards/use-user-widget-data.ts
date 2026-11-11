@@ -118,9 +118,8 @@ export function useUserWidgetData(
 
         fetchJson<DashboardWidgetsDataResponse>(url).then(
             ({ widgets }) => {
-                trackWidgetDataLoaded(widgets);
-
                 if (current) {
+                    trackWidgetDataLoaded(widgets);
                     setState({
                         key,
                         value: { status: 'ready', widgets, refreshing: false },

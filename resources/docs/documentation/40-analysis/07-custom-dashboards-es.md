@@ -123,8 +123,7 @@ Los widgets están hechos para que tus datos no salgan de Whisper Money:
   guardarlo, y se rechaza todo lo que podría enviar datos fuera (una petición,
   un enlace, una imagen de otra web).
 - **Solo lee lo que tú puedes leer**, a través de Whisper Money, igual que la
-  aplicación, y solo para el dashboard que tienes abierto. No puede cambiar
-  nada.
+  aplicación: tus datos, nunca los de otra persona. No puede cambiar nada.
 - **Es tuyo.** Nadie más ve tus dashboards ni tus widgets, y se borran con tu
   cuenta.
 

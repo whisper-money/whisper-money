@@ -4,7 +4,8 @@ import { captureEvent } from '@/lib/posthog';
  * What custom dashboards tell PostHog. Everything here is counts, enums and
  * booleans: never a dashboard or widget name, a widget's code or error
  * message, an amount or anything else the user's data holds. What the agent
- * does through MCP never reaches the browser; the server logs those counts.
+ * does through MCP never reaches the browser: the server logs the saves and
+ * the gateway reads, from both sides, as counts too.
  */
 
 /** One call of a widget's manifest, as the gateway answered it. */
@@ -22,7 +23,7 @@ export function trackDashboardCreated(): void {
 
 /** Going back to an earlier revision, the one way the web changes a widget. */
 export function trackWidgetReverted(): void {
-    captureEvent('user_widget_updated', { source: 'web', action: 'revert' });
+    captureEvent('user_widget_updated', { source: 'web', action: 'reverted' });
 }
 
 export function trackWidgetRuntimeError(phase: 'load' | 'render'): void {

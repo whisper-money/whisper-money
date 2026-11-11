@@ -75,7 +75,9 @@ describe('off the paid plan', function () {
 
         $this->actingAs($user)
             ->get(route('dashboard'))
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('selectedDashboard', null));
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('selectedDashboard', null)
+                ->where('defaultDashboardId', null));
 
         $response = $this->actingAs($user)->get(route('dashboard', ['dashboard' => $dashboard->id]));
 
@@ -118,6 +120,7 @@ it('brings everything back as it was once the user pays again', function () {
         ->get(route('dashboard'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('selectedDashboard.id', $dashboard->id)
+            ->where('defaultDashboardId', $dashboard->id)
             ->has('selectedDashboard.widgets', 2)
             ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload
                 ->where("userWidgets.{$widget->id}.js", $widget->compiled_js)
@@ -163,5 +166,22 @@ describe('metrics', function () {
 
         Log::shouldHaveReceived('info')->with('User widget saved', ['source' => 'mcp', 'action' => 'updated', 'revision' => 2]);
         Log::shouldHaveReceived('info')->with('User widget saved', ['source' => 'web', 'action' => 'reverted', 'revision' => 3]);
+    });
+
+    it('logs how a gateway read went, never what it read', function () {
+        $user = User::factory()->onboarded()->subscribed()->create();
+        $widget = WidgetDefinition::factory()->for($user)->create();
+        Log::spy();
+
+        $this->actingAs($user)->getJson(route('widgets.data', $widget))->assertOk();
+
+        Log::shouldHaveReceived('info')->once()->with('User widget data read', [
+            'source' => 'web',
+            'widgets' => 1,
+            'calls' => count($widget->manifest['data']),
+            'failed_calls' => 0,
+            'truncated_calls' => 0,
+            'rate_limited_calls' => 0,
+        ]);
     });
 });
