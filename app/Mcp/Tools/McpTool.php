@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -51,7 +52,7 @@ abstract class McpTool extends Tool
         ], parent::annotations());
     }
 
-    public function handle(Request $request): Response
+    public function handle(Request $request): Response|ResponseFactory
     {
         $user = $request->user();
 
@@ -78,7 +79,7 @@ abstract class McpTool extends Tool
         // something: an error response (a read-only token, an id the user cannot
         // reach) or a thrown ValidationException is a rejected attempt, not
         // usage. Rescued so a failed insert can never break a working call.
-        if (! $response->isError()) {
+        if (! $this->isError($response)) {
             rescue(fn (): McpToolCall => McpToolCall::create([
                 'user_id' => $user->id,
                 'tool' => $this->name(),
@@ -88,7 +89,18 @@ abstract class McpTool extends Tool
         return $response;
     }
 
-    abstract protected function respond(Request $request, User $user): Response;
+    /**
+     * The answer, or a ResponseFactory when it carries `_meta` for an MCP App
+     * (the widget preview) besides what the agent reads.
+     */
+    abstract protected function respond(Request $request, User $user): Response|ResponseFactory;
+
+    private function isError(Response|ResponseFactory $response): bool
+    {
+        $responses = $response instanceof ResponseFactory ? $response->responses() : collect([$response]);
+
+        return $responses->contains(fn (Response $item): bool => $item->isError());
+    }
 
     /**
      * Encode structured data as a JSON text response the agent can parse.

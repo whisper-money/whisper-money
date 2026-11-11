@@ -8,6 +8,7 @@ use App\Http\Requests\Dashboards\ReorderDashboardsRequest;
 use App\Http\Requests\Dashboards\StoreDashboardRequest;
 use App\Http\Requests\Dashboards\UpdateDashboardRequest;
 use App\Models\Dashboard;
+use App\Services\Dashboards\DashboardService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,9 @@ class DashboardManagementController extends Controller
 {
     use AuthorizesRequests;
 
-    public function store(StoreDashboardRequest $request): RedirectResponse
+    public function store(StoreDashboardRequest $request, DashboardService $dashboards): RedirectResponse
     {
-        $user = $request->user();
-
-        $dashboard = $user->dashboards()->create([
-            'name' => $request->validated('name'),
-            'position' => (int) $user->dashboards()->max('position') + 1,
-        ]);
+        $dashboard = $dashboards->create($request->user(), $request->validated('name'));
 
         return to_route('dashboard', ['dashboard' => $dashboard->id]);
     }
