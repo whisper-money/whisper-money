@@ -1,11 +1,8 @@
 import { cn } from '@/lib/utils';
+import { maskDigits } from '@/utils/currency';
 import { useWidgetEnv } from './context';
 import { formatMoney } from './format-money';
-
-/** Privacy mode hides the figures, as AmountDisplay does across the app. */
-export function maskDigits(text: string, privacyMode: boolean): string {
-    return privacyMode ? text.replace(/\d/g, '*') : text;
-}
+import { classNameOf } from './props';
 
 /**
  * An amount in minor units, in the widget's currency unless it names one.
@@ -23,7 +20,7 @@ export function Amount({
     currency?: unknown;
     showSign?: unknown;
     compact?: unknown;
-    className?: string;
+    className?: unknown;
 }) {
     const env = useWidgetEnv();
     const formatted = formatMoney(amount, currency ?? env.currency, {
@@ -35,9 +32,9 @@ export function Amount({
     return (
         <span
             data-slot="widget-amount"
-            className={cn('tabular-nums', className)}
+            className={cn('tabular-nums', classNameOf(className))}
         >
-            {maskDigits(formatted, env.privacyMode)}
+            {env.privacyMode ? maskDigits(formatted) : formatted}
         </span>
     );
 }

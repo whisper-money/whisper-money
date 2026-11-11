@@ -38,7 +38,15 @@ export function WidgetErrorState({ message }: { message: string }) {
             <p className="text-sm font-medium">
                 {__('This widget stopped working')}
             </p>
-            <p className="line-clamp-2 max-w-full text-xs break-words text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
+                {__(
+                    'Ask your agent to fix it, or remove it from the dashboard.',
+                )}
+            </p>
+            <p
+                title={message}
+                className="line-clamp-2 max-w-full font-mono text-xs break-words text-muted-foreground"
+            >
                 {message}
             </p>
         </div>
@@ -46,6 +54,8 @@ export function WidgetErrorState({ message }: { message: string }) {
 }
 
 interface Props {
+    /** The boundary tries again when this changes (new data can fix it). */
+    resetKey: unknown;
     onError: (error: WidgetRuntimeError) => void;
     children: ReactNode;
 }
@@ -70,6 +80,12 @@ export class WidgetErrorBoundary extends Component<Props, State> {
         this.props.onError(
             toWidgetRuntimeError('render', error, info.componentStack ?? null),
         );
+    }
+
+    override componentDidUpdate(previous: Props): void {
+        if (this.state.error && previous.resetKey !== this.props.resetKey) {
+            this.setState({ error: null });
+        }
     }
 
     override render(): ReactNode {

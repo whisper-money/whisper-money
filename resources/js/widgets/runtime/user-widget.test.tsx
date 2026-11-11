@@ -18,7 +18,7 @@ const page = vi.hoisted(() => ({
 
 vi.mock('@inertiajs/react', () => ({
     usePage: () => page,
-    router: { visit: vi.fn() },
+    router: { visit: vi.fn(), replace: vi.fn() },
 }));
 
 // The stylesheet is Vite's business; the registry is the real one.
@@ -28,7 +28,7 @@ function pageProps(customDashboards: boolean) {
     page.props = {
         features: { customDashboards },
         locale: 'es-ES',
-        auth: { user: { currency_code: 'EUR' } },
+        auth: { user: { id: 'user-1', currency_code: 'EUR' } },
         accounts: [],
     };
 }
@@ -192,7 +192,8 @@ describe('useUserWidgetsGate', () => {
     });
 
     it('opens in safe mode when the last load never finished', () => {
-        localStorage.setItem(LOADING_MARKER_KEY, '2026-11-11T10:00:00Z');
+        // What a tab that froze left behind: the user, then that tab's id.
+        localStorage.setItem(LOADING_MARKER_KEY, 'user-1:frozen-tab');
 
         const { result } = renderHook(() => useUserWidgetsGate(['a']));
 
@@ -206,6 +207,45 @@ describe('useUserWidgetsGate', () => {
         expect(result.current.mode).toBe('run');
     });
 
+    it('ignores the marker another account left in this browser', () => {
+        localStorage.setItem(LOADING_MARKER_KEY, 'user-2:frozen-tab');
+
+        const { result } = renderHook(() => useUserWidgetsGate(['a']));
+
+        expect(result.current.mode).toBe('run');
+    });
+
+    it('leaves ?safe=1 for good, even over a marker a frozen tab left', async () => {
+        const { router } = await import('@inertiajs/react');
+        window.history.replaceState(null, '', '/dashboard?safe=1&tab=x');
+        localStorage.setItem(LOADING_MARKER_KEY, 'user-1:frozen-tab');
+
+        const { result } = renderHook(() => useUserWidgetsGate(['a']));
+
+        expect(result.current).toMatchObject({ reason: 'requested' });
+
+        act(() => (result.current as { exit: () => void }).exit());
+
+        expect(result.current.mode).toBe('run');
+        expect(router.replace).toHaveBeenCalledWith(
+            expect.objectContaining({ url: '/dashboard?tab=x' }),
+        );
+        // The marker now there is this tab's own, for the load it starts.
+        expect(localStorage.getItem(LOADING_MARKER_KEY)).not.toBe(
+            'user-1:frozen-tab',
+        );
+    });
+
+    it('does not count a reload or a closed tab as a hang', () => {
+        renderHook(() => useUserWidgetsGate(['a']));
+
+        expect(localStorage.getItem(LOADING_MARKER_KEY)).not.toBeNull();
+
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(localStorage.getItem(LOADING_MARKER_KEY)).toBeNull();
+    });
+
     it('opens in safe mode on ?safe=1', () => {
         window.history.replaceState(null, '', '/dashboard?safe=1');
 
@@ -216,6 +256,34 @@ describe('useUserWidgetsGate', () => {
             reason: 'requested',
         });
         expect(localStorage.getItem(LOADING_MARKER_KEY)).toBeNull();
+    });
+
+    it('reports a throwing button handler through the error boundary', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.stubGlobal('matchMedia', () => ({
+            matches: false,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+        }));
+        const onError = vi.fn();
+        const BUTTON_THROWS = `import{jsx as j}from"react/jsx-runtime";import{Button as B}from"@whisper-money/widget-sdk";export default function W(){return j(B,{onClick:()=>{throw new Error("boom")},children:"Go"})}`;
+
+        inApp(
+            <UserWidget
+                js={BUTTON_THROWS}
+                data={{}}
+                size={{ width: '1/2', height: 'm' }}
+                onError={onError}
+            />,
+        );
+
+        (await screen.findByRole('button', { name: 'Go' })).click();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('boom');
+        expect(onError).toHaveBeenCalledWith(
+            expect.objectContaining({ phase: 'render', message: 'boom' }),
+        );
+        vi.unstubAllGlobals();
     });
 
     it('does not count leaving the page as a hang', () => {

@@ -2,6 +2,7 @@ import { type SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import {
+    clearUserWidgetsMarker,
     markUserWidgetsLoaded,
     markUserWidgetsLoading,
     type SafeModeReason,
@@ -31,7 +32,8 @@ export type UserWidgetsGate =
  * widgets the page is about to draw.
  */
 export function useUserWidgetsGate(widgetIds: string[]): UserWidgetsGate {
-    const { features } = usePage<SharedData>().props;
+    const { features, auth } = usePage<SharedData>().props;
+    const userId = auth?.user?.id ?? 'guest';
     const enabled = Boolean(features?.customDashboards) && widgetIds.length > 0;
     const [decision, setDecision] = useState<
         'pending' | 'run' | SafeModeReason
@@ -43,9 +45,11 @@ export function useUserWidgetsGate(widgetIds: string[]): UserWidgetsGate {
 
     useEffect(() => {
         if (enabled && decision === 'pending') {
-            setDecision(safeModeReason(window.location.search) ?? 'run');
+            setDecision(
+                safeModeReason(window.location.search, userId) ?? 'run',
+            );
         }
-    }, [enabled, decision]);
+    }, [enabled, decision, userId]);
 
     const running = enabled && decision === 'run';
 
@@ -57,22 +61,35 @@ export function useUserWidgetsGate(widgetIds: string[]): UserWidgetsGate {
         }
 
         if (!allSettled) {
-            markUserWidgetsLoading();
+            markUserWidgetsLoading(userId);
 
             return;
         }
 
-        const timer = setTimeout(markUserWidgetsLoaded, SETTLE_GRACE_MS);
+        const timer = setTimeout(
+            () => markUserWidgetsLoaded(userId),
+            SETTLE_GRACE_MS,
+        );
 
         return () => clearTimeout(timer);
-    }, [running, allSettled]);
+    }, [running, allSettled, userId]);
 
-    // Leaving the page is not a hang: the page was still responding.
+    // Leaving the page is not a hang: it was still responding. That covers
+    // an Inertia visit (unmount) and a reload or a closed tab (pagehide).
     useEffect(() => {
-        if (running) {
-            return markUserWidgetsLoaded;
+        if (!running) {
+            return;
         }
-    }, [running]);
+
+        const leave = () => markUserWidgetsLoaded(userId);
+
+        window.addEventListener('pagehide', leave);
+
+        return () => {
+            window.removeEventListener('pagehide', leave);
+            leave();
+        };
+    }, [running, userId]);
 
     const settle = useCallback((id: string) => {
         setSettledIds((previous) =>
@@ -81,17 +98,19 @@ export function useUserWidgetsGate(widgetIds: string[]): UserWidgetsGate {
     }, []);
 
     const exit = useCallback(() => {
-        if (decision === 'requested') {
-            router.visit(withoutSafeModeParam(window.location.href), {
-                preserveScroll: true,
-            });
-
-            return;
-        }
-
-        markUserWidgetsLoaded();
+        // A marker a frozen tab left behind would send `?safe=1` straight
+        // back to safe mode once the param is gone.
+        clearUserWidgetsMarker(userId);
         setDecision('run');
-    }, [decision]);
+
+        if (decision === 'requested') {
+            router.replace({
+                url: withoutSafeModeParam(window.location.href),
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }
+    }, [decision, userId]);
 
     if (!enabled) {
         return { mode: 'off' };

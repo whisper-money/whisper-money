@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
+import { maskDigits } from '@/utils/currency';
 import { type ReactNode } from 'react';
 import { Tooltip } from 'recharts';
 import { hasExternalUrl } from '../validator/allowlist';
-import { maskDigits } from './amount';
 import { useWidgetEnv } from './context';
 
 type Formatter = (value: unknown, name?: unknown) => unknown;
@@ -88,10 +88,15 @@ export function ChartTooltipContent({
                         {formatWith(undefined, item.name)}
                     </span>
                     <span className="font-mono font-medium text-foreground tabular-nums">
-                        {maskDigits(
-                            formatWith(valueFormatter, item.value, item.name),
-                            privacyMode,
-                        )}
+                        {privacyMode
+                            ? maskDigits(
+                                  formatWith(
+                                      valueFormatter,
+                                      item.value,
+                                      item.name,
+                                  ),
+                              )
+                            : formatWith(valueFormatter, item.value, item.name)}
                     </span>
                 </div>
             ))}

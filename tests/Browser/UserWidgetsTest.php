@@ -187,13 +187,14 @@ it('opens in safe mode on ?safe=1, without any user widget, and leaves it', func
 });
 
 it('opens in safe mode by itself when the last load never finished', function () {
-    actingAs(userWidgetsUser());
+    $user = userWidgetsUser();
+    actingAs($user);
 
-    // Once drawn, the page clears its marker after a short grace period.
-    $page = visit('/testing/user-widgets')->assertSee('Supermercado por mes')->wait(2);
+    $page = visit('/testing/user-widgets')->assertSee('Supermercado por mes');
 
-    // What a tab that froze while drawing its widgets leaves behind.
-    $page->script("localStorage.setItem('wm:user-widgets-loading', new Date().toISOString())");
+    // What a tab that froze while drawing its widgets leaves behind: the
+    // user, then that tab's id.
+    $page->script("localStorage.setItem('wm:user-widgets-loading', '{$user->id}:frozen-tab')");
 
     $page->navigate('/testing/user-widgets')
         ->assertSee('Safe mode: your widgets are not loaded')

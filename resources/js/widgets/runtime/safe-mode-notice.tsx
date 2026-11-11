@@ -25,10 +25,10 @@ export function SafeModeNotice({
                 <p>
                     {reason === 'unfinished'
                         ? __(
-                              'The last time this dashboard opened, its widgets did not finish loading. If one of them froze the page, remove it from here.',
+                              'The last time this dashboard opened, its widgets did not finish loading. If one of them froze the page, remove it from the dashboard before loading them again.',
                           )
                         : __(
-                              'Widgets written by your agent stay off until you load them, so you can remove one that is causing problems.',
+                              'You opened this dashboard in safe mode: widgets written by your agent stay off until you load them, so you can remove one that is causing problems.',
                           )}
                 </p>
                 <Button variant="outline" size="sm" onClick={onExit}>

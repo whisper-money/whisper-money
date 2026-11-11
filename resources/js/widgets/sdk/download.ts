@@ -29,7 +29,14 @@ let insideGesture = false;
  * timeout is the backstop: it fires once the whole dispatch is over, even if
  * a widget's handler threw before the click bubbled back.
  */
-export function beginWidgetGesture(): void {
+export function beginWidgetGesture(event?: {
+    nativeEvent?: { isTrusted?: boolean };
+}): void {
+    // A click the page dispatched itself (`el.click()`) is not the user's.
+    if (event?.nativeEvent?.isTrusted === false) {
+        return;
+    }
+
     insideGesture = true;
     setTimeout(endWidgetGesture, 0);
 }
@@ -64,6 +71,10 @@ export function download(filename: unknown, content: unknown): boolean {
     const rows = toRows(content);
 
     if (rows === null) {
+        console.warn(
+            'wm.download() takes CSV text, rows of cells or rows of objects; nothing was downloaded.',
+        );
+
         return false;
     }
 
@@ -97,7 +108,7 @@ export function sanitizeCsvCell(value: unknown): string {
         return String(value);
     }
 
-    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    const text = typeof value === 'string' ? value : stringify(value);
 
     // A plain number written as text (`-42.10`) is data, not a formula.
     if (/^-?\d+(?:[.,]\d+)*$/.test(text)) {
@@ -107,12 +118,22 @@ export function sanitizeCsvCell(value: unknown): string {
     return /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
 }
 
+/** Any other value as JSON; one JSON cannot write (a cycle, a BigInt) is left empty. */
+function stringify(value: unknown): string {
+    try {
+        return JSON.stringify(value) ?? '';
+    } catch {
+        return '';
+    }
+}
+
+/** Rows of cells, or null for content that is not one of the three shapes. */
 function toRows(content: unknown): unknown[][] | null {
     if (typeof content === 'string') {
         return parseCsv(content);
     }
 
-    if (!Array.isArray(content)) {
+    if (!Array.isArray(content) || content.length === 0) {
         return null;
     }
 
@@ -120,15 +141,18 @@ function toRows(content: unknown): unknown[][] | null {
         return content as unknown[][];
     }
 
-    const records = content.filter(
-        (row): row is Record<string, unknown> =>
-            typeof row === 'object' && row !== null && !Array.isArray(row),
-    );
-    const header = [...new Set(records.flatMap((row) => Object.keys(row)))];
+    const isRecord = (row: unknown): row is Record<string, unknown> =>
+        typeof row === 'object' && row !== null && !Array.isArray(row);
+
+    if (!content.every(isRecord)) {
+        return null;
+    }
+
+    const header = [...new Set(content.flatMap((row) => Object.keys(row)))];
 
     return [
         header,
-        ...records.map((row) =>
+        ...content.map((row) =>
             header.map((key) =>
                 Object.hasOwn(row, key) ? row[key] : undefined,
             ),

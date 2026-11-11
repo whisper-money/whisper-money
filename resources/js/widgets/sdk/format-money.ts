@@ -32,6 +32,10 @@ export function setDefaultMoneyLocale(locale: string): void {
  * COP, satoshis for BTC), written the way the rest of the app writes it.
  * Anything that is not a finite number comes back as an empty string rather
  * than `NaN €`, and an unknown currency code falls back to a plain number.
+ *
+ * It never masks: in privacy mode a widget shows amounts with `<Amount>`, or
+ * checks `useWidgetEnv().privacyMode` before writing one itself (chart axes,
+ * its own labels).
  */
 export function formatMoney(
     minorUnits: unknown,

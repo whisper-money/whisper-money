@@ -7,8 +7,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import {
+    type ComponentType,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useState,
+} from 'react';
 import { loadWidgetModule } from '../load-widget-module';
 import {
     type WidgetAccount,
@@ -37,6 +44,9 @@ export interface UserWidgetProps {
     onSettled?: () => void;
     className?: string;
 }
+
+/** A module that has not loaded by then is treated as failed. */
+const LOAD_TIMEOUT_MS = 15_000;
 
 type LoadState =
     | { status: 'loading' }
@@ -74,32 +84,59 @@ function UserWidgetFrame({
     const [state, setState] = useState<LoadState>({ status: 'loading' });
     const sdk = useWidgetSdkValue(data, size);
 
+    useLayoutEffect(() => {
+        setDefaultMoneyLocale(sdk.env.locale);
+    }, [sdk.env.locale]);
+
     useEffect(() => {
-        let cancelled = false;
+        let finished = false;
+        const fail = (failure: WidgetRuntimeError, isWidgetError: boolean) => {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+            setState({ status: 'failed', error: failure });
+            // Only the widget's own failures are stored for its agent: a
+            // runtime chunk that did not download is not something it can fix.
+            if (isWidgetError) {
+                onError?.(failure);
+            }
+            onSettled?.();
+        };
+        const timeout = setTimeout(
+            () =>
+                fail(
+                    toWidgetRuntimeError(
+                        'load',
+                        new Error(__('The widget took too long to load.')),
+                    ),
+                    false,
+                ),
+            LOAD_TIMEOUT_MS,
+        );
 
         ensureWidgetRuntime()
-            .then(() => loadWidgetModule(js))
             .then(
-                (Widget) => {
-                    if (!cancelled) {
-                        setState({ status: 'ready', Widget });
-                    }
-                },
-                (error: unknown) => {
-                    if (cancelled) {
-                        return;
-                    }
-
-                    const failure = toWidgetRuntimeError('load', error);
-
-                    setState({ status: 'failed', error: failure });
-                    onError?.(failure);
-                    onSettled?.();
-                },
-            );
+                () =>
+                    loadWidgetModule(js).then(
+                        (Widget) => {
+                            if (!finished) {
+                                finished = true;
+                                setState({ status: 'ready', Widget });
+                            }
+                        },
+                        (error: unknown) =>
+                            fail(toWidgetRuntimeError('load', error), true),
+                    ),
+                (error: unknown) =>
+                    fail(toWidgetRuntimeError('load', error), false),
+            )
+            .finally(() => clearTimeout(timeout));
 
         return () => {
-            cancelled = true;
+            finished = true;
+            clearTimeout(timeout);
         };
         // The callbacks are read when the load settles; a new one must not reload.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,17 +151,22 @@ function UserWidgetFrame({
                 'wm-widget h-full w-full min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground',
                 className,
             )}
-            onClickCapture={beginWidgetGesture}
+            onClickCapture={(event) => beginWidgetGesture(event)}
             onClick={endWidgetGesture}
         >
             {state.status === 'loading' && (
-                <Skeleton className="h-full w-full rounded-xl" />
+                <Skeleton
+                    aria-busy="true"
+                    aria-label={__('Loading widget')}
+                    className="h-full w-full rounded-none"
+                />
             )}
             {state.status === 'failed' && (
                 <WidgetErrorState message={state.error.message} />
             )}
             {state.status === 'ready' && (
                 <WidgetErrorBoundary
+                    resetKey={data}
                     onError={(error) => {
                         onError?.(error);
                         onSettled?.();
@@ -166,8 +208,6 @@ function useWidgetSdkValue(
     const { isPrivacyModeEnabled } = usePrivacyMode();
     const locale = useLocale();
     const currency = auth.user?.currency_code ?? 'EUR';
-
-    setDefaultMoneyLocale(locale);
 
     const widgetAccounts = useMemo(() => accountsById(accounts), [accounts]);
 

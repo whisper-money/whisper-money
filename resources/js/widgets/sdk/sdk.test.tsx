@@ -59,9 +59,9 @@ describe('the SDK module', () => {
         const contract = [...SDK_VALUES, ...Object.keys(SDK_COMPONENTS)].sort();
 
         expect(Object.keys(sdk).sort()).toEqual(contract);
-        expect(Object.keys(widgetSdkModule()).sort()).toEqual(contract);
+        expect(Object.keys(widgetSdkModule(sdk)).sort()).toEqual(contract);
         expect(
-            Object.values(widgetSdkModule()).every(
+            Object.values(widgetSdkModule(sdk)).every(
                 (value) => value !== undefined,
             ),
         ).toBe(true);
@@ -327,6 +327,20 @@ describe('wm.download', () => {
         );
     });
 
+    it('refuses content of the wrong shape, and clicks the page faked', () => {
+        beginWidgetGesture();
+
+        expect(sdk.wm.download('mixed', [['a'], { b: 1 }])).toBe(false);
+        expect(sdk.wm.download('empty', [])).toBe(false);
+        expect(sdk.wm.download('number', 42)).toBe(false);
+
+        endWidgetGesture();
+        beginWidgetGesture({ nativeEvent: { isTrusted: false } });
+
+        expect(sdk.wm.download('fake', [['a']])).toBe(false);
+        expect(saved).toHaveLength(0);
+    });
+
     it('closes the gesture once the click is over', async () => {
         beginWidgetGesture();
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -338,6 +352,7 @@ describe('wm.download', () => {
         expect(sanitizeCsvCell('\tcmd')).toBe("'\tcmd");
         expect(sanitizeCsvCell('-1.234,50')).toBe('-1.234,50');
         expect(sanitizeCsvCell(null)).toBe('');
+        expect(sanitizeCsvCell(BigInt(1))).toBe('');
         expect(csvFilename('a/b\\c:d')).toBe('a-b-c-d.csv');
         expect(csvFilename('')).toBe('widget.csv');
         expect(parseCsv('a,"b,c"\r\n"d""e",f')).toEqual([

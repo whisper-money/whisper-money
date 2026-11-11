@@ -1,7 +1,7 @@
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/currency';
+import { formatCurrency, maskDigits } from '@/utils/currency';
 import { useMemo } from 'react';
 
 interface AmountDisplayProps {
@@ -91,7 +91,7 @@ export function AmountDisplay({
             )}
         >
             <span className="text-xs">{showSign && isPositive && '+'}</span>
-            <span>{isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted}</span>
+            <span>{isPrivacyModeEnabled ? maskDigits(formatted) : formatted}</span>
         </span>
     );
 }

@@ -11,6 +11,7 @@ import {
     WidgetModuleError,
 } from './load-widget-module';
 import { widgetSdkModule } from './runtime/widget-runtime';
+import * as widgetSdk from './sdk';
 import { type WidgetSdkValue, WidgetSdkProvider } from './sdk/context';
 import { createWidgetModuleRegistry } from './widget-module-registry';
 
@@ -94,7 +95,7 @@ describe('loadWidgetModule', () => {
 
     beforeAll(async () => {
         registerWidgetModules(
-            await createWidgetModuleRegistry(widgetSdkModule()),
+            await createWidgetModuleRegistry(widgetSdkModule(widgetSdk)),
         );
 
         const files = (await readdir(fixtures))

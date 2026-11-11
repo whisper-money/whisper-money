@@ -6,7 +6,7 @@ import { Separator as AppSeparator } from '@/components/ui/separator';
 import { Skeleton as AppSkeleton } from '@/components/ui/skeleton';
 import * as AppTable from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { type ComponentType, type ReactNode } from 'react';
+import { type ComponentType, type ReactNode, useState } from 'react';
 import { classNameOf, finiteNumber, oneOf } from './props';
 
 /**
@@ -122,7 +122,9 @@ const BUTTON_SIZES = ['default', 'sm', 'lg', 'icon', 'icon-sm'] as const;
 
 /**
  * Always `type="button"`. The handler is called with no arguments: a widget
- * never receives the event (`event.view` is `window`).
+ * never receives the event (`event.view` is `window`). What it throws is
+ * rethrown while rendering, so the widget's error boundary reports it like
+ * any other failure instead of it vanishing into the console.
  */
 export function Button({
     className,
@@ -137,6 +139,12 @@ export function Button({
     disabled?: unknown;
     onClick?: unknown;
 }) {
+    const [failure, setFailure] = useState<{ error: unknown } | null>(null);
+
+    if (failure) {
+        throw failure.error;
+    }
+
     return (
         <AppButton
             type="button"
@@ -145,7 +153,15 @@ export function Button({
             size={oneOf(size, BUTTON_SIZES)}
             disabled={disabled === true}
             onClick={
-                typeof onClick === 'function' ? () => onClick() : undefined
+                typeof onClick === 'function'
+                    ? () => {
+                          try {
+                              onClick();
+                          } catch (error) {
+                              setFailure({ error });
+                          }
+                      }
+                    : undefined
             }
         >
             {children}
