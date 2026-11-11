@@ -87,6 +87,15 @@ it('refuses an account, category or label of another member', function (string $
     'label' => ['label_ids', 'label'],
 ]);
 
+it('takes a list as a comma-separated string too', function () {
+    ['user' => $user, 'space' => $space] = mcpAggregateSpace();
+
+    WhisperMoneyServer::actingAs($user)
+        ->tool(AggregateTransactions::class, ['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => 'month,type', 'metrics' => 'sum', 'space' => $space->id])
+        ->assertOk()
+        ->assertSee('"buckets":[{"month":"2026-10","type":"expense","currency":"EUR","sum":-1234,"sum_formatted":"€-12.34"}]');
+});
+
 it('refuses more buckets than the cap', function () {
     ['user' => $user] = mcpAggregateSpace();
 

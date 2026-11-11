@@ -83,9 +83,12 @@ class AnalyticsController extends Controller
      * currencies are never added together, and every amount is your share of
      * the account, in minor units of the bucket's currency. A transaction
      * booked on an archived account stops counting from the day it was
-     * archived. Grouped by a period, every period of the range comes back,
-     * with zeros where nothing was booked. A response holds at most 1000
-     * buckets: one that would hold more is a `422` under `group_by`.
+     * archived. Every type of transaction counts unless `types` narrows it:
+     * pass `types=expense` for spending, since transfers, savings and
+     * investments otherwise add in too. Grouped by a period, every period of
+     * the range comes back, with zeros where nothing was booked. A response
+     * holds at most 1000 buckets: one that would hold more is a `422` under
+     * `group_by`.
      */
     #[ScopedToSpace]
     public function aggregate(AggregateTransactionsRequest $request, TransactionAggregator $aggregator): TransactionAggregateResource

@@ -14,12 +14,6 @@ class AggregateTransactionsRequest extends FormRequest
     use ChecksIdsInSpace;
 
     /**
-     * The list parameters, which also take a comma-separated value
-     * (`group_by=month,category`) besides the repeated `group_by[]=` form.
-     */
-    private const LIST_FIELDS = ['group_by', 'metrics', 'types', 'category_ids', 'label_ids', 'account_ids'];
-
-    /**
      * @return array<string, array<mixed>>
      */
     public function rules(): array
@@ -98,20 +92,6 @@ class AggregateTransactionsRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $lists = [];
-
-        foreach (self::LIST_FIELDS as $field) {
-            if (is_string($value = $this->input($field))) {
-                $lists[$field] = array_values(array_filter(array_map('trim', explode(',', $value)), fn (string $item): bool => $item !== ''));
-            }
-        }
-
-        $includeSubcategories = $this->input('include_subcategories');
-
-        if (is_string($includeSubcategories) && in_array(strtolower($includeSubcategories), ['true', 'false'], true)) {
-            $lists['include_subcategories'] = strtolower($includeSubcategories) === 'true';
-        }
-
-        $this->merge($lists);
+        $this->merge(TransactionAggregator::normalize($this->all()));
     }
 }

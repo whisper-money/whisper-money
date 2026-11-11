@@ -153,7 +153,9 @@ app is kept in their books.
   bucket per group and currency: amounts in different currencies are never added
   together, so read each bucket's `currency`. Like the other analytics, amounts
   are the user's share of the account, and an archived account stops counting
-  from the day it was archived. Grouped by a period, every period of the range
+  from the day it was archived. Every type counts unless `types` narrows it, so
+  pass `types: ["expense"]` for spending: otherwise transfers, savings and
+  investments add in too. Grouped by a period, every period of the range
   comes back, zeros included; a request that would return more than 1000 buckets
   is refused, so narrow the range or pick a longer period. A transaction with
   several labels counts once under each of them.

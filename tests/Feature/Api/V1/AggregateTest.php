@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
@@ -134,6 +135,34 @@ describe('grouping', function () {
 
         expect(collect($response->json('data.buckets'))->pluck('sum', 'type')->all())
             ->toBe(['expense' => -1_200, 'income' => 100_900, 'savings' => -5_000]);
+    });
+
+    it('reads a deleted category as no category, in one bucket and by the sign', function () {
+        ['user' => $user, 'account' => $account, 'salary' => $salary] = aggregateBook();
+        $savings = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Savings]);
+        $gone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+        $alsoGone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income]);
+        aggregateRow($account, '2026-10-01', -100, $gone);
+        aggregateRow($savings, '2026-10-02', -200, $alsoGone);
+        aggregateRow($savings, '2026-10-03', 1_000, $salary);
+        $gone->delete();
+        $alsoGone->delete();
+
+        withHeaders(apiV1Bearer($user))
+            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['category']]))
+            ->assertOk()
+            ->assertJsonPath('data.buckets', [
+                ['category_id' => null, 'category_name' => null, 'currency' => 'EUR', 'sum' => -300, 'count' => 2],
+                ['category_id' => $salary->id, 'category_name' => 'Salary', 'currency' => 'EUR', 'sum' => 1_000, 'count' => 1],
+            ]);
+
+        withHeaders(apiV1Bearer($user))
+            ->getJson(aggregateUrl(['from' => '2026-10-01', 'to' => '2026-10-31', 'group_by' => ['type']]))
+            ->assertOk()
+            ->assertJsonPath('data.buckets', [
+                ['type' => 'expense', 'currency' => 'EUR', 'sum' => -300, 'count' => 2],
+                ['type' => 'income', 'currency' => 'EUR', 'sum' => 1_000, 'count' => 1],
+            ]);
     });
 
     it('groups by label, counting a transaction once under each of its labels', function () {

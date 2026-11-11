@@ -387,7 +387,7 @@ curl "https://whisper.money/api/v1/analytics/spending-by-category?from=2026-10-0
 
 `GET /api/v1/analytics/aggregate`
 
-Your transactions in a space over a date range, grouped by up to two dimensions and added up: their sum, count, average, smallest and largest amount. As in the app, another member's transactions are left out. Each bucket is also split by currency, so amounts in different currencies are never added together, and every amount is your share of the account, in minor units of the bucket's currency. A transaction booked on an archived account stops counting from the day it was archived. Grouped by a period, every period of the range comes back, with zeros where nothing was booked. A response holds at most 1000 buckets: one that would hold more is a `422` under `group_by`.
+Your transactions in a space over a date range, grouped by up to two dimensions and added up: their sum, count, average, smallest and largest amount. As in the app, another member's transactions are left out. Each bucket is also split by currency, so amounts in different currencies are never added together, and every amount is your share of the account, in minor units of the bucket's currency. A transaction booked on an archived account stops counting from the day it was archived. Every type of transaction counts unless `types` narrows it: pass `types=expense` for spending, since transfers, savings and investments otherwise add in too. Grouped by a period, every period of the range comes back, with zeros where nothing was booked. A response holds at most 1000 buckets: one that would hold more is a `422` under `group_by`.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 

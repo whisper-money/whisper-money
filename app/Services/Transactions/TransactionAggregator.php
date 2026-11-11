@@ -56,6 +56,9 @@ class TransactionAggregator
 
     public const MAX_IDS = 100;
 
+    /** @var list<string> */
+    private const LIST_PARAMETERS = ['group_by', 'metrics', 'types', 'category_ids', 'label_ids', 'account_ids'];
+
     /**
      * The type of a row as the cashflow reads it: its category's type, or the
      * sign of the amount when it has none (or its category was deleted).
@@ -88,6 +91,13 @@ class TransactionAggregator
         'max' => 'max('.Transaction::OWNED_AMOUNT_SQL.')',
     ];
 
+    /**
+     * The metrics an empty bucket reads as zero; the others are null there.
+     *
+     * @var list<string>
+     */
+    private const ZERO_WHEN_EMPTY = ['sum', 'count'];
+
     public function __construct(private TransactionSearch $search, private CategoryTree $tree) {}
 
     /**
@@ -117,6 +127,34 @@ class TransactionAggregator
             'types.*' => ['string', 'distinct', Rule::enum(CategoryType::class)],
             'query' => ['sometimes', 'string', 'max:200'],
         ];
+    }
+
+    /**
+     * The parameters as sent, with every list given as a comma-separated
+     * string (`group_by=month,category`) split into an array and a `true` /
+     * `false` string read as a boolean, so a query string and an agent can
+     * write them either way. Only the changed keys are returned.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public static function normalize(array $input): array
+    {
+        $normalized = [];
+
+        foreach (self::LIST_PARAMETERS as $field) {
+            if (is_string($input[$field] ?? null)) {
+                $normalized[$field] = array_values(array_filter(array_map('trim', explode(',', $input[$field])), fn (string $item): bool => $item !== ''));
+            }
+        }
+
+        $includeSubcategories = $input['include_subcategories'] ?? null;
+
+        if (is_string($includeSubcategories) && in_array(strtolower($includeSubcategories), ['true', 'false'], true)) {
+            $normalized['include_subcategories'] = strtolower($includeSubcategories) === 'true';
+        }
+
+        return $normalized;
     }
 
     /**
@@ -205,8 +243,11 @@ class TransactionAggregator
 
         $columns['currency'] = self::CURRENCY_SQL;
 
+        // Grouped by the expression, not the alias: MySQL reads a bare name in
+        // GROUP BY as a column of the joined tables first, so `type` would
+        // group by accounts.type and `category_id` by the transaction's own.
         foreach ($columns as $alias => $sql) {
-            $query->selectRaw("{$sql} as {$alias}")->groupBy($alias);
+            $query->selectRaw("{$sql} as {$alias}")->groupByRaw($sql);
         }
 
         // By name rather than id, so a chart lists its series alphabetically.
@@ -343,7 +384,7 @@ class TransactionAggregator
         $bucket['currency'] = $seriesOf['currency'];
 
         foreach ($metrics as $metric) {
-            $bucket[$metric] = in_array($metric, ['sum', 'count'], true) ? 0 : null;
+            $bucket[$metric] = in_array($metric, self::ZERO_WHEN_EMPTY, true) ? 0 : null;
         }
 
         return $bucket;

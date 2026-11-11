@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Transactions\TransactionAggregator;
 use App\Support\Money;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
@@ -34,7 +35,7 @@ class AggregateTransactions extends McpTool
             'group_by' => $schema->array()->items($schema->string()->enum(TransactionAggregator::DIMENSIONS))
                 ->description('Up to two dimensions, at most one of them a period (day, week, month, year). A week is named by its Monday. Omit to add up per currency only. Grouped by a period, every period of the range is returned, with zeros where nothing was booked.'),
             'metrics' => $schema->array()->items($schema->string()->enum(TransactionAggregator::METRICS))
-                ->description('Defaults to sum and count. Amounts are signed (negative for money out) and avg/min/max are null on an empty bucket.'),
+                ->description('Defaults to sum and count. Amounts are signed (negative for money out) and avg/min/max are null on an empty bucket. Without a types filter, transfers, savings and investments are added in too.'),
             'category_ids' => $schema->array()->items($schema->string())->description('Only these categories. Call list_categories to see valid ids.'),
             'include_subcategories' => $schema->boolean()->description('Whether category_ids also match their subcategories (default true).'),
             'label_ids' => $schema->array()->items($schema->string())->description('Only transactions with any of these labels; grouped by label, only these labels are listed. Call list_labels to see valid ids.'),
@@ -48,7 +49,10 @@ class AggregateTransactions extends McpTool
 
     protected function respond(Request $request, User $user): Response
     {
-        $validated = $request->validate(TransactionAggregator::rules());
+        $validated = Validator::validate(
+            [...$request->all(), ...TransactionAggregator::normalize($request->all())],
+            TransactionAggregator::rules(),
+        );
         $space = $this->resolveSpace($request, $user);
 
         $aggregate = app(TransactionAggregator::class)->aggregate($user, $space, [
