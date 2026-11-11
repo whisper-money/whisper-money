@@ -81,3 +81,46 @@ describe('SubscriptionPaymentIssueBanner', () => {
         );
     });
 });
+
+describe('SubscriptionPaymentIssueBanner when the bank asks for a confirmation', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.url = '/dashboard';
+        mocks.issue = {
+            status: 'requires_action',
+            action_url: '/stripe/payment/pi_123?redirect=%2Fsettings%2Fbilling',
+        };
+    });
+
+    it('asks to confirm the payment rather than to update the card', () => {
+        render(<SubscriptionPaymentIssueBanner />);
+
+        expect(
+            screen.getByText(
+                'Your bank needs you to confirm your subscription payment.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Update payment' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it("leaves the SPA for Cashier's payment page", () => {
+        render(<SubscriptionPaymentIssueBanner />);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Confirm payment' }),
+        );
+
+        expect(mocks.leavePage).toHaveBeenCalledWith(
+            '/stripe/payment/pi_123?redirect=%2Fsettings%2Fbilling',
+        );
+    });
+
+    it('stays off the billing page, whose own alert offers the confirmation', () => {
+        mocks.url = '/settings/billing';
+
+        const { container } = render(<SubscriptionPaymentIssueBanner />);
+
+        expect(container).toBeEmptyDOMElement();
+    });
+});

@@ -43,6 +43,7 @@ Schedule::command('email:inactive-no-bank')->dailyAt('09:45')->timezone('Europe/
 Schedule::command('email:inactive-banked')->dailyAt('09:47')->timezone('Europe/Madrid');
 Schedule::command('email:connection-expiring')->dailyAt('09:50')->timezone('Europe/Madrid');
 Schedule::command('email:subscription-resuming')->dailyAt('09:55')->timezone('Europe/Madrid');
+Schedule::command('email:payment-failed-reminders')->dailyAt('10:05')->timezone('Europe/Madrid');
 Schedule::command('email:user-emails-report')->monthlyOn(1, '09:05')->timezone('Europe/Madrid');
 Schedule::command('banking:health --email')->dailyAt('09:30')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');

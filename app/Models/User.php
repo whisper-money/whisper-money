@@ -835,6 +835,28 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             && ! $subscription->ended();
     }
 
+    /**
+     * The failed invoice of the unpaid subscription that is waiting on the
+     * bank's confirmation (3D Secure), read from the rows the Stripe webhooks
+     * keep, so the payment banner can offer to confirm it without asking
+     * Stripe on every request.
+     */
+    public function paymentAwaitingConfirmation(): ?FailedInvoice
+    {
+        $subscription = $this->unpaidSubscription();
+
+        if ($subscription === null) {
+            return null;
+        }
+
+        return FailedInvoice::query()
+            ->open()
+            ->awaitingConfirmation()
+            ->where('stripe_subscription_id', $subscription->stripe_id)
+            ->latest('action_required_at')
+            ->first();
+    }
+
     public function hasCanceledSubscription(): bool
     {
         if (! config('subscriptions.enabled')) {

@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Jobs\Drip\SendAnnualRenewalEmailJob;
 use App\Models\User;
+use App\Services\Stripe\InvoicePayload;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -25,13 +26,6 @@ use Throwable;
 class SendAnnualRenewalReminder
 {
     private const DEDUPE_TTL_HOURS = 24;
-
-    /**
-     * A billing period at least this long is a yearly one. Used when the line
-     * item carries no price object, which is how newer Stripe API versions
-     * send it: the shortest yearly period is 365 days, the longest monthly 31.
-     */
-    private const MIN_YEARLY_PERIOD_SECONDS = 300 * 86400;
 
     public function handle(WebhookReceived $event): void
     {
@@ -121,8 +115,7 @@ class SendAnnualRenewalReminder
      * The line that renews a yearly price, whose period start is the renewal
      * date. Picked out rather than taking the first line, since an upcoming
      * invoice can also carry proration or one-off items that start today.
-     * Older API versions put the price on each line; newer ones only send its
-     * id, so the length of the billing period decides instead.
+     * See {@see InvoicePayload::lineInterval()} for how the interval is read.
      *
      * @param  array<string, mixed>  $invoice
      * @return array<string, mixed>|null
@@ -130,10 +123,7 @@ class SendAnnualRenewalReminder
     private function yearlyLine(array $invoice): ?array
     {
         foreach ($invoice['lines']['data'] ?? [] as $line) {
-            $interval = $line['price']['recurring']['interval'] ?? $line['plan']['interval'] ?? null;
-            $period = (int) ($line['period']['end'] ?? 0) - (int) ($line['period']['start'] ?? 0);
-
-            if ($interval === 'year' || ($interval === null && $period >= self::MIN_YEARLY_PERIOD_SECONDS)) {
+            if (InvoicePayload::lineInterval($line) === 'year') {
                 return $line;
             }
         }

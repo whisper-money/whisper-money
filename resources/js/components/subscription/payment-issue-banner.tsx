@@ -10,15 +10,19 @@ import { TriangleAlertIcon } from 'lucide-react';
 /**
  * Warns a user whose subscription payment failed, on every authenticated page.
  *
- * Stripe retries the charge for two weeks and then cancels, but
+ * Stripe retries the charge 8 times over 3 weeks and then cancels, but
  * `Cashier::keepPastDueSubscriptionsActive()` keeps the account fully working
- * meanwhile, so nothing else in the app signals the failure. It is deliberately
+ * meanwhile, so nothing else in the app signals the failure.
+ *
+ * A payment the bank holds for 3D Secure (`requires_action`) is a different
+ * ask: no retry gets it through, only the customer confirming it, so the
+ * banner says that and its action opens Cashier's payment page instead. It is deliberately
  * not dismissible: a dismissed warning is a silent one, which is the bug this
  * replaces (a toast published before the app mounted, so a cold page load never
  * showed it).
  *
  * The action leaves the SPA on purpose — the billing portal route redirects to
- * Stripe, which Inertia cannot follow.
+ * Stripe, and the payment page is not an Inertia page.
  *
  * The billing page shows its own payment-failure alert, which also offers to
  * cancel, so the banner stays off there rather than say the same thing twice.
@@ -33,6 +37,9 @@ export function SubscriptionPaymentIssueBanner() {
         return null;
     }
 
+    const needsConfirmation =
+        subscriptionPaymentIssue.status === 'requires_action';
+
     return (
         <div className="mx-auto w-full max-w-page px-5 pb-4 sm:px-6">
             <Alert
@@ -41,13 +48,21 @@ export function SubscriptionPaymentIssueBanner() {
             >
                 <TriangleAlertIcon />
                 <AlertTitle className="line-clamp-none">
-                    {__('We could not collect your subscription payment.')}
+                    {needsConfirmation
+                        ? __(
+                              'Your bank needs you to confirm your subscription payment.',
+                          )
+                        : __('We could not collect your subscription payment.')}
                 </AlertTitle>
                 <AlertDescription>
                     <p>
-                        {__(
-                            'We will keep retrying over the coming days. You keep access for now, but the subscription will be canceled if all retries fail.',
-                        )}
+                        {needsConfirmation
+                            ? __(
+                                  'The payment does not go through until you approve it. You keep access for now, but the subscription will be canceled if it stays unconfirmed.',
+                              )
+                            : __(
+                                  'We will keep retrying over the coming days. You keep access for now, but the subscription will be canceled if all retries fail.',
+                              )}
                     </p>
                     <Button
                         size="sm"
@@ -57,7 +72,9 @@ export function SubscriptionPaymentIssueBanner() {
                             leavePage(subscriptionPaymentIssue.action_url)
                         }
                     >
-                        {__('Update payment')}
+                        {needsConfirmation
+                            ? __('Confirm payment')
+                            : __('Update payment')}
                     </Button>
                 </AlertDescription>
             </Alert>

@@ -100,10 +100,7 @@ class HandleInertiaRequests extends Middleware
                 'isSharedAccount' => $user?->isRestrictedSharedAccount() ?? false,
                 'isAdmin' => $user?->isAdmin() ?? false,
             ],
-            'subscriptionPaymentIssue' => $user?->hasPastDueSubscription() ? [
-                'status' => 'past_due',
-                'action_url' => route('settings.billing.portal'),
-            ] : null,
+            'subscriptionPaymentIssue' => $this->subscriptionPaymentIssueFor($user),
             'demoEnabled' => (bool) config('app.demo.enabled'),
             'openBankingEnabled' => (bool) config('services.enablebanking.enabled'),
             'demoCredentials' => $this->demoCredentials($request, $user),
@@ -202,6 +199,27 @@ class HandleInertiaRequests extends Middleware
             && $user->isOnboarded()
             && ! $this->isSubscriptionFlow($request)
             && $user->isEligibleForSecondOffer();
+    }
+
+    /**
+     * What the payment banner asks for: confirming a payment the bank holds
+     * for 3D Secure, which no retry and no new card would fix, or else a new
+     * payment method for a declined one.
+     *
+     * @return array{status: 'requires_action'|'past_due', action_url: string}|null
+     */
+    private function subscriptionPaymentIssueFor(?User $user): ?array
+    {
+        $awaitingConfirmation = $user?->paymentAwaitingConfirmation();
+
+        if ($awaitingConfirmation !== null) {
+            return ['status' => 'requires_action', 'action_url' => $awaitingConfirmation->confirmationUrl()];
+        }
+
+        return $user?->hasPastDueSubscription() ? [
+            'status' => 'past_due',
+            'action_url' => route('settings.billing.portal', ['flow' => 'payment_method_update']),
+        ] : null;
     }
 
     /**

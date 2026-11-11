@@ -3,6 +3,7 @@
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
+use App\Models\FailedInvoice;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -78,7 +79,57 @@ test('authenticated users receive subscription payment issue when subscription i
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('subscriptionPaymentIssue.status', 'past_due')
-        ->where('subscriptionPaymentIssue.action_url', route('settings.billing.portal'))
+        ->where('subscriptionPaymentIssue.action_url', route('settings.billing.portal', ['flow' => 'payment_method_update']))
+    );
+});
+
+test('a payment the bank holds for 3D Secure asks to confirm it on the payment page', function (string $status) {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_requires_action',
+        'stripe_status' => $status,
+        'stripe_price' => 'price_test123',
+    ]);
+    FailedInvoice::factory()->awaitingConfirmation('pi_confirm_me')->create([
+        'user_id' => $user->id,
+        'stripe_subscription_id' => 'sub_requires_action',
+    ]);
+
+    $confirmationUrl = route('cashier.payment', ['id' => 'pi_confirm_me', 'redirect' => route('settings.billing')]);
+
+    // The billing page, as an incomplete subscription is sent to the paywall elsewhere.
+    $response = actingAs($user)->withoutVite()->get(route('settings.billing'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('subscriptionPaymentIssue.status', 'requires_action')
+        ->where('subscriptionPaymentIssue.action_url', $confirmationUrl)
+        // The billing page's own alert offers the same confirmation.
+        ->where('paymentConfirmationUrl', $confirmationUrl)
+    );
+})->with(['past_due', 'incomplete']);
+
+test('a confirmation that was settled falls back to the past-due banner', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_requires_action',
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_test123',
+    ]);
+    FailedInvoice::factory()->awaitingConfirmation()->resolved()->create([
+        'user_id' => $user->id,
+        'stripe_subscription_id' => 'sub_requires_action',
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('subscriptionPaymentIssue.status', 'past_due')
     );
 });
 
