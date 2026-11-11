@@ -49,6 +49,33 @@ class CreditCardStatementService
     }
 
     /**
+     * The credit usage of every live credit card of the user, across all of
+     * their spaces, in the order the accounts list shows them: what the
+     * dashboard draws on each card instead of a balance, and what the API and
+     * the MCP serve. Archived cards have no card to show it on, and another
+     * member's card is never the user's.
+     *
+     * @return list<array{account: Account, usage: array{limit: int|null, used: int, available: int|null, period_from: string, period_to: string, daily: list<array{date: string, used: int}>}}>
+     */
+    public function liveUsageFor(User $user): array
+    {
+        $creditCards = Account::query()
+            ->where('user_id', $user->id)
+            ->where('type', AccountType::CreditCard)
+            ->notArchived()
+            ->with('creditCardDetail')
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get();
+        $usage = $this->usageByAccount($creditCards, $user);
+
+        return $creditCards
+            ->map(fn (Account $account): array => ['account' => $account, 'usage' => $usage[$account->id]])
+            ->values()
+            ->all();
+    }
+
+    /**
      * The credit card fields an account row carries: the detail, the
      * statement estimate and the credit usage on a credit card, nothing at
      * all on any other account.

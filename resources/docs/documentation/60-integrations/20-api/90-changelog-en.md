@@ -4,6 +4,18 @@ Every change to the API that could affect your code, newest first.
 
 {{TOC}}
 
+## 2026-11-11 · Spending by label, credit card usage and this month's savings
+
+Three figures the app's dashboard shows, for your whole account:
+[`GET /api/v1/analytics/spending-by-label`](/documentation/api/reference/analytics#retrieve-spending-by-label)
+ranks your labels by spending over a range against the previous period,
+[`GET /api/v1/analytics/credit-card-usage`](/documentation/api/reference/analytics#retrieve-credit-card-usage)
+gives how much of each credit card is in use with its day-by-day line, and
+[`GET /api/v1/analytics/monthly-savings`](/documentation/api/reference/analytics#retrieve-this-months-savings)
+adds up this month across your monthly savings goals and says how they did last
+month. The AI Connector gets the same as the `spending_by_label`,
+`get_credit_card_usage` and `get_monthly_savings` tools.
+
 ## 2026-11-11 · Aggregate transactions
 
 [`GET /api/v1/analytics/aggregate`](/documentation/api/reference/analytics#aggregate-transactions)

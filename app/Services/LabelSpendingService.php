@@ -25,6 +25,18 @@ class LabelSpendingService
      */
     public function topForPeriod(string $userId, PeriodComparator $period): array
     {
+        return $this->comparedForPeriod($userId, $period, self::LIMIT);
+    }
+
+    /**
+     * Every label the user spent on during the period, biggest first, each
+     * with its spending in the preceding period. `total_amount` is what all
+     * of them add up to in the period, whatever $limit keeps.
+     *
+     * @return list<array{id: string, name: string, color: string, amount: int, previous_amount: int, total_amount: int}>
+     */
+    public function comparedForPeriod(string $userId, PeriodComparator $period, ?int $limit = null): array
+    {
         $current = $this->forPeriod($userId, $period->from, $period->to);
 
         if ($current->isEmpty()) {
@@ -37,7 +49,7 @@ class LabelSpendingService
 
         return $current
             ->sortByDesc('amount')
-            ->take(self::LIMIT)
+            ->when($limit !== null, fn (Collection $labels): Collection => $labels->take($limit))
             ->map(fn (array $label): array => [
                 ...$label,
                 'previous_amount' => $previous[$label['id']]['amount'] ?? 0,

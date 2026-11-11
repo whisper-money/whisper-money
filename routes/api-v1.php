@@ -90,6 +90,9 @@ Route::whereUuid('savings_goal')->group(function (): void {
 Route::get('analytics/cashflow', [AnalyticsController::class, 'cashflow'])->name('analytics.cashflow');
 Route::get('analytics/net-worth', [AnalyticsController::class, 'netWorth'])->name('analytics.net-worth');
 Route::get('analytics/spending-by-category', [AnalyticsController::class, 'spendingByCategory'])->name('analytics.spending-by-category');
+Route::get('analytics/spending-by-label', [AnalyticsController::class, 'spendingByLabel'])->name('analytics.spending-by-label');
+Route::get('analytics/credit-card-usage', [AnalyticsController::class, 'creditCardUsage'])->name('analytics.credit-card-usage');
+Route::get('analytics/monthly-savings', [AnalyticsController::class, 'monthlySavings'])->name('analytics.monthly-savings');
 Route::get('analytics/aggregate', [AnalyticsController::class, 'aggregate'])->name('analytics.aggregate');
 
 Route::get('achievements', [AchievementController::class, 'index'])->name('achievements.index');

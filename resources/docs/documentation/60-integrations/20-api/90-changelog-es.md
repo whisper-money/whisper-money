@@ -4,6 +4,18 @@ Cada cambio de la API que pueda afectar a tu código, del más reciente al más 
 
 {{TOC}}
 
+## 2026-11-11 · Gasto por etiqueta, uso de tarjetas y ahorro del mes
+
+Tres cifras que enseña el panel de la app, para toda tu cuenta:
+[`GET /api/v1/analytics/spending-by-label`](/documentation/api/reference/analytics#retrieve-spending-by-label)
+ordena tus etiquetas por gasto en un rango frente al periodo anterior,
+[`GET /api/v1/analytics/credit-card-usage`](/documentation/api/reference/analytics#retrieve-credit-card-usage)
+da cuánto de cada tarjeta de crédito está en uso, con su evolución día a día, y
+[`GET /api/v1/analytics/monthly-savings`](/documentation/api/reference/analytics#retrieve-this-months-savings)
+suma el mes en curso de tus objetivos de ahorro mensual y dice cómo fue el mes
+pasado. El Conector de IA lo tiene como las herramientas `spending_by_label`,
+`get_credit_card_usage` y `get_monthly_savings`.
+
 ## 2026-11-11 · Agregar transacciones
 
 [`GET /api/v1/analytics/aggregate`](/documentation/api/reference/analytics#aggregate-transactions)

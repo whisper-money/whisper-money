@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\AccountMetricsService;
@@ -12,8 +11,7 @@ use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\PeriodComparator;
-use App\Services\SavingsGoals\MonthlySavingsGoalStats;
-use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
+use App\Services\SavingsGoals\CurrentMonthSavings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +25,7 @@ class DashboardController extends Controller
         private CashflowSummaryService $summaries,
         private ReportPresenter $presenter,
         private CreditCardStatementService $creditCardStatementService,
-        private MonthlySavingsGoalStats $monthlySavingsGoals,
-        private MonthlySavingsGoalTotals $monthlySavingsTotals,
+        private CurrentMonthSavings $currentMonthSavings,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -43,13 +40,8 @@ class DashboardController extends Controller
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
             'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
-            'monthlySavingsGoals' => Inertia::defer(fn () => $this->runningMonthlyGoals($request), 'dashboard'),
-            // Archived goals included: the same count the cashflow card and
-            // the monthly summary give for that month.
-            'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->monthlySavingsTotals->verdicts(
-                $this->monthlySavingsGoals->presentForUser($request->user()),
-                $request->user()->localToday()->subMonthNoOverflow(),
-            ), 'dashboard'),
+            'monthlySavingsGoals' => Inertia::defer(fn () => $this->currentMonthSavings->runningGoals($request->user()), 'dashboard'),
+            'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->currentMonthSavings->lastMonth($request->user()), 'dashboard'),
         ]);
     }
 
@@ -87,24 +79,6 @@ class DashboardController extends Controller
     }
 
     /**
-     * The monthly goals still running, for this month's card. An archived goal
-     * has nothing left to save towards. The card only needs this month, so
-     * that is all it gets: no history, no goal fields it does not draw.
-     *
-     * @return list<array{id: string, name: string, monthly: array{current: array<string, mixed>|null}}>
-     */
-    private function runningMonthlyGoals(Request $request): array
-    {
-        return array_map(fn (array $goal): array => [
-            'id' => $goal['id'],
-            'name' => $goal['name'],
-            'monthly' => ['current' => $goal['monthly']['current']],
-        ], $this->monthlySavingsGoals->present(
-            $request->user()->savingsGoals()->monthly()->notArchived()->listed()->get(),
-        ));
-    }
-
-    /**
      * The last 12 months up to the user's own current month, not the server's
      * UTC one: at 21:00 on 31 October in Buenos Aires the server is already in
      * November, and the chart would end on a November that repeats October.
@@ -127,21 +101,16 @@ class DashboardController extends Controller
     }
 
     /**
-     * What is in use of each live credit card, which its dashboard card shows
-     * instead of a balance. Archived cards have no card to show it on.
+     * What is in use of each live credit card, keyed by account id, which its
+     * dashboard card shows instead of a balance.
      *
      * @return array<string, array<string, mixed>>
      */
     private function getCreditCardUsage(Request $request): array
     {
-        $creditCards = Account::query()
-            ->where('user_id', $request->user()->id)
-            ->where('type', AccountType::CreditCard)
-            ->notArchived()
-            ->with('creditCardDetail')
-            ->get();
-
-        return $this->creditCardStatementService->usageByAccount($creditCards, $request->user());
+        return collect($this->creditCardStatementService->liveUsageFor($request->user()))
+            ->mapWithKeys(fn (array $card): array => [$card['account']->id => $card['usage']])
+            ->all();
     }
 
     private function getTopCategories(Request $request): array
