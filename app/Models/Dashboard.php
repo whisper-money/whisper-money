@@ -27,6 +27,9 @@ class Dashboard extends Model
     /** How many dashboards a user may keep. */
     public const MAX_PER_USER = 20;
 
+    /** How many widgets one dashboard may hold. */
+    public const MAX_WIDGETS = 50;
+
     protected $fillable = [
         'user_id',
         'name',

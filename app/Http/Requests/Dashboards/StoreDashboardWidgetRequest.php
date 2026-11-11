@@ -56,16 +56,4 @@ class StoreDashboardWidgetRequest extends FormRequest
     {
         return SystemWidget::from($this->validated('system_widget'));
     }
-
-    /**
-     * @return array{width: WidgetWidth, height: WidgetHeight}
-     */
-    public function size(): array
-    {
-        if (! $this->filled('width')) {
-            return $this->systemWidget()->defaultSize();
-        }
-
-        return $this->requestedSize();
-    }
 }

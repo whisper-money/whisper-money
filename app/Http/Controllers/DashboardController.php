@@ -32,8 +32,6 @@ class DashboardController extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $selectedDashboard = $this->selectedDashboard($request);
-
         return Inertia::render('dashboard', [
             // The user's own dashboards and the one on screen, with its widgets.
             // Null is the system dashboard, which the page still draws until
@@ -42,10 +40,13 @@ class DashboardController extends Controller
                 ->orderBy('position')
                 ->orderBy('created_at')
                 ->get(['id', 'name', 'position'])
-                ->map(fn (Dashboard $dashboard): array => $dashboard->only(['id', 'name', 'position']))
-                ->all(),
+                ->toArray(),
             'defaultDashboardId' => fn (): ?string => $request->user()->default_dashboard_id,
-            'selectedDashboard' => fn (): ?array => $selectedDashboard === null ? null : $this->presentDashboard($selectedDashboard),
+            'selectedDashboard' => function () use ($request): ?array {
+                $dashboard = $this->selectedDashboard($request);
+
+                return $dashboard === null ? null : $this->presentDashboard($dashboard);
+            },
             // The window the top categories and top labels cards report on, so
             // their links and drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
@@ -62,8 +63,10 @@ class DashboardController extends Controller
 
     /**
      * The dashboard asked for in `?dashboard=`, else the user's default. Null
-     * is the system dashboard. Another user's dashboard, or one that does not
-     * exist, is a 404 rather than a quiet fallback: the link is wrong.
+     * is the system dashboard. A link to a dashboard that was deleted, or that
+     * is not the user's, falls back to the default rather than a 404: an old
+     * bookmark should still open the app. Without the paid plan the default
+     * is the system dashboard again, whatever the user picked.
      */
     private function selectedDashboard(Request $request): ?Dashboard
     {
@@ -71,10 +74,14 @@ class DashboardController extends Controller
         $requested = $request->query('dashboard');
 
         if (is_string($requested) && $requested !== '') {
-            return $user->dashboards()->findOrFail($requested);
+            $dashboard = $user->dashboards()->find($requested);
+
+            if ($dashboard !== null) {
+                return $dashboard;
+            }
         }
 
-        return $user->default_dashboard_id === null ? null : $user->defaultDashboard;
+        return $user->hasProPlan() ? $user->defaultDashboard : null;
     }
 
     /**

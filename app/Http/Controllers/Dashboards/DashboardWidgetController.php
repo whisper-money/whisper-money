@@ -10,7 +10,7 @@ use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Places system widgets on a dashboard, removes them, orders them and sizes
@@ -25,7 +25,7 @@ class DashboardWidgetController extends Controller
     {
         $dashboard->widgets()->create([
             'system_widget' => $request->systemWidget(),
-            ...$request->size(),
+            ...$request->size($request->systemWidget()),
             'position' => (int) $dashboard->widgets()->max('position') + 1,
         ]);
 
@@ -34,14 +34,14 @@ class DashboardWidgetController extends Controller
 
     public function update(UpdateDashboardWidgetRequest $request, Dashboard $dashboard, DashboardWidget $widget): RedirectResponse
     {
-        $widget->update($request->requestedSize());
+        $widget->update($request->size());
 
         return back();
     }
 
-    public function destroy(Request $request, Dashboard $dashboard, DashboardWidget $widget): RedirectResponse
+    public function destroy(Dashboard $dashboard, DashboardWidget $widget): RedirectResponse
     {
-        $this->authorize('update', $dashboard);
+        $this->authorize('removeWidget', $dashboard);
 
         $widget->delete();
 
@@ -50,9 +50,11 @@ class DashboardWidgetController extends Controller
 
     public function reorder(ReorderDashboardWidgetsRequest $request, Dashboard $dashboard): RedirectResponse
     {
-        foreach (array_values($request->validated('ids')) as $position => $id) {
-            $dashboard->widgets()->whereKey($id)->update(['position' => $position]);
-        }
+        DB::transaction(function () use ($request, $dashboard): void {
+            foreach (array_values($request->validated('ids')) as $position => $id) {
+                $dashboard->widgets()->whereKey($id)->update(['position' => $position]);
+            }
+        });
 
         return back();
     }

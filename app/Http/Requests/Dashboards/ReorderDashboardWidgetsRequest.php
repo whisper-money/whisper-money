@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Dashboards;
 
 use App\Http\Requests\Concerns\AuthorizesDashboardUpdate;
+use App\Models\Dashboard;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,8 @@ class ReorderDashboardWidgetsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ids' => ['required', 'array'],
+            // Ids left out keep their position.
+            'ids' => ['required', 'array', 'max:'.Dashboard::MAX_WIDGETS],
             'ids.*' => [
                 'distinct',
                 'string',

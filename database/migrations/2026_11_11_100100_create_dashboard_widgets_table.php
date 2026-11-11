@@ -28,6 +28,9 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['dashboard_id', 'position']);
+            // The registry draws each system widget once per dashboard. NULLs do
+            // not collide, so user widgets are not limited by it.
+            $table->unique(['dashboard_id', 'system_widget']);
         });
     }
 

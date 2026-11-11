@@ -10,7 +10,7 @@ use App\Http\Requests\Dashboards\UpdateDashboardRequest;
 use App\Models\Dashboard;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Creates, renames, deletes and orders the user's own dashboards. The page
@@ -43,7 +43,7 @@ class DashboardManagementController extends Controller
      * Deleting the default dashboard sends the user back to the system one:
      * `users.default_dashboard_id` is nulled by its foreign key.
      */
-    public function destroy(Request $request, Dashboard $dashboard): RedirectResponse
+    public function destroy(Dashboard $dashboard): RedirectResponse
     {
         $this->authorize('delete', $dashboard);
 
@@ -54,9 +54,11 @@ class DashboardManagementController extends Controller
 
     public function reorder(ReorderDashboardsRequest $request): RedirectResponse
     {
-        foreach (array_values($request->validated('ids')) as $position => $id) {
-            $request->user()->dashboards()->whereKey($id)->update(['position' => $position]);
-        }
+        DB::transaction(function () use ($request): void {
+            foreach (array_values($request->validated('ids')) as $position => $id) {
+                $request->user()->dashboards()->whereKey($id)->update(['position' => $position]);
+            }
+        });
 
         return back();
     }

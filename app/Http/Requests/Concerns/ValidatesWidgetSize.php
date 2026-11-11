@@ -19,7 +19,7 @@ trait ValidatesWidgetSize
             return;
         }
 
-        $size = $this->requestedSize();
+        $size = $this->size();
 
         if (! $widget->allowsSize($size['width'], $size['height'])) {
             $validator->errors()->add('width', __('This widget is not available in that size.'));
@@ -27,10 +27,16 @@ trait ValidatesWidgetSize
     }
 
     /**
+     * The size asked for, or the widget's default one when none was.
+     *
      * @return array{width: WidgetWidth, height: WidgetHeight}
      */
-    public function requestedSize(): array
+    public function size(?SystemWidget $widget = null): array
     {
+        if ($widget !== null && ! $this->filled('width')) {
+            return $widget->defaultSize();
+        }
+
         return [
             'width' => WidgetWidth::from($this->input('width')),
             'height' => WidgetHeight::from($this->input('height')),

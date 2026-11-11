@@ -252,10 +252,12 @@ describe('ownership', function () {
 
     it('does not open another user\'s dashboard on the dashboard page', function () {
         $foreign = Dashboard::factory()->create();
+        DashboardWidget::factory()->for($foreign)->create();
 
         $this->actingAs(dashboardOwner())
             ->get(route('dashboard', ['dashboard' => $foreign->id]))
-            ->assertNotFound();
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('selectedDashboard', null));
     });
 });
 
@@ -287,6 +289,22 @@ describe('paid plan and shared accounts', function () {
         $this->actingAs($user)->patch(route('dashboards.update', $dashboard), ['name' => 'Changed'])->assertForbidden();
 
         expect($user->dashboards()->pluck('name')->all())->toBe(['Kept']);
+    });
+
+    it('lets a user without the plan clean up but opens the system dashboard by default', function () {
+        $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+        $dashboard = Dashboard::factory()->for($user)->create();
+        $widget = DashboardWidget::factory()->for($dashboard)->create();
+        $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('selectedDashboard', null));
+
+        $this->actingAs($user)->delete(route('dashboards.widgets.destroy', [$dashboard, $widget]))->assertRedirect();
+        $this->actingAs($user)->delete(route('dashboards.destroy', $dashboard))->assertRedirect();
+
+        expect(Dashboard::find($dashboard->id))->toBeNull();
     });
 
     it('keeps the shared demo and press accounts from writing', function (string $email) {
@@ -376,5 +394,11 @@ describe('dashboard page', function () {
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('selectedDashboard.id', $other->id)
                 ->where('selectedDashboard.widgets', []));
+
+        $other->delete();
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['dashboard' => $other->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('selectedDashboard.id', $default->id));
     });
 });

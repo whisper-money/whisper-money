@@ -39,4 +39,10 @@ class DashboardPolicy
     {
         return $this->view($user, $dashboard);
     }
+
+    /** Removing a widget is cleanup too, open to the owner without a plan. */
+    public function removeWidget(User $user, Dashboard $dashboard): bool
+    {
+        return $this->view($user, $dashboard);
+    }
 }

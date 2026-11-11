@@ -10,6 +10,7 @@ class ReorderDashboardsRequest extends FormRequest
 {
     use ValidatesUserOwnedResources;
 
+    /** Ordering is editing, so it needs the paid plan like a rename. */
     public function authorize(): bool
     {
         return $this->user()->can('create', Dashboard::class);
@@ -21,7 +22,8 @@ class ReorderDashboardsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ids' => ['required', 'array'],
+            // Ids left out keep their position.
+            'ids' => ['required', 'array', 'max:'.Dashboard::MAX_PER_USER],
             'ids.*' => ['distinct', 'string', $this->userOwned('dashboards')],
         ];
     }
