@@ -13,7 +13,7 @@ use Carbon\CarbonImmutable;
  * draw a widget as the dashboard would: its compiled module, its data
  * resolved through the gateway as the user for their current month (each
  * call's body, as the dashboard hands it over), the calls the API refused,
- * and the user's currency, locale and accounts.
+ * and the user's currency, locale, chart colors and accounts.
  *
  * The widget tools put it in their result's `_meta` under MetaKey
  * (resources/js/widgets/preview/main.tsx reads the same key), so the agent
@@ -32,7 +32,7 @@ class WidgetPreviewPayload
     public function __construct(private WidgetDefinitionService $widgets) {}
 
     /**
-     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>}
+     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, chart_color_scheme: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>}
      */
     public function for(User $user, WidgetDefinition $widget): array
     {
@@ -54,6 +54,7 @@ class WidgetPreviewPayload
             'failures' => $this->failures($answers),
             'currency' => $user->currency_code ?? 'EUR',
             'locale' => $user->formatLocale(),
+            'chart_color_scheme' => $user->setting?->chart_color_scheme->value ?? 'colorful',
             'accounts' => $user->accounts()->with('bank:id,name,logo')->get()
                 ->mapWithKeys(fn (Account $account): array => [$account->id => [
                     'type' => $account->type->value,

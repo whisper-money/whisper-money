@@ -27,6 +27,8 @@ export interface WidgetPreviewPayload {
     failures: { key: string; status: number; message: string }[];
     currency: string;
     locale: string;
+    /** The user's chart palette, as the app sets it on `data-chart-color`. */
+    chart_color_scheme: string;
     accounts: Record<string, WidgetAccount>;
 }
 
@@ -162,6 +164,18 @@ export function WidgetPreview({
     useEffect(() => {
         setDefaultMoneyLocale(payload.locale);
     }, [payload.locale]);
+
+    useEffect(() => {
+        // The app's use-chart-color-scheme: `neutral` is the stylesheet's default.
+        if (payload.chart_color_scheme === 'neutral') {
+            document.documentElement.removeAttribute('data-chart-color');
+        } else {
+            document.documentElement.setAttribute(
+                'data-chart-color',
+                payload.chart_color_scheme,
+            );
+        }
+    }, [payload.chart_color_scheme]);
 
     let content;
 

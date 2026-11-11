@@ -172,7 +172,7 @@ describe('widgets', function () {
             ->and($json['widget'])->toMatchArray(['id' => $widget->id, 'name' => 'Supermercado por mes', 'revision' => 1, 'created_via' => 'mcp', 'source' => mcpWidgetSource()])
             ->and($json['widget'])->not->toHaveKey('compiled_js')
             ->and($json['data_failures'])->toBe([])
-            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR'])
+            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR', 'chart_color_scheme' => 'colorful'])
             ->and($preview['data']['accounts']['data'])->toHaveCount(1);
     });
 
