@@ -9,7 +9,7 @@
     </x-slot:head>
 
     @if ($script === null)
-        <p style="font-family: sans-serif; padding: 1rem;">The widget preview is not built on this server: run <code>bun run build</code>.</p>
+        <p style="font-family: sans-serif; padding: 1rem;">The widget preview is not available right now. The widget is saved: open it on the dashboard.</p>
     @else
         <div id="widget-preview"></div>
     @endif

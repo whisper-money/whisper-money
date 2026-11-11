@@ -2,18 +2,13 @@
 
 namespace App\Mcp\Tools\Concerns;
 
-use App\Mcp\Resources\WidgetPreview;
-use App\Models\Account;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
 use App\Models\WidgetDefinition;
 use App\Models\WidgetRevision;
-use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\InvalidWidget;
-use App\Services\Widgets\WidgetDefinitionService;
-use BackedEnum;
-use Carbon\CarbonImmutable;
+use App\Services\Widgets\WidgetPreviewPayload;
 use Closure;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
@@ -21,21 +16,12 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 
 /**
- * The dashboard and widget shapes the dashboard tools return, how they find
- * the caller's own rows, and the preview payload the widget tools hand to
- * the {@see WidgetPreview} MCP App. Dashboards and widgets belong to one user:
+ * The dashboard and widget shapes the dashboard tools return, and how they
+ * find the caller's own rows. Dashboards and widgets belong to one user:
  * another user's id is refused like one that does not exist.
  */
 trait PresentsWidgets
 {
-    /**
-     * Where the preview payload goes in a tool result's `_meta`: the MCP App
-     * reads it there, and the agent never pays for the compiled module and
-     * the data in its context. resources/js/widgets/preview/main.tsx reads
-     * the same key.
-     */
-    private const string PreviewMetaKey = 'whisper-money/widget-preview';
-
     protected function dashboardOfUser(Request $request, User $user, string $key = 'dashboard_id'): Dashboard
     {
         $id = $request->string($key)->toString();
@@ -83,8 +69,8 @@ trait PresentsWidgets
         return $this->widgetResponse($user, $widget, [
             'saved' => true,
             'next' => $widget->placements()->exists()
-                ? 'The dashboards it is on now draw this revision. Call get_widget later to see whether it raised a runtime error.'
-                : 'Place it on a dashboard with place_widget (list_dashboards gives the ids, create_dashboard makes one).',
+                ? 'The dashboards it is on now draw this revision. Fix any data_failures with update_widget.'
+                : 'Fix any data_failures with update_widget, then place it on a dashboard with place_widget (list_dashboards gives the ids, create_dashboard makes one).',
         ]);
     }
 
@@ -103,7 +89,7 @@ trait PresentsWidgets
                 ...$widget->last_error,
                 'at' => $widget->last_error_at?->toIso8601String(),
             ],
-            'placements' => $widget->placements()->orderBy('position')->get()
+            'placements' => $widget->placements->sortBy('position')->values()
                 ->map(fn (DashboardWidget $placement): array => $this->presentPlacement($placement))
                 ->all(),
         ];
@@ -126,14 +112,18 @@ trait PresentsWidgets
     }
 
     /**
-     * The whole widget, its code included, with the preview attached.
+     * The whole widget, its code included, the data calls the API refuses,
+     * and the preview in `_meta` for the MCP App.
      *
      * @param  array<string, mixed>  $extra  goes before the widget in the answer
      */
     protected function widgetResponse(User $user, WidgetDefinition $widget, array $extra = []): ResponseFactory
     {
+        $preview = app(WidgetPreviewPayload::class)->for($user, $widget);
+
         $body = [
             ...$extra,
+            'data_failures' => $preview['failures'],
             'widget' => [
                 ...$this->presentWidget($widget),
                 'manifest' => $widget->manifest,
@@ -149,46 +139,6 @@ trait PresentsWidgets
         ];
 
         return Response::make(Response::text((string) json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)))
-            ->withMeta(self::PreviewMetaKey, $this->previewPayload($user, $widget));
-    }
-
-    /**
-     * What the preview needs to draw the widget as the dashboard would: its
-     * compiled module, its data resolved through the gateway for the user's
-     * current month (each call's body, as the dashboard hands it over), and
-     * the user's currency, locale and accounts.
-     *
-     * @return array<string, mixed>
-     */
-    private function previewPayload(User $user, WidgetDefinition $widget): array
-    {
-        $answers = app(WidgetDefinitionService::class)
-            ->data($user, [$widget], DashboardVariables::forMonthOf(CarbonImmutable::instance($user->localToday())))[$widget->id];
-
-        $failures = [];
-
-        foreach ($answers as $key => $answer) {
-            if ($answer['status'] >= 400) {
-                $failures[] = ['key' => $key, 'status' => $answer['status'], 'message' => $answer['body']['message'] ?? "The call failed with status {$answer['status']}."];
-            }
-        }
-
-        return [
-            'widget_id' => $widget->id,
-            'name' => $widget->name,
-            'revision' => $widget->revision,
-            'js' => $widget->compiled_js,
-            'size' => array_map(fn (BackedEnum $value): string => (string) $value->value, $widget->defaultSize()),
-            'data' => array_map(fn (array $answer): mixed => $answer['body'], $answers),
-            'failures' => $failures,
-            'currency' => $user->currency_code ?? 'EUR',
-            'locale' => $user->formatLocale(),
-            'accounts' => $user->accounts()->with('bank:id,name,logo')->get()
-                ->mapWithKeys(fn (Account $account): array => [$account->id => [
-                    'type' => $account->type->value,
-                    'bankName' => $account->bank?->name,
-                    'bankLogo' => $account->bank?->logo,
-                ]])->all(),
-        ];
+            ->withMeta(WidgetPreviewPayload::MetaKey, $preview);
     }
 }

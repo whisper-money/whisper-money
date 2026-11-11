@@ -40,7 +40,7 @@ class ListDashboards extends McpTool
                 'widgets' => $dashboard->widgets->map(fn (DashboardWidget $placement): array => $this->presentPlacement($placement))->all(),
             ]);
 
-        $widgets = $user->widgetDefinitions()->orderBy('name')->get()
+        $widgets = $user->widgetDefinitions()->with('placements')->orderBy('name')->get()
             ->map(fn (WidgetDefinition $widget): array => $this->presentWidget($widget));
 
         return $this->json([

@@ -60,6 +60,12 @@ abstract class McpTool extends Tool
             return Response::error('Authentication required.');
         }
 
+        $refusal = $this->refusal($user);
+
+        if ($refusal instanceof Response) {
+            return $refusal;
+        }
+
         // The demo account's credentials are public and its data is shared, so
         // it never drives the MCP — an OAuth connection would otherwise carry
         // write access to it (see WriteTool).
@@ -87,6 +93,16 @@ abstract class McpTool extends Tool
         }
 
         return $response;
+    }
+
+    /**
+     * Why this tool refuses $user before anything else is checked, or null.
+     * A tool family with its own gate overrides it (see
+     * Concerns\GuardsCustomDashboards) so its message comes first.
+     */
+    protected function refusal(User $user): ?Response
+    {
+        return null;
     }
 
     /**

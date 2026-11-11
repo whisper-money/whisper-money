@@ -10,7 +10,7 @@ use RuntimeException;
  * the one shape the agent that wrote it reads: where (`manifest.size.width`,
  * `source:12:5`), what is wrong, and sometimes what to do about it.
  *
- * @api its errors are what the MCP widget tools, in a follow-up, hand to the agent
+ * The MCP widget tools hand its errors to the agent as they are.
  */
 class InvalidWidget extends RuntimeException
 {

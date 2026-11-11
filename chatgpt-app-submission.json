@@ -365,7 +365,7 @@
       "justifications": {
         "read_only_justification": "Writes: it creates a new, empty dashboard in the user's own account.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new dashboard can be deleted afterwards."
+        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new dashboard can be deleted afterwards in the app."
       }
     },
     "create_widget": {
@@ -381,7 +381,7 @@
       "justifications": {
         "read_only_justification": "Writes: it saves a new revision of one of the user's widgets.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Overwrites what the widget draws on every dashboard it is on. Earlier revisions are kept and can be restored, but the change replaces the current one."
+        "destructive_justification": "Overwrites what the widget draws on every dashboard it is on. Earlier revisions are kept and can be restored in the app, but the change replaces the current one."
       }
     },
     "place_widget": {
@@ -397,7 +397,7 @@
       "justifications": {
         "read_only_justification": "Writes: it takes a widget off one of the user's dashboards.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Removes the widget from that dashboard, with its size and position. The widget itself is kept and can be placed again."
+        "destructive_justification": "Removes the widget from that dashboard, with its size and position. A widget the user wrote is kept and can be placed again; a built-in one can be put back in the app."
       }
     }
   },

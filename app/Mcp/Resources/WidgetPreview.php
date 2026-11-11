@@ -2,19 +2,20 @@
 
 namespace App\Mcp\Resources;
 
-use App\Mcp\Tools\Concerns\PresentsWidgets;
+use App\Services\Widgets\WidgetPreviewPayload;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\AppResource;
 use Laravel\Mcp\Server\Attributes\AppMeta;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Uri;
+use RuntimeException;
 
 /**
  * The MCP App that draws a widget inside the chat, right after
  * create_widget, update_widget or get_widget: the same SDK, module registry,
  * error boundary and stylesheet as the dashboard, fed with the payload those
- * tools put in their result's `_meta` ({@see PresentsWidgets}), so the data
+ * tools put in their result's `_meta` ({@see WidgetPreviewPayload}), so the data
  * is the user's own, resolved through the gateway.
  *
  * The chat client loads it into a sandboxed iframe with no session in the
@@ -46,6 +47,8 @@ class WidgetPreview extends AppResource
         $path = public_path(self::BUILD_DIRECTORY.'/'.$file);
 
         if (! is_file($path)) {
+            report(new RuntimeException("The widget preview is not built: {$path} is missing. Run `bun run build`."));
+
             return null;
         }
 

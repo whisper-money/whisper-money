@@ -10,33 +10,35 @@ use App\Models\WidgetRevision;
 use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\Gateway\Endpoint;
 use App\Services\Widgets\Gateway\EndpointRegistry;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Process;
-use JsonException;
-use RuntimeException;
 
 /**
  * Everything an agent needs to write a widget that passes on the first try,
  * read from the same sources the save checks against: the validator's closed
- * lists (through scripts/widgets/sdk-reference.ts), the precompiled widget
+ * lists (widget-sdk-reference.json, kept in step by a test), the precompiled widget
  * classes, the gateway's endpoint registry and the manifest's sizes and
  * variables. get_widget_sdk hands it over as is.
  */
 class WidgetSdkReference
 {
-    private const string SCRIPT = 'scripts/widgets/sdk-reference.ts';
+    private const string LISTS = 'resources/js/widgets/widget-sdk-reference.json';
 
     private const string CLASSES = 'resources/js/widgets/widget-classes.json';
 
     /**
-     * The files the validator's lists live in: a change to any of them is a
-     * new reference.
+     * How a widget must be written, beyond what the lists say. The server
+     * instructions point here.
      */
-    private const array SOURCES = [
-        self::SCRIPT,
-        'resources/js/widgets/validator/allowlist.ts',
-        'resources/js/widgets/validator/component-props.ts',
-        'resources/js/widgets/validator/sdk-spec.ts',
+    private const array Rules = [
+        'Write every visible text in the language the user is talking to you in. There is no i18n.',
+        'Amounts arrive as integers in the minor units of their currency (100 per EUR or USD, 1 per JPY or CLP, 1000 per KWD); read each row\'s currency, never assume cents. Render every amount with <Amount amount currency /> from the SDK, which formats it and blurs it in privacy mode; use formatMoney only where a component cannot go (chart ticks, tooltips) and hide those figures when useWidgetEnv().privacyMode is true.',
+        'Look right in light and dark mode: use theme tokens (text-muted-foreground, bg-card, border) or pair every color with its dark: variant. useWidgetEnv().theme says which one is on.',
+        'Be responsive with container variants (@sm:, @md:, @xl:…), not viewport ones: the same widget is drawn at 1/3, 1/2 and 1/1 and on a phone. useWidgetEnv().isCompact is true on a phone and at 1/3 width. Fill the cell (h-full) and let ResponsiveContainer size charts.',
+        'No network and no browser APIs: the data comes only from the manifest through useWidgetData(), and the environment from useWidgetEnv(). To hand data to the user (a CSV), call wm.download(filename, content) from a button.',
+        'Read a key computed at run time with get(obj, key) from the SDK, and a field named target with get(obj, \'target\'): obj.target and obj[\'target\'] are rejected, as are the other forbidden property names.',
+        'Event handlers on native tags take no parameters; Recharts handlers and render props (content, shape, label, a custom dot) are not allowed. For a styled chart tooltip, put <ChartTooltip valueFormatter labelFormatter /> from the SDK inside the chart in place of <Tooltip>.',
+        'Draw bank logos with <BankLogo accountId /> from the SDK; there is no <img>.',
+        'Handle empty data (a new user, a month without transactions) with a short message or <EmptyState>, never a blank chart.',
+        'A saved widget can still fail on the dashboard. create_widget, update_widget and get_widget list in data_failures every data call the API refuses: fix those right away. A runtime error only shows up once the widget is placed and the user opens the dashboard; get_widget then returns it as last_error with the revision it came from. last_error: null means no error was caught yet, not that the widget works.',
     ];
 
     /**
@@ -52,6 +54,7 @@ class WidgetSdkReference
     public function toArray(): array
     {
         return [
+            'rules' => self::Rules,
             'manifest' => $this->manifest(),
             'source' => [
                 'max_bytes' => WidgetDefinitionService::MaxSourceBytes,
@@ -99,33 +102,14 @@ class WidgetSdkReference
     }
 
     /**
+     * The validator's closed lists, as scripts/widgets/generate-sdk-reference.ts wrote them.
+     *
      * @return array<string, mixed>
      */
     private function validatorLists(): array
     {
-        $key = 'widgets:sdk-reference:'.md5(implode('|', array_map(
-            fn (string $file): string => (string) md5_file(base_path($file)),
-            self::SOURCES,
-        )));
-
         /** @var array<string, mixed> */
-        return Cache::rememberForever($key, function (): array {
-            $result = Process::path(base_path())
-                ->timeout(config()->integer('widgets.compiler.timeout'))
-                ->run([config()->string('widgets.compiler.bun_binary'), base_path(self::SCRIPT)]);
-
-            try {
-                $lists = $result->successful() ? json_decode($result->output(), true, flags: JSON_THROW_ON_ERROR) : null;
-            } catch (JsonException) {
-                $lists = null;
-            }
-
-            if (! is_array($lists)) {
-                throw new RuntimeException('The widget SDK reference could not be read: exit code '.$result->exitCode().'.');
-            }
-
-            return $lists;
-        });
+        return json_decode((string) file_get_contents(base_path(self::LISTS)), true, flags: JSON_THROW_ON_ERROR);
     }
 
     /**

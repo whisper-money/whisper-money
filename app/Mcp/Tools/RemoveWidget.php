@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Take a widget off a dashboard by its placement_id. The widget itself is kept, with its revisions, and can be placed again.')]
+#[Description('Take a widget off a dashboard by its placement_id. A widget of the user\'s is kept and can be placed again; a built-in one can be put back from the app.')]
 class RemoveWidget extends WriteTool
 {
     use GuardsCustomDashboards, PresentsWidgets;

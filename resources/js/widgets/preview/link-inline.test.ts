@@ -1,5 +1,11 @@
+import { execFile } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { InlineLinkError, linkWidgetModuleInline } from './link-inline';
+
+const root = path.resolve(__dirname, '../../../..');
 
 const registry = {
     react: { useMemo: () => 'memo' },
@@ -29,6 +35,46 @@ describe('linkWidgetModuleInline', () => {
 
         expect(reported).toHaveLength(1);
         expect((reported[0] as () => unknown)()).toBe('element');
+    });
+
+    it('links what the real compiler emits, so a Bun upgrade that changes it fails here', async () => {
+        const source = await readFile(
+            path.join(
+                root,
+                'tests/Fixtures/widgets/valid/01-groceries-by-month.tsx',
+            ),
+            'utf8',
+        );
+        const child = promisify(execFile)(
+            'bun',
+            ['scripts/widgets/compile-widget.ts'],
+            { cwd: root },
+        );
+        child.child.stdin?.end(JSON.stringify({ source }));
+        const { js } = JSON.parse((await child).stdout) as { js: string };
+        const names = (specifier: string) =>
+            Object.fromEntries(
+                [...js.matchAll(/import\{([^}]*)\}from"([^"]+)"/g)]
+                    .filter((match) => match[2] === specifier)
+                    .flatMap((match) => match[1].split(','))
+                    .map((binding) => [
+                        binding.split(' as ')[0].trim(),
+                        () => null,
+                    ]),
+            );
+        const fullRegistry = Object.fromEntries(
+            Object.keys(registry).map((specifier) => [
+                specifier,
+                names(specifier),
+            ]),
+        );
+
+        const linked = linkWidgetModuleInline(js, fullRegistry, 'compiled');
+
+        expect(linked).not.toMatch(/(^|[;}])\s*(import|export)\s*\{/);
+        expect(linked).toMatch(
+            /globalThis\[Symbol\.for\("compiled"\)\]\(\w+\);$/,
+        );
     });
 
     it('refuses what the loader refuses', () => {

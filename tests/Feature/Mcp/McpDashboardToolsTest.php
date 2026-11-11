@@ -171,7 +171,8 @@ describe('widgets', function () {
         expect($json['saved'])->toBeTrue()
             ->and($json['widget'])->toMatchArray(['id' => $widget->id, 'name' => 'Supermercado por mes', 'revision' => 1, 'created_via' => 'mcp', 'source' => mcpWidgetSource()])
             ->and($json['widget'])->not->toHaveKey('compiled_js')
-            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'failures' => [], 'currency' => 'EUR'])
+            ->and($json['data_failures'])->toBe([])
+            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR'])
             ->and($preview['data']['accounts']['data'])->toHaveCount(1);
     });
 
@@ -188,6 +189,19 @@ describe('widgets', function () {
             ->and(collect($errors)->firstWhere('path', 'manifest.data.accounts.endpoint')['message'])->toContain('only GET endpoints')
             ->and(collect($errors)->first(fn (array $error): bool => str_starts_with($error['path'], 'source:'))['message'])->toContain('fetch')
             ->and($user->widgetDefinitions()->exists())->toBeFalse();
+    });
+
+    it('tells the agent which data calls the API refuses, which the dashboard would show instead of the widget', function () {
+        $user = User::factory()->create();
+        $manifest = mcpWidgetManifest(['data' => ['accounts' => ['endpoint' => 'GET /analytics/aggregate', 'params' => ['group_by' => ['nonsense']]]]]);
+
+        $response = callDashboardTool($user, CreateWidget::class, ['manifest' => $manifest, 'source' => mcpWidgetSource()])->assertOk();
+        $failures = dashboardToolJson($response)['data_failures'];
+
+        expect($failures)->toHaveCount(1)
+            ->and($failures[0])->toMatchArray(['key' => 'accounts', 'status' => 422])
+            ->and($failures[0]['message'])->not->toBeEmpty()
+            ->and(dashboardToolResult($response)['_meta']['whisper-money/widget-preview']['failures'])->toBe($failures);
     });
 
     it('saves a fix as a new revision, keeping what was not passed, and clears the old error', function () {

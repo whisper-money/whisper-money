@@ -2,7 +2,7 @@ import {
     type WidgetHeight,
     type WidgetWidth,
 } from '@/components/dashboard/widgets/types';
-import { useEffect, useState, type ComponentType } from 'react';
+import { type ComponentType, useEffect, useRef, useState } from 'react';
 import {
     toWidgetRuntimeError,
     WidgetErrorBoundary,
@@ -10,19 +10,20 @@ import {
     type WidgetRuntimeError,
 } from '../runtime/widget-error-boundary';
 import { ensureWidgetRuntime } from '../runtime/widget-runtime';
-import { WidgetSdkProvider, type WidgetAccount } from '../sdk/context';
+import { type WidgetAccount, WidgetSdkProvider } from '../sdk/context';
 import { setDefaultMoneyLocale } from '../sdk/format-money';
 import { linkWidgetModuleInline } from './link-inline';
 
-/** What create_widget, update_widget and get_widget put in their `_meta`. */
+/** What App\Services\Widgets\WidgetPreviewPayload builds. */
 export interface WidgetPreviewPayload {
     widget_id: string;
     name: string;
     revision: number;
     js: string;
     size: { width: WidgetWidth; height: WidgetHeight };
-    /** Each call's body, by the key the manifest gave it. */
-    data: Record<string, unknown>;
+    /** Each call's body, by the key the manifest gave it; null when too large. */
+    data: Record<string, unknown> | null;
+    data_too_large: boolean;
     failures: { key: string; status: number; message: string }[];
     currency: string;
     locale: string;
@@ -31,10 +32,10 @@ export interface WidgetPreviewPayload {
 
 type LoadState =
     | { status: 'loading' }
-    | { status: 'ready'; Widget: ComponentType }
+    | { status: 'ready'; js: string; Widget: ComponentType }
     | { status: 'failed'; message: string };
 
-/** The dashboard cell heights: `l` is two `m` rows and the gap between them. */
+/** The dashboard's row (auto-rows-[16rem], gap-6): `l` is two rows and the gap. */
 const HEIGHTS: Record<WidgetHeight, string> = { m: '16rem', l: '33.5rem' };
 
 /** About the width of each fraction on a desktop dashboard. */
@@ -44,16 +45,15 @@ const MAX_WIDTHS: Record<WidgetWidth, string> = {
     '1/1': '100%',
 };
 
+/** Where registerWidgetModules() keeps the registry (load-widget-module.ts). */
 const REGISTRY_KEY = Symbol.for('whisper-money.widget-modules');
 
 /** A module that has not reported its component by then is treated as failed. */
 const LOAD_TIMEOUT_MS = 15_000;
 
-let loads = 0;
+type PreviewGlobal = typeof globalThis & Record<symbol, unknown>;
 
-type PreviewGlobal = typeof globalThis & {
-    [key: symbol]: unknown;
-};
+let loads = 0;
 
 /**
  * Evaluate the compiled widget as an inline module script (see
@@ -63,40 +63,81 @@ async function loadInline(js: string): Promise<ComponentType> {
     await ensureWidgetRuntime();
 
     const global = globalThis as PreviewGlobal;
-    const registry = global[REGISTRY_KEY] as Parameters<
-        typeof linkWidgetModuleInline
-    >[1];
-    const reportKey = `whisper-money.widget-preview.${++loads}`;
-    const source = linkWidgetModuleInline(js, registry, reportKey);
+    const reportKey = Symbol.for(`whisper-money.widget-preview.${++loads}`);
+    const source = linkWidgetModuleInline(
+        js,
+        global[REGISTRY_KEY] as Parameters<typeof linkWidgetModuleInline>[1],
+        reportKey.description!,
+    );
+    const script = document.createElement('script');
+    let timeout: ReturnType<typeof setTimeout> | undefined;
 
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        // A module that throws at its top level never reports back.
-        const timeout = setTimeout(
-            () => reject(new Error('The widget module did not load.')),
-            LOAD_TIMEOUT_MS,
-        );
+    try {
+        return await new Promise<ComponentType>((resolve, reject) => {
+            // A module that throws at its top level never reports back.
+            timeout = setTimeout(
+                () => reject(new Error('The widget module did not load.')),
+                LOAD_TIMEOUT_MS,
+            );
+            global[reportKey] = (component: unknown) =>
+                typeof component === 'function'
+                    ? resolve(component as ComponentType)
+                    : reject(
+                          new Error(
+                              'The widget module has no default export component.',
+                          ),
+                      );
+            script.type = 'module';
+            script.textContent = source;
+            script.addEventListener('error', () =>
+                reject(new Error('The widget module failed to load.')),
+            );
+            document.head.appendChild(script);
+        });
+    } finally {
+        clearTimeout(timeout);
+        delete global[reportKey];
+        script.remove();
+    }
+}
 
-        global[Symbol.for(reportKey)] = (component: unknown) => {
-            clearTimeout(timeout);
+function useWidgetComponent(
+    js: string,
+    onError: (error: WidgetRuntimeError) => void,
+): LoadState {
+    const [state, setState] = useState<LoadState>({ status: 'loading' });
+    const onErrorRef = useRef(onError);
 
-            if (typeof component === 'function') {
-                resolve(component as ComponentType);
-            } else {
-                reject(
-                    new Error(
-                        'The widget module has no default export component.',
-                    ),
-                );
-            }
-        };
-        script.type = 'module';
-        script.textContent = source;
-        script.addEventListener('error', () =>
-            reject(new Error('The widget module failed to load.')),
-        );
-        document.head.appendChild(script);
+    useEffect(() => {
+        onErrorRef.current = onError;
     });
+
+    useEffect(() => {
+        let current = true;
+
+        loadInline(js).then(
+            (Widget) => current && setState({ status: 'ready', js, Widget }),
+            (error: unknown) => {
+                if (!current) {
+                    return;
+                }
+
+                const runtimeError = toWidgetRuntimeError('load', error);
+
+                setState({ status: 'failed', message: runtimeError.message });
+                onErrorRef.current(runtimeError);
+            },
+        );
+
+        return () => {
+            current = false;
+        };
+    }, [js]);
+
+    // A new revision is a new widget: never draw the old one with new data.
+    return state.status === 'ready' && state.js !== js
+        ? { status: 'loading' }
+        : state;
 }
 
 /**
@@ -112,43 +153,83 @@ export function WidgetPreview({
     theme: 'light' | 'dark';
     onError: (error: WidgetRuntimeError) => void;
 }) {
-    const [state, setState] = useState<LoadState>({ status: 'loading' });
+    const state = useWidgetComponent(payload.js, onError);
+    // Privacy mode lives in the user's browser, not on the server: let them
+    // check here that the widget hides its figures.
+    const [privacyMode, setPrivacyMode] = useState(false);
     const [failure] = payload.failures;
 
     useEffect(() => {
-        let current = true;
-
         setDefaultMoneyLocale(payload.locale);
-        loadInline(payload.js).then(
-            (Widget) => current && setState({ status: 'ready', Widget }),
-            (error: unknown) => {
-                if (!current) {
-                    return;
-                }
+    }, [payload.locale]);
 
-                const runtimeError = toWidgetRuntimeError('load', error);
+    let content;
 
-                setState({ status: 'failed', message: runtimeError.message });
-                onError(runtimeError);
-            },
+    if (failure !== undefined) {
+        content = (
+            <WidgetErrorState message={`${failure.key}: ${failure.message}`} />
         );
-
-        return () => {
-            current = false;
-        };
-        // A new module is a new widget; the callback is read when it settles.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [payload.js, payload.locale]);
+    } else if (payload.data === null) {
+        content = (
+            <p className="flex h-full items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                This widget reads too much data to preview it here. Open it on
+                the dashboard.
+            </p>
+        );
+    } else if (state.status === 'loading') {
+        content = (
+            <div
+                aria-busy="true"
+                className="h-full w-full animate-pulse bg-muted"
+            />
+        );
+    } else if (state.status === 'failed') {
+        content = <WidgetErrorState message={state.message} />;
+    } else {
+        content = (
+            <WidgetErrorBoundary resetKey={payload} onError={onError}>
+                <WidgetSdkProvider
+                    value={{
+                        data: payload.data,
+                        accounts: payload.accounts,
+                        env: {
+                            theme,
+                            width: payload.size.width,
+                            height: payload.size.height,
+                            isCompact: payload.size.width === '1/3',
+                            privacyMode,
+                            currency: payload.currency,
+                            locale: payload.locale,
+                        },
+                    }}
+                >
+                    <state.Widget />
+                </WidgetSdkProvider>
+            </WidgetErrorBoundary>
+        );
+    }
 
     return (
         <figure className="flex flex-col gap-2 p-2">
-            <figcaption className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+            <figcaption className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="truncate font-medium text-foreground">
                     {payload.name}
                 </span>
-                <span>
-                    {payload.size.width} · {payload.size.height} · rev{' '}
-                    {payload.revision}
+                <span className="flex shrink-0 items-center gap-3">
+                    <label className="flex items-center gap-1">
+                        <input
+                            type="checkbox"
+                            checked={privacyMode}
+                            onChange={(event) =>
+                                setPrivacyMode(event.target.checked)
+                            }
+                        />
+                        Hide amounts
+                    </label>
+                    <span>
+                        {payload.size.width} · {payload.size.height} · rev{' '}
+                        {payload.revision}
+                    </span>
                 </span>
             </figcaption>
             <div
@@ -158,41 +239,7 @@ export function WidgetPreview({
                     maxWidth: MAX_WIDTHS[payload.size.width],
                 }}
             >
-                {failure !== undefined && (
-                    <WidgetErrorState
-                        message={`${failure.key}: ${failure.message}`}
-                    />
-                )}
-                {failure === undefined && state.status === 'loading' && (
-                    <div
-                        aria-busy="true"
-                        className="h-full w-full animate-pulse bg-muted"
-                    />
-                )}
-                {failure === undefined && state.status === 'failed' && (
-                    <WidgetErrorState message={state.message} />
-                )}
-                {failure === undefined && state.status === 'ready' && (
-                    <WidgetErrorBoundary resetKey={payload} onError={onError}>
-                        <WidgetSdkProvider
-                            value={{
-                                data: payload.data,
-                                accounts: payload.accounts,
-                                env: {
-                                    theme,
-                                    width: payload.size.width,
-                                    height: payload.size.height,
-                                    isCompact: payload.size.width === '1/3',
-                                    privacyMode: false,
-                                    currency: payload.currency,
-                                    locale: payload.locale,
-                                },
-                            }}
-                        >
-                            <state.Widget />
-                        </WidgetSdkProvider>
-                    </WidgetErrorBoundary>
-                )}
+                {content}
             </div>
         </figure>
     );

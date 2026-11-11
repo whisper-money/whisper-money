@@ -5,9 +5,10 @@
  * with the app and may load nothing but what the HTML carries.
  *
  * It waits for the result of create_widget, update_widget or get_widget and
- * draws the widget from the payload in its `_meta`.
+ * draws the widget from the payload in its `_meta`
+ * (App\Services\Widgets\WidgetPreviewPayload::MetaKey).
  */
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, useSyncExternalStore } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../../css/app.css';
 import '../../../css/widgets.css';
@@ -16,12 +17,14 @@ import { WidgetPreview, type WidgetPreviewPayload } from './widget-preview';
 
 const META_KEY = 'whisper-money/widget-preview';
 
+type Theme = 'light' | 'dark';
+
 interface ToolResult {
     _meta?: Record<string, unknown>;
 }
 
 interface HostContext {
-    theme?: 'light' | 'dark';
+    theme?: Theme;
 }
 
 interface McpApp {
@@ -40,36 +43,34 @@ declare global {
     }
 }
 
-function applyTheme(theme: 'light' | 'dark'): void {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-}
+/**
+ * What the host told the app so far. The handlers are registered before the
+ * first render, so a result that arrives right after the handshake is kept.
+ */
+const host = {
+    payload: null as WidgetPreviewPayload | null,
+    theme: 'light' as Theme,
+    listeners: new Set<() => void>(),
+    update(change: Partial<{ payload: WidgetPreviewPayload; theme: Theme }>) {
+        Object.assign(host, change);
+        document.documentElement.classList.toggle(
+            'dark',
+            host.theme === 'dark',
+        );
+        host.listeners.forEach((listener) => listener());
+    },
+    subscribe(listener: () => void) {
+        host.listeners.add(listener);
+
+        return () => host.listeners.delete(listener);
+    },
+};
 
 function Preview({ app }: { app: McpApp }) {
-    const [payload, setPayload] = useState<WidgetPreviewPayload | null>(null);
-    const [theme, setTheme] = useState<'light' | 'dark'>(
-        app.getHostContext()?.theme ?? 'light',
-    );
+    const payload = useSyncExternalStore(host.subscribe, () => host.payload);
+    const theme = useSyncExternalStore(host.subscribe, () => host.theme);
 
-    useEffect(() => {
-        app.onToolResult((result) => {
-            const next = result._meta?.[META_KEY];
-
-            if (next && typeof next === 'object') {
-                setPayload(next as WidgetPreviewPayload);
-            }
-        });
-        app.onHostContextChanged((context) => {
-            if (context.theme) {
-                setTheme(context.theme);
-            }
-        });
-        app.autoResize();
-    }, [app]);
-
-    useEffect(() => applyTheme(theme), [theme]);
-
-    // The agent cannot see the preview: tell it when the widget breaks, the
-    // way get_widget would after the dashboard caught it.
+    // The agent cannot see the preview: tell it when the widget breaks.
     const reportError = (error: WidgetRuntimeError) => {
         void app
             .updateModelContext({
@@ -97,6 +98,21 @@ function Preview({ app }: { app: McpApp }) {
 }
 
 void window.createMcpApp?.((app) => {
+    host.update({ theme: app.getHostContext()?.theme ?? 'light' });
+    app.onToolResult((result) => {
+        const payload = result._meta?.[META_KEY];
+
+        if (payload && typeof payload === 'object') {
+            host.update({ payload: payload as WidgetPreviewPayload });
+        }
+    });
+    app.onHostContextChanged((context) => {
+        if (context.theme) {
+            host.update({ theme: context.theme });
+        }
+    });
+    app.autoResize();
+
     createRoot(document.getElementById('widget-preview')!).render(
         <StrictMode>
             <Preview app={app} />
