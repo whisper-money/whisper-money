@@ -24,7 +24,7 @@ function placement(
 
 describe('widgetSizeClassName', () => {
     it.each([
-        ['1/3', 'm', '@5xl:col-span-4', 'row-span-1'],
+        ['1/3', 'm', '@4xl:col-span-4', 'row-span-1'],
         ['1/2', 'm', '@2xl:col-span-6', 'row-span-1'],
         ['1/1', 'l', 'col-span-12', 'row-span-2'],
     ] as const)(

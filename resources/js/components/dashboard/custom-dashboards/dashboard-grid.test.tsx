@@ -57,7 +57,7 @@ describe('DashboardGrid', () => {
             screen.getAllByTestId('widget').map((el) => el.dataset.stub),
         ).toEqual(['net-worth', 'top-labels']);
         expect(cellOf('net-worth').className).toContain('row-span-2');
-        expect(cellOf('top-labels').className).toContain('@5xl:col-span-4');
+        expect(cellOf('top-labels').className).toContain('@4xl:col-span-4');
     });
 
     it('keeps no room for a widget that draws nothing', () => {

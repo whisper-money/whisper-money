@@ -24,7 +24,7 @@ import { Pencil, Star, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { dashboardActions } from './dashboard-actions';
 import { DashboardNameDialog } from './dashboard-name-dialog';
-import { systemDashboardName } from './dashboard-picker';
+import { systemDashboardName } from './labels';
 
 interface Props {
     open: boolean;

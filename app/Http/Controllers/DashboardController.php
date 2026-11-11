@@ -20,7 +20,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    /** The `?dashboard=` value that opens the system dashboard, whatever the default is. */
+    /** The `?dashboard=` value that opens the system dashboard, whatever the default is; the picker's `SYSTEM_DASHBOARD_QUERY`. */
     public const SYSTEM_DASHBOARD = 'system';
 
     public function __construct(

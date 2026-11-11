@@ -11,6 +11,7 @@ import {
 import updateDefaultDashboard from '@/actions/App/Http/Controllers/Dashboards/DefaultDashboardController';
 import { type SystemWidgetId } from '@/components/dashboard/widgets/registry';
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
+import { dashboard as dashboardRoute } from '@/routes';
 import {
     type DashboardProps,
     type DashboardSummary,
@@ -25,6 +26,19 @@ import { toast } from 'sonner';
 type Optimistic = (props: DashboardProps) => Partial<DashboardProps>;
 
 /**
+ * The `?dashboard=` value that opens the system dashboard; the server side is
+ * `DashboardController::SYSTEM_DASHBOARD`.
+ */
+export const SYSTEM_DASHBOARD_QUERY = 'system';
+
+function sayItFailed(): false {
+    toast.error(__('Something went wrong.'));
+
+    // Handled: no Inertia error page over the dashboard.
+    return false;
+}
+
+/**
  * A change that stays on the page: only the props it touches come back, and
  * an optimistic one is drawn at once and rolled back if the server refuses it.
  */
@@ -36,12 +50,14 @@ function stay(
         preserveScroll: true,
         preserveState: true,
         only,
+        // Inertia types the callback against the shared props only.
         optimistic: optimistic as VisitOptions['optimistic'],
         onError: (errors: Errors) => {
             toast.error(
                 Object.values(errors)[0] ?? __('Something went wrong.'),
             );
         },
+        onHttpException: sayItFailed,
     };
 }
 
@@ -77,6 +93,15 @@ function inOrder<T extends { id: string; position: number }>(
 
 /** The writes the dashboards UI makes, on the dashboard page itself. */
 export const dashboardActions = {
+    /** Opens a user dashboard, or the system one for null. */
+    open(dashboardId: string | null): void {
+        router.visit(
+            dashboardRoute.url({
+                query: { dashboard: dashboardId ?? SYSTEM_DASHBOARD_QUERY },
+            }),
+        );
+    },
+
     reorderDashboards(ids: string[]): void {
         router.patch(
             reorderDashboardsAction.url(),
@@ -102,7 +127,10 @@ export const dashboardActions = {
 
     /** The server sends the user back to their default dashboard. */
     destroyDashboard(dashboardId: string, onFinish: () => void): void {
-        router.delete(destroyDashboardAction.url(dashboardId), { onFinish });
+        router.delete(destroyDashboardAction.url(dashboardId), {
+            onFinish,
+            onHttpException: sayItFailed,
+        });
     },
 
     addWidget(dashboardId: string, widget: SystemWidgetId): void {

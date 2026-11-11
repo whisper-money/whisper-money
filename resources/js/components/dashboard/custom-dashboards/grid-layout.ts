@@ -28,7 +28,7 @@ export const DASHBOARD_GRID_CLASS_NAME =
  * narrow, so it takes half.
  */
 const WIDTH_CLASS_NAMES: Record<WidgetWidth, string> = {
-    '1/3': 'col-span-12 @2xl:col-span-6 @5xl:col-span-4',
+    '1/3': 'col-span-12 @2xl:col-span-6 @4xl:col-span-4',
     '1/2': 'col-span-12 @2xl:col-span-6',
     '1/1': 'col-span-12',
 };

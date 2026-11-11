@@ -5,6 +5,11 @@ import {
 } from '@/components/dashboard/widgets/types';
 import { __ } from '@/utils/i18n';
 
+/** The name the picker gives the dashboard every user has. */
+export function systemDashboardName(): string {
+    return __('Overview');
+}
+
 /** The name edit mode gives each system widget. */
 export function systemWidgetLabel(id: SystemWidgetId): string {
     switch (id) {

@@ -1,4 +1,7 @@
-import { SYSTEM_WIDGETS } from '@/components/dashboard/widgets/registry';
+import {
+    SYSTEM_WIDGETS,
+    type SystemWidgetId,
+} from '@/components/dashboard/widgets/registry';
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
 import { SortableGrid } from '@/components/sortable-grid';
 import { Button } from '@/components/ui/button';
@@ -16,11 +19,37 @@ import { systemWidgetLabel } from './labels';
 import { WidgetSizeMenu } from './widget-size-menu';
 
 /**
- * The widget fills its cell, and scrolls inside it when it has more to show
- * than the cell's fixed height.
+ * One system widget, filling its cell and scrolling inside it when it has more
+ * to show than the cell's fixed height. A widget with nothing to show leaves
+ * the element empty, which `empty:` variants pick up.
  */
-const WIDGET_BODY_CLASS_NAME =
-    'flex h-full min-h-0 flex-col gap-4 overflow-y-auto [&>[data-slot=card]]:min-h-full';
+function WidgetBody({
+    widget,
+    size,
+    data,
+    className,
+    ...attributes
+}: {
+    widget: SystemWidgetId;
+    size: WidgetSize;
+    data: DashboardProps;
+    className: string;
+    'data-widget'?: string;
+}) {
+    const Widget = SYSTEM_WIDGETS[widget].component;
+
+    return (
+        <div
+            {...attributes}
+            className={cn(
+                'flex h-full min-h-0 flex-col gap-4 overflow-y-auto [&>[data-slot=card]]:min-h-full',
+                className,
+            )}
+        >
+            <Widget data={data} size={size} />
+        </div>
+    );
+}
 
 interface Props {
     widgets: PlacedSystemWidget[];
@@ -35,23 +64,16 @@ interface Props {
 export function DashboardGrid({ widgets, data }: Props) {
     return (
         <div className={DASHBOARD_GRID_CLASS_NAME} data-testid="dashboard-grid">
-            {widgets.map(({ id, widget, size }) => {
-                const Widget = SYSTEM_WIDGETS[widget].component;
-
-                return (
-                    <div
-                        key={id}
-                        data-widget={widget}
-                        className={cn(
-                            widgetSizeClassName(size),
-                            WIDGET_BODY_CLASS_NAME,
-                            'empty:hidden',
-                        )}
-                    >
-                        <Widget data={data} size={size} />
-                    </div>
-                );
-            })}
+            {widgets.map(({ id, widget, size }) => (
+                <WidgetBody
+                    key={id}
+                    data-widget={widget}
+                    widget={widget}
+                    size={size}
+                    data={data}
+                    className={cn(widgetSizeClassName(size), 'empty:hidden')}
+                />
+            ))}
         </div>
     );
 }
@@ -85,7 +107,6 @@ export function EditableDashboardGrid({
             draggingClassName="opacity-80 shadow-lg"
             accessibility={widgetAccessibility(widgets)}
             renderItem={({ id, widget, size }, dragHandle) => {
-                const Widget = SYSTEM_WIDGETS[widget].component;
                 const label = systemWidgetLabel(widget);
 
                 return (
@@ -115,14 +136,12 @@ export function EditableDashboardGrid({
                                 <X className="size-4" />
                             </Button>
                         </div>
-                        <div
-                            className={cn(
-                                WIDGET_BODY_CLASS_NAME,
-                                'peer empty:hidden',
-                            )}
-                        >
-                            <Widget data={data} size={size} />
-                        </div>
+                        <WidgetBody
+                            widget={widget}
+                            size={size}
+                            data={data}
+                            className="peer empty:hidden"
+                        />
                         <p className="hidden flex-1 items-center justify-center text-center text-sm text-muted-foreground peer-empty:flex">
                             {__('Nothing to show here yet.')}
                         </p>
