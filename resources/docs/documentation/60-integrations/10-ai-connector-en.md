@@ -171,6 +171,21 @@ Try:
 - "What is the next medal I can get?"
 
 </div>
+
+<div class="card">
+### Dashboards and widgets
+
+Create dashboards of your own and write widgets for them: charts, tables and
+figures built from your data. See
+[Custom dashboards](/documentation/custom-dashboards).
+
+Try:
+
+- "Add a widget with my supermarket spending by month to my Spending
+  dashboard."
+- "The groceries widget is broken, fix it."
+
+</div>
 </div>
 
 Nothing here is a command you have to remember. Ask in your own words and the
