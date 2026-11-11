@@ -27,3 +27,22 @@ test('promo code email is not sent to users without transactions', function () {
 
     Mail::assertNotQueued(PromoCodeEmail::class);
 });
+
+test('promo code email is not sent to users with only onboarding estimates', function () {
+    $user = User::factory()->onboarded()->create();
+    giveOnboardingEstimates($user, 3);
+
+    SendPromoCodeEmailJob::dispatchSync($user);
+
+    Mail::assertNotQueued(PromoCodeEmail::class);
+});
+
+test('promo code email is sent to users with real transactions next to their estimates', function () {
+    $user = User::factory()->onboarded()->create();
+    giveOnboardingEstimates($user);
+    Transaction::factory()->for($user)->create();
+
+    SendPromoCodeEmailJob::dispatchSync($user);
+
+    Mail::assertQueued(PromoCodeEmail::class);
+});

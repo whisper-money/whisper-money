@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\BankingConnection;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
@@ -225,6 +226,21 @@ describe('the free plan confirmation', function () {
                 ->where('hasAiConsent', false)
                 // Never paid: the survey on the way out is from the hard gate.
                 ->where('gate', 'hard')
+            );
+    });
+
+    it('counts the movements the user keeps without the onboarding estimates', function () {
+        $user = User::factory()->onboarded()->create(['onboarded_at' => now()->subDay()]);
+        BankingConnection::factory()->for($user)->create(['aspsp_name' => 'BBVA']);
+        Transaction::factory()->count(2)->for($user)->create();
+        giveOnboardingEstimates($user, 4);
+
+        $this->actingAs($user)
+            ->get(route('subscribe.free-plan.confirm'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('subscription/free-plan')
+                ->where('transactionsCount', 2)
             );
     });
 

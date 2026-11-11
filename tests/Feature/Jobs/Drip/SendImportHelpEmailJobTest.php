@@ -27,3 +27,12 @@ test('import help email is not sent to users with transactions', function () {
 
     Mail::assertNotQueued(ImportHelpEmail::class);
 });
+
+test('import help email is sent to users with only onboarding estimates', function () {
+    $user = User::factory()->onboarded()->create();
+    giveOnboardingEstimates($user, 3);
+
+    SendImportHelpEmailJob::dispatchSync($user);
+
+    Mail::assertQueued(ImportHelpEmail::class);
+});

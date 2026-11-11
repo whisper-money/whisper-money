@@ -21,6 +21,7 @@ use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Queue\Job;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -97,6 +98,20 @@ dataset('transient provider failures', [
 | listed, so a fake has to look that index up rather than guess it.
 |
 */
+
+/**
+ * Rows like the ones the onboarding quick-expenses step stores: round monthly
+ * figures carrying an Estimate-source label, not data the user brought in.
+ *
+ * @return Collection<int, Transaction>
+ */
+function giveOnboardingEstimates(User $user, int $count = 1): Collection
+{
+    $label = Label::factory()->for($user)->estimate()->create();
+
+    return Transaction::factory()->for($user)->count($count)->create()
+        ->each(fn (Transaction $transaction) => $transaction->labels()->attach($label));
+}
 
 /**
  * An onboarded user who has consented to AI categorization.

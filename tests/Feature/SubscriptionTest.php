@@ -68,6 +68,20 @@ test('paywall page includes user stats', function () {
         );
 });
 
+test('paywall stats leave onboarding estimates out of the transactions count', function () {
+    $user = User::factory()->onboarded()->create();
+    Transaction::factory()->count(2)->for($user)->create();
+    giveOnboardingEstimates($user, 4);
+
+    $this->actingAs($user)
+        ->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('stats.transactionsCount', 2)
+        );
+});
+
 test('paywall stats count the uncategorized movements and the accounts kept by hand', function () {
     $user = User::factory()->onboarded()->create();
 
