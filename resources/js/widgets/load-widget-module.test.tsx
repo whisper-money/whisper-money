@@ -10,6 +10,8 @@ import {
     registerWidgetModules,
     WidgetModuleError,
 } from './load-widget-module';
+import { widgetSdkModule } from './runtime/widget-runtime';
+import { type WidgetSdkValue, WidgetSdkProvider } from './sdk/context';
 import { createWidgetModuleRegistry } from './widget-module-registry';
 
 const root = path.resolve(__dirname, '../../..');
@@ -67,56 +69,33 @@ const data = {
     ],
 };
 
-const Passthrough = ({
-    children,
-    className,
-}: {
-    children?: ReactNode;
-    className?: string;
-}) => <div className={className}>{children}</div>;
-
-/** A stand-in for the SDK T8 builds: same names, minimal behaviour. */
-const sdk = {
-    useWidgetData: () => data,
-    useWidgetEnv: () => ({
-        currency: 'EUR',
-        privacyMode: false,
-        isCompact: false,
+const sdkValue: WidgetSdkValue = {
+    data,
+    env: {
         theme: 'light',
-    }),
-    formatMoney: (amount: number, currency: string) =>
-        `${(amount / 100).toFixed(2)} ${currency}`,
-    get: (object: Record<string, unknown>, key: string) =>
-        Object.hasOwn(object, key) ? object[key] : undefined,
-    cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
-    wm: { download: () => {} },
-    Amount: ({ amount, currency }: { amount: number; currency: string }) => (
-        <span>{`${amount / 100} ${currency}`}</span>
-    ),
-    BankLogo: () => <span data-testid="bank-logo" />,
-    Badge: Passthrough,
-    Progress: ({ value }: { value: number }) => (
-        <div role="progressbar" aria-valuenow={value} />
-    ),
-    Table: ({ children }: { children?: ReactNode }) => (
-        <table>{children}</table>
-    ),
-    TableHeader: ({ children }: { children?: ReactNode }) => (
-        <thead>{children}</thead>
-    ),
-    TableBody: ({ children }: { children?: ReactNode }) => (
-        <tbody>{children}</tbody>
-    ),
-    TableRow: ({ children }: { children?: ReactNode }) => <tr>{children}</tr>,
-    TableHead: ({ children }: { children?: ReactNode }) => <th>{children}</th>,
-    TableCell: ({ children }: { children?: ReactNode }) => <td>{children}</td>,
+        width: '1/2',
+        height: 'm',
+        isCompact: false,
+        privacyMode: false,
+        currency: 'EUR',
+        locale: 'es-ES',
+    },
+    accounts: {},
 };
+
+function renderWithSdk(children: ReactNode) {
+    return render(
+        <WidgetSdkProvider value={sdkValue}>{children}</WidgetSdkProvider>,
+    );
+}
 
 describe('loadWidgetModule', () => {
     let compiled: Map<string, string>;
 
     beforeAll(async () => {
-        registerWidgetModules(await createWidgetModuleRegistry(sdk));
+        registerWidgetModules(
+            await createWidgetModuleRegistry(widgetSdkModule()),
+        );
 
         const files = (await readdir(fixtures))
             .filter((file) => file.endsWith('.tsx'))
@@ -135,14 +114,14 @@ describe('loadWidgetModule', () => {
         );
     }, 60_000);
 
-    it('renders ten compiled widgets at once on the app React', async () => {
-        expect(compiled.size).toBe(10);
+    it('renders every compiled fixture at once on the app React', async () => {
+        expect(compiled.size).toBe(11);
 
         const components = await Promise.all(
             [...compiled.values()].map((js) => loadWidgetModule(js)),
         );
 
-        render(
+        renderWithSdk(
             <div>
                 {components.map((Widget, index) => (
                     <div key={index} className="wm-widget">
@@ -163,6 +142,7 @@ describe('loadWidgetModule', () => {
             'Presupuestos',
             'Ingresos',
             /Gasto por etiqueta/,
+            'Exportar flujo',
         ]) {
             expect(screen.getByText(heading)).toBeInTheDocument();
         }
@@ -223,7 +203,7 @@ export default function W() {
     return <${chart} width={300} height={200}${chartData}><${series}${seriesData} dataKey="total" isAnimationActive={false} /></${chart}>;
 }`),
             );
-            const { container } = render(<Widget />);
+            const { container } = renderWithSdk(<Widget />);
             const shapes = container.querySelectorAll('path');
 
             expect(shapes.length).toBeGreaterThan(0);

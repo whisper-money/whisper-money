@@ -1,12 +1,13 @@
 import { cn } from '@/lib/utils';
 import { Building2 } from 'lucide-react';
-import { useState } from 'react';
+import { isValidElement, type ReactElement, useState } from 'react';
 
 interface BankLogoProps {
     src?: string | null;
     name?: string;
     className?: string;
-    fallback?: 'letter' | 'icon' | 'empty' | 'none';
+    /** What to draw without a logo; an element is drawn as it is. */
+    fallback?: 'letter' | 'icon' | 'empty' | 'none' | ReactElement;
 }
 
 export function BankLogo({
@@ -29,6 +30,10 @@ export function BankLogo({
                 onError={() => setFailedSrc(src)}
             />
         );
+    }
+
+    if (isValidElement(fallback)) {
+        return fallback;
     }
 
     if (fallback === 'none') {
