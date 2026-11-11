@@ -12,12 +12,14 @@ use App\Http\Responses\OAuthConsentResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Mcp\OAuthRegistrar;
 use App\Models\Subscription;
+use App\Models\User;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
 use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
+use App\Services\Widgets\Gateway\WidgetDataGateway;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
@@ -128,6 +130,13 @@ class AppServiceProvider extends ServiceProvider
         // one NAT, still a hard cap for a script guessing tokens.
         RateLimiter::for(ThrottleApiRequestsByIp::Limiter, function (Request $request): Limit {
             return Limit::perMinute(120)->by((string) $request->ip());
+        });
+
+        // The widget data gateway counts every API call it makes for a
+        // dashboard's widgets, apart from the public API's 60 a minute so
+        // opening a dashboard does not spend the user's integrations' budget.
+        RateLimiter::for(WidgetDataGateway::Limiter, function (User $user): Limit {
+            return Limit::perMinute((int) config('widgets.gateway.calls_per_minute'))->by((string) $user->getAuthIdentifier());
         });
 
         // AI column-mapping suggestions are asked once per imported file, so 20

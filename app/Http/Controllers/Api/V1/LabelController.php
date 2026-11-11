@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\DeleteLabelRequest;
 use App\Http\Requests\Api\V1\StoreLabelRequest;
 use App\Http\Requests\Api\V1\UpdateLabelRequest;
@@ -29,14 +29,9 @@ class LabelController extends Controller
      */
     #[ScopedToSpace]
     #[Paginated(LabelResource::class)]
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, Label::query()),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            LabelResource::class,
-        );
+        return $listings->labels($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

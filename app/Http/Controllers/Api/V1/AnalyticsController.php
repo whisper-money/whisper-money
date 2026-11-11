@@ -55,13 +55,7 @@ class AnalyticsController extends Controller
      */
     public function netWorth(NetWorthRequest $request, NetWorthAnalyticsService $netWorth): NetWorthResource
     {
-        $user = $this->user($request);
-        $period = $request->period();
-
-        return new NetWorthResource([
-            ...$netWorth->forRange($user, $period, $request->daily()),
-            'counted_account_ids' => $netWorth->countedAccountIds($user, $period->to),
-        ]);
+        return new NetWorthResource($netWorth->report($this->user($request), $request->period(), $request->daily()));
     }
 
     /**
