@@ -68,6 +68,8 @@ export interface Features {
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** Shows the custom dashboards UI (selector, grid, widget sizes). */
+    customDashboards: boolean;
 }
 
 /** A bank connection that stopped syncing until the user reconnects it. */
