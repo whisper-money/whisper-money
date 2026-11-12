@@ -1398,7 +1398,7 @@ function CashflowChartPreview() {
  * step with App\Mcp\Servers\WhisperMoneyServer, so the landing cannot claim a
  * number the server stopped serving.
  */
-const MCP_READ_TOOL_COUNT = 12;
+const MCP_READ_TOOL_COUNT = 13;
 const MCP_WRITE_TOOL_COUNT = 25;
 
 /**

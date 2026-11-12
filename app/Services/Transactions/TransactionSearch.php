@@ -34,8 +34,9 @@ class TransactionSearch
     /**
      * $user's own transactions of $space matching $filters, as the app only
      * ever shows a user their own: `query` (matched against the description
-     * and the counterparty names), `account_id`, `category_id`, `label_ids`
-     * (any of them, already checked to be the user's own in the space),
+     * and the counterparty names), `account_id`, `category_id`, `account_ids`
+     * and `category_ids` (any of them), `label_ids` (any of them, already
+     * checked to be the user's own in the space),
      * `from`, `to`, `min_amount` and `max_amount`.
      *
      * @param  array<string, mixed>  $filters
@@ -45,21 +46,25 @@ class TransactionSearch
     {
         $filters = new Fluent($filters);
         $labelIds = (array) $filters->get('label_ids', []);
+        $accountIds = (array) $filters->get('account_ids', []);
+        $categoryIds = (array) $filters->get('category_ids', []);
 
         return app(SpaceResolver::class)->ownedInSpace(Transaction::query(), $user, $space)
             ->when($filters->string('query')->toString() !== '', function (Builder $query) use ($filters): void {
                 $term = '%'.$filters->string('query')->toString().'%';
                 $query->where(function (Builder $q) use ($term): void {
-                    $q->where('description', 'like', $term)
-                        ->orWhere('creditor_name', 'like', $term)
-                        ->orWhere('debtor_name', 'like', $term);
+                    $q->where('transactions.description', 'like', $term)
+                        ->orWhere('transactions.creditor_name', 'like', $term)
+                        ->orWhere('transactions.debtor_name', 'like', $term);
                 });
             })
-            ->when($filters->string('account_id')->toString() !== '', fn (Builder $query) => $query->where('account_id', $filters->string('account_id')->toString()))
-            ->when($filters->string('category_id')->toString() !== '', fn (Builder $query) => $query->where('category_id', $filters->string('category_id')->toString()))
+            ->when($filters->string('account_id')->toString() !== '', fn (Builder $query) => $query->where('transactions.account_id', $filters->string('account_id')->toString()))
+            ->when($filters->string('category_id')->toString() !== '', fn (Builder $query) => $query->where('transactions.category_id', $filters->string('category_id')->toString()))
+            ->when($accountIds !== [], fn (Builder $query) => $query->whereIn('transactions.account_id', $accountIds))
+            ->when($categoryIds !== [], fn (Builder $query) => $query->whereIn('transactions.category_id', $categoryIds))
             ->when($labelIds !== [], fn (Builder $query) => $query->whereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $labelIds)))
             ->transactionDateWithin($filters->string('from')->toString(), $filters->string('to')->toString())
-            ->when($filters->has('min_amount'), fn (Builder $query) => $query->where('amount', '>=', $filters->integer('min_amount')))
-            ->when($filters->has('max_amount'), fn (Builder $query) => $query->where('amount', '<=', $filters->integer('max_amount')));
+            ->when($filters->has('min_amount'), fn (Builder $query) => $query->where('transactions.amount', '>=', $filters->integer('min_amount')))
+            ->when($filters->has('max_amount'), fn (Builder $query) => $query->where('transactions.amount', '<=', $filters->integer('max_amount')));
     }
 }

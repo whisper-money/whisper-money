@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\Requests\Api\V1\AggregateTransactionsRequest;
 use App\Http\Requests\Api\V1\CashflowRequest;
 use App\Http\Requests\Api\V1\NetWorthRequest;
 use App\Http\Requests\Api\V1\SpendingByCategoryRequest;
 use App\Http\Resources\V1\CashflowResource;
 use App\Http\Resources\V1\NetWorthResource;
 use App\Http\Resources\V1\SpendingByCategoryResource;
+use App\Http\Resources\V1\TransactionAggregateResource;
 use App\Services\CashflowAnalyticsService;
 use App\Services\CategorySpendingService;
 use App\Services\NetWorthAnalyticsService;
+use App\Services\Transactions\TransactionAggregator;
 use Dedoc\Scramble\Attributes\Group;
 
-#[Group('Analytics', 'Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category. They cover your whole account, not a space, and every amount is in the minor units of your account\'s currency, given as `currency`.', weight: 100)]
+#[Group('Analytics', 'Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category, which cover your whole account rather than a space, with every amount in the minor units of your account\'s currency, given as `currency`. Aggregates read your own transactions in a space instead, and give each currency its own bucket.', weight: 100)]
 class AnalyticsController extends Controller
 {
     /**
@@ -66,6 +70,31 @@ class AnalyticsController extends Controller
 
         return new SpendingByCategoryResource(
             $spending->forPeriod($this->user($request)->id, $period->from, $period->to, $request->parentCategoryId()),
+        );
+    }
+
+    /**
+     * Aggregate transactions
+     *
+     * Your transactions in a space over a date range, grouped by up to two
+     * dimensions and added up: their sum, count, average, smallest and
+     * largest amount. As in the app, another member's transactions are left
+     * out. Each bucket is also split by currency, so amounts in different
+     * currencies are never added together, and every amount is your share of
+     * the account, in minor units of the bucket's currency. A transaction
+     * booked on an archived account stops counting from the day it was
+     * archived. Every type of transaction counts unless `types` narrows it:
+     * pass `types=expense` for spending, since transfers, savings and
+     * investments otherwise add in too. Grouped by a period, every period of
+     * the range comes back, with zeros where nothing was booked. A response
+     * holds at most 1000 buckets: one that would hold more is a `422` under
+     * `group_by`.
+     */
+    #[ScopedToSpace]
+    public function aggregate(AggregateTransactionsRequest $request, TransactionAggregator $aggregator): TransactionAggregateResource
+    {
+        return new TransactionAggregateResource(
+            $aggregator->aggregate($this->user($request), $this->space($request), $request->validated()),
         );
     }
 }

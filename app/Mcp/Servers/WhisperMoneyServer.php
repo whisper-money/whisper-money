@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\AggregateTransactions;
 use App\Mcp\Tools\ApplyAutomationRule;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAccount;
@@ -145,6 +146,19 @@ app is kept in their books.
   not itself a medal.
 - To find recurring charges (subscriptions), use `search_transactions` and group
   the results by merchant and cadence yourself.
+- For totals over many transactions (spending per month, per label, per account,
+  income against expenses over time), use `aggregate_transactions` instead of
+  paging through `search_transactions`. It groups the user's own transactions in
+  a space by up to two dimensions, at most one of them a period, and returns one
+  bucket per group and currency: amounts in different currencies are never added
+  together, so read each bucket's `currency`. Like the other analytics, amounts
+  are the user's share of the account, and an archived account stops counting
+  from the day it was archived. Every type counts unless `types` narrows it, so
+  pass `types: ["expense"]` for spending: otherwise transfers, savings and
+  investments add in too. Grouped by a period, every period of the range
+  comes back, zeros included; a request that would return more than 1000 buckets
+  is refused, so narrow the range or pick a longer period. A transaction with
+  several labels counts once under each of them.
 
 Write tools (create_account, update_account, create_transaction,
 update_transaction, delete_transaction, split_transaction,
@@ -206,6 +220,7 @@ class WhisperMoneyServer extends Server
         // Read
         SearchTransactions::class,
         SpendingByCategory::class,
+        AggregateTransactions::class,
         GetCashflow::class,
         GetNetWorth::class,
         ListAccounts::class,

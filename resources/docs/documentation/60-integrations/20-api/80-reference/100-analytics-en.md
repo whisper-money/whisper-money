@@ -1,6 +1,6 @@
 # Analytics
 
-Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category. They cover your whole account, not a space, and every amount is in the minor units of your account's currency, given as `currency`.
+Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category, which cover your whole account rather than a space, with every amount in the minor units of your account's currency, given as `currency`. Aggregates read your own transactions in a space instead, and give each currency its own bucket.
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
@@ -381,4 +381,114 @@ curl "https://whisper.money/api/v1/analytics/spending-by-category?from=2026-10-0
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
 | `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | Validation error |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Aggregate transactions
+
+`GET /api/v1/analytics/aggregate`
+
+Your transactions in a space over a date range, grouped by up to two dimensions and added up: their sum, count, average, smallest and largest amount. As in the app, another member's transactions are left out. Each bucket is also split by currency, so amounts in different currencies are never added together, and every amount is your share of the account, in minor units of the bucket's currency. A transaction booked on an archived account stops counting from the day it was archived. Every type of transaction counts unless `types` narrows it: pass `types=expense` for spending, since transfers, savings and investments otherwise add in too. Grouped by a period, every period of the range comes back, with zeros where nothing was booked. A response holds at most 1000 buckets: one that would hold more is a `422` under `group_by`.
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `group_by[]` | query | "day" \| "week" \| "month" \| "year" \| "category" \| "label" \| "account" \| "type" | No | Up to two dimensions to group by, at most one of them a period (`day`, `week`, `month` or `year`). A week is named by its Monday. Without it, the transactions are added up per currency only. Also takes a comma-separated list: `group_by=month,category`. |
+| `metrics[]` | query | "sum" \| "count" \| "avg" \| "min" \| "max" | No | What to work out over the amounts of each bucket. Defaults to `sum` and `count`. |
+| `from` | query | string (date) | Yes | The earliest transaction date, inclusive. |
+| `to` | query | string (date) | Yes | The latest transaction date, inclusive. Not before `from`. |
+| `category_ids[]` | query | array of string (uuid) | No | Only the transactions in any of these categories. |
+| `include_subcategories` | query | boolean | No | Whether `category_ids` also matches their subcategories. Defaults to `true`. |
+| `label_ids[]` | query | array of string (uuid) | No | Only the transactions tagged with any of these labels. Grouped by `label`, only these labels are listed. |
+| `account_ids[]` | query | array of string (uuid) | No | Only the transactions of any of these accounts. |
+| `types[]` | query | array of CategoryType | No | Only the transactions of these types: `income`, `expense`, `transfer`, `savings` or `investment`. A transaction's type is its category's, and an uncategorized one is `expense` when it took money out and `income` otherwise. |
+| `query` | query | string | No | Free text matched against the description and the creditor and debtor names. |
+| `space` | query | string (uuid) | No | The id of the space to work in (see `GET /spaces`). Defaults to your personal space. On writes it may also be sent in the JSON body. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | TransactionAggregate |  |
+| `data.group_by` | array of string | The dimensions the buckets are grouped by, in the order asked for. |
+| `data.metrics` | array of string | The metrics every bucket carries. |
+| `data.from` | string (date) | The first day of the range. |
+| `data.to` | string (date) | The last day of the range. |
+| `data.buckets` | array of AggregateBucket | The groups, oldest period first and then by name. Grouped by a period, every period of the range is listed for every combination of the other dimension and currency, with `sum` and `count` at `0` where nothing was booked. |
+| `data.buckets[].day` | string (date) | The day, when grouped by `day`. |
+| `data.buckets[].week` | string (date) | The Monday the week starts on, when grouped by `week`. The first week can start before `from`. |
+| `data.buckets[].month` | string | The month, as `YYYY-MM`, when grouped by `month`. |
+| `data.buckets[].year` | string | The year, when grouped by `year`. |
+| `data.buckets[].category_id` | string (uuid) or null | The category's id, when grouped by `category`. `null` gathers the transactions with no category. |
+| `data.buckets[].category_name` | string or null | The category's name, when grouped by `category`. |
+| `data.buckets[].label_id` | string (uuid) or null | The label's id, when grouped by `label`. `null` gathers the transactions with no label. A transaction with several labels counts once in each of them. |
+| `data.buckets[].label_name` | string or null | The label's name, when grouped by `label`. |
+| `data.buckets[].account_id` | string (uuid) | The account's id, when grouped by `account`. |
+| `data.buckets[].account_name` | string | The account's name, when grouped by `account`. |
+| `data.buckets[].type` | string | The transactions' type, when grouped by `type`: `income`, `expense`, `transfer`, `savings` or `investment`. |
+| `data.buckets[].currency` | string | The currency of the bucket's amounts, as an ISO 4217 code. Amounts in different currencies are never added together: each currency gets its own bucket. |
+| `data.buckets[].sum` | integer | What the amounts add up to, signed, in minor units of `currency`: negative for money out. Only when asked for in `metrics`. |
+| `data.buckets[].count` | integer | How many transactions the bucket holds. Only when asked for in `metrics`. |
+| `data.buckets[].avg` | integer or null | The average amount, rounded to a whole minor unit, or `null` for an empty bucket. Only when asked for in `metrics`. |
+| `data.buckets[].min` | integer or null | The smallest (most negative) amount, or `null` for an empty bucket. Only when asked for in `metrics`. |
+| `data.buckets[].max` | integer or null | The largest amount, or `null` for an empty bucket. Only when asked for in `metrics`. |
+
+#### Example request
+
+```bash
+curl "https://whisper.money/api/v1/analytics/aggregate?from=2026-10-01&to=2026-10-31" \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "group_by": [
+            "month",
+            "category"
+        ],
+        "metrics": [
+            "sum",
+            "count"
+        ],
+        "from": "2026-10-01",
+        "to": "2026-10-31",
+        "buckets": [
+            {
+                "day": "2026-10-04",
+                "week": "2026-09-28",
+                "month": "2026-10",
+                "year": "2026",
+                "category_id": "0199a3f5-2b3c-7d4e-8f5a-6b7c8d9e0f12",
+                "category_name": "Groceries",
+                "label_id": "0199a3f5-4c5d-7e6f-8a9b-0c1d2e3f4a5b",
+                "label_name": "Holidays",
+                "account_id": "0199a3f5-1a2b-7c3d-8e4f-5a6b7c8d9e0f",
+                "account_name": "Main account",
+                "type": "expense",
+                "currency": "EUR",
+                "sum": -15345,
+                "count": 12,
+                "avg": -1279,
+                "min": -4500,
+                "max": -250
+            }
+        ]
+    }
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `422` | The request failed validation. |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
