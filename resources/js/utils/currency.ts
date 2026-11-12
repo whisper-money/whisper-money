@@ -98,6 +98,11 @@ export function formatCurrency(
         .replace(/\s/g, '\u202F');
 }
 
+/** A formatted amount with its figures hidden, as privacy mode shows it. */
+export function maskDigits(formatted: string): string {
+    return formatted.replace(/\d/g, '*');
+}
+
 export function getCurrencySymbol(currencyCode: string): string {
     const symbols: Record<string, string> = {
         USD: '$',

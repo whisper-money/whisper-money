@@ -3897,5 +3897,13 @@
     "Widget dropped at position :position of :total": "Widget soltado en la posición :position de :total",
     "Widget moved to position :position of :total": "Widget movido a la posición :position de :total",
     "Width": "Ancho",
-    "e.g. Monthly review": "p. ej. Revisión mensual"
+    "e.g. Monthly review": "p. ej. Revisión mensual",
+    "This widget stopped working": "Este widget ha dejado de funcionar",
+    "Safe mode: your widgets are not loaded": "Modo seguro: tus widgets no se han cargado",
+    "Load widgets": "Cargar widgets",
+    "The last time this dashboard opened, its widgets did not finish loading. If one of them froze the page, remove it from the dashboard before loading them again.": "La última vez que se abrió este dashboard, sus widgets no terminaron de cargar. Si alguno bloqueó la página, quítalo del dashboard antes de volver a cargarlos.",
+    "You opened this dashboard in safe mode: widgets written by your agent stay off until you load them, so you can remove one that is causing problems.": "Has abierto este dashboard en modo seguro: los widgets que ha escrito tu agente no se cargan hasta que los actives, para que puedas quitar el que esté dando problemas.",
+    "Ask your agent to fix it, or remove it from the dashboard.": "Pídele a tu agente que lo arregle o quítalo del dashboard.",
+    "The widget took too long to load.": "El widget ha tardado demasiado en cargar.",
+    "Loading widget": "Cargando widget"
 }
