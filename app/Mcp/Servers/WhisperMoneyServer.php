@@ -19,6 +19,8 @@ use App\Mcp\Tools\DeleteCategory;
 use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\GetCashflow;
+use App\Mcp\Tools\GetCreditCardUsage;
+use App\Mcp\Tools\GetMonthlySavings;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
@@ -32,6 +34,7 @@ use App\Mcp\Tools\ListSpaces;
 use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
+use App\Mcp\Tools\SpendingByLabel;
 use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateAccount;
 use App\Mcp\Tools\UpdateAutomationRule;
@@ -159,6 +162,16 @@ app is kept in their books.
   comes back, zeros included; a request that would return more than 1000 buckets
   is refused, so narrow the range or pick a longer period. A transaction with
   several labels counts once under each of them.
+- `spending_by_label`, `get_credit_card_usage` and `get_monthly_savings` give
+  the figures of the app's dashboard cards, across the whole account like
+  `get_cashflow`. `spending_by_label` ranks the labels by expense over a range,
+  each against the previous period; a transaction counts under every label it
+  carries, and savings goal labels are left out. `get_credit_card_usage` gives
+  each live card's `credit_card_usage` (see below) plus `daily`, the running
+  `used` from `period_from` to today, in the card's own currency.
+  `get_monthly_savings` adds up the running monthly goals' month in progress
+  (`saved` against `target`, a partial first month left out) and gives
+  `last_month`: how many goals met their target of how many were judged.
 
 Write tools (create_account, update_account, create_transaction,
 update_transaction, delete_transaction, split_transaction,
@@ -220,9 +233,12 @@ class WhisperMoneyServer extends Server
         // Read
         SearchTransactions::class,
         SpendingByCategory::class,
+        SpendingByLabel::class,
         AggregateTransactions::class,
         GetCashflow::class,
         GetNetWorth::class,
+        GetCreditCardUsage::class,
+        GetMonthlySavings::class,
         ListAccounts::class,
         ListCategories::class,
         ListLabels::class,

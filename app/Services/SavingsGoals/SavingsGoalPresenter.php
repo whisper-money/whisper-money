@@ -3,6 +3,7 @@
 namespace App\Services\SavingsGoals;
 
 use App\Enums\SavingsGoalKind;
+use App\Enums\SavingsGoalMonthStatus;
 use App\Models\SavingsGoal;
 use App\Models\Space;
 use App\Models\User;
@@ -107,27 +108,47 @@ class SavingsGoalPresenter
      */
     private function monthlyBlock(array $monthly): array
     {
-        $month = fn (array $entry): array => [
+        return [
+            'current' => $this->currentMonth($monthly['current']),
+            'history' => array_map(self::month(...), $monthly['history']),
+            'months_met' => $monthly['months_met'],
+            'months_closed' => $monthly['months_closed'],
+            'cumulative_difference' => $monthly['cumulative_difference'],
+            'streak' => $monthly['streak'],
+            'best_streak' => $monthly['best_streak'],
+        ];
+    }
+
+    /**
+     * A goal's month in progress as the API and the MCP give it, from the
+     * `current` entry of {@see MonthlySavingsGoalStats}: the month's figures,
+     * what is left to save and the days left.
+     *
+     * @param  array<string, mixed>|null  $current
+     * @return array{month: string, target: int, saved: int, difference: int, status: SavingsGoalMonthStatus, income_base: int|null, remaining: int, days_left: int}|null
+     */
+    public function currentMonth(?array $current): ?array
+    {
+        return $current === null ? null : [
+            ...self::month($current),
+            'remaining' => $current['remaining'],
+            'days_left' => $current['days_left'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     * @return array{month: string, target: int, saved: int, difference: int, status: SavingsGoalMonthStatus, income_base: int|null}
+     */
+    private static function month(array $entry): array
+    {
+        return [
             'month' => $entry['month'],
             'target' => $entry['target'],
             'saved' => $entry['saved'],
             'difference' => $entry['difference'],
             'status' => $entry['status'],
             'income_base' => $entry['income_base'],
-        ];
-
-        return [
-            'current' => $monthly['current'] === null ? null : [
-                ...$month($monthly['current']),
-                'remaining' => $monthly['current']['remaining'],
-                'days_left' => $monthly['current']['days_left'],
-            ],
-            'history' => array_map($month, $monthly['history']),
-            'months_met' => $monthly['months_met'],
-            'months_closed' => $monthly['months_closed'],
-            'cumulative_difference' => $monthly['cumulative_difference'],
-            'streak' => $monthly['streak'],
-            'best_streak' => $monthly['best_streak'],
         ];
     }
 }

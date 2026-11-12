@@ -1,6 +1,6 @@
 # Analytics
 
-Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category, which cover your whole account rather than a space, with every amount in the minor units of your account's currency, given as `currency`. Aggregates read your own transactions in a space instead, and give each currency its own bucket.
+Figures rolled up from your transactions, balances and goals: cashflow, net worth, spending by category and by label, credit card usage and this month's savings, which cover your whole account rather than a space, with every amount in minor units of the `currency` given. Aggregates read your own transactions in a space instead, and give each currency its own bucket.
 
 <!-- Generated from the OpenAPI spec by `php artisan api:docs`. Do not edit by hand. -->
 
@@ -381,6 +381,235 @@ curl "https://whisper.money/api/v1/analytics/spending-by-category?from=2026-10-0
 | `401` | No bearer token, or one that is unknown, expired or revoked. |
 | `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `422` | Validation error |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Retrieve spending by label
+
+`GET /api/v1/analytics/spending-by-label`
+
+Your expenses in a date range by label, largest first, each against the previous period. A transaction counts under every label it carries. The labels of savings goals are left out: they track contributions, not spending. The range can touch at most 120 calendar months.
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Parameters
+
+| Name | In | Type | Required | Description |
+| --- | --- | --- | --- | --- |
+| `from` | query | string (date) | Yes | The first day of the range, inclusive. |
+| `to` | query | string (date) | Yes | The last day of the range, inclusive. Not before `from`. |
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | SpendingByLabel |  |
+| `data.currency` | string | The currency of every amount: your account's currency, as an ISO 4217 code. |
+| `data.total` | integer | What `labels` adds up to. A transaction counts under every label it carries, so this can be above what you spent in the range. |
+| `data.previous_from` | string (date) | The first day of the previous period `previous_amount` reads: the same number of days right before `from`, or the same number of whole months when the range is whole months. |
+| `data.previous_to` | string (date) | The last day of the previous period. |
+| `data.labels` | array of LabelAmount | The labels with spending in the range, largest first. Only the ones whose spending is above zero, and never the label of a savings goal, which tracks contributions rather than spending. |
+| `data.labels[].label_id` | string (uuid) | The label's id. |
+| `data.labels[].name` | string | The label's name. |
+| `data.labels[].color` | string | The label's colour in the app. |
+| `data.labels[].amount` | integer | What was spent under the label over the range, as a positive amount in minor units of `currency`. |
+| `data.labels[].previous_amount` | integer | What was spent under the label over the previous period, `0` when nothing was. |
+
+#### Example request
+
+```bash
+curl "https://whisper.money/api/v1/analytics/spending-by-label?from=2026-10-01&to=2026-10-31" \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "currency": "EUR",
+        "total": 79250,
+        "previous_from": "2026-09-01",
+        "previous_to": "2026-09-30",
+        "labels": [
+            {
+                "label_id": "0199a3f6-3c4d-7e5f-9a6b-7c8d9e0f1a23",
+                "name": "Holidays",
+                "color": "blue",
+                "amount": 48250,
+                "previous_amount": 31000
+            }
+        ]
+    }
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `422` | Validation error |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Retrieve credit card usage
+
+`GET /api/v1/analytics/credit-card-usage`
+
+How much of each of your credit cards is in use, archived cards left out: what is still to be charged, what is left of the limit and how that built up day by day. Each card's amounts are in its own currency.
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | array of CreditCardUsage |  |
+| `data[].account_id` | string (uuid) | The credit card's account id. |
+| `data[].name` | string | The account's name. |
+| `data[].currency` | string | The currency of the card's amounts: the account's own currency, as an ISO 4217 code. |
+| `data[].limit` | integer or null | The card's credit limit in minor units, or `null` while none is set. |
+| `data[].used` | integer | What is still to be charged between `period_from` and today, less the payments made on those statements, never below 0. |
+| `data[].available` | integer or null | `limit` minus `used`, negative over the limit; `null` while no limit is set. |
+| `data[].period_from` | string (date) | The first day `used` covers: the start of the statement paid next, or of the calendar month while the card has no statement dates. |
+| `data[].period_to` | string (date) | The last day of the window: the open statement's closing date, or the end of the calendar month. |
+| `data[].daily` | array of object | `used` as it stood at the end of each day from `period_from` through today, oldest first: the line the app draws on the card. |
+| `data[].daily[].date` | string |  |
+| `data[].daily[].used` | integer |  |
+
+#### Example request
+
+```bash
+curl https://whisper.money/api/v1/analytics/credit-card-usage \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": [
+        {
+            "account_id": "0199a3f3-7d2e-7c5f-8b9a-3e6d2c4b5a71",
+            "name": "Visa Gold",
+            "currency": "EUR",
+            "limit": 300000,
+            "used": 124000,
+            "available": 176000,
+            "period_from": "2026-10-06",
+            "period_to": "2026-11-05",
+            "daily": [
+                {
+                    "date": "2026-10-06",
+                    "used": 0
+                },
+                {
+                    "date": "2026-10-07",
+                    "used": 4500
+                }
+            ]
+        }
+    ]
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
+| `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
+
+## Retrieve this month's savings
+
+`GET /api/v1/analytics/monthly-savings`
+
+The month in progress across your monthly savings goals that are not archived: what they saved so far against their targets, each goal's month, and how every monthly goal did last month.
+
+**Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
+
+#### Response
+
+`200`
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data` | MonthlySavings |  |
+| `data.currency` | string | The currency of every amount: your account's currency, as an ISO 4217 code. |
+| `data.month` | string | The month in progress on your own clock, as `YYYY-MM`. |
+| `data.saved` | integer | What the running goals saved so far this month. A goal whose first month is partial (created in the month's last 5 days) is left out of `saved` and `target`. |
+| `data.target` | integer | What the running goals aim to save this month, each against its own target. |
+| `data.days_left` | integer | The days left in the month, today included. |
+| `data.goals` | array of object | Every monthly goal that is not archived, oldest first, with its month in progress as `GET /api/v1/savings-goals` gives it under `monthly.current` (`null` when the month has not opened for it yet). A goal whose month is `partial` is listed with what it saved but is not in `saved` and `target`. Goals of every space you are in count, but only yours. |
+| `data.goals[].id` | string |  |
+| `data.goals[].name` | string |  |
+| `data.goals[].current` | object or null |  |
+| `data.goals[].current.month` | string |  |
+| `data.goals[].current.target` | integer |  |
+| `data.goals[].current.saved` | integer |  |
+| `data.goals[].current.difference` | integer |  |
+| `data.goals[].current.status` | string |  |
+| `data.goals[].current.income_base` | integer or null |  |
+| `data.goals[].current.remaining` | integer |  |
+| `data.goals[].current.days_left` | integer |  |
+| `data.last_month` | object or null | How your monthly goals did last month, archived ones included: how many met their target of how many were judged. `null` when no goal was judged that month. |
+| `data.last_month.month` | string |  |
+| `data.last_month.met` | integer |  |
+| `data.last_month.total` | integer |  |
+
+#### Example request
+
+```bash
+curl https://whisper.money/api/v1/analytics/monthly-savings \
+  -H "Authorization: Bearer $WHISPER_MONEY_TOKEN"
+```
+
+#### Example response
+
+```json
+{
+    "data": {
+        "currency": "EUR",
+        "month": "2026-10",
+        "saved": 25000,
+        "target": 30000,
+        "days_left": 17,
+        "goals": [
+            {
+                "id": "0199a3fb-2c3d-7e4f-8a5b-6c7d8e9f0a12",
+                "name": "Emergency fund",
+                "current": {
+                    "month": "2026-10",
+                    "target": 30000,
+                    "saved": 25000,
+                    "difference": -5000,
+                    "status": "in_progress",
+                    "income_base": null,
+                    "remaining": 5000,
+                    "days_left": 17
+                }
+            }
+        ],
+        "last_month": {
+            "month": "2026-09",
+            "met": 1,
+            "total": 2
+        }
+    }
+}
+```
+
+#### Errors
+
+| Status | When |
+| --- | --- |
+| `401` | No bearer token, or one that is unknown, expired or revoked. |
+| `403` | The token lacks the scope (`insufficient_scope`), the account has no Standard plan (`plan_required`, with a `subscribe_url`) or it is a shared demo account (`shared_account`). |
 | `429` | The rate limit is exhausted. Wait the seconds in `Retry-After`. |
 
 ## Aggregate transactions

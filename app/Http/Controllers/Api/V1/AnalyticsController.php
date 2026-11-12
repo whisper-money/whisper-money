@@ -4,20 +4,29 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\ApiV1\Documentation\ScopedToSpace;
 use App\Http\Requests\Api\V1\AggregateTransactionsRequest;
+use App\Http\Requests\Api\V1\AnalyticsRangeRequest;
 use App\Http\Requests\Api\V1\CashflowRequest;
 use App\Http\Requests\Api\V1\NetWorthRequest;
 use App\Http\Requests\Api\V1\SpendingByCategoryRequest;
 use App\Http\Resources\V1\CashflowResource;
+use App\Http\Resources\V1\CreditCardUsageResource;
+use App\Http\Resources\V1\MonthlySavingsResource;
 use App\Http\Resources\V1\NetWorthResource;
 use App\Http\Resources\V1\SpendingByCategoryResource;
+use App\Http\Resources\V1\SpendingByLabelResource;
 use App\Http\Resources\V1\TransactionAggregateResource;
 use App\Services\CashflowAnalyticsService;
 use App\Services\CategorySpendingService;
+use App\Services\CreditCards\CreditCardStatementService;
+use App\Services\LabelSpendingService;
 use App\Services\NetWorthAnalyticsService;
+use App\Services\SavingsGoals\CurrentMonthSavings;
 use App\Services\Transactions\TransactionAggregator;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-#[Group('Analytics', 'Figures rolled up from your transactions and balances over a date range: cashflow, net worth and spending by category, which cover your whole account rather than a space, with every amount in the minor units of your account\'s currency, given as `currency`. Aggregates read your own transactions in a space instead, and give each currency its own bucket.', weight: 100)]
+#[Group('Analytics', 'Figures rolled up from your transactions, balances and goals: cashflow, net worth, spending by category and by label, credit card usage and this month\'s savings, which cover your whole account rather than a space, with every amount in minor units of the `currency` given. Aggregates read your own transactions in a space instead, and give each currency its own bucket.', weight: 100)]
 class AnalyticsController extends Controller
 {
     /**
@@ -71,6 +80,49 @@ class AnalyticsController extends Controller
         return new SpendingByCategoryResource(
             $spending->forPeriod($this->user($request)->id, $period->from, $period->to, $request->parentCategoryId()),
         );
+    }
+
+    /**
+     * Retrieve spending by label
+     *
+     * Your expenses in a date range by label, largest first, each against
+     * the previous period. A transaction counts under every label it
+     * carries. The labels of savings goals are left out: they track
+     * contributions, not spending. The range can touch at most 120 calendar
+     * months.
+     */
+    public function spendingByLabel(AnalyticsRangeRequest $request, LabelSpendingService $spending): SpendingByLabelResource
+    {
+        $period = $request->period();
+
+        return new SpendingByLabelResource([
+            'period' => $period,
+            'labels' => $spending->comparedForPeriod($this->user($request)->id, $period),
+        ]);
+    }
+
+    /**
+     * Retrieve credit card usage
+     *
+     * How much of each of your credit cards is in use, archived cards left
+     * out: what is still to be charged, what is left of the limit and how
+     * that built up day by day. Each card's amounts are in its own currency.
+     */
+    public function creditCardUsage(Request $request, CreditCardStatementService $statements): AnonymousResourceCollection
+    {
+        return CreditCardUsageResource::collection($statements->liveUsageFor($this->user($request)));
+    }
+
+    /**
+     * Retrieve this month's savings
+     *
+     * The month in progress across your monthly savings goals that are not
+     * archived: what they saved so far against their targets, each goal's
+     * month, and how every monthly goal did last month.
+     */
+    public function monthlySavings(Request $request, CurrentMonthSavings $savings): MonthlySavingsResource
+    {
+        return new MonthlySavingsResource($savings->forUser($this->user($request)));
     }
 
     /**
