@@ -547,7 +547,10 @@ class HandleInertiaRequests extends Middleware
                 'cashflow' => true,
                 'fullImport' => false,
                 'fullImportSettings' => false,
-                'customDashboards' => false,
+                // Pennant's null scope, so the landing's block reaches visitors
+                // once the flag is on for that scope (see CustomDashboards). One
+                // lookup per request; the first guest visit also stores the row.
+                'customDashboards' => Feature::for(null)->active(CustomDashboards::class),
             ];
         }
 

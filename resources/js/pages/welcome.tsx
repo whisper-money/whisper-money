@@ -1,4 +1,5 @@
 import { BankLogo } from '@/components/bank-logo';
+import { CustomDashboardsSection } from '@/components/landing/custom-dashboards-section';
 import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
@@ -16,6 +17,7 @@ import {
 import { leavePage } from '@/lib/leave-page';
 import { isInstalledPwa } from '@/lib/pwa';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
+import { riseStyle, stepProgress } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
 import { dashboard, roadmap } from '@/routes';
 import documentation from '@/routes/documentation';
@@ -1507,21 +1509,15 @@ function AiConnectorPreview({
     const amount = (valueInCents: number) =>
         formatCurrency(valueInCents, currency, locale);
 
-    const revealStyle = (index: number): CSSProperties => {
-        const revealed = Math.min(
-            1,
-            Math.max(
-                0,
-                (scrollProgress - aiConnectorMessageStart(index)) /
-                    AI_CONNECTOR_MESSAGE_SPAN,
+    const revealStyle = (index: number): CSSProperties =>
+        riseStyle(
+            stepProgress(
+                scrollProgress,
+                aiConnectorMessageStart(index),
+                AI_CONNECTOR_MESSAGE_SPAN,
             ),
+            10,
         );
-
-        return {
-            opacity: revealed,
-            transform: `translateY(${(1 - revealed) * 10}px)`,
-        };
-    };
 
     return (
         <div
@@ -2492,8 +2488,14 @@ export default function Welcome({
     /** The language the page is written in, not the format region in `locale`. */
     language: string;
 }) {
-    const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
-        usePage<SharedData>().props;
+    const {
+        appUrl,
+        subscriptionsEnabled,
+        demoEnabled,
+        pricing,
+        locale,
+        features,
+    } = usePage<SharedData>().props;
     const cta = useLandingCta(canRegister);
     const ctaLabel = cta.isSignedIn
         ? __('Go to Dashboard')
@@ -2980,6 +2982,13 @@ export default function Welcome({
                             <HeroBenefits className="lg:col-start-1 lg:row-start-2" />
                         </div>
                     </section>
+
+                    {features.customDashboards && (
+                        <CustomDashboardsSection
+                            currency={pricing.currency}
+                            locale={locale}
+                        />
+                    )}
 
                     <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-3">

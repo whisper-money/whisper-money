@@ -80,6 +80,44 @@ test('shared feature flags reflect the custom dashboards flag per user', functio
         );
 })->with(['active' => true, 'inactive' => false]);
 
+test('guests do not get the custom dashboards flag by default', function () {
+    $this->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', false)
+        );
+});
+
+test('guests get the custom dashboards flag once it is active for the null scope', function () {
+    Feature::for(null)->activate(CustomDashboards::class);
+
+    $this->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', true)
+        );
+});
+
+test('guests get the custom dashboards flag once it is active for everyone', function () {
+    // Stored for the null scope first, as a guest visit would have left it.
+    Feature::for(null)->active(CustomDashboards::class);
+
+    Feature::activateForEveryone(CustomDashboards::class);
+
+    $this->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', true)
+        );
+});
+
+test('signed-in users follow their own custom dashboards scope, not the guest one', function () {
+    Feature::for(null)->activate(CustomDashboards::class);
+    $user = User::factory()->onboarded()->create();
+
+    actingAs($user)->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', false)
+        );
+});
+
 test('authenticated users receive subscription payment issue when subscription is past due', function () {
     config(['subscriptions.enabled' => true]);
 
