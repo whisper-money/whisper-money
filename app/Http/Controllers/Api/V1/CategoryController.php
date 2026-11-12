@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\DeleteCategoryRequest;
 use App\Http\Requests\Api\V1\StoreCategoryRequest;
 use App\Http\Requests\Api\V1\UpdateCategoryRequest;
@@ -30,14 +30,9 @@ class CategoryController extends Controller
      */
     #[ScopedToSpace]
     #[Paginated(CategoryResource::class)]
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, Category::query()),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            CategoryResource::class,
-        );
+        return $listings->categories($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

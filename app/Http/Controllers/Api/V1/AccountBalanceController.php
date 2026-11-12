@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\StoreAccountBalanceRequest;
 use App\Http\Resources\V1\AccountBalanceResource;
 use App\Services\Accounts\AccountBalanceRecorder;
@@ -25,14 +25,9 @@ class AccountBalanceController extends Controller
      */
     #[ScopedToSpace]
     #[Paginated(AccountBalanceResource::class)]
-    public function index(Request $request, string $account): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings, string $account): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->account($request, $account)->balances()->getQuery(),
-            $request,
-            [['balance_date', 'desc'], ['id', 'desc']],
-            AccountBalanceResource::class,
-        );
+        return $listings->balances($this->account($request, $account))->paginate($request);
     }
 
     /**

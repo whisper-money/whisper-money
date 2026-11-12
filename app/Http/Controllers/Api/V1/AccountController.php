@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\StoreAccountRequest;
 use App\Http\Requests\Api\V1\UpdateAccountRequest;
 use App\Http\Resources\V1\AccountResource;
@@ -30,14 +30,9 @@ class AccountController extends Controller
      */
     #[ScopedToSpace]
     #[Paginated(AccountResource::class)]
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, Account::query())->with(['bank:id,name', 'creditCardDetail']),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            AccountResource::class,
-        );
+        return $listings->accounts($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

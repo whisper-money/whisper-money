@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
 use App\Http\ApiV1\Documentation\ScopedToSpace;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\ApplyAutomationRuleRequest;
 use App\Http\Requests\Api\V1\DeleteAutomationRuleRequest;
 use App\Http\Requests\Api\V1\StoreAutomationRuleRequest;
@@ -33,14 +33,9 @@ class AutomationRuleController extends Controller
      */
     #[ScopedToSpace]
     #[Paginated(AutomationRuleResource::class)]
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, AutomationRule::query())->with('labels:id'),
-            $request,
-            [['priority', 'asc'], ['title', 'asc'], ['id', 'asc']],
-            AutomationRuleResource::class,
-        );
+        return $listings->automationRules($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

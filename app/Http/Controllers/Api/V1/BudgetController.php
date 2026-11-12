@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
 use App\Http\ApiV1\Documentation\Paginated;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\DeleteBudgetRequest;
 use App\Http\Requests\Api\V1\StoreBudgetRequest;
 use App\Http\Requests\Api\V1\UpdateBudgetRequest;
@@ -11,7 +11,6 @@ use App\Http\Resources\V1\BudgetResource;
 use App\Models\Budget;
 use App\Services\BudgetService;
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -28,18 +27,9 @@ class BudgetController extends Controller
      * budgets are left out; retrieve one by its id to read it.
      */
     #[Paginated(BudgetResource::class)]
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            Budget::query()->whereBelongsTo($this->user($request))->notArchived()->with([
-                'categories:id,name',
-                'labels:id,name',
-                'currentPeriods' => fn (Relation $periods) => $periods->withSum('budgetTransactions', 'amount'),
-            ]),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            BudgetResource::class,
-        );
+        return $listings->budgets($this->user($request))->paginate($request);
     }
 
     /**

@@ -68,12 +68,26 @@ class NetWorthAnalyticsService
     }
 
     /**
+     * What `GET /api/v1/analytics/net-worth` reports: forRange() plus the ids
+     * of the accounts counted at the end of the period.
+     *
+     * @return array{granularity: 'daily'|'monthly', current: array{current: int, previous: int, currency_code: string}, evolution: array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}, counted_account_ids: list<string>}
+     */
+    public function report(User $user, PeriodComparator $period, bool $daily): array
+    {
+        return [
+            ...$this->forRange($user, $period, $daily),
+            'counted_account_ids' => $this->countedAccountIds($user, $period->to),
+        ];
+    }
+
+    /**
      * The ids of the accounts that make up the net worth on $date: the ones
      * of a type that counts and the user has not left out, not yet archived.
      *
      * @return list<string>
      */
-    public function countedAccountIds(User $user, Carbon $date): array
+    private function countedAccountIds(User $user, Carbon $date): array
     {
         $excludedTypes = $this->netWorthCalculator->excludedTypesFor($user);
 
