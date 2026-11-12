@@ -91,6 +91,30 @@ test('skips a zero-amount payment so only the subscription message is posted', f
     Http::assertNothingSent();
 });
 
+test('ignores invoice events other than payment succeeded or failed', function (string $type) {
+    Http::fake();
+
+    handleStripeWebhook([
+        'id' => 'evt_'.$type,
+        'type' => $type,
+        'data' => ['object' => ['amount_paid' => 5394, 'currency' => 'eur', 'customer_email' => 'a@b.com', 'number' => 'WMONEY-0904']],
+    ]);
+
+    Http::assertNothingSent();
+})->with(['invoice.paid', 'invoice.upcoming', 'invoice.voided', 'invoice.marked_uncollectible', 'invoice.finalized', 'invoice.updated']);
+
+test('posts a single message when Stripe sends both paid and payment_succeeded for one invoice', function () {
+    Http::fake();
+
+    $invoice = ['amount_paid' => 5394, 'currency' => 'eur', 'customer_email' => 'a@b.com', 'number' => 'WMONEY-0904'];
+
+    handleStripeWebhook(['id' => 'evt_paid', 'type' => 'invoice.paid', 'data' => ['object' => $invoice]]);
+    handleStripeWebhook(['id' => 'evt_succeeded', 'type' => 'invoice.payment_succeeded', 'data' => ['object' => $invoice]]);
+
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request) => str_contains($request['embeds'][0]['title'], 'Payment succeeded'));
+});
+
 test('uses amount_due for a failed payment', function () {
     Http::fake();
 
