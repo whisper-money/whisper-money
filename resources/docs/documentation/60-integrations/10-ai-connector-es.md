@@ -177,6 +177,21 @@ Prueba:
 - «¿Cuál es la próxima medalla que puedo conseguir?»
 
 </div>
+
+<div class="card">
+### Dashboards y widgets
+
+Crea dashboards propios y escribe widgets para ellos: gráficos, tablas y cifras
+hechos con tus datos. Consulta
+[Dashboards personalizados](/documentation/custom-dashboards).
+
+Prueba:
+
+- «Añade a mi dashboard de Gastos un widget con lo que gasto en el supermercado
+  cada mes».
+- «El widget del súper está roto, arréglalo».
+
+</div>
 </div>
 
 Nada de esto es un comando que tengas que recordar. Pregunta con tus palabras y

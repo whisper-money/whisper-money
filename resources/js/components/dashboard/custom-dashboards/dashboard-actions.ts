@@ -12,6 +12,7 @@ import updateDefaultDashboard from '@/actions/App/Http/Controllers/Dashboards/De
 import { revert as revertWidgetAction } from '@/actions/App/Http/Controllers/Widgets/WidgetRevisionController';
 import { type SystemWidgetId } from '@/components/dashboard/widgets/registry';
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
+import { trackWidgetReverted } from '@/lib/custom-dashboards-telemetry';
 import { dashboard as dashboardRoute } from '@/routes';
 import {
     type DashboardProps,
@@ -164,6 +165,7 @@ export const dashboardActions = {
             {
                 ...stay(['selectedDashboard', 'userWidgets']),
                 onSuccess: () => {
+                    trackWidgetReverted();
                     toast.success(
                         __('The widget is back to version :number.', {
                             number: revision,

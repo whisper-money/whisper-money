@@ -15,6 +15,7 @@ use App\Services\Widgets\Gateway\DashboardVariables;
 use App\Services\Widgets\Gateway\ManifestValidator;
 use App\Services\Widgets\Gateway\WidgetDataGateway;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -146,12 +147,13 @@ class WidgetDefinitionService
     /**
      * The data each of $widgets reads, resolved as $user through the gateway,
      * by widget id. All their calls go in one resolution, so two widgets that
-     * read the same thing cost one call.
+     * read the same thing cost one call. $origin says who asked: the
+     * dashboard, or the agent's preview.
      *
      * @param  iterable<WidgetDefinition>  $widgets
      * @return array<string, array<string, array{status: int, body: array<mixed>}>>
      */
-    public function data(User $user, iterable $widgets, DashboardVariables $variables): array
+    public function data(User $user, iterable $widgets, DashboardVariables $variables, WidgetOrigin $origin): array
     {
         $calls = [];
         $result = [];
@@ -164,12 +166,37 @@ class WidgetDefinitionService
             }
         }
 
-        foreach ($this->gateway->resolve($user, $calls, $variables) as $qualifiedKey => $answer) {
+        $answers = $this->gateway->resolve($user, $calls, $variables);
+
+        foreach ($answers as $qualifiedKey => $answer) {
             [$id, $key] = explode('.', (string) $qualifiedKey, 2);
             $result[$id][$key] = $answer;
         }
 
+        $this->logGatewayUsage($origin, count($result), $answers);
+
         return $result;
+    }
+
+    /**
+     * A count for the feature's metrics: how many calls a read made and how
+     * many the API refused, the row cap cut short, or the gateway's limiter
+     * turned away. Never what they asked for or answered.
+     *
+     * @param  array<string, array{status: int, body: array<mixed>}>  $answers
+     */
+    private function logGatewayUsage(WidgetOrigin $origin, int $widgets, array $answers): void
+    {
+        $answers = collect($answers);
+
+        Log::info('User widget data read', [
+            'source' => $origin->value,
+            'widgets' => $widgets,
+            'calls' => $answers->count(),
+            'failed_calls' => $answers->where('status', '>=', 400)->count(),
+            'truncated_calls' => $answers->filter(fn (array $answer): bool => $answer['status'] < 400 && ($answer['body']['truncated'] ?? false) === true)->count(),
+            'rate_limited_calls' => $answers->where('status', 429)->count(),
+        ]);
     }
 
     /**
@@ -249,7 +276,28 @@ class WidgetDefinitionService
         $this->pruneRevisions($widget);
         $this->refitPlacements($widget);
 
+        $this->logSaved($origin, $number, $restoredFrom);
+
         return $widget;
+    }
+
+    /**
+     * A count for the feature's metrics, once the revision is in: who wrote
+     * it and how, never its name or its code.
+     */
+    private function logSaved(WidgetOrigin $origin, int $number, ?int $restoredFrom): void
+    {
+        $action = match (true) {
+            $restoredFrom !== null => 'reverted',
+            $number === 1 => 'created',
+            default => 'updated',
+        };
+
+        DB::afterCommit(fn () => Log::info('User widget saved', [
+            'source' => $origin->value,
+            'action' => $action,
+            'revision' => $number,
+        ]));
     }
 
     /**

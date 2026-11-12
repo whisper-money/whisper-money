@@ -3934,5 +3934,8 @@
     "This widget could not get its data": "Este widget no ha podido obtener sus datos",
     "Version :number": "Versión :number",
     "Versions": "Versiones",
-    "Your widgets": "Tus widgets"
+    "Your widgets": "Tus widgets",
+    "Your dashboard is waiting for you": "Tu dashboard te está esperando",
+    "Custom dashboards and the widgets your agent builds are part of the Standard plan. Everything you set up is kept, and comes back as it was when you upgrade.": "Los dashboards personalizados y los widgets que crea tu agente son parte del plan Standard. Todo lo que configuraste se conserva y vuelve tal cual cuando te suscribas.",
+    "Building your own dashboards, and the widgets your agent writes for them, is part of the Standard plan.": "Crear tus propios dashboards, y los widgets que tu agente escribe para ellos, es parte del plan Standard."
 }

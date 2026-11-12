@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { trackDashboardCreated } from '@/lib/custom-dashboards-telemetry';
 import { type DashboardSummary } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
@@ -54,7 +55,12 @@ export function DashboardNameDialog({ open, onOpenChange, dashboard }: Props) {
                 <Form
                     {...form}
                     options={{ preserveScroll: true }}
-                    onSuccess={() => onOpenChange(false)}
+                    onSuccess={() => {
+                        if (!dashboard) {
+                            trackDashboardCreated();
+                        }
+                        onOpenChange(false);
+                    }}
                     className="flex flex-col gap-4"
                 >
                     {({ errors, processing }) => (

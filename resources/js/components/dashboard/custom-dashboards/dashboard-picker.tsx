@@ -7,10 +7,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { subscribe } from '@/routes';
 import { type DashboardSummary } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
 import {
     Check,
     ChevronDown,
@@ -28,7 +26,7 @@ interface Props {
     selectedId: string | null;
     selectedName: string;
     defaultId: string | null;
-    /** Building dashboards is part of the paid plan: without it, the item sells it. */
+    /** Building dashboards is part of the paid plan: without it, the item is marked and `onCreate` sells it. */
     canCreate: boolean;
     /** Off for the shared demo and press accounts, which cannot write. */
     canManage: boolean;
@@ -96,13 +94,7 @@ export function DashboardPicker({
                 {canManage && (
                     <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            onSelect={() =>
-                                canCreate
-                                    ? onCreate()
-                                    : router.visit(subscribe().url)
-                            }
-                        >
+                        <DropdownMenuItem onSelect={onCreate}>
                             <Plus className="size-4" />
                             <span className="flex-1">
                                 {__('New dashboard')}

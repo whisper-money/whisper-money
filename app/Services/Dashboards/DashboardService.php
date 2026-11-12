@@ -2,9 +2,11 @@
 
 namespace App\Services\Dashboards;
 
+use App\Enums\WidgetOrigin;
 use App\Models\Dashboard;
 use App\Models\User;
 use App\Policies\DashboardPolicy;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -15,11 +17,11 @@ use Illuminate\Validation\ValidationException;
 class DashboardService
 {
     /**
-     * A new dashboard named $name, after the user's others.
+     * A new dashboard named $name, after the user's others, created from $origin.
      *
      * @throws ValidationException when the user already has Dashboard::MAX_PER_USER
      */
-    public function create(User $user, string $name): Dashboard
+    public function create(User $user, string $name, WidgetOrigin $origin): Dashboard
     {
         if ($user->dashboards()->count() >= Dashboard::MAX_PER_USER) {
             throw ValidationException::withMessages([
@@ -27,9 +29,14 @@ class DashboardService
             ]);
         }
 
-        return $user->dashboards()->create([
+        $dashboard = $user->dashboards()->create([
             'name' => $name,
             'position' => (int) $user->dashboards()->max('position') + 1,
         ]);
+
+        // A count for the feature's metrics: where it came from, never its name.
+        Log::info('Custom dashboard created', ['source' => $origin->value]);
+
+        return $dashboard;
     }
 }

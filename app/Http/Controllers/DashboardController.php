@@ -50,7 +50,11 @@ class DashboardController extends Controller
                 ->toArray(), 'dashboard'),
             // The dashboard on screen, with its widgets. Null is the system
             // dashboard, which the page still draws until the picker ships.
-            'defaultDashboardId' => fn (): ?string => $request->user()->default_dashboard_id,
+            // Off the paid plan Overview opens whatever the user picked, so none
+            // is starred; the choice is kept for when they are back on it.
+            'defaultDashboardId' => fn (): ?string => $request->user()->can('create', Dashboard::class)
+                ? $request->user()->default_dashboard_id
+                : null,
             'selectedDashboard' => function () use ($request): ?array {
                 $dashboard = $this->selectedDashboard($request);
 
@@ -59,15 +63,21 @@ class DashboardController extends Controller
             // The user widgets on the dashboard on screen, by id: the module to
             // run, the manifest, the revisions to go back to and the last error.
             // Deferred: the compiled modules are the heaviest part of the page.
+            // Off the paid plan none: the page draws a blurred placeholder in
+            // each widget's place, and no widget code reaches the browser.
             'userWidgets' => Inertia::defer(function () use ($request): array {
                 $dashboard = $this->selectedDashboard($request);
 
-                return $dashboard === null ? [] : $this->presentUserWidgets($dashboard);
+                if ($dashboard === null || ! $request->user()->can('readWidgetData', $dashboard)) {
+                    return [];
+                }
+
+                return $this->presentUserWidgets($dashboard);
             }, 'dashboard'),
             // Every widget the user's agent wrote, for edit mode to place:
             // names and sizes only, the modules load once placed. Only edit
-            // mode reads it, and edit mode is behind the flag.
-            'widgetDefinitions' => Inertia::defer(fn (): array => Feature::for($request->user())->active(CustomDashboards::class)
+            // mode reads it, and edit mode is behind the flag and the plan.
+            'widgetDefinitions' => Inertia::defer(fn (): array => $request->user()->can('create', Dashboard::class) && Feature::for($request->user())->active(CustomDashboards::class)
                 ? $this->presentWidgetDefinitions($request->user())
                 : [], 'dashboard'),
             // The window the top categories and top labels cards report on, so
@@ -110,7 +120,7 @@ class DashboardController extends Controller
             }
         }
 
-        return $user->hasProPlan() ? $user->defaultDashboard : null;
+        return $user->can('create', Dashboard::class) ? $user->defaultDashboard : null;
     }
 
     /**

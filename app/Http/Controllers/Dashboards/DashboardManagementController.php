@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboards;
 
+use App\Enums\WidgetOrigin;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DashboardController;
 use App\Http\Requests\Dashboards\ReorderDashboardsRequest;
@@ -23,7 +24,7 @@ class DashboardManagementController extends Controller
 
     public function store(StoreDashboardRequest $request, DashboardService $dashboards): RedirectResponse
     {
-        $dashboard = $dashboards->create($request->user(), $request->validated('name'));
+        $dashboard = $dashboards->create($request->user(), $request->validated('name'), WidgetOrigin::Web);
 
         return to_route('dashboard', ['dashboard' => $dashboard->id]);
     }
