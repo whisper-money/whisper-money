@@ -153,6 +153,11 @@ class PostStripeEventToDiscord implements ShouldQueue
     }
 
     /**
+     * Only payment_succeeded and payment_failed are posted. Stripe fires
+     * invoice.paid alongside payment_succeeded for the same charge (and the
+     * endpoint also receives invoice.upcoming, voided, etc.), so any other
+     * invoice event would post a duplicate "Payment succeeded".
+     *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>|null
      */
@@ -161,11 +166,12 @@ class PostStripeEventToDiscord implements ShouldQueue
         $object = $payload['data']['object'] ?? [];
 
         $meta = match ($type) {
+            'invoice.payment_succeeded' => ['title' => '💰 Payment succeeded', 'color' => self::COLOR_GREEN, 'amount' => $object['amount_paid'] ?? 0],
             'invoice.payment_failed' => ['title' => '⚠️ Payment failed', 'color' => self::COLOR_RED, 'amount' => $object['amount_due'] ?? 0],
-            default => ['title' => '💰 Payment succeeded', 'color' => self::COLOR_GREEN, 'amount' => $object['amount_paid'] ?? 0],
+            default => null,
         };
 
-        if ((int) $meta['amount'] === 0) {
+        if ($meta === null || (int) $meta['amount'] === 0) {
             return null;
         }
 
