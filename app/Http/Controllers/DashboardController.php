@@ -20,6 +20,9 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    /** The `?dashboard=` value that opens the system dashboard, whatever the default is; the picker's `SYSTEM_DASHBOARD_QUERY`. */
+    private const SYSTEM_DASHBOARD = 'system';
+
     public function __construct(
         private AccountMetricsService $accountMetricsService,
         private CategorySpendingService $categorySpendingService,
@@ -69,11 +72,17 @@ class DashboardController extends Controller
      * is not the user's, falls back to the default rather than a 404: an old
      * bookmark should still open the app. Without the paid plan the default
      * is the system dashboard again, whatever the user picked.
+     * `?dashboard=system` opens the system dashboard even when the default is
+     * one of the user's: without it the picker could not get back to it.
      */
     private function selectedDashboard(Request $request): ?Dashboard
     {
         $user = $request->user();
         $requested = $request->query('dashboard');
+
+        if ($requested === self::SYSTEM_DASHBOARD) {
+            return null;
+        }
 
         if (is_string($requested) && $requested !== '') {
             $dashboard = $user->dashboards()->find($requested);

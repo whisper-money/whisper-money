@@ -403,4 +403,16 @@ describe('dashboard page', function () {
             ->get(route('dashboard', ['dashboard' => $other->id]))
             ->assertInertia(fn (AssertableInertia $page) => $page->where('selectedDashboard.id', $default->id));
     });
+
+    it('opens the system dashboard when asked, even with a default dashboard', function () {
+        $user = dashboardOwner();
+        $default = Dashboard::factory()->for($user)->create();
+        $user->forceFill(['default_dashboard_id' => $default->id])->save();
+
+        $this->actingAs($user)
+            ->get(route('dashboard', ['dashboard' => 'system']))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('defaultDashboardId', $default->id)
+                ->where('selectedDashboard', null));
+    });
 });
