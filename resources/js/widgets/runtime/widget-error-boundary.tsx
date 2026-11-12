@@ -27,7 +27,15 @@ export function toWidgetRuntimeError(
 }
 
 /** The cell of a widget that failed: the dashboard around it keeps working. */
-export function WidgetErrorState({ message }: { message: string }) {
+export function WidgetErrorState({
+    message,
+    title = __('This widget stopped working'),
+    hint = __('Ask your agent to fix it, or remove it from the dashboard.'),
+}: {
+    message: string;
+    title?: string;
+    hint?: string;
+}) {
     return (
         <div
             role="alert"
@@ -35,14 +43,8 @@ export function WidgetErrorState({ message }: { message: string }) {
             className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-destructive/40 p-4 text-center dark:border-red-400/40"
         >
             <TriangleAlert className="size-5 text-destructive dark:text-red-400" />
-            <p className="text-sm font-medium">
-                {__('This widget stopped working')}
-            </p>
-            <p className="text-xs text-muted-foreground">
-                {__(
-                    'Ask your agent to fix it, or remove it from the dashboard.',
-                )}
-            </p>
+            <p className="text-sm font-medium">{title}</p>
+            <p className="text-xs text-muted-foreground">{hint}</p>
             <p
                 title={message}
                 className="line-clamp-2 max-w-full font-mono text-xs break-words text-muted-foreground"

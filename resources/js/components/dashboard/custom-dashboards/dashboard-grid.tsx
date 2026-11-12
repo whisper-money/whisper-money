@@ -10,10 +10,13 @@ import { type DashboardProps } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
 import { type Announcements, type UniqueIdentifier } from '@dnd-kit/core';
 import { X } from 'lucide-react';
+import { type ReactNode } from 'react';
 import {
     DASHBOARD_GRID_CLASS_NAME,
-    type PlacedSystemWidget,
+    type PlacedUserWidget,
+    type PlacedWidget,
     widgetSizeClassName,
+    type WidgetSizeRules,
 } from './grid-layout';
 import { systemWidgetLabel } from './labels';
 import { WidgetSizeMenu } from './widget-size-menu';
@@ -51,29 +54,67 @@ function WidgetBody({
     );
 }
 
+/** How the grid draws the widgets the user's agent wrote. */
+export interface UserWidgetSlots {
+    render: (item: PlacedUserWidget) => ReactNode;
+    /** The widget's name, for edit mode's bar. */
+    label: (item: PlacedUserWidget) => string;
+    /** The sizes it admits; null until its manifest has loaded. */
+    sizes: (item: PlacedUserWidget) => WidgetSizeRules | null;
+}
+
 interface Props {
-    widgets: PlacedSystemWidget[];
+    widgets: PlacedWidget[];
     data: DashboardProps;
+    /** Without it, user widgets are left out. */
+    userWidgets?: UserWidgetSlots;
+}
+
+/** The attribute browser tests and styles find a widget's cell by. */
+function widgetAttribute(item: PlacedWidget): string {
+    return item.kind === 'system' ? item.widget : `user:${item.definitionId}`;
+}
+
+function drawable(
+    widgets: PlacedWidget[],
+    userWidgets: UserWidgetSlots | undefined,
+): PlacedWidget[] {
+    return userWidgets
+        ? widgets
+        : widgets.filter((item) => item.kind === 'system');
 }
 
 /**
- * A user dashboard as it reads. A widget with nothing to show (cashflow
- * switched off, no monthly goal, nothing labelled) renders nothing, and its
- * cell, left empty, is hidden: the grid never keeps a hole for it.
+ * A user dashboard as it reads. A system widget with nothing to show
+ * (cashflow switched off, no monthly goal, nothing labelled) renders nothing,
+ * and its cell, left empty, is hidden: the grid never keeps a hole for it.
  */
-export function DashboardGrid({ widgets, data }: Props) {
+export function DashboardGrid({ widgets, data, userWidgets }: Props) {
     return (
         <div className={DASHBOARD_GRID_CLASS_NAME} data-testid="dashboard-grid">
-            {widgets.map(({ id, widget, size }) => (
-                <WidgetBody
-                    key={id}
-                    data-widget={widget}
-                    widget={widget}
-                    size={size}
-                    data={data}
-                    className={cn(widgetSizeClassName(size), 'empty:hidden')}
-                />
-            ))}
+            {drawable(widgets, userWidgets).map((item) =>
+                item.kind === 'system' ? (
+                    <WidgetBody
+                        key={item.id}
+                        data-widget={item.widget}
+                        widget={item.widget}
+                        size={item.size}
+                        data={data}
+                        className={cn(
+                            widgetSizeClassName(item.size),
+                            'empty:hidden',
+                        )}
+                    />
+                ) : (
+                    <div
+                        key={item.id}
+                        data-widget={widgetAttribute(item)}
+                        className={widgetSizeClassName(item.size)}
+                    >
+                        {userWidgets?.render(item)}
+                    </div>
+                ),
+            )}
         </div>
     );
 }
@@ -92,26 +133,37 @@ interface EditableProps extends Props {
 export function EditableDashboardGrid({
     widgets,
     data,
+    userWidgets,
     onReorder,
     onResize,
     onRemove,
 }: EditableProps) {
+    const items = drawable(widgets, userWidgets);
+
     return (
         <SortableGrid
             className={DASHBOARD_GRID_CLASS_NAME}
-            items={widgets}
+            items={items}
             getId={(item) => item.id}
             getItemClassName={(item) => widgetSizeClassName(item.size)}
             translateOnly
             onReorder={onReorder}
             draggingClassName="opacity-80 shadow-lg"
-            accessibility={widgetAccessibility(widgets)}
-            renderItem={({ id, widget, size }, dragHandle) => {
-                const label = systemWidgetLabel(widget);
+            accessibility={widgetAccessibility(items)}
+            renderItem={(item, dragHandle) => {
+                const { id, size } = item;
+                const label =
+                    item.kind === 'system'
+                        ? systemWidgetLabel(item.widget)
+                        : (userWidgets?.label(item) ?? '');
+                const sizes =
+                    item.kind === 'system'
+                        ? SYSTEM_WIDGETS[item.widget]
+                        : (userWidgets?.sizes(item) ?? null);
 
                 return (
                     <div
-                        data-widget={widget}
+                        data-widget={widgetAttribute(item)}
                         className="flex h-full flex-col gap-2 rounded-xl border-2 border-dashed border-primary/30 p-2"
                     >
                         <div className="flex items-center gap-2">
@@ -119,12 +171,14 @@ export function EditableDashboardGrid({
                             <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                 {label}
                             </span>
-                            <WidgetSizeMenu
-                                definition={SYSTEM_WIDGETS[widget]}
-                                size={size}
-                                label={label}
-                                onChange={(next) => onResize(id, next)}
-                            />
+                            {sizes !== null && (
+                                <WidgetSizeMenu
+                                    definition={sizes}
+                                    size={size}
+                                    label={label}
+                                    onChange={(next) => onResize(id, next)}
+                                />
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon-sm"
@@ -136,15 +190,23 @@ export function EditableDashboardGrid({
                                 <X className="size-4" />
                             </Button>
                         </div>
-                        <WidgetBody
-                            widget={widget}
-                            size={size}
-                            data={data}
-                            className="peer empty:hidden"
-                        />
-                        <p className="hidden flex-1 items-center justify-center text-center text-sm text-muted-foreground peer-empty:flex">
-                            {__('Nothing to show here yet.')}
-                        </p>
+                        {item.kind === 'system' ? (
+                            <>
+                                <WidgetBody
+                                    widget={item.widget}
+                                    size={size}
+                                    data={data}
+                                    className="peer empty:hidden"
+                                />
+                                <p className="hidden flex-1 items-center justify-center text-center text-sm text-muted-foreground peer-empty:flex">
+                                    {__('Nothing to show here yet.')}
+                                </p>
+                            </>
+                        ) : (
+                            <div className="min-h-0 flex-1">
+                                {userWidgets?.render(item)}
+                            </div>
+                        )}
                     </div>
                 );
             }}
@@ -152,7 +214,7 @@ export function EditableDashboardGrid({
     );
 }
 
-function widgetAccessibility(widgets: PlacedSystemWidget[]): {
+function widgetAccessibility(widgets: PlacedWidget[]): {
     announcements: Announcements;
     screenReaderInstructions: { draggable: string };
 } {

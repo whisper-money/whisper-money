@@ -2,6 +2,7 @@
 
 use App\Enums\ApiCredential;
 use App\Enums\SystemWidget;
+use App\Features\CustomDashboards;
 use App\Models\Account;
 use App\Models\ApiRequest;
 use App\Models\Dashboard;
@@ -10,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WidgetDefinition;
 use Inertia\Testing\AssertableInertia;
+use Laravel\Pennant\Feature;
 
 function widgetOwner(array $attributes = []): User
 {
@@ -341,6 +343,40 @@ describe('dashboard page', function () {
                     ->where("userWidgets.{$widget->id}.manifest.size.width", '1/2')
                     ->where("userWidgets.{$widget->id}.last_error.message", 'boom')
                     ->where("userWidgets.{$widget->id}.revisions.0.number", 1)
+                ));
+    });
+
+    it('defers every widget of the user, named and sized, for edit mode to place', function () {
+        $user = widgetOwner();
+        Feature::for($user)->activate(CustomDashboards::class);
+        $groceries = WidgetDefinition::factory()->for($user)->create(['name' => 'Groceries']);
+        $budget = WidgetDefinition::factory()->for($user)->create(['name' => 'Budget']);
+        WidgetDefinition::factory()->create(['name' => 'Someone else']);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->missing('widgetDefinitions')
+                ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload
+                    ->has('widgetDefinitions', 2)
+                    ->where('widgetDefinitions.0', [
+                        'id' => $budget->id,
+                        'name' => 'Budget',
+                        'size' => ['width' => '1/2', 'height' => 'm', 'allowed_widths' => ['1/2', '1/1']],
+                    ])
+                    ->where('widgetDefinitions.1.id', $groceries->id)
+                ));
+    });
+
+    it('lists no widget to place with the flag off', function () {
+        $user = widgetOwner();
+        WidgetDefinition::factory()->for($user)->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload
+                    ->where('widgetDefinitions', [])
                 ));
     });
 });

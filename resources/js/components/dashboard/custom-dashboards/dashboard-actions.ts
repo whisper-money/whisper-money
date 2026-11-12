@@ -9,6 +9,7 @@ import {
     update as updateWidgetAction,
 } from '@/actions/App/Http/Controllers/Dashboards/DashboardWidgetController';
 import updateDefaultDashboard from '@/actions/App/Http/Controllers/Dashboards/DefaultDashboardController';
+import { revert as revertWidgetAction } from '@/actions/App/Http/Controllers/Widgets/WidgetRevisionController';
 import { type SystemWidgetId } from '@/components/dashboard/widgets/registry';
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
 import { dashboard as dashboardRoute } from '@/routes';
@@ -138,6 +139,40 @@ export const dashboardActions = {
             storeWidgetAction.url(dashboardId),
             { system_widget: widget },
             stay(['selectedDashboard']),
+        );
+    },
+
+    /** Places one of the user's own widgets, at its manifest's default size. */
+    addUserWidget(dashboardId: string, definitionId: string): void {
+        router.post(
+            storeWidgetAction.url(dashboardId),
+            { widget_definition_id: definitionId },
+            stay(['selectedDashboard', 'userWidgets']),
+        );
+    },
+
+    /** Runs an earlier revision of a user widget again, as a new revision. */
+    revertUserWidget(
+        definitionId: string,
+        revision: number,
+        onSuccess: () => void,
+        onFinish: () => void,
+    ): void {
+        router.post(
+            revertWidgetAction.url(definitionId),
+            { revision },
+            {
+                ...stay(['selectedDashboard', 'userWidgets']),
+                onSuccess: () => {
+                    toast.success(
+                        __('The widget is back to version :number.', {
+                            number: revision,
+                        }),
+                    );
+                    onSuccess();
+                },
+                onFinish,
+            },
         );
     },
 

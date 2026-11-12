@@ -6,11 +6,17 @@ import {
     type SystemWidgetId,
 } from '@/components/dashboard/widgets/registry';
 import {
+    type SystemWidgetDefinition,
     type WidgetHeight,
     type WidgetSize,
     type WidgetWidth,
 } from '@/components/dashboard/widgets/types';
-import { type DashboardWidgetData } from '@/types/dashboard';
+import {
+    type DashboardWidgetData,
+    type UserWidgetDefinition,
+    type UserWidgetManifestSize,
+    type WidgetDefinitionSummary,
+} from '@/types/dashboard';
 
 /**
  * Twelve columns, so a third (4) and a half (6) share one grid, over rows of a
@@ -44,48 +50,122 @@ export function widgetSizeClassName(size: WidgetSize): string {
 
 /** A system widget placed on a user dashboard, ready to draw. */
 export interface PlacedSystemWidget {
+    kind: 'system';
     /** The placement's id, which the widget routes take. */
     id: string;
     widget: SystemWidgetId;
     size: WidgetSize;
 }
 
+/** A widget the user's agent wrote, placed on a user dashboard. */
+export interface PlacedUserWidget {
+    kind: 'user';
+    /** The placement's id, which the widget routes take. */
+    id: string;
+    definitionId: string;
+    size: WidgetSize;
+}
+
+export type PlacedWidget = PlacedSystemWidget | PlacedUserWidget;
+
+/** The sizes a widget admits and the one it takes when placed. */
+export type WidgetSizeRules = Pick<
+    SystemWidgetDefinition,
+    'defaultSize' | 'allowedWidths' | 'allowedHeights'
+>;
+
+/** A user widget's manifest size, read as the rules the size menu offers. */
+export function userWidgetSizeRules(
+    size: UserWidgetManifestSize,
+): WidgetSizeRules {
+    return {
+        defaultSize: { width: size.width, height: size.height },
+        allowedWidths: size.allowed_widths ?? [size.width],
+        allowedHeights: size.allowed_heights ?? [size.height],
+    };
+}
+
+function fitted(size: WidgetSize, rules: WidgetSizeRules | null): WidgetSize {
+    if (rules === null || isSizeAllowed(rules, size)) {
+        return size;
+    }
+
+    return rules.defaultSize;
+}
+
 /**
- * The system widgets of a user dashboard, in order. Placements the registry
- * cannot draw (a widget that was removed, or a user-written one, which this
- * page does not render yet) are left out, and a size the widget no longer
- * admits falls back to its default.
+ * The widgets of a user dashboard, in order. Placements the page cannot draw
+ * (a system widget that was removed, a user widget that is gone) are left
+ * out, and a size the widget no longer admits falls back to its default.
+ * Until the user widgets have loaded, theirs keep the size they were saved at.
  */
-export function placedSystemWidgets(
+export function placedWidgets(
     widgets: DashboardWidgetData[],
-): PlacedSystemWidget[] {
+    userWidgets?: Record<string, UserWidgetDefinition>,
+): PlacedWidget[] {
     return [...widgets]
         .sort((a, b) => a.position - b.position)
-        .flatMap((placement) => {
+        .flatMap((placement): PlacedWidget[] => {
+            const size = { width: placement.width, height: placement.height };
             const id = placement.system_widget;
-            if (id === null || !isSystemWidgetId(id)) {
+            const definitionId = placement.widget_definition_id;
+
+            if (id !== null && isSystemWidgetId(id)) {
+                return [
+                    {
+                        kind: 'system',
+                        id: placement.id,
+                        widget: id,
+                        size: fitted(size, SYSTEM_WIDGETS[id]),
+                    },
+                ];
+            }
+
+            if (definitionId === null) {
                 return [];
             }
 
-            const size = { width: placement.width, height: placement.height };
+            if (userWidgets === undefined) {
+                return [{ kind: 'user', id: placement.id, definitionId, size }];
+            }
 
-            return [
-                {
-                    id: placement.id,
-                    widget: id,
-                    size: isSizeAllowed(SYSTEM_WIDGETS[id], size)
-                        ? size
-                        : SYSTEM_WIDGETS[id].defaultSize,
-                },
-            ];
+            const definition = userWidgets[definitionId];
+
+            return definition === undefined
+                ? []
+                : [
+                      {
+                          kind: 'user',
+                          id: placement.id,
+                          definitionId,
+                          size: fitted(
+                              size,
+                              userWidgetSizeRules(definition.manifest.size),
+                          ),
+                      },
+                  ];
         });
 }
 
 /** The system widgets not yet on the dashboard, which edit mode can add. */
-export function missingSystemWidgets(
-    placed: PlacedSystemWidget[],
-): SystemWidgetId[] {
-    const onDashboard = new Set(placed.map(({ widget }) => widget));
+export function missingSystemWidgets(placed: PlacedWidget[]): SystemWidgetId[] {
+    const onDashboard = new Set(
+        placed.flatMap((item) => (item.kind === 'system' ? [item.widget] : [])),
+    );
 
     return SYSTEM_WIDGET_IDS.filter((id) => !onDashboard.has(id));
+}
+
+/** The user's own widgets not yet on the dashboard, which edit mode can add. */
+export function missingUserWidgets(
+    placed: PlacedWidget[],
+    definitions: WidgetDefinitionSummary[],
+): WidgetDefinitionSummary[] {
+    const onDashboard = new Set(
+        placed.flatMap((item) =>
+            item.kind === 'user' ? [item.definitionId] : [],
+        ),
+    );
+
+    return definitions.filter(({ id }) => !onDashboard.has(id));
 }

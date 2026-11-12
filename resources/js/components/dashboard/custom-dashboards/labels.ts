@@ -42,3 +42,10 @@ export function widgetWidthLabel(width: WidgetWidth): string {
 export function widgetHeightLabel(height: WidgetHeight): string {
     return height === 'm' ? __('Medium') : __('Large');
 }
+
+/** Who saved a version of a user widget. */
+export function widgetOriginLabel(createdVia: string): string {
+    return createdVia === 'mcp'
+        ? __('Saved by your agent')
+        : __('Saved from the dashboard');
+}
