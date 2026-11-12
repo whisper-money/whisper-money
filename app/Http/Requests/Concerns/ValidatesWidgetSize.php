@@ -2,18 +2,18 @@
 
 namespace App\Http\Requests\Concerns;
 
-use App\Enums\SystemWidget;
+use App\Contracts\SizedWidget;
 use App\Enums\WidgetHeight;
 use App\Enums\WidgetWidth;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
- * Each system widget admits only some of the six sizes: a chart that needs the
- * room is never offered a third of the row.
+ * Each widget admits only some of the six sizes: a chart that needs the room
+ * is never offered a third of the row. A user widget's manifest names its own.
  */
 trait ValidatesWidgetSize
 {
-    protected function validateWidgetSize(Validator $validator, SystemWidget $widget): void
+    protected function validateWidgetSize(Validator $validator, SizedWidget $widget): void
     {
         if (! $this->filled('width')) {
             return;
@@ -31,7 +31,7 @@ trait ValidatesWidgetSize
      *
      * @return array{width: WidgetWidth, height: WidgetHeight}
      */
-    public function size(?SystemWidget $widget = null): array
+    public function size(?SizedWidget $widget = null): array
     {
         if ($widget !== null && ! $this->filled('width')) {
             return $widget->defaultSize();

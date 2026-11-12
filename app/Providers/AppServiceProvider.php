@@ -13,6 +13,7 @@ use App\Http\Responses\RegisterResponse;
 use App\Mcp\OAuthRegistrar;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Models\WidgetDefinition;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
@@ -139,6 +140,17 @@ class AppServiceProvider extends ServiceProvider
         // is never a route's `throttle:` middleware.
         RateLimiter::for(WidgetDataGateway::Limiter, function (User $user): Limit {
             return Limit::perMinute((int) config('widgets.gateway.calls_per_minute'))->by((string) $user->getAuthIdentifier());
+        });
+
+        // The runtime errors user widgets report from the dashboard. A widget
+        // that fails on every render would otherwise write on every render;
+        // only the latest error is kept, so a few a minute lose nothing. Per
+        // widget, so one failing in a loop does not silence the others.
+        RateLimiter::for('widget-errors', function (Request $request): Limit {
+            $widget = $request->route('widget');
+
+            return Limit::perMinute((int) config('widgets.errors.reports_per_minute'))
+                ->by($request->user()?->getAuthIdentifier().'|'.($widget instanceof WidgetDefinition ? $widget->id : $widget));
         });
 
         // AI column-mapping suggestions are asked once per imported file, so 20

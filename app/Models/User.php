@@ -549,6 +549,12 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(Dashboard::class);
     }
 
+    /** @return HasMany<WidgetDefinition, $this> */
+    public function widgetDefinitions(): HasMany
+    {
+        return $this->hasMany(WidgetDefinition::class);
+    }
+
     /**
      * The dashboard the app opens on. Null is the system dashboard.
      *
@@ -1143,6 +1149,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->trashed();
     }
 
+    /**
+     * Soft-deletes the user, so their foreign keys never cascade. The widgets
+     * their agent wrote (code, not financial records) and the dashboards that
+     * hold them go with the account right away.
+     */
     public function markAsDeleted(): void
     {
         if ($this->trashed()) {
@@ -1153,6 +1164,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             $this->forceFill([
                 'email' => $this->deletedEmail(),
             ])->saveQuietly();
+
+            $this->widgetDefinitions()->delete();
+            $this->dashboards()->delete();
 
             $this->delete();
         });

@@ -35,8 +35,10 @@ class UpdateDashboardWidgetRequest extends FormRequest
             /** @var DashboardWidget $widget */
             $widget = $this->route('widget');
 
-            if ($validator->errors()->isEmpty() && $widget->system_widget !== null) {
-                $this->validateWidgetSize($validator, $widget->system_widget);
+            $sizedWidget = $widget->sizedWidget();
+
+            if ($validator->errors()->isEmpty() && $sizedWidget !== null) {
+                $this->validateWidgetSize($validator, $sizedWidget);
             }
         }];
     }

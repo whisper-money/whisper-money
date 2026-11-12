@@ -3905,5 +3905,7 @@
     "You opened this dashboard in safe mode: widgets written by your agent stay off until you load them, so you can remove one that is causing problems.": "Has abierto este dashboard en modo seguro: los widgets que ha escrito tu agente no se cargan hasta que los actives, para que puedas quitar el que esté dando problemas.",
     "Ask your agent to fix it, or remove it from the dashboard.": "Pídele a tu agente que lo arregle o quítalo del dashboard.",
     "The widget took too long to load.": "El widget ha tardado demasiado en cargar.",
-    "Loading widget": "Cargando widget"
+    "Loading widget": "Cargando widget",
+    "The range can span at most :years years.": "El rango puede abarcar como mucho :years años.",
+    "A dashboard holds at most :count widgets.": "Un dashboard admite como mucho :count widgets."
 }

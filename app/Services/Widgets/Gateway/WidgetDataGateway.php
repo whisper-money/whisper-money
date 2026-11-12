@@ -2,15 +2,19 @@
 
 namespace App\Services\Widgets\Gateway;
 
+use App\Enums\ApiCredential;
 use App\Http\ApiV1\ApiV1Exception;
 use App\Http\ApiV1\ErrorRenderer;
 use App\Http\ApiV1\Listing;
+use App\Models\ApiRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route as ApiRoute;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -27,7 +31,9 @@ use Throwable;
  * user signed in.
  *
  * Nothing is cached across resolutions: the same call twice within one is
- * read once, and only that one counts towards the gateway's own limit.
+ * read once, and only that one counts towards the gateway's own limit. Each
+ * call made is recorded in `api_requests` as a `dashboard` one, under the
+ * name of the API route it stands for.
  *
  * @api resolved by the widget data routes, which arrive with the saved widgets
  */
@@ -52,14 +58,24 @@ class WidgetDataGateway
     public function resolve(User $user, array $data, DashboardVariables $variables): array
     {
         $answered = [];
+        $made = [];
 
-        return array_map(function (array $call) use ($user, $variables, &$answered): array {
+        $result = array_map(function (array $call) use ($user, $variables, &$answered, &$made): array {
             $params = $variables->fill($call['params'] ?? []);
             $paginate = $call['paginate'] ?? null;
             $key = md5((string) json_encode([$call['endpoint'], $this->sorted($params), $paginate]));
 
-            return $answered[$key] ??= $this->answer($user, $call['endpoint'], $params, $paginate);
+            if (! isset($answered[$key])) {
+                $answered[$key] = $this->answer($user, $call['endpoint'], $params, $paginate);
+                $made[] = [$call['endpoint'], $answered[$key]['status']];
+            }
+
+            return $answered[$key];
         }, $data);
+
+        $this->record($user, $made);
+
+        return $result;
     }
 
     /**
@@ -135,6 +151,45 @@ class WidgetDataGateway
         }
 
         return $request;
+    }
+
+    /**
+     * One `api_requests` row per call made, in one insert. Rescued, like
+     * RecordApiRequest: usage stats must never fail a dashboard.
+     *
+     * @param  list<array{0: string, 1: int}>  $calls  endpoint name and status
+     */
+    private function record(User $user, array $calls): void
+    {
+        if ($calls === []) {
+            return;
+        }
+
+        $now = now();
+
+        rescue(fn (): bool => ApiRequest::query()->insert(array_map(fn (array $call): array => [
+            'id' => (string) Str::uuid7(),
+            'user_id' => $user->id,
+            'method' => 'GET',
+            'endpoint' => $this->routeName($call[0]),
+            'credential' => ApiCredential::Dashboard->value,
+            'status' => $call[1],
+            'created_at' => $now,
+        ], $calls)));
+    }
+
+    /**
+     * The name of the `/api/v1` route a manifest's endpoint stands for, as
+     * RecordApiRequest stores it, so the gateway's calls group with the API's.
+     */
+    private function routeName(string $endpoint): string
+    {
+        $uri = 'api/v1'.Str::after($endpoint, ' ');
+
+        return once(fn (): array => collect(Route::getRoutes()->get('GET'))
+            ->filter(fn (ApiRoute $route): bool => str_starts_with($route->uri(), 'api/v1/'))
+            ->mapWithKeys(fn (ApiRoute $route): array => [$route->uri() => $route->getName() ?? $route->uri()])
+            ->all())[$uri] ?? $uri;
     }
 
     /**
