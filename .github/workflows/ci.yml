@@ -71,6 +71,11 @@ jobs:
           # parent's `-d` flags, only the global ini.
           ini-values: pcov.directory=app
 
+      # WidgetCompilerTest runs the real widget compiler, a Bun script that
+      # needs Bun and node_modules (typescript, the externals it checks).
+      - name: Setup Bun & Node Deps
+        uses: ./.github/actions/setup-bun-deps
+
       - name: Copy Environment File
         run: cp .env.example .env
 
