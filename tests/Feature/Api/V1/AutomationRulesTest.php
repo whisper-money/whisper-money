@@ -41,7 +41,7 @@ function sharedRuleSpace(User $member, User $owner): Space
 function groceryRuleOverExistingTransactions(User $user, int $matchingCount = 2): array
 {
     $account = Account::factory()->create(['user_id' => $user->id]);
-    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Supermarket']);
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Essentials']);
 
     Transaction::factory()->count($matchingCount)->create([

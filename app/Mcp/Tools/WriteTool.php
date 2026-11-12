@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Mcp\ResponseFactory;
 
 /**
  * Base for every Whisper Money write tool. On top of the McpTool Standard-plan gate
@@ -56,7 +57,7 @@ abstract class WriteTool extends McpTool
         return [...parent::annotations(), 'openWorldHint' => true];
     }
 
-    protected function respond(Request $request, User $user): Response
+    protected function respond(Request $request, User $user): Response|ResponseFactory
     {
         // Write access is granted to OAuth connections (Claude Desktop /
         // ChatGPT, resolved via the `api` guard — the user approves the
@@ -70,7 +71,7 @@ abstract class WriteTool extends McpTool
         return $this->write($request, $user);
     }
 
-    abstract protected function write(Request $request, User $user): Response;
+    abstract protected function write(Request $request, User $user): Response|ResponseFactory;
 
     /**
      * Resolve the record the request points at among the caller's own rows in

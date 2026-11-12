@@ -122,7 +122,7 @@ describe('grouping', function () {
 
     it('groups by type, reading an uncategorized row by its sign', function () {
         ['user' => $user, 'account' => $account, 'food' => $food, 'salary' => $salary] = apiAggregateBook();
-        $savings = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Savings]);
+        $savings = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Savings, 'name' => 'Emergency fund']);
         apiAggregateRow($account, '2026-10-01', -1_000, $food);
         apiAggregateRow($account, '2026-10-02', -200);
         apiAggregateRow($account, '2026-10-03', 900);
@@ -140,8 +140,8 @@ describe('grouping', function () {
     it('reads a deleted category as no category, in one bucket and by the sign', function () {
         ['user' => $user, 'account' => $account, 'salary' => $salary] = apiAggregateBook();
         $savings = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'type' => AccountType::Savings]);
-        $gone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $alsoGone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income]);
+        $gone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense, 'name' => 'Old expense']);
+        $alsoGone = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income, 'name' => 'Old income']);
         apiAggregateRow($account, '2026-10-01', -100, $gone);
         apiAggregateRow($savings, '2026-10-02', -200, $alsoGone);
         apiAggregateRow($savings, '2026-10-03', 1_000, $salary);

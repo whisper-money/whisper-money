@@ -31,8 +31,6 @@ class WidgetDefinitionService
     /**
      * The largest TSX a widget may have, in bytes. The compiler refuses
      * anything over 60,000 characters too; this stops it before Bun starts.
-     *
-     * @api quoted by the MCP widget tools, which arrive in a follow-up
      */
     public const int MaxSourceBytes = 60_000;
 
@@ -46,8 +44,6 @@ class WidgetDefinitionService
      * @param  array<mixed>  $manifest
      *
      * @throws InvalidWidget
-     *
-     * @api called by the MCP widget tools (create_widget), which arrive in a follow-up
      */
     public function create(User $user, array $manifest, string $source, WidgetOrigin $origin): WidgetDefinition
     {
@@ -70,8 +66,6 @@ class WidgetDefinitionService
      * @param  array<mixed>  $manifest
      *
      * @throws InvalidWidget
-     *
-     * @api called by the MCP widget tools (update_widget), which arrive in a follow-up
      */
     public function update(WidgetDefinition $widget, array $manifest, string $source, WidgetOrigin $origin): WidgetDefinition
     {

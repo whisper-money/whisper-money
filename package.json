@@ -6,8 +6,8 @@
     "type": "module",
     "scripts": {
         "postinstall": "node scripts/patch-inquirer-string-width.js",
-        "build": "vite build",
-        "build:ssr": "vite build && vite build --ssr",
+        "build": "vite build && vite build -c vite.widget-preview.config.ts",
+        "build:ssr": "vite build && vite build -c vite.widget-preview.config.ts && vite build --ssr",
         "dev": "vite",
         "dry": "jscpd",
         "format": "prettier --write resources/ videos/",

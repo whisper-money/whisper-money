@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -51,12 +52,18 @@ abstract class McpTool extends Tool
         ], parent::annotations());
     }
 
-    public function handle(Request $request): Response
+    public function handle(Request $request): Response|ResponseFactory
     {
         $user = $request->user();
 
         if (! $user instanceof User) {
             return Response::error('Authentication required.');
+        }
+
+        $refusal = $this->refusal($user);
+
+        if ($refusal instanceof Response) {
+            return $refusal;
         }
 
         // The demo account's credentials are public and its data is shared, so
@@ -78,7 +85,7 @@ abstract class McpTool extends Tool
         // something: an error response (a read-only token, an id the user cannot
         // reach) or a thrown ValidationException is a rejected attempt, not
         // usage. Rescued so a failed insert can never break a working call.
-        if (! $response->isError()) {
+        if (! $this->isError($response)) {
             rescue(fn (): McpToolCall => McpToolCall::create([
                 'user_id' => $user->id,
                 'tool' => $this->name(),
@@ -88,7 +95,28 @@ abstract class McpTool extends Tool
         return $response;
     }
 
-    abstract protected function respond(Request $request, User $user): Response;
+    /**
+     * Why this tool refuses $user before anything else is checked, or null.
+     * A tool family with its own gate overrides it (see
+     * Concerns\GuardsCustomDashboards) so its message comes first.
+     */
+    protected function refusal(User $user): ?Response
+    {
+        return null;
+    }
+
+    /**
+     * The answer, or a ResponseFactory when it carries `_meta` for an MCP App
+     * (the widget preview) besides what the agent reads.
+     */
+    abstract protected function respond(Request $request, User $user): Response|ResponseFactory;
+
+    private function isError(Response|ResponseFactory $response): bool
+    {
+        $responses = $response instanceof ResponseFactory ? $response->responses() : collect([$response]);
+
+        return $responses->contains(fn (Response $item): bool => $item->isError());
+    }
 
     /**
      * Encode structured data as a JSON text response the agent can parse.

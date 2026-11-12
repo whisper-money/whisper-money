@@ -24,6 +24,9 @@ $readOnly = [
     'list_automation_rules',
     'list_spaces',
     'list_achievements',
+    'list_dashboards',
+    'get_widget_sdk',
+    'get_widget',
 ];
 
 $destructive = [
@@ -49,6 +52,10 @@ $destructive = [
     // Splitting rewrites an existing transaction into parts. Merging can undo
     // it, but that does not make the split additive.
     'split_transaction',
+    // A new revision replaces what the widget draws everywhere it is placed.
+    'update_widget',
+    // Takes a widget off a dashboard, its size and position with it.
+    'remove_widget',
 ];
 
 /**
@@ -72,7 +79,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 25);
+    expect($tools)->toHaveCount(count($readOnly) + 30);
 
     foreach ($tools as $class) {
         $tool = new $class;
