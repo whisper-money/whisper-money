@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\Dashboard;
+use App\Models\DashboardWidget;
 use App\Models\User;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
@@ -31,6 +33,22 @@ class DashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
+            // The user's own dashboards, for the picker. Deferred with the page's
+            // data: the first paint only needs the dashboard on screen, and the
+            // list rides the follow-up request the page already makes.
+            'dashboards' => Inertia::defer(fn (): array => $request->user()->dashboards()
+                ->orderBy('position')
+                ->orderBy('created_at')
+                ->get(['id', 'name', 'position'])
+                ->toArray(), 'dashboard'),
+            // The dashboard on screen, with its widgets. Null is the system
+            // dashboard, which the page still draws until the picker ships.
+            'defaultDashboardId' => fn (): ?string => $request->user()->default_dashboard_id,
+            'selectedDashboard' => function () use ($request): ?array {
+                $dashboard = $this->selectedDashboard($request);
+
+                return $dashboard === null ? null : $this->presentDashboard($dashboard);
+            },
             // The window the top categories and top labels cards report on, so
             // their links and drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
@@ -43,6 +61,54 @@ class DashboardController extends Controller
             'monthlySavingsGoals' => Inertia::defer(fn () => $this->currentMonthSavings->runningGoals($request->user()), 'dashboard'),
             'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->currentMonthSavings->lastMonth($request->user()), 'dashboard'),
         ]);
+    }
+
+    /**
+     * The dashboard asked for in `?dashboard=`, else the user's default. Null
+     * is the system dashboard. A link to a dashboard that was deleted, or that
+     * is not the user's, falls back to the default rather than a 404: an old
+     * bookmark should still open the app. Without the paid plan the default
+     * is the system dashboard again, whatever the user picked.
+     */
+    private function selectedDashboard(Request $request): ?Dashboard
+    {
+        $user = $request->user();
+        $requested = $request->query('dashboard');
+
+        if (is_string($requested) && $requested !== '') {
+            $dashboard = $user->dashboards()->find($requested);
+
+            if ($dashboard !== null) {
+                return $dashboard;
+            }
+        }
+
+        return $user->hasProPlan() ? $user->defaultDashboard : null;
+    }
+
+    /**
+     * @return array{id: string, name: string, widgets: list<array{id: string, system_widget: string|null, widget_definition_id: string|null, position: int, width: string, height: string, config: array<string, mixed>|null}>}
+     */
+    private function presentDashboard(Dashboard $dashboard): array
+    {
+        return [
+            'id' => $dashboard->id,
+            'name' => $dashboard->name,
+            'widgets' => $dashboard->widgets()
+                ->orderBy('position')
+                ->get()
+                ->map(fn (DashboardWidget $widget): array => [
+                    'id' => $widget->id,
+                    'system_widget' => $widget->system_widget?->value,
+                    'widget_definition_id' => $widget->widget_definition_id,
+                    'position' => $widget->position,
+                    'width' => $widget->width->value,
+                    'height' => $widget->height->value,
+                    'config' => $widget->config,
+                ])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**
