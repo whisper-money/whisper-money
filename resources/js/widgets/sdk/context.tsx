@@ -3,6 +3,8 @@ import {
     type WidgetWidth,
 } from '@/components/dashboard/widgets/types';
 import { type AccountType } from '@/types/account';
+import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { createContext, type ReactNode, useContext } from 'react';
 
 /** What `useWidgetEnv()` tells a widget about where it is drawn. */
@@ -32,6 +34,10 @@ export interface WidgetSdkValue {
     data: Readonly<Record<string, unknown>>;
     env: WidgetEnv;
     accounts: Readonly<Record<string, WidgetAccount>>;
+    /** The user's categories, for the icon and color `<TransactionList>` draws. */
+    categories: readonly Category[];
+    /** The user's labels, for the names `<TransactionList>` draws. */
+    labels: readonly Label[];
 }
 
 const DEFAULT_VALUE: WidgetSdkValue = {
@@ -46,6 +52,8 @@ const DEFAULT_VALUE: WidgetSdkValue = {
         locale: 'en-US',
     },
     accounts: {},
+    categories: [],
+    labels: [],
 };
 
 const WidgetSdkContext = createContext<WidgetSdkValue>(DEFAULT_VALUE);

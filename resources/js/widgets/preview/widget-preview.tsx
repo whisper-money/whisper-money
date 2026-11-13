@@ -3,7 +3,9 @@ import {
     type WidgetWidth,
 } from '@/components/dashboard/widgets/types';
 import { cn } from '@/lib/utils';
+import { type Category } from '@/types/category';
 import { type WidgetFrame } from '@/types/dashboard';
+import { type Label } from '@/types/label';
 import { type ComponentType, useEffect, useRef, useState } from 'react';
 import {
     isWidgetCarded,
@@ -38,6 +40,9 @@ export interface WidgetPreviewPayload {
     /** The user's chart palette, as the app sets it on `data-chart-color`. */
     chart_color_scheme: string;
     accounts: Record<string, WidgetAccount>;
+    categories: Category[];
+    /** Only their id, name and color. */
+    labels: Label[];
 }
 
 type LoadState =
@@ -231,6 +236,8 @@ export function WidgetPreview({
                     value={{
                         data: payload.data,
                         accounts: payload.accounts,
+                        categories: payload.categories ?? [],
+                        labels: payload.labels ?? [],
                         env: {
                             theme,
                             width: payload.size.width,

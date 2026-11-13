@@ -34,6 +34,7 @@ export {
     TableHeader,
     TableRow,
 } from './primitives';
+export { TransactionList } from './transaction-list';
 
 /** Joins class names; the validator reads its literal arguments. */
 export function cn(...classes: unknown[]): string {

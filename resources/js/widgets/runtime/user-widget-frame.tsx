@@ -7,6 +7,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
+import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import {
@@ -180,13 +182,20 @@ function Settled({ onSettled }: { onSettled?: () => void }) {
     return null;
 }
 
+const NONE: readonly never[] = [];
+
 /** Everything the SDK hands one widget, read from the page it is on. */
 function useWidgetSdkValue(
     data: Readonly<Record<string, unknown>>,
     size: WidgetSize,
 ): WidgetSdkValue {
-    const { auth, accounts } = usePage<SharedData & { accounts?: Account[] }>()
-        .props;
+    const { auth, accounts, categories, labels } = usePage<
+        SharedData & {
+            accounts?: Account[];
+            categories?: Category[];
+            labels?: Label[];
+        }
+    >().props;
     const scheme = useDocumentColorScheme();
     const isMobile = useIsMobile();
     const { isPrivacyModeEnabled } = usePrivacyMode();
@@ -199,6 +208,8 @@ function useWidgetSdkValue(
         () => ({
             data,
             accounts: widgetAccounts,
+            categories: categories ?? NONE,
+            labels: labels ?? NONE,
             env: {
                 theme: scheme ?? 'light',
                 width: size.width,
@@ -212,6 +223,8 @@ function useWidgetSdkValue(
         [
             data,
             widgetAccounts,
+            categories,
+            labels,
             scheme,
             size.width,
             size.height,

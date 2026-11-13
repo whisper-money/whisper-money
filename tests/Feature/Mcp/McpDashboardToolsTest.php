@@ -14,10 +14,13 @@ use App\Mcp\Tools\PlaceWidget;
 use App\Mcp\Tools\RemoveWidget;
 use App\Mcp\Tools\UpdateWidget;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
+use App\Models\Label;
 use App\Models\User;
 use App\Models\WidgetDefinition;
+use App\Services\Widgets\WidgetCompiler;
 use App\Services\Widgets\WidgetDefinitionService;
 use Laravel\Mcp\Server\Testing\TestResponse;
 
@@ -161,12 +164,28 @@ describe('widget reference', function () {
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /analytics/aggregate')['params'])->toHaveKeys(['group_by', 'from', 'to', 'category_ids'])
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /transactions')['listable'])->toBeTrue();
     });
+
+    it('documents <TransactionList>: every prop it takes, and an example that compiles', function () {
+        $json = dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk());
+        $docs = $json['component_docs']['TransactionList'];
+        $props = array_values(array_diff(array_keys($json['modules']['@whisper-money/widget-sdk']['components']['TransactionList']), ['key']));
+
+        expect(implode("\n", $json['rules']))->toContain('<TransactionList', 'not a hand-made Table')
+            ->and(array_keys($docs['props']))->toEqualCanonicalizing($props)
+            ->and($docs['example']['manifest']['data']['tx']['endpoint'])->toBe('GET /transactions');
+
+        $compilation = app(WidgetCompiler::class)->compile($docs['example']['source']);
+
+        expect($compilation->ok)->toBeTrue(json_encode($compilation->errors) ?: '');
+    });
 });
 
 describe('widgets', function () {
     it('creates a widget from a manifest and TSX and hands its preview to the MCP App', function () {
         $user = User::factory()->create(['currency_code' => 'EUR']);
         Account::factory()->create(['user_id' => $user->id]);
+        $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Moto', 'icon' => 'Car', 'color' => 'red']);
+        $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Panigale', 'color' => 'blue']);
 
         $response = callDashboardTool($user, CreateWidget::class, ['manifest' => mcpWidgetManifest(), 'source' => mcpWidgetSource()])->assertOk();
         $json = dashboardToolJson($response);
@@ -178,7 +197,9 @@ describe('widgets', function () {
             ->and($json['widget'])->not->toHaveKey('compiled_js')
             ->and($json['data_failures'])->toBe([])
             ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'frame' => 'card', 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR', 'chart_color_scheme' => 'colorful'])
-            ->and($preview['data']['accounts']['data'])->toHaveCount(1);
+            ->and($preview['data']['accounts']['data'])->toHaveCount(1)
+            ->and($preview['categories'])->toContain(['id' => $category->id, 'name' => 'Moto', 'icon' => 'Car', 'color' => 'red', 'type' => $category->type->value, 'cashflow_direction' => $category->cashflow_direction->value, 'parent_id' => null])
+            ->and($preview['labels'])->toBe([['id' => $label->id, 'name' => 'Panigale', 'color' => 'blue']]);
     });
 
     it('hands the frame the manifest asks for to the preview', function () {

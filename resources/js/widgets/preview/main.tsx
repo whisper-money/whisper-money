@@ -13,6 +13,7 @@ import { createRoot } from 'react-dom/client';
 import '../../../css/app.css';
 import '../../../css/widgets.css';
 import { type WidgetRuntimeError } from '../runtime/widget-error-boundary';
+import { setPreviewPage } from './inertia-page';
 import { WidgetPreview, type WidgetPreviewPayload } from './widget-preview';
 
 const META_KEY = 'whisper-money/widget-preview';
@@ -103,6 +104,7 @@ void window.createMcpApp?.((app) => {
         const payload = result._meta?.[META_KEY];
 
         if (payload && typeof payload === 'object') {
+            setPreviewPage(payload as WidgetPreviewPayload);
             host.update({ payload: payload as WidgetPreviewPayload });
         }
     });

@@ -6,8 +6,10 @@ use App\Enums\SystemWidget;
 use App\Enums\WidgetOrigin;
 use App\Features\CustomDashboards;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WidgetDefinition;
@@ -535,3 +537,112 @@ it('sizes an auto widget to its content on a phone', function () {
 
     $page->assertNoJavascriptErrors();
 });
+
+/**
+ * The Panigale widget the SDK reference's example is written after: the rows
+ * of one label through <TransactionList>, descriptions rewritten and the big
+ * ones tagged, with a CSV button in its heading.
+ *
+ * @return array{0: User, 1: WidgetDefinition}
+ */
+function dashboardWithTransactionListWidget(): array
+{
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    Feature::for($user)->activate(CustomDashboards::class);
+
+    $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Nómina', 'currency_code' => 'EUR']);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Moto', 'icon' => 'Car', 'color' => 'red']);
+    $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Panigale']);
+
+    foreach ([
+        ['2026-10-03', 'Pago en Ducati Store', -64900],
+        ['2026-10-03', 'Pago en Repsol', -3200],
+        ['2026-10-11', 'Pago en Motoclub', -2500],
+    ] as [$date, $description, $amount]) {
+        Transaction::factory()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'category_id' => $category->id,
+            'transaction_date' => $date,
+            'description' => $description,
+            'amount' => $amount,
+            'currency_code' => 'EUR',
+        ])->labels()->attach($label);
+    }
+
+    // Not the label's: the widget never lists it.
+    Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'description' => 'Mercadona', 'transaction_date' => '2026-10-04']);
+
+    $dashboard = Dashboard::factory()->for($user)->create(['name' => 'Moto']);
+    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+
+    $service = app(WidgetDefinitionService::class);
+    $widget = $service->create($user, [
+        'name' => 'Panigale · Movimientos',
+        'size' => ['width' => '1/2', 'height' => 'l'],
+        'data' => ['tx' => ['endpoint' => 'GET /transactions', 'params' => ['label_ids' => [$label->id]], 'paginate' => 'all']],
+    ], str_replace('<label id>', $label->id, <<<'TSX'
+        import { Button, TransactionList, useWidgetData, useWidgetEnv, wm } from '@whisper-money/widget-sdk';
+        import { Download } from 'lucide-react';
+
+        export default function Panigale() {
+            const { tx } = useWidgetData();
+            const { isCompact } = useWidgetEnv();
+
+            return (
+                <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between gap-2 px-4 py-3">
+                        <h3 className="text-sm font-medium">Movimientos de la Panigale</h3>
+                        <Button variant="outline" size="sm" onClick={() => wm.download('panigale', tx.data)}>
+                            <Download size={14} />
+                            CSV
+                        </Button>
+                    </div>
+                    <TransactionList
+                        transactions={tx}
+                        description={(row) => row.description.replace('Pago en ', '')}
+                        badge={(row) => (row.amount <= -50000 ? 'Compra' : null)}
+                        hide={isCompact ? ['notes'] : []}
+                        hiddenLabelId="<label id>"
+                    />
+                </div>
+            );
+        }
+        TSX), WidgetOrigin::Mcp);
+    $service->place($dashboard, $widget);
+
+    return [$user, $widget];
+}
+
+it('lists transactions in a user widget the way the app does', function (bool $dark) {
+    [$user, $widget] = dashboardWithTransactionListWidget();
+    actingAs($user);
+
+    $page = visit('/dashboard');
+
+    if ($dark) {
+        $page = $page->inDarkMode();
+    }
+
+    $cell = userWidgetCell($widget);
+
+    $page->assertSee('Movimientos de la Panigale')
+        ->assertCount("{$cell} [data-testid=\"transaction-list-row\"]", 3)
+        ->assertCount("{$cell} [data-testid=\"transaction-day-header\"]", 2)
+        ->assertCount("{$cell} [data-testid=\"transaction-list-row-badge\"]", 1)
+        ->assertMissing("{$cell} [role=\"alert\"]")
+        ->assertNoJavascriptErrors();
+
+    $rows = $page->script(<<<JS
+        [...document.querySelectorAll('{$cell} [data-testid="transaction-list-row"]')].map((row) => row.textContent)
+    JS);
+
+    // Newest day first; each row with its category and account, the
+    // description rewritten, and without the label every row carries.
+    expect($rows)->toHaveCount(3)
+        ->and($rows[0])->toContain('Motoclub', 'Moto', 'Nómina')
+        ->and($rows[2])->toContain('Ducati Store', 'Compra')
+        ->and(implode("\n", $rows))->not->toContain('Pago en')
+        ->and(implode("\n", $rows))->not->toContain('Panigale')
+        ->and(implode("\n", $rows))->not->toContain('Mercadona');
+})->with(['light' => false, 'dark' => true]);

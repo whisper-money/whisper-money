@@ -82,6 +82,8 @@ const sdkValue: WidgetSdkValue = {
         locale: 'es-ES',
     },
     accounts: {},
+    categories: [],
+    labels: [],
 };
 
 function renderWithSdk(children: ReactNode) {

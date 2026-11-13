@@ -81,6 +81,38 @@ export function usePrivacyMode() {
     return context;
 }
 
+const ignoreToggle = () => undefined;
+
+/**
+ * Masks the amounts below it exactly as `enabled` says, with no setting of
+ * its own to flip: for app components a user widget draws, whose privacy
+ * mode comes from its host (the dashboard, or the chat preview, which has no
+ * PrivacyModeProvider).
+ */
+export function FixedPrivacyMode({
+    enabled,
+    children,
+}: {
+    enabled: boolean;
+    children: ReactNode;
+}) {
+    const value = useMemo(
+        () => ({
+            isPrivacyModeEnabled: enabled,
+            isGlobalPrivacyModeEnabled: enabled,
+            togglePrivacyMode: ignoreToggle,
+            setPrivacyMode: ignoreToggle,
+        }),
+        [enabled],
+    );
+
+    return (
+        <PrivacyModeContext.Provider value={value}>
+            {children}
+        </PrivacyModeContext.Provider>
+    );
+}
+
 interface PrivacyRevealContextType {
     isRevealed: boolean;
     toggleReveal: () => void;
