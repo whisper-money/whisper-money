@@ -61,6 +61,14 @@ class WidgetDefinitionFactory extends Factory
         ]);
     }
 
+    /** Resizable between the medium height and the height of its content. */
+    public function autoHeight(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'manifest' => [...$attributes['manifest'], 'size' => [...$attributes['manifest']['size'], 'allowed_heights' => ['m', 'a']]],
+        ]);
+    }
+
     /** Its first revision, matching what the factory stored. */
     public function configure(): static
     {

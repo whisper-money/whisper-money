@@ -3,6 +3,7 @@
 namespace App\Services\Widgets\Gateway;
 
 use App\Enums\WidgetFrame;
+use App\Enums\WidgetHeight;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -21,8 +22,6 @@ use Illuminate\Validation\Validator as ValidatorInstance;
 class ManifestValidator
 {
     private const array Widths = ['1/3', '1/2', '1/1'];
-
-    private const array Heights = ['m', 'l'];
 
     /**
      * The most data calls one widget may declare.
@@ -47,15 +46,17 @@ class ManifestValidator
      */
     public function validate(array $manifest): array
     {
+        $heights = WidgetHeight::values();
+
         $validator = Validator::make($manifest, [
             'name' => ['required', 'string', 'max:80'],
             'size' => ['required', 'array:width,height,allowed_widths,allowed_heights'],
             'size.width' => ['required', Rule::in(self::Widths)],
-            'size.height' => ['required', Rule::in(self::Heights)],
+            'size.height' => ['required', Rule::in($heights)],
             'size.allowed_widths' => ['sometimes', 'list', 'min:1'],
             'size.allowed_widths.*' => ['distinct', Rule::in(self::Widths)],
             'size.allowed_heights' => ['sometimes', 'list', 'min:1'],
-            'size.allowed_heights.*' => ['distinct', Rule::in(self::Heights)],
+            'size.allowed_heights.*' => ['distinct', Rule::in($heights)],
             'frame' => ['sometimes', Rule::enum(WidgetFrame::class)],
             'data' => ['required', 'array', 'min:1', 'max:'.self::MaxCalls],
             'data.*' => ['array:endpoint,params,paginate'],
@@ -65,9 +66,9 @@ class ManifestValidator
         ], [
             'size.array' => 'The size takes only width, height, allowed_widths and allowed_heights.',
             'size.width.in' => 'The size.width must be one of: '.implode(', ', self::Widths).'.',
-            'size.height.in' => 'The size.height must be one of: '.implode(', ', self::Heights).'.',
+            'size.height.in' => 'The size.height must be one of: '.implode(', ', $heights).'.',
             'size.allowed_widths.*.in' => 'Every allowed width must be one of: '.implode(', ', self::Widths).'.',
-            'size.allowed_heights.*.in' => 'Every allowed height must be one of: '.implode(', ', self::Heights).'.',
+            'size.allowed_heights.*.in' => 'Every allowed height must be one of: '.implode(', ', $heights).'.',
             'frame.enum' => 'The frame must be "card" (the default) or "none".',
             'data.max' => 'A widget can declare at most :max data calls.',
             'data.*.array' => 'Each data call takes only endpoint, params and paginate.',

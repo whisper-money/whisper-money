@@ -29,7 +29,7 @@ class PlaceWidget extends WriteTool
             'dashboard_id' => $schema->string()->description('Id of the dashboard, from list_dashboards or create_dashboard.')->required(),
             'widget_id' => $schema->string()->description('Id of the widget, from list_dashboards or create_widget.')->required(),
             'width' => $schema->string()->enum(array_column(WidgetWidth::cases(), 'value'))->description('Fraction of the row. Pass it with height, or neither for the default size.'),
-            'height' => $schema->string()->enum(array_column(WidgetHeight::cases(), 'value'))->description('m, or l (twice as tall). Pass it with width.'),
+            'height' => $schema->string()->enum(WidgetHeight::values())->description('m (fixed 16rem), l (fixed, two m rows) or a (the height of its content). Only a height the widget admits. Pass it with width.'),
         ];
     }
 

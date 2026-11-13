@@ -78,7 +78,7 @@ it('gives each system widget the sizes the TypeScript registry gives it', functi
     }
 });
 
-it('offers the same six sizes as the TypeScript types', function () {
+it('offers the same sizes as the TypeScript types', function () {
     $types = systemWidgetSource('types.ts');
 
     preg_match('/type WidgetWidth = ([^;]+);/', $types, $widths);

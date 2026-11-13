@@ -4,8 +4,11 @@ import { type ComponentType } from 'react';
 /** Fraction of the dashboard row a widget spans. */
 export type WidgetWidth = '1/3' | '1/2' | '1/1';
 
-/** Widget height: `l` is exactly twice `m`. */
-export type WidgetHeight = 'm' | 'l';
+/**
+ * Widget height: `m` and `l` are fixed (`l` is two `m` rows and the gap
+ * between them), `a` takes the height of its content. See grid-layout.ts.
+ */
+export type WidgetHeight = 'm' | 'l' | 'a';
 
 export interface WidgetSize {
     width: WidgetWidth;
@@ -14,7 +17,13 @@ export interface WidgetSize {
 
 export const WIDGET_WIDTHS: readonly WidgetWidth[] = ['1/3', '1/2', '1/1'];
 
-export const WIDGET_HEIGHTS: readonly WidgetHeight[] = ['m', 'l'];
+export const WIDGET_HEIGHTS: readonly WidgetHeight[] = ['m', 'l', 'a'];
+
+/**
+ * The heights that fill a cell instead of following the content: every system
+ * widget fills its cell, so these are the only ones they admit.
+ */
+export const FIXED_WIDGET_HEIGHTS: readonly WidgetHeight[] = ['m', 'l'];
 
 export interface SystemWidgetProps {
     /** The dashboard page props the widget reads its data from. */

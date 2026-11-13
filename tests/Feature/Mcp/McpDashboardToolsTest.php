@@ -151,12 +151,13 @@ describe('widget reference', function () {
             ->and($json['classes']['base'])->toContain('flex')
             ->and($json['classes']['container_variants']['variants'])->toContain('@sm:', '@3xl:')
             ->and($json['manifest']['widths'])->toBe(['1/3', '1/2', '1/1'])
-            ->and($json['manifest']['heights'])->toBe(['m', 'l'])
+            ->and($json['manifest']['heights'])->toBe(['m', 'l', 'a'])
             ->and($json['manifest']['variables'])->toBe(['{{range.from}}', '{{range.to}}'])
             ->and($json['manifest']['frames'])->toBe(['card', 'none'])
             ->and($json['manifest']['shape'])->toContain('frame?')
             ->and($json['manifest']['example_frameless']['frame'])->toBe('none')
-            ->and(implode("\n", $json['rules']))->toContain('frame: "none"', 'never nest cards', 'On a phone it grows with the widget')
+            ->and($json['manifest']['example_frameless']['size']['height'])->toBe('a')
+            ->and(implode("\n", $json['rules']))->toContain('frame: "none"', 'never nest cards', 'on a phone it grows with the widget', 'a (auto) is for content with a height of its own', 'never a')
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /analytics/aggregate')['params'])->toHaveKeys(['group_by', 'from', 'to', 'category_ids'])
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /transactions')['listable'])->toBeTrue();
     });
@@ -276,6 +277,22 @@ describe('widgets', function () {
             ->toHaveCount(2)
             ->each(fn ($placement) => $placement->height->toBe(WidgetHeight::Medium))
             ->and($dashboard->widgets()->pluck('width')->map->value->all())->toBe([WidgetWidth::Half->value, WidgetWidth::Full->value]);
+    });
+
+    it('places a widget at the auto height only when its manifest allows it', function () {
+        $user = User::factory()->create();
+        $dashboard = Dashboard::factory()->for($user)->create();
+        $fixed = savedMcpWidget($user);
+        $auto = savedMcpWidget($user, ['name' => 'KPIs', 'size' => ['width' => '1/1', 'height' => 'm', 'allowed_heights' => ['m', 'a']]]);
+
+        callDashboardTool($user, PlaceWidget::class, ['dashboard_id' => $dashboard->id, 'widget_id' => $fixed->id, 'width' => '1/2', 'height' => 'a'])
+            ->assertHasErrors()
+            ->assertSee('does not admit the size 1/2 × a');
+
+        $placed = dashboardToolJson(callDashboardTool($user, PlaceWidget::class, ['dashboard_id' => $dashboard->id, 'widget_id' => $auto->id, 'width' => '1/1', 'height' => 'a'])->assertOk());
+
+        expect($placed)->toMatchArray(['placed' => true, 'width' => '1/1', 'height' => 'a'])
+            ->and($dashboard->widgets()->sole()->height)->toBe(WidgetHeight::Auto);
     });
 
     it('takes a widget off a dashboard and keeps the widget', function () {

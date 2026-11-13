@@ -22,8 +22,8 @@ import { systemWidgetLabel } from './labels';
 import { WidgetSizeMenu } from './widget-size-menu';
 
 /**
- * One system widget, filling its cell. On a wide grid the cell has a fixed
- * height and the widget scrolls inside it when it has more to show; on a
+ * One system widget, filling its cell. On a wide grid the cell is as tall as
+ * its row and the widget scrolls inside it when it has more to show; on a
  * phone-sized one the cell grows with it. A widget with nothing to show leaves
  * the element empty, which `empty:` variants pick up.
  */

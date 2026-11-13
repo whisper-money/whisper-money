@@ -2,6 +2,7 @@
 
 use App\Enums\ApiCredential;
 use App\Enums\SystemWidget;
+use App\Enums\WidgetHeight;
 use App\Features\CustomDashboards;
 use App\Models\Account;
 use App\Models\ApiRequest;
@@ -231,6 +232,24 @@ describe('placing and reverting from the web', function () {
         expect($dashboard->widgets()->sole())
             ->widget_definition_id->toBe($widget->id)
             ->width->value->toBe('1/1');
+    });
+
+    it('resizes a user widget to the auto height only when its manifest admits it', function () {
+        $user = widgetOwner();
+        $dashboard = Dashboard::factory()->for($user)->create();
+        $fixed = DashboardWidget::factory()->for($dashboard)->create(['system_widget' => null, 'widget_definition_id' => transactionsWidget($user)->id, 'width' => '1/2', 'height' => 'm']);
+        $auto = DashboardWidget::factory()->for($dashboard)->create(['system_widget' => null, 'widget_definition_id' => WidgetDefinition::factory()->for($user)->autoHeight()->create()->id, 'width' => '1/2', 'height' => 'm']);
+
+        $this->actingAs($user)
+            ->patch(route('dashboards.widgets.update', [$dashboard, $fixed]), ['width' => '1/2', 'height' => 'a'])
+            ->assertSessionHasErrors('width');
+
+        $this->actingAs($user)
+            ->patch(route('dashboards.widgets.update', [$dashboard, $auto]), ['width' => '1/2', 'height' => 'a'])
+            ->assertSessionHasNoErrors();
+
+        expect($fixed->fresh()->height)->toBe(WidgetHeight::Medium)
+            ->and($auto->fresh()->height)->toBe(WidgetHeight::Auto);
     });
 
     it('refuses a size the manifest does not admit, when placing and when resizing', function () {

@@ -1,5 +1,9 @@
 import { SYSTEM_WIDGET_IDS } from '@/components/dashboard/widgets/registry';
 import {
+    WIDGET_HEIGHTS,
+    type WidgetSize,
+} from '@/components/dashboard/widgets/types';
+import {
     type DashboardWidgetData,
     type UserWidgetDefinition,
 } from '@/types/dashboard';
@@ -44,64 +48,68 @@ function definition(
 }
 
 describe('widgetSizeClassName', () => {
-    it.each([
-        ['1/3', 'm', '@4xl:col-span-4', '@2xl:row-span-1'],
-        ['1/2', 'm', '@2xl:col-span-6', '@2xl:row-span-1'],
-        ['1/1', 'l', 'col-span-12', '@2xl:row-span-2'],
-    ] as const)(
-        'spans %s of the 12 columns and %s rows from @2xl',
-        (width, height, column, row) => {
-            const classes = widgetSizeClassName({ width, height }).split(' ');
+    function classesOf(size: WidgetSize): string[] {
+        return widgetSizeClassName(size).split(' ');
+    }
 
-            expect(classes).toContain(column);
-            expect(classes).toContain(row);
-        },
-    );
+    it.each([
+        ['1/3', '@4xl:col-span-4'],
+        ['1/2', '@2xl:col-span-6'],
+        ['1/1', 'col-span-12'],
+    ] as const)('spans %s of the 12 columns', (width, column) => {
+        expect(classesOf({ width, height: 'm' })).toContain(column);
+    });
 
     it('takes the full width on a phone whatever the width', () => {
         for (const width of ['1/3', '1/2', '1/1'] as const) {
-            const classes = widgetSizeClassName({ width, height: 'm' }).split(
-                ' ',
-            );
-
-            expect(classes[0]).toBe('col-span-12');
+            expect(classesOf({ width, height: 'm' })[0]).toBe('col-span-12');
         }
     });
 
-    it.each(['m', 'l'] as const)(
-        'keeps %s to fixed rows from @2xl only, its content contained',
-        (height) => {
-            const classes = widgetSizeClassName({ width: '1/2', height }).split(
-                ' ',
-            );
-
-            expect(classes).toContain('@2xl:contain-size');
-            expect(classes).not.toContain('contain-size');
-            expect(classes).not.toContain('row-span-1');
-            expect(classes).not.toContain('row-span-2');
-        },
-    );
-
-    it('keeps a large widget two rows tall on a phone, where it grows', () => {
-        const classes = widgetSizeClassName({
-            width: '1/1',
-            height: 'l',
-        }).split(' ');
-
-        expect(classes).toContain('min-h-[33.5rem]');
-        expect(classes).toContain('@2xl:min-h-0');
-    });
-
-    it('lets rows grow from 16rem, never shorter', () => {
-        expect(DASHBOARD_GRID_CLASS_NAME.split(' ')).toContain(
-            'auto-rows-[minmax(16rem,auto)]',
+    it('turns a third into a half on a tablet', () => {
+        expect(classesOf({ width: '1/3', height: 'm' })).toContain(
+            '@2xl:col-span-6',
         );
     });
 
-    it('turns a third into a half on a tablet', () => {
-        expect(
-            widgetSizeClassName({ width: '1/3', height: 'm' }).split(' '),
-        ).toContain('@2xl:col-span-6');
+    it.each(WIDGET_HEIGHTS)(
+        'never spans rows at %s, so a row is shared at one height',
+        (height) => {
+            expect(
+                classesOf({ width: '1/2', height }).filter((name) =>
+                    name.includes('row-span'),
+                ),
+            ).toEqual([]);
+        },
+    );
+
+    it.each([
+        ['m', 'min-h-64'],
+        ['l', 'min-h-[33.5rem]'],
+    ] as const)(
+        'keeps %s at least %s on every grid, its content contained from @2xl only',
+        (height, minimum) => {
+            const classes = classesOf({ width: '1/2', height });
+
+            expect(classes).toContain(minimum);
+            expect(classes).toContain('@2xl:contain-size');
+            expect(classes).not.toContain('contain-size');
+        },
+    );
+
+    it('sizes an auto widget to its content on every grid, uncontained', () => {
+        // Only a loading skeleton, which has no height of its own, gets room.
+        expect(classesOf({ width: '1/1', height: 'a' })).toEqual([
+            'col-span-12',
+            'has-[[aria-busy=true]]:min-h-40',
+        ]);
+    });
+
+    it('lets every row take the height of its content', () => {
+        const classes = DASHBOARD_GRID_CLASS_NAME.split(' ');
+
+        expect(classes).toContain('auto-rows-auto');
+        expect(classes.filter((name) => name.includes('16rem'))).toEqual([]);
     });
 });
 

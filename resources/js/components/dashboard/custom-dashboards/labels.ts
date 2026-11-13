@@ -40,7 +40,14 @@ export function widgetWidthLabel(width: WidgetWidth): string {
 }
 
 export function widgetHeightLabel(height: WidgetHeight): string {
-    return height === 'm' ? __('Medium') : __('Large');
+    switch (height) {
+        case 'm':
+            return __('Medium');
+        case 'l':
+            return __('Large');
+        case 'a':
+            return __('Fit to content');
+    }
 }
 
 /** Who saved a version of a user widget. */
