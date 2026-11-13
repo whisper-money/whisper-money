@@ -65,6 +65,7 @@ function renderCell(overrides: Partial<UserWidgetCellProps> = {}) {
             caughtError={undefined}
             onError={vi.fn()}
             canRevert
+            isEditing={false}
             {...overrides}
         />,
     );
@@ -150,6 +151,41 @@ describe('<UserWidgetCell>', () => {
             screen.getByRole('button', { name: 'Remove from dashboard' }),
         );
         expect(onRemove).toHaveBeenCalled();
+    });
+
+    describe('menu', () => {
+        const ERROR = {
+            revision: 2,
+            phase: 'render' as const,
+            message: 'boom',
+            stack: null,
+            componentStack: null,
+            caughtAt: '2026-11-11T10:00:00Z',
+        };
+
+        it('is not there while the dashboard is only viewed', () => {
+            renderCell();
+
+            expect(screen.getByTestId('user-widget')).toBeTruthy();
+            expect(screen.queryByLabelText(/Options for/)).toBeNull();
+        });
+
+        it('is always there while the dashboard is edited', () => {
+            renderCell({ isEditing: true });
+
+            expect(
+                screen.getByLabelText('Options for Groceries by month')
+                    .className,
+            ).not.toContain('opacity-0');
+        });
+
+        it('stays reachable outside edit mode when the widget has an error', () => {
+            renderCell({ caughtError: ERROR });
+
+            expect(
+                screen.getByLabelText('Options for Groceries by month'),
+            ).toBeTruthy();
+        });
     });
 
     it('flags the menu when the current version raised an error', () => {

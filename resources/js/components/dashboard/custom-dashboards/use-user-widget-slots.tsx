@@ -21,11 +21,13 @@ export function useUserWidgetSlots({
     placed,
     data,
     canEdit,
+    isEditing,
 }: {
     dashboard: SelectedDashboard;
     placed: PlacedWidget[];
     data: DashboardProps;
     canEdit: boolean;
+    isEditing: boolean;
 }): { gate: UserWidgetsGate; slots: UserWidgetSlots } {
     const placementIds = useMemo(
         () => placed.flatMap((item) => (item.kind === 'user' ? [item.id] : [])),
@@ -66,6 +68,7 @@ export function useUserWidgetSlots({
                 caughtError={errors[item.definitionId]}
                 onError={report}
                 canRevert={canEdit}
+                isEditing={isEditing}
                 onRemove={
                     canEdit
                         ? () =>

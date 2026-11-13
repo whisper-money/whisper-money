@@ -187,6 +187,7 @@ function UserDashboard({
         placed: widgets,
         data,
         canEdit,
+        isEditing,
     });
 
     if (widgets.length === 0) {
