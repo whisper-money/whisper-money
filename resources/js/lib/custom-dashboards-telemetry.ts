@@ -15,7 +15,10 @@ interface CallAnswer {
 }
 
 /** What made the "Standard plan only" notice show. */
-export type UpgradePromptTrigger = 'new_dashboard' | 'locked_dashboard';
+export type UpgradePromptTrigger =
+    | 'new_dashboard'
+    | 'locked_dashboard'
+    | 'ai_dashboard_guide';
 
 export function trackDashboardCreated(): void {
     captureEvent('custom_dashboard_created', { source: 'web' });
@@ -75,4 +78,14 @@ export function trackUpgradePrompted(trigger: UpgradePromptTrigger): void {
 
 export function trackUpgradeClicked(trigger: UpgradePromptTrigger): void {
     captureEvent('custom_dashboard_upgrade_clicked', { trigger });
+}
+
+/** The "Create a dashboard with AI" guide opened from the picker. */
+export function trackAiGuideOpened(hasPlan: boolean): void {
+    captureEvent('custom_dashboard_ai_guide_opened', { has_plan: hasPlan });
+}
+
+/** The guide's example prompt copied, to paste into the assistant. */
+export function trackAiGuidePromptCopied(): void {
+    captureEvent('custom_dashboard_ai_guide_prompt_copied');
 }

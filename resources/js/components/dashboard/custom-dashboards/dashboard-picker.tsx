@@ -15,6 +15,7 @@ import {
     LayoutDashboard,
     Plus,
     Settings2,
+    Sparkles,
     Star,
 } from 'lucide-react';
 import { dashboardActions, SYSTEM_DASHBOARD_QUERY } from './dashboard-actions';
@@ -33,6 +34,8 @@ interface Props {
     /** The full list is deferred; managing waits for it. */
     isLoading: boolean;
     onCreate: () => void;
+    /** Opens the guide to asking the AI assistant for a dashboard. */
+    onCreateWithAi: () => void;
     onManage: () => void;
 }
 
@@ -46,6 +49,7 @@ export function DashboardPicker({
     canManage,
     isLoading,
     onCreate,
+    onCreateWithAi,
     onManage,
 }: Props) {
     const entries: { id: string | null; name: string }[] = [
@@ -100,6 +104,18 @@ export function DashboardPicker({
                                 {__('New dashboard')}
                             </span>
                             {!canCreate && <ProBadge />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onSelect={onCreateWithAi}
+                            className="flex-col items-start gap-0.5 bg-muted/60"
+                        >
+                            <span className="flex items-center gap-2">
+                                <Sparkles className="size-4" />
+                                {__('Create a dashboard with AI')}
+                            </span>
+                            <span className="pl-6 text-xs text-muted-foreground">
+                                {__('Ask your assistant')}
+                            </span>
                         </DropdownMenuItem>
                         {/* Nothing to manage without the plan and without dashboards. */}
                         {(canCreate || dashboards.length > 0) && (

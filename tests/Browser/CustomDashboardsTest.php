@@ -228,3 +228,21 @@ it('fits a phone: every widget full width, keeping its height', function () {
 
     $page->assertNoJavascriptErrors();
 });
+
+it('opens the guide to building a dashboard with AI from the picker', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate(CustomDashboards::class);
+
+    actingAs($user);
+
+    visit('/dashboard')
+        ->click('[aria-label="Switch dashboard"]')
+        ->click('Create a dashboard with AI')
+        ->assertVisible('[data-testid="ai-dashboard-guide"]')
+        ->assertSee('Connect your assistant')
+        ->assertSee('Ask for your dashboard')
+        ->assertSee('Open it here')
+        ->assertSee('Open AI Connector')
+        ->assertMissing('[data-testid="ai-dashboard-guide-plan-banner"]')
+        ->assertNoJavascriptErrors();
+});
