@@ -25,15 +25,14 @@ import {
  * The grid is a size container: widths answer to the room the grid has, not
  * to the viewport, which the sidebar shares on a tablet.
  *
- * Rows are at least 16rem and grow with their content. That growth only shows
- * on a phone-sized grid, where each widget has its row to itself: from `@2xl`
- * every cell is size-contained (see HEIGHT_CLASS_NAMES), so its content no
- * longer pushes the row and every row stays 16rem, a large widget lining up
- * with two medium ones stacked. A container query cannot read the grid's own
- * width, which is why the cells, not the grid, switch.
+ * Rows are as tall as their content, and every cell in a row stretches to the
+ * tallest one, so widgets that share a row always share its height. The
+ * minimum each height asks for, and whether its content may push the row,
+ * lives on the cells (see HEIGHT_CLASS_NAMES): a container query cannot read
+ * the grid's own width, so the cells, not the grid, switch.
  */
 export const DASHBOARD_GRID_CLASS_NAME =
-    '@container grid grid-cols-12 grid-flow-dense auto-rows-[minmax(16rem,auto)] gap-6';
+    '@container grid grid-cols-12 grid-flow-dense auto-rows-auto gap-6';
 
 /**
  * Full width on a phone-sized grid; on a tablet-sized one a third is too
@@ -46,14 +45,22 @@ const WIDTH_CLASS_NAMES: Record<WidgetWidth, string> = {
 };
 
 /**
- * On a phone-sized grid a cell is one row that grows with its widget, never
- * shorter than its height on a wider grid (a chart has no height of its own to
- * grow from): `m` is the row's 16rem, `l` two rows and the gap between them.
- * From `@2xl` the cell spans fixed rows and its content scrolls inside it.
+ * `m` is at least 16rem, `l` at least 33.5rem (two `m` rows and the gap):
+ * a chart has no height of its own to grow from. On a phone-sized grid each
+ * widget has its row to itself and grows past that with its content. From
+ * `@2xl` those cells are size-contained, so their content scrolls inside them
+ * instead of pushing a row it shares: the row is then the tallest of its
+ * minimums and of the `a` cells beside them.
+ *
+ * `a` has no containment: it is the height of its content, and on a wide grid
+ * it stretches to the row when a neighbour is taller. Its skeletons fill the
+ * cell and have no height of their own, so while one shows (`aria-busy`) the
+ * cell keeps 10rem instead of collapsing.
  */
 const HEIGHT_CLASS_NAMES: Record<WidgetHeight, string> = {
-    m: '@2xl:row-span-1 @2xl:contain-size',
-    l: 'min-h-[33.5rem] @2xl:min-h-0 @2xl:row-span-2 @2xl:contain-size',
+    m: 'min-h-64 @2xl:contain-size',
+    l: 'min-h-[33.5rem] @2xl:contain-size',
+    a: 'has-[[aria-busy=true]]:min-h-40',
 };
 
 export function widgetSizeClassName(size: WidgetSize): string {

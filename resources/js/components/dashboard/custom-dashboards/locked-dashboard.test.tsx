@@ -46,9 +46,9 @@ describe('LockedDashboard', () => {
             '[data-widget-placeholder]',
         );
         expect(placeholders).toHaveLength(2);
-        expect(placeholders[0].className).toContain('@2xl:row-span-1');
+        expect(placeholders[0].className).toContain('min-h-64');
         expect(placeholders[0].className).toContain('@4xl:col-span-4');
-        expect(placeholders[1].className).toContain('@2xl:row-span-2');
+        expect(placeholders[1].className).toContain('min-h-[33.5rem]');
         expect(placeholders[1].parentElement?.className).toContain('blur');
         expect(placeholders[1].parentElement?.getAttribute('aria-hidden')).toBe(
             'true',

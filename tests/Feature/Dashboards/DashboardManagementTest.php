@@ -163,6 +163,7 @@ describe('widgets', function () {
         'a large cashflow card' => ['cashflow', ['width' => '1/1', 'height' => 'l']],
         'a width outside the six sizes' => ['top-labels', ['width' => '1/4', 'height' => 'm']],
         'a height outside the six sizes' => ['top-labels', ['width' => '1/1', 'height' => 'xl']],
+        'the auto height, which no system widget admits' => ['monthly-savings', ['width' => '1/1', 'height' => 'a']],
     ]);
 
     it('resizes a widget between the sizes it admits', function () {

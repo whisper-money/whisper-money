@@ -46,11 +46,16 @@ type LoadState =
     | { status: 'failed'; message: string };
 
 /**
- * A row of a desktop dashboard (16rem, gap-6): `l` is two rows and the gap.
- * The preview draws that fixed cell; on a phone the dashboard lets the widget
- * grow past it (see grid-layout.ts).
+ * The cell of a desktop dashboard (see grid-layout.ts): `m` is 16rem, `l` two
+ * of those and the gap. The preview draws that fixed cell; on a phone the
+ * dashboard lets the widget grow past it. `a` has no height: the widget's
+ * content gives it one, as on the dashboard.
  */
-const HEIGHTS: Record<WidgetHeight, string> = { m: '16rem', l: '33.5rem' };
+const HEIGHTS: Record<WidgetHeight, string | undefined> = {
+    m: '16rem',
+    l: '33.5rem',
+    a: undefined,
+};
 
 /** About the width of each fraction on a desktop dashboard. */
 const MAX_WIDTHS: Record<WidgetWidth, string> = {
@@ -207,7 +212,8 @@ export function WidgetPreview({
         content = (
             <div
                 aria-busy="true"
-                className="h-full w-full animate-pulse bg-muted"
+                // An `a` cell has no height for it to fill.
+                className="h-full min-h-40 w-full animate-pulse bg-muted"
             />
         );
     } else if (state.status === 'failed') {

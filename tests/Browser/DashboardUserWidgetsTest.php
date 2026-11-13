@@ -412,7 +412,7 @@ it('lets a tall widget grow with its content on a phone, never below its height'
     $page->assertNoJavascriptErrors();
 })->with(['light' => false, 'dark' => true]);
 
-it('keeps every row of a wider dashboard at the same fixed height', function () {
+it('gives the widgets of a wider dashboard\'s row one height, the tallest one\'s', function () {
     [$user, $kpis, $chart] = dashboardWithTallWidget();
     actingAs($user);
 
@@ -422,10 +422,116 @@ it('keeps every row of a wider dashboard at the same fixed height', function () 
 
     $heights = widgetCellHeights($page, $kpis, $chart);
 
-    expect(round($heights['kpis']))->toEqual(256.0)
-        ->and($heights['kpisScroll'])->toBeGreaterThan(0)
+    // The medium KPI row shares its row with the large chart: both are
+    // 33.5rem (536px), and the KPI row fits whole in it. The net worth
+    // chart and the groceries widget, both medium, keep 16rem (256px).
+    expect(round($heights['kpis']))->toEqual(536.0)
+        ->and($heights['kpisScroll'])->toBeLessThanOrEqual(0)
         ->and(round($heights['chart']))->toEqual(536.0)
         ->and(round($heights['netWorth']))->toEqual(256.0);
+
+    $page->assertNoJavascriptErrors();
+});
+
+/**
+ * A dashboard of the user's with the net worth chart (1/2, m), the groceries
+ * widget at the auto height beside it (1/2, a), and a copy of it alone on the
+ * next row (1/1, a).
+ *
+ * @return array{0: User, 1: WidgetDefinition, 2: WidgetDefinition}
+ */
+function dashboardWithAutoHeightWidgets(): array
+{
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate(CustomDashboards::class);
+
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'transaction_date' => '2026-09-03', 'amount' => -4210]);
+
+    $dashboard = Dashboard::factory()->for($user)->create(['name' => 'Mine']);
+    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+    DashboardWidget::factory()->for($dashboard)->system(SystemWidget::NetWorth)->create(['position' => 0, 'width' => '1/2', 'height' => 'm']);
+
+    $service = app(WidgetDefinitionService::class);
+    $beside = $service->create($user, [...groceriesManifest(), 'size' => ['width' => '1/2', 'height' => 'a']], groceriesWidgetSource(), WidgetOrigin::Mcp);
+    $alone = $service->create($user, [...groceriesManifest(), 'name' => 'Groceries alone', 'size' => ['width' => '1/1', 'height' => 'a']], groceriesWidgetSource(), WidgetOrigin::Mcp);
+    $service->place($dashboard, $beside);
+    $service->place($dashboard, $alone);
+
+    return [$user, $beside, $alone];
+}
+
+/**
+ * The height of each cell, and of what the widget alone draws in it.
+ *
+ * @return array{netWorth: float, beside: float, alone: float, aloneContent: float, aloneScroll: float}
+ */
+function autoHeightCells($page, WidgetDefinition $beside, WidgetDefinition $alone): array
+{
+    return $page->script(<<<JS
+        (() => {
+            const cell = (selector) => document.querySelector(`[data-testid="dashboard-grid"] > \${selector}`);
+            const alone = cell('[data-widget="user:{$alone->id}"]');
+            const frame = alone.querySelector('.wm-widget');
+
+            return {
+                netWorth: cell('[data-widget="net-worth"]').getBoundingClientRect().height,
+                beside: cell('[data-widget="user:{$beside->id}"]').getBoundingClientRect().height,
+                alone: alone.getBoundingClientRect().height,
+                aloneContent: frame.firstElementChild.getBoundingClientRect().height,
+                aloneScroll: frame.scrollHeight - frame.clientHeight,
+            };
+        })()
+    JS);
+}
+
+it('sizes an auto widget to its content, or to the row it shares on a wider dashboard', function (bool $dark) {
+    [$user, $beside, $alone] = dashboardWithAutoHeightWidgets();
+    actingAs($user);
+
+    $page = visit('/dashboard');
+
+    if ($dark) {
+        $page = $page->inDarkMode();
+    }
+
+    $page = $page->navigate('/dashboard')
+        ->assertSee('Supermercado este año')
+        ->assertPresent("[data-widget=\"user:{$alone->id}\"] [data-slot=user-widget][data-status=ready]");
+
+    $heights = autoHeightCells($page, $beside, $alone);
+
+    // Beside the medium net worth chart the short widget stretches to its
+    // 16rem (256px); alone in its row it is just as tall as what it draws,
+    // its card's border included.
+    expect(round($heights['netWorth']))->toEqual(256.0)
+        ->and(round($heights['beside']))->toEqual(256.0)
+        ->and($heights['alone'])->toBeLessThan(200)
+        ->and($heights['alone'] - $heights['aloneContent'])->toBeLessThanOrEqual(2.0)
+        ->and($heights['aloneScroll'])->toBeLessThanOrEqual(0);
+
+    $page->assertNoJavascriptErrors();
+})->with(['light' => false, 'dark' => true]);
+
+it('sizes an auto widget to its content on a phone', function () {
+    [$user, $beside, $alone] = dashboardWithAutoHeightWidgets();
+    actingAs($user);
+
+    $page = visit('/dashboard')
+        ->on()
+        ->iPhoneSE()
+        ->navigate('/dashboard')
+        ->assertSee('Supermercado este año')
+        ->assertPresent("[data-widget=\"user:{$beside->id}\"] [data-slot=user-widget][data-status=ready]");
+
+    $heights = autoHeightCells($page, $beside, $alone);
+
+    // On a phone each widget has its row to itself: the medium chart keeps
+    // its 16rem, the auto ones take the height of their content.
+    expect($heights['netWorth'])->toBeGreaterThanOrEqual(256)
+        ->and($heights['beside'])->toBeLessThan(200)
+        ->and(round($heights['beside']))->toEqual(round($heights['alone']))
+        ->and($heights['alone'] - $heights['aloneContent'])->toBeLessThanOrEqual(2.0);
 
     $page->assertNoJavascriptErrors();
 });

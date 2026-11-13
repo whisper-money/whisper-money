@@ -40,6 +40,12 @@ describe('system widget registry', () => {
         }
     });
 
+    it('never offers a system widget the auto height: each fills its cell', () => {
+        for (const widget of Object.values(SYSTEM_WIDGETS)) {
+            expect(widget.allowedHeights).not.toContain('a');
+        }
+    });
+
     it('lays out the system dashboard in the order it has always had', () => {
         expect(SYSTEM_DASHBOARD_LAYOUT.map((item) => item.widget)).toEqual([
             'net-worth',

@@ -43,7 +43,7 @@ enum SystemWidget: string implements SizedWidget
     {
         return match ($this) {
             self::Cashflow => [WidgetHeight::Medium],
-            default => WidgetHeight::cases(),
+            default => WidgetHeight::fixed(),
         };
     }
 

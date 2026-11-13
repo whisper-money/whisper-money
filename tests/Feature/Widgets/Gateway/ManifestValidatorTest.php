@@ -150,9 +150,16 @@ describe('name and size', function () {
     it('takes only the fixed sizes', function () {
         expect(manifestErrors(manifestWith(['labels' => ['endpoint' => 'GET /labels']], ['width' => '1/4', 'height' => 'xl', 'allowed_widths' => ['2/3']])))->toBe([
             'size.width' => ['The size.width must be one of: 1/3, 1/2, 1/1.'],
-            'size.height' => ['The size.height must be one of: m, l.'],
+            'size.height' => ['The size.height must be one of: m, l, a.'],
             'size.allowed_widths.0' => ['Every allowed width must be one of: 1/3, 1/2, 1/1.'],
         ]);
+    });
+
+    it('takes the auto height, by default or among the allowed ones', function () {
+        $calls = ['labels' => ['endpoint' => 'GET /labels']];
+
+        expect(manifestErrors(manifestWith($calls, ['width' => '1/1', 'height' => 'a'])))->toBe([])
+            ->and(manifestErrors(manifestWith($calls, ['width' => '1/1', 'height' => 'm', 'allowed_heights' => ['m', 'a']])))->toBe([]);
     });
 
     it('needs the allowed sizes to include its own', function () {

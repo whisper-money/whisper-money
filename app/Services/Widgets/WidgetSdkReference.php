@@ -34,7 +34,8 @@ class WidgetSdkReference
         'Amounts arrive as integers in the minor units of their currency (100 per EUR or USD, 1 per JPY or CLP, 1000 per KWD); read each row\'s currency, never assume cents. Render every amount with <Amount amount currency /> from the SDK, which formats it and blurs it in privacy mode; use formatMoney only where a component cannot go (chart ticks, tooltips) and hide those figures when useWidgetEnv().privacyMode is true.',
         'Look right in light and dark mode: use theme tokens (text-muted-foreground, bg-card, border) or pair every color with its dark: variant. useWidgetEnv().theme says which one is on.',
         'Be responsive with container variants (@sm:, @md:, @xl:…), not viewport ones: the same widget is drawn at 1/3, 1/2 and 1/1 and on a phone. useWidgetEnv().isCompact is true on a phone and at 1/3 width.',
-        'Fill the cell (h-full) and let ResponsiveContainer size charts. On a wider dashboard the cell has a fixed height (m or l) and clips what does not fit, so fit the content to it (cap a list to its top items). On a phone it grows with the widget, never below that height: do not pin the widget to a fixed height or wrap it all in an inner scroll to fit; charts still get the cell\'s height.',
+        'Fill the cell (h-full) and let ResponsiveContainer size charts. At m or l the cell has a fixed height on a wider dashboard and clips what does not fit, so fit the content to it (cap a list to its top items); on a phone it grows with the widget, never below that height. At a the cell takes the height of the content, everywhere. Do not pin the widget to a fixed height or wrap it all in an inner scroll to fit.',
+        'Pick the height by what the widget draws. a (auto) is for content with a height of its own: a row of KPI tiles, a few lines of text, a short list; it leaves no empty space under them. A chart has no height of its own (ResponsiveContainer takes the cell\'s), so a chart, or a widget whose main part is one, needs m or l, never a. On a wider dashboard every widget in a row is as tall as the tallest one, so an a widget beside an m one is at least 16rem tall.',
         'No network and no browser APIs: the data comes only from the manifest through useWidgetData(), and the environment from useWidgetEnv(). To hand data to the user (a CSV), call wm.download(filename, content) from a button.',
         'Read a key computed at run time with get(obj, key) from the SDK, and a field named target with get(obj, \'target\'): obj.target and obj[\'target\'] are rejected, as are the other forbidden property names.',
         'Event handlers on native tags take no parameters; Recharts handlers and render props (content, shape, label, a custom dot) are not allowed. For a styled chart tooltip, put <ChartTooltip valueFormatter labelFormatter /> from the SDK inside the chart in place of <Tooltip>.',
@@ -85,8 +86,8 @@ class WidgetSdkReference
             'shape' => '{ name, size: { width, height, allowed_widths?, allowed_heights? }, frame?, data: { <key>: { endpoint, params?, paginate? } } }',
             'name' => 'Up to 80 characters, in the user\'s language.',
             'widths' => array_column(WidgetWidth::cases(), 'value'),
-            'heights' => array_column(WidgetHeight::cases(), 'value'),
-            'sizes' => 'Widths are fractions of a dashboard row: 1/3, 1/2 or 1/1. Heights are m or l, l being twice m. size.width and size.height are the default; allowed_widths and allowed_heights list every size the widget can be resized to and must include the default. Without them, only the default size is allowed.',
+            'heights' => WidgetHeight::values(),
+            'sizes' => 'Widths are fractions of a dashboard row: 1/3, 1/2 or 1/1. Heights are m (16rem), l (33.5rem, two m rows and the gap) or a (auto: the height of the content, see rules). size.width and size.height are the default; allowed_widths and allowed_heights list every size the widget can be resized to and must include the default. Without them, only the default size is allowed.',
             'frames' => array_column(WidgetFrame::cases(), 'value'),
             'frame' => 'What the dashboard draws around the widget. "card" (the default, when frame is left out) is a rounded, bordered bg-card box with no padding of its own, which the widget fills. "none" draws nothing, so the widget sits on the dashboard background: only for a row of KPI tiles that each draw their own card (see rules). Loading and error states keep the card either way.',
             'data' => 'Each key is a JavaScript identifier the widget reads from useWidgetData(). endpoint is "GET <path>" from the endpoints below, with path ids in params. paginate: "all" reads a whole list (only on listable endpoints, without limit/starting_after/ending_before), up to rows_per_paginated_call rows; past it the answer carries truncated: true. At most 20 calls.',
@@ -105,7 +106,7 @@ class WidgetSdkReference
             ],
             'example_frameless' => [
                 'name' => 'This month at a glance',
-                'size' => ['width' => '1/1', 'height' => 'm'],
+                'size' => ['width' => '1/1', 'height' => 'a'],
                 'frame' => 'none',
                 'data' => [
                     'cashflow' => [

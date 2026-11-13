@@ -14,7 +14,8 @@ const PLACEHOLDER_BARS = [40, 65, 50, 80, 60, 90];
  */
 function WidgetPlaceholder() {
     return (
-        <div className="flex h-full flex-col gap-4 rounded-xl border bg-card p-6">
+        // An auto-height cell has no height for the bars to fill: keep 10rem.
+        <div className="flex h-full min-h-40 flex-col gap-4 rounded-xl border bg-card p-6">
             <div className="h-4 w-2/5 rounded bg-muted" />
             <div className="h-7 w-1/3 rounded bg-muted" />
             <div className="flex min-h-0 flex-1 items-end gap-2">
