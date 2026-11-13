@@ -1,7 +1,7 @@
 import { type MobileSelectionMode } from '@/hooks/use-mobile-selection-mode';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BulkActionsBar } from './bulk-actions-bar';
@@ -304,6 +304,29 @@ describe('BulkActionsBar on the phone', () => {
         fireEvent.click(await screen.findByText('Groceries'));
 
         expect(onCategoryChange).toHaveBeenCalledWith('category-1');
+    });
+
+    it('focuses the category search inside the tap, so a phone shows its keyboard', async () => {
+        vi.stubGlobal('matchMedia', () => ({ matches: false }));
+        renderBar({ selectionMode: mobileSelection() });
+        const trigger = screen.getByTestId('bulk-category-trigger');
+        let focusedDuringTap: Element | null = null;
+        const readFocus = () => (focusedDuringTap = document.activeElement);
+        // On document, so it runs after React's handlers for the same click.
+        document.addEventListener('click', readFocus);
+
+        fireEvent.click(trigger);
+        document.removeEventListener('click', readFocus);
+
+        // iOS only raises the keyboard for a focus() made in the tap itself.
+        expect(focusedDuringTap).toBeInstanceOf(HTMLInputElement);
+        const search = await screen.findByPlaceholderText(
+            'Search categories...',
+        );
+        await waitFor(() => expect(search).toHaveFocus());
+        expect(
+            document.querySelectorAll('[data-keyboard-stand-in]'),
+        ).toHaveLength(0);
     });
 
     it('offers the rest behind the ⋯ menu', async () => {
