@@ -47,6 +47,12 @@ export interface UserWidgetManifestSize {
     allowed_heights?: WidgetHeight[];
 }
 
+/**
+ * What the dashboard draws around a user widget: its card (the default), or
+ * nothing, for a row of tiles that draw their own cards.
+ */
+export type WidgetFrame = 'card' | 'none';
+
 /** A widget the user's agent wrote, as edit mode lists it to be placed. */
 export interface WidgetDefinitionSummary {
     id: string;
@@ -78,7 +84,10 @@ export interface UserWidgetDefinition {
     revision: number;
     /** The compiled module. */
     js: string;
-    manifest: { size: UserWidgetManifestSize } & Record<string, unknown>;
+    manifest: {
+        size: UserWidgetManifestSize;
+        frame?: WidgetFrame;
+    } & Record<string, unknown>;
     last_error: UserWidgetError | null;
     last_error_at: string | null;
     /** Newest first. */

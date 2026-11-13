@@ -26,6 +26,11 @@ import { beginWidgetGesture, endWidgetGesture } from '../sdk/download';
 import { setDefaultMoneyLocale } from '../sdk/format-money';
 import { type UserWidgetProps } from './user-widget';
 import {
+    isWidgetCarded,
+    useWidgetCrash,
+    WIDGET_CARD_CLASS_NAME,
+} from './widget-card';
+import {
     toWidgetRuntimeError,
     WidgetErrorBoundary,
     WidgetErrorState,
@@ -50,12 +55,15 @@ export default function UserWidgetFrame({
     js,
     data,
     size,
+    frame,
     onError,
     onSettled,
     className,
 }: UserWidgetProps) {
     const [state, setState] = useState<LoadState>({ status: 'loading' });
     const sdk = useWidgetSdkValue(data, size);
+    const { crashed, markCrashed } = useWidgetCrash(data);
+    const carded = isWidgetCarded(frame, state.status === 'ready' && !crashed);
 
     useLayoutEffect(() => {
         setDefaultMoneyLocale(sdk.env.locale);
@@ -119,9 +127,11 @@ export default function UserWidgetFrame({
         <div
             data-slot="user-widget"
             data-status={state.status}
+            data-frame={carded ? 'card' : 'none'}
             className={cn(
                 // A size container needs a width of its own, or it collapses.
-                'wm-widget h-full w-full min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground',
+                'wm-widget h-full w-full min-w-0 overflow-hidden',
+                carded && WIDGET_CARD_CLASS_NAME,
                 className,
             )}
             onClickCapture={(event) => beginWidgetGesture(event)}
@@ -141,6 +151,7 @@ export default function UserWidgetFrame({
                 <WidgetErrorBoundary
                     resetKey={data}
                     onError={(error) => {
+                        markCrashed();
                         onError?.(error);
                         onSettled?.();
                     }}

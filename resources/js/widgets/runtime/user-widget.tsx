@@ -1,5 +1,6 @@
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
 import { type SharedData } from '@/types';
+import { type WidgetFrame } from '@/types/dashboard';
 import { usePage } from '@inertiajs/react';
 import { lazy, Suspense } from 'react';
 import { type WidgetRuntimeError } from './widget-error-boundary';
@@ -10,6 +11,8 @@ export interface UserWidgetProps {
     /** The data its manifest declared, already resolved by the gateway. */
     data: Readonly<Record<string, unknown>>;
     size: WidgetSize;
+    /** What the dashboard draws around it once it renders; a card by default. */
+    frame?: WidgetFrame;
     /** A load or render failure, to be stored with the widget. */
     onError?: (error: WidgetRuntimeError) => void;
     /** The widget has drawn, or failed: safe mode counts these. */

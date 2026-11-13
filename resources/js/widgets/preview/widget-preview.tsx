@@ -2,7 +2,14 @@ import {
     type WidgetHeight,
     type WidgetWidth,
 } from '@/components/dashboard/widgets/types';
+import { cn } from '@/lib/utils';
+import { type WidgetFrame } from '@/types/dashboard';
 import { type ComponentType, useEffect, useRef, useState } from 'react';
+import {
+    isWidgetCarded,
+    useWidgetCrash,
+    WIDGET_CARD_CLASS_NAME,
+} from '../runtime/widget-card';
 import {
     toWidgetRuntimeError,
     WidgetErrorBoundary,
@@ -21,6 +28,7 @@ export interface WidgetPreviewPayload {
     revision: number;
     js: string;
     size: { width: WidgetWidth; height: WidgetHeight };
+    frame: WidgetFrame;
     /** Each call's body, by the key the manifest gave it; null when too large. */
     data: Record<string, unknown> | null;
     data_too_large: boolean;
@@ -160,6 +168,8 @@ export function WidgetPreview({
     // check here that the widget hides its figures.
     const [privacyMode, setPrivacyMode] = useState(false);
     const [failure] = payload.failures;
+    const { crashed, markCrashed } = useWidgetCrash(payload);
+    let showsWidget = false;
 
     useEffect(() => {
         setDefaultMoneyLocale(payload.locale);
@@ -200,8 +210,15 @@ export function WidgetPreview({
     } else if (state.status === 'failed') {
         content = <WidgetErrorState message={state.message} />;
     } else {
+        showsWidget = !crashed;
         content = (
-            <WidgetErrorBoundary resetKey={payload} onError={onError}>
+            <WidgetErrorBoundary
+                resetKey={payload}
+                onError={(error) => {
+                    markCrashed();
+                    onError(error);
+                }}
+            >
                 <WidgetSdkProvider
                     value={{
                         data: payload.data,
@@ -222,6 +239,8 @@ export function WidgetPreview({
             </WidgetErrorBoundary>
         );
     }
+
+    const carded = isWidgetCarded(payload.frame, showsWidget);
 
     return (
         <figure className="flex flex-col gap-2 p-2">
@@ -247,7 +266,11 @@ export function WidgetPreview({
                 </span>
             </figcaption>
             <div
-                className="wm-widget w-full min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground"
+                data-frame={carded ? 'card' : 'none'}
+                className={cn(
+                    'wm-widget w-full min-w-0 overflow-hidden',
+                    carded && WIDGET_CARD_CLASS_NAME,
+                )}
                 style={{
                     height: HEIGHTS[payload.size.height],
                     maxWidth: MAX_WIDTHS[payload.size.width],

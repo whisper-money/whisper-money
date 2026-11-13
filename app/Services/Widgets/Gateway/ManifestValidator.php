@@ -2,6 +2,7 @@
 
 namespace App\Services\Widgets\Gateway;
 
+use App\Enums\WidgetFrame;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -9,7 +10,7 @@ use Illuminate\Validation\Validator as ValidatorInstance;
 
 /**
  * Checks a widget manifest before it is saved: its name, its size among the
- * fixed ones, and that every data call reads a registered endpoint with the
+ * fixed ones, its frame, and that every data call reads a registered endpoint with the
  * parameters it takes and only the dashboard variables that exist. The
  * messages are written for the agent that sent it, to fix and retry. The
  * parameter values themselves are validated when the gateway resolves them,
@@ -40,7 +41,7 @@ class ManifestValidator
      * The manifest, once valid.
      *
      * @param  array<mixed>  $manifest
-     * @return array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>}
+     * @return array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, frame?: 'card'|'none', data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>}
      *
      * @throws ValidationException
      */
@@ -55,6 +56,7 @@ class ManifestValidator
             'size.allowed_widths.*' => ['distinct', Rule::in(self::Widths)],
             'size.allowed_heights' => ['sometimes', 'list', 'min:1'],
             'size.allowed_heights.*' => ['distinct', Rule::in(self::Heights)],
+            'frame' => ['sometimes', Rule::enum(WidgetFrame::class)],
             'data' => ['required', 'array', 'min:1', 'max:'.self::MaxCalls],
             'data.*' => ['array:endpoint,params,paginate'],
             'data.*.endpoint' => ['required', 'string'],
@@ -66,6 +68,7 @@ class ManifestValidator
             'size.height.in' => 'The size.height must be one of: '.implode(', ', self::Heights).'.',
             'size.allowed_widths.*.in' => 'Every allowed width must be one of: '.implode(', ', self::Widths).'.',
             'size.allowed_heights.*.in' => 'Every allowed height must be one of: '.implode(', ', self::Heights).'.',
+            'frame.enum' => 'The frame must be "card" (the default) or "none".',
             'data.max' => 'A widget can declare at most :max data calls.',
             'data.*.array' => 'Each data call takes only endpoint, params and paginate.',
             'data.*.paginate.in' => 'The only paginate value is "all", which reads the whole list.',
@@ -83,7 +86,7 @@ class ManifestValidator
             }
         });
 
-        /** @var array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>} */
+        /** @var array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, frame?: 'card'|'none', data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>} */
         return $validator->validate();
     }
 

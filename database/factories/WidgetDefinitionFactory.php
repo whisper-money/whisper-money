@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\WidgetFrame;
 use App\Enums\WidgetOrigin;
 use App\Models\User;
 use App\Models\WidgetDefinition;
@@ -49,6 +50,14 @@ class WidgetDefinitionFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'manifest' => [...$attributes['manifest'], 'data' => $data],
+        ]);
+    }
+
+    /** Drawn without the dashboard's card around it. */
+    public function frameless(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'manifest' => [...$attributes['manifest'], 'frame' => WidgetFrame::None->value],
         ]);
     }
 

@@ -172,6 +172,7 @@ export function UserWidgetCell({
                         js={definition.js}
                         data={content.resolved.data}
                         size={placement.size}
+                        frame={definition.manifest.frame}
                         onError={(caught) => onError(definition, caught)}
                         onSettled={() => settle?.(placement.id)}
                     />
@@ -194,6 +195,10 @@ export function UserWidgetCell({
                     <UserWidgetMenu
                         name={definition.name}
                         hasError={error !== null}
+                        frameless={
+                            content.kind === 'ready' &&
+                            definition.manifest.frame === 'none'
+                        }
                         onDetails={() => setDetailsOpen(true)}
                         onRemove={onRemove}
                     />
@@ -213,11 +218,14 @@ export function UserWidgetCell({
 function UserWidgetMenu({
     name,
     hasError,
+    frameless,
     onDetails,
     onRemove,
 }: {
     name: string;
     hasError: boolean;
+    /** No card around the widget: sit in its corner, not inside a padding it lacks. */
+    frameless: boolean;
     onDetails: () => void;
     onRemove?: () => void;
 }) {
@@ -229,7 +237,8 @@ function UserWidgetMenu({
                     size="icon-sm"
                     aria-label={__('Options for :widget', { widget: name })}
                     className={cn(
-                        'absolute top-2 right-2 bg-background/90 transition-opacity',
+                        'absolute bg-background/90 transition-opacity',
+                        frameless ? 'top-0 right-0' : 'top-2 right-2',
                         // Out of the widget's way until the pointer is over
                         // it; always there on touch screens and with an error.
                         !hasError &&

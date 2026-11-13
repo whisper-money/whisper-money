@@ -44,6 +44,21 @@ it('accepts the plan\'s example manifest', function () {
     expect(app(ManifestValidator::class)->validate($manifest))->toBe($manifest);
 });
 
+it('accepts a frame of card or none, or none at all', function (?string $frame) {
+    $manifest = manifestWith(['accounts' => ['endpoint' => 'GET /accounts']]);
+
+    if ($frame !== null) {
+        $manifest['frame'] = $frame;
+    }
+
+    expect(app(ManifestValidator::class)->validate($manifest))->toEqual($manifest);
+})->with(['card', 'none', 'absent' => null]);
+
+it('refuses any other frame', function (mixed $frame) {
+    expect(manifestErrors([...manifestWith(['accounts' => ['endpoint' => 'GET /accounts']]), 'frame' => $frame]))
+        ->toBe(['frame' => ['The frame must be "card" (the default) or "none".']]);
+})->with(['borderless', 'Card', 'false' => false, 'list' => [['none']]]);
+
 it('refuses an endpoint that is not registered', function () {
     expect(manifestErrors(manifestWith(['users' => ['endpoint' => 'GET /users']]))['data.users.endpoint'][0])
         ->toStartWith('GET /users is not available to widgets. Use one of: GET /spaces, GET /accounts,');

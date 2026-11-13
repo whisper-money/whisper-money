@@ -188,8 +188,10 @@ app is kept in their books.
   `get_widget_sdk` first and follow its `rules` — the code is checked against
   closed lists and anything not listed is refused. Then `create_widget` with a
   manifest (name, size, the API calls whose answers the widget reads, with
-  `{{range.from}}`/`{{range.to}}` for the range the dashboard shows) and the
-  TSX, and `place_widget` it on a dashboard (`list_dashboards`,
+  `{{range.from}}`/`{{range.to}}` for the range the dashboard shows, and
+  `frame`: the dashboard draws a card around every widget, so never draw one
+  around yours; set `frame: "none"` only for a row of KPI tiles that draw
+  their own cards, as the SDK's `rules` say) and the TSX, and `place_widget` it on a dashboard (`list_dashboards`,
   `create_dashboard`). A refused save answers with every error, each with a
   `path` (`manifest.data.x.params.y`, `source:12:5`) and a `message`: fix them
   all and save again. Write texts in the user's language, make it responsive
