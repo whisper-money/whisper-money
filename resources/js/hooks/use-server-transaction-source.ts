@@ -128,7 +128,7 @@ function onlySearchChanged(next: Filters, current: Filters): boolean {
  * date trimmed to its day, the account's bank hoisted onto the row, and labels
  * present as both the objects and the ids the columns filter on.
  */
-function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
+export function normalizeTransaction(tx: ServerTransaction): ServerTransaction {
     return {
         ...tx,
         transaction_date: String(tx.transaction_date).slice(0, 10),

@@ -39,6 +39,10 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::get('transactions/count', [TransactionController::class, 'count'])->name('api.transactions.count');
     Route::get('transactions/summary', [TransactionController::class, 'summary'])->name('api.transactions.summary');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
+    // One transaction as the transactions table holds it, for an edit dialog opened by id (a widget's row)
+    Route::get('transactions/{transaction}', [TransactionController::class, 'show'])
+        ->whereUuid('transaction')
+        ->name('api.transactions.show');
 
     // One amount converted between two currencies, for the transaction modal
     Route::get('exchange-rate', ExchangeRateController::class)->name('api.exchange-rate');

@@ -5,6 +5,10 @@ import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { type WidgetEnv, WidgetSdkProvider } from './context';
 import { TransactionList } from './transaction-list';
+import {
+    type OpenTransaction,
+    WidgetTransactionOpenerProvider,
+} from './transaction-opener';
 
 // The page the widget preview build draws with: if the list works on it, it
 // works in the chat client's iframe, which runs no Inertia app.
@@ -253,9 +257,58 @@ describe('<TransactionList>', () => {
         expect(rows()[0]).not.toHaveTextContent('Uncategorized');
     });
 
-    it('is read-only: nothing in a row is a button', () => {
+    it('is read-only where the host opens nothing, as in the MCP preview', () => {
         renderList(<TransactionList transactions={ROWS} />);
 
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
+        expect(rows()[0]).not.toHaveClass('cursor-pointer');
+    });
+
+    function renderOpenable(children: ReactNode, open: OpenTransaction) {
+        return renderList(
+            <WidgetTransactionOpenerProvider open={open}>
+                {children}
+            </WidgetTransactionOpenerProvider>,
+        );
+    }
+
+    it('opens the tapped row by id through the host', () => {
+        const open = vi.fn();
+        renderOpenable(
+            <TransactionList
+                transactions={ROWS}
+                description={(row: { description: string }) =>
+                    row.description.replace('Pago en ', '')
+                }
+            />,
+            open,
+        );
+
+        fireEvent.click(screen.getByText('Repsol'));
+
+        expect(open).toHaveBeenCalledTimes(1);
+        expect(open).toHaveBeenCalledWith('tx-2');
+        expect(rows()[0]).toHaveClass('cursor-pointer');
+    });
+
+    it('opens from the keyboard too: each row has a button', () => {
+        const open = vi.fn();
+        renderOpenable(<TransactionList transactions={ROWS} />, open);
+
+        const [first] = within(rows()[0]).getAllByRole('button');
+        fireEvent.click(first);
+
+        expect(open).toHaveBeenCalledTimes(1);
+        expect(open).toHaveBeenCalledWith('tx-3');
+    });
+
+    it('opens nothing when readOnly', () => {
+        const open = vi.fn();
+        renderOpenable(<TransactionList transactions={ROWS} readOnly />, open);
+
+        fireEvent.click(rows()[0]);
+
+        expect(open).not.toHaveBeenCalled();
         expect(screen.queryAllByRole('button')).toHaveLength(0);
         expect(rows()[0]).not.toHaveClass('cursor-pointer');
     });

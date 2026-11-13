@@ -25,6 +25,7 @@ import { safeLogoUrl } from './bank-logo';
 import { useWidgetSdk, type WidgetAccount } from './context';
 import { EmptyState } from './primitives';
 import { classNameOf } from './props';
+import { useWidgetTransactionOpener } from './transaction-opener';
 
 /** The parts of a row a widget may leave out with `hide`. */
 const HIDEABLE_PARTS = ['account', 'labels', 'notes'] as const;
@@ -232,7 +233,8 @@ function positiveInteger(value: unknown): number | null {
  * The transactions of a `GET /transactions` answer drawn as the app's own
  * compact list (the one at the bottom of an account page): newest first,
  * under a band per day with the day's total, each row with its category
- * icon, account, labels and notes. Read-only: a row opens nothing yet.
+ * icon, account, labels and notes. Tapping a row opens the app's edit
+ * dialog on that transaction, where the dashboard offers it.
  *
  * - `transactions`: the rows, or the `{ data, truncated }` of `paginate: "all"`.
  * - `hide`: parts to leave out of every row: `'account'`, `'labels'`, `'notes'`.
@@ -242,6 +244,7 @@ function positiveInteger(value: unknown): number | null {
  * - `hiddenLabelId`: a label every row carries, left out of each.
  * - `showDayTotals`: false leaves the day bands without their total.
  * - `emptyTitle` / `emptyDescription`: what an empty list says.
+ * - `readOnly`: true keeps the rows from opening the edit dialog.
  */
 export function TransactionList({
     transactions,
@@ -253,6 +256,7 @@ export function TransactionList({
     showDayTotals = true,
     emptyTitle,
     emptyDescription,
+    readOnly,
     className,
 }: {
     transactions: unknown;
@@ -264,9 +268,12 @@ export function TransactionList({
     showDayTotals?: unknown;
     emptyTitle?: unknown;
     emptyDescription?: unknown;
+    readOnly?: unknown;
     className?: unknown;
 }) {
     const sdk = useWidgetSdk();
+    const hostOpener = useWidgetTransactionOpener();
+    const openTransaction = readOnly === true ? null : hostOpener;
     const pageSize = positiveInteger(limit);
     // Pages, not rows, so a limit the widget changes later still applies.
     const [pages, setPages] = useState(1);
@@ -333,8 +340,8 @@ export function TransactionList({
                             const row = rowById.get(transaction.id);
 
                             // A copy for display only (hidden parts blanked,
-                            // the description rewritten): a row that opens the
-                            // edit dialog must open it by id, not this copy.
+                            // the description rewritten): the dialog opens by
+                            // id, on the transaction as the server holds it.
 
                             return (
                                 <TransactionListRow
@@ -350,6 +357,14 @@ export function TransactionList({
                                     selected={false}
                                     selectionActive={false}
                                     onUnsplit={() => undefined}
+                                    onOpen={
+                                        openTransaction === null
+                                            ? undefined
+                                            : () =>
+                                                  openTransaction(
+                                                      transaction.id,
+                                                  )
+                                    }
                                     badge={formatted(badge, row) ?? undefined}
                                     hiddenLabelId={
                                         typeof hiddenLabelId === 'string'

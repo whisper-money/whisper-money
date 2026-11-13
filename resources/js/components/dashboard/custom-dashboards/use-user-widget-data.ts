@@ -79,13 +79,16 @@ export function resolveWidgetData(
  * The data of every user widget on a dashboard, in one request (the batch
  * route), for the range on screen or, without one, the user's current month.
  * It asks again when a widget's revision changes (going back to an earlier
- * version can read other data) or a widget is added.
+ * version can read other data), a widget is added or `reloads` moves on (a
+ * transaction was edited from a widget). Meanwhile the widgets keep drawing
+ * the data they had.
  */
 export function useUserWidgetData(
     dashboardId: string,
     definitions: UserWidgetDefinition[] | undefined,
     enabled: boolean,
     range?: DashboardRange,
+    reloads = 0,
 ): UserWidgetDataState {
     const key = useMemo(() => {
         if (!enabled || definitions === undefined || definitions.length === 0) {
@@ -96,8 +99,9 @@ export function useUserWidgetData(
             dashboardId,
             definitions.map(({ id, revision }) => `${id}@${revision}`).sort(),
             range ?? null,
+            reloads,
         ]);
-    }, [dashboardId, definitions, enabled, range]);
+    }, [dashboardId, definitions, enabled, range, reloads]);
 
     const [state, setState] = useState<{
         key: string;

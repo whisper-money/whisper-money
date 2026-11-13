@@ -429,7 +429,8 @@
                     "hiddenLabelId": "value",
                     "showDayTotals": "value",
                     "emptyTitle": "text",
-                    "emptyDescription": "text"
+                    "emptyDescription": "text",
+                    "readOnly": "value"
                 }
             }
         }
