@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useRef, useState, type ReactElement } from 'react';
 
 interface LabelComboboxProps {
     value?: string[] | null;
@@ -56,6 +56,7 @@ export function LabelCombobox({
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
+    const searchRef = useRef<HTMLInputElement>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [createdLabels, setCreatedLabels] = useState<Label[]>([]);
 
@@ -171,6 +172,7 @@ export function LabelCombobox({
             align="start"
             className="w-[300px]"
             drawerClassName={DRAWER_COMMAND_CLASS}
+            initialFocus={searchRef}
             trigger={
                 trigger ?? (
                     <Button
@@ -242,6 +244,7 @@ export function LabelCombobox({
         >
             <Command shouldFilter={false}>
                 <CommandInput
+                    ref={searchRef}
                     placeholder={__('Search or create labels...')}
                     value={inputValue}
                     onValueChange={setInputValue}
