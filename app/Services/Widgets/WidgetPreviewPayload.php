@@ -4,6 +4,7 @@ namespace App\Services\Widgets;
 
 use App\Enums\WidgetOrigin;
 use App\Models\Account;
+use App\Models\Label;
 use App\Models\User;
 use App\Models\WidgetDefinition;
 use App\Services\Widgets\Gateway\DashboardVariables;
@@ -14,7 +15,8 @@ use Carbon\CarbonImmutable;
  * draw a widget as the dashboard would: its compiled module, its data
  * resolved through the gateway as the user for their current month (each
  * call's body, as the dashboard hands it over), the calls the API refused,
- * and the user's currency, locale, chart colors and accounts.
+ * and the user's currency, locale, chart colors, accounts, categories and
+ * labels.
  *
  * The widget tools put it in their result's `_meta` under MetaKey
  * (resources/js/widgets/preview/main.tsx reads the same key), so the agent
@@ -33,7 +35,7 @@ class WidgetPreviewPayload
     public function __construct(private WidgetDefinitionService $widgets) {}
 
     /**
-     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, frame: 'card'|'none', data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, chart_color_scheme: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>}
+     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, frame: 'card'|'none', data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, chart_color_scheme: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>, categories: list<array<string, mixed>>, labels: list<array{id: string, name: string, color: string}>}
      */
     public function for(User $user, WidgetDefinition $widget): array
     {
@@ -63,6 +65,13 @@ class WidgetPreviewPayload
                     'bankName' => $account->bank?->name,
                     'bankLogo' => $account->bank?->logo,
                 ]])->all(),
+            // What <TransactionList> draws a row's category circle and labels with.
+            'categories' => $user->categories()->forDisplay()
+                ->get(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id'])
+                ->toArray(),
+            'labels' => $user->labels()->orderBy('name')->get(['id', 'name', 'color'])
+                ->map(fn (Label $label): array => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])
+                ->all(),
         ];
     }
 

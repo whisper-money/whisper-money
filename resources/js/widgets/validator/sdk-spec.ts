@@ -87,4 +87,21 @@ export const SDK_COMPONENTS: Readonly<Record<string, ComponentProps>> = {
     Separator: { ...KEY_AND_CLASS, orientation: 'value' },
     Skeleton: KEY_AND_CLASS,
     EmptyState: { ...KEY_AND_CLASS, title: 'text', description: 'text' },
+    /**
+     * The app's own transaction list (newest first, a band per day with its
+     * total), drawn from the rows of `GET /transactions`. Its `description`
+     * and `badge` formatters receive one row and return a string.
+     */
+    TransactionList: {
+        ...KEY_AND_CLASS,
+        transactions: 'value',
+        hide: 'value',
+        limit: 'value',
+        description: 'formatter',
+        badge: 'formatter',
+        hiddenLabelId: 'value',
+        showDayTotals: 'value',
+        emptyTitle: 'text',
+        emptyDescription: 'text',
+    },
 };

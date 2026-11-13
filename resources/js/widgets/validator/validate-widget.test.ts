@@ -453,6 +453,22 @@ const EVASIONS: [name: string, source: string, code: string][] = [
         widget('<Bar>{(props) => props}</Bar>'),
         'render-function',
     ],
+    // TransactionList takes formatters that return text, never markup
+    [
+        'TransactionList render prop',
+        `import { TransactionList } from '@whisper-money/widget-sdk';\nexport default function W() { return <TransactionList transactions={[]} renderRow={(row) => <div>{row.id}</div>} />; }`,
+        'component-prop',
+    ],
+    [
+        'TransactionList empty title as an element',
+        `import { TransactionList } from '@whisper-money/widget-sdk';\nexport default function W() { return <TransactionList transactions={[]} emptyTitle={<b>x</b>} />; }`,
+        'component-prop',
+    ],
+    [
+        'TransactionList transactions as a function',
+        `import { TransactionList } from '@whisper-money/widget-sdk';\nexport default function W() { return <TransactionList transactions={() => []} />; }`,
+        'component-prop',
+    ],
 ];
 
 describe('validateWidget evasion battery', () => {
@@ -622,6 +638,30 @@ describe('validateWidget valid widgets', () => {
             widget(
                 '<BarChart data={x}><XAxis dataKey="m" tick={{ angle: -45, dx: -4, textAnchor: \'end\', fontSize: 11 }} /></BarChart>',
             ),
+        ],
+        [
+            'TransactionList with formatters, hide and limit',
+            `import { Button, TransactionList, useWidgetData, useWidgetEnv, wm } from '@whisper-money/widget-sdk';
+export default function W() {
+    const { tx } = useWidgetData();
+    const { isCompact } = useWidgetEnv();
+    return (
+        <div className="flex h-full flex-col">
+            <Button size="sm" onClick={() => wm.download('moto', tx.data)}>CSV</Button>
+            <TransactionList
+                transactions={tx}
+                description={(row) => row.description.replace('Pago en ', '')}
+                badge={(row) => (row.amount < -10000 ? 'Compra' : null)}
+                hide={isCompact ? ['notes'] : []}
+                hiddenLabelId="label-1"
+                limit={20}
+                showDayTotals={!isCompact}
+                emptyTitle="Sin movimientos"
+                emptyDescription={\`Nada desde \${tx.from}\`}
+            />
+        </div>
+    );
+}`,
         ],
         [
             'Recharts formatters with parameters',

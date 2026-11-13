@@ -11,7 +11,8 @@ import { type Transaction } from '@/types/transaction';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useMemo } from 'react';
 
-function groupByDate<T extends Transaction>(
+/** Rows by their `transaction_date`, each day in the order its rows come. */
+export function groupByDate<T extends Transaction>(
     transactions: T[],
 ): Map<string, T[]> {
     const byDate = new Map<string, T[]>();

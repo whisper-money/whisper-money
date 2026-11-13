@@ -155,7 +155,7 @@ function searchMatches(
  * Newest first, the order the server lists them in: by date, then by id so
  * rows of one day keep one stable order.
  */
-function compareNewestFirst(
+export function compareNewestFirst(
     a: ServerTransaction,
     b: ServerTransaction,
 ): number {

@@ -33,7 +33,36 @@ const withoutFonts: Plugin = {
 export default defineConfig({
     plugins: [withoutFonts, react(), tailwindcss()],
     resolve: {
-        alias: { '@': fileURLToPath(new URL('./resources/js', import.meta.url)) },
+        alias: [
+            // No Inertia app runs in the iframe: SDK components that draw app
+            // components read a page made from the payload instead.
+            {
+                find: /^@inertiajs\/react$/,
+                replacement: fileURLToPath(
+                    new URL(
+                        './resources/js/widgets/preview/inertia-page.ts',
+                        import.meta.url,
+                    ),
+                ),
+            },
+            // Nor may it send anything: amounts in another currency stay
+            // unconverted instead of being posted to the app.
+            {
+                find: /^@\/hooks\/use-amounts-in-user-currency$/,
+                replacement: fileURLToPath(
+                    new URL(
+                        './resources/js/widgets/preview/amounts-in-user-currency.ts',
+                        import.meta.url,
+                    ),
+                ),
+            },
+            {
+                find: '@',
+                replacement: fileURLToPath(
+                    new URL('./resources/js', import.meta.url),
+                ),
+            },
+        ],
     },
     define: { 'process.env.NODE_ENV': '"production"' },
     build: {

@@ -41,8 +41,73 @@ class WidgetSdkReference
         'Event handlers on native tags take no parameters; Recharts handlers and render props (content, shape, label, a custom dot) are not allowed. For a styled chart tooltip, put <ChartTooltip valueFormatter labelFormatter /> from the SDK inside the chart in place of <Tooltip>.',
         'The dashboard already draws a card around every widget: never draw a card, border or bg-card wrapper around the whole widget, and never nest cards inside it. When the widget is a row of KPI tiles that each draw their own card, set frame: "none" in the manifest and render a heading (title and subtitle) followed by the tiles directly, leaving the top right corner of the heading free for the dashboard\'s menu button. Every other widget (charts, tables, lists) keeps the default frame.',
         'Draw bank logos with <BankLogo accountId /> from the SDK; there is no <img>.',
+        'List transactions with <TransactionList transactions={…} /> from the SDK, not a hand-made Table: it draws the app\'s own list (newest first, a band per day with its total, each row with its category icon, account, labels and notes) and blurs it in privacy mode. Shape it with its props (component_docs.TransactionList), never by mapping rows into Table cells.',
         'Handle empty data (a new user, a month without transactions) with a short message or <EmptyState>, never a blank chart.',
         'A saved widget can still fail on the dashboard. create_widget, update_widget and get_widget list in data_failures every data call the API refuses: fix those right away. A runtime error only shows up once the widget is placed and the user opens the dashboard; get_widget then returns it as last_error with the revision it came from. last_error: null means no error was caught yet, not that the widget works.',
+    ];
+
+    /**
+     * What each prop of the SDK components that need more than their name
+     * does. The validator's lists say only which props exist and their kind.
+     */
+    private const array ComponentDocs = [
+        'TransactionList' => [
+            'summary' => 'The transactions of GET /transactions as the app lists them on an account page. Read-only: tapping a row does nothing yet. Draw it straight inside the widget (it fills the card edge to edge, with no padding of its own), under the widget\'s heading if it has one. It never scrolls inside the widget: give the widget height a so it grows with the list, and a limit so it starts short; at m or l, set a limit small enough to fit (about 4 rows at m, 9 at l).',
+            'props' => [
+                'transactions' => 'Required. The rows of GET /transactions, or the whole { data, truncated } answer of paginate "all". Rows are drawn newest first whatever order they come in.',
+                'description' => 'Formatter (row) => string: the text a row shows in place of its description, e.g. (row) => row.description.replace("Pago en ", ""). The row is the API row as answered.',
+                'badge' => 'Formatter (row) => string | null: a short tag drawn after the description, or null for none, e.g. (row) => (row.amount < -50000 ? "Compra" : null). Never put an amount in it: it is not masked in privacy mode.',
+                'hide' => 'List of parts to leave out of every row: "account", "labels", "notes". E.g. hide={isCompact ? ["notes"] : []}.',
+                'hiddenLabelId' => 'A label id every listed row carries (the one the manifest filters by), left out of each row since it says nothing.',
+                'limit' => 'Rows drawn at first; a "Show more" button adds as many again. Leave it out to draw every row. Day totals always add up every row of the day.',
+                'showDayTotals' => 'false leaves the day bands without their total. Default true.',
+                'emptyTitle' => 'What an empty list says (a literal or template string). Default "No transactions", in the user\'s language.',
+                'emptyDescription' => 'A second line under emptyTitle.',
+                'className' => 'Classes for the list\'s box.',
+            ],
+            'example' => [
+                'manifest' => [
+                    'name' => 'Moto · Movimientos',
+                    'size' => ['width' => '1/2', 'height' => 'a', 'allowed_widths' => ['1/2', '1/1']],
+                    'data' => ['tx' => ['endpoint' => 'GET /transactions', 'params' => ['label_ids' => ['<label id>']], 'paginate' => 'all']],
+                ],
+                'source' => <<<'TSX'
+                    import { Button, formatMoney, TransactionList, useWidgetData, useWidgetEnv, wm } from '@whisper-money/widget-sdk';
+                    import { Download } from 'lucide-react';
+
+                    export default function MotoTransactions() {
+                        const { tx } = useWidgetData();
+                        const { isCompact } = useWidgetEnv();
+                        const exportCsv = () =>
+                            wm.download(
+                                'moto',
+                                tx.data.map((row) => ({ fecha: row.transaction_date, concepto: row.description, importe: formatMoney(row.amount, row.currency) })),
+                            );
+
+                        return (
+                            <div className="flex h-full flex-col">
+                                <div className="flex items-center justify-between gap-2 px-4 py-3">
+                                    <h3 className="text-sm font-medium">Movimientos de la moto</h3>
+                                    <Button variant="outline" size="sm" onClick={exportCsv}>
+                                        <Download size={14} />
+                                        CSV
+                                    </Button>
+                                </div>
+                                <TransactionList
+                                    transactions={tx}
+                                    description={(row) => row.description.replace('Pago en ', '')}
+                                    badge={(row) => (row.amount <= -50000 ? 'Compra' : null)}
+                                    hide={isCompact ? ['notes'] : []}
+                                    hiddenLabelId="<label id>"
+                                    limit={10}
+                                    emptyTitle="Sin movimientos"
+                                />
+                            </div>
+                        );
+                    }
+                    TSX,
+            ],
+        ],
     ];
 
     /**
@@ -65,6 +130,7 @@ class WidgetSdkReference
                 'shape' => 'One TSX module whose default export is a function component taking no props. Import only named exports of the modules below; no `import * as`, no default imports, no dynamic import().',
             ],
             ...$this->validatorLists(),
+            'component_docs' => self::ComponentDocs,
             'classes' => $this->classes(),
             'endpoints' => $this->endpointList(),
             'limits' => [

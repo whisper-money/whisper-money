@@ -417,6 +417,19 @@
                     "className": "className",
                     "title": "text",
                     "description": "text"
+                },
+                "TransactionList": {
+                    "key": "value",
+                    "className": "className",
+                    "transactions": "value",
+                    "hide": "value",
+                    "limit": "value",
+                    "description": "formatter",
+                    "badge": "formatter",
+                    "hiddenLabelId": "value",
+                    "showDayTotals": "value",
+                    "emptyTitle": "text",
+                    "emptyDescription": "text"
                 }
             }
         }

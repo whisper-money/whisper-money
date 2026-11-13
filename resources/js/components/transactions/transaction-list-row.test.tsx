@@ -202,4 +202,19 @@ describe('TransactionListRow', () => {
         expect(onToggleSelect).toHaveBeenCalledOnce();
         expect(onOpen).not.toHaveBeenCalled();
     });
+
+    it('is read-only without handlers: no button, no pointer', () => {
+        renderRow({ onOpen: undefined, onToggleSelect: undefined });
+
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
+        expect(row()).not.toHaveClass('cursor-pointer');
+        expect(row()).not.toHaveClass('hover:bg-muted/50');
+        expect(row()).toHaveTextContent('Mercadona');
+    });
+
+    it('tags the row after its description', () => {
+        renderRow({ badge: 'Compra' });
+
+        expect(row()).toHaveTextContent('MercadonaCompra-€42.50');
+    });
 });

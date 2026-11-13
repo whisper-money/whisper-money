@@ -10,7 +10,7 @@ const MIN_SIZE = 8;
 const MAX_SIZE = 96;
 
 /** Only logos we serve or a bank's https URL, never `data:` or `javascript:`. */
-function safeLogoUrl(url: string | null): string | null {
+export function safeLogoUrl(url: string | null): string | null {
     return url !== null && /^(https:\/\/|\/(?![/\\]))/.test(url) ? url : null;
 }
 
