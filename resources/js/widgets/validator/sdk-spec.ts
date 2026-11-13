@@ -103,5 +103,6 @@ export const SDK_COMPONENTS: Readonly<Record<string, ComponentProps>> = {
         showDayTotals: 'value',
         emptyTitle: 'text',
         emptyDescription: 'text',
+        readOnly: 'value',
     },
 };

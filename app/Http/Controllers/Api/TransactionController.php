@@ -11,11 +11,15 @@ use App\Models\Transaction;
 use App\Services\TransactionDuplicateMatcher;
 use App\Services\TransactionFilterSummary;
 use App\Services\Transactions\EstimateTransactions;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Return paginated transactions for the authenticated user with optional filters.
      */
@@ -36,6 +40,25 @@ class TransactionController extends Controller
         $transactions = $query->simplePaginate($perPage);
 
         return response()->json($transactions);
+    }
+
+    /**
+     * One of the user's transactions in the shape the transactions table
+     * holds its rows, so the edit dialog can open on it from anywhere that
+     * only knows its id (a row of a dashboard widget).
+     */
+    public function show(Transaction $transaction): JsonResponse
+    {
+        $this->authorize('update', $transaction);
+
+        $transaction->load(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
+            ->append('ai_categorized');
+
+        Transaction::loadSplitSiblings(EloquentCollection::make([$transaction]));
+
+        return response()
+            ->json(['data' => $transaction])
+            ->header('Cache-Control', 'no-store, private');
     }
 
     /**

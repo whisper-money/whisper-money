@@ -664,6 +664,14 @@ export default function W() {
 }`,
         ],
         [
+            'a read-only TransactionList',
+            `import { TransactionList, useWidgetData } from '@whisper-money/widget-sdk';
+export default function W() {
+    const { tx } = useWidgetData();
+    return <TransactionList transactions={tx} readOnly />;
+}`,
+        ],
+        [
             'Recharts formatters with parameters',
             widget(
                 '<BarChart data={x}><Tooltip formatter={(value, name, item) => `${name}: ${value}`} /><Bar dataKey="v" /></BarChart>',

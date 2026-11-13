@@ -79,15 +79,25 @@ export function resolveWidgetData(
  * The data of every user widget on a dashboard, in one request (the batch
  * route), for the range on screen or, without one, the user's current month.
  * It asks again when a widget's revision changes (going back to an earlier
- * version can read other data) or a widget is added.
+ * version can read other data), a widget is added or `refreshToken` moves on (a
+ * transaction was edited from a widget). Meanwhile the widgets keep drawing
+ * the data they had.
  */
 export function useUserWidgetData(
     dashboardId: string,
     definitions: UserWidgetDefinition[] | undefined,
     enabled: boolean,
-    range?: DashboardRange,
+    {
+        range,
+        refreshToken = 0,
+    }: {
+        range?: DashboardRange;
+        /** Moving it on asks again, the data on screen kept meanwhile. */
+        refreshToken?: number;
+    } = {},
 ): UserWidgetDataState {
-    const key = useMemo(() => {
+    // What the data depends on; the key adds the refreshes on top of it.
+    const dataKey = useMemo(() => {
         if (!enabled || definitions === undefined || definitions.length === 0) {
             return null;
         }
@@ -98,14 +108,17 @@ export function useUserWidgetData(
             range ?? null,
         ]);
     }, [dashboardId, definitions, enabled, range]);
+    const key =
+        dataKey === null ? null : JSON.stringify([dataKey, refreshToken]);
 
     const [state, setState] = useState<{
         key: string;
+        dataKey: string;
         value: UserWidgetDataState;
     } | null>(null);
 
     useEffect(() => {
-        if (key === null) {
+        if (key === null || dataKey === null) {
             return;
         }
 
@@ -122,13 +135,28 @@ export function useUserWidgetData(
                     trackWidgetDataLoaded(widgets);
                     setState({
                         key,
+                        dataKey,
                         value: { status: 'ready', widgets, refreshing: false },
                     });
                 }
             },
             () => {
                 if (current) {
-                    setState({ key, value: { status: 'failed' } });
+                    // A refresh that fails keeps the data on screen: the
+                    // widgets were right a moment ago, and are still nearly so.
+                    setState((previous) =>
+                        previous?.dataKey === dataKey &&
+                        previous.value.status === 'ready'
+                            ? {
+                                  key,
+                                  dataKey,
+                                  value: {
+                                      ...previous.value,
+                                      refreshing: false,
+                                  },
+                              }
+                            : { key, dataKey, value: { status: 'failed' } },
+                    );
                 }
             },
         );

@@ -94,14 +94,59 @@ describe('useUserWidgetData', () => {
     it('sends the range on screen', async () => {
         renderHook(() =>
             useUserWidgetData('dash-1', [definition('a')], true, {
-                from: '2026-10-01',
-                to: '2026-10-31',
+                range: { from: '2026-10-01', to: '2026-10-31' },
             }),
         );
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
         expect(decodeURIComponent(fetchMock.mock.calls[0][0])).toContain(
             'range[from]=2026-10-01&range[to]=2026-10-31',
+        );
+    });
+
+    it('asks again when the refresh token moves on, keeping the data meanwhile', async () => {
+        const definitions = [definition('a')];
+        const { result, rerender } = renderHook(
+            ({ refreshToken }) =>
+                useUserWidgetData('dash-1', definitions, true, {
+                    refreshToken,
+                }),
+            { initialProps: { refreshToken: 0 } },
+        );
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        rerender({ refreshToken: 1 });
+
+        expect(result.current).toMatchObject({
+            status: 'ready',
+            refreshing: true,
+        });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        await waitFor(() =>
+            expect(result.current).toMatchObject({ refreshing: false }),
+        );
+    });
+
+    it('keeps the data on screen when a refresh fails', async () => {
+        const definitions = [definition('a')];
+        const { result, rerender } = renderHook(
+            ({ refreshToken }) =>
+                useUserWidgetData('dash-1', definitions, true, {
+                    refreshToken,
+                }),
+            { initialProps: { refreshToken: 0 } },
+        );
+
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        fetchMock.mockResolvedValueOnce({ ok: false, status: 500 });
+        rerender({ refreshToken: 1 });
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        await waitFor(() =>
+            expect(result.current).toMatchObject({
+                status: 'ready',
+                refreshing: false,
+            }),
         );
     });
 

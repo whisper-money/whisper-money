@@ -17,6 +17,8 @@ interface TransactionRowDialogsProps {
     automationRules: AutomationRule[];
     /** Brings the new row in once a duplicate is saved. */
     onDuplicated: () => void;
+    /** Brings the parts in once a split is made or merged back; the page reloads by default. */
+    onSplitChanged?: () => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export function TransactionRowDialogs({
     banks,
     automationRules,
     onDuplicated,
+    onSplitChanged = reloadPage,
 }: TransactionRowDialogsProps) {
     return (
         <>
@@ -62,7 +65,7 @@ export function TransactionRowDialogs({
                 onOpenChange={(open) =>
                     !open && editing.setSplitTransaction(null)
                 }
-                onSuccess={reloadPage}
+                onSuccess={onSplitChanged}
                 onLabelCreated={editing.handleLabelCreated}
             />
 
@@ -72,7 +75,7 @@ export function TransactionRowDialogs({
                 onOpenChange={(open) =>
                     !open && editing.setUnsplitTransaction(null)
                 }
-                onSuccess={reloadPage}
+                onSuccess={onSplitChanged}
             />
 
             <EditTransactionDialog

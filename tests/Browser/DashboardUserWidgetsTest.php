@@ -555,10 +555,10 @@ function dashboardWithTransactionListWidget(): array
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Panigale']);
 
     foreach ([
-        ['2026-10-03', 'Pago en Ducati Store', -64900],
-        ['2026-10-03', 'Pago en Repsol', -3200],
-        ['2026-10-11', 'Pago en Motoclub', -2500],
-    ] as [$date, $description, $amount]) {
+        ['2026-10-03', 'Pago en Ducati Store', -64900, null],
+        ['2026-10-03', 'Pago en Repsol', -3200, null],
+        ['2026-10-11', 'Pago en Motoclub', -2500, 'Cuota anual'],
+    ] as [$date, $description, $amount, $notes]) {
         Transaction::factory()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
@@ -567,6 +567,8 @@ function dashboardWithTransactionListWidget(): array
             'description' => $description,
             'amount' => $amount,
             'currency_code' => 'EUR',
+            'notes' => $notes,
+            'source' => 'manually_created',
         ])->labels()->attach($label);
     }
 
@@ -646,3 +648,53 @@ it('lists transactions in a user widget the way the app does', function (bool $d
         ->and(implode("\n", $rows))->not->toContain('Panigale')
         ->and(implode("\n", $rows))->not->toContain('Mercadona');
 })->with(['light' => false, 'dark' => true]);
+
+it('opens the edit dialog from a widget row and redraws the widget once saved', function () {
+    [$user, $widget] = dashboardWithTransactionListWidget();
+    $workshop = Category::factory()->create(['user_id' => $user->id, 'name' => 'Taller']);
+    $motoclub = Transaction::query()->where('user_id', $user->id)->where('description', 'Pago en Motoclub')->sole();
+    actingAs($user);
+
+    $page = visit('/dashboard');
+    $cell = userWidgetCell($widget);
+
+    $page->assertCount("{$cell} [data-testid=\"transaction-list-row\"]", 3)
+        ->click('Motoclub')
+        ->waitForText('Edit Transaction', 10)
+        // The dialog holds the transaction as the server does, not the
+        // widget's rewritten copy of it.
+        ->assertValue('#description', 'Pago en Motoclub')
+        ->assertValue('#notes', 'Cuota anual')
+        ->click('[data-testid="category-select"]')
+        ->click('Taller')
+        ->fill('#notes', 'Cuota 2027')
+        ->click('[data-testid="submit-transaction"]')
+        ->assertDontSee('Edit Transaction')
+        ->waitForText('Cuota 2027', 10)
+        ->assertNoJavascriptErrors();
+
+    $row = $page->script(<<<JS
+        [...document.querySelectorAll('{$cell} [data-testid="transaction-list-row"]')]
+            .map((row) => row.textContent)
+            .find((text) => text.includes('Motoclub'))
+    JS);
+
+    expect($row)->toContain('Taller', 'Cuota 2027')
+        ->and($motoclub->fresh()->category_id)->toBe($workshop->id)
+        ->and($motoclub->fresh()->notes)->toBe('Cuota 2027');
+});
+
+it('opens nothing from a widget row while the dashboard is edited', function () {
+    [$user, $widget] = dashboardWithTransactionListWidget();
+    actingAs($user);
+
+    $page = visit('/dashboard');
+    $cell = userWidgetCell($widget);
+
+    $page->assertCount("{$cell} [data-testid=\"transaction-list-row\"]", 3)
+        ->press('Edit')
+        ->click('Motoclub')
+        ->wait(1)
+        ->assertDontSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+});
