@@ -136,6 +136,100 @@ describe('<UserWidget>', () => {
         );
     });
 
+    describe('frame', () => {
+        const CARD = ['rounded-xl', 'border', 'bg-card'];
+
+        it.each([undefined, 'card' as const])(
+            'draws the widget in a card with frame %s',
+            async (frame) => {
+                const { container } = inApp(
+                    <UserWidget
+                        js={RENDERS}
+                        data={{ total: 100 }}
+                        size={{ width: '1/2', height: 'm' }}
+                        frame={frame}
+                    />,
+                );
+
+                await screen.findByText(/1\/2 EUR/);
+                const cell = container.querySelector('.wm-widget');
+
+                expect(cell).toHaveAttribute('data-frame', 'card');
+                expect(cell).toHaveClass(...CARD);
+            },
+        );
+
+        it('draws the widget straight on the dashboard with frame none', async () => {
+            const { container } = inApp(
+                <UserWidget
+                    js={RENDERS}
+                    data={{ total: 100 }}
+                    size={{ width: '1/2', height: 'm' }}
+                    frame="none"
+                />,
+            );
+
+            await screen.findByText(/1\/2 EUR/);
+            const cell = container.querySelector('.wm-widget');
+
+            expect(cell).toHaveAttribute('data-frame', 'none');
+            expect(cell).toHaveClass('h-full', 'w-full', 'min-w-0');
+            expect(cell).not.toHaveClass('border');
+            expect(cell).not.toHaveClass('bg-card');
+        });
+
+        it('keeps the card while a frameless widget loads', async () => {
+            const { container } = inApp(
+                <UserWidget
+                    js={RENDERS}
+                    data={{ total: 100 }}
+                    size={{ width: '1/2', height: 'm' }}
+                    frame="none"
+                />,
+            );
+
+            // Read while it loads: the same element turns frameless once ready.
+            const loadingClasses = await waitFor(() => {
+                const cell = container.querySelector(
+                    '.wm-widget[data-status="loading"]',
+                );
+                expect(cell).not.toBeNull();
+                return [...cell!.classList];
+            });
+
+            expect(loadingClasses).toEqual(expect.arrayContaining(CARD));
+            await screen.findByText(/1\/2 EUR/);
+        });
+
+        it.each([
+            ['throws', THROWS],
+            [
+                'does not load',
+                'import{x}from"left-pad";export default function W(){}',
+            ],
+        ])(
+            'keeps the card around a frameless widget that %s',
+            async (_, js) => {
+                vi.spyOn(console, 'error').mockImplementation(() => {});
+
+                const { container } = inApp(
+                    <UserWidget
+                        js={js}
+                        data={{}}
+                        size={{ width: '1/2', height: 'm' }}
+                        frame="none"
+                    />,
+                );
+
+                await screen.findByRole('alert');
+
+                expect(container.querySelector('.wm-widget')).toHaveClass(
+                    ...CARD,
+                );
+            },
+        );
+    });
+
     it('renders nothing with the flag off', () => {
         pageProps(false);
 

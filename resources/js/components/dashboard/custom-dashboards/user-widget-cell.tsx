@@ -41,6 +41,8 @@ export interface UserWidgetCellProps {
         error: WidgetRuntimeError,
     ) => void;
     canRevert: boolean;
+    /** The dashboard is being edited: its menu is only offered then, or on an error. */
+    isEditing: boolean;
     /** Takes it off the dashboard; absent when the user cannot edit it. */
     onRemove?: () => void;
 }
@@ -107,7 +109,8 @@ function useCellContent(
  * A widget the user's agent wrote, in its dashboard cell: a skeleton while its
  * module and data load, the widget once they have, and its failures (data the
  * API refused, code that throws) kept to the cell. Its menu opens the
- * widget's details: the last error and the versions to go back to.
+ * widget's details: the last error and the versions to go back to. It is
+ * offered while the dashboard is edited, and outside it only on an error.
  */
 export function UserWidgetCell({
     placement,
@@ -117,6 +120,7 @@ export function UserWidgetCell({
     caughtError,
     onError,
     canRevert,
+    isEditing,
     onRemove,
 }: UserWidgetCellProps) {
     const content = useCellContent(placement, definition, gate, data);
@@ -172,6 +176,7 @@ export function UserWidgetCell({
                         js={definition.js}
                         data={content.resolved.data}
                         size={placement.size}
+                        frame={definition.manifest.frame}
                         onError={(caught) => onError(definition, caught)}
                         onSettled={() => settle?.(placement.id)}
                     />
@@ -189,23 +194,25 @@ export function UserWidgetCell({
                 </>
             )}
 
-            {definition !== undefined && content.kind !== 'safe' && (
-                <>
-                    <UserWidgetMenu
-                        name={definition.name}
-                        hasError={error !== null}
-                        onDetails={() => setDetailsOpen(true)}
-                        onRemove={onRemove}
-                    />
-                    <UserWidgetDetailsDialog
-                        definition={definition}
-                        error={error}
-                        open={detailsOpen}
-                        onOpenChange={setDetailsOpen}
-                        canRevert={canRevert}
-                    />
-                </>
-            )}
+            {definition !== undefined &&
+                content.kind !== 'safe' &&
+                (isEditing || error !== null) && (
+                    <>
+                        <UserWidgetMenu
+                            name={definition.name}
+                            hasError={error !== null}
+                            onDetails={() => setDetailsOpen(true)}
+                            onRemove={onRemove}
+                        />
+                        <UserWidgetDetailsDialog
+                            definition={definition}
+                            error={error}
+                            open={detailsOpen}
+                            onOpenChange={setDetailsOpen}
+                            canRevert={canRevert}
+                        />
+                    </>
+                )}
         </div>
     );
 }
@@ -229,11 +236,10 @@ function UserWidgetMenu({
                     size="icon-sm"
                     aria-label={__('Options for :widget', { widget: name })}
                     className={cn(
-                        'absolute top-2 right-2 bg-background/90 transition-opacity',
-                        // Out of the widget's way until the pointer is over
-                        // it; always there on touch screens and with an error.
-                        !hasError &&
-                            'opacity-0 group-hover/user-widget:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100',
+                        'absolute top-2 right-2 bg-background/90',
+                        // A widget drawn without its card has no inset to
+                        // sit in: take its corner instead.
+                        'group-has-[[data-slot=user-widget][data-frame=none]]/user-widget:top-0 group-has-[[data-slot=user-widget][data-frame=none]]/user-widget:right-0',
                     )}
                 >
                     <EllipsisVertical className="size-4" />

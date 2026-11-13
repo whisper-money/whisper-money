@@ -272,7 +272,10 @@ it('fits a phone: user and system widgets full width', function () {
         ->and($layout['cells'])->toHaveCount(2)
         ->and(array_unique($layout['cells']))->toBe([$layout['grid']]);
 
-    // The menu is there without hovering: a phone has no pointer to hover with.
-    $page->assertVisible('[aria-label="Options for Groceries by month"]')
+    // The menu is only offered while editing, and then without hovering: a
+    // phone has no pointer to hover with.
+    $page->assertMissing('[aria-label="Options for Groceries by month"]')
+        ->press('Edit')
+        ->assertVisible('[aria-label="Options for Groceries by month"]')
         ->assertNoJavascriptErrors();
 });

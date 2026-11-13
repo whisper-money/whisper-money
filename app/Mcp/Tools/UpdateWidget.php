@@ -30,7 +30,7 @@ class UpdateWidget extends WriteTool
     {
         return [
             'widget_id' => $schema->string()->description('Id of the widget, from list_dashboards or create_widget.')->required(),
-            'manifest' => $schema->object()->description('The whole new manifest. Omit it to keep the current one.'),
+            'manifest' => $schema->object()->description('The whole new manifest, frame included: a key left out goes back to its default. Omit it to keep the current one.'),
             'source' => $schema->string()->description('The whole new TSX. Omit it to keep the current one.'),
         ];
     }

@@ -33,7 +33,7 @@ class WidgetPreviewPayload
     public function __construct(private WidgetDefinitionService $widgets) {}
 
     /**
-     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, chart_color_scheme: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>}
+     * @return array{widget_id: string, name: string, revision: int, js: string, size: array{width: string, height: string}, frame: 'card'|'none', data: array<string, mixed>|null, data_too_large: bool, failures: list<array{key: string, status: int, message: string}>, currency: string, locale: string, chart_color_scheme: string, accounts: array<string, array{type: string, bankName: string|null, bankLogo: string|null}>}
      */
     public function for(User $user, WidgetDefinition $widget): array
     {
@@ -50,6 +50,7 @@ class WidgetPreviewPayload
             'revision' => $widget->revision,
             'js' => $widget->compiled_js,
             'size' => ['width' => $size['width']->value, 'height' => $size['height']->value],
+            'frame' => $widget->frame()->value,
             'data' => $tooLarge ? null : $data,
             'data_too_large' => $tooLarge,
             'failures' => $this->failures($answers),

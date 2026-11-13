@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\SizedWidget;
+use App\Enums\WidgetFrame;
 use App\Enums\WidgetHeight;
 use App\Enums\WidgetOrigin;
 use App\Enums\WidgetWidth;
@@ -24,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string $id
  * @property string $user_id
  * @property string $name
- * @property array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>} $manifest
+ * @property array{name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}, frame?: 'card'|'none', data: array<string, array{endpoint: string, params?: array<string, mixed>, paginate?: 'all'}>} $manifest
  * @property string $source
  * @property string $compiled_js
  * @property int $revision
@@ -105,6 +106,12 @@ class WidgetDefinition extends Model implements SizedWidget
             'width' => WidgetWidth::from($this->manifest['size']['width']),
             'height' => WidgetHeight::from($this->manifest['size']['height']),
         ];
+    }
+
+    /** What the dashboard draws around it: its card unless the manifest says none. */
+    public function frame(): WidgetFrame
+    {
+        return WidgetFrame::tryFrom($this->manifest['frame'] ?? '') ?? WidgetFrame::Card;
     }
 
     public function allowsSize(WidgetWidth $width, WidgetHeight $height): bool

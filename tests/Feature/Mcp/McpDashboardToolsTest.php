@@ -153,6 +153,10 @@ describe('widget reference', function () {
             ->and($json['manifest']['widths'])->toBe(['1/3', '1/2', '1/1'])
             ->and($json['manifest']['heights'])->toBe(['m', 'l'])
             ->and($json['manifest']['variables'])->toBe(['{{range.from}}', '{{range.to}}'])
+            ->and($json['manifest']['frames'])->toBe(['card', 'none'])
+            ->and($json['manifest']['shape'])->toContain('frame?')
+            ->and($json['manifest']['example_frameless']['frame'])->toBe('none')
+            ->and(implode("\n", $json['rules']))->toContain('frame: "none"', 'never nest cards')
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /analytics/aggregate')['params'])->toHaveKeys(['group_by', 'from', 'to', 'category_ids'])
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /transactions')['listable'])->toBeTrue();
     });
@@ -172,8 +176,17 @@ describe('widgets', function () {
             ->and($json['widget'])->toMatchArray(['id' => $widget->id, 'name' => 'Supermercado por mes', 'revision' => 1, 'created_via' => 'mcp', 'source' => mcpWidgetSource()])
             ->and($json['widget'])->not->toHaveKey('compiled_js')
             ->and($json['data_failures'])->toBe([])
-            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR', 'chart_color_scheme' => 'colorful'])
+            ->and($preview)->toMatchArray(['widget_id' => $widget->id, 'revision' => 1, 'js' => $widget->compiled_js, 'size' => ['width' => '1/2', 'height' => 'm'], 'frame' => 'card', 'failures' => [], 'data_too_large' => false, 'currency' => 'EUR', 'chart_color_scheme' => 'colorful'])
             ->and($preview['data']['accounts']['data'])->toHaveCount(1);
+    });
+
+    it('hands the frame the manifest asks for to the preview', function () {
+        $user = User::factory()->create();
+
+        $response = callDashboardTool($user, CreateWidget::class, ['manifest' => mcpWidgetManifest(['frame' => 'none']), 'source' => mcpWidgetSource()])->assertOk();
+
+        expect(dashboardToolResult($response)['_meta']['whisper-money/widget-preview']['frame'])->toBe('none')
+            ->and($user->widgetDefinitions()->sole()->manifest['frame'])->toBe('none');
     });
 
     it('hands back every reason a widget was not saved, where and why', function () {

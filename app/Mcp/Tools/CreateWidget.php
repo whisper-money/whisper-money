@@ -27,7 +27,7 @@ class CreateWidget extends WriteTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'manifest' => $schema->object()->description('{ name, size: { width, height, allowed_widths?, allowed_heights? }, data: { <key>: { endpoint, params?, paginate? } } }. See get_widget_sdk.')->required(),
+            'manifest' => $schema->object()->description('{ name, size: { width, height, allowed_widths?, allowed_heights? }, frame?: "card" | "none", data: { <key>: { endpoint, params?, paginate? } } }. See get_widget_sdk.')->required(),
             'source' => $schema->string()->description('The widget TSX: one module whose default export is the component. See get_widget_sdk for what it may use.')->required(),
         ];
     }
