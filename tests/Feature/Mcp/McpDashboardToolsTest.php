@@ -156,7 +156,7 @@ describe('widget reference', function () {
             ->and($json['manifest']['frames'])->toBe(['card', 'none'])
             ->and($json['manifest']['shape'])->toContain('frame?')
             ->and($json['manifest']['example_frameless']['frame'])->toBe('none')
-            ->and(implode("\n", $json['rules']))->toContain('frame: "none"', 'never nest cards')
+            ->and(implode("\n", $json['rules']))->toContain('frame: "none"', 'never nest cards', 'On a phone it grows with the widget')
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /analytics/aggregate')['params'])->toHaveKeys(['group_by', 'from', 'to', 'category_ids'])
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /transactions')['listable'])->toBeTrue();
     });

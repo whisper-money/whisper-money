@@ -45,7 +45,11 @@ type LoadState =
     | { status: 'ready'; js: string; Widget: ComponentType }
     | { status: 'failed'; message: string };
 
-/** The dashboard's row (auto-rows-[16rem], gap-6): `l` is two rows and the gap. */
+/**
+ * A row of a desktop dashboard (16rem, gap-6): `l` is two rows and the gap.
+ * The preview draws that fixed cell; on a phone the dashboard lets the widget
+ * grow past it (see grid-layout.ts).
+ */
 const HEIGHTS: Record<WidgetHeight, string> = { m: '16rem', l: '33.5rem' };
 
 /** About the width of each fraction on a desktop dashboard. */

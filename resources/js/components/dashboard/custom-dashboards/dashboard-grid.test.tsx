@@ -58,7 +58,7 @@ describe('DashboardGrid', () => {
         expect(
             screen.getAllByTestId('widget').map((el) => el.dataset.stub),
         ).toEqual(['net-worth', 'top-labels']);
-        expect(cellOf('net-worth').className).toContain('row-span-2');
+        expect(cellOf('net-worth').className).toContain('@2xl:row-span-2');
         expect(cellOf('top-labels').className).toContain('@4xl:col-span-4');
     });
 
