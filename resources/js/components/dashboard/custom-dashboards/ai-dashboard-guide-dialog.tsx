@@ -76,13 +76,16 @@ export function AiDashboardGuideDialog({ open, onOpenChange, hasPlan }: Props) {
         return (
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <DrawerContent data-testid="ai-dashboard-guide">
-                    <DrawerHeader className="items-start gap-3 text-left">
-                        <IconTile />
-                        <DrawerTitle>{title}</DrawerTitle>
-                        <DrawerDescription>{description}</DrawerDescription>
-                    </DrawerHeader>
-                    <div className="overflow-y-auto px-4">{body}</div>
-                    <DrawerFooter className="gap-3">
+                    {/* The header scrolls with the steps, so a short phone keeps the buttons in reach. */}
+                    <div className="overflow-y-auto">
+                        <DrawerHeader className="items-start gap-3 group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
+                            <IconTile />
+                            <DrawerTitle>{title}</DrawerTitle>
+                            <DrawerDescription>{description}</DrawerDescription>
+                        </DrawerHeader>
+                        <div className="px-4">{body}</div>
+                    </div>
+                    <DrawerFooter className="gap-3 border-t">
                         {hasPlan ? (
                             <OpenAiConnectorButton className="h-11 w-full" />
                         ) : (
