@@ -629,14 +629,20 @@ it('lists transactions in a user widget the way the app does', function (bool $d
     $page->assertSee('Movimientos de la Panigale')
         ->assertCount("{$cell} [data-testid=\"transaction-list-row\"]", 3)
         ->assertCount("{$cell} [data-testid=\"transaction-day-header\"]", 2)
-        ->assertSeeIn($cell, 'Ducati Store')
-        ->assertDontSeeIn($cell, 'Pago en')
-        ->assertDontSeeIn($cell, 'Mercadona')
-        ->assertSeeIn("{$cell} [data-testid=\"transaction-list-row-badge\"]", 'Compra')
-        ->assertSeeIn($cell, 'Moto')
-        ->assertSeeIn($cell, 'Nómina')
-        // The label every row carries is left out of each.
-        ->assertDontSeeIn("{$cell} [data-testid=\"transaction-list-row\"]", 'Panigale')
+        ->assertCount("{$cell} [data-testid=\"transaction-list-row-badge\"]", 1)
         ->assertMissing("{$cell} [role=\"alert\"]")
         ->assertNoJavascriptErrors();
+
+    $rows = $page->script(<<<JS
+        [...document.querySelectorAll('{$cell} [data-testid="transaction-list-row"]')].map((row) => row.textContent)
+    JS);
+
+    // Newest day first; each row with its category and account, the
+    // description rewritten, and without the label every row carries.
+    expect($rows)->toHaveCount(3)
+        ->and($rows[0])->toContain('Motoclub', 'Moto', 'Nómina')
+        ->and($rows[2])->toContain('Ducati Store', 'Compra')
+        ->and(implode("\n", $rows))->not->toContain('Pago en')
+        ->and(implode("\n", $rows))->not->toContain('Panigale')
+        ->and(implode("\n", $rows))->not->toContain('Mercadona');
 })->with(['light' => false, 'dark' => true]);
