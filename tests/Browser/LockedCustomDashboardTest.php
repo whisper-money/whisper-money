@@ -95,3 +95,35 @@ it('tells a user off the plan that new dashboards are part of Standard', functio
         ->assertMissing('#dashboard-name')
         ->assertNoJavascriptErrors();
 });
+
+it('shows the AI dashboard guide off the plan under a Standard plan banner', function () {
+    [$user] = lapsedUserWithDashboard();
+
+    actingAs($user);
+
+    visit('/dashboard')
+        ->click('[aria-label="Switch dashboard"]')
+        ->click('Create a dashboard with AI')
+        ->assertVisible('[data-testid="ai-dashboard-guide"]')
+        ->assertVisible('[data-testid="ai-dashboard-guide-plan-banner"]')
+        ->assertSee("It's a Standard plan feature")
+        ->assertSee('Connect your assistant')
+        ->assertSee('See plans')
+        ->assertNoJavascriptErrors();
+});
+
+it('opens the AI dashboard guide as a bottom drawer on a phone', function () {
+    [$user] = lapsedUserWithDashboard();
+
+    actingAs($user);
+
+    visit('/dashboard')
+        ->on()
+        ->iPhoneSE()
+        ->navigate('/dashboard')
+        ->click('[aria-label="Switch dashboard"]')
+        ->click('Create a dashboard with AI')
+        ->assertVisible('[data-testid="ai-dashboard-guide"][data-vaul-drawer-direction="bottom"]')
+        ->assertVisible('[data-testid="ai-dashboard-guide-plan-banner"]')
+        ->assertNoJavascriptErrors();
+});

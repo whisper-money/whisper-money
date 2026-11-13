@@ -16,6 +16,7 @@ import { Link } from '@inertiajs/react';
 import { Check, LayoutGrid, Pencil } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { AddWidgetMenu } from './add-widget-menu';
+import { AiDashboardGuideDialog } from './ai-dashboard-guide-dialog';
 import { dashboardActions } from './dashboard-actions';
 import { DashboardGrid, EditableDashboardGrid } from './dashboard-grid';
 import { DashboardNameDialog } from './dashboard-name-dialog';
@@ -55,6 +56,7 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
     const [creating, setCreating] = useState(false);
     const [upselling, setUpselling] = useState(false);
     const [managing, setManaging] = useState(false);
+    const [aiGuideOpen, setAiGuideOpen] = useState(false);
 
     // The list is deferred; until it lands, the one on screen is all we know.
     const dashboards =
@@ -120,6 +122,7 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
                         onCreate={() =>
                             canEdit ? setCreating(true) : setUpselling(true)
                         }
+                        onCreateWithAi={() => setAiGuideOpen(true)}
                         onManage={() => setManaging(true)}
                     />
                 </div>
@@ -147,6 +150,11 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
 
             <DashboardNameDialog open={creating} onOpenChange={setCreating} />
             <StandardPlanDialog open={upselling} onOpenChange={setUpselling} />
+            <AiDashboardGuideDialog
+                open={aiGuideOpen}
+                onOpenChange={setAiGuideOpen}
+                hasPlan={auth.hasProPlan}
+            />
             <ManageDashboardsDialog
                 open={managing}
                 onOpenChange={setManaging}

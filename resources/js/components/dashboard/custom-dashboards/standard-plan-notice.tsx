@@ -18,9 +18,15 @@ import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useEffect } from 'react';
 
-function SeePlansButton({ trigger }: { trigger: UpgradePromptTrigger }) {
+export function SeePlansButton({
+    trigger,
+    className,
+}: {
+    trigger: UpgradePromptTrigger;
+    className?: string;
+}) {
     return (
-        <Button asChild>
+        <Button asChild className={className}>
             <Link
                 href={subscribe().url}
                 onClick={() => trackUpgradeClicked(trigger)}
