@@ -169,7 +169,6 @@ export function WidgetPreview({
     const [privacyMode, setPrivacyMode] = useState(false);
     const [failure] = payload.failures;
     const { crashed, markCrashed } = useWidgetCrash(payload);
-    let showsWidget = false;
 
     useEffect(() => {
         setDefaultMoneyLocale(payload.locale);
@@ -210,7 +209,6 @@ export function WidgetPreview({
     } else if (state.status === 'failed') {
         content = <WidgetErrorState message={state.message} />;
     } else {
-        showsWidget = !crashed;
         content = (
             <WidgetErrorBoundary
                 resetKey={payload}
@@ -240,6 +238,11 @@ export function WidgetPreview({
         );
     }
 
+    const showsWidget =
+        failure === undefined &&
+        payload.data !== null &&
+        state.status === 'ready' &&
+        !crashed;
     const carded = isWidgetCarded(payload.frame, showsWidget);
 
     return (

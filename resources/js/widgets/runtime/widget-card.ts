@@ -25,11 +25,14 @@ export function useWidgetCrash(resetKey: unknown): {
     crashed: boolean;
     markCrashed: () => void;
 } {
-    const [crashedAt, setCrashedAt] = useState<{ key: unknown } | null>(null);
+    // Boxed, so a key that is itself null or undefined still reads as a crash.
+    const [crashedWith, setCrashedWith] = useState<{ key: unknown } | null>(
+        null,
+    );
     const markCrashed = useCallback(
-        () => setCrashedAt({ key: resetKey }),
+        () => setCrashedWith({ key: resetKey }),
         [resetKey],
     );
 
-    return { crashed: crashedAt?.key === resetKey, markCrashed };
+    return { crashed: crashedWith?.key === resetKey, markCrashed };
 }

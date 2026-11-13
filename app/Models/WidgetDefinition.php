@@ -108,9 +108,10 @@ class WidgetDefinition extends Model implements SizedWidget
         ];
     }
 
+    /** What the dashboard draws around it: its card unless the manifest says none. */
     public function frame(): WidgetFrame
     {
-        return WidgetFrame::from($this->manifest['frame'] ?? WidgetFrame::Card->value);
+        return WidgetFrame::tryFrom($this->manifest['frame'] ?? '') ?? WidgetFrame::Card;
     }
 
     public function allowsSize(WidgetWidth $width, WidgetHeight $height): bool
