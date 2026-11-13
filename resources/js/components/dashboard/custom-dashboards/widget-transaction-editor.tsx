@@ -1,10 +1,10 @@
 import { show as showTransaction } from '@/actions/App/Http/Controllers/Api/TransactionController';
 import { TransactionDeleteDialogs } from '@/components/transactions/transaction-delete-dialogs';
 import { TransactionRowDialogs } from '@/components/transactions/transaction-row-dialogs';
-import { normalizeTransaction } from '@/hooks/use-server-transaction-source';
 import { useTransactionBulkActions } from '@/hooks/use-transaction-bulk-actions';
 import { useTransactionRowEditing } from '@/hooks/use-transaction-row-editing';
 import { fetchJson } from '@/lib/fetch-json';
+import { normalizeTransaction } from '@/lib/normalize-transaction';
 import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -48,6 +48,8 @@ export default function WidgetTransactionEditor({
         }
     >().props;
     const [rows, setRows] = useState<ServerTransaction[]>([]);
+    // Nothing is ever ticked here: the bulk actions hook is what owns the
+    // delete confirmation the edit dialog's Delete opens.
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
     const editing = useTransactionRowEditing({
@@ -70,6 +72,10 @@ export default function WidgetTransactionEditor({
 
     useEffect(() => {
         let current = true;
+
+        // A tap that fails to load must not open the previous transaction.
+        setEditTransaction(null);
+        setRows([]);
 
         fetchJson<{ data: ServerTransaction }>(
             showTransaction.url(request.transactionId),
@@ -103,6 +109,7 @@ export default function WidgetTransactionEditor({
                 banks={banks}
                 automationRules={automationRules}
                 onDuplicated={onChanged}
+                onSplitChanged={onChanged}
             />
             <TransactionDeleteDialogs dialog={bulk.deleteDialog} />
         </>

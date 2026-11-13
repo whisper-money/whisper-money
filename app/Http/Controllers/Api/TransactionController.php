@@ -47,7 +47,7 @@ class TransactionController extends Controller
      * holds its rows, so the edit dialog can open on it from anywhere that
      * only knows its id (a row of a dashboard widget).
      */
-    public function show(Request $request, Transaction $transaction): JsonResponse
+    public function show(Transaction $transaction): JsonResponse
     {
         $this->authorize('update', $transaction);
 

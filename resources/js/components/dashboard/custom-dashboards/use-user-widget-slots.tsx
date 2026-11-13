@@ -3,7 +3,14 @@ import {
     useUserWidgetsGate,
     type UserWidgetsGate,
 } from '@/widgets/runtime/use-user-widgets-gate';
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import {
+    lazy,
+    Suspense,
+    useCallback,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 import { dashboardActions } from './dashboard-actions';
 import { type UserWidgetSlots } from './dashboard-grid';
 import { userWidgetSizeRules, type PlacedWidget } from './grid-layout';
@@ -52,24 +59,25 @@ export function useUserWidgetSlots({
                 : Object.values(data.userWidgets),
         [data.userWidgets],
     );
-    const [reloads, setReloads] = useState(0);
+    const [refreshToken, setRefreshToken] = useState(0);
     const widgetData = useUserWidgetData(
         dashboard.id,
         definitions,
         gate.mode === 'run',
-        undefined,
-        reloads,
+        { refreshToken },
     );
     const [transactionRequest, setTransactionRequest] =
         useState<WidgetTransactionRequest | null>(null);
     // While the dashboard is arranged a tap on a row is not an edit.
-    const openTransaction = isEditing
-        ? undefined
-        : (transactionId: string) =>
-              setTransactionRequest((previous) => ({
-                  transactionId,
-                  sequence: (previous?.sequence ?? 0) + 1,
-              }));
+    const requestTransaction = useCallback(
+        (transactionId: string) =>
+            setTransactionRequest((previous) => ({
+                transactionId,
+                sequence: (previous?.sequence ?? 0) + 1,
+            })),
+        [],
+    );
+    const openTransaction = isEditing ? undefined : requestTransaction;
     const { errors, report } = useWidgetErrorReporter(
         !data.auth.isSharedAccount,
     );
@@ -111,7 +119,7 @@ export function useUserWidgetSlots({
         <Suspense fallback={null}>
             <WidgetTransactionEditor
                 request={transactionRequest}
-                onChanged={() => setReloads((count) => count + 1)}
+                onChanged={() => setRefreshToken((count) => count + 1)}
             />
         </Suspense>
     );
