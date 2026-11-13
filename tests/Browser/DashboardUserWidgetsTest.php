@@ -279,3 +279,153 @@ it('fits a phone: user and system widgets full width', function () {
         ->assertVisible('[aria-label="Options for Groceries by month"]')
         ->assertNoJavascriptErrors();
 });
+
+/**
+ * A frameless row of five KPI tiles under a heading: taller than a 16rem row
+ * once the tiles stack on a phone.
+ */
+function kpiRowWidgetSource(): string
+{
+    return <<<'TSX'
+        import { useWidgetData } from '@whisper-money/widget-sdk';
+
+        export default function KpiRow() {
+            const { groceries } = useWidgetData();
+            const tiles = ['Ingresos', 'Gastos', 'Ahorro', 'Inversión', 'Compras'];
+
+            return (
+                <div className="flex h-full flex-col gap-3">
+                    <div>
+                        <h3 className="text-sm font-medium">Resumen del mes</h3>
+                        <p className="text-xs text-muted-foreground">Lo esencial de un vistazo</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        {tiles.map((tile) => (
+                            <div key={tile} className="flex h-24 flex-col justify-between rounded-xl border bg-card p-4">
+                                <span className="text-xs text-muted-foreground">{tile}</span>
+                                <span className="text-xl font-semibold tabular-nums">{groceries.data.length}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+        TSX;
+}
+
+/** A chart with no height of its own: it takes the cell's. */
+function fullHeightChartWidgetSource(): string
+{
+    return <<<'TSX'
+        import { useWidgetData } from '@whisper-money/widget-sdk';
+        import { Bar, BarChart, ResponsiveContainer } from 'recharts';
+
+        export default function Purchases() {
+            const { groceries } = useWidgetData();
+            const rows = groceries.data.map((row) => ({ amount: Math.abs(row.amount) }));
+
+            return (
+                <div className="h-full p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={rows}>
+                            <Bar dataKey="amount" fill="var(--color-chart-1)" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            );
+        }
+        TSX;
+}
+
+/**
+ * The dashboard of dashboardWithUserWidget() with the KPI row (frameless, 1/2
+ * and m) and the chart (1/2 and l) added to it.
+ *
+ * @return array{0: User, 1: WidgetDefinition, 2: WidgetDefinition}
+ */
+function dashboardWithTallWidget(): array
+{
+    [$user, $dashboard] = dashboardWithUserWidget();
+    $service = app(WidgetDefinitionService::class);
+
+    $kpis = $service->create($user, [...groceriesManifest(), 'name' => 'KPI row', 'frame' => 'none', 'size' => ['width' => '1/2', 'height' => 'm']], kpiRowWidgetSource(), WidgetOrigin::Mcp);
+    $chart = $service->create($user, [...groceriesManifest(), 'name' => 'Purchases chart', 'size' => ['width' => '1/2', 'height' => 'l']], fullHeightChartWidgetSource(), WidgetOrigin::Mcp);
+    $service->place($dashboard, $kpis);
+    $service->place($dashboard, $chart);
+
+    return [$user, $kpis, $chart];
+}
+
+/**
+ * The height of each widget's cell, whether its content scrolls inside it,
+ * and the height of the chart's drawing.
+ *
+ * @return array{kpis: float, kpisScroll: float, chart: float, chartSvg: float, netWorth: float}
+ */
+function widgetCellHeights($page, WidgetDefinition $kpis, WidgetDefinition $chart): array
+{
+    return $page->script(<<<JS
+        (() => {
+            const cell = (selector) => document.querySelector(`[data-testid="dashboard-grid"] > \${selector}`);
+            const kpis = cell('[data-widget="user:{$kpis->id}"]');
+            const frame = kpis.querySelector('.wm-widget');
+            const chart = cell('[data-widget="user:{$chart->id}"]');
+
+            return {
+                kpis: kpis.getBoundingClientRect().height,
+                kpisScroll: frame.scrollHeight - frame.clientHeight,
+                chart: chart.getBoundingClientRect().height,
+                chartSvg: chart.querySelector('svg.recharts-surface')?.getBoundingClientRect().height ?? 0,
+                netWorth: cell('[data-widget="net-worth"]').getBoundingClientRect().height,
+            };
+        })()
+    JS);
+}
+
+it('lets a tall widget grow with its content on a phone, never below its height', function (bool $dark) {
+    [$user, $kpis, $chart] = dashboardWithTallWidget();
+    actingAs($user);
+
+    $page = visit('/dashboard')
+        ->on()
+        ->iPhoneSE();
+
+    if ($dark) {
+        $page = $page->inDarkMode();
+    }
+
+    $page = $page->navigate('/dashboard')
+        ->assertSee('Resumen del mes')
+        ->assertPresent("[data-widget=\"user:{$chart->id}\"] svg.recharts-surface");
+
+    $heights = widgetCellHeights($page, $kpis, $chart);
+
+    // 16rem is 256px: the KPI row outgrows it and shows whole, with no
+    // scrollbar of its own; the large chart keeps two rows and the gap
+    // (33.5rem, 536px) to draw in.
+    expect($heights['kpis'])->toBeGreaterThan(256)
+        ->and($heights['kpisScroll'])->toBeLessThanOrEqual(0)
+        ->and(round($heights['chart']))->toEqual(536.0)
+        ->and($heights['chartSvg'])->toBeGreaterThan(400)
+        ->and($heights['netWorth'])->toBeGreaterThanOrEqual(256);
+
+    $page->assertNoJavascriptErrors();
+})->with(['light' => false, 'dark' => true]);
+
+it('keeps every row of a wider dashboard at the same fixed height', function () {
+    [$user, $kpis, $chart] = dashboardWithTallWidget();
+    actingAs($user);
+
+    $page = visit('/dashboard')
+        ->assertSee('Resumen del mes')
+        ->assertPresent("[data-widget=\"user:{$chart->id}\"] svg.recharts-surface");
+
+    $heights = widgetCellHeights($page, $kpis, $chart);
+
+    expect(round($heights['kpis']))->toEqual(256.0)
+        ->and($heights['kpisScroll'])->toBeGreaterThan(0)
+        ->and(round($heights['chart']))->toEqual(536.0)
+        ->and(round($heights['netWorth']))->toEqual(256.0);
+
+    $page->assertNoJavascriptErrors();
+});

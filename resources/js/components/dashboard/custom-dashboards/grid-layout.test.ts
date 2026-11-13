@@ -5,6 +5,7 @@ import {
 } from '@/types/dashboard';
 import { describe, expect, it } from 'vitest';
 import {
+    DASHBOARD_GRID_CLASS_NAME,
     missingSystemWidgets,
     missingUserWidgets,
     placedWidgets,
@@ -44,11 +45,11 @@ function definition(
 
 describe('widgetSizeClassName', () => {
     it.each([
-        ['1/3', 'm', '@4xl:col-span-4', 'row-span-1'],
-        ['1/2', 'm', '@2xl:col-span-6', 'row-span-1'],
-        ['1/1', 'l', 'col-span-12', 'row-span-2'],
+        ['1/3', 'm', '@4xl:col-span-4', '@2xl:row-span-1'],
+        ['1/2', 'm', '@2xl:col-span-6', '@2xl:row-span-1'],
+        ['1/1', 'l', 'col-span-12', '@2xl:row-span-2'],
     ] as const)(
-        'spans %s of the 12 columns and %s rows',
+        'spans %s of the 12 columns and %s rows from @2xl',
         (width, height, column, row) => {
             const classes = widgetSizeClassName({ width, height }).split(' ');
 
@@ -65,6 +66,36 @@ describe('widgetSizeClassName', () => {
 
             expect(classes[0]).toBe('col-span-12');
         }
+    });
+
+    it.each(['m', 'l'] as const)(
+        'keeps %s to fixed rows from @2xl only, its content contained',
+        (height) => {
+            const classes = widgetSizeClassName({ width: '1/2', height }).split(
+                ' ',
+            );
+
+            expect(classes).toContain('@2xl:contain-size');
+            expect(classes).not.toContain('contain-size');
+            expect(classes).not.toContain('row-span-1');
+            expect(classes).not.toContain('row-span-2');
+        },
+    );
+
+    it('keeps a large widget two rows tall on a phone, where it grows', () => {
+        const classes = widgetSizeClassName({
+            width: '1/1',
+            height: 'l',
+        }).split(' ');
+
+        expect(classes).toContain('min-h-[33.5rem]');
+        expect(classes).toContain('@2xl:min-h-0');
+    });
+
+    it('lets rows grow from 16rem, never shorter', () => {
+        expect(DASHBOARD_GRID_CLASS_NAME.split(' ')).toContain(
+            'auto-rows-[minmax(16rem,auto)]',
+        );
     });
 
     it('turns a third into a half on a tablet', () => {

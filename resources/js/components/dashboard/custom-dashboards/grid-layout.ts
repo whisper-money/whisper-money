@@ -19,15 +19,21 @@ import {
 } from '@/types/dashboard';
 
 /**
- * Twelve columns, so a third (4) and a half (6) share one grid, over rows of a
- * fixed height so a large widget lines up with two medium ones stacked. Dense
- * packing fills the holes that mixing widths leaves.
+ * Twelve columns, so a third (4) and a half (6) share one grid. Dense packing
+ * fills the holes that mixing widths leaves.
  *
  * The grid is a size container: widths answer to the room the grid has, not
  * to the viewport, which the sidebar shares on a tablet.
+ *
+ * Rows are at least 16rem and grow with their content. That growth only shows
+ * on a phone-sized grid, where each widget has its row to itself: from `@2xl`
+ * every cell is size-contained (see HEIGHT_CLASS_NAMES), so its content no
+ * longer pushes the row and every row stays 16rem, a large widget lining up
+ * with two medium ones stacked. A container query cannot read the grid's own
+ * width, which is why the cells, not the grid, switch.
  */
 export const DASHBOARD_GRID_CLASS_NAME =
-    '@container grid grid-cols-12 grid-flow-dense auto-rows-[16rem] gap-6';
+    '@container grid grid-cols-12 grid-flow-dense auto-rows-[minmax(16rem,auto)] gap-6';
 
 /**
  * Full width on a phone-sized grid; on a tablet-sized one a third is too
@@ -39,9 +45,15 @@ const WIDTH_CLASS_NAMES: Record<WidgetWidth, string> = {
     '1/1': 'col-span-12',
 };
 
+/**
+ * On a phone-sized grid a cell is one row that grows with its widget, never
+ * shorter than its height on a wider grid (a chart has no height of its own to
+ * grow from): `m` is the row's 16rem, `l` two rows and the gap between them.
+ * From `@2xl` the cell spans fixed rows and its content scrolls inside it.
+ */
 const HEIGHT_CLASS_NAMES: Record<WidgetHeight, string> = {
-    m: 'row-span-1',
-    l: 'row-span-2',
+    m: '@2xl:row-span-1 @2xl:contain-size',
+    l: 'min-h-[33.5rem] @2xl:min-h-0 @2xl:row-span-2 @2xl:contain-size',
 };
 
 export function widgetSizeClassName(size: WidgetSize): string {
