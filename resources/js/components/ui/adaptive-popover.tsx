@@ -156,35 +156,52 @@ export function PopoverOrDrawer({
  * page as soon as it loses focus, whether to the drawer or anywhere else.
  */
 function useKeyboardHandoff(target?: RefObject<HTMLElement | null>) {
-    const standIn = useRef<HTMLInputElement | null>(null);
+    const standInRef = useRef<HTMLInputElement | null>(null);
 
-    useEffect(() => () => standIn.current?.remove(), []);
+    useEffect(() => () => standInRef.current?.remove(), []);
 
     if (!target) {
-        return {};
+        return { onTriggerClick: undefined, onOpenAutoFocus: undefined };
     }
 
     return {
         onTriggerClick: () => {
-            standIn.current?.remove();
-            const input = document.createElement('input');
-            input.setAttribute('aria-hidden', 'true');
-            input.tabIndex = -1;
-            // 16px so iOS doesn't zoom in on it; on screen, or iOS ignores it.
-            input.style.cssText =
-                'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;pointer-events:none;';
-            input.addEventListener('blur', () => input.remove(), {
-                once: true,
-            });
-            document.body.appendChild(input);
-            input.focus({ preventScroll: true });
-            standIn.current = input;
+            standInRef.current?.remove();
+            standInRef.current = focusKeyboardStandIn();
         },
         onOpenAutoFocus: (event: Event) => {
+            if (!target.current) {
+                standInRef.current?.remove();
+
+                return;
+            }
             event.preventDefault();
-            target.current?.focus({ preventScroll: true });
+            target.current.focus({ preventScroll: true });
         },
     };
+}
+
+/** How long the stand-in waits for a drawer that may never open. */
+const STAND_IN_TIMEOUT_MS = 1000;
+
+/**
+ * Focuses an invisible input on screen, raising the keyboard. It removes
+ * itself once it loses focus, or after a second if nothing claimed it.
+ */
+function focusKeyboardStandIn(): HTMLInputElement {
+    const input = document.createElement('input');
+    input.dataset.keyboardStandIn = '';
+    input.setAttribute('aria-hidden', 'true');
+    input.tabIndex = -1;
+    // 16px so iOS doesn't zoom in on it; on screen, or iOS ignores it.
+    input.style.cssText =
+        'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;pointer-events:none;';
+    input.addEventListener('blur', () => input.remove(), { once: true });
+    setTimeout(() => input.remove(), STAND_IN_TIMEOUT_MS);
+    document.body.appendChild(input);
+    input.focus({ preventScroll: true });
+
+    return input;
 }
 
 /**

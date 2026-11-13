@@ -56,9 +56,9 @@ export function LabelCombobox({
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
-    const searchRef = useRef<HTMLInputElement>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [createdLabels, setCreatedLabels] = useState<Label[]>([]);
+    const searchRef = useRef<HTMLInputElement>(null);
 
     const mergedLabels = useMemo(() => {
         const labelsById = new Map<string, Label>();

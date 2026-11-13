@@ -325,7 +325,7 @@ describe('BulkActionsBar on the phone', () => {
         );
         await waitFor(() => expect(search).toHaveFocus());
         expect(
-            document.body.querySelectorAll('input[aria-hidden]'),
+            document.querySelectorAll('[data-keyboard-stand-in]'),
         ).toHaveLength(0);
     });
 
