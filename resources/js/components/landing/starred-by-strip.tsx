@@ -27,7 +27,7 @@ export function StarredByStrip({
                 {label}
             </p>
             <Marquee
-                className="w-full [mask-image:linear-gradient(90deg,transparent_0,#000_56px,#000_calc(100%-56px),transparent_100%)] [--duration:45s] [--gap:44px] sm:[mask-image:linear-gradient(90deg,transparent_0,#000_160px,#000_calc(100%-160px),transparent_100%)] sm:[--gap:72px]"
+                className="w-full max-w-[1920px] [mask-image:linear-gradient(90deg,transparent_0,#000_56px,#000_calc(100%-56px),transparent_100%)] [--duration:45s] [--gap:44px] sm:[mask-image:linear-gradient(90deg,transparent_0,#000_160px,#000_calc(100%-160px),transparent_100%)] sm:[--gap:72px]"
                 trackClassName="items-center text-[#706f6c] dark:text-[#8f8e8a]"
             >
                 {companies.map((company) => (
