@@ -545,7 +545,7 @@ it('sizes an auto widget to its content on a phone', function () {
  *
  * @return array{0: User, 1: WidgetDefinition}
  */
-function dashboardWithTransactionListWidget(): array
+function dashboardWithTransactionListWidget(string $width = '1/2'): array
 {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     Feature::for($user)->activate(CustomDashboards::class);
@@ -581,7 +581,7 @@ function dashboardWithTransactionListWidget(): array
     $service = app(WidgetDefinitionService::class);
     $widget = $service->create($user, [
         'name' => 'Panigale · Movimientos',
-        'size' => ['width' => '1/2', 'height' => 'l'],
+        'size' => ['width' => $width, 'height' => 'l'],
         'data' => ['tx' => ['endpoint' => 'GET /transactions', 'params' => ['label_ids' => [$label->id]], 'paginate' => 'all']],
     ], str_replace('<label id>', $label->id, <<<'TSX'
         import { Button, TransactionList, useWidgetData, useWidgetEnv, wm } from '@whisper-money/widget-sdk';
@@ -613,7 +613,7 @@ function dashboardWithTransactionListWidget(): array
         TSX), WidgetOrigin::Mcp);
     $service->place($dashboard, $widget);
 
-    return [$user, $widget];
+    return [$user, $widget, $dashboard];
 }
 
 it('lists transactions in a user widget the way the app does', function (bool $dark) {
@@ -696,5 +696,138 @@ it('opens nothing from a widget row while the dashboard is edited', function () 
         ->click('Motoclub')
         ->wait(1)
         ->assertDontSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+});
+
+it('lists transactions in the app\'s desktop table when a widget has its room', function (bool $dark) {
+    [$user, $widget] = dashboardWithTransactionListWidget('1/1');
+    actingAs($user);
+
+    $page = visit('/dashboard')->on()->desktop();
+
+    if ($dark) {
+        $page = $page->inDarkMode();
+    }
+
+    $cell = userWidgetCell($widget);
+
+    $page = $page->assertSee('Movimientos de la Panigale')
+        ->assertPresent("{$cell} [data-testid=\"transaction-list-layout\"][data-layout=\"table\"]")
+        ->assertCount("{$cell} [data-testid=\"transaction-table-row\"]", 3)
+        ->assertCount("{$cell} [data-testid=\"transaction-day-header\"]", 2)
+        ->assertCount("{$cell} [data-testid=\"transaction-list-row-badge\"]", 1)
+        ->assertCount("{$cell} [data-testid=\"row-category-select\"]", 3)
+        ->assertMissing("{$cell} [data-testid=\"transaction-list-row\"]")
+        ->assertNoJavascriptErrors();
+
+    $rows = $page->script(<<<JS
+        [...document.querySelectorAll('{$cell} [data-testid="transaction-table-row"]')].map((row) => row.textContent)
+    JS);
+
+    // Newest day first; the description rewritten, the label every row
+    // carries left out, and the other transactions of the user not listed.
+    expect($rows[0])->toContain('Motoclub', 'Moto', 'Nómina')
+        ->and($rows[2])->toContain('Ducati Store', 'Compra')
+        ->and(implode("\n", $rows))->not->toContain('Pago en')
+        ->and(implode("\n", $rows))->not->toContain('Panigale')
+        ->and(implode("\n", $rows))->not->toContain('Mercadona');
+})->with(['light' => false, 'dark' => true]);
+
+it('picks a category in place in a widget\'s table, as on /transactions', function () {
+    [$user, $widget] = dashboardWithTransactionListWidget('1/1');
+    $workshop = Category::factory()->create(['user_id' => $user->id, 'name' => 'Taller']);
+    $motoclub = Transaction::query()->where('user_id', $user->id)->where('description', 'Pago en Motoclub')->sole();
+    actingAs($user);
+
+    $page = visit('/dashboard')->on()->desktop();
+    $cell = userWidgetCell($widget);
+
+    $page->assertCount("{$cell} [data-testid=\"transaction-table-row\"]", 3)
+        // The newest row, Motoclub's.
+        ->click("{$cell} [data-testid=\"row-category-select\"] >> nth=0")
+        ->click('Taller')
+        ->wait(1)
+        ->assertDontSee('Edit Transaction')
+        ->assertNoJavascriptErrors();
+
+    expect($motoclub->fresh()->category_id)->toBe($workshop->id);
+});
+
+it('ticks a widget\'s rows for the bulk actions bar, and opens the row menu on a right click', function () {
+    [$user, $widget] = dashboardWithTransactionListWidget('1/1');
+    actingAs($user);
+
+    $cell = userWidgetCell($widget);
+    $page = visit('/dashboard')->on()->desktop()
+        ->assertCount("{$cell} [data-testid=\"transaction-table-row\"]", 3);
+
+    // The rows have to be there before anything is ticked: the table loads
+    // in a chunk of its own.
+    $page->click("{$cell} [aria-label=\"Select all\"]")
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '3')
+        ->assertCount('[aria-label="Selection actions"]', 1)
+        ->click('[aria-label="Clear selection"]')
+        ->assertMissing('[aria-label="Selection actions"]')
+        ->rightClick('Motoclub')
+        ->assertSee('Duplicate')
+        ->assertSee('Split')
+        ->click('[role="menuitem"]:has-text("Edit")')
+        ->waitForText('Edit Transaction', 10)
+        // The dialog holds the transaction as the server does, not the
+        // widget's rewritten copy of it.
+        ->assertValue('#description', 'Pago en Motoclub')
+        ->assertNoJavascriptErrors();
+});
+
+it('lists a widget\'s transactions as the compact list on a phone', function () {
+    [$user, $widget] = dashboardWithTransactionListWidget('1/1');
+    actingAs($user);
+
+    $page = visit('/dashboard')->on()->iPhone15();
+    $cell = userWidgetCell($widget);
+
+    $page->assertPresent("{$cell} [data-testid=\"transaction-list-layout\"][data-layout=\"list\"]")
+        ->assertCount("{$cell} [data-testid=\"transaction-list-row\"]", 3)
+        ->assertMissing("{$cell} [data-testid=\"transaction-table-row\"]")
+        ->click('Motoclub')
+        ->waitForText('Edit Transaction', 10)
+        ->assertValue('#description', 'Pago en Motoclub')
+        ->assertNoJavascriptErrors();
+});
+
+it('keeps one bulk actions bar on a dashboard with two transaction widgets', function () {
+    [$user, $first, $dashboard] = dashboardWithTransactionListWidget('1/1');
+    $service = app(WidgetDefinitionService::class);
+    $second = $service->create($user, [
+        'name' => 'Todos los movimientos',
+        'size' => ['width' => '1/1', 'height' => 'l'],
+        'data' => ['tx' => ['endpoint' => 'GET /transactions', 'paginate' => 'all']],
+    ], <<<'TSX'
+        import { TransactionList, useWidgetData } from '@whisper-money/widget-sdk';
+
+        export default function Everything() {
+            const { tx } = useWidgetData();
+
+            return <TransactionList transactions={tx} />;
+        }
+        TSX, WidgetOrigin::Mcp);
+    $service->place($dashboard, $second);
+    actingAs($user);
+
+    $firstCell = userWidgetCell($first);
+    $secondCell = userWidgetCell($second);
+
+    visit('/dashboard')->on()->desktop()
+        ->assertCount("{$firstCell} [data-testid=\"transaction-table-row\"]", 3)
+        ->assertCount("{$secondCell} [data-testid=\"transaction-table-row\"]", 4)
+        ->click("{$firstCell} [aria-label=\"Select all\"]")
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '3')
+        // Ticking rows in the other widget drops the first one's.
+        ->click("{$secondCell} [aria-label=\"Select row\"] >> nth=0")
+        ->assertCount('[aria-label="Selection actions"]', 1)
+        ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
+        ->assertCount("{$firstCell} [role=\"checkbox\"][data-state=\"checked\"]", 0)
+        // Nor for a frame: two bars would register their shortcuts twice.
+        ->assertNoConsoleLogs()
         ->assertNoJavascriptErrors();
 });

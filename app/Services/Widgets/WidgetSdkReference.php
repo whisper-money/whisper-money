@@ -41,7 +41,7 @@ class WidgetSdkReference
         'Event handlers on native tags take no parameters; Recharts handlers and render props (content, shape, label, a custom dot) are not allowed. For a styled chart tooltip, put <ChartTooltip valueFormatter labelFormatter /> from the SDK inside the chart in place of <Tooltip>.',
         'The dashboard already draws a card around every widget: never draw a card, border or bg-card wrapper around the whole widget, and never nest cards inside it. When the widget is a row of KPI tiles that each draw their own card, set frame: "none" in the manifest and render a heading (title and subtitle) followed by the tiles directly, leaving the top right corner of the heading free for the dashboard\'s menu button. Every other widget (charts, tables, lists) keeps the default frame.',
         'Draw bank logos with <BankLogo accountId /> from the SDK; there is no <img>.',
-        'List transactions with <TransactionList transactions={…} /> from the SDK, not a hand-made Table: it draws the app\'s own list (newest first, a band per day with its total, each row with its category icon, account, labels and notes) and blurs it in privacy mode. Shape it with its props (component_docs.TransactionList), never by mapping rows into Table cells.',
+        'List transactions with <TransactionList transactions={…} /> from the SDK, not a hand-made Table: it draws the app\'s own list (newest first, a header per day with its total, each row with its category, account, labels and notes; the desktop table when the widget is wide enough, the phone\'s compact list otherwise) and blurs it in privacy mode. Shape it with its props (component_docs.TransactionList), never by mapping rows into Table cells.',
         'Handle empty data (a new user, a month without transactions) with a short message or <EmptyState>, never a blank chart.',
         'A saved widget can still fail on the dashboard. create_widget, update_widget and get_widget list in data_failures every data call the API refuses: fix those right away. A runtime error only shows up once the widget is placed and the user opens the dashboard; get_widget then returns it as last_error with the revision it came from. last_error: null means no error was caught yet, not that the widget works.',
     ];
@@ -52,18 +52,18 @@ class WidgetSdkReference
      */
     private const array ComponentDocs = [
         'TransactionList' => [
-            'summary' => 'The transactions of GET /transactions as the app lists them on an account page. Tapping a row opens the app\'s own edit dialog on that transaction (as on an account page), and the widget\'s data reloads once it is saved, deleted or split; there is nothing to wire, and the widget never sees the tap. Draw it straight inside the widget (it fills the card edge to edge, with no padding of its own), under the widget\'s heading if it has one. It never scrolls inside the widget: give the widget height a so it grows with the list, and a limit so it starts short; at m or l, set a limit small enough to fit (about 4 rows at m, 9 at l).',
+            'summary' => 'The transactions of GET /transactions in the app\'s own transactions table, the one of /transactions and an account page: the desktop table (Category, Account, Description and Amount columns) when the widget is at least 56rem wide, as a full-width widget on a desktop is, and the phone\'s compact list when it is narrower. It picks by its own width, so there is nothing to choose. On the dashboard it works as that table does: the category is picked in place, a row opens the edit dialog, a right click or its ... button opens the row menu, and ticked rows (a long press on a phone) get the bulk actions bar. The widget\'s data reloads after every change; there is nothing to wire, and the widget never sees any of it. Draw it straight inside the widget (it fills the card edge to edge, with no padding of its own), under the widget\'s heading if it has one. It never scrolls inside the widget: give the widget height a so it grows with the list, and a limit so it starts short; at m or l, set a limit small enough to fit (about 4 rows at m, 9 at l).',
             'props' => [
                 'transactions' => 'Required. The rows of GET /transactions, or the whole { data, truncated } answer of paginate "all". Rows are drawn newest first whatever order they come in.',
                 'description' => 'Formatter (row) => string: the text a row shows in place of its description, e.g. (row) => row.description.replace("Pago en ", ""). The row is the API row as answered.',
                 'badge' => 'Formatter (row) => string | null: a short tag drawn after the description, or null for none, e.g. (row) => (row.amount < -50000 ? "Compra" : null). Never put an amount in it: it is not masked in privacy mode.',
                 'hide' => 'List of parts to leave out of every row: "account", "labels", "notes". E.g. hide={isCompact ? ["notes"] : []}.',
                 'hiddenLabelId' => 'A label id every listed row carries (the one the manifest filters by), left out of each row since it says nothing.',
-                'limit' => 'Rows drawn at first; a "Show more" button adds as many again. Leave it out to draw every row. Day totals always add up every row of the day.',
-                'showDayTotals' => 'false leaves the day bands without their total. Default true.',
+                'limit' => 'Rows drawn at first; a button under them adds as many again. Leave it out to draw every row. Day totals always add up every row of the day.',
+                'showDayTotals' => 'false leaves the day headers without their total. Default true.',
                 'emptyTitle' => 'What an empty list says (a literal or template string). Default "No transactions", in the user\'s language.',
                 'emptyDescription' => 'A second line under emptyTitle.',
-                'readOnly' => 'true keeps the rows from opening the edit dialog, for a list that is only there to be read. Default false.',
+                'readOnly' => 'true only draws the rows: no category picker, no ticking, no menus and no edit dialog, for a list that is only there to be read. Default false.',
                 'className' => 'Classes for the list\'s box.',
             ],
             'example' => [

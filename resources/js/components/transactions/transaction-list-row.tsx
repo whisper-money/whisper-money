@@ -2,7 +2,10 @@ import { BankLogo } from '@/components/bank-logo';
 import { CategoryIcon } from '@/components/shared/category-combobox';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
-import { TransactionDescription } from '@/components/transactions/transaction-description';
+import {
+    TransactionBadge,
+    TransactionDescription,
+} from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { COMPACT_LIST_MUTED_TEXT, LIST_ROW } from '@/lib/compact-list-style';
 import { resolveTransactionLabels } from '@/lib/transaction-labels';
@@ -160,14 +163,7 @@ export function TransactionListRow({
                             {description}
                         </span>
                     )}
-                    {badge && (
-                        <span
-                            className="shrink-0 self-center rounded-full border border-neutral-200 px-1.5 py-px text-[11px] font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
-                            data-testid="transaction-list-row-badge"
-                        >
-                            {badge}
-                        </span>
-                    )}
+                    {badge && <TransactionBadge text={badge} />}
                     <AmountDisplay
                         amountInCents={transaction.amount}
                         currencyCode={transaction.currency_code}

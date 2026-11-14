@@ -1,34 +1,27 @@
+import { TransactionListSkeleton } from '@/components/transactions/transaction-list-skeleton';
 import { type DashboardProps, type SelectedDashboard } from '@/types/dashboard';
 import {
     useUserWidgetsGate,
     type UserWidgetsGate,
 } from '@/widgets/runtime/use-user-widgets-gate';
-import {
-    lazy,
-    Suspense,
-    useCallback,
-    useMemo,
-    useState,
-    type ReactNode,
-} from 'react';
+import { type RenderWidgetTransactionTable } from '@/widgets/sdk/transaction-table-host';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { dashboardActions } from './dashboard-actions';
 import { type UserWidgetSlots } from './dashboard-grid';
 import { userWidgetSizeRules, type PlacedWidget } from './grid-layout';
 import { useUserWidgetData } from './use-user-widget-data';
 import { useWidgetErrorReporter } from './use-widget-error-reporter';
 import { UserWidgetCell } from './user-widget-cell';
-import { type WidgetTransactionRequest } from './widget-transaction-editor';
 
-// Its own chunk: the dialogs load the first time a widget's row is tapped.
-const WidgetTransactionEditor = lazy(
-    () => import('./widget-transaction-editor'),
-);
+// Its own chunk: the table, its dialogs and bulk actions load with the first
+// widget that lists transactions.
+const WidgetTransactionTable = lazy(() => import('./widget-transaction-table'));
 
 /**
  * Everything the grid needs to draw the user widgets of the dashboard on
  * screen: whether they may run (safe mode), their data in one request, their
- * runtime errors stored with them, a cell for each, and the edit dialog a
- * widget's transaction opens.
+ * runtime errors stored with them, a cell for each, and the transactions
+ * table a widget's `<TransactionList>` becomes.
  */
 export function useUserWidgetSlots({
     dashboard,
@@ -45,7 +38,6 @@ export function useUserWidgetSlots({
 }): {
     gate: UserWidgetsGate;
     slots: UserWidgetSlots;
-    transactionEditor: ReactNode;
 } {
     const placementIds = useMemo(
         () => placed.flatMap((item) => (item.kind === 'user' ? [item.id] : [])),
@@ -66,18 +58,39 @@ export function useUserWidgetSlots({
         gate.mode === 'run',
         { refreshToken },
     );
-    const [transactionRequest, setTransactionRequest] =
-        useState<WidgetTransactionRequest | null>(null);
-    // While the dashboard is arranged a tap on a row is not an edit.
-    const requestTransaction = useCallback(
-        (transactionId: string) =>
-            setTransactionRequest((previous) => ({
-                transactionId,
-                sequence: (previous?.sequence ?? 0) + 1,
-            })),
+    const refresh = useCallback(
+        () => setRefreshToken((count) => count + 1),
         [],
     );
-    const openTransaction = isEditing ? undefined : requestTransaction;
+    // One bulk actions bar on the page: ticking rows in one widget unticks
+    // those of another.
+    const [selectionOwner, setSelectionOwner] = useState<string | null>(null);
+    const handleSelectionChange = useCallback(
+        (widgetId: string, hasSelection: boolean) =>
+            setSelectionOwner((owner) =>
+                hasSelection ? widgetId : owner === widgetId ? null : owner,
+            ),
+        [],
+    );
+    // While the dashboard is arranged a widget's rows are only read.
+    const transactionTableFor = (
+        widgetId: string,
+    ): RenderWidgetTransactionTable | undefined =>
+        isEditing
+            ? undefined
+            : (props) => (
+                  <Suspense
+                      fallback={<TransactionListSkeleton framedOnPhone />}
+                  >
+                      <WidgetTransactionTable
+                          {...props}
+                          widgetId={widgetId}
+                          selectionOwner={selectionOwner}
+                          onSelectionChange={handleSelectionChange}
+                          onChanged={refresh}
+                      />
+                  </Suspense>
+              );
     const { errors, report } = useWidgetErrorReporter(
         !data.auth.isSharedAccount,
     );
@@ -101,7 +114,7 @@ export function useUserWidgetSlots({
                 onError={report}
                 canRevert={canEdit}
                 isEditing={isEditing}
-                onOpenTransaction={openTransaction}
+                renderTransactionTable={transactionTableFor(item.id)}
                 onRemove={
                     canEdit
                         ? () =>
@@ -115,14 +128,5 @@ export function useUserWidgetSlots({
         ),
     };
 
-    const transactionEditor = transactionRequest && (
-        <Suspense fallback={null}>
-            <WidgetTransactionEditor
-                request={transactionRequest}
-                onChanged={() => setRefreshToken((count) => count + 1)}
-            />
-        </Suspense>
-    );
-
-    return { gate, slots, transactionEditor };
+    return { gate, slots };
 }

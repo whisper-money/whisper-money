@@ -1,14 +1,16 @@
+import { LIST_LAYOUT_BELOW_PX } from '@/hooks/use-transaction-layout';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type WidgetEnv, WidgetSdkProvider } from './context';
 import { TransactionList } from './transaction-list';
 import {
-    type OpenTransaction,
-    WidgetTransactionOpenerProvider,
-} from './transaction-opener';
+    type RenderWidgetTransactionTable,
+    type WidgetTransactionTableProps,
+    WidgetTransactionTableProvider,
+} from './transaction-table-host';
 
 // The page the widget preview build draws with: if the list works on it, it
 // works in the chat client's iframe, which runs no Inertia app.
@@ -18,6 +20,13 @@ vi.mock('@inertiajs/react', async () => {
 
     return preview;
 });
+
+// jsdom lays nothing out: the real virtualizer would draw no table row.
+vi.mock('@tanstack/react-virtual', async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    useVirtualizer: (await import('@/lib/virtualizer.fixture'))
+        .useEveryItemVirtualizer,
+}));
 
 const env: WidgetEnv = {
     theme: 'light',
@@ -257,60 +266,112 @@ describe('<TransactionList>', () => {
         expect(rows()[0]).not.toHaveTextContent('Uncategorized');
     });
 
-    it('is read-only where the host opens nothing, as in the MCP preview', () => {
+    it('only draws the rows where the host offers no table, as in the MCP preview', () => {
         renderList(<TransactionList transactions={ROWS} />);
 
         expect(screen.queryAllByRole('button')).toHaveLength(0);
         expect(rows()[0]).not.toHaveClass('cursor-pointer');
     });
 
-    function renderOpenable(children: ReactNode, open: OpenTransaction) {
+    function renderWithHostTable(
+        children: ReactNode,
+        render: RenderWidgetTransactionTable,
+    ) {
         return renderList(
-            <WidgetTransactionOpenerProvider open={open}>
+            <WidgetTransactionTableProvider render={render}>
                 {children}
-            </WidgetTransactionOpenerProvider>,
+            </WidgetTransactionTableProvider>,
         );
     }
 
-    it('opens the tapped row by id through the host', () => {
-        const open = vi.fn();
-        renderOpenable(
+    it('hands the host table the rows as held, and how each one reads', () => {
+        const render = vi.fn<RenderWidgetTransactionTable>(() => (
+            <div data-testid="host-table" />
+        ));
+        renderWithHostTable(
             <TransactionList
                 transactions={ROWS}
+                hide={['notes', 'labels', 'account']}
                 description={(row: { description: string }) =>
                     row.description.replace('Pago en ', '')
                 }
+                badge={(row: { amount: number }) =>
+                    row.amount < -5000 ? 'Compra' : null
+                }
+                hiddenLabelId={panigale.id}
+                limit={2}
+                showDayTotals={false}
             />,
-            open,
+            render,
         );
 
-        fireEvent.click(screen.getByText('Repsol'));
+        expect(screen.getByTestId('host-table')).toBeInTheDocument();
+        expect(rows()).toHaveLength(0);
 
-        expect(open).toHaveBeenCalledTimes(1);
-        expect(open).toHaveBeenCalledWith('tx-2');
-        expect(rows()[0]).toHaveClass('cursor-pointer');
+        const props: WidgetTransactionTableProps = render.mock.calls[0][0];
+        const ducati = props.transactions[2];
+
+        expect(props.transactions.map((row) => row.id)).toEqual([
+            'tx-3',
+            'tx-2',
+            'tx-1',
+        ]);
+        // What the table edits is the row as the server holds it ...
+        expect(ducati).toMatchObject({
+            description: 'Pago en Ducati Store',
+            notes: 'Casco nuevo',
+            label_ids: [panigale.id],
+            account_id: 'acc-1',
+            currency_code: 'EUR',
+            category_id: moto.id,
+        });
+        // ... and what it draws is the widget's copy of it.
+        expect(props.displayRow(ducati)).toMatchObject({
+            description: 'Ducati Store',
+            notes: null,
+            label_ids: [],
+            account: undefined,
+        });
+        expect(props.badgeOf(ducati)).toBe('Compra');
+        expect(props.badgeOf(props.transactions[1])).toBeUndefined();
+        expect(props).toMatchObject({
+            pageSize: 2,
+            hideAccount: true,
+            hiddenLabelId: panigale.id,
+            showDayTotals: false,
+        });
     });
 
-    it('opens from the keyboard too: each row has a button', () => {
-        const open = vi.fn();
-        renderOpenable(<TransactionList transactions={ROWS} />, open);
+    it('draws every row by default, the account and the day totals', () => {
+        const render = vi.fn<RenderWidgetTransactionTable>(() => null);
+        renderWithHostTable(<TransactionList transactions={ROWS} />, render);
 
-        const [first] = within(rows()[0]).getAllByRole('button');
-        fireEvent.click(first);
-
-        expect(open).toHaveBeenCalledTimes(1);
-        expect(open).toHaveBeenCalledWith('tx-3');
+        expect(render.mock.calls[0][0]).toMatchObject({
+            pageSize: null,
+            hideAccount: false,
+            showDayTotals: true,
+        });
     });
 
-    it('opens nothing when readOnly', () => {
-        const open = vi.fn();
-        renderOpenable(<TransactionList transactions={ROWS} readOnly />, open);
+    it('only draws the rows when readOnly, even where the host offers its table', () => {
+        const render = vi.fn<RenderWidgetTransactionTable>(() => null);
+        renderWithHostTable(
+            <TransactionList transactions={ROWS} readOnly />,
+            render,
+        );
 
-        fireEvent.click(rows()[0]);
-
-        expect(open).not.toHaveBeenCalled();
+        expect(render).not.toHaveBeenCalled();
+        expect(rows()).toHaveLength(3);
         expect(screen.queryAllByRole('button')).toHaveLength(0);
         expect(rows()[0]).not.toHaveClass('cursor-pointer');
+    });
+
+    it('shows its empty state rather than an empty host table', () => {
+        const render = vi.fn<RenderWidgetTransactionTable>(() => null);
+        renderWithHostTable(<TransactionList transactions={[]} />, render);
+
+        expect(render).not.toHaveBeenCalled();
+        expect(screen.getByText('No transactions')).toBeInTheDocument();
     });
 
     it('skips rows without an id, a date, an amount or a currency', () => {
@@ -347,5 +408,131 @@ describe('<TransactionList>', () => {
         expect(
             screen.getByText('Etiqueta un gasto con Panigale.'),
         ).toBeInTheDocument();
+    });
+});
+
+describe('<TransactionList> read-only, with room for the table', () => {
+    // jsdom measures every element 0px wide; this one has a desktop's room.
+    beforeEach(() => {
+        vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+            width: LIST_LAYOUT_BELOW_PX,
+        } as DOMRect);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const tableRows = () => screen.queryAllByTestId('transaction-table-row');
+    const headings = () =>
+        screen.getAllByRole('columnheader').map((cell) => cell.textContent);
+    const layout = () =>
+        document.querySelector('[data-slot=widget-transaction-list]');
+
+    it('draws the desktop table from 56rem up, the compact list below', () => {
+        const { unmount } = renderList(<TransactionList transactions={ROWS} />);
+
+        expect(layout()).toHaveAttribute('data-layout', 'table');
+        expect(rows()).toHaveLength(0);
+        expect(tableRows().map((row) => row.textContent)).toEqual([
+            expect.stringContaining('Venta casco viejo'),
+            expect.stringContaining('Pago en Repsol'),
+            expect.stringContaining('Pago en Ducati Store'),
+        ]);
+        unmount();
+
+        vi.mocked(Element.prototype.getBoundingClientRect).mockReturnValue({
+            width: LIST_LAYOUT_BELOW_PX - 1,
+        } as DOMRect);
+        renderList(<TransactionList transactions={ROWS} />);
+
+        expect(layout()).toHaveAttribute('data-layout', 'list');
+        expect(rows()).toHaveLength(3);
+        expect(tableRows()).toHaveLength(0);
+    });
+
+    it('has the columns of /transactions, with nothing to tick, pick or open', () => {
+        renderList(<TransactionList transactions={ROWS} />);
+
+        expect(headings()).toEqual([
+            'Category',
+            'Account',
+            'Description',
+            'Amount',
+        ]);
+        expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+        expect(screen.queryAllByRole('combobox')).toHaveLength(0);
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
+        expect(tableRows()[2]).toHaveTextContent(
+            'MotoNóminaPago en Ducati StorePanigaleCasco nuevo-€120.00',
+        );
+    });
+
+    it('heads each day with its count and total, unless asked not to', () => {
+        const { rerender } = renderList(
+            <TransactionList transactions={ROWS} />,
+        );
+
+        expect(bands()).toHaveLength(2);
+        expect(bands()[1]).toHaveTextContent('2 transactions');
+        expect(bands()[1]).toHaveTextContent('-€150.00');
+
+        rerender(<TransactionList transactions={ROWS} showDayTotals={false} />);
+
+        expect(bands()[1]).toHaveTextContent('2 transactions');
+        expect(bands()[1]).not.toHaveTextContent('€');
+    });
+
+    it('leaves out the parts named in hide, the Account column with it', () => {
+        renderList(
+            <TransactionList
+                transactions={[apiRow()]}
+                hide={['notes', 'labels', 'account']}
+            />,
+        );
+
+        expect(headings()).toEqual(['Category', 'Description', 'Amount']);
+        expect(tableRows()[0]).toHaveTextContent(
+            /^MotoPago en Ducati Store-€120.00$/,
+        );
+    });
+
+    it('rewrites descriptions, tags rows and drops the hidden label', () => {
+        renderList(
+            <TransactionList
+                transactions={[apiRow()]}
+                description={(row: { description: string }) =>
+                    row.description.replace('Pago en ', '')
+                }
+                badge={() => 'Compra'}
+                hiddenLabelId={panigale.id}
+            />,
+        );
+
+        expect(tableRows()[0]).toHaveTextContent('Ducati Store');
+        expect(tableRows()[0]).not.toHaveTextContent('Pago en');
+        expect(tableRows()[0]).not.toHaveTextContent('Panigale');
+        expect(
+            within(tableRows()[0]).getByTestId('transaction-list-row-badge'),
+        ).toHaveTextContent('Compra');
+    });
+
+    it('draws limit rows, and more on Show more', () => {
+        renderList(<TransactionList transactions={ROWS} limit={2} />);
+
+        expect(tableRows()).toHaveLength(2);
+        fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
+        expect(tableRows()).toHaveLength(3);
+    });
+
+    it('masks amounts and descriptions in privacy mode', () => {
+        renderList(<TransactionList transactions={ROWS} />, {
+            privacyMode: true,
+        });
+
+        for (const element of [...tableRows(), ...bands()]) {
+            expect(element).not.toHaveTextContent(/€\d|\d€/);
+        }
+        expect(tableRows()[0]).not.toHaveTextContent('Venta casco viejo');
     });
 });

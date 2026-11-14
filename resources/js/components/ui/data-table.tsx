@@ -22,6 +22,7 @@ import {
     windowScroll,
 } from '@tanstack/react-virtual';
 
+import { cn } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -191,6 +192,8 @@ interface DataTableProps<TData, TValue> {
     maxHeight?: number;
     /** Static content pinned as the first row of the table body, spanning all columns. */
     topRow?: React.ReactNode;
+    /** Added to the table's frame, e.g. to drop its border inside a card. */
+    className?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -202,6 +205,7 @@ export function DataTable<TData, TValue>({
     renderGroupHeader,
     maxHeight,
     topRow,
+    className,
 }: DataTableProps<TData, TValue>) {
     // Reads the table's rows, which change inside an object that stays the
     // same, so memoized by the compiler they would never update.
@@ -220,7 +224,7 @@ export function DataTable<TData, TValue>({
         table.getVisibleLeafColumns().length || columns.length || 1;
 
     return (
-        <div className="overflow-hidden rounded-md border">
+        <div className={cn('overflow-hidden rounded-md border', className)}>
             <div
                 ref={tableContainerRef}
                 style={
