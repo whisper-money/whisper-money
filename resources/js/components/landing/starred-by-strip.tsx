@@ -12,6 +12,8 @@ interface StarredByStripProps {
 /**
  * Monochrome band of the companies whose people starred the repository on
  * GitHub, scrolling as a marquee that stands still under reduced motion.
+ * The marquee viewport is capped at 1920px: one copy of the list must stay
+ * wider than the viewport, or the loop would show a gap on very wide screens.
  */
 export function StarredByStrip({
     companies = STARRED_BY_COMPANIES,
