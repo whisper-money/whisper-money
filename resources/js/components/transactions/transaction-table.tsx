@@ -43,6 +43,7 @@ import {
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
 import {
     type ReactNode,
+    type SetStateAction,
     useCallback,
     useEffect,
     useMemo,
@@ -92,7 +93,7 @@ interface TransactionTableProps {
     resolveRow?: (transaction: ServerTransaction) => Promise<ServerTransaction>;
     /** Brings the parts in once a split is made or merged back; the page reloads by default. */
     onSplitChanged?: () => void;
-    /** Told how many rows are ticked whenever that changes. */
+    /** Told how many rows are ticked whenever they are (not when a new query drops them). */
     onSelectionChange?: (selectedCount: number) => void;
     /**
      * Draw the bulk actions bar in the page's layout rather than in place,
@@ -191,7 +192,22 @@ export function TransactionTable({
     const isMobile = useIsMobile();
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
-    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+    const [rowSelection, setRowSelectionState] = useState<RowSelectionState>(
+        {},
+    );
+    // Told at once, in the same event, so a page that keeps one selection
+    // across tables (a dashboard's widgets) drops the other one in the same
+    // render rather than drawing two bulk bars for a frame.
+    const setRowSelection = useCallback(
+        (update: SetStateAction<RowSelectionState>) => {
+            const next =
+                typeof update === 'function' ? update(rowSelection) : update;
+
+            setRowSelectionState(next);
+            onSelectionChange?.(Object.keys(next).length);
+        },
+        [rowSelection, onSelectionChange],
+    );
 
     const editing = useTransactionRowEditing({
         initialLabels,
@@ -229,7 +245,7 @@ export function TransactionTable({
 
     if (source.queryKey !== seenQueryKey) {
         setSeenQueryKey(source.queryKey);
-        setRowSelection({});
+        setRowSelectionState({});
         selectOnlyVisible();
     }
 
@@ -317,12 +333,10 @@ export function TransactionTable({
         [rowActions, isNewRow, rowCellClassName],
     );
 
-    const clearSelection = useCallback(() => setRowSelection({}), []);
-    const selectedCount = Object.keys(rowSelection).length;
-
-    useEffect(() => {
-        onSelectionChange?.(selectedCount);
-    }, [onSelectionChange, selectedCount]);
+    const clearSelection = useCallback(
+        () => setRowSelection({}),
+        [setRowSelection],
+    );
 
     const bulkActionsBar = (
         <BulkActionsBar
@@ -405,10 +419,12 @@ export function TransactionTable({
                             frameless={frameless}
                         />
 
-                        <TransactionTableFooter
-                            pagination={source.pagination}
-                            actions={footerActions}
-                        />
+                        <div className={frameless ? 'px-4 pb-3' : undefined}>
+                            <TransactionTableFooter
+                                pagination={source.pagination}
+                                actions={footerActions}
+                            />
+                        </div>
                     </>
                 )}
             </div>

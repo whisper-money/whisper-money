@@ -827,5 +827,7 @@ it('keeps one bulk actions bar on a dashboard with two transaction widgets', fun
         ->assertCount('[aria-label="Selection actions"]', 1)
         ->assertSeeIn('[data-testid="bulk-selected-count"]', '1')
         ->assertCount("{$firstCell} [role=\"checkbox\"][data-state=\"checked\"]", 0)
+        // Nor for a frame: two bars would register their shortcuts twice.
+        ->assertNoConsoleLogs()
         ->assertNoJavascriptErrors();
 });
