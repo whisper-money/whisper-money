@@ -17,6 +17,11 @@ paths:
     - 'resources/js/components/transactions/transaction-list-row.tsx'
     - 'resources/js/components/transactions/transaction-day-header.tsx'
     - 'resources/js/components/transactions/transaction-list-skeleton.tsx'
+    - 'resources/js/components/transactions/transaction-base-columns.tsx'
+    - 'resources/js/hooks/use-transaction-layout.ts'
+    - 'resources/js/widgets/sdk/transaction-list.tsx'
+    - 'resources/js/widgets/sdk/transaction-table-host.tsx'
+    - 'resources/js/components/dashboard/custom-dashboards/widget-transaction-table.tsx'
 ---
 
 # One transactions table, two data sources
@@ -108,3 +113,18 @@ not only through the table instance.
 the page: a toolbar reading it during render would be cached on a reference
 that never changes. Give the page what it needs ready-made instead, as the
 `columnPicker` element.
+
+## A dashboard widget's `<TransactionList>` is this table too
+
+The widget SDK's `<TransactionList>` is `TransactionTable` over an in-memory
+source (`widget-transaction-table.tsx`), handed in by the dashboard through
+`WidgetTransactionTableProvider` (a render function only the host can give):
+the SDK never imports the table, because the chat client's widget preview builds the SDK
+without Inertia (`vite.widget-preview.config.ts`, part of `bun run build`).
+Where there is no host (that preview, a dashboard being arranged, `readOnly`)
+the SDK draws the rows itself, read-only, with `transaction-base-columns.tsx`:
+keep that module free of the editable cells, row menus and anything that
+imports `router`. The widget's formatters reach the table as `displayRow` and
+`badgeOf` (how a row reads, not what it holds), built from what they return
+rather than their identity, so an inline formatter does not rebuild the
+columns and remount every cell.

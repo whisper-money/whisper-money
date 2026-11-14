@@ -190,7 +190,7 @@ function UserDashboard({
     canEdit: boolean;
     onStartEditing: () => void;
 }) {
-    const { gate, slots, transactionEditor } = useUserWidgetSlots({
+    const { gate, slots } = useUserWidgetSlots({
         dashboard,
         placed: widgets,
         data,
@@ -246,7 +246,6 @@ function UserDashboard({
                     userWidgets={slots}
                 />
             )}
-            {transactionEditor}
         </>
     );
 }

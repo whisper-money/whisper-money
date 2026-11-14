@@ -3,7 +3,7 @@ import { type SharedData } from '@/types';
 import { type WidgetFrame } from '@/types/dashboard';
 import { usePage } from '@inertiajs/react';
 import { lazy, Suspense } from 'react';
-import { type OpenTransaction } from '../sdk/transaction-opener';
+import { type RenderWidgetTransactionTable } from '../sdk/transaction-table-host';
 import { type WidgetRuntimeError } from './widget-error-boundary';
 
 export interface UserWidgetProps {
@@ -19,11 +19,11 @@ export interface UserWidgetProps {
     /** The widget has drawn, or failed: safe mode counts these. */
     onSettled?: () => void;
     /**
-     * Opens the edit dialog on a transaction the SDK's `<TransactionList>`
-     * lists; without it its rows open nothing. Only ids of the widget's own
-     * data reach it, and never from widget code.
+     * Draws the SDK's `<TransactionList>` as the app's own transactions
+     * table, editing and all; without it its rows are only read. Only rows of
+     * the widget's own data reach it, and never from widget code.
      */
-    onOpenTransaction?: OpenTransaction;
+    renderTransactionTable?: RenderWidgetTransactionTable;
     className?: string;
 }
 

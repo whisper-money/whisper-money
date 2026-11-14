@@ -48,6 +48,8 @@ interface TransactionDayHeaderProps {
      */
     rowSelection: RowSelectionState;
     measureProps: DataTableMeasureProps;
+    /** False leaves the day's total out, e.g. for a widget that asks so. */
+    showTotal?: boolean;
 }
 
 /** The ids of the columns the table draws, virtual ones left out. */
@@ -189,6 +191,7 @@ export function TransactionDayHeader({
     summary,
     rowSelection,
     measureProps,
+    showTotal = true,
 }: TransactionDayHeaderProps) {
     const locale = useLocale();
     const heading = formatDayHeading(date, locale);
@@ -205,7 +208,7 @@ export function TransactionDayHeader({
     const selectedCount = rows.filter((row) => rowSelection[row.id]).length;
     const allSelected = selectedCount === rows.length;
 
-    const total = <DayTotal total={summary.total} />;
+    const total = showTotal && <DayTotal total={summary.total} />;
 
     return (
         <TableRow
@@ -261,6 +264,7 @@ export function TransactionDayBand({
     rowSelection,
     selectionActive,
     measureProps,
+    showTotal = true,
 }: Omit<TransactionDayHeaderProps, 'measureProps'> & {
     selectionActive: boolean;
     measureProps: DataTableMeasureProps;
@@ -278,7 +282,7 @@ export function TransactionDayBand({
                     {allSelected ? __('Deselect day') : __('Select day')}
                 </button>
             ) : (
-                <DayTotal total={summary.total} quiet />
+                showTotal && <DayTotal total={summary.total} quiet />
             )}
         </DayBand>
     );
@@ -323,6 +327,7 @@ export function useTransactionDayHeaders({
     daySummaryOf,
     layout,
     selectionActive,
+    showTotals = true,
 }: {
     table: Table<ServerTransaction>;
     rowSelection: RowSelectionState;
@@ -330,6 +335,8 @@ export function useTransactionDayHeaders({
     layout: 'table' | 'list';
     /** Rows are being picked, which the card headers answer to. */
     selectionActive: boolean;
+    /** False leaves every day's total out. Default true. */
+    showTotals?: boolean;
 }): {
     groupRowsBy: (transaction: ServerTransaction) => string;
     renderGroupHeader: (
@@ -349,6 +356,7 @@ export function useTransactionDayHeaders({
                 summary: daySummaryOf(group.key),
                 rowSelection,
                 measureProps,
+                showTotal: showTotals,
             };
 
             return layout === 'list' ? (
@@ -360,7 +368,14 @@ export function useTransactionDayHeaders({
                 <TransactionDayHeader {...props} />
             );
         },
-        [table, rowSelection, daySummaryOf, layout, selectionActive],
+        [
+            table,
+            rowSelection,
+            daySummaryOf,
+            layout,
+            selectionActive,
+            showTotals,
+        ],
     );
 
     return {

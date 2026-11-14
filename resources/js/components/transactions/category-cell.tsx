@@ -39,6 +39,15 @@ interface CategoryCellProps {
     isCategorizing?: boolean;
 }
 
+/** The dashed circle a row without a category shows, asking to be picked. */
+const UNCATEGORIZED_ICON = (
+    <span
+        aria-hidden
+        data-testid="uncategorized-icon"
+        className="size-6 shrink-0 rounded-full border-2 border-dashed border-amber-400 bg-amber-50 dark:border-amber-500/70 dark:bg-amber-500/10"
+    />
+);
+
 export function CategoryCell({
     transaction,
     categories,
@@ -228,13 +237,7 @@ export function CategoryCell({
                     showUncategorized={true}
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
-                    uncategorizedIcon={
-                        <span
-                            aria-hidden
-                            data-testid="uncategorized-icon"
-                            className="size-6 shrink-0 rounded-full border-2 border-dashed border-amber-400 bg-amber-50 dark:border-amber-500/70 dark:bg-amber-500/10"
-                        />
-                    }
+                    uncategorizedIcon={UNCATEGORIZED_ICON}
                     data-testid="row-category-select"
                 />
             </div>

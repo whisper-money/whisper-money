@@ -27,9 +27,9 @@ import {
 import { beginWidgetGesture, endWidgetGesture } from '../sdk/download';
 import { setDefaultMoneyLocale } from '../sdk/format-money';
 import {
-    scopedTransactionOpener,
-    WidgetTransactionOpenerProvider,
-} from '../sdk/transaction-opener';
+    scopedTransactionTable,
+    WidgetTransactionTableProvider,
+} from '../sdk/transaction-table-host';
 import { type UserWidgetProps } from './user-widget';
 import {
     isWidgetCarded,
@@ -64,14 +64,14 @@ export default function UserWidgetFrame({
     frame,
     onError,
     onSettled,
-    onOpenTransaction,
+    renderTransactionTable,
     className,
 }: UserWidgetProps) {
     const [state, setState] = useState<LoadState>({ status: 'loading' });
     const sdk = useWidgetSdkValue(data, size);
-    const openTransaction = useMemo(
-        () => scopedTransactionOpener(onOpenTransaction, data),
-        [onOpenTransaction, data],
+    const transactionTable = useMemo(
+        () => scopedTransactionTable(renderTransactionTable, data),
+        [renderTransactionTable, data],
     );
     const { crashed, markCrashed } = useWidgetCrash(data);
     const carded = isWidgetCarded(frame, state.status === 'ready' && !crashed);
@@ -168,9 +168,11 @@ export default function UserWidgetFrame({
                     }}
                 >
                     <WidgetSdkProvider value={sdk}>
-                        <WidgetTransactionOpenerProvider open={openTransaction}>
+                        <WidgetTransactionTableProvider
+                            render={transactionTable}
+                        >
                             <state.Widget />
-                        </WidgetTransactionOpenerProvider>
+                        </WidgetTransactionTableProvider>
                     </WidgetSdkProvider>
                     <Settled onSettled={onSettled} />
                 </WidgetErrorBoundary>

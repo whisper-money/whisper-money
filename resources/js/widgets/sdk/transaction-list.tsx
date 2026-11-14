@@ -1,15 +1,21 @@
+import { createReadOnlyTransactionColumns } from '@/components/transactions/transaction-base-columns';
 import {
     DayBand,
     DayTotal,
+    useTransactionDayHeaders,
 } from '@/components/transactions/transaction-day-header';
 import { TransactionListRow } from '@/components/transactions/transaction-list-row';
+import { TransactionTableRowCells } from '@/components/transactions/transaction-table-row';
 import { Button as AppButton } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { FixedPrivacyMode } from '@/contexts/privacy-mode-context';
 import {
     groupByDate,
     useInMemoryDaySummaries,
 } from '@/hooks/use-day-summaries';
 import { compareNewestFirst } from '@/hooks/use-in-memory-transaction-source';
+import { useTransactionLayout } from '@/hooks/use-transaction-layout';
+import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { cn } from '@/lib/utils';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
@@ -20,12 +26,17 @@ import {
     type TransactionSource,
 } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import {
+    getCoreRowModel,
+    type RowSelectionState,
+    useReactTable,
+} from '@tanstack/react-table';
 import { Fragment, useMemo, useState } from 'react';
 import { safeLogoUrl } from './bank-logo';
 import { useWidgetSdk, type WidgetAccount } from './context';
 import { EmptyState } from './primitives';
 import { classNameOf } from './props';
-import { useWidgetTransactionOpener } from './transaction-opener';
+import { isRecord, useWidgetTransactionTable } from './transaction-table-host';
 
 /** The parts of a row a widget may leave out with `hide`. */
 const HIDEABLE_PARTS = ['account', 'labels', 'notes'] as const;
@@ -52,10 +63,13 @@ interface ApiTransaction {
     labels: NamedRef[];
     source: TransactionSource;
     notes: string | null;
+    creditor_name: string | null;
+    debtor_name: string | null;
+    split_parent_id: string | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
+function stringOrNull(value: unknown): string | null {
+    return typeof value === 'string' ? value : null;
 }
 
 function namedRef(value: unknown): NamedRef | null {
@@ -98,7 +112,10 @@ function apiTransaction(value: unknown): ApiTransaction | null {
             ? value.labels.map(namedRef).filter((label) => label !== null)
             : [],
         source: value.source as TransactionSource,
-        notes: typeof value.notes === 'string' ? value.notes : null,
+        notes: stringOrNull(value.notes),
+        creditor_name: stringOrNull(value.creditor_name),
+        debtor_name: stringOrNull(value.debtor_name),
+        split_parent_id: stringOrNull(value.split_parent_id),
     };
 }
 
@@ -113,13 +130,19 @@ function apiTransactions(value: unknown): ApiTransaction[] {
 
 /**
  * The parts `hide` names, as a string: a widget writes `hide={['notes']}`
- * inline, a new array on every render, and the rows should not be rebuilt
+ * inline, a new array on every render, and the rows should not be redrawn
  * for it.
  */
 function hiddenPartsKey(value: unknown): string {
     return Array.isArray(value)
         ? HIDEABLE_PARTS.filter((part) => value.includes(part)).join()
         : '';
+}
+
+function hiddenPartsOf(key: string): ReadonlySet<HideablePart> {
+    return new Set(
+        HIDEABLE_PARTS.filter((part) => key.split(',').includes(part)),
+    );
 }
 
 function bankOf(account: WidgetAccount | undefined): Bank | undefined {
@@ -133,15 +156,11 @@ function bankOf(account: WidgetAccount | undefined): Bank | undefined {
         : undefined;
 }
 
-/** An API row as the shape the app's own list draws. */
+/** An API row as the shape the app's own table holds its rows in. */
 function toServerTransaction(
     row: ApiTransaction,
     accounts: Readonly<Record<string, WidgetAccount>>,
-    hidden: ReadonlySet<HideablePart>,
 ): ServerTransaction {
-    const account =
-        row.account && !hidden.has('account') ? row.account : undefined;
-
     return {
         id: row.id,
         user_id: '',
@@ -151,20 +170,40 @@ function toServerTransaction(
         transaction_date: row.transaction_date,
         amount: row.amount,
         currency_code: row.currency,
-        notes: hidden.has('notes') ? null : row.notes,
+        notes: row.notes,
         source: row.source,
         category_source: row.category_source,
-        label_ids: hidden.has('labels')
-            ? []
-            : row.labels.map((label) => label.id),
+        label_ids: row.labels.map((label) => label.id),
+        creditor_name: row.creditor_name,
+        debtor_name: row.debtor_name,
+        split_parent_id: row.split_parent_id,
         created_at: '',
         updated_at: '',
-        // The row reads only the name, the bank its logo and name.
-        account: account as Account | undefined,
+        // The rows read only the name, the bank its logo and name.
+        account: (row.account ?? undefined) as Account | undefined,
         bank:
-            account && Object.hasOwn(accounts, account.id)
-                ? bankOf(accounts[account.id])
+            row.account && Object.hasOwn(accounts, row.account.id)
+                ? bankOf(accounts[row.account.id])
                 : undefined,
+    } as ServerTransaction;
+}
+
+/**
+ * How a row reads in the widget: its hidden parts blanked and its
+ * description rewritten. A copy for display only: what is edited, and what
+ * the edit dialog opens on, is the transaction as the server holds it.
+ */
+function displayCopy(
+    transaction: ServerTransaction,
+    hidden: ReadonlySet<HideablePart>,
+    description: string | null,
+): ServerTransaction {
+    return {
+        ...transaction,
+        description: description ?? transaction.description,
+        account: hidden.has('account') ? undefined : transaction.account,
+        notes: hidden.has('notes') ? null : transaction.notes,
+        label_ids: hidden.has('labels') ? [] : transaction.label_ids,
     };
 }
 
@@ -230,21 +269,240 @@ function positiveInteger(value: unknown): number | null {
 }
 
 /**
+ * How each row reads, from what the widget's formatters said about it (see
+ * `formattedKey`): its description, its badge, its hidden parts.
+ */
+function rowFormatters(
+    formattedKey: string,
+    hidden: ReadonlySet<HideablePart>,
+): {
+    displayRow: (transaction: ServerTransaction) => ServerTransaction;
+    badgeOf: (transaction: ServerTransaction) => string | undefined;
+} {
+    const byId = new Map(
+        (
+            JSON.parse(formattedKey) as [string, string | null, string | null][]
+        ).map(([id, description, badge]) => [id, { description, badge }]),
+    );
+
+    return {
+        displayRow: (transaction) =>
+            displayCopy(
+                transaction,
+                hidden,
+                byId.get(transaction.id)?.description ?? null,
+            ),
+        badgeOf: (transaction) => byId.get(transaction.id)?.badge ?? undefined,
+    };
+}
+
+/** No row of a read-only table is ever ticked. */
+const NO_SELECTION: RowSelectionState = {};
+
+/** What a read-only layout draws its rows with. */
+interface ReadOnlyRowsProps {
+    /** The rows shown so far, as they read in the widget. */
+    transactions: ServerTransaction[];
+    categories: Category[];
+    labels: Label[];
+    hiddenLabelId: string | undefined;
+    badgeOf: (transaction: ServerTransaction) => string | undefined;
+    daySummaryOf: DaySummaryOf;
+    showDayTotals: boolean;
+}
+
+/**
+ * The rows as the app's desktop table draws them, with nothing to act on:
+ * its Category, Account, Description and Amount columns under a header per
+ * day, without the checkbox, the row menu or a picker.
+ */
+function ReadOnlyTransactionTable({
+    transactions,
+    categories,
+    labels,
+    hiddenLabelId,
+    badgeOf,
+    daySummaryOf,
+    showDayTotals,
+    showAccount,
+}: ReadOnlyRowsProps & { showAccount: boolean }) {
+    // Hands the TanStack table to DataTable, a stable object whose rows change
+    // underneath: memoized by the compiler, "Show more" would draw nothing new.
+    'use no memo';
+
+    const columns = useMemo(
+        () =>
+            createReadOnlyTransactionColumns({
+                categories,
+                labels,
+                hiddenLabelId,
+                badgeOf,
+            }),
+        [categories, labels, hiddenLabelId, badgeOf],
+    );
+    const table = useReactTable({
+        data: transactions,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getRowId: (transaction) => transaction.id,
+        state: {
+            rowSelection: NO_SELECTION,
+            columnVisibility: { account: showAccount },
+        },
+    });
+    const dayHeaders = useTransactionDayHeaders({
+        table,
+        rowSelection: NO_SELECTION,
+        daySummaryOf,
+        layout: 'table',
+        selectionActive: false,
+        showTotals: showDayTotals,
+    });
+
+    return (
+        <DataTable
+            table={table}
+            columns={columns}
+            // The widget's card is the frame.
+            className="rounded-none border-0"
+            renderRow={(row, virtualRow, rowVirtualizer) => (
+                <TransactionTableRowCells
+                    row={row}
+                    virtualRow={virtualRow}
+                    rowVirtualizer={rowVirtualizer}
+                />
+            )}
+            {...dayHeaders}
+        />
+    );
+}
+
+/** The rows as the app's compact list draws them on a phone, only to read. */
+function ReadOnlyTransactionCompactList({
+    transactions,
+    categories,
+    labels,
+    hiddenLabelId,
+    badgeOf,
+    daySummaryOf,
+    showDayTotals,
+    closesCard,
+}: ReadOnlyRowsProps & {
+    /** Nothing follows the last row, so the card draws its hairline. */
+    closesCard: boolean;
+}) {
+    const lastId = transactions.at(-1)?.id;
+
+    return [...groupByDate(transactions)].map(([date, day]) => (
+        <Fragment key={date}>
+            <DayBand date={date}>
+                {showDayTotals && (
+                    <DayTotal total={daySummaryOf(date).total} quiet />
+                )}
+            </DayBand>
+            {day.map((transaction) => (
+                <TransactionListRow
+                    key={transaction.id}
+                    transaction={transaction}
+                    categories={categories}
+                    labels={labels}
+                    selected={false}
+                    selectionActive={false}
+                    onUnsplit={() => undefined}
+                    badge={badgeOf(transaction)}
+                    hiddenLabelId={hiddenLabelId}
+                    className={cn(
+                        closesCard && transaction.id === lastId && 'border-b-0',
+                    )}
+                />
+            ))}
+        </Fragment>
+    ));
+}
+
+/**
+ * The read-only layouts: the desktop table with the room for it (56rem of
+ * the widget's own width), the phone's compact list with less, and a
+ * "Show more" for `limit`.
+ */
+function ReadOnlyTransactions({
+    transactions,
+    pageSize,
+    displayRow,
+    showAccount,
+    className,
+    ...rowsProps
+}: Omit<ReadOnlyRowsProps, 'transactions'> & {
+    transactions: ServerTransaction[];
+    pageSize: number | null;
+    displayRow: (transaction: ServerTransaction) => ServerTransaction;
+    showAccount: boolean;
+    className: string | undefined;
+}) {
+    // Pages, not rows, so a limit the widget changes later still applies.
+    const [pages, setPages] = useState(1);
+    const [layoutRef, layout] = useTransactionLayout<HTMLDivElement>();
+    const shown = pageSize === null ? Infinity : pageSize * pages;
+    const visible = transactions.slice(0, shown).map(displayRow);
+    const hasMore = visible.length < transactions.length;
+
+    return (
+        <div
+            ref={layoutRef}
+            data-slot="widget-transaction-list"
+            data-layout={layout ?? undefined}
+            className={cn('flex flex-col', className)}
+        >
+            {/* Until it is measured, neither: the first commit measures it. */}
+            {layout === 'table' && (
+                <ReadOnlyTransactionTable
+                    {...rowsProps}
+                    transactions={visible}
+                    showAccount={showAccount}
+                />
+            )}
+            {layout === 'list' && (
+                <ReadOnlyTransactionCompactList
+                    {...rowsProps}
+                    transactions={visible}
+                    closesCard={!hasMore}
+                />
+            )}
+            {hasMore && (
+                <AppButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="m-2"
+                    onClick={() => setPages((count) => count + 1)}
+                >
+                    {__('Show more')}
+                </AppButton>
+            )}
+        </div>
+    );
+}
+
+/**
  * The transactions of a `GET /transactions` answer drawn as the app's own
- * compact list (the one at the bottom of an account page): newest first,
- * under a band per day with the day's total, each row with its category
- * icon, account, labels and notes. Tapping a row opens the app's edit
- * dialog on that transaction, where the dashboard offers it.
+ * transactions table, as on /transactions and an account page: newest first,
+ * under a header per day with the day's total; the desktop table with the
+ * room for it (56rem of the widget's own width), the phone's compact list
+ * with less. On a dashboard it is that table in full: the category picked
+ * in place, rows ticked for the bulk actions bar, the row menus and the edit
+ * dialog, the widget's data reloaded after each change. Where nothing can be
+ * edited (`readOnly`, the MCP preview, a dashboard being arranged) it only
+ * draws the rows.
  *
  * - `transactions`: the rows, or the `{ data, truncated }` of `paginate: "all"`.
  * - `hide`: parts to leave out of every row: `'account'`, `'labels'`, `'notes'`.
- * - `limit`: rows drawn at first; a "Show more" button adds as many again.
+ * - `limit`: rows drawn at first; a button adds as many again.
  * - `description(row)`: the text a row shows in place of its description.
  * - `badge(row)`: a short tag after the description, or null for none.
  * - `hiddenLabelId`: a label every row carries, left out of each.
- * - `showDayTotals`: false leaves the day bands without their total.
+ * - `showDayTotals`: false leaves the day headers without their total.
  * - `emptyTitle` / `emptyDescription`: what an empty list says.
- * - `readOnly`: true keeps the rows from opening the edit dialog.
+ * - `readOnly`: true only draws the rows: nothing to edit, pick or open.
  */
 export function TransactionList({
     transactions,
@@ -272,27 +530,19 @@ export function TransactionList({
     className?: unknown;
 }) {
     const sdk = useWidgetSdk();
-    const hostOpener = useWidgetTransactionOpener();
-    const openTransaction = readOnly === true ? null : hostOpener;
-    const pageSize = positiveInteger(limit);
-    // Pages, not rows, so a limit the widget changes later still applies.
-    const [pages, setPages] = useState(1);
-    const shown = pageSize === null ? Infinity : pageSize * pages;
+    const hostTable = useWidgetTransactionTable();
+    const renderTable = readOnly === true ? null : hostTable;
     const hiddenKey = hiddenPartsKey(hide);
 
     const rows = useMemo(() => apiTransactions(transactions), [transactions]);
-    const rowById = useMemo(
-        () => new Map(rows.map((row) => [row.id, row])),
-        [rows],
+    const held = useMemo(
+        () =>
+            rows
+                .map((row) => toServerTransaction(row, sdk.accounts))
+                .sort(compareNewestFirst),
+        [rows, sdk.accounts],
     );
-    const listed = useMemo(() => {
-        const hidden = new Set(hiddenKey.split(',') as HideablePart[]);
-
-        return rows
-            .map((row) => toServerTransaction(row, sdk.accounts, hidden))
-            .sort(compareNewestFirst);
-    }, [rows, sdk.accounts, hiddenKey]);
-    const daySummaryOf = useInMemoryDaySummaries(listed);
+    const daySummaryOf = useInMemoryDaySummaries(held);
     const categories = useMemo(
         () => categoriesFor(rows, sdk.categories),
         [rows, sdk.categories],
@@ -301,8 +551,22 @@ export function TransactionList({
         () => labelsFor(rows, sdk.labels),
         [rows, sdk.labels],
     );
+    // What the formatters say, as a string: a widget writes them inline, new
+    // functions on every render, and the table must not rebuild its columns
+    // (remounting every cell, a ticked checkbox with them) for that.
+    const formattedKey = JSON.stringify(
+        rows.map((row) => [
+            row.id,
+            formatted(description, row),
+            formatted(badge, row),
+        ]),
+    );
+    const { displayRow, badgeOf } = useMemo(
+        () => rowFormatters(formattedKey, hiddenPartsOf(hiddenKey)),
+        [formattedKey, hiddenKey],
+    );
 
-    if (listed.length === 0) {
+    if (held.length === 0) {
         return (
             <EmptyState
                 className={className}
@@ -316,84 +580,41 @@ export function TransactionList({
         );
     }
 
-    const visible = listed.slice(0, shown);
-    const hasMore = visible.length < listed.length;
-    const lastId = visible.at(-1)?.id;
+    const shared = {
+        transactions: held,
+        pageSize: positiveInteger(limit),
+        displayRow,
+        badgeOf,
+        hiddenLabelId:
+            typeof hiddenLabelId === 'string' ? hiddenLabelId : undefined,
+        showDayTotals: showDayTotals !== false,
+    };
+    const hideAccount = hiddenKey.split(',').includes('account');
 
     return (
         <FixedPrivacyMode enabled={sdk.env.privacyMode}>
-            <div
-                data-slot="widget-transaction-list"
-                className={cn('flex flex-col', classNameOf(className))}
-            >
-                {[...groupByDate(visible)].map(([date, day]) => (
-                    <Fragment key={date}>
-                        <DayBand date={date}>
-                            {showDayTotals !== false && (
-                                <DayTotal
-                                    total={daySummaryOf(date).total}
-                                    quiet
-                                />
-                            )}
-                        </DayBand>
-                        {day.map((transaction) => {
-                            const row = rowById.get(transaction.id);
-
-                            // A copy for display only (hidden parts blanked,
-                            // the description rewritten): the dialog opens by
-                            // id, on the transaction as the server holds it.
-
-                            return (
-                                <TransactionListRow
-                                    key={transaction.id}
-                                    transaction={{
-                                        ...transaction,
-                                        description:
-                                            formatted(description, row) ??
-                                            transaction.description,
-                                    }}
-                                    categories={categories}
-                                    labels={labels}
-                                    selected={false}
-                                    selectionActive={false}
-                                    onUnsplit={() => undefined}
-                                    onOpen={
-                                        openTransaction === null
-                                            ? undefined
-                                            : () =>
-                                                  openTransaction(
-                                                      transaction.id,
-                                                  )
-                                    }
-                                    badge={formatted(badge, row) ?? undefined}
-                                    hiddenLabelId={
-                                        typeof hiddenLabelId === 'string'
-                                            ? hiddenLabelId
-                                            : undefined
-                                    }
-                                    // The widget's card draws the closing hairline.
-                                    className={cn(
-                                        !hasMore &&
-                                            transaction.id === lastId &&
-                                            'border-b-0',
-                                    )}
-                                />
-                            );
-                        })}
-                    </Fragment>
-                ))}
-                {hasMore && pageSize !== null && (
-                    <AppButton
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="m-2"
-                        onClick={() => setPages((count) => count + 1)}
-                    >
-                        {__('Show more')}
-                    </AppButton>
-                )}
-            </div>
+            {renderTable ? (
+                <div
+                    data-slot="widget-transaction-list"
+                    className={classNameOf(className)}
+                >
+                    {renderTable({
+                        ...shared,
+                        hideAccount,
+                        categories,
+                        labels,
+                    })}
+                </div>
+            ) : (
+                <ReadOnlyTransactions
+                    {...shared}
+                    categories={categories}
+                    labels={labels}
+                    daySummaryOf={daySummaryOf}
+                    showAccount={!hideAccount}
+                    className={classNameOf(className)}
+                />
+            )}
         </FixedPrivacyMode>
     );
 }

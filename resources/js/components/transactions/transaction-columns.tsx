@@ -2,23 +2,23 @@ import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { MoreHorizontal } from 'lucide-react';
 
-import { BankLogo } from '@/components/bank-logo';
-import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
-import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
-import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
-import { TransactionDescription } from '@/components/transactions/transaction-description';
+import {
+    accountColumn,
+    amountColumn,
+    categoryColumn,
+    descriptionColumn,
+    type DisplayRow,
+    visibilityColumns,
+} from '@/components/transactions/transaction-base-columns';
 import { TransactionRowDropdownMenuContent } from '@/components/transactions/transaction-row-dropdown-menu';
-import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { resolveTransactionLabels } from '@/lib/transaction-labels';
 import { getTransactionRowActions } from '@/lib/transaction-row-actions';
-import { isSplitPart } from '@/lib/transaction-splits';
 import {
     type Account,
     type Bank,
@@ -55,6 +55,10 @@ interface CreateColumnsOptions {
      * pays. Only the credit card account page passes it.
      */
     statementPayments?: Map<string, CreditCardPayment>;
+    /** How each row reads, apart from what it holds. */
+    displayRow?: DisplayRow;
+    /** A short tag after a row's description, or nothing. */
+    badgeOf?: (transaction: ServerTransaction) => string | null | undefined;
 }
 
 export function createTransactionColumns({
@@ -74,6 +78,8 @@ export function createTransactionColumns({
     categorizingIds,
     hiddenLabelId,
     statementPayments,
+    displayRow,
+    badgeOf,
 }: CreateColumnsOptions): ColumnDef<ServerTransaction>[] {
     return [
         {
@@ -104,129 +110,29 @@ export function createTransactionColumns({
 
             enableHiding: false,
         },
-        {
-            accessorKey: 'category_id',
-            meta: {
-                label: __('Category'),
-                cellClassName:
-                    'pl-2 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
-            },
-            header: () => __('Category'),
-            cell: ({ row }) => {
-                return (
-                    <CategoryCell
-                        transaction={row.original}
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        onUpdate={onUpdate}
-                        onCategorized={onCategorized}
-                        className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
-                        withoutChevronIcon
-                        isCategorizing={categorizingIds?.has(row.original.id)}
-                    />
-                );
-            },
-            enableHiding: true,
-        },
-        {
-            id: 'account',
-            accessorKey: 'account',
-            header: () => __('Account'),
-            meta: {
-                label: __('Account'),
-                cellClassName: '!min-w-[125px] whitespace-normal',
-            },
-            cell: ({ row }) => {
-                const transaction = row.original;
-                if (!transaction.account) {
-                    return <div className="text-muted-foreground">—</div>;
-                }
-
-                return (
-                    <div className="flex items-center gap-2">
-                        <BankLogo
-                            src={transaction.bank?.logo}
-                            name={transaction.bank?.name}
-                            className="h-5 w-5"
-                        />
-                        <span className="truncate">
-                            {transaction.account.name}
-                        </span>
-                    </div>
-                );
-            },
-            enableHiding: true,
-        },
-        {
-            accessorKey: 'description',
-            meta: {
-                label: __('Description'),
-                cellClassName:
-                    'max-w-[200px] sm:max-w-[250px] md:max-w-[300px] md:w-full md:min-w-0 md:overflow-hidden whitespace-normal',
-            },
-            header: () => __('Description'),
-            cell: ({ row, table }) => {
-                const transaction = row.original;
-                const columnVisibility = table.getState().columnVisibility;
-
-                const showLabels = columnVisibility.labels !== false;
-                const showNotes = columnVisibility.notes !== false;
-
-                const transactionLabels = resolveTransactionLabels(
-                    transaction,
-                    labels,
-                    hiddenLabelId,
-                );
-
-                const hasLabels = transactionLabels.length > 0;
-                const hasNotes = !!transaction.notes;
-                const statementPayment = statementPayments?.get(transaction.id);
-
-                return (
-                    // The split mark sits in its own gutter, so everything
-                    // beside it — description, labels, notes — lines up exactly
-                    // as it does on a row that was never split.
-                    <div className="flex gap-1.5">
-                        {isSplitPart(transaction) && (
-                            <SplitOriginPopover
-                                transaction={transaction}
-                                categories={categories}
-                                onUnsplit={onUnsplit}
-                            />
-                        )}
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <div className="flex flex-row justify-between gap-1">
-                                <div className="flex-grow truncate">
-                                    <TransactionDescription
-                                        text={transaction.description}
-                                    />
-                                </div>
-                                {showLabels && hasLabels && (
-                                    <LabelBadges
-                                        labels={transactionLabels}
-                                        max={3}
-                                    />
-                                )}
-                            </div>
-                            {statementPayment && (
-                                <StatementPaymentNote
-                                    payment={statementPayment}
-                                />
-                            )}
-                            {showNotes && hasNotes && (
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                                    <div className="truncate text-muted-foreground/80">
-                                        <span>{transaction.notes}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            },
-            enableHiding: false,
-        },
+        categoryColumn((transaction) => (
+            <CategoryCell
+                transaction={transaction}
+                categories={categories}
+                accounts={accounts}
+                banks={banks}
+                onUpdate={onUpdate}
+                onCategorized={onCategorized}
+                className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
+                withoutChevronIcon
+                isCategorizing={categorizingIds?.has(transaction.id)}
+            />
+        )),
+        accountColumn(displayRow),
+        descriptionColumn({
+            categories,
+            labels,
+            hiddenLabelId,
+            statementPayments,
+            onUnsplit,
+            displayRow,
+            badgeOf,
+        }),
         {
             accessorKey: 'creditor_name',
             meta: {
@@ -263,30 +169,7 @@ export function createTransactionColumns({
             },
             enableHiding: true,
         },
-        {
-            accessorKey: 'amount',
-            meta: { label: __('Amount') },
-            header: () => {
-                return <div className="w-full text-right">{__('Amount')}</div>;
-            },
-            cell: ({ row }) => {
-                const amountInCents = row.getValue('amount') as number;
-                const currencyCode = row.original.currency_code;
-
-                return (
-                    <div className="pl-4 text-right">
-                        <AmountDisplay
-                            amountInCents={amountInCents}
-                            currencyCode={currencyCode}
-                            variant="positive-highlight"
-                            highlightPositive={amountInCents >= 0}
-                            monospace
-                        />
-                    </div>
-                );
-            },
-            enableHiding: true,
-        },
+        amountColumn(),
         {
             id: 'actions',
             enableHiding: false,
@@ -330,22 +213,6 @@ export function createTransactionColumns({
                 );
             },
         },
-        // Virtual columns for visibility control only (not rendered as table columns)
-        {
-            id: 'labels',
-            accessorKey: 'label_ids',
-            meta: { label: __('Labels'), isVirtual: true },
-            header: () => null,
-            cell: () => null,
-            enableHiding: true,
-        },
-        {
-            id: 'notes',
-            accessorKey: 'notes',
-            meta: { label: __('Notes'), isVirtual: true },
-            header: () => null,
-            cell: () => null,
-            enableHiding: true,
-        },
+        ...visibilityColumns(),
     ];
 }
