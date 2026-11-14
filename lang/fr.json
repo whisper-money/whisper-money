@@ -2903,5 +2903,6 @@
     "The payment does not go through until you approve it. You keep access for now, but the subscription will be canceled if it stays unconfirmed.": "Le paiement ne passe pas tant que vous ne l'avez pas approuvé. Vous gardez l'accès pour l'instant, mais l'abonnement sera annulé s'il reste non confirmé.",
     "Your bank needs you to confirm the payment": "Votre banque a besoin que vous confirmiez le paiement",
     "Your bank asked you to approve the charge for your subscription before it goes through. Confirm it to keep Standard, or cancel and we stop trying to charge you.": "Votre banque vous demande d'approuver le prélèvement de votre abonnement avant de l'accepter. Confirmez-le pour garder Standard, ou annulez et nous cesserons d'essayer de vous prélever.",
-    "The transaction could not be opened.": "La transaction n'a pas pu être ouverte."
+    "The transaction could not be opened.": "La transaction n'a pas pu être ouverte.",
+    "Starred on GitHub by people at": "Mis en favori sur GitHub par des personnes de chez"
 }

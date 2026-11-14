@@ -2,6 +2,8 @@ import { BankLogo } from '@/components/bank-logo';
 import { CustomDashboardsSection } from '@/components/landing/custom-dashboards-section';
 import { HeroVideo } from '@/components/landing/hero-video';
 import InstallAppButton from '@/components/landing/install-app-button';
+import { Marquee } from '@/components/landing/marquee';
+import { StarredByStrip } from '@/components/landing/starred-by-strip';
 import Header from '@/components/partials/header';
 import { PriceTierSwitch } from '@/components/subscription/plan-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -2983,6 +2985,8 @@ export default function Welcome({
                         </div>
                     </section>
 
+                    <StarredByStrip />
+
                     {features.customDashboards && (
                         <CustomDashboardsSection
                             currency={pricing.currency}
@@ -3374,78 +3378,66 @@ export default function Welcome({
 
                             <div className="relative flex w-full flex-col gap-4">
                                 {testimonialRows.map((row, rowIndex) => (
-                                    <div
+                                    <Marquee
                                         key={rowIndex}
                                         className={cn(
-                                            'group flex flex-row [gap:var(--gap)] overflow-hidden p-2 [--gap:1rem]',
+                                            'p-2 [--gap:1rem]',
                                             rowIndex === 0
                                                 ? '[--duration:34s]'
                                                 : '[--duration:27s]',
                                         )}
+                                        trackClassName={cn(
+                                            rowIndex === 1 &&
+                                                '[animation-delay:-13s]',
+                                        )}
                                     >
-                                        {[0, 1].map((copy) => (
+                                        {row.map((testimonial) => (
                                             <div
-                                                key={copy}
-                                                aria-hidden={copy === 1}
-                                                className={cn(
-                                                    'animate-marquee flex shrink-0 flex-row [gap:var(--gap)] group-hover:[animation-play-state:paused]',
-                                                    rowIndex === 1 &&
-                                                        '[animation-delay:-13s]',
-                                                )}
+                                                key={testimonial.name}
+                                                className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
                                             >
-                                                {row.map((testimonial) => (
-                                                    <div
-                                                        key={`${rowIndex}-${copy}-${testimonial.name}`}
-                                                        className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar className="size-10">
-                                                                <AvatarImage
-                                                                    src={
-                                                                        testimonial.avatar ??
-                                                                        (testimonial.gravatar
-                                                                            ? `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
-                                                                            : undefined)
-                                                                    }
-                                                                    alt={
-                                                                        testimonial.name
-                                                                    }
-                                                                    loading="lazy"
-                                                                    className="object-cover"
-                                                                />
-                                                                <AvatarFallback>
-                                                                    <Facehash
-                                                                        name={
-                                                                            testimonial.name
-                                                                        }
-                                                                        size={
-                                                                            40
-                                                                        }
-                                                                        colorClasses={
-                                                                            tailwindColorClasses
-                                                                        }
-                                                                        intensity3d="dramatic"
-                                                                        className="rounded-full"
-                                                                        enableBlink
-                                                                    />
-                                                                </AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex flex-col items-start">
-                                                                <h3 className="text-sm leading-none font-semibold">
-                                                                    {
-                                                                        testimonial.name
-                                                                    }
-                                                                </h3>
-                                                            </div>
-                                                        </div>
-                                                        <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                                                            {testimonial.text}
-                                                        </p>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="size-10">
+                                                        <AvatarImage
+                                                            src={
+                                                                testimonial.avatar ??
+                                                                (testimonial.gravatar
+                                                                    ? `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                    : undefined)
+                                                            }
+                                                            alt={
+                                                                testimonial.name
+                                                            }
+                                                            loading="lazy"
+                                                            className="object-cover"
+                                                        />
+                                                        <AvatarFallback>
+                                                            <Facehash
+                                                                name={
+                                                                    testimonial.name
+                                                                }
+                                                                size={40}
+                                                                colorClasses={
+                                                                    tailwindColorClasses
+                                                                }
+                                                                intensity3d="dramatic"
+                                                                className="rounded-full"
+                                                                enableBlink
+                                                            />
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col items-start">
+                                                        <h3 className="text-sm leading-none font-semibold">
+                                                            {testimonial.name}
+                                                        </h3>
                                                     </div>
-                                                ))}
+                                                </div>
+                                                <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                                    {testimonial.text}
+                                                </p>
                                             </div>
                                         ))}
-                                    </div>
+                                    </Marquee>
                                 ))}
 
                                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/6 bg-linear-to-r from-[#FDFDFC] sm:block dark:from-[#0a0a0a]"></div>
