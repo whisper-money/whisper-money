@@ -62,12 +62,15 @@ describe('StarredByStrip', () => {
         ).toBeNull();
     });
 
-    it('stops the marquee under reduced motion', () => {
+    it('pauses on hover and stops under reduced motion', () => {
         const { container } = render(<StarredByStrip />);
 
         for (const copy of copies(container)) {
             expect(copy).toHaveClass('animate-marquee');
             expect(copy.className).toContain('motion-reduce:[animation:none]');
+            expect(copy.className).toContain(
+                'group-hover/marquee:[animation-play-state:paused]',
+            );
         }
     });
 

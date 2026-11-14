@@ -3381,13 +3381,12 @@ export default function Welcome({
                                     <Marquee
                                         key={rowIndex}
                                         className={cn(
-                                            'group p-2 [--gap:1rem]',
+                                            'p-2 [--gap:1rem]',
                                             rowIndex === 0
                                                 ? '[--duration:34s]'
                                                 : '[--duration:27s]',
                                         )}
                                         trackClassName={cn(
-                                            'group-hover:[animation-play-state:paused]',
                                             rowIndex === 1 &&
                                                 '[animation-delay:-13s]',
                                         )}
