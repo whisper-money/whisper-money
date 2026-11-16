@@ -45,8 +45,6 @@ export interface Features {
     cashflow: boolean;
     transactionSplitting: boolean;
     recurringTransactions: boolean;
-    /** Cashflow shows the Available card and the savings/investments split. */
-    cashflowAvailableFree: boolean;
     /** May start a full import from another app (switch on, onboarding window). */
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */

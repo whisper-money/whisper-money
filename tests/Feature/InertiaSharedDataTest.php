@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
-use App\Features\CashflowAvailableFree;
 use App\Features\CustomDashboards;
 use App\Features\TransactionSplitting;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
@@ -107,7 +106,6 @@ test('shared feature flags do not include coinbase flag', function () {
         'cashflow' => true,
         'transactionSplitting' => true,
         'recurringTransactions' => false,
-        'cashflowAvailableFree' => false,
         'fullImport' => false,
         'fullImportSettings' => false,
         'customDashboards' => false,
@@ -134,19 +132,6 @@ test('authenticated users receive their transaction splitting flag value', funct
         ->where('features.transactionSplitting', false)
     );
 });
-
-test('shared feature flags reflect the cashflow available flag per user', function (bool $active) {
-    $user = User::factory()->onboarded()->create();
-
-    if ($active) {
-        Feature::for($user)->activate(CashflowAvailableFree::class);
-    }
-
-    actingAs($user)->withoutVite()->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('features.cashflowAvailableFree', $active)
-        );
-})->with(['active' => true, 'inactive' => false]);
 
 test('shared feature flags reflect the custom dashboards flag per user', function (bool $active) {
     $user = User::factory()->onboarded()->create();

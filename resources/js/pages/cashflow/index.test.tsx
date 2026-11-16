@@ -6,13 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CashflowPage from './index';
 
 type PageProps = {
-    features: { cashflowAvailableFree: boolean };
     period?: string;
     periodType?: 'month' | 'quarter' | 'year';
 };
 
 const pageProps = vi.hoisted(() => ({
-    current: { features: { cashflowAvailableFree: false } } as PageProps,
+    current: {} as PageProps,
 }));
 
 vi.mock('@inertiajs/react', () => ({
@@ -158,23 +157,10 @@ function expectBlockLinks(
 
 describe('CashflowPage', () => {
     beforeEach(() => {
-        pageProps.current = { features: { cashflowAvailableFree: false } };
+        pageProps.current = {};
     });
 
-    it('leaves the free highlight out while the flag is off', () => {
-        render(<CashflowPage />);
-
-        expect(screen.queryByText('Income distribution')).toBeNull();
-        expect(screen.queryByText('Free (cashflow)')).toBeNull();
-        expect(screen.queryByText('Expenses (cashflow)')).toBeNull();
-        expect(
-            screen.queryByRole('button', { name: 'View details' }),
-        ).toBeNull();
-    });
-
-    it('shows the free highlight but no income distribution with the flag on', () => {
-        pageProps.current = { features: { cashflowAvailableFree: true } };
-
+    it('shows the free highlight but no income distribution', () => {
         render(<CashflowPage />);
 
         expect(screen.getAllByText('Free (cashflow)').length).toBeGreaterThan(
@@ -183,17 +169,12 @@ describe('CashflowPage', () => {
         expect(screen.queryByText('Income distribution')).toBeNull();
     });
 
-    it.each([false, true])(
-        'keeps the month in review link and the monthly savings card with the flag %s',
-        (cashflowAvailableFree) => {
-            pageProps.current = { features: { cashflowAvailableFree } };
+    it('keeps the month in review link and the monthly savings card', () => {
+        render(<CashflowPage />);
 
-            render(<CashflowPage />);
-
-            expect(screen.getByText('Month in review')).toBeTruthy();
-            expect(screen.getByText('Monthly savings card')).toBeTruthy();
-        },
-    );
+        expect(screen.getByText('Month in review')).toBeTruthy();
+        expect(screen.getByText('Monthly savings card')).toBeTruthy();
+    });
 
     it.each(['Quarter view', 'Year view'])(
         'leaves the monthly savings card out after switching to the %s',
@@ -209,9 +190,7 @@ describe('CashflowPage', () => {
         },
     );
 
-    it('shows the expenses card and opens its details with the flag on', () => {
-        pageProps.current = { features: { cashflowAvailableFree: true } };
-
+    it('shows the expenses card and opens its details', () => {
         render(<CashflowPage />);
 
         expect(screen.getByText('Expenses (cashflow)')).toBeTruthy();
@@ -233,11 +212,7 @@ describe('CashflowPage', () => {
     ] as const)(
         'links every block to its transactions over the %s in view',
         (periodType, period, from, to) => {
-            pageProps.current = {
-                features: { cashflowAvailableFree: true },
-                period,
-                periodType,
-            };
+            pageProps.current = { period, periodType };
 
             render(<CashflowPage />);
             expectBlockLinks(['fixed', 'variable', 'general'], from, to);
@@ -251,8 +226,6 @@ describe('CashflowPage', () => {
     );
 
     it('closes the drawer when one of its links is followed', async () => {
-        pageProps.current = { features: { cashflowAvailableFree: true } };
-
         render(<CashflowPage />);
         fireEvent.click(screen.getByRole('button', { name: 'View details' }));
         fireEvent.click(

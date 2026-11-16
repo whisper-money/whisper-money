@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
 use App\Enums\BankingProvider;
-use App\Features\CashflowAvailableFree;
 use App\Features\CustomDashboards;
 use App\Features\RecurringTransactions;
 use App\Features\TransactionSplitting;
@@ -345,7 +344,6 @@ class HandleInertiaRequests extends Middleware
                 'cashflow' => true,
                 'transactionSplitting' => true,
                 'recurringTransactions' => false,
-                'cashflowAvailableFree' => false,
                 'fullImport' => false,
                 'fullImportSettings' => false,
                 'customDashboards' => false,
@@ -356,7 +354,6 @@ class HandleInertiaRequests extends Middleware
         $features = Feature::for($user)->values([
             TransactionSplitting::class,
             RecurringTransactions::class,
-            CashflowAvailableFree::class,
             CustomDashboards::class,
         ]);
 
@@ -364,7 +361,6 @@ class HandleInertiaRequests extends Middleware
             'cashflow' => true,
             'transactionSplitting' => $features[TransactionSplitting::class] !== false,
             'recurringTransactions' => $features[RecurringTransactions::class] !== false,
-            'cashflowAvailableFree' => $features[CashflowAvailableFree::class] !== false,
             // Two answers, because Settings keeps the page past the window for
             // as long as an import can still be undone, while starting one is
             // only offered inside it. The second costs a query once the window

@@ -16,7 +16,6 @@ const pageProps = vi.hoisted(() => ({
     current: {
         categories: [],
         labels: [],
-        features: { cashflowAvailableFree: false },
     },
 }));
 
@@ -53,19 +52,11 @@ function choosePeriodType(label: string) {
     fireEvent.click(screen.getByRole('option', { name: label }));
 }
 
-function enableCashflow() {
-    pageProps.current = {
-        ...pageProps.current,
-        features: { cashflowAvailableFree: true },
-    };
-}
-
 describe('CreateBudgetDialog', () => {
     beforeEach(() => {
         pageProps.current = {
             categories: [],
             labels: [],
-            features: { cashflowAvailableFree: false },
         };
     });
 
@@ -112,14 +103,7 @@ describe('CreateBudgetDialog', () => {
         );
     });
 
-    it('hides the expense type while cashflow is not available', () => {
-        openDialog();
-
-        expect(screen.queryByLabelText('Expense Type')).not.toBeInTheDocument();
-    });
-
-    it('offers the expense type, variable by default, when cashflow is available', () => {
-        enableCashflow();
+    it('offers the expense type, variable by default', () => {
         openDialog();
 
         expect(screen.getByLabelText('Expense Type')).toHaveTextContent(
@@ -128,7 +112,6 @@ describe('CreateBudgetDialog', () => {
     });
 
     it('does not offer an expense type for a catch-all budget', () => {
-        enableCashflow();
         openDialog();
 
         fireEvent.click(screen.getByLabelText('Catch-all budget'));
@@ -137,7 +120,6 @@ describe('CreateBudgetDialog', () => {
     });
 
     it('sends the default variable expense type with a new budget', () => {
-        enableCashflow();
         openDialog();
 
         const dialog = screen.getByRole('dialog');

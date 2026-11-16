@@ -30,8 +30,6 @@ interface SavedInvestedCardProps {
     previous: CashflowSummary;
     loading?: boolean;
     currency?: string;
-    /** Adds each one's share of what was contributed, as pills and a bar. */
-    showContributionSplit?: boolean;
 }
 
 function allocationRate(summary: CashflowSummary): number {
@@ -95,7 +93,6 @@ export function SavedInvestedCard({
     previous,
     loading,
     currency = 'USD',
-    showContributionSplit = false,
 }: SavedInvestedCardProps) {
     if (loading) {
         return <SummaryCardSkeleton title={__('Saved & Invested')} />;
@@ -114,10 +111,7 @@ export function SavedInvestedCard({
     // Shares only read when both sides put money in: money pulled out of
     // savings or investments leaves no split that adds up to 100%.
     const showSplit =
-        showContributionSplit &&
-        contributed > 0 &&
-        current.savings >= 0 &&
-        current.investments >= 0;
+        contributed > 0 && current.savings >= 0 && current.investments >= 0;
     const savingsShare = showSplit
         ? shareOf(current.savings, contributed)
         : null;

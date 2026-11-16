@@ -6,7 +6,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { SharedData } from '@/types';
 import {
     BUDGET_EXPENSE_TYPES,
     BudgetExpenseType,
@@ -14,7 +13,6 @@ import {
     getBudgetExpenseTypeLabel,
 } from '@/types/budget';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 
 interface Props {
     value: BudgetExpenseType;
@@ -22,16 +20,10 @@ interface Props {
 }
 
 /**
- * Picks whether a budget is fixed or variable spending. Only cashflow reads
- * it, so the field stays hidden from users who cannot see that split yet.
+ * Picks whether a budget is fixed or variable spending, the split cashflow
+ * shows in its Expenses card.
  */
 export function BudgetExpenseTypeField({ value, onChange }: Props) {
-    const { features } = usePage<SharedData>().props;
-
-    if (!features.cashflowAvailableFree) {
-        return null;
-    }
-
     return (
         <div className="space-y-2">
             <Label htmlFor="expense-type">{__('Expense Type')}</Label>

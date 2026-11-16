@@ -8,7 +8,7 @@ test('the migration deletes the stored FullImport assignments and nothing else',
 
     DB::table('features')->insert([
         ['name' => 'App\Features\FullImport', 'scope' => $scope, 'value' => 'false', 'created_at' => now(), 'updated_at' => now()],
-        ['name' => 'App\Features\CashflowAvailableFree', 'scope' => $scope, 'value' => 'true', 'created_at' => now(), 'updated_at' => now()],
+        ['name' => 'App\Features\RecurringTransactions', 'scope' => $scope, 'value' => 'true', 'created_at' => now(), 'updated_at' => now()],
         ['name' => 'App\Features\CustomDashboards', 'scope' => $scope, 'value' => 'true', 'created_at' => now(), 'updated_at' => now()],
     ]);
 
@@ -16,5 +16,5 @@ test('the migration deletes the stored FullImport assignments and nothing else',
     $migration->up();
 
     expect(DB::table('features')->orderBy('name')->pluck('name')->all())
-        ->toBe(['App\Features\CashflowAvailableFree', 'App\Features\CustomDashboards']);
+        ->toBe(['App\Features\CustomDashboards', 'App\Features\RecurringTransactions']);
 });
