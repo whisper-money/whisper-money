@@ -1,7 +1,8 @@
 // Captures the real dashboard and widgets of the local promo accounts
 // (promo-b-en / promo-b-es) that the film zooms through.
 //
-// Prerequisites: `composer run dev` running in this checkout, and the two
+// Prerequisites: the root dependencies installed (Playwright comes from the
+// root package.json), `composer run dev` running in this checkout, and the two
 // accounts seeded with their widgets (see REVIEW.md, "How it was made").
 //
 // Usage, from the repository root:
@@ -14,7 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const BASE_URL = (process.env.APP_BASE_URL ?? '').replace(/\/$/, '');
-const PASSWORD = process.env.PROMO_PASSWORD ?? 'promo-b-password';
+// The local promo accounts' password, set when they were seeded.
+const PASSWORD = process.env.PROMO_PASSWORD ?? '';
 const LOCALES = (process.env.LOCALES ?? 'en,es').split(',');
 const OUT = join(
     dirname(fileURLToPath(import.meta.url)),
@@ -26,8 +28,10 @@ const OUT = join(
 /** The widgets in the order the film meets them, by their dashboard title. */
 const WIDGETS = ['takeaway', 'car', 'kids', 'groceries'];
 
-if (BASE_URL === '') {
-    console.error('Set APP_BASE_URL to the dev server of this checkout.');
+if (BASE_URL === '' || PASSWORD === '') {
+    console.error(
+        "Set APP_BASE_URL to the dev server of this checkout and PROMO_PASSWORD to the promo accounts' password.",
+    );
     process.exit(1);
 }
 
@@ -106,6 +110,9 @@ for (const locale of LOCALES) {
         document
             .querySelectorAll('[data-widget^="user:"]')
             .forEach((cell, index) => {
+                if (index >= names.length) {
+                    return;
+                }
                 const origin = cell.getBoundingClientRect();
                 widgets[names[index]] = {
                     box: box(cell, zero),

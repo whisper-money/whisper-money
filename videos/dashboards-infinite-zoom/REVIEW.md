@@ -49,6 +49,23 @@ same `index.html` (Spanish: `--variables-file variables.es.json`).
 - Captures: a chart tooltip stayed open in the kids widget → the capture script
   moves the pointer away and hides tooltips.
 
+## Open before publishing
+
+- **Music licence.** The pad is MusicGen output, and the `facebook/musicgen-small`
+  weights are released under CC-BY-NC 4.0. Whether that reaches a commercial
+  promo is a call for whoever publishes it. If the answer is no, drop the pad
+  from `scripts/build-score.py` (the pulse and every effect are Pixabay-licensed
+  samples) or swap in a licensed track; nothing else changes.
+- **Listen to it.** The mix was measured, not heard.
+
+## Known shortcuts
+
+- The dive targets and the kids cell in `index.html` are copied from
+  `assets/captures/*/layout.json` (a composition cannot read files at render
+  time). Re-capturing with different data means updating them by hand.
+- Clip times, effect times and the kick times in `scripts/build-score.py` are
+  written separately; retiming a cycle means editing all three.
+
 ## Weakest shot
 
 The code beats (4.4–6.0 s, 11.2–12.4 s, 17.0–18.0 s): a dark card of small mono
