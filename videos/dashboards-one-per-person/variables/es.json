@@ -1,0 +1,17 @@
+{
+    "lang": "es",
+    "name1": "Lucía",
+    "ctx1": "Diseñadora freelance",
+    "ask1": "¿Cuánto aparto para impuestos este trimestre?",
+    "name2": "Los Ortega",
+    "ctx2": "Dos niños y un súper semanal",
+    "ask2": "¿Cuánto nos cuestan los niños? ¿Y el súper?",
+    "name3": "Dani",
+    "ctx3": "Ahorrando para Japón",
+    "ask3": "¿Llego a Japón? ¿Cuánto puedo gastar al día?",
+    "agentLabel": "Tu agente",
+    "agentLine": "Escribiendo 3 widgets con tus propios números…",
+    "question": "¿Y el tuyo?",
+    "tagline": "Pide un gráfico. Aparece en tu dashboard.",
+    "fineprint": "En el plan de pago, con Claude o ChatGPT conectado a Whisper Money."
+}
