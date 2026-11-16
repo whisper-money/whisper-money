@@ -1,0 +1,109 @@
+import {
+    Amount,
+    ChartTooltip,
+    EmptyState,
+    formatMoney,
+    useWidgetData,
+    useWidgetEnv,
+} from '@whisper-money/widget-sdk';
+import { useMemo } from 'react';
+import { Area, AreaChart, ResponsiveContainer, XAxis } from 'recharts';
+
+const BORROWED = 1800000;
+const MONTH = new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+export default function CarPaidOff() {
+    const { payments } = useWidgetData();
+    const { currency, privacyMode } = useWidgetEnv();
+
+    const plan = useMemo(() => {
+        const rows = [...payments.data].sort((a, b) => a.transaction_date.localeCompare(b.transaction_date));
+        const instalment = Math.abs(rows.at(-1)?.amount ?? 0);
+        const paid = rows.reduce((sum, row) => sum + Math.abs(row.amount), 0);
+        const left = Math.max(BORROWED - paid, 0);
+        const paymentsLeft = instalment > 0 ? Math.ceil(left / instalment) : 0;
+
+        let owed = BORROWED;
+        const points = rows.map((row) => {
+            owed -= Math.abs(row.amount);
+            return { month: row.transaction_date.slice(0, 7), owed, projected: null };
+        });
+        const last = new Date(rows.at(-1)?.transaction_date ?? '2026-01-01');
+        points.at(-1).projected = left;
+        for (let i = 1; i <= paymentsLeft; i++) {
+            const date = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + i, 1));
+            points.push({
+                month: date.toISOString().slice(0, 7),
+                owed: null,
+                projected: Math.max(left - instalment * i, 0),
+            });
+        }
+        const payoff = new Date(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + paymentsLeft, 1));
+
+        return { left, paymentsLeft, points, payoff: MONTH.format(payoff) };
+    }, [payments]);
+
+    if (payments.data.length === 0) {
+        return <EmptyState title="Aún no hay datos" />;
+    }
+
+    return (
+        <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium">Cuándo acabamos de pagar el coche</h3>
+                <p className="text-xs text-muted-foreground">18.000 € prestados en junio de 2024</p>
+            </div>
+            <div className="flex items-end gap-6">
+                <div className="flex flex-col">
+                    <span className="text-xs text-blue-600 dark:text-blue-400">Pagado en</span>
+                    <span className="text-lg font-semibold">{plan.payoff}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Quedan por pagar</span>
+                    <Amount className="text-lg font-semibold" amount={plan.left} currency={currency} />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Cuotas</span>
+                    <span className="text-lg font-semibold">{plan.paymentsLeft}</span>
+                </div>
+            </div>
+            <div className="min-h-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={plan.points} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+                        <XAxis
+                            dataKey="month"
+                            tickLine={false}
+                            axisLine={false}
+                            minTickGap={40}
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(month) => MONTH.format(new Date(`${month}-01`))}
+                        />
+                        <ChartTooltip
+                            labelFormatter={(month) => MONTH.format(new Date(`${month}-01`))}
+                            valueFormatter={(value) => (privacyMode ? '•••' : formatMoney(value, currency))}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="owed"
+                            name="Pendiente"
+                            stroke="var(--color-blue-500)"
+                            fill="var(--color-blue-500)"
+                            fillOpacity={0.2}
+                            strokeWidth={2}
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="projected"
+                            name="Previsto"
+                            stroke="var(--color-blue-500)"
+                            fill="var(--color-blue-500)"
+                            fillOpacity={0.06}
+                            strokeDasharray="5 5"
+                            strokeWidth={2}
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}

@@ -1,0 +1,73 @@
+import {
+    Amount,
+    ChartTooltip,
+    EmptyState,
+    formatMoney,
+    useWidgetData,
+    useWidgetEnv,
+} from '@whisper-money/widget-sdk';
+import { useMemo } from 'react';
+import { Bar, BarChart, Cell, ResponsiveContainer, XAxis } from 'recharts';
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKEND = [4, 5, 6];
+
+export default function TakeawayByWeekday() {
+    const { orders } = useWidgetData();
+    const { currency, privacyMode } = useWidgetEnv();
+
+    const days = useMemo(() => {
+        const totals = DAYS.map((day) => ({ day, total: 0 }));
+        for (const row of orders.data) {
+            const weekday = (new Date(row.transaction_date).getUTCDay() + 6) % 7;
+            totals.at(weekday).total += Math.abs(row.amount);
+        }
+        return totals;
+    }, [orders]);
+
+    const weekend = days
+        .filter((_, index) => WEEKEND.includes(index))
+        .reduce((sum, day) => sum + day.total, 0);
+    const weeknights = days.reduce((sum, day) => sum + day.total, 0) - weekend;
+
+    if (orders.data.length === 0) {
+        return <EmptyState title="Nothing yet" />;
+    }
+
+    return (
+        <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium">Takeaway: weeknights vs weekends</h3>
+                <p className="text-xs text-muted-foreground">Since May, by day of the week</p>
+            </div>
+            <div className="flex gap-6">
+                <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Weeknights</span>
+                    <Amount className="text-lg font-semibold" amount={weeknights} currency={currency} />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-xs text-amber-600 dark:text-amber-400">Fri to Sun</span>
+                    <Amount className="text-lg font-semibold" amount={weekend} currency={currency} />
+                </div>
+            </div>
+            <div className="min-h-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={days} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip
+                            valueFormatter={(value) => (privacyMode ? '•••' : formatMoney(value, currency))}
+                        />
+                        <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                            {days.map((day, index) => (
+                                <Cell
+                                    key={day.day}
+                                    fill={WEEKEND.includes(index) ? 'var(--color-amber-500)' : 'var(--color-zinc-400)'}
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}

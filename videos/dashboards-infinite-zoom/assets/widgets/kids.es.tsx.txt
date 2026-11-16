@@ -1,0 +1,92 @@
+import {
+    Amount,
+    ChartTooltip,
+    EmptyState,
+    formatMoney,
+    useWidgetData,
+    useWidgetEnv,
+} from '@whisper-money/widget-sdk';
+import { useMemo } from 'react';
+import { Bar, BarChart, Legend, ResponsiveContainer, XAxis } from 'recharts';
+
+const ACTIVITIES = [
+    { id: '01a1e5c2-b089-726b-a6b0-ff4f7ba6ed24', name: 'Natación', color: 'var(--color-sky-500)' },
+    { id: '01a1e5c2-b08b-7353-9a1d-9968f5231218', name: 'Fútbol', color: 'var(--color-emerald-500)' },
+    { id: '01a1e5c2-b08d-70b8-a83d-e940f3a9a21e', name: 'Piano', color: 'var(--color-amber-500)' },
+];
+
+function termOf(month) {
+    const [year, number] = month.split('-').map(Number);
+    if (number >= 9) {
+        return `sep-dic ${String(year).slice(2)}`;
+    }
+    if (number <= 3) {
+        return `ene-mar ${String(year).slice(2)}`;
+    }
+    return number <= 6 ? `abr-jun ${String(year).slice(2)}` : null;
+}
+
+export default function KidsActivitiesPerTerm() {
+    const { activities } = useWidgetData();
+    const { currency, privacyMode } = useWidgetEnv();
+
+    const terms = useMemo(() => {
+        const byTerm = new Map();
+        for (const bucket of activities.data.buckets) {
+            const term = termOf(bucket.month);
+            if (term === null || bucket.label_id === null) {
+                continue;
+            }
+            const sums = byTerm.get(term) ?? new Map();
+            sums.set(bucket.label_id, (sums.get(bucket.label_id) ?? 0) + Math.abs(bucket.sum));
+            byTerm.set(term, sums);
+        }
+        return Array.from(byTerm.entries()).map(([term, sums]) => ({
+            term,
+            total: Array.from(sums.values()).reduce((sum, value) => sum + value, 0),
+            ...Object.fromEntries(sums.entries()),
+        }));
+    }, [activities]);
+
+    const current = terms.at(-1);
+
+    if (terms.length === 0) {
+        return <EmptyState title="Aún no hay datos" />;
+    }
+
+    return (
+        <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                    <h3 className="text-sm font-medium">Extraescolares por trimestre</h3>
+                    <p className="text-xs text-muted-foreground">Natación, fútbol y piano</p>
+                </div>
+                <div className="flex flex-col items-end pr-8">
+                    <span className="text-xs text-muted-foreground">{current.term} · por ahora</span>
+                    <Amount className="text-lg font-semibold" amount={current.total} currency={currency} />
+                </div>
+            </div>
+            <div className="min-h-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={terms} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="term" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip
+                            valueFormatter={(value) => (privacyMode ? '•••' : formatMoney(value, currency))}
+                        />
+                        <Legend iconType="circle" iconSize={8} />
+                        {ACTIVITIES.map((activity, index) => (
+                            <Bar
+                                key={activity.id}
+                                dataKey={activity.id}
+                                name={activity.name}
+                                stackId="kids"
+                                fill={activity.color}
+                                radius={index === ACTIVITIES.length - 1 ? [6, 6, 0, 0] : 0}
+                            />
+                        ))}
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
