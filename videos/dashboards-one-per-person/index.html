@@ -1,0 +1,1149 @@
+<!doctype html>
+<html
+    lang="en"
+    data-composition-variables='[
+    {"id":"lang","type":"enum","label":"Language of the captures","default":"en","options":[{"value":"en","label":"English"},{"value":"es","label":"Spanish"}]},
+    {"id":"name1","type":"string","label":"Freelancer name","default":"Maya"},
+    {"id":"ctx1","type":"string","label":"Freelancer context","default":"Freelance designer"},
+    {"id":"ask1","type":"string","label":"Freelancer sentence","default":"What should I set aside for taxes this quarter?"},
+    {"id":"name2","type":"string","label":"Family name","default":"The Parkers"},
+    {"id":"ctx2","type":"string","label":"Family context","default":"Two kids, one weekly shop"},
+    {"id":"ask2","type":"string","label":"Family sentence","default":"What do the kids cost us? And the weekly shop?"},
+    {"id":"name3","type":"string","label":"Traveller name","default":"Leo"},
+    {"id":"ctx3","type":"string","label":"Traveller context","default":"Saving for Japan"},
+    {"id":"ask3","type":"string","label":"Traveller sentence","default":"Am I on track for Japan? What can I spend a day?"},
+    {"id":"agentLabel","type":"string","label":"Agent bubble label","default":"Your agent"},
+    {"id":"agentLine","type":"string","label":"Agent reply","default":"Writing 3 widgets on your own numbers…"},
+    {"id":"question","type":"string","label":"Question","default":"What about yours?"},
+    {"id":"tagline","type":"string","label":"Tagline","default":"Ask for a chart. It lands on your dashboard."},
+    {"id":"fineprint","type":"string","label":"Plan line","default":"On the paid plan, with Claude or ChatGPT connected to Whisper Money."}
+  ]'
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=1920, height=1080" />
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+        <style>
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                    U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                    U+2212, U+2215, U+FEFF, U+FFFD;
+            }
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin-ext.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+                    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+                    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+                    U+2113, U+2C60-2C7F, U+A720-A7FF;
+            }
+            @font-face {
+                font-family: 'Google Sans Code';
+                font-weight: 300 800;
+                src: url('assets/fonts/google-sans-code-normal-300-800-latin.woff2')
+                    format('woff2');
+            }
+            :root {
+                --ground-1: #fcd34d;
+                --ground-2: #6ee7b7;
+                --ground-3: #93c5fd;
+                --app: #1f1f1f;
+                --ink: #1f1f1f;
+                --paper: #fafafa;
+                --muted: #a1a1a1;
+                --accent: #34d399;
+                --font: 'IBM Plex Sans', sans-serif;
+                --mono: 'Google Sans Code', monospace;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 1920px;
+                height: 1080px;
+                overflow: hidden;
+                background: var(--app);
+                font-family: var(--font);
+            }
+            #root {
+                position: relative;
+                width: 1920px;
+                height: 1080px;
+                overflow: hidden;
+            }
+
+            /* Three panes, one per person */
+            .pane {
+                position: absolute;
+                top: 0;
+                width: 640px;
+                height: 1080px;
+                overflow: hidden;
+            }
+            #p1 {
+                left: 0;
+                background: var(--ground-1);
+                z-index: 3;
+            }
+            #p2 {
+                left: 640px;
+                background: var(--ground-2);
+                z-index: 2;
+            }
+            #p3 {
+                left: 1280px;
+                background: var(--ground-3);
+                z-index: 3;
+            }
+            .col {
+                position: absolute;
+                left: 40px;
+                top: 0;
+                width: 560px;
+                height: 3000px;
+                transform-origin: 280px 0;
+            }
+            .name {
+                position: absolute;
+                top: 60px;
+                left: 0;
+                font-size: 56px;
+                font-weight: 700;
+                letter-spacing: -0.02em;
+                color: var(--ink);
+                line-height: 1.1;
+            }
+            .ctx {
+                position: absolute;
+                top: 132px;
+                left: 0;
+                font-size: 30px;
+                font-weight: 500;
+                color: rgba(31, 31, 31, 0.72);
+            }
+            .blank {
+                position: absolute;
+                top: 216px;
+                left: 0;
+                width: 560px;
+                height: 816px;
+                border: 3px dashed rgba(31, 31, 31, 0.32);
+                border-radius: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .blank svg {
+                width: 72px;
+                height: 72px;
+                stroke: rgba(31, 31, 31, 0.4);
+            }
+            .chat {
+                position: absolute;
+                top: 216px;
+                left: 0;
+                width: 560px;
+                display: flex;
+                flex-direction: column;
+                gap: 18px;
+            }
+            .bubble {
+                max-width: 500px;
+                padding: 20px 26px;
+                border-radius: 28px;
+                font-size: 30px;
+                font-weight: 500;
+                line-height: 1.3;
+            }
+            .ask {
+                align-self: flex-end;
+                background: #ffffff;
+                color: var(--ink);
+                border-bottom-right-radius: 8px;
+                transform-origin: 100% 100%;
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+            }
+            .agent {
+                align-self: flex-start;
+                background: var(--app);
+                color: var(--paper);
+                border-bottom-left-radius: 8px;
+                transform-origin: 0 100%;
+                font-size: 28px;
+            }
+            .agent .who {
+                display: block;
+                font-size: 28px;
+                font-weight: 600;
+                color: var(--muted);
+                margin-bottom: 4px;
+            }
+            .stack {
+                position: absolute;
+                top: 560px;
+                left: 0;
+                width: 560px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .stack img {
+                display: block;
+                width: 560px;
+                height: auto;
+                border-radius: 24px;
+                box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+            }
+
+            /* The one dashboard everyone can have */
+            #world {
+                position: absolute;
+                inset: 0;
+                z-index: 5;
+                overflow: hidden;
+            }
+            #world-cam {
+                position: absolute;
+                inset: 0;
+                background: var(--app);
+                transform-origin: 1145px 371px;
+            }
+            #world-shot {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 1920px;
+                height: 1350px;
+            }
+            #question {
+                position: absolute;
+                left: 420px;
+                top: 700px;
+                width: 1442px;
+                text-align: center;
+                font-size: 120px;
+                font-weight: 700;
+                letter-spacing: -0.03em;
+                color: var(--paper);
+                line-height: 1.1;
+            }
+            #question .w {
+                display: inline-block;
+                white-space: pre;
+            }
+
+            /* End card */
+            #end {
+                position: absolute;
+                inset: 0;
+                z-index: 6;
+                background: var(--app);
+            }
+            #lockup {
+                position: absolute;
+                top: 352px;
+                left: 0;
+                width: 1920px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 32px;
+            }
+            #tile {
+                position: relative;
+                width: 136px;
+                height: 136px;
+                border-radius: 32px;
+                overflow: hidden;
+                background: #2a2a2a;
+            }
+            .band {
+                position: absolute;
+                inset: 0;
+            }
+            #band1 {
+                background: var(--ground-1);
+            }
+            #band2 {
+                background: var(--ground-2);
+            }
+            #band3 {
+                background: var(--ground-3);
+            }
+            #band4 {
+                background: #ffffff;
+            }
+            #bird {
+                position: absolute;
+                left: 22px;
+                top: 22px;
+                width: 92px;
+                height: 92px;
+            }
+            #wordmark-wrap {
+                overflow: hidden;
+            }
+            #wordmark {
+                font-family: var(--mono);
+                font-size: 60px;
+                font-weight: 600;
+                color: var(--paper);
+                white-space: nowrap;
+            }
+            #tagline {
+                position: absolute;
+                top: 560px;
+                left: 0;
+                width: 1920px;
+                text-align: center;
+                font-size: 56px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+                color: var(--paper);
+            }
+            #url {
+                position: absolute;
+                top: 660px;
+                left: 0;
+                width: 1920px;
+                text-align: center;
+                font-family: var(--mono);
+                font-size: 48px;
+                font-weight: 600;
+                color: var(--accent);
+            }
+            #fineprint {
+                position: absolute;
+                top: 780px;
+                left: 0;
+                width: 1920px;
+                text-align: center;
+                font-size: 30px;
+                color: var(--muted);
+            }
+        </style>
+    </head>
+    <body>
+        <div
+            id="root"
+            data-composition-id="main"
+            data-start="0"
+            data-duration="33.75"
+            data-width="1920"
+            data-height="1080"
+        >
+            <!-- Scene 1-4: three people, three panes -->
+            <div
+                id="panes"
+                class="clip"
+                data-start="0"
+                data-duration="22.2"
+                data-track-index="1"
+                data-track-kind="graphics"
+            >
+                <div id="p1" class="pane" data-layout-allow-overflow>
+                    <div class="col" id="c1">
+                        <div class="name" id="name1" data-var-text="name1">
+                            Maya
+                        </div>
+                        <div class="ctx" id="ctx1" data-var-text="ctx1">
+                            Freelance designer
+                        </div>
+                        <div class="blank" id="blank1">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <rect width="7" height="7" x="3" y="3" rx="1" />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="3"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="14"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="3"
+                                    y="14"
+                                    rx="1"
+                                />
+                            </svg>
+                        </div>
+                        <div class="chat" id="chat1">
+                            <div
+                                class="bubble ask"
+                                id="ask1"
+                                data-var-text="ask1"
+                            >
+                                What should I set aside for taxes this quarter?
+                            </div>
+                            <div class="bubble agent" id="agent1">
+                                <span class="who" data-var-text="agentLabel"
+                                    >Your agent</span
+                                ><span class="said" data-var-text="agentLine"
+                                    >Writing 3 widgets on your own
+                                    numbers…</span
+                                >
+                            </div>
+                        </div>
+                        <div class="stack" id="stack1">
+                            <img
+                                id="w1a"
+                                data-shot="freelancer-w0"
+                                src="assets/en/freelancer-w0.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w1b"
+                                data-shot="freelancer-w1"
+                                src="assets/en/freelancer-w1.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w1c"
+                                data-shot="freelancer-w2"
+                                src="assets/en/freelancer-w2.webp"
+                                alt=""
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div id="p2" class="pane" data-layout-allow-overflow>
+                    <div class="col" id="c2">
+                        <div class="name" id="name2" data-var-text="name2">
+                            The Parkers
+                        </div>
+                        <div class="ctx" id="ctx2" data-var-text="ctx2">
+                            Two kids, one weekly shop
+                        </div>
+                        <div class="blank" id="blank2">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <rect width="7" height="7" x="3" y="3" rx="1" />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="3"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="14"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="3"
+                                    y="14"
+                                    rx="1"
+                                />
+                            </svg>
+                        </div>
+                        <div class="chat" id="chat2">
+                            <div
+                                class="bubble ask"
+                                id="ask2"
+                                data-var-text="ask2"
+                            >
+                                What do the kids cost us? And the weekly shop?
+                            </div>
+                            <div class="bubble agent" id="agent2">
+                                <span class="who" data-var-text="agentLabel"
+                                    >Your agent</span
+                                ><span class="said" data-var-text="agentLine"
+                                    >Writing 3 widgets on your own
+                                    numbers…</span
+                                >
+                            </div>
+                        </div>
+                        <div class="stack" id="stack2">
+                            <img
+                                id="w2a"
+                                data-shot="family-w0"
+                                src="assets/en/family-w0.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w2b"
+                                data-shot="family-w1"
+                                src="assets/en/family-w1.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w2c"
+                                data-shot="family-w2"
+                                src="assets/en/family-w2.webp"
+                                alt=""
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div id="p3" class="pane" data-layout-allow-overflow>
+                    <div class="col" id="c3">
+                        <div class="name" id="name3" data-var-text="name3">
+                            Leo
+                        </div>
+                        <div class="ctx" id="ctx3" data-var-text="ctx3">
+                            Saving for Japan
+                        </div>
+                        <div class="blank" id="blank3">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <rect width="7" height="7" x="3" y="3" rx="1" />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="3"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="14"
+                                    y="14"
+                                    rx="1"
+                                />
+                                <rect
+                                    width="7"
+                                    height="7"
+                                    x="3"
+                                    y="14"
+                                    rx="1"
+                                />
+                            </svg>
+                        </div>
+                        <div class="chat" id="chat3">
+                            <div
+                                class="bubble ask"
+                                id="ask3"
+                                data-var-text="ask3"
+                            >
+                                Am I on track for Japan? What can I spend a day?
+                            </div>
+                            <div class="bubble agent" id="agent3">
+                                <span class="who" data-var-text="agentLabel"
+                                    >Your agent</span
+                                ><span class="said" data-var-text="agentLine"
+                                    >Writing 3 widgets on your own
+                                    numbers…</span
+                                >
+                            </div>
+                        </div>
+                        <div class="stack" id="stack3">
+                            <img
+                                id="w3a"
+                                data-shot="traveller-w0"
+                                src="assets/en/traveller-w0.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w3b"
+                                data-shot="traveller-w1"
+                                src="assets/en/traveller-w1.webp"
+                                alt=""
+                            />
+                            <img
+                                id="w3c"
+                                data-shot="traveller-w2"
+                                src="assets/en/traveller-w2.webp"
+                                alt=""
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scene 5: the panes merge into one empty dashboard -->
+            <div
+                id="world"
+                class="clip"
+                data-start="21.25"
+                data-duration="5.65"
+                data-track-index="2"
+                data-track-kind="graphics"
+                data-layout-allow-overflow
+            >
+                <div id="world-cam">
+                    <img
+                        id="world-shot"
+                        data-shot="empty"
+                        src="assets/en/empty.webp"
+                        alt=""
+                    />
+                    <div id="question" data-layout-allow-overlap data-hold>
+                        <span class="w">What </span><span class="w">about </span
+                        ><span class="w">yours?</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scene 6: end card -->
+            <div
+                id="end"
+                class="clip"
+                data-start="26.75"
+                data-duration="7"
+                data-track-index="3"
+                data-track-kind="graphics"
+            >
+                <div id="lockup">
+                    <div id="tile">
+                        <div class="band" id="band1"></div>
+                        <div class="band" id="band2"></div>
+                        <div class="band" id="band3"></div>
+                        <div class="band" id="band4"></div>
+                        <img
+                            id="bird"
+                            src="assets/brand/logo-bird.svg"
+                            alt="Whisper Money"
+                        />
+                    </div>
+                    <div id="wordmark-wrap">
+                        <div id="wordmark">Whisper Money</div>
+                    </div>
+                </div>
+                <div id="tagline" data-var-text="tagline">
+                    Ask for a chart. It lands on your dashboard.
+                </div>
+                <div id="url">whisper.money</div>
+                <div id="fineprint" data-var-text="fineprint">
+                    On the paid plan, with Claude or ChatGPT connected to
+                    Whisper Money.
+                </div>
+            </div>
+
+            <!-- Music: one layer per person, sharing one tempo; each enters on its person's bar -->
+            <audio
+                id="music-pad"
+                class="clip"
+                src="assets/music/layer-pad.mp3"
+                data-start="0"
+                data-duration="33.75"
+                data-track-index="10"
+                data-volume="0.7"
+                data-fade-out="1.6"
+            ></audio>
+            <audio
+                id="music-arpeggio"
+                class="clip"
+                src="assets/music/layer-arpeggio.mp3"
+                data-start="5"
+                data-media-start="5"
+                data-duration="28.75"
+                data-track-index="11"
+                data-volume="0.55"
+                data-fade-in="0.3"
+                data-fade-out="1.6"
+            ></audio>
+            <audio
+                id="music-rhythm"
+                class="clip"
+                src="assets/music/layer-rhythm.mp3"
+                data-start="7.5"
+                data-media-start="7.5"
+                data-duration="26.25"
+                data-track-index="12"
+                data-volume="0.6"
+                data-fade-in="0.2"
+                data-fade-out="1.6"
+            ></audio>
+
+            <!-- Sound on visible actions -->
+            <audio
+                id="sfx-ask1"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="2.53"
+                data-duration="0.6"
+                data-track-index="13"
+                data-volume="0.55"
+            ></audio>
+            <audio
+                id="sfx-ask2"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="5.03"
+                data-duration="0.6"
+                data-track-index="13"
+                data-volume="0.55"
+            ></audio>
+            <audio
+                id="sfx-ask3"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="7.53"
+                data-duration="0.6"
+                data-track-index="13"
+                data-volume="0.55"
+            ></audio>
+            <audio
+                id="sfx-agent"
+                class="clip"
+                src="assets/sfx/key-press.mp3"
+                data-start="10.03"
+                data-duration="0.4"
+                data-track-index="14"
+                data-volume="0.45"
+            ></audio>
+            <audio
+                id="sfx-w1"
+                class="clip"
+                src="assets/sfx/click-soft.mp3"
+                data-start="11.28"
+                data-duration="0.37"
+                data-track-index="15"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-w2"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="11.9"
+                data-duration="0.5"
+                data-track-index="15"
+                data-volume="0.4"
+            ></audio>
+            <audio
+                id="sfx-w3"
+                class="clip"
+                src="assets/sfx/click-soft.mp3"
+                data-start="12.53"
+                data-duration="0.37"
+                data-track-index="15"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-w4"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="13.78"
+                data-duration="0.5"
+                data-track-index="15"
+                data-volume="0.4"
+            ></audio>
+            <audio
+                id="sfx-w5"
+                class="clip"
+                src="assets/sfx/click-soft.mp3"
+                data-start="14.4"
+                data-duration="0.37"
+                data-track-index="15"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-w6"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="15.03"
+                data-duration="0.5"
+                data-track-index="15"
+                data-volume="0.4"
+            ></audio>
+            <audio
+                id="sfx-w7"
+                class="clip"
+                src="assets/sfx/click-soft.mp3"
+                data-start="16.28"
+                data-duration="0.37"
+                data-track-index="15"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-w8"
+                class="clip"
+                src="assets/sfx/pop.mp3"
+                data-start="16.9"
+                data-duration="0.5"
+                data-track-index="15"
+                data-volume="0.4"
+            ></audio>
+            <audio
+                id="sfx-w9"
+                class="clip"
+                src="assets/sfx/click-soft.mp3"
+                data-start="17.53"
+                data-duration="0.37"
+                data-track-index="15"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-pullback"
+                class="clip"
+                src="assets/sfx/whoosh-short.mp3"
+                data-start="18.75"
+                data-duration="0.57"
+                data-track-index="16"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-merge"
+                class="clip"
+                src="assets/sfx/whoosh.mp3"
+                data-start="21.2"
+                data-duration="0.57"
+                data-track-index="16"
+                data-volume="0.55"
+            ></audio>
+            <audio
+                id="sfx-riser"
+                class="clip"
+                src="assets/sfx/riser.mp3"
+                data-start="25.4"
+                data-duration="1.6"
+                data-track-index="17"
+                data-volume="0.45"
+                data-fade-out="0.3"
+            ></audio>
+            <audio
+                id="sfx-impact"
+                class="clip"
+                src="assets/sfx/impact-bass-1.mp3"
+                data-start="27.03"
+                data-duration="1.6"
+                data-track-index="17"
+                data-volume="0.6"
+            ></audio>
+        </div>
+
+        <script>
+            (function () {
+                const vars =
+                    (window.__hyperframes &&
+                        window.__hyperframes.getVariables &&
+                        window.__hyperframes.getVariables()) ||
+                    {};
+                const lang = vars.lang === 'es' ? 'es' : 'en';
+                document.documentElement.lang = lang;
+
+                // The captures are per language: same names, one folder each.
+                document.querySelectorAll('[data-shot]').forEach((img) => {
+                    img.src =
+                        'assets/' + lang + '/' + img.dataset.shot + '.webp';
+                });
+
+                // The question is split into words so it can land word by word.
+                if (vars.question) {
+                    const q = document.getElementById('question');
+                    q.innerHTML = '';
+                    vars.question.split(' ').forEach((word, index, all) => {
+                        const span = document.createElement('span');
+                        span.className = 'w';
+                        span.textContent =
+                            index < all.length - 1 ? word + ' ' : word;
+                        q.appendChild(span);
+                    });
+                }
+
+                // Each capture's height at 560 px wide, from its 1146 px source.
+                const SOURCE = {
+                    en: [
+                        [534, 768, 1812],
+                        [1134, 768, 768],
+                        [768, 768, 768],
+                    ],
+                    es: [
+                        [534, 768, 1665],
+                        [1134, 768, 768],
+                        [768, 768, 768],
+                    ],
+                }[lang];
+                const WIDTH = 560;
+                const GAP = 16;
+                const STACK_TOP = 560;
+                const FLOOR = 1040;
+                const HEADER = 200;
+                const heights = SOURCE.map((pane) =>
+                    pane.map((h) => (h * WIDTH) / 1146),
+                );
+
+                const BEAT = 0.625;
+                const tl = gsap.timeline({ paused: true });
+
+                // Shot 1-2: one sentence per person, on the bar.
+                [1, 2, 3].forEach((n, i) => {
+                    tl.fromTo(
+                        '#ask' + n,
+                        { opacity: 0, scale: 0.75, filter: 'blur(6px)' },
+                        {
+                            opacity: 1,
+                            scale: 1,
+                            filter: 'blur(0px)',
+                            duration: 0.3,
+                            ease: 'expo.out',
+                        },
+                        2.5 + i * 2.5,
+                    );
+                    tl.fromTo(
+                        '#blank' + n,
+                        { y: 0 },
+                        { y: 150, duration: 0.5, ease: 'power2.inOut' },
+                        2.5 + i * 2.5,
+                    );
+                });
+
+                // Shot 3: the three agents answer at once, then the widgets land on the beat.
+                [1, 2, 3].forEach((n, i) => {
+                    const at = 10 + i * 0.12;
+                    tl.fromTo(
+                        '#agent' + n,
+                        { opacity: 0, scale: 0.75 },
+                        {
+                            opacity: 1,
+                            scale: 1,
+                            duration: 0.3,
+                            ease: 'expo.out',
+                        },
+                        at,
+                    );
+                    tl.fromTo(
+                        '#agent' + n + ' .said',
+                        { opacity: 0, filter: 'blur(6px)' },
+                        {
+                            opacity: 1,
+                            filter: 'blur(0px)',
+                            duration: 0.25,
+                            ease: 'power2.out',
+                        },
+                        at + 0.15,
+                    );
+                    tl.to(
+                        '#blank' + n,
+                        { opacity: 0, duration: 0.3, ease: 'power2.in' },
+                        10.9 + i * 0.12,
+                    );
+
+                    const ids = ['a', 'b', 'c'].map((s) => '#w' + n + s);
+                    let bottom = STACK_TOP - GAP;
+                    let scrolled = 0;
+                    ids.forEach((id, k) => {
+                        const land = 11.25 + i * BEAT + k * 4 * BEAT;
+                        bottom += GAP + heights[i][k];
+                        // Once a pane has to scroll, it scrolls past the name, never halfway through it.
+                        const overflow = bottom - FLOOR;
+                        const needed =
+                            overflow > 0 ? Math.max(overflow, HEADER) : 0;
+                        if (needed > scrolled) {
+                            tl.to(
+                                '#c' + n,
+                                {
+                                    y: -needed,
+                                    duration: 0.6,
+                                    ease: 'power2.inOut',
+                                },
+                                land - 0.45,
+                            );
+                            scrolled = needed;
+                        }
+                        tl.fromTo(
+                            id,
+                            {
+                                opacity: 0,
+                                y: 60,
+                                scale: 0.96,
+                                filter: 'blur(8px)',
+                            },
+                            {
+                                opacity: 1,
+                                y: 0,
+                                scale: 1,
+                                filter: 'blur(0px)',
+                                duration: 0.5,
+                                ease: 'expo.out',
+                            },
+                            land,
+                        );
+                    });
+
+                    // Shot 4: pull back to the whole dashboard.
+                    const total =
+                        heights[i].reduce((a, b) => a + b, 0) + GAP * 2;
+                    const fit = Math.min(1, 960 / total);
+                    tl.to(
+                        ['#chat' + n, '#name' + n, '#ctx' + n],
+                        { opacity: 0, duration: 0.25, ease: 'power2.in' },
+                        18.75,
+                    );
+                    tl.to(
+                        '#c' + n,
+                        {
+                            y: 60 - STACK_TOP * fit,
+                            scale: fit,
+                            duration: 0.8,
+                            ease: 'power2.inOut',
+                        },
+                        18.75,
+                    );
+                });
+                tl.set('#c1, #c2, #c3', { transformOrigin: '280px 0px' }, 0);
+
+                // Shot 5: the outer panes slide in while the empty dashboard opens from the middle.
+                tl.to(
+                    '#p1',
+                    { x: 200, duration: 0.8, ease: 'power2.inOut' },
+                    21.4,
+                );
+                tl.to(
+                    '#p3',
+                    { x: -200, duration: 0.8, ease: 'power2.inOut' },
+                    21.4,
+                );
+                tl.fromTo(
+                    '#world-cam',
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.2, ease: 'none' },
+                    21.3,
+                );
+                tl.fromTo(
+                    '#world-cam',
+                    { clipPath: 'inset(0% 33.333% 0% 33.333%)' },
+                    {
+                        clipPath: 'inset(0% 0% 0% 0%)',
+                        duration: 0.8,
+                        ease: 'power2.inOut',
+                    },
+                    21.45,
+                );
+                tl.fromTo(
+                    '#world-shot',
+                    { scale: 1.06 },
+                    { scale: 1, duration: 1, ease: 'expo.out' },
+                    21.3,
+                );
+                tl.fromTo(
+                    '#question .w',
+                    { opacity: 0, filter: 'blur(6px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.15,
+                        ease: 'power2.out',
+                        stagger: 0.1,
+                    },
+                    22.5,
+                );
+
+                // Shot 6: push into the empty state, then the end card.
+                tl.to(
+                    '#question',
+                    {
+                        opacity: 0,
+                        filter: 'blur(8px)',
+                        duration: 0.2,
+                        ease: 'power2.in',
+                    },
+                    26.15,
+                );
+                tl.to(
+                    '#world-cam',
+                    {
+                        scale: 7,
+                        filter: 'blur(10px)',
+                        duration: 0.6,
+                        ease: 'power3.in',
+                    },
+                    26.15,
+                );
+                tl.fromTo(
+                    '#tile',
+                    { scale: 0.6, opacity: 0 },
+                    { scale: 1, opacity: 1, duration: 0.4, ease: 'expo.out' },
+                    26.8,
+                );
+                ['#band1', '#band2', '#band3', '#band4'].forEach((band, i) => {
+                    tl.fromTo(
+                        band,
+                        { yPercent: 100 },
+                        { yPercent: 0, duration: 0.35, ease: 'power3.out' },
+                        26.95 + i * 0.12,
+                    );
+                });
+                tl.fromTo(
+                    '#bird',
+                    { opacity: 0, scale: 0.8 },
+                    { opacity: 1, scale: 1, duration: 0.3, ease: 'expo.out' },
+                    27.45,
+                );
+                tl.fromTo(
+                    '#wordmark',
+                    { clipPath: 'inset(0px 100% 0px 0px)', x: -24 },
+                    {
+                        clipPath: 'inset(0px 0% 0px 0px)',
+                        x: 0,
+                        duration: 0.45,
+                        ease: 'expo.out',
+                    },
+                    27.6,
+                );
+                tl.fromTo(
+                    '#tagline',
+                    { opacity: 0, filter: 'blur(8px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.2,
+                        ease: 'power2.out',
+                    },
+                    28.4,
+                );
+                tl.fromTo(
+                    '#url',
+                    { opacity: 0, filter: 'blur(8px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.2,
+                        ease: 'power2.out',
+                    },
+                    29.0,
+                );
+                tl.fromTo(
+                    '#fineprint',
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.3, ease: 'power2.out' },
+                    29.5,
+                );
+
+                window.__timelines = window.__timelines || {};
+                window.__timelines['main'] = tl;
+            })();
+        </script>
+    </body>
+</html>
