@@ -4,10 +4,11 @@ import { CategoryIcon } from '@/components/shared/category-combobox';
 import {
     buildSplitBreakdown,
     type SplitBreakdownLine,
-} from '@/components/transactions/category-cell';
+} from '@/components/transactions/split-breakdown';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import {
     ENCRYPTED_PLACEHOLDER,
+    TransactionBadge,
     TransactionDescription,
 } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -32,11 +33,17 @@ interface TransactionListRowProps extends Omit<
     selected: boolean;
     /** Rows are being picked: a tap anywhere on the row toggles it. */
     selectionActive: boolean;
-    onToggleSelect: (transaction: DecryptedTransaction) => void;
-    /** A tap on the row outside selection mode, i.e. edit. */
-    onOpen: (transaction: DecryptedTransaction) => void;
+    /** Without it the category circle is only a picture: nothing to pick. */
+    onToggleSelect?: (transaction: DecryptedTransaction) => void;
+    /**
+     * A tap on the row outside selection mode, i.e. edit. Without it the row
+     * is read-only: no pointer, no hover, nothing to focus.
+     */
+    onOpen?: (transaction: DecryptedTransaction) => void;
     /** It arrived since the last visit. */
     isNew?: boolean;
+    /** A short tag after the description, e.g. a widget's "Purchase". */
+    badge?: string;
     /** AI is currently categorizing this transaction in the background. */
     isCategorizing?: boolean;
     /** Lists a split's lines in these categories, the rest as one. */
@@ -66,6 +73,7 @@ export function TransactionListRow({
     categoryFilterIds,
     hiddenLabelId,
     statementPayment,
+    badge,
     className,
     ...props
 }: TransactionListRowProps) {
@@ -79,13 +87,24 @@ export function TransactionListRow({
     const isEncrypted = !!transaction.description_iv;
     const splitLines = transaction.splits ?? [];
 
+    const isInteractive = selectionActive
+        ? onToggleSelect !== undefined
+        : onOpen !== undefined;
+
     function handleRowClick() {
         if (selectionActive) {
-            onToggleSelect(transaction);
+            onToggleSelect?.(transaction);
         } else {
-            onOpen(transaction);
+            onOpen?.(transaction);
         }
     }
+
+    const description = (
+        <TransactionDescription
+            text={transaction.description}
+            encrypted={isEncrypted}
+        />
+    );
 
     return (
         <div
@@ -95,13 +114,14 @@ export function TransactionListRow({
             data-new={isNew || undefined}
             className={cn(
                 LIST_ROW,
-                'cursor-pointer leading-[1.4] transition-colors select-none',
+                'leading-[1.4] transition-colors',
+                isInteractive && 'cursor-pointer select-none',
                 isNew && 'border-l-2 border-l-blue-500 dark:border-l-blue-500',
                 selected
                     ? 'bg-primary/5 dark:bg-primary/10'
                     : isNew
                       ? 'bg-blue-500/5 dark:bg-blue-500/10'
-                      : 'hover:bg-muted/50',
+                      : isInteractive && 'hover:bg-muted/50',
                 className,
             )}
             data-testid="transaction-list-row"
@@ -116,10 +136,13 @@ export function TransactionListRow({
                         ? ENCRYPTED_PLACEHOLDER
                         : transaction.description,
                 })}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    onToggleSelect(transaction);
-                }}
+                onClick={
+                    onToggleSelect &&
+                    ((event) => {
+                        event.stopPropagation();
+                        onToggleSelect(transaction);
+                    })
+                }
             />
 
             <div
@@ -131,17 +154,21 @@ export function TransactionListRow({
                 )}
             >
                 <div className="flex items-baseline gap-2">
-                    {/* The row's keyboard entry point: the click bubbles to
-                        the row, which opens it. */}
-                    <button
-                        type="button"
-                        className="min-w-0 flex-1 truncate rounded-sm text-left text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <TransactionDescription
-                            text={transaction.description}
-                            encrypted={isEncrypted}
-                        />
-                    </button>
+                    {onOpen ? (
+                        // The row's keyboard entry point: the click bubbles
+                        // to the row, which opens it.
+                        <button
+                            type="button"
+                            className="min-w-0 flex-1 truncate rounded-sm text-left text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            {description}
+                        </button>
+                    ) : (
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
+                            {description}
+                        </span>
+                    )}
+                    {badge && <TransactionBadge text={badge} />}
                     <AmountDisplay
                         amountInCents={transaction.amount}
                         currencyCode={transaction.currency_code}
@@ -319,9 +346,33 @@ function SelectionCircle({
     selected: boolean;
     isCategorizing?: boolean;
     label: string;
-    onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+    /** Without it the circle only shows the category: a picture, not a button. */
+    onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
     const circle = 'size-10 shrink-0 rounded-full';
+    const box =
+        '-m-0.5 flex size-11 shrink-0 items-center justify-center self-start rounded-full';
+    const face = (
+        <CircleFace
+            category={category}
+            isSplit={isSplit}
+            selected={selected}
+            isCategorizing={isCategorizing}
+            circle={circle}
+        />
+    );
+
+    if (!onClick) {
+        return (
+            <span
+                aria-hidden
+                className={box}
+                data-testid="transaction-row-circle"
+            >
+                {face}
+            </span>
+        );
+    }
 
     return (
         <button
@@ -329,45 +380,64 @@ function SelectionCircle({
             aria-pressed={selected}
             aria-label={label}
             onClick={onClick}
-            className="-m-0.5 flex size-11 shrink-0 items-center justify-center self-start rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={cn(
+                box,
+                'outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            )}
             data-testid="transaction-row-circle"
         >
-            {selected ? (
-                <span
-                    className={cn(
-                        circle,
-                        'flex items-center justify-center bg-primary text-primary-foreground',
-                    )}
-                >
-                    <Check className="size-[18px]" strokeWidth={3} />
-                </span>
-            ) : isCategorizing ? (
-                <span className={cn(circle, 'block animate-pulse bg-muted')} />
-            ) : isSplit ? (
-                <span
-                    className={cn(
-                        circle,
-                        'flex items-center justify-center bg-muted text-muted-foreground',
-                    )}
-                >
-                    <Split className="size-[18px]" />
-                </span>
-            ) : category ? (
-                <CategoryIcon
-                    category={category}
-                    className={circle}
-                    iconClassName="size-[18px] sm:size-[18px]"
-                />
-            ) : (
-                <span
-                    className={cn(
-                        circle,
-                        'flex items-center justify-center border-[1.5px] border-dashed border-amber-600 bg-background text-amber-700 dark:border-amber-500 dark:text-amber-400',
-                    )}
-                >
-                    <HelpCircle className="size-[18px]" />
-                </span>
-            )}
+            {face}
         </button>
+    );
+}
+
+function CircleFace({
+    category,
+    isSplit,
+    selected,
+    isCategorizing,
+    circle,
+}: {
+    category: Category | null;
+    isSplit: boolean;
+    selected: boolean;
+    isCategorizing?: boolean;
+    circle: string;
+}) {
+    return selected ? (
+        <span
+            className={cn(
+                circle,
+                'flex items-center justify-center bg-primary text-primary-foreground',
+            )}
+        >
+            <Check className="size-[18px]" strokeWidth={3} />
+        </span>
+    ) : isCategorizing ? (
+        <span className={cn(circle, 'block animate-pulse bg-muted')} />
+    ) : isSplit ? (
+        <span
+            className={cn(
+                circle,
+                'flex items-center justify-center bg-muted text-muted-foreground',
+            )}
+        >
+            <Split className="size-[18px]" />
+        </span>
+    ) : category ? (
+        <CategoryIcon
+            category={category}
+            className={circle}
+            iconClassName="size-[18px] sm:size-[18px]"
+        />
+    ) : (
+        <span
+            className={cn(
+                circle,
+                'flex items-center justify-center border-[1.5px] border-dashed border-amber-600 bg-background text-amber-700 dark:border-amber-500 dark:text-amber-400',
+            )}
+        >
+            <HelpCircle className="size-[18px]" />
+        </span>
     );
 }

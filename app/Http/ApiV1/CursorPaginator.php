@@ -97,7 +97,7 @@ class CursorPaginator
      *
      * @throws ValidationException
      */
-    private static function refuseUnknownKeys(Request $request, array $filters): void
+    public static function refuseUnknownKeys(Request $request, array $filters): void
     {
         $unknown = array_diff(array_map(strval(...), array_keys($request->all())), self::PaginationKeys, $filters);
 

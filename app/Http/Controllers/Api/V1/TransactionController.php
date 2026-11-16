@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Features\TransactionSplitting;
 use App\Http\ApiV1\ApiV1Exception;
-use App\Http\ApiV1\CursorPaginator;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\DeleteTransactionRequest;
 use App\Http\Requests\Api\V1\MergeTransactionSplitsRequest;
 use App\Http\Requests\Api\V1\ReplaceTransactionLabelsRequest;
@@ -14,7 +14,6 @@ use App\Http\Requests\Api\V1\StoreTransactionRequest;
 use App\Http\Requests\Api\V1\UpdateTransactionRequest;
 use App\Http\Resources\V1\TransactionResource;
 use App\Services\Transactions\TransactionLabeler;
-use App\Services\Transactions\TransactionSearch;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\WrittenTransaction;
 use Illuminate\Http\JsonResponse;
@@ -47,15 +46,9 @@ class TransactionController extends Controller
      * A parameter this list does not take is a `422`, so a misspelt filter
      * never answers with every transaction.
      */
-    public function index(SearchTransactionsRequest $request, TransactionSearch $search): AnonymousResourceCollection
+    public function index(SearchTransactionsRequest $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $search->query($this->user($request), $this->space($request), $request->validated())->with(TransactionResource::Relations),
-            $request,
-            [['transaction_date', 'desc'], ['id', 'desc']],
-            TransactionResource::class,
-            array_keys($request->rules()),
-        );
+        return $listings->transactions($this->user($request), $this->space($request), $request->validated())->paginate($request);
     }
 
     /**

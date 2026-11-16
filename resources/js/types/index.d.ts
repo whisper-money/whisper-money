@@ -43,23 +43,27 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
-    calculateBalancesOnImport: boolean;
     transactionSplitting: boolean;
     recurringTransactions: boolean;
     /** Cashflow shows the Available card and the savings/investments split. */
     cashflowAvailableFree: boolean;
-    /** May start a full import from another app (onboarding window or flag). */
+    /** May start a full import from another app (switch on, onboarding window). */
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** Shows the custom dashboards UI (selector, grid, widget sizes). */
+    customDashboards: boolean;
 }
 
-export interface ExpiredBankingConnectionNotification {
+/** A bank connection that stopped syncing until the user reconnects it. */
+export interface BankConnectionIssue {
     id: UUID;
     aspsp_name: string;
     provider: string;
-    valid_until: string | null;
-    reconnect_url: string;
+    /** `error`: a failure the scheduled sync gave up retrying. */
+    reason: 'expired' | 'error';
+    /** The bank's consent flow; null for API-key providers, fixed on the connections page. */
+    reconnect_url: string | null;
 }
 
 export interface SubscriptionPaymentIssueNotification {
@@ -98,12 +102,12 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
-    expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;
     hasEncryptionSetup: boolean;
     /** Whether the header offers its own add-transaction button. */
     showHeaderAddTransaction: boolean;
+    bankConnectionIssues: BankConnectionIssue[];
     locale: string;
     translations: Record<string, string>;
     currencies: {

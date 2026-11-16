@@ -15,6 +15,10 @@
     // paint. It does not reach the bottom navigation bar of an installed Android
     // PWA: Chrome paints that bar itself, from the phone's theme.
     $colorScheme = in_array($appearance, ['light', 'dark'], true) ? $appearance : 'light dark';
+
+    // The request's script nonce (App\Http\Middleware\ContentSecurityPolicy):
+    // every inline script carries it, or the policy blocks it.
+    $cspNonce = \Illuminate\Support\Facades\Vite::cspNonce();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" translate="no" @class(['notranslate', 'dark' => $appearance === 'dark'])>
@@ -32,7 +36,7 @@
         <meta name="google" content="notranslate">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
-        <script>
+        <script @if ($cspNonce) nonce="{{ $cspNonce }}" @endif>
             (function() {
                 const appearance = @json($appearance);
 
@@ -87,7 +91,7 @@
     <body class="font-sans antialiased">
         @inertia
 
-        <script>
+        <script @if ($cspNonce) nonce="{{ $cspNonce }}" @endif>
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
             }

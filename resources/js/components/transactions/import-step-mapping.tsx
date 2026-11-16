@@ -1,4 +1,3 @@
-import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -14,7 +13,6 @@ import { useLocale } from '@/hooks/use-locale';
 import {
     collectTypeValues,
     detectExpenseTypes,
-    getLatestTransactionDate,
     isSameTypeValue,
     parseAmount,
     parseDate,
@@ -27,9 +25,8 @@ import {
     type ParsedRow,
     type TypeValueCount,
 } from '@/types/import';
-import { formatRelativeDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 const NONE = '__none__';
 
@@ -50,20 +47,13 @@ interface ImportStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
-    /** False for a credit card: it has no balance to map or work out. */
+    /** False for a credit card: it has no balance to map. */
     tracksBalance: boolean;
-    calculateBalances: boolean;
-    referenceBalance: number | null;
-    referenceBalancePrefilled: boolean;
-    calculateBalancesAvailable: boolean;
     onMappingChange: (
         field: keyof ColumnMapping,
         value: string | string[],
     ) => void;
     onDateFormatChange: (format: DateFormat) => void;
-    onCalculateBalancesChange: (enabled: boolean) => void;
-    onReferenceBalanceChange: (balanceInCents: number) => void;
-    onLatestDateChange: (date: string | null) => void;
     onNext: () => void;
     onBack: () => void;
     /** The AI badge or button, shown above the fields. */
@@ -226,15 +216,8 @@ export function ImportStepMapping({
     parsedData,
     currencyCode,
     tracksBalance,
-    calculateBalances,
-    referenceBalance,
-    referenceBalancePrefilled,
-    calculateBalancesAvailable,
     onMappingChange,
     onDateFormatChange,
-    onCalculateBalancesChange,
-    onReferenceBalanceChange,
-    onLatestDateChange,
     onNext,
     onBack,
     aiDetection,
@@ -246,32 +229,10 @@ export function ImportStepMapping({
           : [];
     const locale = useLocale();
 
-    const balanceColumnSet = !!columnMapping.balance;
-    const checkboxDisabled = balanceColumnSet;
-    const effectiveCalculate = calculateBalances && !balanceColumnSet;
-
-    const latestDate = useMemo(() => {
-        if (!effectiveCalculate) {
-            return null;
-        }
-        return getLatestTransactionDate(parsedData, columnMapping, dateFormat);
-    }, [effectiveCalculate, parsedData, columnMapping, dateFormat]);
-
-    useEffect(() => {
-        onLatestDateChange(latestDate);
-    }, [latestDate, onLatestDateChange]);
-
     const baseMappingValid =
         !!columnMapping.transaction_date &&
         !!columnMapping.description &&
         !!columnMapping.amount;
-
-    const isValid =
-        baseMappingValid &&
-        (!effectiveCalculate ||
-            (latestDate !== null &&
-                referenceBalance !== null &&
-                referenceBalance !== undefined));
 
     const typeValues = useMemo(
         () => collectTypeValues(parsedData, columnMapping.transaction_type),
@@ -534,71 +495,6 @@ export function ImportStepMapping({
                                 onMappingChange('balance', value)
                             }
                         />
-
-                        {calculateBalancesAvailable && (
-                            <div className="flex flex-col gap-3 pt-2">
-                                <div className="flex items-start gap-2">
-                                    <Checkbox
-                                        id="calculate-balances"
-                                        checked={
-                                            balanceColumnSet
-                                                ? false
-                                                : calculateBalances
-                                        }
-                                        disabled={checkboxDisabled}
-                                        onCheckedChange={(checked) =>
-                                            onCalculateBalancesChange(
-                                                checked === true,
-                                            )
-                                        }
-                                        className="mt-0.5"
-                                    />
-                                    <div className="flex flex-col gap-1">
-                                        <Label
-                                            htmlFor="calculate-balances"
-                                            className={`cursor-pointer font-normal ${checkboxDisabled ? 'opacity-50' : ''}`}
-                                        >
-                                            {__(
-                                                'Calculate balances from transactions',
-                                            )}
-                                        </Label>
-                                        <p className="text-xs text-muted-foreground">
-                                            {__(
-                                                'Use the balance on the latest transaction date as a reference to compute balances for older dates.',
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {effectiveCalculate && latestDate && (
-                                    <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3">
-                                        <Label htmlFor="reference-balance">
-                                            {__('Balance on')}{' '}
-                                            {formatRelativeDate(
-                                                latestDate,
-                                                locale,
-                                            )}{' '}
-                                            <span className="text-destructive">
-                                                *
-                                            </span>
-                                        </Label>
-                                        <AmountInput
-                                            id="reference-balance"
-                                            value={referenceBalance ?? 0}
-                                            onChange={onReferenceBalanceChange}
-                                            currencyCode={currencyCode}
-                                        />
-                                        {referenceBalancePrefilled && (
-                                            <p className="text-xs text-muted-foreground">
-                                                {__(
-                                                    'Pre-filled from an existing balance for this date.',
-                                                )}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -762,7 +658,7 @@ export function ImportStepMapping({
                 <Button variant="outline" onClick={onBack}>
                     {__('Back')}
                 </Button>
-                <Button onClick={onNext} disabled={!isValid}>
+                <Button onClick={onNext} disabled={!baseMappingValid}>
                     {__('Preview Transactions')}
                 </Button>
             </div>

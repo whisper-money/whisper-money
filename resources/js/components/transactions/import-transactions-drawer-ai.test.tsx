@@ -202,7 +202,6 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
             locale: 'de',
-            features: { calculateBalancesOnImport: false },
             currencies: { accounts: [{ code: 'EUR' }] },
             aiImportMappingEnabled: aiMapping.enabled,
         },

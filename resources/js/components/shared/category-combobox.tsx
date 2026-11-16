@@ -101,6 +101,7 @@ export function CategoryCombobox({
     const [open, setOpen] = useState(false);
     const [filterValue, setFilterValue] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
 
     const selectedCategory =
         value && value !== 'null'
@@ -152,6 +153,7 @@ export function CategoryCombobox({
             align="start"
             className={cn('w-72', contentClassName)}
             drawerClassName={cn(DRAWER_COMMAND_CLASS, contentClassName)}
+            initialFocus={searchRef}
             trigger={
                 trigger ?? (
                     <Button
@@ -166,24 +168,12 @@ export function CategoryCombobox({
                         onClick={(e) => e.stopPropagation()}
                         data-testid={dataTestId}
                     >
-                        {selectedCategory ? (
-                            <div className="flex items-center gap-2 overflow-x-hidden">
-                                <CategoryIcon category={selectedCategory} />
-                                <span className="truncate">
-                                    {selectedCategory.name}
-                                </span>
-                            </div>
-                        ) : value === 'null' ? (
-                            <div className="flex items-center gap-2 truncate">
-                                {uncategorizedIcon ?? (
-                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                        <HelpCircle className="h-3 w-3 text-zinc-500" />
-                                    </div>
-                                )}
-                                <span className="truncate text-zinc-500">
-                                    {noneLabel}
-                                </span>
-                            </div>
+                        {selectedCategory || value === 'null' ? (
+                            <CategoryValue
+                                category={selectedCategory ?? null}
+                                noneLabel={noneLabel}
+                                uncategorizedIcon={uncategorizedIcon}
+                            />
                         ) : (
                             <span className="truncate text-muted-foreground">
                                 {placeholder}
@@ -199,6 +189,7 @@ export function CategoryCombobox({
             {header}
             <Command shouldFilter={false}>
                 <CommandInput
+                    ref={searchRef}
                     placeholder={__('Search categories...')}
                     value={filterValue}
                     onValueChange={setFilterValue}
@@ -267,6 +258,40 @@ export function CategoryCombobox({
                 </CommandList>
             </Command>
         </PopoverOrDrawer>
+    );
+}
+
+/**
+ * A category as a picked value reads: its icon and name, or the
+ * uncategorized mark and `noneLabel` when there is none.
+ */
+export function CategoryValue({
+    category,
+    noneLabel = __('Uncategorized'),
+    uncategorizedIcon,
+}: {
+    category: Category | null;
+    noneLabel?: string;
+    uncategorizedIcon?: ReactNode;
+}) {
+    if (category) {
+        return (
+            <div className="flex items-center gap-2 overflow-x-hidden">
+                <CategoryIcon category={category} />
+                <span className="truncate">{category.name}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-2 truncate">
+            {uncategorizedIcon ?? (
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    <HelpCircle className="h-3 w-3 text-zinc-500" />
+                </div>
+            )}
+            <span className="truncate text-zinc-500">{noneLabel}</span>
+        </div>
     );
 }
 

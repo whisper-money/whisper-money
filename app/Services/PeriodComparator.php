@@ -20,6 +20,15 @@ class PeriodComparator
     }
 
     /**
+     * Calendar months the range touches, both ends included: 1 Oct to
+     * 2 Nov touches two.
+     */
+    public function monthsTouched(): int
+    {
+        return ($this->to->year - $this->from->year) * 12 + $this->to->month - $this->from->month + 1;
+    }
+
+    /**
      * Both bounds as `Y-m-d`, the shape the transactions filter and the
      * analytics endpoints take a range in.
      *

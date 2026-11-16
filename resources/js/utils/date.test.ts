@@ -6,7 +6,6 @@ import {
     formatDayFromDate,
     formatMonthFromYearMonth,
     formatMonthYear,
-    formatRelativeDate,
     todayDateString,
 } from './date';
 
@@ -68,7 +67,6 @@ describe('formatDate with a date it cannot read', () => {
         expect(formatDateMedium('2026-13-45', 'en-US')).toBe('2026-13-45');
         expect(formatDateLong('2026-13-45', 'en-US')).toBe('2026-13-45');
         expect(formatDayFromDate('2026-13-45', 'en-US')).toBe('');
-        expect(formatRelativeDate('2026-13-45', 'en-US')).toBe('2026-13-45');
     });
 });
 

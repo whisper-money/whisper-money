@@ -1,0 +1,84 @@
+/*
+ * Precompiled stylesheet for user widgets (agent-written TSX).
+ *
+ * Widgets are compiled when they are saved, but their CSS is not: Tailwind only
+ * generates the classes it sees at build time, so this file ships a fixed,
+ * broad set of utilities and the widget validator rejects any class outside it
+ * (arbitrary values like `w-[37%]` included). The list of classes it defines is
+ * resources/js/widgets/widget-classes.json, regenerated with
+ * `bun scripts/widgets/generate-widget-classes.ts` whenever this file changes.
+ *
+ * - No preflight: the app's base styles already apply on the page.
+ * - Scoped to `.wm-widget`, the element the runtime mounts each widget in, so
+ *   these utilities never reorder the app's own (a second `.p-2` loaded after
+ *   app.css would beat the app's `md:p-4`). The extra class also lets them win
+ *   over the app's copies inside a widget.
+ * - `.wm-widget` is an inline-size container: widgets adapt with container
+ *   variants because their width does not follow the viewport. On a desktop
+ *   grid a 1/3 widget is about 25rem wide (`@sm:`), 1/2 about 39rem (`@xl:`)
+ *   and 1/1 about 78rem (`@3xl:`); on a phone every widget is under `@sm:`.
+ * - `dark:` is the app's variant (theme.css), bound to the `.dark` class.
+ * - `contain: paint` keeps widgets inside their card. With `container-type`, the
+ *   runtime must give `.wm-widget` a width (a grid cell does); in a flex or
+ *   inline parent without one it collapses to zero.
+ */
+
+/* The app's full layer order (app.css), so loading this file first never reorders it. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+
+@import './theme.css';
+
+/* Layout */
+@source inline('{@sm:,@md:,@lg:,@xl:,@3xl:,}{block,inline-block,inline,flex,inline-flex,grid,hidden}');
+@source inline('{@sm:,@md:,@lg:,@xl:,@3xl:,}{flex-row,flex-col,flex-wrap,items-start,items-center,items-end,justify-start,justify-center,justify-end,justify-between}');
+@source inline('{@sm:,@md:,@lg:,@xl:,@3xl:,}{grid-cols-{1..12},col-span-{1..12},col-span-full}');
+@source inline('{@sm:,@md:,@lg:,@xl:,@3xl:,}{gap,p,px,py}-{0,1,2,3,4,6,8}');
+@source inline('{@sm:,@md:,@lg:,@xl:,@3xl:,}{w-full,w-1/2,w-1/3,w-2/3,w-auto,text-xs,text-sm,text-base,text-lg,text-xl,text-2xl,text-3xl,text-4xl,text-left,text-center,text-right}');
+@source inline('@container contents flex-row-reverse flex-col-reverse flex-nowrap flex-1 flex-auto flex-none grow grow-0 shrink shrink-0');
+@source inline('basis-{0,full,1/2,1/3,2/3,1/4,3/4} items-baseline items-stretch justify-around justify-evenly');
+@source inline('self-{auto,start,center,end,stretch} content-{start,center,between} place-items-center');
+@source inline('grid-rows-{1..6} row-span-{1..6} row-span-full grid-flow-{row,col,dense} auto-rows-fr auto-cols-fr');
+@source inline('overflow-{hidden,auto,visible} overflow-x-auto overflow-y-auto truncate text-ellipsis');
+@source inline('whitespace-{nowrap,normal,pre-line} break-words break-all line-clamp-{1..4}');
+@source inline('relative absolute inset-0 inset-x-0 inset-y-0 {top,right,bottom,left}-{0,1,2,4,1/2,full} -translate-x-1/2 -translate-y-1/2 z-{0,10}');
+
+/* Spacing and sizing */
+@source inline('{gap-x,gap-y,space-x,space-y,pt,pr,pb,pl,m,mx,my,mt,mr,mb,ml}-{0,0.5,1,1.5,2,2.5,3,4,5,6,8,10,12,16}');
+@source inline('{gap,p,px,py}-{0.5,1.5,2.5,5,10,12,16} mx-auto ml-auto mr-auto -mt-{1,2} -mb-{1,2}');
+@source inline('{w,h,size,min-w,min-h,max-h}-{0,0.5,1,1.5,2,2.5,3,3.5,4,5,6,8,10,12,14,16,20,24,32,40,48,56,64}');
+@source inline('{w,h,min-w,min-h,max-w,max-h}-{full,fit,min,max,auto} h-px w-px');
+@source inline('w-{1/4,3/4,1/5,2/5,3/5,4/5,1/6,5/6} max-w-{xs,sm,md,lg,xl,2xl,prose}');
+
+/* Typography */
+@source inline('text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl} font-{normal,medium,semibold,bold} font-sans font-mono');
+@source inline('tabular-nums leading-{none,tight,snug,normal,relaxed} tracking-{tighter,tight,normal,wide,wider}');
+@source inline('text-{left,center,right} uppercase lowercase capitalize normal-case italic not-italic');
+@source inline('{,hover:}{underline,no-underline} line-through underline-offset-{2,4} align-{top,middle,bottom,baseline}');
+
+/* Theme colors: their CSS variables already switch with the theme, so no `dark:` */
+@source inline('{,hover:}{text,bg,border,fill,stroke,divide,ring}-{background,foreground,card,card-foreground,muted,muted-foreground,primary,primary-foreground,secondary,secondary-foreground,accent,accent-foreground,destructive,success,border}');
+@source inline('{text,bg,border,fill,stroke}-chart-{1..10}');
+@source inline('{,hover:}bg-{muted,primary,secondary,accent,destructive,success,foreground,chart-{1..5}}/{5,10,20,30,50,70}');
+@source inline('text-{foreground,muted-foreground,destructive,success}/{50,70,80}');
+@source inline('{,dark:}{text,bg,border,fill,stroke}-{transparent,current,white,black}');
+
+/* A small palette for status and categories, with dark variants for text and surfaces */
+@source inline('{,dark:}{text,bg,border}-{red,orange,amber,yellow,green,emerald,teal,sky,blue,indigo,violet,pink,rose,zinc}-{50,100,200,300,400,500,600,700,800,900,950}');
+@source inline('{fill,stroke}-{red,orange,amber,yellow,green,emerald,teal,sky,blue,indigo,violet,pink,rose,zinc}-{300,400,500,600,700}');
+
+/* Borders and effects */
+@source inline('border border-{0,2} border-{t,r,b,l,x,y} border-{t,b}-2 border-dashed border-dotted border-none');
+@source inline('divide-x divide-y rounded rounded-{none,sm,md,lg,xl,2xl,full} rounded-{t,b,l,r}-{md,lg,xl}');
+@source inline('shadow-{none,xs,sm,md} ring ring-{0,1,2} ring-inset {,hover:}opacity-{0,10,20,25,30,40,50,60,70,75,80,90,100}');
+@source inline('transition transition-colors transition-opacity duration-{150,200,300,500} ease-{in,out,in-out} animate-pulse');
+@source inline('cursor-pointer cursor-default select-none sr-only not-sr-only pointer-events-none');
+
+.wm-widget {
+    container-type: inline-size;
+    /* Nothing a widget draws (an `absolute` banner, a translated tooltip) paints outside its card. */
+    contain: paint;
+
+    @tailwind utilities source(none);
+}

@@ -2,11 +2,15 @@
 
 use App\Enums\BankingConnectionStatus;
 use App\Features\CashflowAvailableFree;
+use App\Features\CustomDashboards;
 use App\Features\TransactionSplitting;
 use App\Jobs\PurgeResidualEncryptionArtifactsJob;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
+use App\Models\Space;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Pennant\Feature;
 
@@ -101,13 +105,23 @@ test('shared feature flags do not include coinbase flag', function () {
 
     expect($props['features'])->toBe([
         'cashflow' => true,
-        'calculateBalancesOnImport' => false,
         'transactionSplitting' => true,
         'recurringTransactions' => false,
         'cashflowAvailableFree' => false,
         'fullImport' => false,
         'fullImportSettings' => false,
+        'customDashboards' => false,
     ]);
+});
+
+test('the full import stays closed by default, even to a user inside the onboarding window', function () {
+    $user = User::factory()->create(['onboarded_at' => now()->subDay()]);
+
+    actingAs($user)->withoutVite()->get(route('settings.connections.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.fullImport', false)
+            ->where('features.fullImportSettings', false)
+        );
 });
 
 test('authenticated users receive their transaction splitting flag value', function () {
@@ -131,6 +145,19 @@ test('shared feature flags reflect the cashflow available flag per user', functi
     actingAs($user)->withoutVite()->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('features.cashflowAvailableFree', $active)
+        );
+})->with(['active' => true, 'inactive' => false]);
+
+test('shared feature flags reflect the custom dashboards flag per user', function (bool $active) {
+    $user = User::factory()->onboarded()->create();
+
+    if ($active) {
+        Feature::for($user)->activate(CustomDashboards::class);
+    }
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.customDashboards', $active)
         );
 })->with(['active' => true, 'inactive' => false]);
 
@@ -171,29 +198,116 @@ test('authenticated users do not receive subscription payment issue when subscri
     );
 });
 
-test('authenticated users receive expired banking connection reconnect links', function () {
+test('bank connection issues list expired and stuck connections with a way to reconnect', function () {
     $user = User::factory()->onboarded()->create();
-    $expiredConnection = BankingConnection::factory()->create([
+    $consentLapsed = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Santander',
         'status' => BankingConnectionStatus::Active,
         'valid_until' => now()->subDay(),
     ]);
-    BankingConnection::factory()->create([
+    $flaggedExpired = BankingConnection::factory()->expired()->create([
         'user_id' => $user->id,
-        'aspsp_name' => 'Fresh Bank',
-        'status' => BankingConnectionStatus::Active,
-        'valid_until' => now()->addDay(),
+        'aspsp_name' => 'BBVA',
+    ]);
+    $outOfRetries = BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'ING',
+        'valid_until' => now()->addMonth(),
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1,
+    ]);
+    $apiKeyFailed = BankingConnection::factory()->kraken()->error()->create([
+        'user_id' => $user->id,
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES,
     ]);
 
     $response = actingAs($user)->withoutVite()->get(route('dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->has('expiredBankingConnections', 1)
-        ->where('expiredBankingConnections.0.id', $expiredConnection->id)
-        ->where('expiredBankingConnections.0.aspsp_name', 'Santander')
-        ->where('expiredBankingConnections.0.reconnect_url', route('open-banking.reconnect', $expiredConnection))
+        ->has('bankConnectionIssues', 4)
+        ->where('bankConnectionIssues.0.id', $flaggedExpired->id)
+        ->where('bankConnectionIssues.0.reason', 'expired')
+        ->where('bankConnectionIssues.1.id', $outOfRetries->id)
+        ->where('bankConnectionIssues.1.reason', 'error')
+        ->where('bankConnectionIssues.1.reconnect_url', route('open-banking.reconnect', $outOfRetries))
+        ->where('bankConnectionIssues.2.id', $apiKeyFailed->id)
+        ->where('bankConnectionIssues.2.aspsp_name', 'Kraken')
+        ->where('bankConnectionIssues.2.provider', 'kraken')
+        ->where('bankConnectionIssues.2.reason', 'error')
+        ->where('bankConnectionIssues.2.reconnect_url', null)
+        ->where('bankConnectionIssues.3.id', $consentLapsed->id)
+        ->where('bankConnectionIssues.3.aspsp_name', 'Santander')
+        ->where('bankConnectionIssues.3.reason', 'expired')
+        ->where('bankConnectionIssues.3.reconnect_url', route('open-banking.reconnect', $consentLapsed))
     );
+});
+
+test('an errored bank connection whose consent has also lapsed reads as expired', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'valid_until' => now()->subDay(),
+    ]);
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('bankConnectionIssues', 1)
+            ->where('bankConnectionIssues.0.reason', 'expired')
+        );
+});
+
+test('bank connection issues leave out healthy, recovering, unfinished and disconnected connections', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'valid_until' => now()->addDay(),
+    ]);
+    BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'valid_until' => now()->addMonth(),
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES - 1,
+    ]);
+    BankingConnection::factory()->revoked()->create([
+        'user_id' => $user->id,
+        'valid_until' => now()->subDay(),
+    ]);
+    BankingConnection::factory()->pending()->create(['user_id' => $user->id]);
+    BankingConnection::factory()->awaitingMapping()->create(['user_id' => $user->id]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page->has('bankConnectionIssues', 0));
+});
+
+test('bank connection issues never include another user\'s connections', function () {
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->expired()->create();
+    BankingConnection::factory()->error()->create([
+        'consecutive_sync_failures' => SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1,
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page->has('bankConnectionIssues', 0));
+});
+
+test('bank connection issues leave out a shared space member\'s connections, as the connections page does', function () {
+    $owner = User::factory()->onboarded()->create();
+    $member = User::factory()->onboarded()->create();
+    $household = Space::factory()->create(['owner_id' => $owner->id]);
+    $household->members()->attach($member->id, ['id' => (string) Str::uuid(), 'role' => 'member']);
+    $member->forceFill(['current_space_id' => $household->id])->save();
+    BankingConnection::factory()->expired()->create([
+        'user_id' => $owner->id,
+        'space_id' => $household->id,
+    ]);
+    $own = BankingConnection::factory()->expired()->create(['user_id' => $member->id]);
+
+    actingAs($member)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('bankConnectionIssues', 1)
+            ->where('bankConnectionIssues.0.id', $own->id)
+        );
 });
 
 test('authenticated users receive their banking connections in shared props', function () {

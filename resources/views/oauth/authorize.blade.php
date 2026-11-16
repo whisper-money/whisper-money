@@ -4,8 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    {{-- The request's script nonce (App\Http\Middleware\ContentSecurityPolicy): every inline script carries it. --}}
+    @php
+        $cspNonce = \Illuminate\Support\Facades\Vite::cspNonce();
+    @endphp
+
     {{-- Inline script to detect system dark mode preference and apply it immediately --}}
-    <script>
+    <script @if ($cspNonce) nonce="{{ $cspNonce }}" @endif>
         (function() {
             const appearance = @json($appearance ?? 'system');
 
@@ -206,7 +211,7 @@
     </div>
 </div>
 
-<script>
+<script @if ($cspNonce) nonce="{{ $cspNonce }}" @endif>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('authorizeForm');
         const button = document.getElementById('authorizeButton');

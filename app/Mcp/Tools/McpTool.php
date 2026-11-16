@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Enums\PlanFeature;
 use App\Models\Account;
+use App\Models\Category;
 use App\Models\Label;
 use App\Models\McpToolCall;
 use App\Models\Space;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Tool;
 
 /**
@@ -53,12 +55,18 @@ abstract class McpTool extends Tool
         ], parent::annotations());
     }
 
-    public function handle(Request $request): Response
+    public function handle(Request $request): Response|ResponseFactory
     {
         $user = $request->user();
 
         if (! $user instanceof User) {
             return Response::error('Authentication required.');
+        }
+
+        $refusal = $this->refusal($user);
+
+        if ($refusal instanceof Response) {
+            return $refusal;
         }
 
         // The demo account's credentials are public and its data is shared, so
@@ -80,7 +88,7 @@ abstract class McpTool extends Tool
         // something: an error response (a read-only token, an id the user cannot
         // reach) or a thrown ValidationException is a rejected attempt, not
         // usage. Rescued so a failed insert can never break a working call.
-        if (! $response->isError()) {
+        if (! $this->isError($response)) {
             rescue(fn (): McpToolCall => McpToolCall::create([
                 'user_id' => $user->id,
                 'tool' => $this->name(),
@@ -90,7 +98,28 @@ abstract class McpTool extends Tool
         return $response;
     }
 
-    abstract protected function respond(Request $request, User $user): Response;
+    /**
+     * Why this tool refuses $user before anything else is checked, or null.
+     * A tool family with its own gate overrides it (see
+     * Concerns\GuardsCustomDashboards) so its message comes first.
+     */
+    protected function refusal(User $user): ?Response
+    {
+        return null;
+    }
+
+    /**
+     * The answer, or a ResponseFactory when it carries `_meta` for an MCP App
+     * (the widget preview) besides what the agent reads.
+     */
+    abstract protected function respond(Request $request, User $user): Response|ResponseFactory;
+
+    private function isError(Response|ResponseFactory $response): bool
+    {
+        $responses = $response instanceof ResponseFactory ? $response->responses() : collect([$response]);
+
+        return $responses->contains(fn (Response $item): bool => $item->isError());
+    }
 
     /**
      * Encode structured data as a JSON text response the agent can parse.
@@ -179,22 +208,40 @@ abstract class McpTool extends Tool
      */
     protected function labelsInSpace(Request $request, Space $space, string $key): Collection
     {
-        $ids = $this->requestedIds($request, $key);
+        return $this->rowsInSpace($space, $this->requestedIds($request, $key), $key, Label::class, 'label', 'list_labels');
+    }
 
+    /**
+     * Resolve every id of a $model in $ids, asserting each belongs to the
+     * space, whichever member keeps it: the MCP is space-wide, unlike
+     * `/api/v1`. Returns an empty collection when $ids is empty.
+     *
+     * @template TModel of Account|Category|Label
+     *
+     * @param  list<string>  $ids
+     * @param  string  $key  the argument the ids came under, for the message
+     * @param  class-string<TModel>  $model
+     * @param  string  $noun  how a row is named in the message: `label`, `account`, `category`
+     * @param  string  $listTool  the tool that lists the valid ids
+     * @return Collection<int, TModel>
+     */
+    protected function rowsInSpace(Space $space, array $ids, string $key, string $model, string $noun, string $listTool): Collection
+    {
         if ($ids === []) {
-            /** @var Collection<int, Label> */
+            /** @var Collection<int, TModel> */
             return new Collection;
         }
 
-        $labels = Label::query()->forSpace($space)->whereIn('id', $ids)->get();
+        /** @var Collection<int, TModel> $rows */
+        $rows = $model::query()->forSpace($space)->whereIn('id', $ids)->get();
 
-        if ($labels->count() !== count($ids)) {
+        if ($rows->count() !== count($ids)) {
             throw ValidationException::withMessages([
-                $key => "One or more label ids do not exist in space {$space->id}. Call list_labels to see valid ids.",
+                $key => "One or more {$noun} ids do not exist in space {$space->id}. Call {$listTool} to see valid ids.",
             ]);
         }
 
-        return $labels;
+        return $rows;
     }
 
     /**

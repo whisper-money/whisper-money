@@ -209,6 +209,52 @@ describe('TransactionTable', () => {
         expect(screen.getByTestId('bulk-bar').textContent).toBe('0 selected');
     });
 
+    it('leaves the filters out with hideFilters, and needs no toolbar', () => {
+        render(
+            <TransactionTable
+                source={source()}
+                categories={[]}
+                accounts={[]}
+                banks={[]}
+                labels={[]}
+                automationRules={[]}
+                hideFilters
+            />,
+        );
+
+        expect(screen.queryByTestId('filters')).toBeNull();
+        expect(screen.queryByRole('button', { name: /columns/i })).toBeNull();
+        expect(screen.getByText('tick a')).toBeTruthy();
+    });
+
+    it('says how many rows are ticked, and draws its bar in the page layout when asked', () => {
+        const onSelectionChange = vi.fn();
+        const layout = document.createElement('div');
+        layout.dataset.slot = 'sidebar-wrapper';
+        document.body.append(layout);
+
+        const { container } = render(
+            <TransactionTable
+                source={source()}
+                categories={[]}
+                accounts={[]}
+                banks={[]}
+                labels={[]}
+                automationRules={[]}
+                hideFilters
+                portalBulkActionsBar
+                onSelectionChange={onSelectionChange}
+            />,
+        );
+
+        fireEvent.click(screen.getByText('tick a'));
+
+        expect(onSelectionChange).toHaveBeenLastCalledWith(1);
+        expect(within(layout).getByTestId('bulk-bar')).toBeTruthy();
+        expect(within(container).queryByTestId('bulk-bar')).toBeNull();
+        layout.remove();
+    });
+
     it('lets the toolbar clear the ticked rows', () => {
         renderTable(source());
 

@@ -47,6 +47,13 @@ interface SortableGridProps<T> {
     handleClassName?: string;
     /** Applied to the item while it is being dragged. */
     draggingClassName?: string;
+    /** Classes for one item's wrapper, the grid's direct child (e.g. its span). */
+    getItemClassName?: (item: T) => string;
+    /**
+     * Moves items without resizing them into the slot they pass over: for
+     * items of different sizes, which would otherwise be stretched.
+     */
+    translateOnly?: boolean;
     /** Replaces dnd-kit's English screen reader texts. */
     accessibility?: {
         announcements: Announcements;
@@ -69,6 +76,8 @@ export function SortableGrid<T>({
     layout = 'grid',
     handleClassName,
     draggingClassName = 'opacity-60',
+    getItemClassName,
+    translateOnly = false,
     accessibility,
 }: SortableGridProps<T>) {
     const ids = items.map(getId);
@@ -150,9 +159,10 @@ export function SortableGrid<T>({
                             onActivate={() => trigger('selection')}
                             // A list only slides items, so a dragged item that is
                             // styled larger than its slot is not squashed to fit it.
-                            slideOnly={layout === 'list'}
+                            slideOnly={layout === 'list' || translateOnly}
                             handleClassName={handleClassName}
                             draggingClassName={draggingClassName}
+                            className={getItemClassName?.(item)}
                         >
                             {(dragHandle) => renderItem(item, dragHandle)}
                         </SortableItem>
@@ -170,6 +180,7 @@ function SortableItem({
     slideOnly,
     handleClassName,
     draggingClassName,
+    className,
     children,
 }: {
     id: string;
@@ -177,6 +188,7 @@ function SortableItem({
     slideOnly: boolean;
     handleClassName?: string;
     draggingClassName: string;
+    className?: string;
     children: (dragHandle: ReactNode) => ReactNode;
 }) {
     const {
@@ -223,7 +235,11 @@ function SortableItem({
                 transition,
                 zIndex: isDragging ? 50 : undefined,
             }}
-            className={cn('group relative', isDragging && draggingClassName)}
+            className={cn(
+                'group relative',
+                className,
+                isDragging && draggingClassName,
+            )}
         >
             {children(dragHandle)}
         </div>

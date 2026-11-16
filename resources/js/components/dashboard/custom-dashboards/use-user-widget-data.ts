@@ -1,0 +1,208 @@
+import { dashboard as dashboardWidgetsData } from '@/actions/App/Http/Controllers/Widgets/WidgetDataController';
+import { fetchJson } from '@/lib/fetch-json';
+import { type UserWidgetDefinition } from '@/types/dashboard';
+import { deepFreeze } from '@/widgets/runtime/freeze';
+import { useEffect, useMemo, useState } from 'react';
+
+/** One call of a manifest, answered as `/api/v1` would answer it. */
+export interface WidgetCallAnswer {
+    status: number;
+    body: unknown;
+}
+
+interface DashboardWidgetsDataResponse {
+    widgets: Record<
+        string,
+        { revision: number; data: Record<string, WidgetCallAnswer> }
+    >;
+}
+
+/** The dashboard's variables a manifest can reference as `{{range.from}}`. */
+export interface DashboardRange {
+    from: string;
+    to: string;
+}
+
+export type UserWidgetDataState =
+    | { status: 'loading' }
+    | { status: 'failed' }
+    | {
+          status: 'ready';
+          widgets: DashboardWidgetsDataResponse['widgets'];
+          /** The data of the previous request, while a new one loads. */
+          refreshing: boolean;
+      };
+
+/** What one widget gets to draw with, once its calls are read. */
+export interface ResolvedWidgetData {
+    /** The body of each call, by the key the manifest gave it. */
+    data: Readonly<Record<string, unknown>>;
+    /** The calls the API refused, with the reason it gave. */
+    failures: { key: string; status: number; message: string }[];
+    /** A call that read every page hit the row cap: the data is partial. */
+    truncated: boolean;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+/**
+ * A widget's answers when they were read for the revision on screen. Answers
+ * read for another revision (the request repeats after a revert or an update)
+ * are `stale`: drawing the new code with them could throw for keys it no
+ * longer reads, and that error would be blamed on the new revision.
+ */
+export function widgetAnswers(
+    state: UserWidgetDataState,
+    definitionId: string,
+    revision: number | undefined,
+): { answers: Record<string, WidgetCallAnswer> | undefined; stale: boolean } {
+    const entry =
+        state.status === 'ready' ? state.widgets[definitionId] : undefined;
+
+    if (entry === undefined) {
+        return { answers: undefined, stale: false };
+    }
+
+    if (revision !== undefined && entry.revision !== revision) {
+        return { answers: undefined, stale: true };
+    }
+
+    return { answers: entry.data, stale: false };
+}
+
+/** Splits a widget's answers into the data it reads and what went wrong. */
+export function resolveWidgetData(
+    answers: Record<string, WidgetCallAnswer>,
+): ResolvedWidgetData {
+    const resolved: ResolvedWidgetData = {
+        data: {},
+        failures: [],
+        truncated: false,
+    };
+    const data: Record<string, unknown> = {};
+
+    for (const [key, { status, body }] of Object.entries(answers)) {
+        if (status >= 400) {
+            const message =
+                isRecord(body) && typeof body.message === 'string'
+                    ? body.message
+                    : `HTTP ${status}`;
+            resolved.failures.push({ key, status, message });
+            continue;
+        }
+
+        // Once per request: a widget is handed these rows and must not be able
+        // to rewrite them for the app, which reads them again.
+        data[key] = deepFreeze(body);
+        resolved.truncated ||= isRecord(body) && body.truncated === true;
+    }
+
+    return { ...resolved, data: Object.freeze(data) };
+}
+
+/**
+ * The data of every user widget on a dashboard, in one request (the batch
+ * route), for the range on screen or, without one, the user's current month.
+ * It asks again when a widget's revision changes (going back to an earlier
+ * version can read other data), a widget is added or `refreshToken` moves on (a
+ * transaction was edited from a widget). Meanwhile the widgets keep drawing
+ * the data they had.
+ */
+export function useUserWidgetData(
+    dashboardId: string,
+    definitions: UserWidgetDefinition[] | undefined,
+    enabled: boolean,
+    {
+        range,
+        refreshToken = 0,
+    }: {
+        range?: DashboardRange;
+        /** Moving it on asks again, the data on screen kept meanwhile. */
+        refreshToken?: number;
+    } = {},
+): UserWidgetDataState {
+    // What the data depends on; the key adds the refreshes on top of it.
+    const dataKey = useMemo(() => {
+        if (!enabled || definitions === undefined || definitions.length === 0) {
+            return null;
+        }
+
+        return JSON.stringify([
+            dashboardId,
+            definitions.map(({ id, revision }) => `${id}@${revision}`).sort(),
+            range ?? null,
+        ]);
+    }, [dashboardId, definitions, enabled, range]);
+    const key =
+        dataKey === null ? null : JSON.stringify([dataKey, refreshToken]);
+
+    const [state, setState] = useState<{
+        key: string;
+        dataKey: string;
+        value: UserWidgetDataState;
+    } | null>(null);
+
+    useEffect(() => {
+        if (key === null || dataKey === null) {
+            return;
+        }
+
+        let current = true;
+        const url = dashboardWidgetsData.url(dashboardId, {
+            query: range
+                ? { 'range[from]': range.from, 'range[to]': range.to }
+                : undefined,
+        });
+
+        fetchJson<DashboardWidgetsDataResponse>(url).then(
+            ({ widgets }) => {
+                if (current) {
+                    setState({
+                        key,
+                        dataKey,
+                        value: { status: 'ready', widgets, refreshing: false },
+                    });
+                }
+            },
+            () => {
+                if (current) {
+                    // A refresh that fails keeps the data on screen: the
+                    // widgets were right a moment ago, and are still nearly so.
+                    setState((previous) =>
+                        previous?.dataKey === dataKey &&
+                        previous.value.status === 'ready'
+                            ? {
+                                  key,
+                                  dataKey,
+                                  value: {
+                                      ...previous.value,
+                                      refreshing: false,
+                                  },
+                              }
+                            : { key, dataKey, value: { status: 'failed' } },
+                    );
+                }
+            },
+        );
+
+        return () => {
+            current = false;
+        };
+        // The key holds every input the request depends on.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [key]);
+
+    if (state === null || key === null) {
+        return { status: 'loading' };
+    }
+
+    if (state.key === key) {
+        return state.value;
+    }
+
+    return state.value.status === 'ready'
+        ? { ...state.value, refreshing: true }
+        : { status: 'loading' };
+}

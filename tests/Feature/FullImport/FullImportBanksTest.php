@@ -5,8 +5,8 @@ use App\Models\Account;
 use App\Models\Bank;
 use Tests\Support\FullImportFixtures as Fixtures;
 
-// The master switch is off by default on this instance (only the FullImport
-// flag opens the import); these tests run with the onboarding window open.
+// The master switch is off by default on this instance (nobody can start an
+// import); these tests run with it on and the onboarding window open.
 beforeEach(function () {
     config(['full_import.enabled' => true]);
 });

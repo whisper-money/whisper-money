@@ -1,9 +1,11 @@
 import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
-import { CategoryIcon } from '@/components/shared/category-combobox';
 import { showsAiUpsell } from '@/components/transactions/ai-upsell-sample';
 import { CategorySelect } from '@/components/transactions/category-select';
+import {
+    buildSplitBreakdown,
+    SplitBreakdown,
+} from '@/components/transactions/split-breakdown';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
-import { AmountDisplay } from '@/components/ui/amount-display';
 import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
@@ -20,61 +22,12 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
-import {
-    type DecryptedTransaction,
-    type TransactionSplit,
-} from '@/types/transaction';
+import { type DecryptedTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-
-export interface SplitBreakdownLine {
-    category: Category | null;
-    amount: number;
-    position: number;
-    isRest: boolean;
-}
-
-export function buildSplitBreakdown(
-    splits: readonly TransactionSplit[],
-    categoryFilterIds?: ReadonlySet<string>,
-): SplitBreakdownLine[] {
-    const ordered = [...splits].sort((a, b) => a.position - b.position);
-
-    if (categoryFilterIds === undefined) {
-        return ordered.map((split) => ({
-            category: split.category,
-            amount: split.amount,
-            position: split.position,
-            isRest: false,
-        }));
-    }
-
-    const matching = ordered
-        .filter((split) => categoryFilterIds.has(split.category_id))
-        .map((split) => ({
-            category: split.category,
-            amount: split.amount,
-            position: split.position,
-            isRest: false,
-        }));
-    const restAmount = ordered
-        .filter((split) => !categoryFilterIds.has(split.category_id))
-        .reduce((sum, split) => sum + split.amount, 0);
-
-    if (restAmount !== 0) {
-        matching.push({
-            category: null,
-            amount: restAmount,
-            position: ordered.length,
-            isRest: true,
-        });
-    }
-
-    return matching;
-}
 
 interface CategoryCellProps {
     transaction: DecryptedTransaction;
@@ -94,6 +47,15 @@ interface CategoryCellProps {
     onEdit?: (transaction: DecryptedTransaction) => void;
     categoryFilterIds?: ReadonlySet<string>;
 }
+
+/** The dashed circle a row without a category shows, asking to be picked. */
+const UNCATEGORIZED_ICON = (
+    <span
+        aria-hidden
+        data-testid="uncategorized-icon"
+        className="size-6 shrink-0 rounded-full border-2 border-dashed border-amber-400 bg-amber-50 dark:border-amber-500/70 dark:bg-amber-500/10"
+    />
+);
 
 export function CategoryCell({
     transaction,
@@ -273,46 +235,15 @@ export function CategoryCell({
         return (
             <button
                 type="button"
-                className={cn('w-full space-y-1 text-left text-sm', className)}
+                className={cn('w-full text-left', className)}
                 onClick={() => onEdit?.(transaction)}
                 aria-label={`${__('Edit split transaction')}: ${accessibleSummary}`}
             >
-                <span className="font-medium">
-                    {__('Split')} · {transaction.splits.length}
-                </span>
-                <span className="block space-y-0.5">
-                    {breakdown.map((line) => {
-                        const name = line.isRest
-                            ? __('Rest')
-                            : (line.category?.name ?? __('Unknown'));
-
-                        return (
-                            <span
-                                key={`${line.isRest ? 'rest' : (line.category?.id ?? 'unknown')}-${line.position}`}
-                                className="flex min-w-0 items-center gap-1.5"
-                                title={name}
-                            >
-                                {line.category && !line.isRest ? (
-                                    <span className="shrink-0">
-                                        <CategoryIcon
-                                            category={line.category}
-                                        />
-                                    </span>
-                                ) : null}
-                                <span className="min-w-0 flex-1 truncate">
-                                    {name}
-                                </span>
-                                <AmountDisplay
-                                    amountInCents={line.amount}
-                                    currencyCode={transaction.currency_code}
-                                    showSign
-                                    size="xs"
-                                    className="shrink-0"
-                                />
-                            </span>
-                        );
-                    })}
-                </span>
+                <SplitBreakdown
+                    lines={breakdown}
+                    count={transaction.splits.length}
+                    currencyCode={transaction.currency_code}
+                />
             </button>
         );
     }
@@ -337,13 +268,7 @@ export function CategoryCell({
                     showUncategorized={true}
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
-                    uncategorizedIcon={
-                        <span
-                            aria-hidden
-                            data-testid="uncategorized-icon"
-                            className="size-6 shrink-0 rounded-full border-2 border-dashed border-amber-400 bg-amber-50 dark:border-amber-500/70 dark:bg-amber-500/10"
-                        />
-                    }
+                    uncategorizedIcon={UNCATEGORIZED_ICON}
                     data-testid="row-category-select"
                 />
             </div>

@@ -10,11 +10,14 @@ use App\Models\Transaction;
 use App\Services\TransactionCsvExporter;
 use App\Services\TransactionDuplicateMatcher;
 use App\Services\TransactionFilterSummary;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Return paginated transactions for the authenticated user with optional filters.
      */
@@ -40,6 +43,25 @@ class TransactionController extends Controller
         $transactions->getCollection()->each->append(['is_split', 'split_count']);
 
         return response()->json($transactions);
+    }
+
+    /**
+     * One of the user's transactions in the shape the transactions table
+     * holds its rows (its split lines included), so the edit dialog can open
+     * on it from anywhere that only knows its id (a row of a dashboard
+     * widget). Only a transaction the user may edit on the transactions page,
+     * the same rule as its update and delete.
+     */
+    public function show(Transaction $transaction): JsonResponse
+    {
+        $this->authorize('update', $transaction);
+
+        $transaction->load(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin', 'splits.category'])
+            ->append(['ai_categorized', 'is_split', 'split_count']);
+
+        return response()
+            ->json(['data' => $transaction])
+            ->header('Cache-Control', 'no-store, private');
     }
 
     /**

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\StoreSavingsGoalRequest;
 use App\Http\Requests\Api\V1\UpdateSavingsGoalRequest;
 use App\Http\Resources\V1\SavingsGoalResource;
@@ -25,14 +25,9 @@ class SavingsGoalController extends Controller
      * but not its targets, nor anything worked out from them: they would give
      * away what the others earn.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, SavingsGoal::query())->with(['user:id,currency_code,timezone', 'label' => fn ($query) => $query->withTrashed()]),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            SavingsGoalResource::class,
-        );
+        return $listings->savingsGoals($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

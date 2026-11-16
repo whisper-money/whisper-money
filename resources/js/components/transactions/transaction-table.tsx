@@ -1,5 +1,6 @@
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { ResponsiveTransactionTable } from '@/components/transactions/responsive-transaction-table';
+import { type DisplayRow } from '@/components/transactions/transaction-base-columns';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionDeleteDialogs } from '@/components/transactions/transaction-delete-dialogs';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
@@ -43,12 +44,14 @@ import {
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
 import {
     type ReactNode,
+    type SetStateAction,
     useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 const NO_HIDDEN_COLUMNS: string[] = [];
 
@@ -76,7 +79,32 @@ interface TransactionTableProps {
      * The page's row over the filters: menus, export, the column picker on a
      * phone. /transactions puts its title and actions there on desktop.
      */
-    renderToolbar: (toolbar: TransactionTableToolbar) => ReactNode;
+    renderToolbar?: (toolbar: TransactionTableToolbar) => ReactNode;
+    /**
+     * Leave the filters row out, its column picker with it, for a list that
+     * shows a fixed set of rows (a dashboard widget's).
+     */
+    hideFilters?: boolean;
+    /** How each row reads, apart from what it holds (and every action gets). */
+    displayRow?: DisplayRow;
+    /** A short tag after a row's description, or nothing. */
+    badgeOf?: (transaction: DecryptedTransaction) => string | null | undefined;
+    /** False leaves every day header without its total. Default true. */
+    showDayTotals?: boolean;
+    /** See `useTransactionRowEditing`: the row a dialog opens on. */
+    resolveRow?: (
+        transaction: DecryptedTransaction,
+    ) => Promise<DecryptedTransaction>;
+    /** Told how many rows are ticked whenever they are (not when a new query drops them). */
+    onSelectionChange?: (selectedCount: number) => void;
+    /**
+     * Draw the bulk actions bar in the page's layout rather than in place,
+     * for a table inside an element that contains fixed descendants (a
+     * dashboard widget's `contain: paint`).
+     */
+    portalBulkActionsBar?: boolean;
+    /** Draw no frame of its own: the card it sits in is the frame. */
+    frameless?: boolean;
     /** Keep the column picker's text on narrow screens. */
     showColumnPickerTextOnMobile?: boolean;
     hideAccountFilter?: boolean;
@@ -137,6 +165,14 @@ export function TransactionTable({
     labels: initialLabels,
     automationRules,
     renderToolbar,
+    hideFilters = false,
+    displayRow,
+    badgeOf,
+    showDayTotals = true,
+    resolveRow,
+    onSelectionChange,
+    portalBulkActionsBar = false,
+    frameless = false,
     showColumnPickerTextOnMobile = false,
     hideAccountFilter = false,
     enableSavedFilters = false,
@@ -160,12 +196,28 @@ export function TransactionTable({
     const isMobile = useIsMobile();
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useStoredColumnVisibility();
-    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+    const [rowSelection, setRowSelectionState] = useState<RowSelectionState>(
+        {},
+    );
+    // Told at once, in the same event, so a page that keeps one selection
+    // across tables (a dashboard's widgets) drops the other one in the same
+    // render rather than drawing two bulk bars for a frame.
+    const setRowSelection = useCallback(
+        (update: SetStateAction<RowSelectionState>) => {
+            const next =
+                typeof update === 'function' ? update(rowSelection) : update;
+
+            setRowSelectionState(next);
+            onSelectionChange?.(Object.keys(next).length);
+        },
+        [rowSelection, onSelectionChange],
+    );
 
     const editing = useTransactionRowEditing({
         initialLabels,
         setRows: source.setRows,
         onRowUpdated: onTransactionsChanged,
+        resolveRow,
     });
     const {
         labels,
@@ -197,7 +249,7 @@ export function TransactionTable({
 
     if (source.queryKey !== seenQueryKey) {
         setSeenQueryKey(source.queryKey);
-        setRowSelection({});
+        setRowSelectionState({});
         selectOnlyVisible();
     }
 
@@ -221,6 +273,8 @@ export function TransactionTable({
             statementPayments,
             categorizingIds,
             categoryFilterIds,
+            displayRow,
+            badgeOf,
         });
 
         if (hideColumns.length === 0) {
@@ -245,6 +299,8 @@ export function TransactionTable({
         statementPayments,
         categorizingIds,
         categoryFilterIds,
+        displayRow,
+        badgeOf,
     ]);
 
     const table = useReactTable({
@@ -283,43 +339,62 @@ export function TransactionTable({
         [rowActions, isNewRow, rowCellClassName],
     );
 
-    const clearSelection = useCallback(() => setRowSelection({}), []);
+    const clearSelection = useCallback(
+        () => setRowSelection({}),
+        [setRowSelection],
+    );
+
+    const bulkActionsBar = (
+        <BulkActionsBar
+            {...bulk.barProps}
+            categories={categories}
+            labels={labels}
+            onLabelCreated={handleLabelCreated}
+            onClear={selectionMode.clear}
+            selectionMode={selectionMode}
+        />
+    );
 
     return (
         <>
             <div className="space-y-4">
                 {/* On a phone the filters line up with the inset list. */}
-                <div className={framedOnPhone ? undefined : PHONE_INSET}>
-                    <TransactionFiltersComponent
-                        filters={source.filters}
-                        onFiltersChange={source.onFiltersChange}
-                        categories={categories}
-                        labels={labels}
-                        accounts={accounts}
-                        hideAccountFilter={hideAccountFilter}
-                        enableSavedFilters={enableSavedFilters}
-                        countMatching={source.countMatching}
-                        facets={source.facets}
-                        actions={renderToolbar({
-                            columnPicker: isMobile ? (
-                                <DataTableViewOptions
-                                    table={table}
-                                    hideColumnTextOnMobile={
-                                        !showColumnPickerTextOnMobile
-                                    }
-                                />
-                            ) : null,
-                            labels,
-                            onLabelCreated: handleLabelCreated,
-                            clearSelection,
-                        })}
-                        trailing={
-                            isMobile ? null : (
-                                <DataTableViewOptions table={table} iconOnly />
-                            )
-                        }
-                    />
-                </div>
+                {!hideFilters && (
+                    <div className={framedOnPhone ? undefined : PHONE_INSET}>
+                        <TransactionFiltersComponent
+                            filters={source.filters}
+                            onFiltersChange={source.onFiltersChange}
+                            categories={categories}
+                            labels={labels}
+                            accounts={accounts}
+                            hideAccountFilter={hideAccountFilter}
+                            enableSavedFilters={enableSavedFilters}
+                            countMatching={source.countMatching}
+                            facets={source.facets}
+                            actions={renderToolbar?.({
+                                columnPicker: isMobile ? (
+                                    <DataTableViewOptions
+                                        table={table}
+                                        hideColumnTextOnMobile={
+                                            !showColumnPickerTextOnMobile
+                                        }
+                                    />
+                                ) : null,
+                                labels,
+                                onLabelCreated: handleLabelCreated,
+                                clearSelection,
+                            })}
+                            trailing={
+                                isMobile ? null : (
+                                    <DataTableViewOptions
+                                        table={table}
+                                        iconOnly
+                                    />
+                                )
+                            }
+                        />
+                    </div>
+                )}
 
                 {aboveRows}
 
@@ -344,16 +419,22 @@ export function TransactionTable({
                                 categoryFilterIds,
                                 hiddenLabelId,
                                 statementPayments,
+                                displayRow,
+                                badgeOf,
                             }}
                             rowActions={rowActions}
                             topRow={topRow}
                             framedOnPhone={framedOnPhone}
+                            showDayTotals={showDayTotals}
+                            frameless={frameless}
                         />
 
-                        <TransactionTableFooter
-                            pagination={source.pagination}
-                            actions={footerActions}
-                        />
+                        <div className={frameless ? 'px-4 pb-3' : undefined}>
+                            <TransactionTableFooter
+                                pagination={source.pagination}
+                                actions={footerActions}
+                            />
+                        </div>
                     </>
                 )}
             </div>
@@ -374,16 +455,28 @@ export function TransactionTable({
 
             <TransactionRemoveLabelsDialog dialog={bulk.removeLabelsDialog} />
 
-            <BulkActionsBar
-                {...bulk.barProps}
-                categories={categories}
-                labels={labels}
-                onLabelCreated={handleLabelCreated}
-                onClear={selectionMode.clear}
-                selectionMode={selectionMode}
-            />
+            {portalBulkActionsBar ? (
+                <PageLayoutPortal>{bulkActionsBar}</PageLayoutPortal>
+            ) : (
+                bulkActionsBar
+            )}
         </>
     );
+}
+
+/**
+ * Renders into the app's sidebar layout (or the body without one), where a
+ * fixed element sits on the viewport and still reads the sidebar's state.
+ */
+function PageLayoutPortal({ children }: { children: ReactNode }) {
+    const [target] = useState(() =>
+        typeof document === 'undefined'
+            ? null
+            : (document.querySelector('[data-slot="sidebar-wrapper"]') ??
+              document.body),
+    );
+
+    return target ? createPortal(children, target) : null;
 }
 
 /**

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\StoreAccountRequest;
 use App\Http\Requests\Api\V1\UpdateAccountRequest;
 use App\Http\Resources\V1\AccountResource;
-use App\Models\Account;
 use App\Services\Accounts\AccountWriteRules;
 use App\Services\AccountWriteService;
 use Illuminate\Http\JsonResponse;
@@ -24,14 +23,9 @@ class AccountController extends Controller
      * Your accounts in a space, newest first, archived ones included. As in
      * the app, another member's accounts are not listed.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, Account::query())->with(['bank:id,name', 'creditCardDetail']),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            AccountResource::class,
-        );
+        return $listings->accounts($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

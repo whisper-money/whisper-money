@@ -65,11 +65,25 @@ class NetWorthAnalyticsService
     }
 
     /**
+     * What `GET /api/v1/analytics/net-worth` reports: forRange() plus the ids
+     * of the accounts that make up the net worth.
+     *
+     * @return array{granularity: 'daily'|'monthly', current: array{current: int, previous: int, currency_code: string}, evolution: array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}, counted_account_ids: list<string>}
+     */
+    public function report(User $user, PeriodComparator $period, bool $daily): array
+    {
+        return [
+            ...$this->forRange($user, $period, $daily),
+            'counted_account_ids' => $this->countedAccountIds($user),
+        ];
+    }
+
+    /**
      * The ids of the accounts that make up the net worth.
      *
      * @return list<string>
      */
-    public function countedAccountIds(User $user): array
+    private function countedAccountIds(User $user): array
     {
         return Account::query()
             ->where('user_id', $user->id)

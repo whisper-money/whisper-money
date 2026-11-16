@@ -157,7 +157,7 @@ describe('consent screen', function () {
         requestOAuthConsent(User::factory()->create(), oauthClient(), ['api:use'], $challenge)
             ->assertOk()
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'");
+            ->assertHeaderContains('Content-Security-Policy', "frame-ancestors 'none'");
     });
 
     it('shows the API wording in Spanish', function () {

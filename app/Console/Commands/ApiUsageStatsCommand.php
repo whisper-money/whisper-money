@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ApiCredential;
 use App\Models\ApiRequest;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 
 class ApiUsageStatsCommand extends UsageStatsCommand
@@ -29,6 +31,15 @@ class ApiUsageStatsCommand extends UsageStatsCommand
     protected function model(): string
     {
         return ApiRequest::class;
+    }
+
+    /**
+     * Only the public API: the calls the widget gateway makes for a dashboard
+     * (`dashboard`) are recorded in the same table but are the app's own.
+     */
+    protected function usageSince(Carbon $since): Builder
+    {
+        return parent::usageSince($since)->where('credential', '!=', ApiCredential::Dashboard->value);
     }
 
     /**

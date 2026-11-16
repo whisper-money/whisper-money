@@ -1,13 +1,11 @@
 <?php
 
 use App\Enums\ImportStatus;
-use App\Features\FullImport;
 use App\Jobs\ProcessFullImportJob;
 use App\Models\Import;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Pennant\Feature;
 use Tests\Support\FullImportFixtures as Fixtures;
 
 it('closes the import to an in-window user when the switch is off, with the same answers as for anyone not eligible', function () {
@@ -40,21 +38,6 @@ it('closes it during onboarding too', function () {
     config(['full_import.enabled' => false]);
 
     expect($user->canUseFullImport())->toBeFalse();
-});
-
-it('keeps it open to a user with the FullImport flag, so it can still be tried in production', function () {
-    $user = Fixtures::user(['onboarded_at' => now()->subDays(2)]);
-    Feature::for($user)->activate(FullImport::class);
-
-    config(['full_import.enabled' => false]);
-
-    expect($user->canUseFullImport())->toBeTrue();
-
-    $import = Fixtures::run($this, $user, Fixtures::plan([Fixtures::newAccount('a0', 'Wise')]), [
-        Fixtures::row('a0', '2026-09-01', -100, 'Coffee'),
-    ]);
-
-    expect($import->status)->toBe(ImportStatus::Completed);
 });
 
 it('lets an import already running finish', function () {
@@ -121,14 +104,23 @@ it('refuses the rest of an upload started before the switch went off', function 
     expect(Import::query()->find($id)->status)->toBe(ImportStatus::Draft);
 });
 
-it('is off unless configured otherwise, leaving the import to the FullImport flag', function () {
+it('is off unless configured otherwise, so nobody can start one', function () {
     expect(config('full_import.enabled'))->toBeFalse();
 
-    $user = Fixtures::user(['onboarded_at' => now()->subDays(2)]);
+    $inWindow = Fixtures::user(['onboarded_at' => now()->subDays(2)]);
+    $onboarding = Fixtures::user(['onboarded_at' => null]);
 
-    expect($user->canUseFullImport())->toBeFalse();
+    expect($inWindow->canUseFullImport())->toBeFalse()
+        ->and($onboarding->canUseFullImport())->toBeFalse()
+        ->and($inWindow->canSeeFullImportSettings())->toBeFalse();
 
-    Feature::for($user)->activate(FullImport::class);
+    $this->actingAs($inWindow)->getJson(route('api.full-imports.context'))->assertForbidden();
+});
 
-    expect($user->canUseFullImport())->toBeTrue();
+it('no longer knows a FullImport flag to open it with', function () {
+    expect(class_exists('App\\Features\\FullImport'))->toBeFalse();
+
+    $this->artisan('feature:enable', ['feature' => 'FullImport', 'target' => 'all'])
+        ->expectsOutputToContain("Feature 'FullImport' not found.")
+        ->assertFailed();
 });

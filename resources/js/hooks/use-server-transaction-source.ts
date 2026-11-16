@@ -9,6 +9,7 @@ import {
     isCursorPaginatedResponse,
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
+import { normalizeTransaction } from '@/lib/normalize-transaction';
 import {
     createRowTotalAmount,
     mergeNextPage,
@@ -143,24 +144,6 @@ function onlySearchChanged(next: Filters, current: Filters): boolean {
 const SUMMARY_REFRESH_DEBOUNCE_MS = 500;
 
 /**
- * Everything the table reads that the payload does not carry ready to use: a
- * date trimmed to its day, the text a legacy encrypted row can show, the
- * account's bank hoisted onto the row, and labels present as both the objects
- * and the ids the columns filter on.
- */
-function toDecryptedTransaction(tx: ServerTransaction): DecryptedTransaction {
-    return {
-        ...tx,
-        transaction_date: String(tx.transaction_date).slice(0, 10),
-        decryptedDescription: tx.description_iv ? '' : tx.description,
-        decryptedNotes: tx.notes_iv ? null : tx.notes || null,
-        bank: tx.account?.bank || undefined,
-        labels: tx.labels || [],
-        label_ids: tx.labels?.map((l) => l.id) || [],
-    };
-}
-
-/**
  * A transactions table the server pages through, newest first: filters live in
  * the URL and every change asks the server again, "load more" fetches the next
  * cursor page without touching the URL, and each day's count and total come
@@ -185,7 +168,7 @@ export function useServerTransactionSource({
 } {
     const [allTransactions, setAllTransactions] = useState<
         DecryptedTransaction[]
-    >(() => serverTransactions.data.map(toDecryptedTransaction));
+    >(() => serverTransactions.data.map(normalizeTransaction));
     const [nextCursor, setNextCursor] = useState<string | null>(
         serverTransactions.next_cursor,
     );
@@ -217,7 +200,7 @@ export function useServerTransactionSource({
 
             discardPendingPage();
 
-            const rows = txns.data.map(toDecryptedTransaction);
+            const rows = txns.data.map(normalizeTransaction);
             setAllTransactions(rows);
             setNextCursor(txns.next_cursor);
             setServed({
@@ -402,7 +385,7 @@ export function useServerTransactionSource({
                 return;
             }
 
-            const rows = next.data.map(toDecryptedTransaction);
+            const rows = next.data.map(normalizeTransaction);
             setAllTransactions((prev) => [...prev, ...rows]);
             setNextCursor(next.next_cursor);
             setServed((previous) =>

@@ -39,7 +39,6 @@ vi.mock('@/lib/file-parser', () => ({
     detectExpenseTypes: vi.fn(() => []),
     convertRowsToTransactions,
     collectBalancesToImport,
-    calculateBalancesFromTransactions: vi.fn(() => new Map()),
     isInAccountCurrency: vi.fn(() => true),
 }));
 
@@ -73,13 +72,11 @@ vi.mock('./import-step-upload', () => ({
 }));
 
 // The mapping step records what it was handed, and can stand in for the user
-// mapping a balance column or asking for balances to be worked out.
+// mapping a balance column.
 vi.mock('./import-step-mapping', () => ({
     ImportStepMapping: (props: {
         onNext: () => void;
         onMappingChange: (field: 'balance', value: string) => void;
-        onCalculateBalancesChange: (enabled: boolean) => void;
-        onLatestDateChange: (date: string | null) => void;
     }) => {
         mappingProps(props);
 
@@ -90,15 +87,6 @@ vi.mock('./import-step-mapping', () => ({
                     onClick={() => props.onMappingChange('balance', 'Saldo')}
                 >
                     map balance
-                </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        props.onCalculateBalancesChange(true);
-                        props.onLatestDateChange('2026-03-03');
-                    }}
-                >
-                    calculate balances
                 </button>
                 <button type="button" onClick={props.onNext}>
                     leave mapping
@@ -137,7 +125,6 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
             locale: 'en',
-            features: { calculateBalancesOnImport: false },
             currencies: { accounts: [{ code: 'EUR' }] },
         },
     }),
@@ -194,7 +181,6 @@ function createdDescriptions(): string[] {
 /** The props the mapping step was last rendered with. */
 function lastMappingProps(): {
     tracksBalance: boolean;
-    calculateBalances: boolean;
     columnMapping: Partial<ColumnMapping>;
 } {
     return mappingProps.mock.calls.at(-1)?.[0];
@@ -442,17 +428,6 @@ describe('ImportTransactionsDrawer', () => {
     });
 
     describe('balances', () => {
-        const fetchMock = vi.fn();
-
-        beforeEach(() => {
-            fetchMock.mockReset();
-            fetchMock.mockResolvedValue({
-                ok: true,
-                json: async () => ({ data: [] }),
-            });
-            vi.stubGlobal('fetch', fetchMock);
-        });
-
         it('offers a checking account the balance column', async () => {
             await reachMapping(account);
             fireEvent.click(screen.getByText('map balance'));
@@ -464,27 +439,9 @@ describe('ImportTransactionsDrawer', () => {
         it('hides the balance controls of a credit card, even a stale balance mapping', async () => {
             await reachMapping(creditCard);
             fireEvent.click(screen.getByText('map balance'));
-            fireEvent.click(screen.getByText('calculate balances'));
 
             expect(lastMappingProps().tracksBalance).toBe(false);
             expect(lastMappingProps().columnMapping.balance).toBeNull();
-            expect(lastMappingProps().calculateBalances).toBe(false);
-        });
-
-        it('looks the reference balance up for a checking account only', async () => {
-            await reachMapping(account);
-            fireEvent.click(screen.getByText('calculate balances'));
-
-            await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-        });
-
-        it('never looks a reference balance up for a credit card', async () => {
-            await reachMapping(creditCard);
-            fireEvent.click(screen.getByText('calculate balances'));
-            fireEvent.click(screen.getByText('leave mapping'));
-            await screen.findByText('Import 3 Transactions');
-
-            expect(fetchMock).not.toHaveBeenCalled();
         });
 
         it('keeps the balances of a checking account in the preview', async () => {
@@ -515,7 +472,6 @@ describe('ImportTransactionsDrawer', () => {
                     (call) => (call[0] as { balance?: number }).balance,
                 ),
             ).not.toContain(259550);
-            expect(fetchMock).not.toHaveBeenCalled();
         });
     });
 });

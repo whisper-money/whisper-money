@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\ApplyAutomationRuleRequest;
 use App\Http\Requests\Api\V1\DeleteAutomationRuleRequest;
 use App\Http\Requests\Api\V1\StoreAutomationRuleRequest;
@@ -27,14 +27,9 @@ class AutomationRuleController extends Controller
      * ascending, the oldest first on a tie. As in the app, another member's
      * rules are not listed.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, AutomationRule::query())->with('labels:id'),
-            $request,
-            [['priority', 'asc'], ['created_at', 'asc'], ['id', 'asc']],
-            AutomationRuleResource::class,
-        );
+        return $listings->automationRules($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**

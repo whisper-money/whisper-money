@@ -54,3 +54,37 @@ export function removeStoredValue(key: string): void {
         // Same as above: nothing was persisted, so nothing needs clearing.
     }
 }
+
+/*
+ * A value remembered for one user in a store that belongs to the browser.
+ *
+ * One browser is shared by more than one account often enough to matter — a
+ * household laptop, a demo account opened next to a real one — and a "what did
+ * you last see" note read by the wrong reader is worse than no note at all: it
+ * either replays somebody else's moment or swallows your own. The owner is
+ * written next to the value and checked on the way out, so the wrong reader
+ * simply reads nothing.
+ */
+const OWNER_SEPARATOR = ':';
+
+export function readOwnedValue(key: string, userId: string): string | null {
+    const stored = readStoredValue(key);
+
+    if (stored === null) {
+        return null;
+    }
+
+    const separator = stored.indexOf(OWNER_SEPARATOR);
+
+    return separator !== -1 && stored.slice(0, separator) === userId
+        ? stored.slice(separator + 1)
+        : null;
+}
+
+export function writeOwnedValue(
+    key: string,
+    userId: string,
+    value: string,
+): void {
+    writeStoredValue(key, `${userId}${OWNER_SEPARATOR}${value}`);
+}

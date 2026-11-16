@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AccountType;
+use App\Features\CustomDashboards;
 use App\Models\Account;
+use App\Models\Dashboard;
+use App\Models\DashboardWidget;
 use App\Models\User;
+use App\Models\WidgetDefinition;
+use App\Models\WidgetRevision;
 use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
@@ -12,14 +16,18 @@ use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LabelSpendingService;
 use App\Services\NetWorth\ProjectNetWorth;
 use App\Services\PeriodComparator;
-use App\Services\SavingsGoals\MonthlySavingsGoalStats;
-use App\Services\SavingsGoals\MonthlySavingsGoalTotals;
+use App\Services\SavingsGoals\CurrentMonthSavings;
+use App\Services\Widgets\WidgetDefinitionService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class DashboardController extends Controller
 {
+    /** The `?dashboard=` value that opens the system dashboard, whatever the default is; the picker's `SYSTEM_DASHBOARD_QUERY`. */
+    private const SYSTEM_DASHBOARD = 'system';
+
     public function __construct(
         private AccountMetricsService $accountMetricsService,
         private CategorySpendingService $categorySpendingService,
@@ -27,14 +35,15 @@ class DashboardController extends Controller
         private LabelSpendingService $labelSpendingService,
         private CashflowSummaryService $summaries,
         private CreditCardStatementService $creditCardStatementService,
-        private MonthlySavingsGoalStats $monthlySavingsGoals,
-        private MonthlySavingsGoalTotals $monthlySavingsTotals,
+        private CurrentMonthSavings $currentMonthSavings,
+        private WidgetDefinitionService $widgetDefinitions,
     ) {}
 
     public function __invoke(Request $request): Response
     {
         return Inertia::render('dashboard', [
             'showEncryptionPrompt' => session('show_encryption_prompt', false),
+            ...$this->customDashboardProps($request),
             // The window the top categories and top labels cards report on, so
             // their links and drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
@@ -44,32 +53,157 @@ class DashboardController extends Controller
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
             'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
-            'monthlySavingsGoals' => Inertia::defer(fn () => $this->runningMonthlyGoals($request), 'dashboard'),
-            // Archived goals included: the same count the cashflow card and
-            // the monthly summary give for that month.
-            'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->monthlySavingsTotals->verdicts(
-                $this->monthlySavingsGoals->presentForUser($request->user()),
-                $request->user()->localToday()->subMonthNoOverflow(),
-            ), 'dashboard'),
+            'monthlySavingsGoals' => Inertia::defer(fn () => $this->currentMonthSavings->runningGoals($request->user()), 'dashboard'),
+            'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->currentMonthSavings->lastMonth($request->user()), 'dashboard'),
         ]);
     }
 
     /**
-     * The monthly goals still running, for this month's card. An archived goal
-     * has nothing left to save towards. The card only needs this month, so
-     * that is all it gets: no history, no goal fields it does not draw.
+     * The user's own dashboards and the one on screen, only for users with
+     * the CustomDashboards flag: without it the page gets exactly the props it
+     * had before custom dashboards existed, and always draws the system one.
      *
-     * @return list<array{id: string, name: string, monthly: array{current: array<string, mixed>|null}}>
+     * @return array<string, mixed>
      */
-    private function runningMonthlyGoals(Request $request): array
+    private function customDashboardProps(Request $request): array
     {
-        return array_map(fn (array $goal): array => [
-            'id' => $goal['id'],
-            'name' => $goal['name'],
-            'monthly' => ['current' => $goal['monthly']['current']],
-        ], $this->monthlySavingsGoals->present(
-            $request->user()->savingsGoals()->monthly()->notArchived()->listed()->get(),
-        ));
+        if (! Feature::for($request->user())->active(CustomDashboards::class)) {
+            return [];
+        }
+
+        return [
+            // The user's own dashboards, for the picker. Deferred with the page's
+            // data: the first paint only needs the dashboard on screen, and the
+            // list rides the follow-up request the page already makes.
+            'dashboards' => Inertia::defer(fn (): array => $request->user()->dashboards()
+                ->orderBy('position')
+                ->orderBy('created_at')
+                ->get(['id', 'name', 'position'])
+                ->toArray(), 'dashboard'),
+            // The dashboard on screen, with its widgets. Null is the system
+            // dashboard, which the page still draws until the picker ships.
+            'defaultDashboardId' => fn (): ?string => $request->user()->default_dashboard_id,
+            'selectedDashboard' => function () use ($request): ?array {
+                $dashboard = $this->selectedDashboard($request);
+
+                return $dashboard === null ? null : $this->presentDashboard($dashboard);
+            },
+            // The user widgets on the dashboard on screen, by id: the module to
+            // run, the manifest, the revisions to go back to and the last error.
+            // Deferred: the compiled modules are the heaviest part of the page.
+            'userWidgets' => Inertia::defer(function () use ($request): array {
+                $dashboard = $this->selectedDashboard($request);
+
+                return $dashboard === null ? [] : $this->presentUserWidgets($dashboard);
+            }, 'dashboard'),
+            // Every widget the user's agent wrote, for edit mode to place:
+            // names and sizes only, the modules load once placed. Only edit
+            // mode reads it, and edit mode is behind the flag.
+            'widgetDefinitions' => Inertia::defer(fn (): array => $this->presentWidgetDefinitions($request->user()), 'dashboard'),
+        ];
+    }
+
+    /**
+     * The dashboard asked for in `?dashboard=`, else the user's default. Null
+     * is the system dashboard. A link to a dashboard that was deleted, or that
+     * is not the user's, falls back to the default rather than a 404: an old
+     * bookmark should still open the app. Only read with the CustomDashboards
+     * flag on ({@see self::customDashboardProps()}).
+     * `?dashboard=system` opens the system dashboard even when the default is
+     * one of the user's: without it the picker could not get back to it.
+     */
+    private function selectedDashboard(Request $request): ?Dashboard
+    {
+        $user = $request->user();
+        $requested = $request->query('dashboard');
+
+        if ($requested === self::SYSTEM_DASHBOARD) {
+            return null;
+        }
+
+        if (is_string($requested) && $requested !== '') {
+            $dashboard = $user->dashboards()->find($requested);
+
+            if ($dashboard !== null) {
+                return $dashboard;
+            }
+        }
+
+        return $user->defaultDashboard;
+    }
+
+    /**
+     * @return array{id: string, name: string, widgets: list<array{id: string, system_widget: string|null, widget_definition_id: string|null, position: int, width: string, height: string, config: array<string, mixed>|null}>}
+     */
+    private function presentDashboard(Dashboard $dashboard): array
+    {
+        return [
+            'id' => $dashboard->id,
+            'name' => $dashboard->name,
+            'widgets' => $dashboard->widgets()
+                ->orderBy('position')
+                ->get()
+                ->map(fn (DashboardWidget $widget): array => [
+                    'id' => $widget->id,
+                    'system_widget' => $widget->system_widget?->value,
+                    'widget_definition_id' => $widget->widget_definition_id,
+                    'position' => $widget->position,
+                    'width' => $widget->width->value,
+                    'height' => $widget->height->value,
+                    'config' => $widget->config,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * Each widget is checked again first when it was saved under older widget
+     * rules: one that no longer passes is served as an inert module, with
+     * the reasons as its last error ({@see WidgetDefinitionService::recheck()}).
+     *
+     * @return array<string, array{id: string, name: string, revision: int, js: string, manifest: array<string, mixed>, last_error: array<string, mixed>|null, last_error_at: string|null, revisions: list<array{number: int, created_via: string, restored_from: int|null, created_at: string|null}>}>
+     */
+    private function presentUserWidgets(Dashboard $dashboard): array
+    {
+        return WidgetDefinition::query()
+            ->onDashboard($dashboard)
+            ->with(['revisions' => fn ($query) => $query->orderByDesc('number')->select(['id', 'widget_definition_id', 'number', 'created_via', 'restored_from', 'created_at'])])
+            ->get()
+            ->each(fn (WidgetDefinition $widget) => $this->widgetDefinitions->recheck($widget))
+            ->mapWithKeys(fn (WidgetDefinition $widget): array => [$widget->id => [
+                'id' => $widget->id,
+                'name' => $widget->name,
+                'revision' => $widget->revision,
+                'js' => $widget->compiled_js,
+                'manifest' => $widget->manifest,
+                'last_error' => $widget->last_error,
+                'last_error_at' => $widget->last_error_at?->toIso8601String(),
+                'revisions' => $widget->revisions->map(fn (WidgetRevision $revision): array => [
+                    'number' => $revision->number,
+                    'created_via' => $revision->created_via->value,
+                    'restored_from' => $revision->restored_from,
+                    'created_at' => $revision->created_at?->toIso8601String(),
+                ])->values()->all(),
+            ]])
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: string, name: string, size: array{width: string, height: string, allowed_widths?: list<string>, allowed_heights?: list<string>}}>
+     */
+    private function presentWidgetDefinitions(User $user): array
+    {
+        return $user->widgetDefinitions()
+            ->orderBy('name')
+            ->get(['id', 'name', 'manifest'])
+            ->map(fn (WidgetDefinition $widget): array => [
+                'id' => $widget->id,
+                'name' => $widget->name,
+                'size' => $widget->manifest['size'],
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -95,21 +229,16 @@ class DashboardController extends Controller
     }
 
     /**
-     * What is in use of each live credit card, which its dashboard card shows
-     * instead of a balance. Archived cards have no card to show it on.
+     * What is in use of each live credit card, keyed by account id, which its
+     * dashboard card shows instead of a balance.
      *
      * @return array<string, array<string, mixed>>
      */
     private function getCreditCardUsage(Request $request): array
     {
-        $creditCards = Account::query()
-            ->where('user_id', $request->user()->id)
-            ->where('type', AccountType::CreditCard)
-            ->notArchived()
-            ->with('creditCardDetail')
-            ->get();
-
-        return $this->creditCardStatementService->usageByAccount($creditCards, $request->user());
+        return collect($this->creditCardStatementService->liveUsageFor($request->user()))
+            ->mapWithKeys(fn (array $card): array => [$card['account']->id => $card['usage']])
+            ->all();
     }
 
     private function getTopCategories(Request $request): array

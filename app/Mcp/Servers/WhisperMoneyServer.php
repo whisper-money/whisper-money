@@ -2,15 +2,19 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Resources\WidgetPreview;
+use App\Mcp\Tools\AggregateTransactions;
 use App\Mcp\Tools\CategorizeTransaction;
 use App\Mcp\Tools\CreateAccount;
 use App\Mcp\Tools\CreateAutomationRule;
 use App\Mcp\Tools\CreateBalance;
 use App\Mcp\Tools\CreateBudget;
 use App\Mcp\Tools\CreateCategory;
+use App\Mcp\Tools\CreateDashboard;
 use App\Mcp\Tools\CreateLabel;
 use App\Mcp\Tools\CreateSavingsGoal;
 use App\Mcp\Tools\CreateTransaction;
+use App\Mcp\Tools\CreateWidget;
 use App\Mcp\Tools\DeleteAutomationRule;
 use App\Mcp\Tools\DeleteBalance;
 use App\Mcp\Tools\DeleteBudget;
@@ -18,20 +22,28 @@ use App\Mcp\Tools\DeleteCategory;
 use App\Mcp\Tools\DeleteLabel;
 use App\Mcp\Tools\DeleteTransaction;
 use App\Mcp\Tools\GetCashflow;
+use App\Mcp\Tools\GetCreditCardUsage;
+use App\Mcp\Tools\GetMonthlySavings;
 use App\Mcp\Tools\GetNetWorth;
 use App\Mcp\Tools\GetRunway;
+use App\Mcp\Tools\GetWidget;
+use App\Mcp\Tools\GetWidgetSdk;
 use App\Mcp\Tools\LabelTransaction;
 use App\Mcp\Tools\ListAccounts;
 use App\Mcp\Tools\ListAutomationRules;
 use App\Mcp\Tools\ListBalances;
 use App\Mcp\Tools\ListBudgets;
 use App\Mcp\Tools\ListCategories;
+use App\Mcp\Tools\ListDashboards;
 use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListRecurringSeries;
 use App\Mcp\Tools\ListSavingsGoals;
 use App\Mcp\Tools\ListSpaces;
+use App\Mcp\Tools\PlaceWidget;
+use App\Mcp\Tools\RemoveWidget;
 use App\Mcp\Tools\SearchTransactions;
 use App\Mcp\Tools\SpendingByCategory;
+use App\Mcp\Tools\SpendingByLabel;
 use App\Mcp\Tools\SplitTransaction;
 use App\Mcp\Tools\UpdateAccount;
 use App\Mcp\Tools\UpdateAutomationRule;
@@ -41,6 +53,7 @@ use App\Mcp\Tools\UpdateCategory;
 use App\Mcp\Tools\UpdateLabel;
 use App\Mcp\Tools\UpdateSavingsGoal;
 use App\Mcp\Tools\UpdateTransaction;
+use App\Mcp\Tools\UpdateWidget;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -65,10 +78,11 @@ themselves.
   Transaction, account, category, label, budget, balance, automation-rule and savings goal
   tools accept an optional `space` id and default to the personal space; call
   `list_spaces` to discover ids.
-  `get_cashflow`, `get_net_worth` and `spending_by_category` are the exception: they take no
-  `space` and aggregate every space the user has, with no way to narrow them to one. Never
-  present their figures next to a space-filtered total as if the two were comparable — the
-  gap is the other spaces, not a discrepancy.
+  `get_cashflow`, `get_net_worth`, `spending_by_category`, `spending_by_label`,
+  `get_credit_card_usage` and `get_monthly_savings` are the exception: they take no
+  `space` and aggregate every space the user has (the user's own rows only), with no way
+  to narrow them to one. Never present their figures next to a space-filtered total as if
+  the two were comparable — the gap is the other spaces, not a discrepancy.
 - Categories form a tree, and a child never disagrees with its parent: it inherits the
   parent's type and cashflow direction, and moving a category re-derives both and cascades
   them to everything below it. Deleting one with `strategy: "cascade"` also needs
@@ -143,6 +157,57 @@ themselves.
   `everyday_spending` block is an estimate and is null when there is too little history;
   when it is present, quote its figures rather than the exact ones, which ignore
   groceries and everything else that never repeats on a cadence.
+- For totals over many transactions (spending per month, per label, per account,
+  income against expenses over time), use `aggregate_transactions` instead of
+  paging through `search_transactions`. Like `search_transactions` it reads one
+  space, every member's transactions in it, and groups them by up to two
+  dimensions, at most one of them a period, returning one bucket per group and
+  currency: amounts in different currencies are never added together, so read
+  each bucket's `currency`. Like the other analytics, amounts are the owner's
+  share of the account, and an archived account stops counting from the day it
+  was archived. A split transaction counts by its lines: each line lands in its
+  own category and type, a category or type filter keeps only the lines it
+  matches, and a label keeps every line. Every type counts unless `types`
+  narrows it, so pass `types: ["expense"]` for spending: otherwise transfers,
+  savings and investments add in too. Grouped by a period, every period of the
+  range comes back, zeros included; a request that would return more than 1000
+  buckets is refused, so narrow the range or pick a longer period. A transaction
+  with several labels counts once under each of them.
+- `spending_by_label`, `get_credit_card_usage` and `get_monthly_savings` give
+  the figures of the app's dashboard cards, across every space like
+  `get_cashflow`. `spending_by_label` ranks the labels by expense over a range,
+  each against the previous period; a transaction counts under every label it
+  carries (a split one with its expense lines only), and savings goal labels are
+  left out. `get_credit_card_usage` gives each live card's `credit_card_usage`
+  (see below) plus `daily`, the running `used` from `period_from` to today, in
+  the card's own currency. `get_monthly_savings` adds up the running monthly
+  goals' month in progress (`saved` against `target`, a partial first month
+  left out) and gives `last_month`: how many goals met their target of how many
+  were judged.
+- Custom dashboards: the user can build their own dashboards from widgets you
+  write as React components (TSX), drawn with their live data. Dashboards and
+  widgets belong to the user, not to a space, and a widget reads only the
+  user's own data. They are enabled per account: when the dashboard tools are
+  not listed, or one says the feature is not enabled for this account, tell
+  the user so instead of retrying. To build one: call
+  `get_widget_sdk` first and follow its `rules` — the code is checked against
+  closed lists and anything not listed is refused. Then `create_widget` with a
+  manifest (name, size, the API calls whose answers the widget reads, with
+  `{{range.from}}`/`{{range.to}}` for the range the dashboard shows, and
+  `frame`: the dashboard draws a card around every widget, so never draw one
+  around yours; set `frame: "none"` only for a row of KPI tiles that draw
+  their own cards, as the SDK's `rules` say) and the TSX, and `place_widget`
+  it on a dashboard (`list_dashboards`, `create_dashboard`). A refused save answers with every error, each with a
+  `path` (`manifest.data.x.params.y`, `source:12:5`) and a `message`: fix them
+  all and save again. Write texts in the user's language, make it responsive
+  with container variants and right in light and dark mode, show every amount
+  with the SDK's `<Amount>` (minor units, with the row's currency) and hide
+  figures in charts when `privacyMode` is on; a widget never touches the
+  network. A widget
+  that throws on the dashboard keeps that error: `get_widget` returns it as
+  `last_error` with its revision, and `update_widget` saves the fix as a new
+  revision. Clients that show MCP Apps draw a live preview of the widget under
+  `create_widget`, `update_widget` and `get_widget`.
 
 Write tools ... require a read & write Sanctum token; OAuth connections follow the current
 WriteTool policy. A read-only Sanctum token can analyse data but never change it. Manual
@@ -202,22 +267,31 @@ class WhisperMoneyServer extends Server
      * tools across two pages, so a client that does not follow `nextCursor`
      * silently loses everything past the fifteenth — half the write tools, and
      * whichever read tool a later addition happens to push over the edge. The
-     * ceiling is 50, comfortably above the current count, and a larger
-     * discovery payload is a better trade than tools nobody can see.
+     * ceiling is 100, comfortably above the current count (51 with the custom
+     * dashboard tools), and a larger discovery payload is a better trade than
+     * tools nobody can see. The framework caps any page at
+     * $maxPaginationLength (50 by default), so it is raised with it.
      *
      * @api Read by Laravel MCP's Server when it builds the tools/list page,
      *      never by application code.
      */
-    public int $defaultPaginationLength = 50;
+    public int $defaultPaginationLength = 100;
+
+    /** @api Read by Laravel MCP's Server, see $defaultPaginationLength. */
+    public int $maxPaginationLength = 100;
 
     /** @var array<int, class-string<Tool>> */
     protected array $tools = [
         // Read
         SearchTransactions::class,
         SpendingByCategory::class,
+        SpendingByLabel::class,
+        AggregateTransactions::class,
         GetCashflow::class,
         GetRunway::class,
         GetNetWorth::class,
+        GetCreditCardUsage::class,
+        GetMonthlySavings::class,
         ListAccounts::class,
         ListAutomationRules::class,
         ListBalances::class,
@@ -227,6 +301,9 @@ class WhisperMoneyServer extends Server
         ListRecurringSeries::class,
         ListSavingsGoals::class,
         ListSpaces::class,
+        ListDashboards::class,
+        GetWidgetSdk::class,
+        GetWidget::class,
 
         // Write
         CreateAccount::class,
@@ -254,5 +331,15 @@ class WhisperMoneyServer extends Server
         DeleteBudget::class,
         CreateSavingsGoal::class,
         UpdateSavingsGoal::class,
+        CreateDashboard::class,
+        CreateWidget::class,
+        UpdateWidget::class,
+        PlaceWidget::class,
+        RemoveWidget::class,
+    ];
+
+    /** @var array<int, class-string<Server\Resource>> */
+    protected array $resources = [
+        WidgetPreview::class,
     ];
 }

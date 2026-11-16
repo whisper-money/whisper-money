@@ -69,3 +69,15 @@ export function TransactionDescription({
         </span>
     );
 }
+
+/** A short tag after a description, e.g. a widget's "Purchase". */
+export function TransactionBadge({ text }: { text: string }) {
+    return (
+        <span
+            className="shrink-0 self-center rounded-full border border-neutral-200 px-1.5 py-px text-[11px] font-medium text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"
+            data-testid="transaction-list-row-badge"
+        >
+            {text}
+        </span>
+    );
+}

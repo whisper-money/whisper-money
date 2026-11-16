@@ -1,6 +1,6 @@
 import type { TransactionSplit } from '@/types/transaction';
 import { describe, expect, it } from 'vitest';
-import { buildSplitBreakdown } from './category-cell';
+import { buildSplitBreakdown } from './split-breakdown';
 
 const splits = [
     {

@@ -1,9 +1,11 @@
 <?php
 
+use App\Features\CustomDashboards;
 use App\Mcp\Servers\WhisperMoneyServer;
 use App\Mcp\Tools\ListSpaces;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\postJson;
 use function Pest\Laravel\withHeaders;
@@ -61,8 +63,10 @@ it('accepts a token carrying the mcp:read ability', function () use ($rpc) {
 
 it('serves the whole tool catalogue on one page', function () use ($rpc) {
     // A client that does not follow nextCursor must still see every tool, so
-    // the page size has to stay ahead of the catalogue as it grows.
+    // the page size has to stay ahead of the catalogue as it grows. The flag
+    // adds the custom dashboard tools, so with it on every tool is served.
     $user = User::factory()->create();
+    Feature::for($user)->activate(CustomDashboards::class);
     $plain = $user->createToken('mcp', ['mcp:read'])->plainTextToken;
 
     $result = withHeaders(['Authorization' => "Bearer {$plain}"])

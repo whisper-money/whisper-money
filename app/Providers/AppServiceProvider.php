@@ -11,6 +11,8 @@ use App\Http\Middleware\ApiV1\ThrottleApiRequestsByIp;
 use App\Http\Responses\OAuthConsentResponse;
 use App\Http\Responses\RegisterResponse;
 use App\Mcp\OAuthRegistrar;
+use App\Models\User;
+use App\Models\WidgetDefinition;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
@@ -18,6 +20,7 @@ use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\EnableBankingPsuContext;
 use App\Services\Discord\DiscordWebhook;
+use App\Services\Widgets\Gateway\WidgetDataGateway;
 use App\Support\OAuthScopeRepository;
 use App\Support\QueueWorkerLoop;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -145,6 +148,34 @@ class AppServiceProvider extends ServiceProvider
         // never reaches one and still caps a script filling `oauth_clients`.
         RateLimiter::for('oauth-register', function (Request $request): Limit {
             return Limit::perMinute(10)->by((string) $request->ip());
+        });
+
+        // The widget data gateway counts every API call it makes for a
+        // dashboard's widgets, apart from the public API's 60 a minute so
+        // opening a dashboard does not spend the user's integrations' budget.
+        // It takes the User, not a Request: it counts internal calls, so it
+        // is never a route's `throttle:` middleware.
+        RateLimiter::for(WidgetDataGateway::Limiter, function (User $user): Limit {
+            return Limit::perMinute((int) config('widgets.gateway.calls_per_minute'))->by((string) $user->getAuthIdentifier());
+        });
+
+        // The runtime errors user widgets report from the dashboard. A widget
+        // that fails on every render would otherwise write on every render;
+        // only the latest error is kept, so a few a minute lose nothing. Per
+        // widget, so one failing in a loop does not silence the others.
+        RateLimiter::for('widget-errors', function (Request $request): Limit {
+            $widget = $request->route('widget');
+
+            return Limit::perMinute((int) config('widgets.errors.reports_per_minute'))
+                ->by($request->user()?->getAuthIdentifier().'|'.($widget instanceof WidgetDefinition ? $widget->id : $widget));
+        });
+
+        // Going back to an earlier revision of a user widget, from the
+        // dashboard. Each one compiles the widget again, synchronously, so a
+        // few a minute per user is plenty for a person and a ceiling for a
+        // loop.
+        RateLimiter::for('widget-reverts', function (Request $request): Limit {
+            return Limit::perMinute(10)->by((string) $request->user()?->getAuthIdentifier());
         });
 
         // AI column-mapping suggestions are asked once per imported file, so 20

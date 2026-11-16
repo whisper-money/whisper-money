@@ -18,6 +18,15 @@ export function toMinorUnits(
     return Math.round(majorUnits * MINOR_UNITS_PER_MAJOR);
 }
 
+/** A stored integer as major units, e.g. 399 to 3.99, at the same scale for every currency. */
+export function toMajorUnits(
+    valueInMinorUnits: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- same scale for every currency
+    currencyCode: string,
+): number {
+    return valueInMinorUnits / MINOR_UNITS_PER_MAJOR;
+}
+
 /**
  * The only shape Intl.NumberFormat takes as a currency: it throws a RangeError
  * on anything else, whether or not it knows the code. The server refuses other
@@ -45,6 +54,11 @@ export function formatCurrency(
     return (isCurrency ? formatted : `${formatted} ${currencyCode}`)
         .trimEnd()
         .replace(/\s/g, '\u202F');
+}
+
+/** A formatted amount with its figures hidden, as privacy mode shows it. */
+export function maskDigits(formatted: string): string {
+    return formatted.replace(/\d/g, '*');
 }
 
 export function getCurrencySymbol(currencyCode: string): string {

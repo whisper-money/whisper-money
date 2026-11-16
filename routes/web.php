@@ -12,6 +12,9 @@ use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\CreditCardDetailController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Dashboards\DashboardManagementController;
+use App\Http\Controllers\Dashboards\DashboardWidgetController;
+use App\Http\Controllers\Dashboards\DefaultDashboardController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
@@ -39,6 +42,9 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\TransactionExportController;
+use App\Http\Controllers\Widgets\WidgetDataController;
+use App\Http\Controllers\Widgets\WidgetErrorController;
+use App\Http\Controllers\Widgets\WidgetRevisionController;
 use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
@@ -185,6 +191,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // The user's own dashboards and the system widgets placed on them. Only
+    // for users with the CustomDashboards flag: the custom-dashboards
+    // middleware refuses everyone else with a 403 before anything runs, and
+    // DashboardPolicy and the form requests check it again. Writes are closed
+    // to the demo account, whose dashboards everybody shares.
+    Route::middleware(['custom-dashboards', 'block-demo'])->prefix('dashboards')->name('dashboards.')->group(function () {
+        Route::post('/', [DashboardManagementController::class, 'store'])->name('store');
+        Route::patch('reorder', [DashboardManagementController::class, 'reorder'])->name('reorder');
+        Route::put('default', DefaultDashboardController::class)->name('default.update');
+        Route::patch('{dashboard}', [DashboardManagementController::class, 'update'])->name('update');
+        Route::delete('{dashboard}', [DashboardManagementController::class, 'destroy'])->name('destroy');
+
+        Route::scopeBindings()->prefix('{dashboard}/widgets')->name('widgets.')->group(function () {
+            Route::post('/', [DashboardWidgetController::class, 'store'])->name('store');
+            Route::patch('reorder', [DashboardWidgetController::class, 'reorder'])->name('reorder');
+            Route::patch('{widget}', [DashboardWidgetController::class, 'update'])->name('update');
+            Route::delete('{widget}', [DashboardWidgetController::class, 'destroy'])->name('destroy');
+        });
+    });
+
+    // The widgets the user's agent writes: their data, read from the saved
+    // manifest through the widget gateway, the runtime errors they raise and
+    // going back to an earlier revision. Like the dashboards, only for users
+    // with the CustomDashboards flag (the custom-dashboards middleware, then
+    // WidgetDefinitionPolicy and the data request, refuse everyone else with
+    // a 403); writes are closed to the demo account.
+    Route::get('dashboards/{dashboard}/widgets/data', [WidgetDataController::class, 'dashboard'])->middleware('custom-dashboards')->name('dashboards.widgets.data');
+    Route::middleware('custom-dashboards')->prefix('widgets/{widget}')->name('widgets.')->group(function () {
+        Route::get('data', [WidgetDataController::class, 'show'])->name('data');
+        Route::middleware('block-demo')->group(function () {
+            Route::post('errors', [WidgetErrorController::class, 'store'])->middleware('throttle:widget-errors')->name('errors.store');
+            Route::post('revert', [WidgetRevisionController::class, 'revert'])->middleware('throttle:widget-reverts')->name('revert');
+        });
+    });
+
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');

@@ -479,6 +479,37 @@ class Transaction extends Model
     public const OWNED_AMOUNT_SQL = 'round(transactions.amount * accounts.ownership_percentage / 100)';
 
     /**
+     * A posting's amount and category in SQL, the twin of what
+     * `effectiveTransactions()` expands a row into: an unsplit row is its own
+     * posting, a split row one per line. Only valid on queries that ran
+     * {@see self::scopeJoinPostingLines()}; a split line always has an amount
+     * and a category, so the row's own only stand in when it has no lines.
+     */
+    public const POSTING_AMOUNT_SQL = 'coalesce(transaction_splits.amount, transactions.amount)';
+
+    public const POSTING_CATEGORY_SQL = 'coalesce(transaction_splits.category_id, transactions.category_id)';
+
+    /**
+     * {@see self::OWNED_AMOUNT_SQL} for a posting, rounded per posting as
+     * {@see Account::shareOf()} weighs a split line.
+     */
+    public const OWNED_POSTING_AMOUNT_SQL = 'round('.self::POSTING_AMOUNT_SQL.' * accounts.ownership_percentage / 100)';
+
+    /**
+     * One row per posting: an unsplit transaction once, a split one once per
+     * line. Pair it with {@see self::POSTING_AMOUNT_SQL} and
+     * {@see self::POSTING_CATEGORY_SQL}; labels stay on the transaction, so a
+     * label keeps every line.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeJoinPostingLines(Builder $query): Builder
+    {
+        return $query->leftJoin('transaction_splits', 'transaction_splits.transaction_id', '=', 'transactions.id');
+    }
+
+    /**
      * Join the owning account so aggregates can weigh each amount by the
      * account's ownership percentage. Pair it with {@see self::ownedAmount()}.
      *

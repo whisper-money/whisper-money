@@ -1,3 +1,4 @@
+import { type DisplayRow } from '@/components/transactions/transaction-base-columns';
 import { useTransactionDayHeaders } from '@/components/transactions/transaction-day-header';
 import { TransactionListRow } from '@/components/transactions/transaction-list-row';
 import { TransactionRowContextMenuContent } from '@/components/transactions/transaction-row-context-menu';
@@ -8,12 +9,12 @@ import {
     type DataTableRowGroup,
     useGroupedRowVirtualizer,
 } from '@/components/ui/data-table';
-import { useElementWidth } from '@/hooks/use-element-width';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     type RowSelectionMode,
     useLongPressSelect,
 } from '@/hooks/use-mobile-selection-mode';
+import { useTransactionLayout } from '@/hooks/use-transaction-layout';
 import { PHONE_FRAME, PHONE_INSET } from '@/lib/compact-list-style';
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
@@ -32,13 +33,6 @@ import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import { Fragment, type MouseEvent, useRef } from 'react';
 
 /**
- * Below 56rem of room the table's columns no longer fit and it turns
- * into a compact list. Measured on the list, not the viewport: the sidebar
- * takes its share, so a 1024px window with it open already gets the list.
- */
-const LIST_LAYOUT_BELOW_PX = 56 * 16; // 56rem at the 16px root size the app keeps
-
-/**
  * Each row draws its hairline below; inside a frame the last one would sit on
  * the frame's border and double it. On a phone the frame has no bottom border,
  * so the last row keeps its own: the md-only twin.
@@ -47,6 +41,9 @@ const LAST_ROW_ON_FRAME =
     '[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0';
 const MD_LAST_ROW_ON_FRAME =
     'md:[&>div>div:last-child_[data-testid=transaction-list-row]]:border-b-0';
+
+/** Drops the list's own border and corners, for one that fills a card. */
+const FRAMELESS = 'rounded-none border-0';
 
 /** What a row of the compact list shows beyond the transaction itself. */
 export interface TransactionListRowOptions {
@@ -60,6 +57,10 @@ export interface TransactionListRowOptions {
     categoryFilterIds?: ReadonlySet<string>;
     hiddenLabelId?: string;
     statementPayments?: Map<string, CreditCardPayment>;
+    /** How each row reads, apart from what it holds. */
+    displayRow?: DisplayRow;
+    /** A short tag after a row's description, or nothing. */
+    badgeOf?: (transaction: DecryptedTransaction) => string | null | undefined;
 }
 
 interface ResponsiveTransactionTableProps {
@@ -86,6 +87,10 @@ interface ResponsiveTransactionTableProps {
      * bottom (see `PHONE_FRAME`).
      */
     framedOnPhone?: boolean;
+    /** False leaves every day header without its total. Default true. */
+    showDayTotals?: boolean;
+    /** Draw no frame of its own: the card it sits in is the frame. */
+    frameless?: boolean;
 }
 
 /**
@@ -106,10 +111,12 @@ export function ResponsiveTransactionTable({
     listRow,
     rowActions,
     framedOnPhone = false,
+    showDayTotals = true,
+    frameless = false,
 }: ResponsiveTransactionTableProps) {
-    const [containerRef, width] = useElementWidth<HTMLDivElement>();
-    const layout =
-        width !== null && width < LIST_LAYOUT_BELOW_PX ? 'list' : 'table';
+    const [containerRef, measuredLayout] =
+        useTransactionLayout<HTMLDivElement>();
+    const layout = measuredLayout ?? 'table';
     const selectionActive = Object.keys(rowSelection).length > 0;
 
     const dayHeaders = useTransactionDayHeaders({
@@ -118,6 +125,7 @@ export function ResponsiveTransactionTable({
         daySummaryOf,
         layout,
         selectionActive,
+        showTotals: showDayTotals,
     });
 
     return (
@@ -129,7 +137,7 @@ export function ResponsiveTransactionTable({
         >
             {/* Until it is measured, neither: mounting the table on a phone
                 only to swap it for the list in the same commit costs every row. */}
-            {width === null ? null : layout === 'list' ? (
+            {measuredLayout === null ? null : layout === 'list' ? (
                 <TransactionCompactList
                     table={table}
                     rowSelection={rowSelection}
@@ -141,6 +149,7 @@ export function ResponsiveTransactionTable({
                     listRow={listRow}
                     rowActions={rowActions}
                     framedOnPhone={framedOnPhone}
+                    frameless={frameless}
                     {...dayHeaders}
                 />
             ) : (
@@ -151,6 +160,7 @@ export function ResponsiveTransactionTable({
                     renderRow={renderRow}
                     maxHeight={maxHeight}
                     topRow={topRow}
+                    className={frameless ? FRAMELESS : undefined}
                     {...dayHeaders}
                 />
             )}
@@ -169,6 +179,7 @@ function TransactionCompactList({
     listRow,
     rowActions,
     framedOnPhone,
+    frameless,
     groupRowsBy,
     renderGroupHeader,
 }: Pick<
@@ -182,6 +193,7 @@ function TransactionCompactList({
     | 'listRow'
     | 'rowActions'
     | 'framedOnPhone'
+    | 'frameless'
 > & {
     selectionActive: boolean;
     groupRowsBy: (transaction: DecryptedTransaction) => string;
@@ -234,6 +246,7 @@ function TransactionCompactList({
                     framedOnPhone
                         ? LAST_ROW_ON_FRAME
                         : [PHONE_FRAME, MD_LAST_ROW_ON_FRAME],
+                    frameless && FRAMELESS,
                 )}
                 data-testid="transaction-compact-list-rows"
                 style={
@@ -319,7 +332,10 @@ function TransactionListRowItem({
             {/* A long press on the phone selects the row, not this menu. */}
             <ContextMenuTrigger asChild disabled={selectionMode.isMobile}>
                 <TransactionListRow
-                    transaction={transaction}
+                    // Drawn as it reads; every action gets the row it holds.
+                    transaction={
+                        listRow.displayRow?.(transaction) ?? transaction
+                    }
                     categories={listRow.categories}
                     labels={listRow.labels}
                     selected={selected}
@@ -327,8 +343,9 @@ function TransactionListRowItem({
                     onToggleSelect={() =>
                         selectionMode.toggleRow(transaction.id)
                     }
-                    onOpen={rowActions.onEdit}
+                    onOpen={() => rowActions.onEdit(transaction)}
                     isNew={listRow.isNewRow?.(transaction)}
+                    badge={listRow.badgeOf?.(transaction) ?? undefined}
                     isCategorizing={listRow.categorizingIds?.has(
                         transaction.id,
                     )}

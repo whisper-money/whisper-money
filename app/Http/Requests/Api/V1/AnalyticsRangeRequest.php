@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Http\Requests\Api\V1\Concerns\RefusesUnknownParameters;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,16 +14,25 @@ use Illuminate\Validation\Validator;
  * figures are compared with is the same number of days right before it, or the
  * same number of whole months when the range is whole months.
  *
- * The range caps are this API's alone: the screens and the MCP tools go by
- * PeriodComparator::rules().
+ * The range caps are this API's: the screens and the MCP tools go by
+ * PeriodComparator::rules(), save spending_by_label, which shares
+ * DEFAULT_MAX_MONTHS with its endpoint.
  */
 class AnalyticsRangeRequest extends FormRequest
 {
+    use RefusesUnknownParameters;
+
     /**
      * The most calendar months a range may touch: every one of them is walked
      * through, so an unbounded range would be an unbounded amount of work.
      */
-    protected const MAX_MONTHS = 120;
+    protected const MAX_MONTHS = self::DEFAULT_MAX_MONTHS;
+
+    /**
+     * The cap of every range that does not set its own, which the MCP tools
+     * share with the API.
+     */
+    public const DEFAULT_MAX_MONTHS = 120;
 
     /**
      * @return array<string, array<mixed>>
@@ -48,9 +58,7 @@ class AnalyticsRangeRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
-            foreach (array_diff(array_map(strval(...), array_keys($this->all())), array_keys($this->rules())) as $key) {
-                $validator->errors()->add($key, "This endpoint does not take a {$key} parameter.");
-            }
+            $this->refuseUnknownParameters($validator, array_keys($this->rules()));
 
             if ($validator->errors()->isEmpty() && ($refusal = $this->rangeRefusal($this->period())) !== null) {
                 $validator->errors()->add('to', $refusal);
@@ -68,9 +76,7 @@ class AnalyticsRangeRequest extends FormRequest
      */
     protected function rangeRefusal(PeriodComparator $period): ?string
     {
-        $months = ($period->to->year - $period->from->year) * 12 + $period->to->month - $period->from->month + 1;
-
-        return $months > static::MAX_MONTHS
+        return $period->monthsTouched() > static::MAX_MONTHS
             ? 'The range can touch at most '.static::MAX_MONTHS.' calendar months.'
             : null;
     }

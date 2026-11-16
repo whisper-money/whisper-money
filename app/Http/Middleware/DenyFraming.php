@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ContentSecurityPolicyHeader;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -10,6 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Forbids every origin from framing the response, so a page whose buttons
  * grant access (the OAuth consent screen) or that shows a secret (a freshly
  * created token) cannot be overlaid and clicked through from another site.
+ * `frame-ancestors 'none'` joins whatever policy the response already has
+ * (the script policy of ContentSecurityPolicy) rather than replacing it.
  */
 class DenyFraming
 {
@@ -18,7 +21,7 @@ class DenyFraming
         $response = $next($request);
 
         $response->headers->set('X-Frame-Options', 'DENY');
-        $response->headers->set('Content-Security-Policy', "frame-ancestors 'none'");
+        ContentSecurityPolicyHeader::merge($response, ['frame-ancestors' => "'none'"]);
 
         return $response;
     }

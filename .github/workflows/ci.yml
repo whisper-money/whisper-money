@@ -61,6 +61,11 @@ jobs:
           # report CRAP alongside complexity, and pcov costs far less.
           coverage: pcov
 
+      # WidgetCompilerTest runs the real widget compiler, a Bun script that
+      # needs Bun and node_modules (typescript, the externals it checks).
+      - name: Setup Bun & Node Deps
+        uses: ./.github/actions/setup-bun-deps
+
       - name: Copy Environment File
         run: cp .env.example .env
 

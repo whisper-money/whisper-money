@@ -1,295 +1,26 @@
-import {
-    reorder,
-    updateNetWorthInclusion,
-    updateVisibility,
-} from '@/actions/App/Http/Controllers/AccountController';
-import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
-import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
-import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
-import { MonthlySavingsDashboardCard } from '@/components/dashboard/monthly-savings-dashboard-card';
-import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
-import { NetWorthProjectionCard } from '@/components/dashboard/net-worth-projection';
-import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
-import {
-    TopLabelsCard,
-    type LabelSpending,
-} from '@/components/dashboard/top-labels-card';
+import { CustomDashboardsView } from '@/components/dashboard/custom-dashboards/custom-dashboards-view';
+import { DashboardLayoutView } from '@/components/dashboard/widgets/dashboard-layout-view';
+import { SYSTEM_DASHBOARD_LAYOUT } from '@/components/dashboard/widgets/registry';
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
-import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { PrivacyRevealScope } from '@/contexts/privacy-mode-context';
-import {
-    deriveAccountMetrics,
-    withCreditCardUsage,
-    type AccountWithMetrics,
-    type NetWorthEvolutionData,
-} from '@/hooks/use-dashboard-data';
-import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
-import { BreadcrumbItem, SharedData } from '@/types';
-import { type CreditCardUsage } from '@/types/account';
-import { Category } from '@/types/category';
-import { NetWorthProjection } from '@/types/net-worth';
-import { DashboardMonthlyGoal, MonthlyVerdicts } from '@/types/savings-goal';
+import { type BreadcrumbItem } from '@/types';
+import { type DashboardProps } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
-import { Deferred, Head, router, usePage } from '@inertiajs/react';
-import { Pencil } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-interface CashflowSummary {
-    income: number;
-    expense: number;
-    net: number;
-    savings_rate: number;
-}
-
-interface DashboardProps extends SharedData {
-    showEncryptionPrompt: boolean;
-    netWorthEvolution?: NetWorthEvolutionData;
-    netWorthProjection?: NetWorthProjection;
-    topCategories?: Array<{
-        category: Category | null;
-        category_id?: string | null;
-        amount: number;
-        previous_amount: number;
-        total_amount: number;
-        has_children?: boolean;
-        is_direct?: boolean;
-    }>;
-    topLabels?: LabelSpending[];
-    cashflowSummary?: {
-        current: CashflowSummary;
-        previous: CashflowSummary;
-    };
-    openIntegrationRequests?: boolean;
-    /** Deferred: what is in use of each credit card, by account id. */
-    creditCardUsage?: Record<string, CreditCardUsage>;
-    monthlySavingsGoals?: DashboardMonthlyGoal[];
-    monthlySavingsLastMonth?: MonthlyVerdicts | null;
-}
+import { Head, router, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
     const { props } = usePage<DashboardProps>();
-    const locale = useLocale();
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(
         !!props.openIntegrationRequests,
     );
-
-    const netWorthEvolution = useMemo(
-        () =>
-            props.netWorthEvolution ?? {
-                data: [],
-                accounts: {},
-                currency_code: 'USD',
-            },
-        [props.netWorthEvolution],
-    );
-
-    const accountMetrics = useMemo(
-        () =>
-            deriveAccountMetrics(netWorthEvolution, locale).map((account) =>
-                withCreditCardUsage(account, props.creditCardUsage, locale),
-            ),
-        [netWorthEvolution, props.creditCardUsage, locale],
-    );
-
-    // Linked loans remain in the manager so their net-worth inclusion can be
-    // changed independently. They stay hidden from the dashboard grid because
-    // their balance is displayed on the linked real-estate card.
-    const linkedLoanAccountIds = useMemo(() => {
-        const ids = new Set<string>();
-        accountMetrics.forEach((a) => {
-            if (a.type === 'real_estate' && a.linked_loan_account_id) {
-                ids.add(a.linked_loan_account_id);
-            }
-        });
-        return ids;
-    }, [accountMetrics]);
-
-    // Archived accounts stay in the payload so the chart keeps their history,
-    // but they are off the dashboard itself: no card, no row in the manager.
-    const manageableAccounts = useMemo(
-        () => accountMetrics.filter((a) => !a.archived_at),
-        [accountMetrics],
-    );
-    const [editOpen, setEditOpen] = useState(false);
-
-    // Optimistic ordering layered on top of the server order. Null means "use
-    // the server order"; a drag sets the new id order and persists it.
-    const [order, setOrder] = useState<string[] | null>(null);
-    const orderedAccounts = useMemo(() => {
-        if (!order) {
-            return manageableAccounts;
-        }
-        const byId = new Map(manageableAccounts.map((a) => [a.id, a]));
-        const ordered = order
-            .map((id) => byId.get(id))
-            .filter((a) => a !== undefined);
-        const rest = manageableAccounts.filter((a) => !order.includes(a.id));
-        return [...ordered, ...rest];
-    }, [manageableAccounts, order]);
-
-    // Optimistic visibility overrides keyed by account id; falls back to the
-    // server flag until the next full reload.
-    const [hiddenOverrides, setHiddenOverrides] = useState<
-        Record<string, boolean>
-    >({});
-    const [netWorthOverrides, setNetWorthOverrides] = useState<
-        Record<string, boolean>
-    >({});
-    const netWorthToggleVersions = useRef<Record<string, number>>({});
-    const isHidden = useCallback(
-        (account: AccountWithMetrics) =>
-            hiddenOverrides[account.id] ?? account.hidden_on_dashboard,
-        [hiddenOverrides],
-    );
-    const isIncludedInNetWorth = useCallback(
-        (account: AccountWithMetrics) =>
-            netWorthOverrides[account.id] ??
-            account.include_in_net_worth ??
-            true,
-        [netWorthOverrides],
-    );
-
-    const gridAccounts = useMemo(
-        () =>
-            orderedAccounts.filter(
-                (a) => !linkedLoanAccountIds.has(a.id) && !isHidden(a),
-            ),
-        [orderedAccounts, linkedLoanAccountIds, isHidden],
-    );
-
-    const handleReorder = useCallback((ids: string[]) => {
-        setOrder(ids);
-        // Persist only; keep the deferred netWorthEvolution prop in place by
-        // requesting an unrelated cheap prop so it isn't refetched (skeleton).
-        router.patch(
-            reorder.url(),
-            { ids },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['showEncryptionPrompt'],
-            },
-        );
-    }, []);
-
-    const handleToggleVisibility = useCallback(
-        (id: string, hidden: boolean) => {
-            setHiddenOverrides((prev) => ({ ...prev, [id]: hidden }));
-            router.patch(
-                updateVisibility.url(id),
-                { hidden },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    only: ['showEncryptionPrompt'],
-                },
-            );
-        },
-        [],
-    );
-
-    const handleToggleNetWorth = useCallback(
-        (id: string, included: boolean) => {
-            // The property and its linked loan are separate net-worth entries.
-            // Keep their inclusion settings independent so changing one does not
-            // silently mutate the other.
-            const account = accountMetrics.find((item) => item.id === id);
-            const previousIncluded = account?.include_in_net_worth ?? true;
-            const version = (netWorthToggleVersions.current[id] ?? 0) + 1;
-            netWorthToggleVersions.current[id] = version;
-            setNetWorthOverrides((prev) => ({ ...prev, [id]: included }));
-            router.patch(
-                updateNetWorthInclusion.url(id),
-                { include_in_net_worth: included },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    only: ['netWorthEvolution'],
-                    onSuccess: () => {
-                        if (netWorthToggleVersions.current[id] === version) {
-                            setNetWorthOverrides((prev) => {
-                                const next = { ...prev };
-                                delete next[id];
-                                return next;
-                            });
-                        }
-                    },
-                    onError: () => {
-                        if (netWorthToggleVersions.current[id] === version) {
-                            setNetWorthOverrides((prev) => ({
-                                ...prev,
-                                [id]: previousIncluded,
-                            }));
-                        }
-                    },
-                },
-            );
-        },
-        [accountMetrics],
-    );
-
-    // Build linked loan metrics map keyed by real estate account ID
-    const linkedLoanMetricsMap = useMemo(() => {
-        const map: Record<
-            string,
-            {
-                currentBalance: number;
-                previousBalance: number;
-                diff: number;
-                history: Array<{ date: string; value: number }>;
-                loanAccount?: {
-                    name: string;
-                    bank: { name: string; logo: string | null } | null;
-                };
-            }
-        > = {};
-        accountMetrics.forEach((a) => {
-            if (a.type === 'real_estate' && a.linked_loan_account_id) {
-                const loan = accountMetrics.find(
-                    (l) => l.id === a.linked_loan_account_id,
-                );
-                if (loan) {
-                    map[a.id] = {
-                        currentBalance: Math.abs(loan.currentBalance),
-                        previousBalance: Math.abs(loan.previousBalance),
-                        diff: loan.diff,
-                        history: loan.history.map((h) => ({
-                            date: h.date,
-                            value: Math.abs(h.value),
-                        })),
-                        loanAccount: {
-                            name: loan.name,
-                            bank: loan.bank,
-                        },
-                    };
-                }
-            }
-        });
-        return map;
-    }, [accountMetrics]);
-
-    const topCategories = props.topCategories ?? [];
-
-    const refetch = useCallback(() => {
-        router.reload({
-            only: [
-                'netWorthEvolution',
-                'creditCardUsage',
-                'topCategories',
-                'topLabels',
-                'spendingWindow',
-                'cashflowSummary',
-            ],
-        });
-    }, []);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -322,6 +53,13 @@ export default function Dashboard() {
         setShowUnlockDialog(false);
     }
 
+    const heading = (
+        <HeadingSmall
+            title={__('Dashboard')}
+            description={__('Overview of your financial health')}
+        />
+    );
+
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Dashboard')} />
@@ -348,140 +86,21 @@ export default function Dashboard() {
             )}
 
             <div className="space-y-6 p-6">
-                <HeadingSmall
-                    title={__('Dashboard')}
-                    description={__('Overview of your financial health')}
-                />
-
-                <Deferred
-                    data="netWorthEvolution"
-                    fallback={
-                        <>
-                            <NetWorthChartComponent
-                                data={{
-                                    data: [],
-                                    accounts: {},
-                                    currency_code: 'USD',
-                                }}
-                                loading={true}
-                            />
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <AccountBalanceCard
-                                        key={i}
-                                        // @ts-expect-error - mock data for loading state
-                                        account={{}}
-                                        loading={true}
-                                    />
-                                ))}
-                            </div>
-                        </>
-                    }
-                >
-                    <PrivacyRevealScope>
-                        <NetWorthChartComponent data={netWorthEvolution} />
-                    </PrivacyRevealScope>
-
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">
-                            {__('Accounts')}
-                        </h2>
-                        {orderedAccounts.length > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => setEditOpen(true)}
-                                aria-label={__('Edit accounts')}
-                            >
-                                <Pencil className="size-4" />
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {gridAccounts.map((account) => (
-                            <PrivacyRevealScope key={account.id}>
-                                <AccountBalanceCard
-                                    account={account}
-                                    onBalanceUpdated={refetch}
-                                    linkedLoanMetrics={
-                                        linkedLoanMetricsMap[account.id]
-                                    }
-                                    displayCurrencyCode={
-                                        netWorthEvolution.currency_code
-                                    }
-                                />
-                            </PrivacyRevealScope>
-                        ))}
-                    </div>
-
-                    {props.netWorthProjection && (
-                        <PrivacyRevealScope>
-                            <NetWorthProjectionCard
-                                projection={props.netWorthProjection}
-                            />
-                        </PrivacyRevealScope>
-                    )}
-
-                    <AccountsManagerDialog
-                        open={editOpen}
-                        onOpenChange={setEditOpen}
-                        accounts={orderedAccounts}
-                        isHidden={isHidden}
-                        isIncludedInNetWorth={isIncludedInNetWorth}
-                        onReorder={handleReorder}
-                        onToggleVisibility={handleToggleVisibility}
-                        onToggleNetWorth={handleToggleNetWorth}
+                {props.features.customDashboards ? (
+                    <CustomDashboardsView
+                        data={props}
+                        heading={heading}
+                        notice={null}
                     />
-                </Deferred>
-
-                <div className="flex flex-col gap-6">
-                    {/* Nothing drawn while it loads, for the same reason as
-                        the labels card below: most users have no monthly goal. */}
-                    <Deferred data="monthlySavingsGoals" fallback={<></>}>
-                        <PrivacyRevealScope>
-                            <MonthlySavingsDashboardCard
-                                goals={props.monthlySavingsGoals ?? []}
-                                lastMonth={props.monthlySavingsLastMonth}
-                                currencyCode={props.auth.user.currency_code}
-                            />
-                        </PrivacyRevealScope>
-                    </Deferred>
-
-                    <Deferred
-                        data="topCategories"
-                        fallback={
-                            <TopCategoriesCard categories={[]} loading={true} />
-                        }
-                    >
-                        <PrivacyRevealScope>
-                            <TopCategoriesCard categories={topCategories} />
-                        </PrivacyRevealScope>
-                    </Deferred>
-
-                    {/* An empty fragment, not null: Deferred rejects a falsy
-                        fallback. Nothing is drawn on purpose — most users have
-                        nothing labelled, and a placeholder for a card that then
-                        disappears reads as a glitch. */}
-                    <Deferred data="topLabels" fallback={<></>}>
-                        <PrivacyRevealScope>
-                            <TopLabelsCard labels={props.topLabels ?? []} />
-                        </PrivacyRevealScope>
-                    </Deferred>
-
-                    {props.features.cashflow && (
-                        <Deferred
-                            data="cashflowSummary"
-                            fallback={<CashflowSummaryCard loading={true} />}
-                        >
-                            <PrivacyRevealScope>
-                                <CashflowSummaryCard
-                                    data={props.cashflowSummary ?? null}
-                                />
-                            </PrivacyRevealScope>
-                        </Deferred>
-                    )}
-                </div>
+                ) : (
+                    <>
+                        {heading}
+                        <DashboardLayoutView
+                            layout={SYSTEM_DASHBOARD_LAYOUT}
+                            data={props}
+                        />
+                    </>
+                )}
             </div>
         </AppSidebarLayout>
     );

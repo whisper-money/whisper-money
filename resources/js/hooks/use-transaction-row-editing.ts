@@ -68,11 +68,19 @@ export function useTransactionRowEditing({
     initialLabels,
     setRows,
     onRowUpdated,
+    resolveRow,
 }: {
     initialLabels: Label[];
     setRows: Dispatch<SetStateAction<DecryptedTransaction[]>>;
     /** Called after a row is edited in place. */
     onRowUpdated?: () => void;
+    /**
+     * The transaction a dialog opens on, for rows that hold less than the
+     * server does (a dashboard widget's). Rejects when it cannot be had.
+     */
+    resolveRow?: (
+        transaction: DecryptedTransaction,
+    ) => Promise<DecryptedTransaction>;
 }) {
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
@@ -170,16 +178,26 @@ export function useTransactionRowEditing({
         [],
     );
 
-    const rowActions = useMemo<TransactionRowActionHandlers>(
-        () => ({
-            onEdit: setEditTransaction,
-            onDuplicate: setDuplicateTransaction,
+    const rowActions = useMemo<TransactionRowActionHandlers>(() => {
+        const opening = (
+            open: (transaction: DecryptedTransaction) => void,
+        ): ((transaction: DecryptedTransaction) => void) =>
+            resolveRow
+                ? (transaction) => {
+                      resolveRow(transaction).then(open, () => undefined);
+                  }
+                : open;
+
+        return {
+            onEdit: opening(setEditTransaction),
+            onDuplicate: opening(setDuplicateTransaction),
             onReEvaluateRules: handleReEvaluateRules,
             onDelete: setDeleteTransaction,
-            onAutomate: (transaction) => openAutomateDialog(transaction),
-        }),
-        [handleReEvaluateRules, openAutomateDialog],
-    );
+            onAutomate: opening((transaction) =>
+                openAutomateDialog(transaction),
+            ),
+        };
+    }, [handleReEvaluateRules, openAutomateDialog, resolveRow]);
 
     /** The same actions, offered from the edit dialog's own menu. */
     const dialogRowActions = useMemo<TransactionRowActionHandlers>(

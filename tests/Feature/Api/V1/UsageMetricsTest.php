@@ -85,6 +85,14 @@ it('reports usage per endpoint, status, credential, user and day', function () {
         ->assertSuccessful();
 });
 
+it('leaves the widget gateway\'s dashboard calls out of the report', function () {
+    ApiRequest::factory()->create(['credential' => ApiCredential::Dashboard]);
+
+    $this->artisan('stats:api-usage')
+        ->expectsOutputToContain('No API requests')
+        ->assertSuccessful();
+});
+
 it('prunes rows older than the retention window', function () {
     ApiRequest::factory()->create(['created_at' => now()->subDays(91)]);
     $recent = ApiRequest::factory()->create(['created_at' => now()->subDays(89)]);

@@ -27,7 +27,7 @@ it('forbids framing the API page, which shows a new token', function () {
     actingAs(User::factory()->create())
         ->get(route('api-tokens.index'))
         ->assertHeader('X-Frame-Options', 'DENY')
-        ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'");
+        ->assertHeaderContains('Content-Security-Policy', "frame-ancestors 'none'");
 });
 
 it('hides the API page from the demo account', function () {

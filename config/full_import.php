@@ -7,13 +7,13 @@ return [
     | Master switch
     |--------------------------------------------------------------------------
     |
-    | Opens the full import from another app to every user in the window
-    | after onboarding, without a deploy. Off by default on this instance:
-    | then only users with the `FullImport` Pennant flag can start one
-    | (`php artisan feature:enable FullImport <email>`); nobody else sees the
-    | Settings entry or its CTA, and the endpoints refuse new imports. Imports
-    | already running finish, and the history and undo of past imports stay
-    | available. Read by `User::canUseFullImport()`.
+    | The only switch for the full import from another app. Off by default on
+    | this instance, and then nobody can start one: nobody sees the Settings
+    | entry or its CTA, and the endpoints refuse new imports. On
+    | (`FULL_IMPORT_ENABLED=true`), it opens to each user while still
+    | onboarding and for `User::FULL_IMPORT_WINDOW_DAYS` days after it, never
+    | later. Imports already running finish, and the history and undo of past
+    | imports stay available either way. Read by `User::canUseFullImport()`.
     |
     */
 

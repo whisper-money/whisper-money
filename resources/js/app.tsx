@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { toast, Toaster } from 'sonner';
+import { Toaster } from 'sonner';
 import { update as updateTimezone } from './actions/App/Http/Controllers/Settings/TimezoneController';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
@@ -28,7 +28,6 @@ import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { installDeferredPropsRecovery } from './lib/deferred-props-recovery';
 import { installFailedNavigationToast } from './lib/failed-navigation-toast';
-import { leavePage } from './lib/leave-page';
 import { initializePostHog } from './lib/posthog';
 import {
     isBrowserExtensionNoise,
@@ -43,8 +42,8 @@ import {
 } from './lib/sentry';
 import { installSessionExpiryRecovery } from './lib/session-expiry-recovery';
 import { trackUnattendedRequests } from './lib/unattended-requests';
-import type { ExpiredBankingConnectionNotification, SharedData } from './types';
-import { __, setTranslations } from './utils/i18n';
+import type { SharedData } from './types';
+import { setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
 installDeferredPropsRecovery();
@@ -88,67 +87,6 @@ initializeChartColorScheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 let hasAttemptedTimezoneBackfill = false;
-const notifiedExpiredConnectionIds = new Set<string>();
-
-function showExpiredConnectionsToast(
-    expiredConnections: ExpiredBankingConnectionNotification[] | undefined,
-): void {
-    if (!expiredConnections || expiredConnections.length === 0) {
-        return;
-    }
-
-    const newExpiredConnections = expiredConnections.filter(
-        (connection) => !notifiedExpiredConnectionIds.has(connection.id),
-    );
-
-    if (newExpiredConnections.length === 0) {
-        return;
-    }
-
-    expiredConnections.forEach((connection) => {
-        notifiedExpiredConnectionIds.add(connection.id);
-    });
-
-    const firstConnection = expiredConnections[0];
-    const count = expiredConnections.length;
-
-    toast.error(
-        count === 1
-            ? __('Your :provider connection has expired.', {
-                  provider: firstConnection.aspsp_name,
-              })
-            : __('You have :count expired bank connections.', {
-                  count,
-              }),
-        {
-            description: __('Reconnect to resume automatic syncing.'),
-            duration: Infinity,
-            action: {
-                label: __('Reconnect'),
-                onClick: () => {
-                    leavePage(firstConnection.reconnect_url);
-                },
-            },
-        },
-    );
-}
-
-function ExpiredConnectionsToast({
-    initialExpiredConnections,
-}: {
-    initialExpiredConnections: ExpiredBankingConnectionNotification[];
-}) {
-    useEffect(() => {
-        showExpiredConnectionsToast(initialExpiredConnections);
-
-        return router.on('navigate', (event) => {
-            const pageProps = event.detail.page.props as unknown as SharedData;
-            showExpiredConnectionsToast(pageProps.expiredBankingConnections);
-        });
-    }, [initialExpiredConnections]);
-
-    return null;
-}
 
 // Determine progress bar color based on current theme
 const getProgressBarColor = () => {
@@ -211,10 +149,6 @@ createInertiaApp({
             (initialPageProps?.hasEncryptedAccounts as boolean) ?? false;
         const hasEncryptedTransactions =
             (initialPageProps?.hasEncryptedTransactions as boolean) ?? false;
-        const initialExpiredConnections =
-            (initialPageProps?.expiredBankingConnections as
-                | ExpiredBankingConnectionNotification[]
-                | undefined) ?? [];
 
         const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
             const user = pageProps?.auth?.user ?? null;
@@ -282,11 +216,6 @@ createInertiaApp({
                                 initialUser={initialUser}
                             >
                                 <App {...props} />
-                                <ExpiredConnectionsToast
-                                    initialExpiredConnections={
-                                        initialExpiredConnections
-                                    }
-                                />
                                 <AppToaster />
                             </SyncProvider>
                         </PrivacyModeProvider>

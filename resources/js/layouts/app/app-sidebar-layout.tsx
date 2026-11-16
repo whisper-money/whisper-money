@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { BankConnectionIssueBanner } from '@/components/open-banking/bank-connection-issue-banner';
 import { SubscriptionPaymentIssueBanner } from '@/components/subscription/payment-issue-banner';
 import { useDecryptAccountNames } from '@/hooks/use-decrypt-account-names';
 import { useDecryptTransactions } from '@/hooks/use-decrypt-transactions';
@@ -31,6 +32,7 @@ export default function AppSidebarLayout({
                     mobileLeading={mobileLeading}
                 />
                 <SubscriptionPaymentIssueBanner />
+                <BankConnectionIssueBanner />
                 <div
                     className="mx-auto flex w-full max-w-page flex-1 flex-col"
                     data-testid="page-content"

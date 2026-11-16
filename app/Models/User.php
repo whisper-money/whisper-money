@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\DripEmailType;
 use App\Enums\PlanFeature;
 use App\Enums\TransactionSource;
-use App\Features\FullImport;
 use App\Models\Concerns\HasPrefixedApiTokens;
 use App\Notifications\VerifyEmailNotification;
 use App\Services\FormatLocaleOptions;
@@ -45,6 +44,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $onboarded_at
  * @property ?string $price_arm
  * @property ?string $signup_plan
+ * @property ?string $default_dashboard_id
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
@@ -413,6 +413,28 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(SavingsGoal::class);
     }
 
+    /** @return HasMany<Dashboard, $this> */
+    public function dashboards(): HasMany
+    {
+        return $this->hasMany(Dashboard::class);
+    }
+
+    /** @return HasMany<WidgetDefinition, $this> */
+    public function widgetDefinitions(): HasMany
+    {
+        return $this->hasMany(WidgetDefinition::class);
+    }
+
+    /**
+     * The dashboard the app opens on. Null is the system dashboard.
+     *
+     * @return BelongsTo<Dashboard, $this>
+     */
+    public function defaultDashboard(): BelongsTo
+    {
+        return $this->belongsTo(Dashboard::class, 'default_dashboard_id');
+    }
+
     /** @return HasMany<MonthlySummary, $this> */
     public function monthlySummaries(): HasMany
     {
@@ -440,27 +462,19 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 
     /**
      * Whether the user may start a full import from another app: while still
-     * onboarding, for the first days after it, or with the `FullImport` flag
-     * on. Never on an account whose credentials are public. With the master
-     * switch off (`full_import.enabled`) only the flag opens it. The one place
-     * both the shared prop and the endpoints read it from.
+     * onboarding or for the first days after it, and only with the master
+     * switch (`full_import.enabled`) on. Never on an account whose credentials
+     * are public. The one place both the shared prop and the endpoints read it
+     * from.
      */
     public function canUseFullImport(): bool
     {
-        if ($this->isRestrictedDemoAccount()) {
-            return false;
-        }
-
-        if ($this->isInFullImportWindow()) {
-            return true;
-        }
-
-        return $this->features()->active(FullImport::class);
+        return ! $this->isRestrictedDemoAccount() && $this->isInFullImportWindow();
     }
 
     /**
-     * Whether the onboarding window alone keeps the import open: the switch
-     * is on, and the user is still onboarding or onboarded recently.
+     * Whether the onboarding window keeps the import open: the switch is on,
+     * and the user is still onboarding or onboarded recently.
      */
     private function isInFullImportWindow(): bool
     {
@@ -472,9 +486,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
-     * The day the onboarding window closes, or null when the window is not
-     * what keeps the import open: before onboarding ends, once the flag is the
-     * only reason left, or with the master switch off.
+     * The day the onboarding window closes, or null when there is no date to
+     * show: before onboarding ends, once the window has closed, or with the
+     * master switch off.
      */
     public function fullImportWindowEndsAt(): ?Carbon
     {
@@ -769,6 +783,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->trashed();
     }
 
+    /**
+     * Soft-deletes the user, so their foreign keys never cascade. The widgets
+     * their agent wrote (code, not financial records) and the dashboards that
+     * hold them go with the account right away.
+     */
     public function markAsDeleted(): void
     {
         if ($this->trashed()) {
@@ -779,6 +798,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             $this->forceFill([
                 'email' => $this->deletedEmail(),
             ])->saveQuietly();
+
+            $this->widgetDefinitions()->delete();
+            $this->dashboards()->delete();
 
             $this->delete();
         });

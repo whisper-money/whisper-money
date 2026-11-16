@@ -82,6 +82,11 @@ echo "MySQL is ready!"
 echo "Running migrations..."
 php artisan migrate --force
 
+# Check stored user widgets again when the widget rules changed. Not fatal:
+# a widget it misses is checked again before it is served.
+echo "Re-checking user widgets against the current widget rules..."
+php artisan widgets:revalidate || echo "WARNING: widgets:revalidate did not finish; stale widgets are checked again when they load."
+
 # Ensure Passport signing keys exist (OAuth for MCP connectors). Keys provided
 # via PASSPORT_PRIVATE_KEY/PASSPORT_PUBLIC_KEY env take precedence; otherwise
 # generate them into storage/ (a persisted volume) so issued tokens survive

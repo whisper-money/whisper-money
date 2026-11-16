@@ -4,7 +4,7 @@
   "app_info": {
     "display_name": "Whisper Money",
     "subtitle": "Chat with your own finances",
-    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, savings goals, cashflow and net worth and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, set up and edit your own accounts — including loans and properties, with their interest rate or purchase price and the balance history that follows from them — create and edit savings goals — one-off or monthly, with every month measured against its own target — and manage budgets, categories, labels and automation rules.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Bank-connected accounts can only be created by you, in the app, through your bank's own consent flow, and once connected their currency and bank stay locked to what the bank reports. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
+    "description": "Whisper Money is a privacy-first personal finance app: your financial data is yours, and it is never shared with third parties. This app connects ChatGPT to your own Whisper Money account so you can analyse your money in plain language instead of clicking through dashboards.\n\nAsk questions like \"how much did I spend on groceries last month\", \"what's my net worth trend this year\", \"which subscriptions are draining me\" or \"break down Q2 by category\" — the app reads your transactions, accounts, categories, labels, budgets, savings goals, cashflow, net worth, spending by label, credit card usage and this month's savings and answers with your real numbers. You can also keep your books tidy from the conversation: log manual transactions, recategorize and label existing ones, record balances for manual accounts, set up and edit your own accounts — including loans and properties, with their interest rate or purchase price and the balance history that follows from them — create and edit savings goals — one-off or monthly, with every month measured against its own target — and manage budgets, categories, labels and automation rules.\n\nYour synced bank data is protected: transactions imported from a bank connection can be categorized and labelled, but never edited or deleted, and balances can only be recorded on manual accounts. You can still add your own manual transactions to a bank-connected account — a sync never removes them. Bank-connected accounts can only be created by you, in the app, through your bank's own consent flow, and once connected their currency and bank stay locked to what the bank reports. Data is scoped to the account you sign in with, including any shared spaces you belong to. The app reads and writes bookkeeping records only — it can never move money, make payments or reach any account outside Whisper Money.\n\nRequires a Whisper Money account on a paid (Pro) plan. Sign in happens through Whisper Money's own OAuth flow — ChatGPT never sees your password, and access can be revoked at any time from your account settings.",
     "category": "FINANCE"
   },
   "tools": {
@@ -21,6 +21,38 @@
       "justifications": {
         "read_only_justification": "Aggregates the user's own transactions into per-category spending totals and returns them. It writes nothing.",
         "open_world_justification": "Aggregates only the authenticated user's own Whisper Money data, a closed system. No external systems are touched.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "aggregate_transactions": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Groups the transactions of one of the user's spaces by period, category, label, account or type, adds them up and returns the totals. It writes nothing.",
+        "open_world_justification": "Aggregates only Whisper Money data the authenticated user can reach, a closed system. No external systems are touched.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "spending_by_label": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Adds up the user's own expenses per label over a date range and the period before it, and returns the totals. It writes nothing.",
+        "open_world_justification": "Aggregates only the authenticated user's own Whisper Money data, a closed system. No external systems are touched.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_credit_card_usage": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Computes how much of each of the user's own credit cards is in use from their recorded transactions and returns it. It writes nothing.",
+        "open_world_justification": "Computed entirely from the authenticated user's own Whisper Money data, a closed system. It never contacts a bank or card issuer.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_monthly_savings": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Reports how the user's own monthly savings goals stand this month and how they did last month. It writes nothing.",
+        "open_world_justification": "Computed entirely from the authenticated user's own Whisper Money data, a closed system.",
         "destructive_justification": "Read-only, so nothing can be changed or lost."
       }
     },
@@ -262,6 +294,70 @@
         "read_only_justification": "Writes: it renames the user's own savings goal or changes its target or reminder setting.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
         "destructive_justification": "Reversible: the name, target and reminder can be set straight back, past months keep the target they had, and no transaction is touched."
+      }
+    },
+    "list_dashboards": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Lists the user's own dashboards and widgets so later calls can reference their ids. It writes nothing.",
+        "open_world_justification": "Lists only dashboards and widgets inside the authenticated user's own Whisper Money account, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_widget_sdk": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Returns the fixed reference for writing a dashboard widget. It writes nothing.",
+        "open_world_justification": "Returns a static reference served by Whisper Money; it reaches no other system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "get_widget": {
+      "annotations": { "readOnlyHint": true, "openWorldHint": false, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Reads one of the user's own widgets, its code and its last error. It writes nothing.",
+        "open_world_justification": "Reads only a widget inside the authenticated user's own Whisper Money account, a closed system.",
+        "destructive_justification": "Read-only, so nothing can be changed or lost."
+      }
+    },
+    "create_dashboard": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it creates a new, empty dashboard in the user's own account.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new dashboard can be deleted afterwards in the app."
+      }
+    },
+    "create_widget": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it saves a new widget in the user's own account.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Additive and reversible: nothing existing is modified, and the new widget is not shown anywhere until it is placed."
+      }
+    },
+    "update_widget": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it saves a new revision of one of the user's widgets.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Reversible: every earlier revision is kept, and the widget can go back to any of them in the app or be saved again with the previous code."
+      }
+    },
+    "place_widget": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
+      "justifications": {
+        "read_only_justification": "Writes: it adds one of the user's widgets to one of their dashboards.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Additive and reversible: it adds a widget at the end of the dashboard, and remove_widget takes it off again."
+      }
+    },
+    "remove_widget": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it takes a widget off one of the user's dashboards.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Removes the widget from that dashboard, with its size and position. A widget the user wrote is kept and can be placed again; a built-in one can be put back in the app."
       }
     }
   },

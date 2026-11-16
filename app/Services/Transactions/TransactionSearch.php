@@ -51,14 +51,18 @@ class TransactionSearch
     }
 
     /**
+     * Rows whose readable text matches the LIKE pattern $term. Columns are
+     * qualified, so it also holds on a query that joined other tables
+     * ({@see TransactionAggregator}).
+     *
      * @param  Builder<Transaction>  $query
      */
-    private function matchReadableText(Builder $query, string $term): void
+    public function matchReadableText(Builder $query, string $term): void
     {
         $query->where(fn (Builder $text) => $text
-            ->where(fn (Builder $description) => $description->whereNull('description_iv')->where('description', 'like', $term))
-            ->orWhere(fn (Builder $notes) => $notes->whereNull('notes_iv')->where('notes', 'like', $term))
-            ->orWhere('creditor_name', 'like', $term)
-            ->orWhere('debtor_name', 'like', $term));
+            ->where(fn (Builder $description) => $description->whereNull('transactions.description_iv')->where('transactions.description', 'like', $term))
+            ->orWhere(fn (Builder $notes) => $notes->whereNull('transactions.notes_iv')->where('transactions.notes', 'like', $term))
+            ->orWhere('transactions.creditor_name', 'like', $term)
+            ->orWhere('transactions.debtor_name', 'like', $term));
     }
 }

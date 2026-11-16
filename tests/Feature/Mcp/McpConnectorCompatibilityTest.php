@@ -683,7 +683,7 @@ describe('framing', function () {
         $consent = requestOAuthConsent($user, $client, ['mcp:use'], $challenge)
             ->assertOk()
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'");
+            ->assertHeaderContains('Content-Security-Policy', "frame-ancestors 'none'");
 
         $approved = approveOAuthConsent($user, $client, $consent)->assertRedirect();
 

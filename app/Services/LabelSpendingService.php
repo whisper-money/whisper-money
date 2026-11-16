@@ -25,6 +25,18 @@ class LabelSpendingService
      */
     public function topForPeriod(string $userId, PeriodComparator $period): array
     {
+        return $this->comparedForPeriod($userId, $period, self::LIMIT);
+    }
+
+    /**
+     * Every label the user spent on during the period, biggest first, each
+     * with its spending in the preceding period. `total_amount` is what all
+     * of them add up to in the period, whatever $limit keeps.
+     *
+     * @return list<array{id: string, name: string, color: string, amount: int, previous_amount: int, total_amount: int}>
+     */
+    public function comparedForPeriod(string $userId, PeriodComparator $period, ?int $limit = null): array
+    {
         $current = $this->forPeriod($userId, $period->from, $period->to);
 
         if ($current->isEmpty()) {
@@ -37,7 +49,7 @@ class LabelSpendingService
 
         return $current
             ->sortByDesc('amount')
-            ->take(self::LIMIT)
+            ->when($limit !== null, fn (Collection $labels): Collection => $labels->take($limit))
             ->map(fn (array $label): array => [
                 ...$label,
                 'previous_amount' => $previous[$label['id']]['amount'] ?? 0,
@@ -57,7 +69,9 @@ class LabelSpendingService
      * are skipped: they track contributions, not spending.
      *
      * A transaction counts towards every label attached to it, so the totals can
-     * add up to more than the period's expenses.
+     * add up to more than the period's expenses. A split transaction counts by
+     * its lines, as {@see CategorySpendingService::forPeriod()} reads them: only
+     * the lines in an expense category, each weighed by the owner's share.
      *
      * @return Collection<string, array{id: string, name: string, color: string, amount: positive-int}>
      */
@@ -74,13 +88,14 @@ class LabelSpendingService
                     ->where('labels.source', '=', LabelSource::User)
                     ->whereNull('labels.deleted_at');
             })
+            ->joinPostingLines()
             ->leftJoin('categories', function (JoinClause $join): void {
-                $join->on('categories.id', '=', 'transactions.category_id')
+                $join->on('categories.id', '=', DB::raw(Transaction::POSTING_CATEGORY_SQL))
                     ->whereNull('categories.deleted_at');
             })
             ->where($this->expenseSide(...))
             ->groupBy('labels.id', 'labels.name', 'labels.color')
-            ->select('labels.id', 'labels.name', 'labels.color', DB::raw('sum('.Transaction::OWNED_AMOUNT_SQL.') as total_amount'))
+            ->select('labels.id', 'labels.name', 'labels.color', DB::raw('sum('.Transaction::OWNED_POSTING_AMOUNT_SQL.') as total_amount'))
             ->toBase()
             ->get()
             ->mapWithKeys(fn ($row): array => [
@@ -95,14 +110,16 @@ class LabelSpendingService
     }
 
     /**
-     * {@see Transaction::isExpenseSide()} expressed in SQL: an expense category,
-     * or money leaving with no category at all.
+     * {@see Transaction::isExpenseSide()} expressed in SQL, per posting: an
+     * expense category, or money leaving with no category at all. A split line
+     * always has a category, so only an unsplit row can be uncategorized.
      */
     private function expenseSide(Builder $query): void
     {
         $query->where('categories.type', CategoryType::Expense)
             ->orWhere(function (Builder $uncategorized): void {
-                $uncategorized->whereNull('transactions.category_id')
+                $uncategorized->whereNull('transaction_splits.id')
+                    ->whereNull('transactions.category_id')
                     ->where('transactions.amount', '<', 0);
             });
     }

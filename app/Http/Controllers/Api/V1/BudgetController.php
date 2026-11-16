@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\ApiV1\CursorPaginator;
+use App\Http\ApiV1\Listings;
 use App\Http\Requests\Api\V1\DeleteBudgetRequest;
 use App\Http\Requests\Api\V1\StoreBudgetRequest;
 use App\Http\Requests\Api\V1\UpdateBudgetPeriodRequest;
@@ -26,14 +26,9 @@ class BudgetController extends Controller
      * Archived budgets are left out; retrieve one by its id to read it. As in
      * the app, another member's budgets are not listed.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request, Listings $listings): AnonymousResourceCollection
     {
-        return CursorPaginator::paginate(
-            $this->owned($request, Budget::query())->notArchived()->with(BudgetResource::relations()),
-            $request,
-            [['created_at', 'desc'], ['id', 'desc']],
-            BudgetResource::class,
-        );
+        return $listings->budgets($this->user($request), $this->space($request))->paginate($request);
     }
 
     /**
