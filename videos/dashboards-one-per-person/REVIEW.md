@@ -65,11 +65,12 @@ were fixed the way an agent would. Captures: headless Chrome via Playwright.
   longer goes flat; the client "Studio Norte" became "Nortia" so it is not truncated.
 - P2 the agent bubble overlapped the dashed placeholder → the placeholder fades as the
   agents answer.
+- P1 (orchestrator) after a pane scrolled, a half-cut chat bubble peeked in at its top
+  edge → each bubble the scroll would cut fades out just before that scroll.
 - Technical review: one copy of the identical whoosh, the ffmpeg command documented in
   `scripts/music.mjs`, no `publish` script, the capture-height table commented.
 
 ## Weakest shot and what is left
 
-- After a pane scrolls, a sliver of the cut-off chat bubble shows at its top edge.
 - Widget body text in the panes is ~20 px, under the 28 px floor; the numbers, titles and
   bubbles carry the read, and the pull-back shows the dashboards whole, not to be read.

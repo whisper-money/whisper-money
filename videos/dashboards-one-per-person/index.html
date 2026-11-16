@@ -955,6 +955,18 @@
                     const ids = ['a', 'b', 'c'].map((s) => '#w' + n + s);
                     let bottom = STACK_TOP - GAP;
                     let scrolled = 0;
+                    const chatTop = document.getElementById(
+                        'chat' + n,
+                    ).offsetTop;
+                    const bubbles = ['#ask' + n, '#agent' + n].map(
+                        (selector) => ({
+                            selector,
+                            top:
+                                chatTop +
+                                document.querySelector(selector).offsetTop,
+                            gone: false,
+                        }),
+                    );
                     ids.forEach((id, k) => {
                         const land = 11.25 + i * BEAT + k * 4 * BEAT;
                         bottom += GAP + heights[i][k];
@@ -972,6 +984,23 @@
                                 },
                                 land - 0.45,
                             );
+                            // A bubble the scroll would cut at the pane's top edge leaves
+                            // before the scroll, so nothing half-cut ever shows.
+                            bubbles.forEach((bubble) => {
+                                if (!bubble.gone && needed > bubble.top) {
+                                    tl.to(
+                                        bubble.selector,
+                                        {
+                                            opacity: 0,
+                                            filter: 'blur(6px)',
+                                            duration: 0.2,
+                                            ease: 'power2.in',
+                                        },
+                                        land - 0.5,
+                                    );
+                                    bubble.gone = true;
+                                }
+                            });
                             scrolled = needed;
                         }
                         tl.fromTo(
