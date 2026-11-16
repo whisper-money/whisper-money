@@ -1,0 +1,1289 @@
+<!doctype html>
+<html
+    lang="en"
+    data-composition-variables='[{"id":"lang","type":"enum","label":"Language of the app captures","default":"en","options":[{"value":"en","label":"English"},{"value":"es","label":"Español"}]},{"id":"ask_dog","type":"string","label":"ask dog","default":"How much have I spent on the dog this year?"},{"id":"ask_coffee","type":"string","label":"ask coffee","default":"How many coffees do I have before 10am?"},{"id":"ask_japan","type":"string","label":"ask japan","default":"What&#39;s left to save for Japan?"},{"id":"ask_fuel","type":"string","label":"ask fuel","default":"Fuel or the bike: which costs me more?"},{"id":"agent","type":"string","label":"agent","default":"Your agent"},{"id":"claim_1","type":"string","label":"claim 1","default":"No widget"},{"id":"claim_2","type":"string","label":"claim 2","default":"existed until"},{"id":"claim_3","type":"string","label":"claim 3","default":"you asked for it"},{"id":"claim_accent","type":"string","label":"claim accent","default":"asked"},{"id":"cta","type":"string","label":"cta","default":"Ask for a chart. It lands on your dashboard."},{"id":"url","type":"string","label":"url","default":"whisper.money"},{"id":"plan","type":"string","label":"plan","default":"On the paid plan, with Claude or ChatGPT connected to Whisper Money."},{"id":"picker_x","type":"number","label":"Dashboard picker left (page px)","default":1119},{"id":"picker_width","type":"number","label":"Dashboard picker width (page px)","default":129},{"id":"code_dog","type":"string","label":"code dog","default":"export default function DogThisYear() {\nconst { months } = useWidgetData();\nconst { locale, currency, privacyMode } = useWidgetEnv();\nconst thisMonth = new Date().toISOString().slice(0, 7);\nconst monthName = new Intl.DateTimeFormat(locale, { month: &#39;narrow&#39;, timeZone: &#39;UTC&#39; });\nconst elapsed = months.data.buckets.filter((bucket) => bucket.month <= thisMonth);\nconst rows = elapsed.map((bucket) => ({\n    month: monthName.format(new Date(`${bucket.month}-01T00:00:00Z`)),\n    spent: Math.abs(bucket.sum),\n}));\nconst total = rows.reduce((sum, row) => sum + row.spent, 0);\nconst payments = elapsed.reduce((sum, bucket) => sum + bucket.count, 0);\n\nif (payments === 0) {\n    return <EmptyState title=\"Spent on the dog\" description=\"Since 1 January\" />;\n}\n\nreturn (\n    <div className=\"flex h-full flex-col gap-3 p-5\">\n        <div className=\"flex items-center gap-2\">\n            <PawPrint size={16} className=\"text-amber-600 dark:text-amber-400\" />\n            <h3 className=\"text-sm font-medium\">Spent on the dog</h3>\n        </div>\n        <div className=\"flex flex-col gap-1\">\n            <Amount amount={total} currency={currency} className=\"text-4xl font-semibold tracking-tight\" />\n            <p className=\"text-xs text-muted-foreground\">\n                Since 1 January · {payments} payments\n            </p>\n        </div>\n        <div className=\"min-h-0 flex-1\">\n            <ResponsiveContainer width=\"100%\" height=\"100%\">\n                <BarChart data={rows}>\n                    <XAxis dataKey=\"month\" tickLine={false} axisLine={false} />\n                    <ChartTooltip valueFormatter={(value) => (privacyMode ? &#39;•••&#39; : formatMoney(value, currency))} />"},{"id":"code_coffee","type":"string","label":"code coffee","default":"function hourOf(description) {\nconst last = description.split(&#39; &#39;).pop() ?? &#39;&#39;;\n\nreturn last.includes(&#39;:&#39;) ? Number(last.split(&#39;:&#39;)[0]) : null;\n}\n\nexport default function CoffeeBeforeTen() {\nconst { coffees } = useWidgetData();\nconst { currency, isCompact } = useWidgetEnv();\nconst timed = coffees.data"},{"id":"code_japan","type":"string","label":"code japan","default":"const progress = goal.data.progress;\n\nif (!progress) {\n    return <EmptyState title=\"No Japan goal yet\" />;\n}\n\nconst target = get(progress, &#39;target&#39;);\nconst left = Math.max(target - progress.saved, 0);\nconst by = progress.target_date"},{"id":"code_fuel","type":"string","label":"code fuel","default":"const bikeByMonth = new Map(bike.data.buckets.map((bucket) => [bucket.month, Math.abs(bucket.sum)]));\nconst rows = fuel.data.buckets\n    .filter((bucket) => bucket.month <= thisMonth)\n    .map((bucket) => ({\n        month: monthName.format(new Date(`${bucket.month}-01T00:00:00Z`)),\n        fuel: Math.abs(bucket.sum),\n        bike: bikeByMonth.get(bucket.month) ?? 0,\n    }));\nconst fuelTotal = rows.reduce((sum, row) => sum + row.fuel, 0);"}]'
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=1920, height=1080" />
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+        <style>
+            /* The app's own faces (resources/fonts), shipped with the project. */
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-style: normal;
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                    U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                    U+2212, U+2215, U+FEFF, U+FFFD;
+            }
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-style: normal;
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin-ext.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F,
+                    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113,
+                    U+2C60-2C7F, U+A720-A7FF;
+            }
+            @font-face {
+                font-family: 'Google Sans Code';
+                font-style: normal;
+                font-weight: 300 800;
+                src: url('assets/fonts/google-sans-code-normal-300-800-latin.woff2')
+                    format('woff2');
+            }
+
+            :root {
+                --ground: #fafafa;
+                --ink: #1b1b18;
+                --muted: #706f6c;
+                --line: #e3e3e0;
+                --accent: #16a34a;
+                --accent-dark: #4ade80;
+                --brand-dark: #1f1f1f;
+                --font-ui: 'IBM Plex Sans', sans-serif;
+                --font-code: 'Google Sans Code', 'JetBrains Mono', monospace;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 1920px;
+                height: 1080px;
+                overflow: hidden;
+                background: var(--ground);
+                font-family: var(--font-ui);
+                color: var(--ink);
+            }
+
+            /* ---------- the dashboard world ---------- */
+            #world {
+                position: absolute;
+                inset: 0;
+                background: var(--ground);
+                overflow: hidden;
+            }
+            /* The camera: the page in page px (1280 x 1010); GSAP sets x, y and scale. */
+            #cam {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 1280px;
+                height: 1010px;
+                transform-origin: 0 0;
+                overflow: hidden;
+                border-radius: 0;
+            }
+            #chrome {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 1280px;
+                height: 1010px;
+            }
+            .slot {
+                position: absolute;
+                border: 1.5px dashed #d4d4d0;
+                border-radius: 12px;
+                opacity: 0;
+            }
+            .w {
+                position: absolute;
+                opacity: 0;
+            }
+            .w img {
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 256px;
+            }
+            .w .half {
+                width: 472px;
+            }
+            .w .third {
+                width: 306.67px;
+                opacity: 0;
+            }
+            .ring {
+                position: absolute;
+                border: 2px solid var(--accent);
+                border-radius: 13px;
+                opacity: 0;
+            }
+
+            /* ---------- the conversation, in the empty slot ---------- */
+            .ask {
+                position: absolute;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 14px 16px;
+            }
+            .bubble {
+                align-self: flex-end;
+                max-width: 400px;
+                background: #27272a;
+                color: #fdfdfc;
+                font-size: 20px;
+                line-height: 1.3;
+                font-weight: 500;
+                padding: 9px 14px 10px;
+                border-radius: 14px 14px 4px 14px;
+                transform-origin: 100% 100%;
+            }
+            .bubble .word {
+                display: inline-block;
+                white-space: pre;
+            }
+            .agent {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 6px;
+                transform-origin: 0 0;
+            }
+            .agent-name {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 16px;
+                font-weight: 600;
+                color: var(--muted);
+                margin-right: 4px;
+            }
+            .agent-name::before {
+                content: '';
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #a1a09a;
+            }
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                font-family: var(--font-code);
+                font-size: 12px;
+                color: var(--muted);
+                background: #fdfdfc;
+                border: 1px solid var(--line);
+                border-radius: 6px;
+                padding: 2px 7px;
+                opacity: 0;
+            }
+            .chip .done {
+                color: var(--ink);
+                opacity: 0;
+            }
+            .code {
+                position: relative;
+                flex: 1;
+                overflow: hidden;
+                background: #fdfdfc;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                opacity: 0;
+            }
+            .code pre {
+                position: absolute;
+                left: 12px;
+                top: 8px;
+                font-family: var(--font-code);
+                font-size: 12px;
+                line-height: 18px;
+                color: #3f3f46;
+                white-space: pre;
+            }
+
+            #picker-ring {
+                position: absolute;
+                top: 94px;
+                height: 36px;
+                border: 2px solid var(--accent);
+                border-radius: 9px;
+                opacity: 0;
+            }
+
+            /* ---------- the claim ---------- */
+            #claim {
+                position: absolute;
+                left: 120px;
+                top: 0;
+                bottom: 0;
+                width: 820px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 4px;
+                opacity: 0;
+                font-size: 84px;
+                line-height: 1.08;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+            }
+            #claim .word {
+                display: inline-block;
+                white-space: pre;
+                color: #d4d4d0;
+            }
+
+            /* ---------- the end card ---------- */
+            #endcard {
+                position: absolute;
+                inset: 0;
+                background: var(--brand-dark);
+                color: #fdfdfc;
+            }
+            #lockup {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 330px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 34px;
+            }
+            #tile {
+                position: relative;
+                width: 148px;
+                height: 148px;
+                border-radius: 36px;
+                border: 3px solid #fdfdfc;
+                overflow: hidden;
+                opacity: 0;
+            }
+            #tile-fill {
+                position: absolute;
+                inset: 0;
+                background: #fdfdfc;
+                transform-origin: 50% 100%;
+            }
+            #bird {
+                position: absolute;
+                left: 10px;
+                top: 10px;
+                width: 128px;
+                height: 128px;
+            }
+            #bird path {
+                stroke: var(--brand-dark);
+            }
+            #wordmark {
+                font-family: 'IBM Plex Mono', monospace;
+                font-weight: 700;
+                font-size: 64px;
+                letter-spacing: -0.01em;
+                white-space: nowrap;
+            }
+            #cta {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 560px;
+                text-align: center;
+                font-size: 54px;
+                font-weight: 600;
+                letter-spacing: -0.015em;
+            }
+            #cta .word {
+                display: inline-block;
+                white-space: pre;
+            }
+            #url {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 666px;
+                text-align: center;
+                font-family: 'IBM Plex Mono', monospace;
+                font-weight: 600;
+                font-size: 44px;
+                color: var(--accent-dark);
+                opacity: 0;
+            }
+            #plan {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 760px;
+                text-align: center;
+                font-size: 36px;
+                color: #d4d4d0;
+                opacity: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div
+            id="root"
+            data-composition-id="main"
+            data-start="0"
+            data-duration="31.5"
+            data-width="1920"
+            data-height="1080"
+        >
+            <!-- One frame that rebuilds: the real dashboard, its widgets and the person's asks. -->
+            <div
+                id="world"
+                class="clip"
+                data-start="0"
+                data-duration="24.4"
+                data-track-index="1"
+                data-track-kind="graphics"
+                data-layout-allow-overflow
+                data-layout-allow-overlap
+            >
+                <div id="cam">
+                    <img
+                        id="chrome"
+                        data-app="chrome-tall.png"
+                        src="assets/app/en/chrome-tall.png"
+                        alt=""
+                    />
+
+                    <div
+                        id="slot-dog"
+                        class="slot"
+                        style="
+                            left: 776px;
+                            top: 166px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    ></div>
+                    <div
+                        id="slot-coffee"
+                        class="slot"
+                        style="
+                            left: 280px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    ></div>
+                    <div
+                        id="slot-japan"
+                        class="slot"
+                        style="
+                            left: 776px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    ></div>
+                    <div
+                        id="slot-fuel"
+                        class="slot"
+                        style="
+                            left: 280px;
+                            top: 726px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    ></div>
+
+                    <div
+                        id="w-groceries"
+                        class="w"
+                        style="
+                            left: 280px;
+                            top: 166px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <img
+                            class="half"
+                            data-app="w-groceries-half.png"
+                            src="assets/app/en/w-groceries-half.png"
+                            alt=""
+                        />
+                    </div>
+                    <div
+                        id="w-dog"
+                        class="w"
+                        style="
+                            left: 776px;
+                            top: 166px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <img
+                            class="half"
+                            data-app="w-dog-half.png"
+                            src="assets/app/en/w-dog-half.png"
+                            alt=""
+                        />
+                        <img
+                            class="third"
+                            data-app="w-dog-final.png"
+                            src="assets/app/en/w-dog-final.png"
+                            alt=""
+                        />
+                    </div>
+                    <div
+                        id="w-coffee"
+                        class="w"
+                        style="
+                            left: 280px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <img
+                            class="half"
+                            data-app="w-coffee-half.png"
+                            src="assets/app/en/w-coffee-half.png"
+                            alt=""
+                        />
+                        <img
+                            class="third"
+                            data-app="w-coffee-final.png"
+                            src="assets/app/en/w-coffee-final.png"
+                            alt=""
+                        />
+                    </div>
+                    <div
+                        id="w-japan"
+                        class="w"
+                        style="
+                            left: 776px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <img
+                            class="half"
+                            data-app="w-japan-half.png"
+                            src="assets/app/en/w-japan-half.png"
+                            alt=""
+                        />
+                        <img
+                            class="third"
+                            data-app="w-japan-final.png"
+                            src="assets/app/en/w-japan-final.png"
+                            alt=""
+                        />
+                    </div>
+                    <div
+                        id="w-fuel"
+                        class="w"
+                        style="
+                            left: 280px;
+                            top: 726px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <img
+                            class="half"
+                            data-app="w-fuel-half.png"
+                            src="assets/app/en/w-fuel-half.png"
+                            alt=""
+                        />
+                    </div>
+
+                    <div
+                        id="ring-dog"
+                        class="ring"
+                        style="
+                            left: 775px;
+                            top: 165px;
+                            width: 474px;
+                            height: 258px;
+                        "
+                    ></div>
+                    <div
+                        id="ring-coffee"
+                        class="ring"
+                        style="
+                            left: 279px;
+                            top: 445px;
+                            width: 474px;
+                            height: 258px;
+                        "
+                    ></div>
+                    <div
+                        id="ring-japan"
+                        class="ring"
+                        style="
+                            left: 775px;
+                            top: 445px;
+                            width: 474px;
+                            height: 258px;
+                        "
+                    ></div>
+                    <div
+                        id="ring-fuel"
+                        class="ring"
+                        style="
+                            left: 279px;
+                            top: 725px;
+                            width: 474px;
+                            height: 258px;
+                        "
+                    ></div>
+
+                    <!-- The first ask has room to show the code: the rows under the slot are still empty. -->
+                    <div
+                        id="ask-dog"
+                        class="ask"
+                        style="
+                            left: 776px;
+                            top: 166px;
+                            width: 472px;
+                            height: 404px;
+                        "
+                    >
+                        <p class="bubble" data-words="ask_dog"></p>
+                        <div class="agent">
+                            <span class="agent-name" data-var-text="agent"
+                                >Your agent</span
+                            >
+                            <span class="chip"
+                                >get_widget_sdk
+                                <span class="done">✓</span></span
+                            >
+                            <span class="chip"
+                                >create_widget <span class="done">✓</span></span
+                            >
+                            <span class="chip"
+                                >place_widget <span class="done">✓</span></span
+                            >
+                        </div>
+                        <div class="code"><pre data-code="code_dog"></pre></div>
+                    </div>
+                    <div
+                        id="ask-coffee"
+                        class="ask"
+                        style="
+                            left: 280px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <p class="bubble" data-words="ask_coffee"></p>
+                        <div class="agent">
+                            <span class="agent-name" data-var-text="agent"
+                                >Your agent</span
+                            >
+                            <span class="chip"
+                                >create_widget <span class="done">✓</span></span
+                            >
+                            <span class="chip"
+                                >place_widget <span class="done">✓</span></span
+                            >
+                        </div>
+                        <div class="code">
+                            <pre data-code="code_coffee"></pre>
+                        </div>
+                    </div>
+                    <div
+                        id="ask-japan"
+                        class="ask"
+                        style="
+                            left: 776px;
+                            top: 446px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <p class="bubble" data-words="ask_japan"></p>
+                        <div class="agent">
+                            <span class="agent-name" data-var-text="agent"
+                                >Your agent</span
+                            >
+                            <span class="chip"
+                                >create_widget <span class="done">✓</span></span
+                            >
+                            <span class="chip"
+                                >place_widget <span class="done">✓</span></span
+                            >
+                        </div>
+                        <div class="code">
+                            <pre data-code="code_japan"></pre>
+                        </div>
+                    </div>
+                    <div
+                        id="ask-fuel"
+                        class="ask"
+                        style="
+                            left: 280px;
+                            top: 726px;
+                            width: 472px;
+                            height: 256px;
+                        "
+                    >
+                        <p class="bubble" data-words="ask_fuel"></p>
+                        <div class="agent">
+                            <span class="agent-name" data-var-text="agent"
+                                >Your agent</span
+                            >
+                            <span class="chip"
+                                >create_widget <span class="done">✓</span></span
+                            >
+                            <span class="chip"
+                                >place_widget <span class="done">✓</span></span
+                            >
+                        </div>
+                        <div class="code">
+                            <pre data-code="code_fuel"></pre>
+                        </div>
+                    </div>
+
+                    <div id="picker-ring"></div>
+                </div>
+
+                <div id="claim" data-hold="the claim holds while it is read">
+                    <div data-words="claim_1"></div>
+                    <div data-words="claim_2"></div>
+                    <div data-words="claim_3"></div>
+                </div>
+            </div>
+
+            <!-- End card: the brand's dark ground, the bird performed in, the call to action. -->
+            <div
+                id="endcard"
+                class="clip"
+                data-start="23.9"
+                data-duration="7.6"
+                data-track-index="2"
+                data-track-kind="graphics"
+            >
+                <div id="lockup">
+                    <div id="tile">
+                        <div id="tile-fill"></div>
+                        <!-- public/favicon/apple-touch-icon.svg, its own paths -->
+                        <svg
+                            id="bird"
+                            viewBox="0 0 1024 1024"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M620.333 376.583H620.584"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M279.083 674.499H512C569.463 674.499 624.573 651.672 665.206 611.039C705.839 570.407 728.666 515.297 728.666 457.833V376.583C728.727 353.506 721.417 331.012 707.801 312.379C694.185 293.747 674.975 279.949 652.97 272.997C630.964 266.045 607.314 266.301 585.464 273.729C563.615 281.157 544.708 295.368 531.5 314.292L241.167 728.666"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M728.668 376.583L782.834 390.125L728.668 403.666"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M457.834 674.5V755.75"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M566.166 667.73V755.751"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M376.583 674.5C409.98 674.499 442.566 664.207 469.905 645.026C497.244 625.845 518.01 598.706 529.376 567.302C540.741 535.899 542.155 501.756 533.424 469.52C524.694 437.284 506.243 408.522 480.583 387.146"
+                                stroke-width="50"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </div>
+                    <div id="wordmark">Whisper Money</div>
+                </div>
+                <p id="cta" data-words="cta"></p>
+                <p id="url" data-var-text="url">whisper.money</p>
+                <p id="plan" data-var-text="plan">
+                    On the paid plan, with Claude or ChatGPT connected to
+                    Whisper Money.
+                </p>
+            </div>
+
+            <audio
+                id="bed"
+                class="clip"
+                src="assets/music/bed.mp3"
+                data-start="0"
+                data-duration="31.5"
+                data-track-index="10"
+                data-volume="1"
+                data-fade-out="2.5"
+            ></audio>
+            <audio
+                id="sfx-keys-1"
+                class="clip"
+                src="assets/sfx/key-press.mp3"
+                data-start="2.55"
+                data-duration="0.4"
+                data-track-index="11"
+                data-volume="0.5"
+            ></audio>
+            <audio
+                id="sfx-typing"
+                class="clip"
+                src="assets/sfx/typing.mp3"
+                data-start="3.25"
+                data-duration="1.5"
+                data-track-index="12"
+                data-volume="0.35"
+                data-fade-out="0.3"
+            ></audio>
+            <audio
+                id="sfx-land-dog"
+                class="clip"
+                src="assets/sfx/click.mp3"
+                data-start="5.033"
+                data-duration="0.36"
+                data-track-index="13"
+                data-volume="1"
+            ></audio>
+            <audio
+                id="sfx-keys-2"
+                class="clip"
+                src="assets/sfx/key-press.mp3"
+                data-start="8.6"
+                data-duration="0.4"
+                data-track-index="11"
+                data-volume="0.45"
+            ></audio>
+            <audio
+                id="sfx-land-coffee"
+                class="clip"
+                src="assets/sfx/click-2.mp3"
+                data-start="10.033"
+                data-duration="0.32"
+                data-track-index="13"
+                data-volume="1"
+            ></audio>
+            <audio
+                id="sfx-keys-3"
+                class="clip"
+                src="assets/sfx/key-press.mp3"
+                data-start="11.4"
+                data-duration="0.4"
+                data-track-index="11"
+                data-volume="0.45"
+            ></audio>
+            <audio
+                id="sfx-land-japan"
+                class="clip"
+                src="assets/sfx/click-3.mp3"
+                data-start="12.533"
+                data-duration="0.39"
+                data-track-index="13"
+                data-volume="1"
+            ></audio>
+            <audio
+                id="sfx-keys-4"
+                class="clip"
+                src="assets/sfx/key-press.mp3"
+                data-start="14.3"
+                data-duration="0.4"
+                data-track-index="11"
+                data-volume="0.45"
+            ></audio>
+            <audio
+                id="sfx-land-fuel"
+                class="clip"
+                src="assets/sfx/click.mp3"
+                data-start="15.333"
+                data-duration="0.36"
+                data-track-index="13"
+                data-volume="1"
+            ></audio>
+            <audio
+                id="sfx-reshuffle"
+                class="clip"
+                src="assets/sfx/whoosh-short.mp3"
+                data-start="16.2"
+                data-duration="0.57"
+                data-track-index="14"
+                data-volume="0.7"
+            ></audio>
+            <audio
+                id="sfx-riser"
+                class="clip"
+                src="assets/sfx/riser.mp3"
+                data-start="23.1"
+                data-media-start="0.4"
+                data-duration="2.4"
+                data-track-index="15"
+                data-volume="0.35"
+                data-fade-in="0.3"
+                data-fade-out="0.4"
+            ></audio>
+            <audio
+                id="sfx-flood"
+                class="clip"
+                src="assets/sfx/whoosh-short.mp3"
+                data-start="23.95"
+                data-duration="0.57"
+                data-track-index="14"
+                data-volume="0.6"
+            ></audio>
+        </div>
+
+        <script>
+            const vars = window.__hyperframes.getVariables();
+
+            // The same composition draws both languages: point every app capture at the right locale.
+            document.querySelectorAll('img[data-app]').forEach((img) => {
+                img.src = `assets/app/${vars.lang}/${img.dataset.app}`;
+            });
+            document.documentElement.lang = vars.lang;
+
+            // Sentences become one span per word, so they can build word by word.
+            document.querySelectorAll('[data-words]').forEach((element) => {
+                const words = String(vars[element.dataset.words]).split(' ');
+                element.replaceChildren(
+                    ...words.map((word, index) => {
+                        const span = document.createElement('span');
+                        span.className = 'word';
+                        span.textContent =
+                            index < words.length - 1 ? `${word} ` : word;
+                        if (
+                            word.replace(/[.,!?¿¡]/g, '') === vars.claim_accent
+                        ) {
+                            span.dataset.accent = 'true';
+                        }
+                        return span;
+                    }),
+                );
+            });
+            document.querySelectorAll('[data-code]').forEach((element) => {
+                element.textContent = vars[element.dataset.code];
+            });
+            document.querySelectorAll('[data-var-text]').forEach((element) => {
+                element.textContent = vars[element.dataset.varText];
+            });
+            const pickerRing = document.getElementById('picker-ring');
+            pickerRing.style.left = `${vars.picker_x - 2}px`;
+            pickerRing.style.width = `${vars.picker_width + 4}px`;
+
+            // The camera frames a rectangle of the page: x, y and width in page px.
+            const camera = (x, y, width) => {
+                const scale = 1920 / width;
+                return { x: -x * scale, y: -y * scale, scale };
+            };
+            const WHOLE = camera(0, 0, 1280);
+            const SLOT_CLOSE_UP = camera(480, 120, 800);
+            const THIRD_ROW = camera(0, 290, 1280);
+
+            const tl = gsap.timeline({ paused: true });
+            tl.set('#cam', WHOLE, 0);
+
+            const wordsIn = (selector, at, gap = 0.07) =>
+                tl.fromTo(
+                    `${selector} .word`,
+                    { opacity: 0, filter: 'blur(6px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.13,
+                        stagger: gap,
+                        ease: 'power2.out',
+                    },
+                    at,
+                );
+
+            const bubbleIn = (ask, at) => {
+                tl.fromTo(
+                    `${ask} .bubble`,
+                    { scale: 0.75, opacity: 0 },
+                    {
+                        scale: 1,
+                        opacity: 1,
+                        duration: 0.12,
+                        ease: 'power3.out',
+                    },
+                    at,
+                );
+                wordsIn(`${ask} .bubble`, at + 0.04);
+            };
+
+            const chipIn = (ask, index, at) =>
+                tl.fromTo(
+                    `${ask} .chip:nth-of-type(${index})`,
+                    { opacity: 0, y: 4 },
+                    { opacity: 1, y: 0, duration: 0.18, ease: 'expo.out' },
+                    at,
+                );
+            const chipDone = (ask, index, at) =>
+                tl.fromTo(
+                    `${ask} .chip:nth-of-type(${index}) .done`,
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.1 },
+                    at,
+                );
+
+            const codeRuns = (ask, at, duration, travel) => {
+                tl.fromTo(
+                    `${ask} .code`,
+                    { opacity: 0, scaleY: 0.85, transformOrigin: '50% 0%' },
+                    { opacity: 1, scaleY: 1, duration: 0.25, ease: 'expo.out' },
+                    at,
+                );
+                tl.fromTo(
+                    `${ask} .code pre`,
+                    { y: 0 },
+                    { y: -travel, duration, ease: 'none' },
+                    at + 0.15,
+                );
+            };
+
+            // A widget lands: the conversation gives way, the real widget sharpens into its cell.
+            const land = (name, at) => {
+                tl.to(
+                    `#ask-${name}`,
+                    {
+                        opacity: 0,
+                        filter: 'blur(8px)',
+                        duration: 0.2,
+                        ease: 'power3.in',
+                    },
+                    at - 0.12,
+                );
+                tl.to(`#slot-${name}`, { opacity: 0, duration: 0.15 }, at);
+                tl.fromTo(
+                    `#w-${name}`,
+                    { opacity: 0, scale: 0.96, filter: 'blur(8px)' },
+                    {
+                        opacity: 1,
+                        scale: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.35,
+                        ease: 'expo.out',
+                    },
+                    at - 0.05,
+                );
+                tl.fromTo(
+                    `#ring-${name}`,
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.15 },
+                    at,
+                );
+                tl.to(
+                    `#ring-${name}`,
+                    { opacity: 0, duration: 0.4, ease: 'power2.in' },
+                    at + 1.2,
+                );
+            };
+            const slotOpens = (name, at) =>
+                tl.fromTo(
+                    `#slot-${name}`,
+                    { opacity: 0, scale: 0.97 },
+                    { opacity: 1, scale: 1, duration: 0.3, ease: 'expo.out' },
+                    at,
+                );
+
+            // 0 s: the dashboard with groceries and an empty slot; the dog question types in.
+            tl.set('#w-groceries', { opacity: 1 }, 0);
+            tl.set('#slot-dog', { opacity: 1 }, 0);
+            tl.set('#ask-dog .bubble', { opacity: 1, scale: 1 }, 0);
+            // Frame 0 is the thumbnail: the first words are already there.
+            tl.fromTo(
+                '#ask-dog .bubble .word:nth-child(n+3)',
+                { opacity: 0, filter: 'blur(6px)' },
+                {
+                    opacity: 1,
+                    filter: 'blur(0px)',
+                    duration: 0.13,
+                    stagger: 0.12,
+                    ease: 'power2.out',
+                },
+                0.15,
+            );
+            tl.fromTo(
+                '#ask-dog .agent-name',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.15 },
+                2.45,
+            );
+            tl.to('#slot-dog', { opacity: 0, duration: 0.2 }, 2.45);
+
+            // 1.9 s: push in to the slot; the agent writes the widget.
+            tl.to(
+                '#cam',
+                { ...SLOT_CLOSE_UP, duration: 0.6, ease: 'power2.inOut' },
+                1.9,
+            );
+            chipIn('#ask-dog', 2, 2.55);
+            chipDone('#ask-dog', 2, 2.85);
+            chipIn('#ask-dog', 3, 3.0);
+            codeRuns('#ask-dog', 3.1, 1.6, 360);
+            chipDone('#ask-dog', 3, 4.75);
+            chipIn('#ask-dog', 4, 4.8);
+            chipDone('#ask-dog', 4, 4.95);
+            land('dog', 5.0);
+            tl.to(
+                '#cam',
+                { ...WHOLE, duration: 0.6, ease: 'power2.inOut' },
+                5.6,
+            );
+
+            // 6.9 s: coffee before 10am.
+            slotOpens('coffee', 6.9);
+            bubbleIn('#ask-coffee', 7.2);
+            tl.fromTo(
+                '#ask-coffee .agent-name',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.15 },
+                8.5,
+            );
+            chipIn('#ask-coffee', 2, 8.6);
+            codeRuns('#ask-coffee', 8.75, 1.0, 72);
+            chipDone('#ask-coffee', 2, 9.7);
+            chipIn('#ask-coffee', 3, 9.8);
+            chipDone('#ask-coffee', 3, 9.95);
+            land('coffee', 10.0);
+
+            // 10.4 s: what's left for Japan.
+            slotOpens('japan', 10.4);
+            bubbleIn('#ask-japan', 10.6);
+            tl.fromTo(
+                '#ask-japan .agent-name',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.15 },
+                11.3,
+            );
+            chipIn('#ask-japan', 2, 11.4);
+            codeRuns('#ask-japan', 11.5, 0.8, 54);
+            chipDone('#ask-japan', 2, 12.3);
+            chipIn('#ask-japan', 3, 12.35);
+            chipDone('#ask-japan', 3, 12.45);
+            land('japan', 12.5);
+
+            // 12.8 s: down one row for fuel vs. bike.
+            tl.to(
+                '#cam',
+                { ...THIRD_ROW, duration: 0.6, ease: 'power2.inOut' },
+                12.8,
+            );
+            slotOpens('fuel', 13.2);
+            bubbleIn('#ask-fuel', 13.3);
+            tl.fromTo(
+                '#ask-fuel .agent-name',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.15 },
+                14.25,
+            );
+            chipIn('#ask-fuel', 2, 14.3);
+            codeRuns('#ask-fuel', 14.4, 0.75, 54);
+            chipDone('#ask-fuel', 2, 15.1);
+            chipIn('#ask-fuel', 3, 15.15);
+            chipDone('#ask-fuel', 3, 15.25);
+            land('fuel', 15.3);
+
+            // 16.25 s: the grid reshuffles into the saved layout (three thirds over two halves).
+            const FINAL = {
+                dog: { x: 280, y: 166, third: true },
+                coffee: { x: 610.67, y: 166, third: true },
+                japan: { x: 941.33, y: 166, third: true },
+                fuel: { x: 280, y: 446 },
+                groceries: { x: 776, y: 446 },
+            };
+            const FROM = {
+                groceries: [280, 166],
+                dog: [776, 166],
+                coffee: [280, 446],
+                japan: [776, 446],
+                fuel: [280, 726],
+            };
+            Object.entries(FINAL).forEach(([name, target], index) => {
+                const at = 16.25 + index * 0.06;
+                const [fromX, fromY] = FROM[name];
+                tl.to(
+                    `#w-${name}`,
+                    {
+                        x: target.x - fromX,
+                        y: target.y - fromY,
+                        duration: 0.7,
+                        ease: 'power3.inOut',
+                    },
+                    at,
+                );
+                tl.to(
+                    `#w-${name}`,
+                    {
+                        filter: 'blur(4px)',
+                        duration: 0.35,
+                        ease: 'power2.in',
+                        yoyo: true,
+                        repeat: 1,
+                    },
+                    at,
+                );
+                if (target.third) {
+                    tl.to(
+                        `#w-${name} .half`,
+                        { opacity: 0, duration: 0.3, ease: 'power2.in' },
+                        at + 0.2,
+                    );
+                    tl.to(
+                        `#w-${name} .third`,
+                        { opacity: 1, duration: 0.3, ease: 'power2.out' },
+                        at + 0.3,
+                    );
+                }
+            });
+            tl.to(
+                '#cam',
+                { ...WHOLE, duration: 0.7, ease: 'power2.inOut' },
+                16.25,
+            );
+            tl.fromTo(
+                '#picker-ring',
+                { opacity: 0, scale: 0.92 },
+                { opacity: 1, scale: 1, duration: 0.3, ease: 'expo.out' },
+                17.4,
+            );
+
+            // 18.75 s: the page becomes a card; the claim builds on the left and holds.
+            tl.to('#picker-ring', { opacity: 0, duration: 0.2 }, 18.6);
+            tl.to(
+                '#cam',
+                {
+                    x: 940,
+                    y: 186,
+                    scale: 0.7,
+                    borderRadius: 26,
+                    boxShadow: '0 24px 60px rgba(0,0,0,0.12)',
+                    duration: 0.8,
+                    ease: 'power2.inOut',
+                },
+                18.75,
+            );
+            tl.fromTo(
+                '#claim',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.2 },
+                19.2,
+            );
+            tl.to(
+                '#claim .word',
+                {
+                    color: '#1b1b18',
+                    duration: 0.12,
+                    stagger: 0.1,
+                    ease: 'power1.out',
+                },
+                19.4,
+            );
+            tl.to(
+                '#claim .word[data-accent="true"]',
+                { color: '#16a34a', duration: 0.15 },
+                20.4,
+            );
+            tl.to(
+                '#cam',
+                {
+                    scale: 0.66,
+                    filter: 'blur(6px)',
+                    duration: 0.5,
+                    ease: 'power3.in',
+                },
+                23.9,
+            );
+
+            // 23.9 s: colour flood to the brand's dark ground, then the bird is drawn in.
+            // The flood grows out of the claim's green word, so the cut has a cause.
+            const accent = document.querySelector(
+                '#claim .word[data-accent="true"]',
+            );
+            const origin = accent
+                ? `${Math.round(120 + accent.offsetLeft + accent.offsetWidth / 2)}px ${Math.round(accent.offsetTop + accent.offsetHeight / 2 + (1080 - document.getElementById('claim').offsetHeight) / 2)}px`
+                : '50% 50%';
+            tl.fromTo(
+                '#endcard',
+                { clipPath: `circle(0px at ${origin})` },
+                {
+                    clipPath: `circle(2300px at ${origin})`,
+                    duration: 0.5,
+                    ease: 'power2.in',
+                },
+                23.9,
+            );
+            tl.fromTo(
+                '#tile',
+                { opacity: 0, scale: 0.85 },
+                { opacity: 1, scale: 1, duration: 0.35, ease: 'expo.out' },
+                24.3,
+            );
+            tl.fromTo(
+                '#tile-fill',
+                { scaleY: 0 },
+                { scaleY: 1, duration: 0.5, ease: 'power3.inOut' },
+                24.5,
+            );
+            document.querySelectorAll('#bird path').forEach((path) => {
+                const length = path.getTotalLength();
+                path.style.strokeDasharray = `${length}`;
+                path.style.strokeDashoffset = `${length}`;
+            });
+            tl.to(
+                '#bird path',
+                {
+                    strokeDashoffset: 0,
+                    duration: 0.7,
+                    stagger: 0.08,
+                    ease: 'power2.inOut',
+                },
+                24.95,
+            );
+            tl.fromTo(
+                '#wordmark',
+                { clipPath: 'inset(0 100% 0 0)' },
+                {
+                    clipPath: 'inset(0 0% 0 0)',
+                    duration: 0.5,
+                    ease: 'power3.out',
+                },
+                25.6,
+            );
+            wordsIn('#cta', 26.3, 0.08);
+            tl.fromTo(
+                '#url',
+                { opacity: 0, filter: 'blur(8px)' },
+                {
+                    opacity: 1,
+                    filter: 'blur(0px)',
+                    duration: 0.2,
+                    ease: 'power2.out',
+                },
+                27.2,
+            );
+            tl.fromTo(
+                '#plan',
+                { opacity: 0 },
+                { opacity: 1, duration: 0.3, ease: 'power1.out' },
+                27.45,
+            );
+
+            window.__timelines = window.__timelines || {};
+            window.__timelines['main'] = tl;
+        </script>
+    </body>
+</html>

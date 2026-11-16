@@ -1,0 +1,13 @@
+{
+    "name": "dashboards-one-of-a-kind",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "npx --yes hyperframes@0.9.58 preview",
+        "check": "npx --yes hyperframes@0.9.58 check",
+        "render": "npx --yes hyperframes@0.9.58 render",
+        "publish": "npx --yes hyperframes@0.9.58 publish",
+        "render:en": "npx --yes hyperframes@0.9.58 render --variables-file variables/en.json --strict-variables -q delivery -o renders/dashboards-one-of-a-kind-en.mp4",
+        "render:es": "npx --yes hyperframes@0.9.58 render --variables-file variables/es.json --strict-variables -q delivery -o renders/dashboards-one-of-a-kind-es.mp4"
+    }
+}
