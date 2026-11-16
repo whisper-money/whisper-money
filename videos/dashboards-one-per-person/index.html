@@ -816,7 +816,7 @@
             <audio
                 id="sfx-merge"
                 class="clip"
-                src="assets/sfx/whoosh.mp3"
+                src="assets/sfx/whoosh-short.mp3"
                 data-start="21.2"
                 data-duration="0.57"
                 data-track-index="16"
@@ -872,16 +872,18 @@
                     });
                 }
 
-                // Each capture's height at 560 px wide, from its 1146 px source.
+                // Pixel heights of assets/<lang>/<person>-w<n>.webp (all 1146 px wide),
+                // rows freelancer / family / traveller. The scroll and pull-back maths
+                // read them, so update this table whenever a capture is re-shot.
                 const SOURCE = {
                     en: [
-                        [534, 768, 1812],
-                        [1134, 768, 768],
+                        [738, 768, 2031],
+                        [780, 768, 768],
                         [768, 768, 768],
                     ],
                     es: [
-                        [534, 768, 1665],
-                        [1134, 768, 768],
+                        [738, 768, 1665],
+                        [780, 768, 768],
                         [768, 768, 768],
                     ],
                 }[lang];
@@ -947,7 +949,7 @@
                     tl.to(
                         '#blank' + n,
                         { opacity: 0, duration: 0.3, ease: 'power2.in' },
-                        10.9 + i * 0.12,
+                        9.85 + i * 0.12,
                     );
 
                     const ids = ['a', 'b', 'c'].map((s) => '#w' + n + s);

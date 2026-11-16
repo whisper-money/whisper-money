@@ -7,7 +7,11 @@
  *
  *   node videos/dashboards-one-per-person/scripts/music.mjs <out-dir> [seconds]
  *
- * Encode each to MP3 for assets/music with ffmpeg afterwards.
+ * Then encode each to the MP3 the film plays (run from the project folder):
+ *
+ *   for f in layer-pad layer-arpeggio layer-rhythm; do
+ *     ffmpeg -i <out-dir>/$f.wav -codec:a libmp3lame -b:a 160k assets/music/$f.mp3
+ *   done
  */
 import { Buffer } from 'node:buffer';
 import { writeFileSync } from 'node:fs';
