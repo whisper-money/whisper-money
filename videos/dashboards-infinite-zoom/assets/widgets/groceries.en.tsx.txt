@@ -1,0 +1,50 @@
+import {
+    Amount,
+    ChartTooltip,
+    EmptyState,
+    formatMoney,
+    useWidgetData,
+    useWidgetEnv,
+} from '@whisper-money/widget-sdk';
+import { Bar, BarChart, ResponsiveContainer, XAxis } from 'recharts';
+
+const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' });
+
+export default function WeeklyShop() {
+    const { shop } = useWidgetData();
+    const { currency, privacyMode } = useWidgetEnv();
+
+    const months = shop.data.buckets.map((bucket) => ({
+        month: MONTH.format(new Date(`${bucket.month}-01`)),
+        total: Math.abs(bucket.sum),
+    }));
+    const average = months.reduce((sum, month) => sum + month.total, 0) / Math.max(months.length, 1);
+
+    if (months.length === 0) {
+        return <EmptyState title="Nothing yet" />;
+    }
+
+    return (
+        <div className="flex h-full flex-col gap-3 p-4">
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium">The weekly shop, month by month</h3>
+                <p className="text-xs text-muted-foreground">Groceries since May</p>
+            </div>
+            <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Monthly average</span>
+                <Amount className="text-lg font-semibold" amount={Math.round(average)} currency={currency} />
+            </div>
+            <div className="min-h-0 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={months} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                        <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12 }} />
+                        <ChartTooltip
+                            valueFormatter={(value) => (privacyMode ? '•••' : formatMoney(value, currency))}
+                        />
+                        <Bar dataKey="total" fill="var(--color-emerald-500)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}

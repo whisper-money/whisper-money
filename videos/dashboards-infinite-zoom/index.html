@@ -1,0 +1,1147 @@
+<!doctype html>
+<html
+    lang="en"
+    data-composition-variables='[{"id": "hook_src", "type": "string", "label": "Opening widget capture", "default": "assets/captures/en/widget-groceries.png"}, {"id": "w1_src", "type": "string", "label": "Widget 1 capture", "default": "assets/captures/en/widget-takeaway.png"}, {"id": "w2_src", "type": "string", "label": "Widget 2 capture", "default": "assets/captures/en/widget-car.png"}, {"id": "w3_src", "type": "string", "label": "Widget 3 capture", "default": "assets/captures/en/widget-kids.png"}, {"id": "dash_src", "type": "string", "label": "Dashboard capture", "default": "assets/captures/en/dashboard.png"}, {"id": "ask_1_name", "type": "string", "label": "Ask 1: who", "default": "Maya"}, {"id": "ask_1", "type": "string", "label": "Ask 1", "default": "Do we order more takeaway at weekends?"}, {"id": "ask_2_name", "type": "string", "label": "Ask 2: who", "default": "Tom"}, {"id": "ask_2", "type": "string", "label": "Ask 2", "default": "When will the car be paid off?"}, {"id": "ask_3_name", "type": "string", "label": "Ask 3: who", "default": "Priya"}, {"id": "ask_3", "type": "string", "label": "Ask 3", "default": "What do the kids’ activities cost per term?"}, {"id": "agent", "type": "string", "label": "Agent label", "default": "Your agent"}, {"id": "agent_doing", "type": "string", "label": "Agent status", "default": "writing the widget"}, {"id": "placed", "type": "string", "label": "Placed line", "default": "Checked, then placed on your dashboard"}, {"id": "claim_a", "type": "string", "label": "Claim, line 1", "default": "No widget existed"}, {"id": "claim_b", "type": "string", "label": "Claim, line 2", "default": "until you asked for it."}, {"id": "claim_accent", "type": "string", "label": "Claim accent word", "default": "you"}, {"id": "claim_2", "type": "string", "label": "Second claim", "default": "Built by your agent, for you."}, {"id": "tagline", "type": "string", "label": "End card tagline", "default": "Ask for a chart. It lands on your dashboard."}, {"id": "cta", "type": "string", "label": "End card button", "default": "whisper.money"}, {"id": "note", "type": "string", "label": "End card note", "default": "On the paid plan, with Claude or ChatGPT connected to Whisper Money."}, {"id": "code_1", "type": "string", "label": "Widget 1 source lines", "default": "export default function TakeawayByWeekday() {\nconst { orders } = useWidgetData();\nfor (const row of orders.data) {\nconst weekday = (new Date(row.transaction_date).getUTCDay() + 6) % 7;\ntotals.at(weekday).total += Math.abs(row.amount);\nconst weekend = days\n&lt;h3 className=\"text-sm font-medium\"&gt;Takeaway: weeknights vs weekends&lt;/h3&gt;\nfill={WEEKEND.includes(index) ? &#x27;var(--color-amber-500)&#x27; : &#x27;var(--color-zinc-400)&#x27;}"}, {"id": "code_2", "type": "string", "label": "Widget 2 source lines", "default": "const BORROWED = 1800000;\nexport default function CarPaidOff() {\nconst { payments } = useWidgetData();\nconst paid = rows.reduce((sum, row) =&gt; sum + Math.abs(row.amount), 0);\nconst left = Math.max(BORROWED - paid, 0);\nconst paymentsLeft = instalment &gt; 0 ? Math.ceil(left / instalment) : 0;\nreturn { left, paymentsLeft, points, payoff: MONTH.format(payoff) };\n&lt;h3 className=\"text-sm font-medium\"&gt;When the car is paid off&lt;/h3&gt;"}, {"id": "code_3", "type": "string", "label": "Widget 3 source lines", "default": "export default function KidsActivitiesPerTerm() {\nconst { activities } = useWidgetData();\nfor (const bucket of activities.data.buckets) {\nconst term = termOf(bucket.month);\nsums.set(bucket.label_id, (sums.get(bucket.label_id) ?? 0) + Math.abs(bucket.sum));\n&lt;h3 className=\"text-sm font-medium\"&gt;Kids&#x27; activities per term&lt;/h3&gt;\nstackId=\"kids\"\n&lt;Legend iconType=\"circle\" iconSize={8} /&gt;"}]'
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=1920, height=1080" />
+        <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+        <style>
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+                    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+            }
+            @font-face {
+                font-family: 'IBM Plex Sans';
+                font-weight: 400 700;
+                src: url('assets/fonts/ibm-plex-sans-normal-400-700-latin-ext.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+                    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+                    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+                    U+2113, U+2C60-2C7F, U+A720-A7FF;
+            }
+            @font-face {
+                font-family: 'Google Sans Code';
+                font-weight: 300 800;
+                src: url('assets/fonts/google-sans-code-normal-300-800-latin.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+                    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+            }
+            @font-face {
+                font-family: 'Google Sans Code';
+                font-weight: 300 800;
+                src: url('assets/fonts/google-sans-code-normal-300-800-latin-ext.woff2')
+                    format('woff2');
+                unicode-range:
+                    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+                    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+                    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+                    U+2113, U+2C60-2C7F, U+A720-A7FF;
+            }
+            :root {
+                --ink: #0a0a0a;
+                --paper: #fafafa;
+                --app-dark: #1f1f1f;
+                --accent: #fe9a00;
+                --sans: 'IBM Plex Sans', sans-serif;
+                --mono: 'Google Sans Code', monospace;
+                --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                width: 1920px;
+                height: 1080px;
+                overflow: hidden;
+                background: #e4e4e7;
+            }
+            #root {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                font-family: var(--sans);
+                color: var(--ink);
+            }
+            #ground {
+                position: absolute;
+                inset: 0;
+                background: #e4e4e7;
+            }
+            .layer {
+                position: absolute;
+                inset: 0;
+            }
+
+            /* A real widget capture, drawn 1500 px wide in the middle of the frame. */
+            .widget {
+                position: absolute;
+                left: 210px;
+                top: 192px;
+                width: 1500px;
+                height: 696px;
+                border-radius: 26px;
+                box-shadow: var(--card-shadow);
+                overflow: hidden;
+                background: #fff;
+            }
+            .widget img {
+                display: block;
+                width: 1500px;
+                height: 696px;
+            }
+
+            /* The ask: a neutral chat bubble, never a copy of any assistant's UI. */
+            .ask-stage {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .ask {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 18px;
+                max-width: 1640px;
+            }
+            .who {
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                font-size: 40px;
+                font-weight: 600;
+            }
+            .avatar {
+                width: 72px;
+                height: 72px;
+                border-radius: 50%;
+                background: var(--ink);
+                color: var(--paper);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 40px;
+                font-weight: 700;
+            }
+            .bubble {
+                background: #fff;
+                border-radius: 8px 36px 36px 36px;
+                padding: 40px 52px;
+                box-shadow: var(--card-shadow);
+                font-size: 64px;
+                line-height: 1.2;
+                font-weight: 600;
+                letter-spacing: -0.015em;
+            }
+            .bubble .word {
+                display: inline-block;
+                margin-right: 0.24em;
+            }
+
+            /* The agent's card: the widget's real source, typed line by line. */
+            .agent {
+                position: absolute;
+                left: 140px;
+                top: 360px;
+                width: 1640px;
+                border-radius: 28px;
+                background: var(--app-dark);
+                color: var(--paper);
+                box-shadow: var(--card-shadow);
+                padding: 36px 48px 44px;
+            }
+            .agent-head {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                font-size: 30px;
+                font-weight: 600;
+                margin-bottom: 24px;
+            }
+            .agent-head .doing {
+                font-weight: 400;
+                color: #a1a1aa;
+            }
+            .agent-dot {
+                width: 14px;
+                height: 14px;
+                border-radius: 50%;
+                background: var(--accent);
+            }
+            .code {
+                font-family: var(--mono);
+                font-size: 28px;
+                line-height: 1.5;
+                white-space: pre;
+                color: #e4e4e7;
+            }
+            .code .line {
+                display: block;
+            }
+
+            .placed {
+                position: absolute;
+                left: 210px;
+                top: 912px;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                font-size: 32px;
+                font-weight: 600;
+            }
+            .placed svg {
+                width: 34px;
+                height: 34px;
+            }
+
+            /* The whole dashboard, captured at 1440 x 810 (16:9). */
+            .dash {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 1920px;
+                height: 1080px;
+                border-radius: 22px;
+                overflow: hidden;
+                box-shadow: var(--card-shadow);
+                transform-origin: 0 0;
+            }
+            .dash img {
+                display: block;
+                width: 1920px;
+                height: 1080px;
+            }
+
+            .claim {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                color: var(--paper);
+                font-size: 116px;
+                font-weight: 600;
+                letter-spacing: -0.02em;
+                line-height: 1.08;
+                text-align: center;
+            }
+            .claim .word {
+                display: inline-block;
+                margin: 0 0.13em;
+            }
+            .claim .accent {
+                color: var(--accent);
+            }
+            .claim-2 {
+                font-size: 104px;
+            }
+
+            .end {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 56px;
+            }
+            .lockup {
+                display: flex;
+                align-items: center;
+                gap: 30px;
+            }
+            .logo {
+                width: 132px;
+                height: 132px;
+                border-radius: 30px;
+                overflow: hidden;
+            }
+            .logo img {
+                display: block;
+                width: 132px;
+                height: 132px;
+            }
+            .wordmark {
+                font-family: var(--mono);
+                font-size: 64px;
+                font-weight: 600;
+                letter-spacing: -0.01em;
+            }
+            .tagline {
+                font-size: 56px;
+                font-weight: 600;
+                letter-spacing: -0.015em;
+            }
+            .cta {
+                background: var(--ink);
+                color: var(--paper);
+                font-size: 44px;
+                font-weight: 600;
+                padding: 22px 44px;
+                border-radius: 14px;
+            }
+            .note {
+                font-size: 30px;
+                color: #52525b;
+            }
+        </style>
+    </head>
+    <body>
+        <div
+            id="root"
+            data-composition-id="main"
+            data-start="0"
+            data-duration="33.5"
+            data-width="1920"
+            data-height="1080"
+        >
+            <div id="ground"></div>
+
+            <!-- 0.0-1.6 hook: a finished widget, then the dive into its tallest bar -->
+            <div
+                id="hook"
+                class="clip layer"
+                data-start="0"
+                data-duration="1.6"
+                data-track-index="1"
+            >
+                <div id="hook-zoom" class="widget">
+                    <img
+                        id="hook-img"
+                        src="assets/captures/en/widget-groceries.png"
+                        data-var-src="hook_src"
+                        alt=""
+                    />
+                </div>
+            </div>
+
+            <!-- cycle 1, on the bar's emerald -->
+            <div
+                id="c1-ask"
+                class="clip layer"
+                data-start="1.6"
+                data-duration="4.95"
+                data-track-index="2"
+            >
+                <div class="ask-stage">
+                    <div id="c1-ask-box" class="ask">
+                        <div class="who">
+                            <span id="c1-avatar" class="avatar"></span
+                            ><span id="c1-name"></span>
+                        </div>
+                        <div id="c1-bubble" class="bubble"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                id="c1-agent"
+                class="clip layer"
+                data-start="3.9"
+                data-duration="2.75"
+                data-track-index="3"
+            >
+                <div id="c1-card" class="agent">
+                    <div class="agent-head">
+                        <span class="agent-dot"></span
+                        ><span class="agent-name"></span
+                        ><span class="doing"></span>
+                    </div>
+                    <pre id="c1-code" class="code"></pre>
+                </div>
+            </div>
+            <div
+                id="c1-widget"
+                class="clip layer"
+                data-start="6.3"
+                data-duration="2.7"
+                data-track-index="4"
+            >
+                <div id="c1-zoom" class="widget">
+                    <img
+                        src="assets/captures/en/widget-takeaway.png"
+                        data-var-src="w1_src"
+                        alt=""
+                    />
+                </div>
+                <div id="c1-placed" class="placed"></div>
+            </div>
+
+            <!-- cycle 2, on the Friday bar's amber -->
+            <div
+                id="c2-ask"
+                class="clip layer"
+                data-start="9"
+                data-duration="3.95"
+                data-track-index="2"
+            >
+                <div class="ask-stage">
+                    <div id="c2-ask-box" class="ask">
+                        <div class="who">
+                            <span id="c2-avatar" class="avatar"></span
+                            ><span id="c2-name"></span>
+                        </div>
+                        <div id="c2-bubble" class="bubble"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                id="c2-agent"
+                class="clip layer"
+                data-start="10.8"
+                data-duration="2.15"
+                data-track-index="3"
+            >
+                <div id="c2-card" class="agent">
+                    <div class="agent-head">
+                        <span class="agent-dot"></span
+                        ><span class="agent-name"></span
+                        ><span class="doing"></span>
+                    </div>
+                    <pre id="c2-code" class="code"></pre>
+                </div>
+            </div>
+            <div
+                id="c2-widget"
+                class="clip layer"
+                data-start="12.6"
+                data-duration="2.4"
+                data-track-index="4"
+            >
+                <div id="c2-zoom" class="widget">
+                    <img
+                        src="assets/captures/en/widget-car.png"
+                        data-var-src="w2_src"
+                        alt=""
+                    />
+                </div>
+                <div id="c2-placed" class="placed"></div>
+            </div>
+
+            <!-- cycle 3, on the car loan's pale blue -->
+            <div
+                id="c3-ask"
+                class="clip layer"
+                data-start="15"
+                data-duration="3.55"
+                data-track-index="2"
+            >
+                <div class="ask-stage">
+                    <div id="c3-ask-box" class="ask">
+                        <div class="who">
+                            <span id="c3-avatar" class="avatar"></span
+                            ><span id="c3-name"></span>
+                        </div>
+                        <div id="c3-bubble" class="bubble"></div>
+                    </div>
+                </div>
+            </div>
+            <div
+                id="c3-agent"
+                class="clip layer"
+                data-start="16.7"
+                data-duration="1.85"
+                data-track-index="3"
+            >
+                <div id="c3-card" class="agent">
+                    <div class="agent-head">
+                        <span class="agent-dot"></span
+                        ><span class="agent-name"></span
+                        ><span class="doing"></span>
+                    </div>
+                    <pre id="c3-code" class="code"></pre>
+                </div>
+            </div>
+            <div
+                id="c3-widget"
+                class="clip layer"
+                data-start="18.2"
+                data-duration="1.7"
+                data-track-index="4"
+            >
+                <div id="c3-zoom" class="widget">
+                    <img
+                        src="assets/captures/en/widget-kids.png"
+                        data-var-src="w3_src"
+                        alt=""
+                    />
+                </div>
+                <div id="c3-placed" class="placed"></div>
+            </div>
+
+            <!-- 19.8-24.0 pull back to the whole dashboard -->
+            <div
+                id="pull"
+                class="clip layer"
+                data-start="19.8"
+                data-duration="4.2"
+                data-track-index="5"
+            >
+                <div id="dash" class="dash">
+                    <img
+                        src="assets/captures/en/dashboard.png"
+                        data-var-src="dash_src"
+                        alt=""
+                    />
+                </div>
+            </div>
+
+            <!-- 23.9-28.6 claim -->
+            <div
+                id="claim"
+                class="clip layer"
+                data-start="23.9"
+                data-duration="2.55"
+                data-track-index="6"
+            >
+                <div class="claim">
+                    <div id="claim-a"></div>
+                    <div id="claim-b"></div>
+                </div>
+            </div>
+            <div
+                id="claim2"
+                class="clip layer"
+                data-start="26.35"
+                data-duration="2.3"
+                data-track-index="6"
+            >
+                <div class="claim claim-2"><div id="claim-2"></div></div>
+            </div>
+
+            <!-- 28.5-33.5 end card -->
+            <div
+                id="endcard"
+                class="clip layer"
+                data-start="28.5"
+                data-duration="5"
+                data-track-index="7"
+            >
+                <div class="end">
+                    <div class="lockup">
+                        <div id="logo" class="logo">
+                            <img
+                                src="assets/brand/whispermoney-icon.png"
+                                alt="Whisper Money"
+                            />
+                        </div>
+                        <div id="wordmark" class="wordmark">Whisper Money</div>
+                    </div>
+                    <div id="tagline" class="tagline"></div>
+                    <div id="cta" class="cta"></div>
+                    <div id="note" class="note"></div>
+                </div>
+            </div>
+
+            <!-- sound: score (pad + pulse) and effects on their actions -->
+            <audio
+                id="score"
+                src="assets/audio/score.m4a"
+                data-start="0"
+                data-duration="33.5"
+                data-volume="1"
+                data-track-index="20"
+            ></audio>
+            <audio
+                id="sfx-whoosh-1"
+                src="assets/sfx/whoosh.mp3"
+                data-start="1.47"
+                data-duration="0.57"
+                data-volume="0.7"
+                data-track-index="21"
+            ></audio>
+            <audio
+                id="sfx-pop-1"
+                src="assets/sfx/pop.mp3"
+                data-start="1.66"
+                data-duration="0.7"
+                data-volume="0.6"
+                data-track-index="22"
+            ></audio>
+            <audio
+                id="sfx-typing-1"
+                src="assets/sfx/typing.mp3"
+                data-start="3.98"
+                data-duration="1.5"
+                data-volume="0.55"
+                data-track-index="23"
+            ></audio>
+            <audio
+                id="sfx-land-1"
+                src="assets/sfx/click-soft.mp3"
+                data-start="6.26"
+                data-duration="0.36"
+                data-volume="0.8"
+                data-track-index="24"
+            ></audio>
+            <audio
+                id="sfx-whoosh-2"
+                src="assets/sfx/whoosh.mp3"
+                data-start="8.89"
+                data-duration="0.5"
+                data-volume="0.7"
+                data-playback-rate="1.15"
+                data-track-index="21"
+            ></audio>
+            <audio
+                id="sfx-pop-2"
+                src="assets/sfx/click-soft.mp3"
+                data-start="9.0"
+                data-duration="0.36"
+                data-volume="0.8"
+                data-track-index="22"
+            ></audio>
+            <audio
+                id="sfx-typing-2"
+                src="assets/sfx/typing.mp3"
+                data-start="10.78"
+                data-duration="1.4"
+                data-volume="0.55"
+                data-track-index="23"
+            ></audio>
+            <audio
+                id="sfx-land-2"
+                src="assets/sfx/pop.mp3"
+                data-start="12.51"
+                data-duration="0.7"
+                data-volume="0.6"
+                data-track-index="24"
+            ></audio>
+            <audio
+                id="sfx-whoosh-3"
+                src="assets/sfx/whoosh.mp3"
+                data-start="14.91"
+                data-duration="0.44"
+                data-volume="0.7"
+                data-playback-rate="1.3"
+                data-track-index="21"
+            ></audio>
+            <audio
+                id="sfx-pop-3"
+                src="assets/sfx/pop.mp3"
+                data-start="14.95"
+                data-duration="0.7"
+                data-volume="0.6"
+                data-track-index="22"
+            ></audio>
+            <audio
+                id="sfx-typing-3"
+                src="assets/sfx/typing.mp3"
+                data-start="16.6"
+                data-duration="1.2"
+                data-volume="0.55"
+                data-track-index="23"
+            ></audio>
+            <audio
+                id="sfx-land-3"
+                src="assets/sfx/click-soft.mp3"
+                data-start="18.16"
+                data-duration="0.36"
+                data-volume="0.8"
+                data-track-index="24"
+            ></audio>
+            <audio
+                id="sfx-release"
+                src="assets/sfx/impact-bass-2.mp3"
+                data-start="17.85"
+                data-duration="2.59"
+                data-volume="0.55"
+                data-track-index="25"
+            ></audio>
+            <audio
+                id="sfx-logo"
+                src="assets/sfx/impact-bass-1.mp3"
+                data-start="29.03"
+                data-duration="2.1"
+                data-volume="0.6"
+                data-track-index="25"
+            ></audio>
+        </div>
+
+        <script>
+            (() => {
+                const declared = JSON.parse(
+                    document.documentElement.dataset.compositionVariables,
+                );
+                const defaults = Object.fromEntries(
+                    declared.map((variable) => [variable.id, variable.default]),
+                );
+                const v = {
+                    ...defaults,
+                    ...(window.__hyperframes?.getVariables?.() ?? {}),
+                };
+                const $ = (selector) => document.querySelector(selector);
+
+                /** Words as spans, so a line can arrive word by word. */
+                const words = (element, text, accent) => {
+                    element.textContent = '';
+                    for (const word of text.split(' ')) {
+                        const span = document.createElement('span');
+                        span.className = 'word';
+                        const bare = word.replace(/[^\p{L}]/gu, '');
+                        if (accent && bare === accent) {
+                            // Only the word takes the accent, not its punctuation.
+                            const [before, after] = word.split(bare);
+                            const mark = document.createElement('span');
+                            mark.className = 'accent';
+                            mark.textContent = bare;
+                            span.append(before, mark, after);
+                        } else {
+                            span.textContent = word;
+                        }
+                        element.append(span);
+                    }
+                    return [...element.children];
+                };
+
+                const CHECK =
+                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+                const W = 1500 / 552; // capture CSS px -> drawn px
+                const WIDGET = { left: 210, top: 192 };
+                const CENTER = { x: 960, y: 540 };
+
+                /** Push the camera into point (x, y) of a widget, in its capture's CSS px. */
+                const dive = (
+                    tl,
+                    selector,
+                    point,
+                    start,
+                    duration,
+                    scale = 26,
+                ) => {
+                    const origin = { x: point.x * W, y: point.y * W };
+                    tl.set(
+                        selector,
+                        { transformOrigin: `${origin.x}px ${origin.y}px` },
+                        0,
+                    );
+                    tl.fromTo(
+                        selector,
+                        { scale: 1, x: 0, y: 0 },
+                        {
+                            scale,
+                            x: CENTER.x - (WIDGET.left + origin.x),
+                            y: CENTER.y - (WIDGET.top + origin.y),
+                            duration,
+                            ease: 'power3.in',
+                        },
+                        start,
+                    );
+                };
+
+                const tl = gsap.timeline({ paused: true });
+                const ground = (color, at, duration = 0, from = null) =>
+                    duration === 0
+                        ? tl.set('#ground', { backgroundColor: color }, at)
+                        : tl.fromTo(
+                              '#ground',
+                              { backgroundColor: from },
+                              {
+                                  backgroundColor: color,
+                                  duration,
+                                  ease: 'power2.inOut',
+                                  immediateRender: false,
+                              },
+                              at,
+                          );
+
+                ground('#e4e4e7', 0);
+
+                // Hook: the weekly shop widget, then into its tallest bar.
+                dive(tl, '#hook-zoom', { x: 349.5, y: 185 }, 0.4, 1.2);
+                ground('#00bc7d', 1.55);
+
+                const cycles = [
+                    {
+                        n: 1,
+                        start: 1.6,
+                        card: 3.9,
+                        code: 4.4,
+                        gap: 0.2,
+                        land: 6.3,
+                        diveAt: 8.1,
+                        diveEnd: 9.0,
+                        target: { x: 349.5, y: 175.5 },
+                        next: '#fe9a00',
+                    },
+                    {
+                        n: 2,
+                        start: 9.0,
+                        card: 10.8,
+                        code: 11.2,
+                        gap: 0.15,
+                        land: 12.6,
+                        diveAt: 14.2,
+                        diveEnd: 15.0,
+                        target: { x: 250, y: 190 },
+                        next: '#d5e5ff',
+                    },
+                    {
+                        n: 3,
+                        start: 15.0,
+                        card: 16.7,
+                        code: 17.0,
+                        gap: 0.125,
+                        land: 18.2,
+                        diveAt: null,
+                        diveEnd: null,
+                    },
+                ];
+
+                for (const c of cycles) {
+                    const p = `#c${c.n}`;
+                    const name = v[`ask_${c.n}_name`];
+                    $(`${p}-name`).textContent = name;
+                    $(`${p}-avatar`).textContent = name.charAt(0);
+                    const askWords = words($(`${p}-bubble`), v[`ask_${c.n}`]);
+                    $(`${p}-card .agent-name`).textContent = v.agent;
+                    $(`${p}-card .doing`).textContent = `· ${v.agent_doing}`;
+                    $(`${p}-placed`).innerHTML = `${CHECK}<span></span>`;
+                    $(`${p}-placed span`).textContent = v.placed;
+                    const code = $(`${p}-code`);
+                    code.textContent = '';
+                    const lines = v[`code_${c.n}`].split('\n').map((text) => {
+                        const line = document.createElement('span');
+                        line.className = 'line';
+                        line.textContent = text;
+                        code.append(line);
+                        return line;
+                    });
+
+                    // The ask grows out of the point the camera dove into.
+                    tl.fromTo(
+                        `${p}-ask-box`,
+                        { scale: 0.4, opacity: 0 },
+                        {
+                            scale: 1,
+                            opacity: 1,
+                            duration: 0.5,
+                            ease: 'back.out(1.2)',
+                        },
+                        c.start + 0.02,
+                    );
+                    tl.fromTo(
+                        askWords,
+                        { opacity: 0, filter: 'blur(6px)' },
+                        {
+                            opacity: 1,
+                            filter: 'blur(0px)',
+                            duration: 0.13,
+                            stagger: 0.067,
+                            ease: 'power2.out',
+                        },
+                        c.start + 0.15,
+                    );
+
+                    // It rises; the agent's card opens under it and types the widget.
+                    tl.fromTo(
+                        `${p}-ask-box`,
+                        { y: 0, scale: 1 },
+                        {
+                            y: -330,
+                            scale: 0.72,
+                            duration: 0.5,
+                            ease: 'power2.inOut',
+                            immediateRender: false,
+                        },
+                        c.card,
+                    );
+                    tl.fromTo(
+                        `${p}-card`,
+                        { y: 90, opacity: 0, scale: 0.96 },
+                        {
+                            y: 0,
+                            opacity: 1,
+                            scale: 1,
+                            duration: 0.5,
+                            ease: 'expo.out',
+                        },
+                        c.card + 0.08,
+                    );
+                    tl.fromTo(
+                        lines,
+                        { clipPath: 'inset(0 100% 0 0)' },
+                        {
+                            clipPath: 'inset(0 0% 0 0)',
+                            duration: 0.16,
+                            stagger: c.gap,
+                            ease: 'none',
+                        },
+                        c.code,
+                    );
+
+                    // The card becomes the widget it wrote.
+                    tl.fromTo(
+                        lines,
+                        { opacity: 1, filter: 'blur(0px)' },
+                        {
+                            opacity: 0,
+                            filter: 'blur(8px)',
+                            duration: 0.18,
+                            ease: 'power2.in',
+                            immediateRender: false,
+                        },
+                        c.land - 0.05,
+                    );
+                    tl.fromTo(
+                        `${p}-card`,
+                        { scale: 1, opacity: 1 },
+                        {
+                            scale: 0.92,
+                            opacity: 0,
+                            duration: 0.25,
+                            ease: 'power3.in',
+                            immediateRender: false,
+                        },
+                        c.land,
+                    );
+                    tl.fromTo(
+                        `${p}-ask-box`,
+                        { opacity: 1, filter: 'blur(0px)' },
+                        {
+                            opacity: 0,
+                            filter: 'blur(8px)',
+                            duration: 0.2,
+                            ease: 'power2.in',
+                            immediateRender: false,
+                        },
+                        c.land,
+                    );
+                    tl.fromTo(
+                        `${p}-zoom`,
+                        {
+                            clipPath: 'inset(100% 0% 0% 0% round 26px)',
+                            scale: 0.96,
+                        },
+                        {
+                            clipPath: 'inset(0% 0% 0% 0% round 26px)',
+                            scale: 1,
+                            duration: 0.55,
+                            ease: 'expo.out',
+                        },
+                        c.land + 0.05,
+                    );
+                    tl.fromTo(
+                        `${p}-placed`,
+                        { opacity: 0, filter: 'blur(6px)' },
+                        {
+                            opacity: 1,
+                            filter: 'blur(0px)',
+                            duration: 0.2,
+                            ease: 'power2.out',
+                        },
+                        c.land + 0.6,
+                    );
+
+                    if (c.diveAt !== null) {
+                        tl.fromTo(
+                            `${p}-placed`,
+                            { opacity: 1 },
+                            {
+                                opacity: 0,
+                                duration: 0.15,
+                                ease: 'power2.in',
+                                immediateRender: false,
+                            },
+                            c.diveAt,
+                        );
+                        dive(
+                            tl,
+                            `${p}-zoom`,
+                            c.target,
+                            c.diveAt,
+                            c.diveEnd - c.diveAt,
+                        );
+                        ground(c.next, c.diveEnd - 0.05);
+                    }
+                }
+
+                // Pull back: the kids widget is the same pixels as its cell in the
+                // dashboard (280, 446, 552 x 256 CSS px of a 1440 x 810 capture).
+                const D = 1920 / 1440;
+                const cell = { x: 280 * D, y: 446 * D, width: 552 * D };
+                const s = 1500 / cell.width;
+                tl.fromTo(
+                    '#c3-placed',
+                    { opacity: 1 },
+                    {
+                        opacity: 0,
+                        duration: 0.15,
+                        ease: 'power2.in',
+                        immediateRender: false,
+                    },
+                    19.6,
+                );
+                tl.fromTo(
+                    '#dash',
+                    {
+                        scale: s,
+                        x: WIDGET.left - cell.x * s,
+                        y: WIDGET.top - cell.y * s,
+                        borderRadius: 26 / s,
+                    },
+                    {
+                        scale: 0.88,
+                        x: 1920 * 0.06,
+                        y: 1080 * 0.06,
+                        borderRadius: 22,
+                        duration: 1.6,
+                        ease: 'power2.inOut',
+                    },
+                    19.8,
+                );
+
+                // The dashboard leaves; the ground floods to the app's own dark.
+                tl.fromTo(
+                    '#dash',
+                    {
+                        scale: 0.88,
+                        x: 1920 * 0.06,
+                        y: 1080 * 0.06,
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                    },
+                    {
+                        scale: 0.8,
+                        x: 1920 * 0.1,
+                        y: 1080 * 0.1,
+                        opacity: 0,
+                        filter: 'blur(8px)',
+                        duration: 0.35,
+                        ease: 'power3.in',
+                        immediateRender: false,
+                    },
+                    23.6,
+                );
+                ground('#1f1f1f', 23.55, 0.4, '#d5e5ff');
+
+                // Claim, word by word, then held still.
+                const claimWords = [
+                    ...words($('#claim-a'), v.claim_a, v.claim_accent),
+                    ...words($('#claim-b'), v.claim_b, v.claim_accent),
+                ];
+                tl.fromTo(
+                    claimWords,
+                    { opacity: 0, filter: 'blur(6px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.13,
+                        stagger: 0.067,
+                        ease: 'power2.out',
+                    },
+                    23.95,
+                );
+                tl.fromTo(
+                    claimWords,
+                    { opacity: 1, filter: 'blur(0px)' },
+                    {
+                        opacity: 0,
+                        filter: 'blur(8px)',
+                        duration: 0.18,
+                        ease: 'power2.in',
+                        immediateRender: false,
+                    },
+                    26.2,
+                );
+                $('#claim-2').textContent = v.claim_2;
+                tl.fromTo(
+                    '#claim-2',
+                    { opacity: 0, filter: 'blur(8px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.2,
+                        ease: 'power2.out',
+                    },
+                    26.38,
+                );
+                tl.fromTo(
+                    '#claim-2',
+                    { opacity: 1, filter: 'blur(0px)' },
+                    {
+                        opacity: 0,
+                        filter: 'blur(8px)',
+                        duration: 0.18,
+                        ease: 'power2.in',
+                        immediateRender: false,
+                    },
+                    28.42,
+                );
+
+                // End card: the mark fills up, the name wipes in beside it.
+                ground('#f4f4f5', 28.45, 0.4, '#1f1f1f');
+                $('#tagline').textContent = v.tagline;
+                $('#cta').textContent = v.cta;
+                $('#note').textContent = v.note;
+                tl.fromTo(
+                    '#logo',
+                    { clipPath: 'inset(100% 0% 0% 0% round 30px)', scale: 0.9 },
+                    {
+                        clipPath: 'inset(0% 0% 0% 0% round 30px)',
+                        scale: 1,
+                        duration: 0.5,
+                        ease: 'expo.out',
+                    },
+                    28.65,
+                );
+                tl.fromTo(
+                    '#wordmark',
+                    { clipPath: 'inset(0% 100% 0% 0%)' },
+                    {
+                        clipPath: 'inset(0% 0% 0% 0%)',
+                        duration: 0.45,
+                        ease: 'power3.out',
+                    },
+                    29.1,
+                );
+                tl.fromTo(
+                    '#tagline',
+                    { opacity: 0, filter: 'blur(8px)' },
+                    {
+                        opacity: 1,
+                        filter: 'blur(0px)',
+                        duration: 0.2,
+                        ease: 'power2.out',
+                    },
+                    29.7,
+                );
+                tl.fromTo(
+                    '#cta',
+                    { opacity: 0, y: 24 },
+                    { opacity: 1, y: 0, duration: 0.45, ease: 'expo.out' },
+                    30.1,
+                );
+                tl.fromTo(
+                    '#note',
+                    { opacity: 0 },
+                    { opacity: 1, duration: 0.3, ease: 'power2.out' },
+                    30.2,
+                );
+
+                window.__timelines = window.__timelines || {};
+                window.__timelines['main'] = tl;
+            })();
+        </script>
+    </body>
+</html>
