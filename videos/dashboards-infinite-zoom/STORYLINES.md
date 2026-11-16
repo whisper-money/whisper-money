@@ -24,7 +24,7 @@ custom dashboards launch). The other two are separate films in
   camera dove into (emerald, amber, pale blue), real light-mode UI at the
   centre at 60–80% of the frame width. No glow, no dark void.
 - **Sound:** a kick pulse that speeds up on every dive (92 → 112 → 132 BPM),
-  then stops and releases into a pad on the pull-back.
+  then stops and releases on a low impact at the pull-back.
 
 ## A. One of a kind (not built here)
 

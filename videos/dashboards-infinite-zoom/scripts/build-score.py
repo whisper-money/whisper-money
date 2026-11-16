@@ -1,9 +1,8 @@
-"""Builds assets/audio/score.m4a: the MusicGen pad plus a kick pulse that speeds
-up on every dive and stops on the pull-back.
+"""Builds assets/audio/score.m4a: a kick pulse that speeds up on every dive and
+stops on the pull-back.
 
-The pad (assets/audio/pad-musicgen.flac) was generated on this machine with
-facebook/musicgen-small (seed 7, prompt in REVIEW.md). The kick is the attack
-of the bundled impact-bass-1 sample (assets/sfx/). Nothing is synthesised.
+The kick is the attack of the bundled impact-bass-1 sample (assets/sfx/,
+Pixabay licence). Nothing is synthesised and no generated music is used.
 
 Usage (needs numpy, soundfile and ffmpeg): python3 scripts/build-score.py
 """
@@ -55,22 +54,6 @@ KICKS = (
 
 total = int(LENGTH * RATE)
 
-# Pad: crossfade-loop the 28 s clip to the film's length.
-pad = load(ROOT / "assets/audio/pad-musicgen.flac")
-fade = int(3 * RATE)
-looped = pad.copy()
-while len(looped) < total:
-    ramp = np.linspace(0, 1, fade)
-    head = looped[:-fade]
-    joint = looped[-fade:] * (1 - ramp) + pad[:fade] * ramp
-    looped = np.concatenate([head, joint, pad[fade:]])
-looped = looped[:total]
-t = np.arange(total) / RATE
-pad_gain = np.where(t < RELEASE, 0.55, 1.0)
-pad_gain = np.convolve(pad_gain, np.ones(int(0.8 * RATE)) / int(0.8 * RATE), mode="same")
-pad_gain *= np.clip(t / 0.4, 0, 1) * np.clip((LENGTH - t) / 1.5, 0, 1)
-pad_mix = looped / (np.abs(looped).max() + 1e-9) * 0.5 * pad_gain
-
 # Kick: the first 0.3 s of impact-bass-1, with a short fade so it does not click.
 impact = load(ROOT / "assets/sfx/impact-bass-1.mp3")
 kick = impact[: int(0.3 * RATE)].copy()
@@ -80,9 +63,9 @@ kick_mix = np.zeros(total)
 for time in KICKS:
     start = int(time * RATE)
     end = min(start + len(kick), total)
-    kick_mix[start:end] += kick[: end - start] * 0.42
+    kick_mix[start:end] += kick[: end - start] * 0.36
 
-score = pad_mix + kick_mix
+score = kick_mix
 score /= max(1.0, np.abs(score).max() / 0.89)
 wav = ROOT / "assets/audio/score.wav"
 sf.write(wav, np.stack([score, score], axis=1), RATE)

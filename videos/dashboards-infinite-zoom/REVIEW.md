@@ -33,7 +33,7 @@ same `index.html` (Spanish: `--variables-file variables.es.json`).
 - `npx hyperframes check --json`: no errors. Warnings kept: the ones above.
 - `snapshot --review` sheets, plus frames of both rendered MP4s at the SPEC QA
   times (`~/Movies/whisper-money-promos/dashboards-infinite-zoom-contact-sheet.jpg`).
-- Sound, measured on both renders with `npx hyperframes audio`: −15.6 LUFS
+- Sound, measured on both renders with `npx hyperframes audio`: −16.5 LUFS
   integrated, −1.0 dBTP true peak, no clipping; onsets line up with the dives
   (1.6, 9.0, 15.0) and the kicks speed up per cycle. **Nobody heard it.**
 - Text sizes: asks 64 px, claim 116/104 px, code 28 px, end-card note 30 px.
@@ -51,12 +51,12 @@ same `index.html` (Spanish: `--variables-file variables.es.json`).
 
 ## Open before publishing
 
-- **Music licence.** The pad is MusicGen output, and the `facebook/musicgen-small`
-  weights are released under CC-BY-NC 4.0. Whether that reaches a commercial
-  promo is a call for whoever publishes it. If the answer is no, drop the pad
-  from `scripts/build-score.py` (the pulse and every effect are Pixabay-licensed
-  samples) or swap in a licensed track; nothing else changes.
 - **Listen to it.** The mix was measured, not heard.
+
+A MusicGen pad sat under the pulse in the first cut. It was removed: the
+`facebook/musicgen-small` weights are CC-BY-NC 4.0, which is not safe for a
+brand promo. The score is now the kick pulse alone, and every sound in the film
+is a Pixabay-licensed sample.
 
 ## Known shortcuts
 
@@ -88,13 +88,11 @@ data call and the title line) and a cut straight to the widget building.
 videos/dashboards-infinite-zoom/scripts/capture.mjs` (headless Chrome,
    1440 × 810 at 3x, light mode), which also writes `layout.json` with every
    widget's and bar's position, used for the dive targets.
-4. **Sound**: `assets/audio/pad-musicgen.flac` was generated locally with
-   `facebook/musicgen-small`, seed 7, prompt "warm ambient synth pad, slow
-   evolving chords, bright and hopeful, minimal, no drums, no percussion, clean
-   modern production". `scripts/build-score.py` adds the kick pulse (the attack
-   of the bundled `impact-bass-1`) and writes `assets/audio/score.m4a`. The
-   effects come from the HyperFrames bundled library (Pixabay licence,
-   `assets/sfx/CREDITS.md`).
+4. **Sound**: `scripts/build-score.py` lays the kick pulse (the attack of the
+   bundled `impact-bass-1`) on the film's beat grid and writes
+   `assets/audio/score.m4a`. It and every effect come from the HyperFrames
+   bundled library (Pixabay licence, `assets/sfx/CREDITS.md`); no generated
+   music is used.
 5. **Render**: `npx hyperframes render --quality delivery -o
 renders/dashboards-infinite-zoom-en.mp4`, and for Spanish add
    `--strict-variables --variables-file variables.es.json`.

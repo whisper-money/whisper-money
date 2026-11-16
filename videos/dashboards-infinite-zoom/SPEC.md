@@ -49,7 +49,7 @@ SHOTS:   0.0-1.6   hook: real "weekly shop" widget on #e4e4e7, frame 0 is the
          19.8-23.6 pull back: the kids widget is the same pixels as its cell
                    in the dashboard capture; the camera pulls back until the
                    whole "Home" dashboard fills 88% of the frame; pulse stops,
-                   pad and a low impact release; hold 2.2 s.
+                   a low impact releases it; hold 2.2 s.
          23.6-27.8 claim on #1f1f1f: "No widget existed / until you asked for
                    it." per word, held 2.3 s; swaps to "Built by your agent,
                    for you." held 1.6 s.
