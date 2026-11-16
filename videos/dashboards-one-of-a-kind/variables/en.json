@@ -1,0 +1,21 @@
+{
+    "lang": "en",
+    "ask_dog": "How much have I spent on the dog this year?",
+    "ask_coffee": "How many coffees do I have before 10am?",
+    "ask_japan": "What's left to save for Japan?",
+    "ask_fuel": "Fuel or the bike: which costs me more?",
+    "agent": "Your agent",
+    "claim_1": "No widget",
+    "claim_2": "existed until",
+    "claim_3": "you asked for it",
+    "claim_accent": "asked",
+    "cta": "Ask for a chart. It lands on your dashboard.",
+    "url": "whisper.money",
+    "plan": "On the paid plan, with Claude or ChatGPT connected to Whisper Money.",
+    "picker_x": 1119,
+    "picker_width": 129,
+    "code_dog": "export default function DogThisYear() {\nconst { months } = useWidgetData();\nconst { locale, currency, privacyMode } = useWidgetEnv();\nconst thisMonth = new Date().toISOString().slice(0, 7);\nconst monthName = new Intl.DateTimeFormat(locale, { month: 'narrow', timeZone: 'UTC' });\nconst elapsed = months.data.buckets.filter((bucket) => bucket.month <= thisMonth);\nconst rows = elapsed.map((bucket) => ({\n    month: monthName.format(new Date(`${bucket.month}-01T00:00:00Z`)),\n    spent: Math.abs(bucket.sum),\n}));\nconst total = rows.reduce((sum, row) => sum + row.spent, 0);\nconst payments = elapsed.reduce((sum, bucket) => sum + bucket.count, 0);\n\nif (payments === 0) {\n    return <EmptyState title=\"Spent on the dog\" description=\"Since 1 January\" />;\n}\n\nreturn (\n    <div className=\"flex h-full flex-col gap-3 p-5\">\n        <div className=\"flex items-center gap-2\">\n            <PawPrint size={16} className=\"text-amber-600 dark:text-amber-400\" />\n            <h3 className=\"text-sm font-medium\">Spent on the dog</h3>\n        </div>\n        <div className=\"flex flex-col gap-1\">\n            <Amount amount={total} currency={currency} className=\"text-4xl font-semibold tracking-tight\" />\n            <p className=\"text-xs text-muted-foreground\">\n                Since 1 January · {payments} payments\n            </p>\n        </div>\n        <div className=\"min-h-0 flex-1\">\n            <ResponsiveContainer width=\"100%\" height=\"100%\">\n                <BarChart data={rows}>\n                    <XAxis dataKey=\"month\" tickLine={false} axisLine={false} />\n                    <ChartTooltip valueFormatter={(value) => (privacyMode ? '•••' : formatMoney(value, currency))} />",
+    "code_coffee": "function hourOf(description) {\nconst last = description.split(' ').pop() ?? '';\n\nreturn last.includes(':') ? Number(last.split(':')[0]) : null;\n}\n\nexport default function CoffeeBeforeTen() {\nconst { coffees } = useWidgetData();\nconst { currency, isCompact } = useWidgetEnv();\nconst timed = coffees.data",
+    "code_japan": "const progress = goal.data.progress;\n\nif (!progress) {\n    return <EmptyState title=\"No Japan goal yet\" />;\n}\n\nconst target = get(progress, 'target');\nconst left = Math.max(target - progress.saved, 0);\nconst by = progress.target_date",
+    "code_fuel": "const bikeByMonth = new Map(bike.data.buckets.map((bucket) => [bucket.month, Math.abs(bucket.sum)]));\nconst rows = fuel.data.buckets\n    .filter((bucket) => bucket.month <= thisMonth)\n    .map((bucket) => ({\n        month: monthName.format(new Date(`${bucket.month}-01T00:00:00Z`)),\n        fuel: Math.abs(bucket.sum),\n        bike: bikeByMonth.get(bucket.month) ?? 0,\n    }));\nconst fuelTotal = rows.reduce((sum, row) => sum + row.fuel, 0);"
+}
