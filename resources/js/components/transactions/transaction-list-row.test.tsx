@@ -142,6 +142,30 @@ describe('TransactionListRow', () => {
         expect(screen.getByText('Trip')).not.toHaveClass('bg-neutral-100');
     });
 
+    it('marks a savings goal label with a piggy bank, any other with a tag', () => {
+        renderRow({
+            labels: [
+                ...labels,
+                {
+                    id: 'label-goal',
+                    name: 'Holidays',
+                    color: 'amber',
+                    source: 'saving_goal',
+                },
+            ] as Label[],
+            transaction: buildTransaction({
+                label_ids: ['label-trip', 'label-goal'],
+            }),
+        });
+
+        expect(
+            screen.getByText('Holidays').querySelector('.lucide-piggy-bank'),
+        ).not.toBeNull();
+        expect(
+            screen.getByText('Trip').querySelector('.lucide-tag'),
+        ).not.toBeNull();
+    });
+
     it('draws no label line when there is nothing to show', () => {
         renderRow({
             transaction: buildTransaction({ label_ids: ['label-trip'] }),
