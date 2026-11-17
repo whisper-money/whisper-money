@@ -56,7 +56,7 @@ class LabelWriter
      */
     public static function archivedNameClashMessage(Label $clash): string
     {
-        return __('There is an archived label called “:name”. Unarchive it instead of creating another one.', ['name' => $clash->name]);
+        return __('There is an archived label called “:name”. Unarchive it instead of reusing its name.', ['name' => $clash->name]);
     }
 
     /**

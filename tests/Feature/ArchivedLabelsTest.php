@@ -578,7 +578,7 @@ describe('filters, search and reports', function () {
 describe('name uniqueness', function () {
     it('points at unarchiving when a new label clashes with an archived one on the web', function () {
         actingAs($this->user)->post(route('labels.store'), ['name' => 'Old trip', 'color' => 'blue'])
-            ->assertSessionHasErrors(['name' => __('There is an archived label called “:name”. Unarchive it instead of creating another one.', ['name' => 'Old trip'])]);
+            ->assertSessionHasErrors(['name' => __('There is an archived label called “:name”. Unarchive it instead of reusing its name.', ['name' => 'Old trip'])]);
 
         actingAs($this->user)->patch(route('labels.update', $this->active), ['name' => 'Old trip'])
             ->assertSessionHasErrors('name');
@@ -592,8 +592,8 @@ describe('name uniqueness', function () {
     it('translates the archived clash message', function () {
         app()->setLocale('es');
 
-        expect(__('There is an archived label called “:name”. Unarchive it instead of creating another one.', ['name' => 'X']))
-            ->toBe('Ya tienes una etiqueta archivada llamada «X». Desarchívala en lugar de crear otra.')
+        expect(__('There is an archived label called “:name”. Unarchive it instead of reusing its name.', ['name' => 'X']))
+            ->toBe('Ya tienes una etiqueta archivada llamada «X». Desarchívala en lugar de reutilizar su nombre.')
             ->and(__('The label “:name” is archived, so it cannot be added. Unarchive it first to use it again.', ['name' => 'X']))
             ->toBe('La etiqueta «X» está archivada y no se puede añadir. Desarchívala para volver a usarla.');
     });

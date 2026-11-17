@@ -359,7 +359,6 @@ class TransactionController extends Controller
         // array (`['array', 'min:1']`), so null here means "no explicit
         // selection" and the filters decide.
         $transactionIds = $request->input('transaction_ids');
-        $filters = $request->input('filters');
 
         $transactions = $request->selection()->get();
 
