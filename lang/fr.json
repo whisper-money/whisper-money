@@ -2904,5 +2904,7 @@
     "Your bank needs you to confirm the payment": "Votre banque a besoin que vous confirmiez le paiement",
     "Your bank asked you to approve the charge for your subscription before it goes through. Confirm it to keep Standard, or cancel and we stop trying to charge you.": "Votre banque vous demande d'approuver le prélèvement de votre abonnement avant de l'accepter. Confirmez-le pour garder Standard, ou annulez et nous cesserons d'essayer de vous prélever.",
     "The transaction could not be opened.": "La transaction n'a pas pu être ouverte.",
-    "Starred on GitHub by people at": "Mis en favori sur GitHub par des personnes de chez"
+    "Starred on GitHub by people at": "Mis en favori sur GitHub par des personnes de chez",
+    "The label “:name” is archived, so it cannot be added. Unarchive it first to use it again.": "L’étiquette « :name » est archivée et ne peut pas être ajoutée. Désarchivez-la pour l’utiliser à nouveau.",
+    "There is an archived label called “:name”. Unarchive it instead of reusing its name.": "Vous avez déjà une étiquette archivée nommée « :name ». Désarchivez-la au lieu de réutiliser son nom."
 }

@@ -12,9 +12,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * @property LabelSource $source
+ * @property Carbon|null $archived_at
  */
 class Label extends Model
 {
@@ -27,13 +29,42 @@ class Label extends Model
         'source',
         'user_id',
         'space_id',
+        'archived_at',
     ];
 
     protected function casts(): array
     {
         return [
             'source' => LabelSource::class,
+            'archived_at' => 'datetime',
         ];
+    }
+
+    /**
+     * An archived label stays on the transactions that already carry it and
+     * keeps working in filters and reports, but cannot be assigned anew.
+     */
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /**
+     * @param  Builder<Label>  $query
+     * @return Builder<Label>
+     */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    /**
+     * @param  Builder<Label>  $query
+     * @return Builder<Label>
+     */
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->whereNotNull('archived_at');
     }
 
     /**

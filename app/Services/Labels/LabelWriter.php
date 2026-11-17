@@ -2,6 +2,7 @@
 
 namespace App\Services\Labels;
 
+use App\Actions\SetLabelArchived;
 use App\Enums\LabelColor;
 use App\Enums\LabelSource;
 use App\Models\Label;
@@ -13,11 +14,14 @@ use Illuminate\Validation\ValidationException;
 /**
  * Creating and editing a label, shared by the label MCP tools and
  * `/api/v1/labels`, with the rules both validate with. A name is unique within
- * its space; a clash is a ValidationException under `name`.
+ * its space; a clash is a ValidationException under `name`. An edit can also
+ * archive or unarchive the label.
  */
 class LabelWriter
 {
     private const string NameTakenMessage = 'A label with that name already exists.';
+
+    public function __construct(private SetLabelArchived $setLabelArchived) {}
 
     /**
      * @return array<string, array<mixed>>
@@ -37,15 +41,27 @@ class LabelWriter
      */
     public static function updateRules(): array
     {
-        return array_map(
-            fn (array $rules): array => ['sometimes', ...array_filter($rules, fn (mixed $rule): bool => ! in_array($rule, ['required', 'sometimes'], true))],
-            self::createRules(),
-        );
+        return [
+            ...array_map(
+                fn (array $rules): array => ['sometimes', ...array_filter($rules, fn (mixed $rule): bool => ! in_array($rule, ['required', 'sometimes'], true))],
+                self::createRules(),
+            ),
+            'archived' => ['sometimes', 'boolean'],
+        ];
     }
 
     /**
-     * Why the label cannot be renamed or deleted, keyed by the field at
-     * fault, or nothing when it can. The label of a savings goal is how the
+     * The message for a name taken by an archived label, pointing at
+     * unarchiving it rather than making a second one.
+     */
+    public static function archivedNameClashMessage(Label $clash): string
+    {
+        return __('There is an archived label called “:name”. Unarchive it instead of reusing its name.', ['name' => $clash->name]);
+    }
+
+    /**
+     * Why the label cannot be renamed, archived or deleted, keyed by the field
+     * at fault, or nothing when it can. The label of a savings goal is how the
      * goal counts its contributions and carries the goal's name, so it is
      * managed through the goal; changing its color is fine.
      *
@@ -62,9 +78,14 @@ class LabelWriter
             return ['label' => 'This label tracks a savings goal\'s contributions, so it can only go away with the goal.'];
         }
 
-        return in_array('name', $sent, true)
-            ? ['name' => 'This label carries the name of the savings goal it tracks, so it is renamed with the goal. Its color can still be changed.']
-            : [];
+        return array_filter([
+            'name' => in_array('name', $sent, true)
+                ? 'This label carries the name of the savings goal it tracks, so it is renamed with the goal. Its color can still be changed.'
+                : null,
+            'archived' => in_array('archived', $sent, true)
+                ? 'This label tracks a savings goal\'s contributions, so it cannot be archived on its own. Archive the goal instead.'
+                : null,
+        ]);
     }
 
     public function create(User $user, Space $space, string $name, string $color): Label
@@ -85,7 +106,7 @@ class LabelWriter
     /**
      * Change only the fields in $changes.
      *
-     * @param  array<string, mixed>  $changes  `name` and/or `color`
+     * @param  array<string, mixed>  $changes  any of `name`, `color` and `archived`
      */
     public function update(Label $label, Space $space, array $changes): Label
     {
@@ -99,6 +120,10 @@ class LabelWriter
             $label->color = (string) $changes['color'];
         }
 
+        if (array_key_exists('archived', $changes)) {
+            $this->setLabelArchived->fill($label, (bool) $changes['archived']);
+        }
+
         $label->save();
 
         return $label;
@@ -110,15 +135,17 @@ class LabelWriter
      */
     private function assertNameFree(string $userId, Space $space, string $name, ?string $ignoreId): void
     {
-        $taken = Label::query()
+        $clash = Label::query()
             ->forSpace($space)
             ->where('user_id', $userId)
             ->where('name', $name)
             ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
-            ->exists();
+            ->first();
 
-        if ($taken) {
-            throw ValidationException::withMessages(['name' => self::NameTakenMessage]);
+        if ($clash !== null) {
+            throw ValidationException::withMessages([
+                'name' => $clash->isArchived() ? self::archivedNameClashMessage($clash) : self::NameTakenMessage,
+            ]);
         }
     }
 }

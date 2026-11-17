@@ -4,6 +4,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Models\AutomationRule;
+use App\Rules\AssignableLabel;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -47,8 +48,22 @@ class StoreAutomationRuleRequest extends FormRequest
                 'string',
                 'uuid',
                 $this->userOwned('labels'),
+                new AssignableLabel($this->labelsBeforeEdit(...)),
             ],
         ];
+    }
+
+    /**
+     * On an edit the rule may keep the labels it already applies, archived
+     * ones included. A new rule has none.
+     *
+     * @return list<string>
+     */
+    private function labelsBeforeEdit(): array
+    {
+        $rule = $this->route('automationRule');
+
+        return $rule instanceof AutomationRule ? $rule->labelIds() : [];
     }
 
     /**

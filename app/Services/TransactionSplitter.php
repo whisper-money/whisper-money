@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CategorySource;
 use App\Models\Transaction;
+use App\Services\Labels\ArchivedLabelGuard;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -54,6 +55,7 @@ class TransactionSplitter
     {
         self::throwIfError('transaction_id', self::splitPartError($transaction));
         self::throwIfError('splits', self::partsError($transaction, $parts));
+        self::ensurePartLabelsAssignable($transaction, $parts);
 
         $created = DB::transaction(fn (): ?Collection => $this->replaceWithParts($transaction, $parts));
 
@@ -132,6 +134,23 @@ class TransactionSplitter
         return count(array_filter($amounts, $movesTheSameWay)) === count($amounts)
             ? null
             : 'Every part must move money the same way as the original.';
+    }
+
+    /**
+     * A part may carry the labels of the transaction it splits, archived ones
+     * included, but no other archived label.
+     *
+     * @param  list<array<string, mixed>>  $parts
+     *
+     * @throws ValidationException
+     */
+    private static function ensurePartLabelsAssignable(Transaction $transaction, array $parts): void
+    {
+        $parentLabelIds = $transaction->labelIds();
+
+        foreach ($parts as $index => $part) {
+            ArchivedLabelGuard::ensureAssignable((array) ($part['label_ids'] ?? []), $parentLabelIds, "splits.{$index}.label_ids");
+        }
     }
 
     /**

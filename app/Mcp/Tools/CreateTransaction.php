@@ -28,7 +28,7 @@ class CreateTransaction extends WriteTool
             'creditor_name' => $schema->string()->description('Optional creditor (payee) name.'),
             'debtor_name' => $schema->string()->description('Optional debtor (payer) name.'),
             'notes' => $schema->string()->description('Optional free-text notes.'),
-            'label_ids' => $schema->array()->items($schema->string())->description('Optional label ids to attach.'),
+            'label_ids' => $schema->array()->items($schema->string())->description('Optional label ids to attach. Archived labels (see list_labels) are refused.'),
             'update_balance' => $schema->boolean()->description('When true, shift the account balance snapshots by this amount. Ignored on connected accounts, whose balances come from the bank, and on credit cards that track a limit instead of a balance. Default false.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];

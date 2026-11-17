@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\SetLabelArchived;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\ArchiveLabelRequest;
 use App\Http\Requests\Settings\StoreLabelRequest;
 use App\Http\Requests\Settings\UpdateLabelRequest;
 use App\Models\Label;
@@ -24,6 +26,7 @@ class LabelController extends Controller
         $labels = auth()->user()
             ->labels()
             ->userManaged()
+            ->orderByRaw('archived_at is not null')
             ->orderBy('name')
             ->get();
 
@@ -56,6 +59,17 @@ class LabelController extends Controller
         $label->update($request->validated());
 
         return to_route('labels.index');
+    }
+
+    /**
+     * Archive or unarchive the label: an archived one stays on what already
+     * carries it but cannot be assigned anew.
+     */
+    public function updateArchived(ArchiveLabelRequest $request, Label $label, SetLabelArchived $setLabelArchived): RedirectResponse
+    {
+        $setLabelArchived->handle($label, $request->boolean('archived'));
+
+        return back();
     }
 
     /**

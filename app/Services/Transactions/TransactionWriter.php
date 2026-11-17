@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Labels\ArchivedLabelGuard;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Support\Carbon;
 
@@ -31,6 +32,8 @@ class TransactionWriter
      */
     public function create(User $user, Space $space, Account $account, array $fields, array $labelIds, bool $updateBalance): WrittenTransaction
     {
+        ArchivedLabelGuard::ensureAssignable($labelIds);
+
         $categoryId = self::filledOrNull($fields['category_id'] ?? null);
         $currencyCode = self::filledOrNull($fields['currency_code'] ?? null);
 

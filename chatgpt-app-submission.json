@@ -251,9 +251,9 @@
     "update_label": {
       "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
       "justifications": {
-        "read_only_justification": "Writes: it renames or recolours an existing label in the user's own workspace.",
+        "read_only_justification": "Writes: it renames, recolours, archives or unarchives an existing label in the user's own workspace.",
         "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
-        "destructive_justification": "Overwrites: the name or colour passed replaces the label's current value, so the model should confirm the change with the user first. Its transactions stay attached."
+        "destructive_justification": "Overwrites: the name, colour or archived state passed replaces the label's current value, so the model should confirm the change with the user first. Its transactions stay attached, archived or not."
       }
     },
     "delete_label": {

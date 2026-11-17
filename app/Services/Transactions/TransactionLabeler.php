@@ -4,11 +4,13 @@ namespace App\Services\Transactions;
 
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Transaction;
+use App\Services\Labels\ArchivedLabelGuard;
 
 /**
  * Changing the labels of a transaction, shared by the `label_transaction` MCP
  * tool and `PUT /api/v1/transactions/{id}/labels`. The label ids arrive
- * already checked to be in the transaction's space.
+ * already checked to be in the transaction's space. An archived label the
+ * transaction does not carry yet is refused; one it carries can stay.
  */
 class TransactionLabeler
 {
@@ -20,6 +22,8 @@ class TransactionLabeler
      */
     public function change(Transaction $transaction, array $add, array $remove): Transaction
     {
+        ArchivedLabelGuard::ensureAssignable($add, $transaction->labelIds(), 'add_label_ids');
+
         if ($add !== []) {
             $transaction->labels()->syncWithoutDetaching($add);
         }
@@ -38,6 +42,8 @@ class TransactionLabeler
      */
     public function replace(Transaction $transaction, array $labelIds): Transaction
     {
+        ArchivedLabelGuard::ensureAssignable($labelIds, $transaction->labelIds());
+
         $transaction->labels()->sync($labelIds);
 
         return $this->reassignBudgets($transaction);

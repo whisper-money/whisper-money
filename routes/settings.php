@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/labels', [LabelController::class, 'index'])->name('labels.index');
     Route::post('settings/labels', [LabelController::class, 'store'])->name('labels.store');
     Route::patch('settings/labels/{label}', [LabelController::class, 'update'])->name('labels.update');
+    Route::patch('settings/labels/{label}/archived', [LabelController::class, 'updateArchived'])->name('labels.archived.update');
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
 
     // Only `block-demo` here: the press account is meant to hand out MCP

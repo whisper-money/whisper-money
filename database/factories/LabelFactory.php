@@ -38,4 +38,15 @@ class LabelFactory extends Factory
             'source' => LabelSource::Estimate,
         ]);
     }
+
+    /**
+     * A label the user archived: it stays on past transactions and in filters,
+     * but cannot be assigned to new ones.
+     */
+    public function archived(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'archived_at' => now(),
+        ]);
+    }
 }

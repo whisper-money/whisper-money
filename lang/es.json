@@ -3985,5 +3985,7 @@
     "Kids": "Niños",
     "Car": "Coche",
     "The transaction could not be opened.": "No se ha podido abrir la transacción.",
-    "Starred on GitHub by people at": "Destacado en GitHub por personas de"
+    "Starred on GitHub by people at": "Destacado en GitHub por personas de",
+    "The label “:name” is archived, so it cannot be added. Unarchive it first to use it again.": "La etiqueta «:name» está archivada y no se puede añadir. Desarchívala para volver a usarla.",
+    "There is an archived label called “:name”. Unarchive it instead of reusing its name.": "Ya tienes una etiqueta archivada llamada «:name». Desarchívala en lugar de reutilizar su nombre."
 }

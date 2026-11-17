@@ -415,7 +415,7 @@ test('automation rules serialize full nested category and labels', function () {
     expect(array_keys($serialized['category']))
         ->toEqualCanonicalizing(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id']);
     expect(array_keys($serialized['labels'][0]))
-        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'source', 'created_at', 'updated_at', 'deleted_at']);
+        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'source', 'archived_at', 'created_at', 'updated_at', 'deleted_at']);
 });
 
 test('a generated title is truncated to fit the column instead of failing the write', function () {

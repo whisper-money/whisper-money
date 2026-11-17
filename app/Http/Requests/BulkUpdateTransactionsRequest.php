@@ -5,6 +5,10 @@ namespace App\Http\Requests;
 use App\Enums\CashflowBlock;
 use App\Enums\CategoryType;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Models\LabelTransaction;
+use App\Models\Transaction;
+use App\Rules\AssignableLabel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,8 +47,52 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'category_id' => ['nullable', $this->userOwned('categories')],
             'notes' => ['nullable', 'string'],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
+            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels'), new AssignableLabel($this->labelsOnEverySelectedRow(...))],
         ];
+    }
+
+    /**
+     * The rows the update applies to: the explicit ids when the request
+     * carries them, otherwise everything matching the filters the user has on
+     * screen. Always scoped to the caller.
+     *
+     * @return Builder<Transaction>
+     */
+    public function selection(): Builder
+    {
+        $userId = $this->user()->id;
+        $query = Transaction::query()->where('user_id', $userId);
+        $transactionIds = $this->input('transaction_ids');
+        $filters = $this->input('filters');
+
+        if ($transactionIds !== null) {
+            return $query->whereIn('id', $transactionIds);
+        }
+
+        return $filters === null ? $query : $query->applyFilters([...$filters, 'user_id' => $userId]);
+    }
+
+    /**
+     * The labels every selected row already carries. The new set replaces each
+     * row's labels, so an archived label may only stay when no row would gain
+     * it.
+     *
+     * @return list<string>
+     */
+    private function labelsOnEverySelectedRow(): array
+    {
+        $rowCount = $this->selection()->count();
+
+        if ($rowCount === 0) {
+            return [];
+        }
+
+        return LabelTransaction::query()
+            ->whereIn('transaction_id', $this->selection()->select('id'))
+            ->groupBy('label_id')
+            ->havingRaw('count(distinct transaction_id) = ?', [$rowCount])
+            ->pluck('label_id')
+            ->all();
     }
 
     public function messages(): array

@@ -34,7 +34,7 @@ class CreateBudget extends WriteTool
             'rollover_type' => $schema->string()->enum(array_column(RolloverType::cases(), 'value'))->description('"carry_over" adds what is left to the next period, "reset" starts every period at the limit.')->required(),
             'period_start_day' => $schema->integer()->min(0)->max(31)->description('Day the period starts: day of the month (1-31) when monthly, day of the week (0 = Sunday, 6 = Saturday) when weekly or biweekly. Ignored when quarterly or yearly, which follow the calendar.'),
             'category_ids' => $schema->array()->items($schema->string())->description('Categories to track. Tracking a parent also tracks its children. Call list_categories to see valid ids.'),
-            'label_ids' => $schema->array()->items($schema->string())->description('Labels to track. Call list_labels to see valid ids.'),
+            'label_ids' => $schema->array()->items($schema->string())->description('Labels to track. Call list_labels to see valid ids; archived labels are refused.'),
             'is_catch_all' => $schema->boolean()->description('Track every expense category no other budget tracks. Needs no categories or labels, and only one catch-all budget is allowed.'),
         ];
     }

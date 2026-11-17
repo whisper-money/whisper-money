@@ -26,7 +26,7 @@ class CreateAutomationRule extends WriteTool
             'priority' => $schema->integer()->min(0)->description('Lower numbers are evaluated first.')->required(),
             'rules_json' => $schema->object()->description($this->rulesJsonDescription())->required(),
             'action_category_id' => $schema->string()->description('Category id to assign to matching transactions.'),
-            'action_label_ids' => $schema->array()->items($schema->string())->description('Label ids to attach to matching transactions.'),
+            'action_label_ids' => $schema->array()->items($schema->string())->description('Label ids to attach to matching transactions. Archived labels (see list_labels) are refused.'),
             'action_note' => $schema->string()->description('Note to append to matching transactions.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];

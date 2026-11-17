@@ -12,6 +12,9 @@ export interface Label {
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
+    // Set while the label is archived: it stays on past transactions and in
+    // filters, but cannot be assigned anew.
+    archived_at?: string | null;
 }
 
 export const LABEL_COLORS = [

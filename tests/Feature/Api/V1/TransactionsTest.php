@@ -783,7 +783,7 @@ describe('labels', function () {
             ->assertJsonValidationErrors(['label_ids' => 'must not have more than 100 items']);
     });
 
-    it('checks the labels against the space in a single query, however many are sent', function () {
+    it('checks the labels against the space and for archived ones in one query each, however many are sent', function () {
         $user = User::factory()->create();
         $account = Account::factory()->create(['user_id' => $user->id]);
         $labels = Label::factory()->count(30)->create(['user_id' => $user->id]);
@@ -798,7 +798,8 @@ describe('labels', function () {
             return collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `labels` where'))->count();
         };
 
-        expect($labelLookups($labels->pluck('id')->all()))->toBe(1);
+        expect($labelLookups($labels->pluck('id')->all()))->toBe(2)
+            ->and($labelLookups([$labels->first()->id]))->toBe(2);
     });
 });
 

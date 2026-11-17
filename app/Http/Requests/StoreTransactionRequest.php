@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\TransactionSource;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
+use App\Rules\AssignableLabel;
 use App\Rules\StorableDate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,8 +33,22 @@ class StoreTransactionRequest extends FormRequest
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => ['string', 'uuid', $this->userOwned('labels')],
+            'label_ids.*' => ['string', 'uuid', $this->userOwned('labels'), ...$this->assignableLabelRules()],
         ];
+    }
+
+    /**
+     * A CSV import brings in history, so a label its rows carry is assigned
+     * even when it has been archived since. Anything else is a new
+     * transaction, which cannot get an archived label. `source` is the
+     * client's word, so this only keeps the app from offering archived labels:
+     * a user can at most tag their own rows, which is acceptable.
+     *
+     * @return list<AssignableLabel>
+     */
+    private function assignableLabelRules(): array
+    {
+        return $this->input('source') === TransactionSource::Imported->value ? [] : [new AssignableLabel];
     }
 
     public function messages(): array

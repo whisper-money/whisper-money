@@ -9,6 +9,7 @@ use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Jobs\RebuildCatchAllBudgetPeriods;
 use App\Models\Budget;
 use App\Models\User;
+use App\Services\Labels\ArchivedLabelGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -99,6 +100,10 @@ class BudgetService
      */
     public function create(User $user, array $attributes, int $allocatedAmount, array $categoryIds = [], array $labelIds = []): Budget
     {
+        // An archived label is not tracked by a new budget; one already tracked
+        // by an existing budget goes on being tracked.
+        ArchivedLabelGuard::ensureAssignable($labelIds);
+
         [$budget, $period, $previousPeriod] = DB::transaction(function () use ($user, $attributes, $allocatedAmount, $categoryIds, $labelIds): array {
             $setting = $user->setting;
 

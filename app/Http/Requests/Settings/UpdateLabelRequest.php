@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Settings;
 
 use App\Enums\LabelColor;
+use App\Models\Label;
+use App\Rules\AvailableLabelName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,10 +32,7 @@ class UpdateLabelRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('labels', 'name')
-                    ->where('user_id', auth()->id())
-                    ->whereNull('deleted_at')
-                    ->ignore($this->route('label')),
+                new AvailableLabelName((string) $this->user()?->id, $this->route('label') instanceof Label ? $this->route('label') : null),
             ],
             'color' => [
                 'sometimes',

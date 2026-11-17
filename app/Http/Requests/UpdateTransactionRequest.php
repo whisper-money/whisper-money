@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\TransactionSource;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Models\Transaction;
+use App\Rules\AssignableLabel;
 use App\Rules\StorableDate;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -26,7 +27,7 @@ class UpdateTransactionRequest extends FormRequest
             'creditor_name' => ['nullable', 'string', 'max:255'],
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
+            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels'), new AssignableLabel($this->labelsBeforeEdit(...))],
         ];
 
         // Amount, account and currency stay locked to the source data on anything
@@ -47,6 +48,19 @@ class UpdateTransactionRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * The transaction may keep the labels it already carries, archived ones
+     * included.
+     *
+     * @return list<string>
+     */
+    private function labelsBeforeEdit(): array
+    {
+        $transaction = $this->route('transaction');
+
+        return $transaction instanceof Transaction ? $transaction->labelIds() : [];
     }
 
     public function messages(): array

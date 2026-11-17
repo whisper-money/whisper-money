@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\PresentsLabels;
 use App\Mcp\Tools\Concerns\PresentsTransactions;
 use App\Models\Account;
 use App\Models\AutomationRule;
@@ -41,7 +42,7 @@ use Laravel\Mcp\ResponseFactory;
  */
 abstract class WriteTool extends McpTool
 {
-    use PresentsTransactions;
+    use PresentsLabels, PresentsTransactions;
 
     /**
      * Every write tool declares `openWorldHint: true`. OpenAI's reference would
@@ -246,18 +247,6 @@ abstract class WriteTool extends McpTool
             'type' => $category->type->value,
             'cashflow_direction' => $category->cashflow_direction->value,
             'parent_id' => $category->parent_id,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function presentLabel(Label $label): array
-    {
-        return [
-            'id' => $label->id,
-            'name' => $label->name,
-            'color' => $label->color,
         ];
     }
 }

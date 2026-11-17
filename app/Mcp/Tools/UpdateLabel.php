@@ -12,7 +12,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Edit a label. Only the fields you pass are changed.')]
+#[Description('Edit a label: rename, recolor, or archive/unarchive it. Only the fields you pass are changed. An archived label cannot be assigned to anything new.')]
 class UpdateLabel extends WriteTool
 {
     /**
@@ -24,6 +24,7 @@ class UpdateLabel extends WriteTool
             'label_id' => $schema->string()->description('Id of the label to edit.')->required(),
             'name' => $schema->string()->description('New label name (unique within the space).'),
             'color' => $schema->string()->enum(array_column(LabelColor::cases(), 'value'))->description('New label color.'),
+            'archived' => $schema->boolean()->description('true to archive the label, false to unarchive it. An archived label stays on the transactions, rules and budgets that already have it and still works in filters and reports, but cannot be added to transactions, rules or new budgets. A savings goal\'s label cannot be archived.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
@@ -37,7 +38,7 @@ class UpdateLabel extends WriteTool
 
         $this->refuseSavingsGoalLabelChange($label, array_keys($request->all()), deleting: false);
 
-        $label = app(LabelWriter::class)->update($label, $space, $request->only(['name', 'color']));
+        $label = app(LabelWriter::class)->update($label, $space, $request->only(['name', 'color', 'archived']));
 
         return $this->json(['label' => $this->presentLabel($label)]);
     }

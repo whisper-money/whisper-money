@@ -20,7 +20,6 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\ManualBalanceAdjuster;
 use App\Services\TransactionDayTotals;
 use App\Services\TransactionFilterSummary;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -360,9 +359,8 @@ class TransactionController extends Controller
         // array (`['array', 'min:1']`), so null here means "no explicit
         // selection" and the filters decide.
         $transactionIds = $request->input('transaction_ids');
-        $filters = $request->input('filters');
 
-        $transactions = $this->bulkSelection($request->user()->id, $transactionIds, $filters)->get();
+        $transactions = $request->selection()->get();
 
         // Ids the user does not own are silently dropped by the user_id scope, so a
         // short result means they asked for someone else's rows.
@@ -382,7 +380,7 @@ class TransactionController extends Controller
         }
 
         if ($updateData !== []) {
-            $this->bulkSelection($request->user()->id, $transactionIds, $filters)->update($updateData);
+            $request->selection()->update($updateData);
         }
 
         if ($hasLabelUpdate) {
@@ -399,26 +397,6 @@ class TransactionController extends Controller
             'message' => 'Transactions updated successfully',
             'count' => $transactions->count(),
         ]);
-    }
-
-    /**
-     * The rows a bulk operation applies to: the explicit ids when the request
-     * carries them, otherwise everything matching the filters the user has on
-     * screen. Always scoped to the caller.
-     *
-     * @param  list<string>|null  $transactionIds
-     * @param  array<string, mixed>|null  $filters
-     * @return Builder<Transaction>
-     */
-    private function bulkSelection(string $userId, ?array $transactionIds, ?array $filters): Builder
-    {
-        $query = Transaction::query()->where('user_id', $userId);
-
-        if ($transactionIds !== null) {
-            return $query->whereIn('id', $transactionIds);
-        }
-
-        return $filters === null ? $query : $query->applyFilters([...$filters, 'user_id' => $userId]);
     }
 
     /**

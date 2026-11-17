@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Settings;
 
 use App\Enums\LabelColor;
+use App\Rules\AvailableLabelName;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,9 +30,7 @@ class StoreLabelRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('labels', 'name')
-                    ->where('user_id', auth()->id())
-                    ->whereNull('deleted_at'),
+                new AvailableLabelName((string) $this->user()?->id),
             ],
             'color' => [
                 'required',
