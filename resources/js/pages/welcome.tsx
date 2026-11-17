@@ -2717,6 +2717,12 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Rubén Gimeno',
+            text: __(
+                'What I value most is being able to open Whisper Money and see straight away how the month is going, without clicking through different sections. With several dashboards, I keep one on my phone that is handy for adding transactions and another on my computer for when I sit down to review and plan the month.',
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
