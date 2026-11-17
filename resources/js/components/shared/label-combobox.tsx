@@ -1,5 +1,8 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
-import { normalizeLabelComboboxState } from '@/components/shared/label-combobox-state';
+import {
+    labelComboboxOptions,
+    normalizeLabelComboboxState,
+} from '@/components/shared/label-combobox-state';
 import { LabelIcon } from '@/components/shared/label-icon';
 import {
     DRAWER_COMMAND_CLASS,
@@ -19,7 +22,7 @@ import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
-import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
+import { Archive, Check, ChevronsUpDown, Plus, X } from 'lucide-react';
 import { useMemo, useRef, useState, type ReactElement } from 'react';
 
 interface LabelComboboxProps {
@@ -73,11 +76,8 @@ export function LabelCombobox({
     const { value: safeValue, labels: safeLabels } =
         normalizeLabelComboboxState(value, mergedLabels);
 
-    const selectedLabels = safeLabels.filter((l) => safeValue.includes(l.id));
-
-    const sortedLabels = [...safeLabels].sort((a, b) =>
-        a.name.localeCompare(b.name),
-    );
+    const { selectedLabels, options, archivedMatch, nameTaken } =
+        labelComboboxOptions(safeValue, safeLabels, inputValue);
 
     const handleSelect = (labelId: string) => {
         if (safeValue.includes(labelId)) {
@@ -95,8 +95,12 @@ export function LabelCombobox({
     const handleCreate = async () => {
         if (!inputValue.trim() || isCreating) return;
 
-        const existingLabel = safeLabels.find(
-            (l) => l.name.toLowerCase() === inputValue.toLowerCase(),
+        if (archivedMatch) {
+            return;
+        }
+
+        const existingLabel = options.find(
+            (l) => l.name.toLowerCase() === inputValue.trim().toLowerCase(),
         );
         if (existingLabel) {
             handleSelect(existingLabel.id);
@@ -154,12 +158,7 @@ export function LabelCombobox({
         }
     };
 
-    const showCreateOption =
-        allowCreate &&
-        inputValue.trim() &&
-        !safeLabels.some(
-            (l) => l.name.toLowerCase() === inputValue.toLowerCase(),
-        );
+    const showCreateOption = allowCreate && inputValue.trim() && !nameTaken;
 
     return (
         <PopoverOrDrawer
@@ -251,9 +250,13 @@ export function LabelCombobox({
                 />
 
                 <CommandList>
-                    {sortedLabels.length === 0 && !showCreateOption && (
-                        <CommandEmpty>{__('No labels found.')}</CommandEmpty>
-                    )}
+                    {options.length === 0 &&
+                        !showCreateOption &&
+                        !archivedMatch && (
+                            <CommandEmpty>
+                                {__('No labels found.')}
+                            </CommandEmpty>
+                        )}
                     {allowRemoveAll && (
                         <CommandItem
                             onSelect={() => {
@@ -279,57 +282,60 @@ export function LabelCombobox({
                                 : `Create "${inputValue.trim()}"`}
                         </CommandItem>
                     )}
-                    {sortedLabels
-                        .filter(
-                            (label) =>
-                                !inputValue ||
-                                label.name
-                                    .toLowerCase()
-                                    .includes(inputValue.toLowerCase()),
-                        )
-                        .map((label) => {
-                            const colorClasses = getLabelColorClasses(
-                                label.color,
-                            );
-                            const isSelected = safeValue.includes(label.id);
-                            return (
-                                <CommandItem
-                                    key={label.id}
-                                    value={label.name}
-                                    onSelect={() => handleSelect(label.id)}
-                                    data-testid="label-option"
-                                    data-label-name={label.name}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className={cn(
-                                                'flex h-5 w-5 items-center justify-center rounded-full',
-                                                colorClasses.bg,
-                                            )}
-                                        >
-                                            <LabelIcon
-                                                label={label}
-                                                className={cn(
-                                                    'h-3 w-3',
-                                                    colorClasses.text,
-                                                )}
-                                            />
-                                        </div>
-                                        <span className="truncate">
-                                            {label.name}
-                                        </span>
-                                    </div>
-                                    <Check
+                    {archivedMatch && (
+                        <CommandItem
+                            disabled
+                            className="text-muted-foreground"
+                            data-testid="label-archived-hint"
+                        >
+                            <Archive className="h-4 w-4" />
+                            {__(
+                                'The label “:name” is archived. Unarchive it in Settings → Labels to use it.',
+                                { name: archivedMatch.name },
+                            )}
+                        </CommandItem>
+                    )}
+                    {options.map((label) => {
+                        const colorClasses = getLabelColorClasses(label.color);
+                        const isSelected = safeValue.includes(label.id);
+                        return (
+                            <CommandItem
+                                key={label.id}
+                                value={label.name}
+                                onSelect={() => handleSelect(label.id)}
+                                data-testid="label-option"
+                                data-label-name={label.name}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div
                                         className={cn(
-                                            'ml-auto h-4 w-4',
-                                            isSelected
-                                                ? 'opacity-100'
-                                                : 'opacity-0',
+                                            'flex h-5 w-5 items-center justify-center rounded-full',
+                                            colorClasses.bg,
                                         )}
-                                    />
-                                </CommandItem>
-                            );
-                        })}
+                                    >
+                                        <LabelIcon
+                                            label={label}
+                                            className={cn(
+                                                'h-3 w-3',
+                                                colorClasses.text,
+                                            )}
+                                        />
+                                    </div>
+                                    <span className="truncate">
+                                        {label.name}
+                                    </span>
+                                </div>
+                                <Check
+                                    className={cn(
+                                        'ml-auto h-4 w-4',
+                                        isSelected
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                    )}
+                                />
+                            </CommandItem>
+                        );
+                    })}
                 </CommandList>
             </Command>
         </PopoverOrDrawer>

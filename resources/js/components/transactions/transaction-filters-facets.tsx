@@ -29,7 +29,11 @@ import {
     getCategoryColorClasses,
     getCategoryTypeLabel,
 } from '@/types/category';
-import { getLabelColorClasses, type Label } from '@/types/label';
+import {
+    getLabelColorClasses,
+    isArchivedLabel,
+    type Label,
+} from '@/types/label';
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 
@@ -249,7 +253,12 @@ export function LabelFacetList({
                                 checked={selectedIds.includes(label.id)}
                                 className="pointer-events-none mr-1"
                             />
-                            <div className="flex items-center gap-2">
+                            <div
+                                className={cn(
+                                    'flex items-center gap-2',
+                                    isArchivedLabel(label) && 'opacity-60',
+                                )}
+                            >
                                 <div
                                     className={cn(
                                         'flex h-5 w-5 items-center justify-center rounded-full',
@@ -265,6 +274,11 @@ export function LabelFacetList({
                                     />
                                 </div>
                                 <span>{label.name}</span>
+                                {isArchivedLabel(label) && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {__('Archived')}
+                                    </span>
+                                )}
                             </div>
                         </CommandItem>
                     );

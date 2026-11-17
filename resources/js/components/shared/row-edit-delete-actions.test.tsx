@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     type DialogControl,
     RowActionsDropdown,
@@ -53,5 +53,24 @@ describe('RowActionsDropdown', () => {
         fireEvent.click(screen.getByRole('menuitem', { name: 'Duplicate' }));
 
         expect(screen.getByRole('dialog')).toHaveTextContent('duplicate');
+    });
+
+    it('runs an action without a dialog straight away', async () => {
+        const onSelect = vi.fn();
+
+        render(
+            <RowActionsDropdown
+                renderEditDialog={dialog('edit')}
+                renderDeleteDialog={dialog('delete')}
+                extraActions={[{ key: 'archive', label: 'Archive', onSelect }]}
+            />,
+        );
+
+        expect(await openMenu()).toEqual(['Edit', 'Archive', 'Delete']);
+
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+
+        expect(onSelect).toHaveBeenCalledOnce();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });

@@ -63,7 +63,7 @@ import {
 } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
-import { type Label } from '@/types/label';
+import { isArchivedLabel, type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
 import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { formatDate, todayDateString } from '@/utils/date';
@@ -87,7 +87,7 @@ import {
     Split,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 
@@ -312,16 +312,29 @@ export function EditTransactionDialog({
     const signedAmount =
         transactionType === 'income' ? unsignedAmount : -unsignedAmount;
 
+    // A duplicate is a new transaction, and an archived label can't be
+    // assigned anew, so the copy leaves those behind. An effect event, so new
+    // labels arriving don't re-run the effect below and reset the form.
+    const withoutArchivedLabels = useEffectEvent((labelIds: string[]) => {
+        const archivedIds = new Set(
+            labels.filter(isArchivedLabel).map((label) => label.id),
+        );
+
+        return labelIds.filter((id) => !archivedIds.has(id));
+    });
+
     useEffect(() => {
+        function labelIdsOf(source: ServerTransaction): string[] {
+            return source.label_ids || source.labels?.map((l) => l.id) || [];
+        }
+
         function fillFrom(source: ServerTransaction) {
             setDescription(source.description);
             setUnsignedAmount(Math.abs(source.amount));
             setTransactionType(source.amount > 0 ? 'income' : 'expense');
             setCurrencyCode(source.currency_code);
             setCategoryId(source.category_id || 'null');
-            setSelectedLabelIds(
-                source.label_ids || source.labels?.map((l) => l.id) || [],
-            );
+            setSelectedLabelIds(labelIdsOf(source));
             setNotes(source.notes || '');
             setShowNotes(!!source.notes);
         }
@@ -367,6 +380,9 @@ export function EditTransactionDialog({
             setNotes('');
             if (duplicateFrom) {
                 fillFrom(duplicateFrom);
+                setSelectedLabelIds(
+                    withoutArchivedLabels(labelIdsOf(duplicateFrom)),
+                );
             }
             isDuplicate.current = !!duplicateFrom;
             defaultCategoryId.current = duplicateFrom?.category_id || 'null';

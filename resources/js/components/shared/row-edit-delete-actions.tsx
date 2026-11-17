@@ -31,13 +31,18 @@ export interface DialogControl {
  */
 type DialogRenderer = (control: DialogControl) => ReactNode;
 
-/** A page-specific row action, listed between Edit and Delete. */
-export interface RowAction {
-    /** Identifies the action's dialog; unique within the row. */
+/**
+ * A page-specific row action, listed between Edit and Delete. It either opens
+ * a dialog or, when there is nothing to confirm, acts on select.
+ */
+export type RowAction = {
+    /** Identifies the action (and its dialog); unique within the row. */
     key: string;
     label: string;
-    renderDialog: DialogRenderer;
-}
+} & (
+    | { renderDialog: DialogRenderer; onSelect?: never }
+    | { onSelect: () => void; renderDialog?: never }
+);
 
 interface RowActionDialogs {
     renderEditDialog: DialogRenderer;
@@ -45,9 +50,9 @@ interface RowActionDialogs {
     extraActions?: RowAction[];
 }
 
-interface MenuAction extends RowAction {
+type MenuAction = RowAction & {
     variant: 'default' | 'destructive';
-}
+};
 
 /**
  * The state behind both menus: one dialog open at a time, keyed by the entry
@@ -81,21 +86,23 @@ function useRowActions({
         },
     ];
 
-    const entries = actions.map(({ key, label, variant }) => ({
+    const entries = actions.map(({ key, label, variant, onSelect }) => ({
         key,
         label,
         variant,
-        select: () => setOpenKey(key),
+        select: onSelect ?? (() => setOpenKey(key)),
     }));
 
-    const dialogs = actions.map(({ key, renderDialog }) => (
-        <Fragment key={key}>
-            {renderDialog({
-                open: openKey === key,
-                onOpenChange: (open) => setOpenKey(open ? key : null),
-            })}
-        </Fragment>
-    ));
+    const dialogs = actions.map(({ key, renderDialog }) =>
+        renderDialog ? (
+            <Fragment key={key}>
+                {renderDialog({
+                    open: openKey === key,
+                    onOpenChange: (open) => setOpenKey(open ? key : null),
+                })}
+            </Fragment>
+        ) : null,
+    );
 
     return { entries, dialogs };
 }

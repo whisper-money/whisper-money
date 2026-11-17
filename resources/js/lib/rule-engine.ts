@@ -2,7 +2,7 @@ import { consoleDebug } from '@/lib/debug';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
-import type { Label } from '@/types/label';
+import { assignableLabels, type Label } from '@/types/label';
 import type { UUID } from '@/types/uuid';
 import jsonLogic from 'json-logic-js';
 
@@ -162,11 +162,14 @@ export function evaluateRulesForNewTransaction(
 
             if (result === true) {
                 consoleDebug(`[Rule Engine] ✓ Rule #${rule.id} matched!`);
+                // An archived label can't be assigned anew (the server refuses
+                // it), so the rule still applies its other actions without it.
+                const labels = assignableLabels(rule.labels ?? []);
                 return {
                     rule,
                     categoryId: rule.action_category_id,
-                    labelIds: rule.labels?.map((l) => l.id) || [],
-                    labels: rule.labels || [],
+                    labelIds: labels.map((l) => l.id),
+                    labels,
                     note: rule.action_note,
                 };
             }

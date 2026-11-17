@@ -1,5 +1,5 @@
 import { __ } from '@/utils/i18n';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     ColumnDef,
     ColumnFiltersState,
@@ -7,6 +7,7 @@ import {
     getFilteredRowModel,
     getSortedRowModel,
     Row,
+    SortingFn,
     SortingState,
     useReactTable,
     VisibilityState,
@@ -14,7 +15,10 @@ import {
 import { ArrowUpDown, Tag } from 'lucide-react';
 import { useState } from 'react';
 
-import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
+import {
+    index as labelsIndex,
+    updateArchived,
+} from '@/actions/App/Http/Controllers/Settings/LabelController';
 import HeadingSmall from '@/components/heading-small';
 import { CreateLabelDialog } from '@/components/labels/create-label-dialog';
 import { DeleteLabelDialog } from '@/components/labels/delete-label-dialog';
@@ -30,8 +34,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { cn } from '@/lib/utils';
 import { type BreadcrumbItem } from '@/types';
-import { getLabelColorClasses, type Label } from '@/types/label';
+import {
+    getLabelColorClasses,
+    isArchivedLabel,
+    type Label,
+} from '@/types/label';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -40,7 +49,21 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+/**
+ * Archiving is reversible and needs no warning: an archived label stays on what
+ * already carries it and in filters, it just can't be assigned anew.
+ */
+function setArchived(label: Label, archived: boolean) {
+    router.patch(
+        updateArchived.url(label.id),
+        { archived },
+        { preserveScroll: true, preserveState: true },
+    );
+}
+
 function labelDialogs(label: Label) {
+    const archived = isArchivedLabel(label);
+
     return {
         renderEditDialog: (control: DialogControl) => (
             <EditLabelDialog label={label} onSuccess={() => {}} {...control} />
@@ -52,6 +75,31 @@ function labelDialogs(label: Label) {
                 {...control}
             />
         ),
+        extraActions: [
+            {
+                key: 'archive',
+                label: archived ? __('Unarchive') : __('Archive'),
+                onSelect: () => setArchived(label, !archived),
+            },
+        ],
+    };
+}
+
+/**
+ * Sorts by name, archived labels always after the rest whichever way the
+ * column is sorted.
+ */
+function archivedLastByName(desc: boolean): SortingFn<Label> {
+    return (rowA, rowB) => {
+        const archivedOrder =
+            Number(isArchivedLabel(rowA.original)) -
+            Number(isArchivedLabel(rowB.original));
+
+        if (archivedOrder !== 0) {
+            return desc ? -archivedOrder : archivedOrder;
+        }
+
+        return rowA.original.name.localeCompare(rowB.original.name);
     };
 }
 
@@ -75,10 +123,13 @@ export default function Labels() {
     );
 
     const { labels } = usePage<{ labels: Label[] }>().props;
+    const sortedDesc =
+        sorting.find((sort) => sort.id === 'name')?.desc ?? false;
 
     const columns: ColumnDef<Label>[] = [
         {
             accessorKey: 'name',
+            sortingFn: archivedLastByName(sortedDesc),
             header: ({ column }) => {
                 return (
                     <Button
@@ -94,12 +145,25 @@ export default function Labels() {
                 );
             },
             cell: ({ row }) => {
+                const archived = isArchivedLabel(row.original);
+
                 return (
-                    <div className="flex items-center gap-3 pl-3">
+                    <div
+                        className={cn(
+                            'flex items-center gap-3 pl-3',
+                            archived && 'opacity-60',
+                        )}
+                        data-archived={archived || undefined}
+                    >
                         <Tag className="h-4 w-4 opacity-80" />
                         <div className="font-medium">
                             {row.getValue('name')}
                         </div>
+                        {archived && (
+                            <Badge variant="outline" className="text-xs">
+                                {__('Archived')}
+                            </Badge>
+                        )}
                     </div>
                 );
             },
@@ -115,7 +179,12 @@ export default function Labels() {
                 const colorClasses = getLabelColorClasses(color);
                 return (
                     <Badge
-                        className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
+                        className={cn(
+                            colorClasses.bg,
+                            colorClasses.text,
+                            'text-[10px] tracking-widest',
+                            isArchivedLabel(row.original) && 'opacity-60',
+                        )}
                     >
                         {__(color).toLocaleUpperCase()}
                     </Badge>

@@ -3,6 +3,7 @@ import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
 import { todayDateString } from '@/utils/date';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -1675,6 +1676,38 @@ describe('EditTransactionDialog', () => {
                 category_chip_changed: false,
             }),
         );
+    });
+
+    it('leaves archived labels behind on a duplicate', async () => {
+        vi.mocked(transactionSyncService.create).mockClear();
+        vi.mocked(transactionSyncService.create).mockResolvedValue({
+            id: 'tx-new',
+        } as never);
+
+        renderCreateDialog({
+            accounts: [checkingAccount, savingsAccount],
+            labels: [
+                { id: 'label-1', name: 'Home', archived_at: null },
+                {
+                    id: 'label-2',
+                    name: 'Old flat',
+                    archived_at: '2026-02-01T00:00:00Z',
+                },
+            ] as Label[],
+            duplicateFrom: {
+                ...monthlyRent,
+                label_ids: ['label-1', 'label-2'],
+            },
+        });
+
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.create).toHaveBeenCalledWith(
+                expect.objectContaining({ label_ids: ['label-1'] }),
+                expect.anything(),
+            );
+        });
     });
 
     it('falls back to the usual account when the original one is gone', () => {
