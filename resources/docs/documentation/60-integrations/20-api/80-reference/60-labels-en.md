@@ -12,7 +12,7 @@ The example requests read your personal token from `$WHISPER_MONEY_TOKEN`: run `
 
 `GET /api/v1/labels`
 
-Your labels in a space, newest first, the ones that track a savings goal included. As in the app, another member's labels are not listed.
+Your labels in a space, newest first, the ones that track a savings goal and the archived ones included. As in the app, another member's labels are not listed.
 
 **Scope:** read. A personal token needs `api:read`; an OAuth token needs `api:use`.
 
@@ -37,6 +37,8 @@ Your labels in a space, newest first, the ones that track a savings goal include
 | `data[].name` | string | The label's name, unique within the space. |
 | `data[].color` | string | The label's color. |
 | `data[].source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
+| `data[].archived` | boolean | Whether the label is archived. An archived label stays on the transactions, automation rules and budgets that already use it and still works in filters and reports, but cannot be added to anything new until it is unarchived. |
+| `data[].archived_at` | string (date-time) or null | When the label was archived, or `null` when it is not. |
 | `data[].created_at` | string (date-time) or null | When the label was created. |
 | `has_more` | boolean | Whether more objects exist past this page, in the direction being walked. |
 
@@ -58,6 +60,8 @@ curl https://whisper.money/api/v1/labels \
             "name": "Holidays",
             "color": "blue",
             "source": "user",
+            "archived": false,
+            "archived_at": null,
             "created_at": "2026-01-15T09:30:00+00:00"
         }
     ],
@@ -109,6 +113,8 @@ Tag transactions with it through `PUT /api/v1/transactions/{id}/labels`.
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
+| `data.archived` | boolean | Whether the label is archived. An archived label stays on the transactions, automation rules and budgets that already use it and still works in filters and reports, but cannot be added to anything new until it is unarchived. |
+| `data.archived_at` | string (date-time) or null | When the label was archived, or `null` when it is not. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -133,6 +139,8 @@ curl -X POST https://whisper.money/api/v1/labels \
         "name": "Holidays",
         "color": "blue",
         "source": "user",
+        "archived": false,
+        "archived_at": null,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -174,6 +182,8 @@ curl -X POST https://whisper.money/api/v1/labels \
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
+| `data.archived` | boolean | Whether the label is archived. An archived label stays on the transactions, automation rules and budgets that already use it and still works in filters and reports, but cannot be added to anything new until it is unarchived. |
+| `data.archived_at` | string (date-time) or null | When the label was archived, or `null` when it is not. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -193,6 +203,8 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
         "name": "Holidays",
         "color": "blue",
         "source": "user",
+        "archived": false,
+        "archived_at": null,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }
@@ -212,7 +224,7 @@ curl https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d3b4a60 \
 
 `PATCH /api/v1/labels/{label}`
 
-Changes only the fields you send. The label of a savings goal (`source: saving_goal`) carries the goal's name, so renaming it is a `422`; its color can still be changed.
+Changes only the fields you send. Send `archived` to archive or unarchive the label: an archived label cannot be added to transactions, automation rules or new budgets, but stays where it already is. The label of a savings goal (`source: saving_goal`) carries the goal's name, so renaming or archiving it is a `422`; its color can still be changed.
 
 **Scope:** write. A personal token needs `api:write` (a read & write token); an OAuth token needs `api:use`.
 
@@ -229,6 +241,7 @@ Changes only the fields you send. The label of a savings goal (`source: saving_g
 | --- | --- | --- | --- |
 | `name` | string | No | The label's name, unique within the space. |
 | `color` | LabelColor | No | The label's color. |
+| `archived` | boolean | No | `true` to archive the label, `false` to unarchive it. An archived label stays on the transactions, automation rules and budgets that already use it and keeps working in filters and reports, but cannot be added to anything new. The label of a savings goal cannot be archived on its own. |
 
 #### Response
 
@@ -242,6 +255,8 @@ Changes only the fields you send. The label of a savings goal (`source: saving_g
 | `data.name` | string | The label's name, unique within the space. |
 | `data.color` | string | The label's color. |
 | `data.source` | "user" \| "saving_goal" \| "estimate" | Where the label comes from: `user` for one made by hand, `saving_goal` for the one a savings goal tracks its contributions with, `estimate` for the one marking the rough monthly expenses entered during onboarding. |
+| `data.archived` | boolean | Whether the label is archived. An archived label stays on the transactions, automation rules and budgets that already use it and still works in filters and reports, but cannot be added to anything new until it is unarchived. |
+| `data.archived_at` | string (date-time) or null | When the label was archived, or `null` when it is not. |
 | `data.created_at` | string (date-time) or null | When the label was created. |
 
 #### Example request
@@ -251,7 +266,8 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
   -H "Authorization: Bearer $WHISPER_MONEY_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Holidays"
+    "name": "Holidays",
+    "archived": true
 }'
 ```
 
@@ -265,6 +281,8 @@ curl -X PATCH https://whisper.money/api/v1/labels/0199a3f2-6c1e-7b4d-9a8e-2f5c1d
         "name": "Holidays",
         "color": "blue",
         "source": "user",
+        "archived": false,
+        "archived_at": null,
         "created_at": "2026-01-15T09:30:00+00:00"
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
 use App\Models\Space;
 use App\Models\User;
+use App\Services\Labels\ArchivedLabelGuard;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -68,6 +69,8 @@ class AutomationRuleWriter
      */
     public function create(User $user, Space $space, array $attributes, array $labelIds): AutomationRule
     {
+        ArchivedLabelGuard::ensureAssignable($labelIds, attribute: 'action_label_ids');
+
         if (($attributes['action_category_id'] ?? null) === null && $labelIds === []) {
             throw ValidationException::withMessages([
                 'action_category_id' => 'At least one action is required: pass action_category_id and/or action_label_ids.',
@@ -98,6 +101,8 @@ class AutomationRuleWriter
      */
     public function update(AutomationRule $rule, array $changes, ?array $labelIds): AutomationRule
     {
+        ArchivedLabelGuard::ensureAssignable($labelIds ?? [], $rule->labels()->pluck('labels.id'), 'action_label_ids');
+
         $rule->fill($changes);
 
         // The rule must keep at least one action. Compare against the labels it

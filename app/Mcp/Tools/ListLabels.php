@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\PresentsLabels;
 use App\Models\Label;
 use App\Models\User;
 use App\Services\SpaceResolver;
@@ -12,9 +13,11 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List the user\'s labels in a space. Use the ids with label_transaction or automation-rule label actions.')]
+#[Description('List the user\'s labels in a space. Use the ids with label_transaction or rule actions. Archived ones are listed and flagged: they work in filters but cannot be newly assigned.')]
 class ListLabels extends McpTool
 {
+    use PresentsLabels;
+
     /**
      * @return array<string, mixed>
      */
@@ -32,11 +35,7 @@ class ListLabels extends McpTool
         $labels = app(SpaceResolver::class)->ownedInSpace(Label::query(), $user, $space)
             ->orderBy('name')
             ->get()
-            ->map(fn (Label $label): array => [
-                'id' => $label->id,
-                'name' => $label->name,
-                'color' => $label->color,
-            ]);
+            ->map(fn (Label $label): array => $this->presentLabel($label));
 
         return $this->json([
             'space_id' => $space->id,

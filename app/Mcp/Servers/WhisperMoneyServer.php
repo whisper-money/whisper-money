@@ -124,6 +124,13 @@ app is kept in their books.
   (`auto_tag_account_id`), including the ones already there since the start of
   the month; the response reports the rule and how many it tagged. Archiving
   and deleting a goal happen in the app only.
+- A label can be archived (`update_label` with `archived`). An archived label
+  stays on the transactions, automation rules and budgets that already use it,
+  and keeps working in `search_transactions` filters and `spending_by_label`,
+  but cannot be added to anything new: assigning it to a transaction, a rule or
+  a new budget is refused unless the target already carries it. A rule skips
+  its archived labels when it runs and still applies its other actions.
+  `list_labels` flags archived labels; unarchive one to use it again.
 - An automation rule categorizes and labels transactions automatically. It only
   runs on transactions created after it, so applying one to the history already
   in the account is a separate, preview-first step: `list_automation_rules` for

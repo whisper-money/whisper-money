@@ -25,7 +25,8 @@ class LabelController extends Controller
      * List labels
      *
      * Your labels in a space, newest first, the ones that track a savings goal
-     * included. As in the app, another member's labels are not listed.
+     * and the archived ones included. As in the app, another member's labels
+     * are not listed.
      */
     #[ScopedToSpace]
     #[Paginated(LabelResource::class)]
@@ -67,9 +68,12 @@ class LabelController extends Controller
     /**
      * Update a label
      *
-     * Changes only the fields you send. The label of a savings goal
-     * (`source: saving_goal`) carries the goal's name, so renaming it is a
-     * `422`; its color can still be changed.
+     * Changes only the fields you send. Send `archived` to archive or
+     * unarchive the label: an archived label cannot be added to transactions,
+     * automation rules or new budgets, but stays where it already is. The
+     * label of a savings goal (`source: saving_goal`) carries the goal's
+     * name, so renaming or archiving it is a `422`; its color can still be
+     * changed.
      *
      * @param  string  $label  The label's id.
      */

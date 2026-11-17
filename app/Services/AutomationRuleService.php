@@ -211,7 +211,7 @@ class AutomationRuleService
      */
     private function applyLabelsInBulk(EloquentCollection $transactions, AutomationRule $rule): array
     {
-        $labelIds = $rule->labels->pluck('id')->all();
+        $labelIds = $rule->assignableLabelIds();
 
         if ($labelIds === []) {
             return [];
@@ -256,11 +256,12 @@ class AutomationRuleService
             return $transaction->category_id !== null;
         }
 
-        $ruleLabelIds = $rule->labels->pluck('id')->all();
-
-        if (empty($ruleLabelIds)) {
+        if ($rule->labels->isEmpty()) {
             return false;
         }
+
+        // A rule whose labels are all archived has nothing left to add.
+        $ruleLabelIds = $rule->assignableLabelIds();
 
         $transactionLabelIds = $transaction->labels->pluck('id')->all();
 
@@ -414,7 +415,7 @@ class AutomationRuleService
             $transaction->saveQuietly();
         }
 
-        $labelIds = $rule->labels->pluck('id')->all();
+        $labelIds = $rule->assignableLabelIds();
         if (! empty($labelIds)) {
             $result = $transaction->labels()->syncWithoutDetaching($labelIds);
             if (! empty($result['attached'])) {

@@ -45,6 +45,8 @@ describe('list', function () {
                 'name' => 'Holidays',
                 'color' => 'blue',
                 'source' => 'user',
+                'archived' => false,
+                'archived_at' => null,
                 'created_at' => '2026-01-15T09:30:00+00:00',
             ]);
     });

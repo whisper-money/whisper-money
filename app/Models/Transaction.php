@@ -436,6 +436,19 @@ class Transaction extends Model
             ->withTimestamps();
     }
 
+    /**
+     * The ids of the labels the transaction carries, read from the loaded
+     * relation when there is one.
+     *
+     * @return list<string>
+     */
+    public function labelIds(): array
+    {
+        $labels = $this->relationLoaded('labels') ? $this->labels : $this->labels()->get(['labels.id']);
+
+        return $labels->pluck('id')->values()->all();
+    }
+
     /** @return HasMany<BudgetTransaction, $this> */
     public function budgetTransactions(): HasMany
     {

@@ -57,6 +57,20 @@ class LabelResource extends JsonResource
              */
             'source' => $this->source->value,
             /**
+             * Whether the label is archived. An archived label stays on the transactions, automation rules and budgets that already use it and still works in filters and reports, but cannot be added to anything new until it is unarchived.
+             *
+             * @example false
+             */
+            'archived' => $this->isArchived(),
+            /**
+             * When the label was archived, or `null` when it is not.
+             *
+             * @format date-time
+             *
+             * @example null
+             */
+            'archived_at' => $this->archived_at?->toIso8601String(),
+            /**
              * When the label was created.
              *
              * @format date-time

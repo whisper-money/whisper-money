@@ -32,7 +32,7 @@ class SplitTransaction extends WriteTool
             'splits' => $schema->array()->items($schema->object([
                 'amount' => $schema->integer()->description('Signed amount in the transaction currency\'s minor units. Must have the same sign as the original: parts of an expense are all negative.')->required(),
                 'category_id' => $schema->string()->description('Category for this part. Omit to leave it uncategorized.'),
-                'label_ids' => $schema->array()->items($schema->string())->description('Label ids for this part. Defaults to none; the original\'s labels are not copied.'),
+                'label_ids' => $schema->array()->items($schema->string())->description('Label ids for this part. Defaults to none; the original\'s labels are not copied. An archived label is refused unless the original carries it.'),
             ]))->description('The parts to create, 2 to '.TransactionSplitter::MAX_PARTS.' of them. Their amounts must add up to the original amount exactly.')->required(),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];

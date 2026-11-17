@@ -94,4 +94,22 @@ class AutomationRule extends Model
         return $this->belongsToMany(Label::class, 'automation_rule_labels')
             ->using(AutomationRuleLabel::class);
     }
+
+    /**
+     * The labels applying the rule adds: its labels minus the archived ones,
+     * which it skips while still applying its other actions.
+     *
+     * @return list<string>
+     */
+    public function assignableLabelIds(): array
+    {
+        $labels = $this->labels;
+
+        // Some screens load the labels with only their id; archived_at decides here.
+        if ($labels->contains(fn (Label $label): bool => ! array_key_exists('archived_at', $label->getAttributes()))) {
+            $labels = $this->labels()->get(['labels.id', 'labels.archived_at']);
+        }
+
+        return $labels->reject(fn (Label $label): bool => $label->isArchived())->pluck('id')->values()->all();
+    }
 }

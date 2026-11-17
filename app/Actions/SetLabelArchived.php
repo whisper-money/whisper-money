@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Actions;
+
+use App\Models\Label;
+
+/**
+ * Archiving a label records when it happened and nothing else: the label
+ * stays on every transaction, rule and budget that already uses it, and keeps
+ * working in filters and reports. It only stops being assignable anew (see
+ * ArchivedLabelGuard). Unarchiving clears the date.
+ *
+ * Archiving an already archived label keeps the original date.
+ */
+class SetLabelArchived
+{
+    public function handle(Label $label, bool $archived): Label
+    {
+        $label->update([
+            'archived_at' => $archived ? ($label->archived_at ?? now()) : null,
+        ]);
+
+        return $label;
+    }
+}

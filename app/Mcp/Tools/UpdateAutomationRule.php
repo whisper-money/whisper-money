@@ -29,7 +29,7 @@ class UpdateAutomationRule extends WriteTool
             'priority' => $schema->integer()->min(0)->description('New priority (lower is evaluated first).'),
             'rules_json' => $schema->object()->description('Replacement condition object (it replaces the rule\'s conditions entirely). '.$this->rulesJsonDescription()),
             'action_category_id' => $schema->string()->description('New category id to assign, or null to clear.'),
-            'action_label_ids' => $schema->array()->items($schema->string())->description('Replacement set of label ids (replaces all existing labels).'),
+            'action_label_ids' => $schema->array()->items($schema->string())->description('Replacement set of label ids (replaces all existing labels). A newly added archived label is refused; ones the rule already has can stay, and are skipped when it runs.'),
             'action_note' => $schema->string()->description('New note to append, or null to clear.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];

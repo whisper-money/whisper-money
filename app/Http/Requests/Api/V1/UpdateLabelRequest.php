@@ -18,11 +18,20 @@ class UpdateLabelRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->labelFields(LabelWriter::updateRules());
+        return [
+            ...$this->labelFields(LabelWriter::updateRules()),
+            /**
+             * `true` to archive the label, `false` to unarchive it. An archived label stays on the transactions, automation rules and budgets that already use it and keeps working in filters and reports, but cannot be added to anything new. The label of a savings goal cannot be archived on its own.
+             *
+             * @example true
+             */
+            'archived' => LabelWriter::updateRules()['archived'],
+        ];
     }
 
     /**
-     * Refuse unknown fields, and renaming the label of a savings goal.
+     * Refuse unknown fields, and renaming or archiving the label of a savings
+     * goal.
      *
      * @return array<int, callable(Validator): void>
      */

@@ -19,8 +19,8 @@ class LabelTransaction extends WriteTool
     {
         return [
             'transaction_id' => $schema->string()->description('Id of the transaction to label.')->required(),
-            'add_label_ids' => $schema->array()->items($schema->string())->description('Label ids to attach.'),
-            'remove_label_ids' => $schema->array()->items($schema->string())->description('Label ids to detach.'),
+            'add_label_ids' => $schema->array()->items($schema->string())->description('Label ids to attach. An archived label (see list_labels) is refused unless the transaction already has it.'),
+            'remove_label_ids' => $schema->array()->items($schema->string())->description('Label ids to detach. Archived labels can be removed.'),
             'space' => $schema->string()->description('Space id. Defaults to the personal space.'),
         ];
     }
