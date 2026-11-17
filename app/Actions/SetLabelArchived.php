@@ -16,9 +16,18 @@ class SetLabelArchived
 {
     public function handle(Label $label, bool $archived): Label
     {
-        $label->update([
-            'archived_at' => $archived ? ($label->archived_at ?? now()) : null,
-        ]);
+        $this->fill($label, $archived)->save();
+
+        return $label;
+    }
+
+    /**
+     * Set the date without saving, for a caller that saves other changes to
+     * the label in the same write.
+     */
+    public function fill(Label $label, bool $archived): Label
+    {
+        $label->archived_at = $archived ? ($label->archived_at ?? now()) : null;
 
         return $label;
     }

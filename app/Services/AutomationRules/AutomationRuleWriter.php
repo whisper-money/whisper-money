@@ -101,7 +101,7 @@ class AutomationRuleWriter
      */
     public function update(AutomationRule $rule, array $changes, ?array $labelIds): AutomationRule
     {
-        ArchivedLabelGuard::ensureAssignable($labelIds ?? [], $rule->labels()->pluck('labels.id'), 'action_label_ids');
+        ArchivedLabelGuard::ensureAssignable($labelIds ?? [], $rule->labelIds(), 'action_label_ids');
 
         $rule->fill($changes);
 

@@ -63,7 +63,7 @@ class StoreAutomationRuleRequest extends FormRequest
     {
         $rule = $this->route('automationRule');
 
-        return $rule instanceof AutomationRule ? $rule->labels()->pluck('labels.id')->all() : [];
+        return $rule instanceof AutomationRule ? $rule->labelIds() : [];
     }
 
     /**

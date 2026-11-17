@@ -391,6 +391,19 @@ describe('automation rules', function () {
             ->and($transaction->labels->pluck('id')->all())->toBe([$this->active->id]);
     });
 
+    it('skips archived labels even when the rule was loaded with label ids only', function () {
+        $rule = AutomationRule::factory()->create(['user_id' => $this->user->id, 'action_category_id' => null]);
+        $rule->labels()->attach([$this->archived->id, $this->active->id]);
+        $transactions = collect([archivedLabelsTransaction(), archivedLabelsTransaction()]);
+
+        app(AutomationRuleService::class)->applyRuleActionsToTransactions(
+            Transaction::query()->whereKey($transactions->pluck('id'))->get(),
+            AutomationRule::query()->with('labels:id')->findOrFail($rule->id),
+        );
+
+        $transactions->each(fn (Transaction $transaction) => expect($transaction->fresh()->labels->pluck('id')->all())->toBe([$this->active->id]));
+    });
+
     it('skips archived labels when a new transaction runs the rules', function () {
         $rule = AutomationRule::factory()->create([
             'user_id' => $this->user->id,

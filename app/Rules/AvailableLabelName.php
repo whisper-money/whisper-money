@@ -22,6 +22,10 @@ class AvailableLabelName implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        if (! is_string($value)) {
+            return;
+        }
+
         $clash = Label::query()
             ->where('user_id', $this->userId)
             ->where('name', $value)

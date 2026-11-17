@@ -21,6 +21,8 @@ class LabelWriter
 {
     private const string NameTakenMessage = 'A label with that name already exists.';
 
+    public function __construct(private SetLabelArchived $setLabelArchived) {}
+
     /**
      * @return array<string, array<mixed>>
      */
@@ -118,11 +120,11 @@ class LabelWriter
             $label->color = (string) $changes['color'];
         }
 
-        $label->save();
-
         if (array_key_exists('archived', $changes)) {
-            app(SetLabelArchived::class)->handle($label, (bool) $changes['archived']);
+            $this->setLabelArchived->fill($label, (bool) $changes['archived']);
         }
+
+        $label->save();
 
         return $label;
     }
