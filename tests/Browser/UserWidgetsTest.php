@@ -143,7 +143,7 @@ it('draws every compiled widget in light and dark mode, and isolates the one tha
 
     $layout = userWidgetsLayout($page);
 
-    expect($layout['ready'])->toHaveCount(11)
+    expect($layout['ready'])->toHaveCount(12)
         ->and($layout['failed'])->toBe(['99-crashes'])
         ->and($layout['collapsed'])->toBe([])
         ->and($layout['overflow'])->toBeLessThanOrEqual(0)
@@ -168,7 +168,7 @@ it('fits a phone: every widget full width', function () {
         [...document.querySelectorAll('.wm-widget')].map((widget) => Math.round(widget.getBoundingClientRect().width))
     JS);
 
-    expect($layout['ready'])->toHaveCount(11)
+    expect($layout['ready'])->toHaveCount(12)
         ->and($layout['overflow'])->toBeLessThanOrEqual(0)
         ->and(array_unique($widths))->toHaveCount(1);
 });

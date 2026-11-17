@@ -85,6 +85,16 @@ describe('<UserWidgetCell>', () => {
         expect(drawn.props?.size).toEqual(PLACEMENT.size);
     });
 
+    it('lets the widget open pages only while the dashboard is not edited', () => {
+        renderCell();
+        expect(drawn.props?.canNavigate).toBe(true);
+    });
+
+    it('keeps the widget from opening pages while the dashboard is edited', () => {
+        renderCell({ isEditing: true });
+        expect(drawn.props?.canNavigate).toBe(false);
+    });
+
     it('shows a skeleton while the data or the page decide', () => {
         renderCell({ data: { status: 'loading' } });
         expect(cellState()).toBe('loading');

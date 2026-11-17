@@ -31,3 +31,11 @@ export function setPreviewPage({
 export function usePage(): PreviewPage {
     return page;
 }
+
+/**
+ * `wm.open()` never gets this far in the preview (it opens no gesture that
+ * may navigate), and if it did there would be no app to visit.
+ */
+export const router = {
+    visit(): void {},
+};

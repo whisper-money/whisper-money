@@ -165,6 +165,22 @@ describe('widget reference', function () {
             ->and(collect($json['endpoints'])->firstWhere('endpoint', 'GET /transactions')['listable'])->toBeTrue();
     });
 
+    it('documents wm.open: its destinations, and that it only works from a click', function () {
+        $json = dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk());
+        $rules = implode("\n", $json['rules']);
+
+        expect($rules)->toContain(
+            'wm.download(filename, content)',
+            'wm.open(destination)',
+            'only work from a click',
+            '{ account: accountId }',
+            '{ budget: budgetId }',
+            '{ transactions: { categoryIds, accountIds, labelIds, dateFrom, dateTo, search } }',
+            'YYYY-MM-DD',
+            'Never a URL',
+        );
+    });
+
     it('documents <TransactionList>: every prop it takes, and an example that compiles', function () {
         $json = dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk());
         $docs = $json['component_docs']['TransactionList'];

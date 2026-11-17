@@ -7,13 +7,8 @@ import { FORBIDDEN_PROPERTY_NAMES } from '../validator/allowlist';
 import { SDK_COMPONENTS, SDK_VALUES } from '../validator/sdk-spec';
 import { ChartTooltipContent } from './chart-tooltip';
 import { type WidgetEnv, WidgetSdkProvider } from './context';
-import {
-    beginWidgetGesture,
-    csvFilename,
-    endWidgetGesture,
-    parseCsv,
-    sanitizeCsvCell,
-} from './download';
+import { csvFilename, parseCsv, sanitizeCsvCell } from './download';
+import { beginWidgetGesture, endWidgetGesture } from './gesture';
 import * as sdk from './index';
 
 const env: WidgetEnv = {
@@ -67,6 +62,11 @@ describe('the SDK module', () => {
                 (value) => value !== undefined,
             ),
         ).toBe(true);
+    });
+
+    it('hands widgets a frozen wm with download and open only', () => {
+        expect(Object.keys(sdk.wm).sort()).toEqual(['download', 'open']);
+        expect(Object.isFrozen(sdk.wm)).toBe(true);
     });
 });
 

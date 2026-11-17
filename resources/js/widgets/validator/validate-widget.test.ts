@@ -664,6 +664,21 @@ export default function W() {
 }`,
         ],
         [
+            'wm.open from a button and a row',
+            `import { Button, useWidgetData, wm } from '@whisper-money/widget-sdk';
+export default function W() {
+    const { budgets, groceries } = useWidgetData();
+    return (
+        <ul>
+            {budgets.map((budget) => (
+                <li key={budget.id} onClick={() => wm.open({ budget: budget.id })}>{budget.name}</li>
+            ))}
+            <Button onClick={() => wm.open({ transactions: { categoryIds: [groceries.id], dateFrom: '2026-10-01', dateTo: '2026-10-31' } })}>Ver</Button>
+        </ul>
+    );
+}`,
+        ],
+        [
             'a read-only TransactionList',
             `import { TransactionList, useWidgetData } from '@whisper-money/widget-sdk';
 export default function W() {

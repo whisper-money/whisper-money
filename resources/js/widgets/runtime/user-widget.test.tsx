@@ -21,6 +21,20 @@ vi.mock('@inertiajs/react', () => ({
     router: { visit: vi.fn(), replace: vi.fn() },
 }));
 
+// jsdom only dispatches untrusted clicks, which the real gate refuses: let them
+// through, keeping what the frame says about navigation.
+vi.mock('../sdk/gesture', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../sdk/gesture')>();
+
+    return {
+        ...actual,
+        beginWidgetGesture: (
+            _event: unknown,
+            options?: { canNavigate?: boolean },
+        ) => actual.beginWidgetGesture(undefined, options),
+    };
+});
+
 // The stylesheet is Vite's business; the registry is the real one.
 vi.mock('../../../css/widgets.css', () => ({}));
 
@@ -379,6 +393,38 @@ describe('useUserWidgetsGate', () => {
         );
         vi.unstubAllGlobals();
     });
+
+    it.each([
+        [true, 1],
+        [false, 0],
+    ])(
+        'opens a page from a click when canNavigate is %s',
+        async (canNavigate, visits) => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            vi.stubGlobal('matchMedia', () => ({
+                matches: false,
+                addEventListener: () => {},
+                removeEventListener: () => {},
+            }));
+            const { router } = await import('@inertiajs/react');
+            vi.mocked(router.visit).mockClear();
+            const OPENS = `import{jsx as j}from"react/jsx-runtime";import{Button as B,wm}from"@whisper-money/widget-sdk";export default function W(){return j(B,{onClick:()=>wm.open({budget:"0198f0a1-7c3e-7a10-9b2c-1d2e3f4a5b6c"}),children:"Open"})}`;
+
+            inApp(
+                <UserWidget
+                    js={OPENS}
+                    data={{}}
+                    size={{ width: '1/2', height: 'm' }}
+                    canNavigate={canNavigate}
+                />,
+            );
+
+            (await screen.findByRole('button', { name: 'Open' })).click();
+
+            expect(router.visit).toHaveBeenCalledTimes(visits);
+            vi.unstubAllGlobals();
+        },
+    );
 
     it('does not count leaving the page as a hang', () => {
         const { unmount } = renderHook(() => useUserWidgetsGate(['a']));

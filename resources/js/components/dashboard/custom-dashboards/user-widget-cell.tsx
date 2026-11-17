@@ -184,6 +184,7 @@ export function UserWidgetCell({
                         onError={(caught) => onError(definition, caught)}
                         onSettled={() => settle?.(placement.id)}
                         renderTransactionTable={renderTransactionTable}
+                        canNavigate={!isEditing}
                     />
                     {content.resolved.truncated && (
                         <span
