@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLocale } from '@/hooks/use-locale';
 import type { AutomationRule } from '@/types/automation-rule';
+import { assignableLabels } from '@/types/label';
 import type { ServerTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
@@ -434,7 +435,8 @@ function PreviewRow({
         : '';
     const currentCategory = transaction.category?.name ?? __('Uncategorized');
     const newCategory = rule.category?.name ?? null;
-    const newLabels = rule.labels ?? [];
+    // The server skips archived labels when it runs the rule.
+    const newLabels = assignableLabels(rule.labels ?? []);
     const existingLabelIds = new Set(
         transaction.labels?.map((l) => l.id) ?? [],
     );

@@ -242,6 +242,7 @@ export function LabelFacetList({
                 <CommandEmpty>{__('No labels found.')}</CommandEmpty>
                 {labels.map((label) => {
                     const colorClasses = getLabelColorClasses(label.color);
+                    const archived = isArchivedLabel(label);
                     return (
                         <CommandItem
                             key={label.id}
@@ -256,7 +257,7 @@ export function LabelFacetList({
                             <div
                                 className={cn(
                                     'flex items-center gap-2',
-                                    isArchivedLabel(label) && 'opacity-60',
+                                    archived && 'opacity-60',
                                 )}
                             >
                                 <div
@@ -274,7 +275,7 @@ export function LabelFacetList({
                                     />
                                 </div>
                                 <span>{label.name}</span>
-                                {isArchivedLabel(label) && (
+                                {archived && (
                                     <span className="text-xs text-muted-foreground">
                                         {__('Archived')}
                                     </span>

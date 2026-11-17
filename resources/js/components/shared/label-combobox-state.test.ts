@@ -90,6 +90,19 @@ describe('labelComboboxOptions', () => {
         expect(result.nameTaken).toBe(true);
     });
 
+    it('does not flag an archived label that is already attached', () => {
+        const result = labelComboboxOptions(['l-3'], labels, 'Old flat');
+
+        expect(result.archivedMatch).toBeNull();
+        expect(result.nameTaken).toBe(true);
+    });
+
+    it('returns the assignable label matching the query exactly', () => {
+        expect(labelComboboxOptions([], labels, 'travel').exactMatch?.id).toBe(
+            'l-1',
+        );
+    });
+
     it('treats an unknown name as free to create', () => {
         const result = labelComboboxOptions([], labels, 'Gifts');
 

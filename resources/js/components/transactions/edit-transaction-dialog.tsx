@@ -218,6 +218,10 @@ function useConvertedAmount(
     return converted;
 }
 
+function labelIdsOf(source: ServerTransaction): string[] {
+    return source.label_ids || source.labels?.map((l) => l.id) || [];
+}
+
 export function EditTransactionDialog({
     transaction,
     categories,
@@ -324,17 +328,13 @@ export function EditTransactionDialog({
     });
 
     useEffect(() => {
-        function labelIdsOf(source: ServerTransaction): string[] {
-            return source.label_ids || source.labels?.map((l) => l.id) || [];
-        }
-
-        function fillFrom(source: ServerTransaction) {
+        function fillFrom(source: ServerTransaction, labelIds: string[]) {
             setDescription(source.description);
             setUnsignedAmount(Math.abs(source.amount));
             setTransactionType(source.amount > 0 ? 'income' : 'expense');
             setCurrencyCode(source.currency_code);
             setCategoryId(source.category_id || 'null');
-            setSelectedLabelIds(labelIdsOf(source));
+            setSelectedLabelIds(labelIds);
             setNotes(source.notes || '');
             setShowNotes(!!source.notes);
         }
@@ -342,7 +342,7 @@ export function EditTransactionDialog({
         if (mode === 'edit' && transaction) {
             setTransactionDate(transaction.transaction_date);
             setAccountId(transaction.account_id);
-            fillFrom(transaction);
+            fillFrom(transaction, labelIdsOf(transaction));
         } else if (mode === 'create' && open) {
             const today = todayDateString();
             setTransactionDate(today);
@@ -379,8 +379,8 @@ export function EditTransactionDialog({
             setSelectedLabelIds([]);
             setNotes('');
             if (duplicateFrom) {
-                fillFrom(duplicateFrom);
-                setSelectedLabelIds(
+                fillFrom(
+                    duplicateFrom,
                     withoutArchivedLabels(labelIdsOf(duplicateFrom)),
                 );
             }

@@ -18,7 +18,12 @@ export interface LabelComboboxOptions {
     selectedLabels: Label[];
     /** What the list offers to pick, by name: archived labels are left out. */
     options: Label[];
-    /** An archived label whose name is exactly the query, to explain why it's missing. */
+    /** An assignable label whose name is exactly the query. */
+    exactMatch: Label | null;
+    /**
+     * An archived label not attached here whose name is exactly the query,
+     * to explain why it isn't offered.
+     */
     archivedMatch: Label | null;
     /** A label with exactly this name exists, archived or not. */
     nameTaken: boolean;
@@ -48,8 +53,14 @@ export function labelComboboxOptions(
                     label.name.toLowerCase().includes(normalizedQuery),
             )
             .sort((a, b) => a.name.localeCompare(b.name)),
+        exactMatch:
+            exactMatch && !isArchivedLabel(exactMatch) ? exactMatch : null,
         archivedMatch:
-            exactMatch && isArchivedLabel(exactMatch) ? exactMatch : null,
+            exactMatch &&
+            isArchivedLabel(exactMatch) &&
+            !value.includes(exactMatch.id)
+                ? exactMatch
+                : null,
         nameTaken: exactMatch !== undefined,
     };
 }

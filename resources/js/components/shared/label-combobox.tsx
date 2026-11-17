@@ -20,7 +20,12 @@ import {
 } from '@/components/ui/command';
 import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
-import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
+import {
+    getLabelColorClasses,
+    isArchivedLabel,
+    LABEL_COLORS,
+    type Label,
+} from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Archive, Check, ChevronsUpDown, Plus, X } from 'lucide-react';
 import { useMemo, useRef, useState, type ReactElement } from 'react';
@@ -76,7 +81,7 @@ export function LabelCombobox({
     const { value: safeValue, labels: safeLabels } =
         normalizeLabelComboboxState(value, mergedLabels);
 
-    const { selectedLabels, options, archivedMatch, nameTaken } =
+    const { selectedLabels, options, exactMatch, archivedMatch, nameTaken } =
         labelComboboxOptions(safeValue, safeLabels, inputValue);
 
     const handleSelect = (labelId: string) => {
@@ -95,16 +100,15 @@ export function LabelCombobox({
     const handleCreate = async () => {
         if (!inputValue.trim() || isCreating) return;
 
-        if (archivedMatch) {
+        if (exactMatch) {
+            handleSelect(exactMatch.id);
+            setInputValue('');
             return;
         }
 
-        const existingLabel = options.find(
-            (l) => l.name.toLowerCase() === inputValue.trim().toLowerCase(),
-        );
-        if (existingLabel) {
-            handleSelect(existingLabel.id);
-            setInputValue('');
+        // An archived label already holds the name: it can't be picked nor
+        // created again, and the list says why.
+        if (nameTaken) {
             return;
         }
 
@@ -199,7 +203,16 @@ export function LabelCombobox({
                                                 'gap-1 px-2 py-0.5',
                                                 colorClasses.bg,
                                                 colorClasses.text,
+                                                isArchivedLabel(label) &&
+                                                    'opacity-60',
                                             )}
+                                            title={
+                                                isArchivedLabel(label)
+                                                    ? __(
+                                                          'Archived: once removed, it cannot be added again.',
+                                                      )
+                                                    : undefined
+                                            }
                                         >
                                             <LabelIcon
                                                 label={label}
@@ -285,6 +298,7 @@ export function LabelCombobox({
                     {archivedMatch && (
                         <CommandItem
                             disabled
+                            value="archived-label-hint"
                             className="text-muted-foreground"
                             data-testid="label-archived-hint"
                         >

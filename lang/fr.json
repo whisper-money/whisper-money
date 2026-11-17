@@ -2909,5 +2909,6 @@
     "There is an archived label called “:name”. Unarchive it instead of reusing its name.": "Vous avez déjà une étiquette archivée nommée « :name ». Désarchivez-la au lieu de réutiliser son nom.",
     "Archive": "Archiver",
     "Unarchive": "Désarchiver",
-    "The label “:name” is archived. Unarchive it in Settings → Labels to use it.": "L’étiquette « :name » est archivée. Désarchivez-la dans Configuration → Balises pour l’utiliser."
+    "The label “:name” is archived. Unarchive it in Settings → Labels to use it.": "L’étiquette « :name » est archivée. Désarchivez-la dans Configuration → Balises pour l’utiliser.",
+    "Archived: once removed, it cannot be added again.": "Archivée : une fois retirée, elle ne peut plus être ajoutée."
 }
