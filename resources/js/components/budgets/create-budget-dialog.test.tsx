@@ -18,8 +18,8 @@ const post = vi.fn();
 
 const pageProps = vi.hoisted(() => ({
     current: {
-        categories: [],
-        labels: [],
+        categories: [] as unknown[],
+        labels: [] as unknown[],
     },
 }));
 
@@ -35,8 +35,21 @@ vi.mock('@/actions/App/Http/Controllers/BudgetController', () => ({
 }));
 
 vi.mock('@/components/ui/multi-select', () => ({
-    MultiSelect: ({ placeholder }: { placeholder: string }) => (
-        <div>{placeholder}</div>
+    MultiSelect: ({
+        placeholder,
+        options,
+    }: {
+        placeholder: string;
+        options: { value: string; label: string }[];
+    }) => (
+        <div>
+            {placeholder}
+            {options.map((option) => (
+                <span key={option.value} data-testid="multi-select-option">
+                    {option.label}
+                </span>
+            ))}
+        </div>
     ),
 }));
 
@@ -69,6 +82,29 @@ describe('CreateBudgetDialog', () => {
 
         expect(screen.getByText('Select categories')).toBeInTheDocument();
         expect(screen.getByText('Select labels')).toBeInTheDocument();
+    });
+
+    it('does not offer archived labels', () => {
+        pageProps.current = {
+            categories: [],
+            labels: [
+                { id: 'l-1', name: 'Travel', color: 'blue', archived_at: null },
+                {
+                    id: 'l-2',
+                    name: 'Old flat',
+                    color: 'red',
+                    archived_at: '2026-01-01T00:00:00Z',
+                },
+            ],
+        };
+
+        openDialog();
+
+        expect(
+            screen
+                .getAllByTestId('multi-select-option')
+                .map((option) => option.textContent),
+        ).toEqual(['Travel']);
     });
 
     it('hides category and label selectors when catch-all is enabled', () => {

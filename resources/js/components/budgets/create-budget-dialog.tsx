@@ -40,7 +40,7 @@ import {
     RolloverType,
 } from '@/types/budget';
 import { Category, getCategoryColorClasses } from '@/types/category';
-import { getLabelColorClasses, Label } from '@/types/label';
+import { assignableLabels, getLabelColorClasses, Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
@@ -334,7 +334,9 @@ export function CreateBudgetDialog({
                                         </UILabel>
                                         <MultiSelect
                                             id="labels"
-                                            options={allLabels.map((label) => {
+                                            options={assignableLabels(
+                                                allLabels,
+                                            ).map((label) => {
                                                 const colorClasses =
                                                     getLabelColorClasses(
                                                         label.color,

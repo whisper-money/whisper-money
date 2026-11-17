@@ -17,6 +17,17 @@ export interface Label {
     archived_at?: string | null;
 }
 
+export function isArchivedLabel(label: Pick<Label, 'archived_at'>): boolean {
+    return Boolean(label.archived_at);
+}
+
+/** The labels that can still be assigned: archived ones only stay where they are. */
+export function assignableLabels<T extends Pick<Label, 'archived_at'>>(
+    labels: T[],
+): T[] {
+    return labels.filter((label) => !isArchivedLabel(label));
+}
+
 export const LABEL_COLORS = [
     'amber',
     'blue',
