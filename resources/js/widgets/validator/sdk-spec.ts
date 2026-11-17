@@ -12,7 +12,9 @@ import type { ComponentProps } from './component-props';
  * - `formatMoney(minorUnits, currency, options?)`: amounts arrive in minor units.
  * - `get(obj, key)`: computed-key access; only own properties, GET_FORBIDDEN_KEYS rejected.
  * - `cn(...classes)`: joins literal classes (the validator reads its arguments).
- * - `wm`: `{ download(filename, content) }`, the only way to hand data to the user.
+ * - `wm`: `{ download(filename, content), open(destination) }`, from a click
+ *   only: `download` hands data to the user as a CSV, `open` takes them to an
+ *   account, a budget or the filtered transactions list (never a URL).
  */
 export const SDK_VALUES: ReadonlySet<string> = new Set([
     'useWidgetData',

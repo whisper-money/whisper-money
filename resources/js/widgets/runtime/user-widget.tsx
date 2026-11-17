@@ -24,6 +24,11 @@ export interface UserWidgetProps {
      * the widget's own data reach it, and never from widget code.
      */
     renderTransactionTable?: RenderWidgetTransactionTable;
+    /**
+     * Lets the widget's `wm.open()` take the user to another page. Off by
+     * default: a dashboard being edited leaves it off.
+     */
+    canNavigate?: boolean;
     className?: string;
 }
 

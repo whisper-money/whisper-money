@@ -118,7 +118,7 @@ describe('loadWidgetModule', () => {
     }, 60_000);
 
     it('renders every compiled fixture at once on the app React', async () => {
-        expect(compiled.size).toBe(11);
+        expect(compiled.size).toBe(12);
 
         const components = await Promise.all(
             [...compiled.values()].map((js) => loadWidgetModule(js)),

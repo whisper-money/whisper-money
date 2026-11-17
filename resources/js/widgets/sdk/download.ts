@@ -1,13 +1,12 @@
 import { saveBlob } from '@/lib/save-blob';
+import { currentWidgetGesture } from './gesture';
 
 /**
  * `wm.download(filename, content)`: the only way a widget hands data to the
  * user. Widgets cannot create links or blobs themselves, so this is also the
  * only way out of the page for their data, and it keeps two promises:
  *
- * - It only works inside a user gesture: a click (or a key that clicks) on
- *   the widget. `<UserWidget>` opens the gesture in the capture phase of the
- *   click and closes it once the click has bubbled back, so a download a
+ * - It only works inside a user gesture (see gesture.ts): a download a
  *   widget starts from an effect, a timer or on mount is refused.
  * - The file is always a CSV, and every cell that a spreadsheet would read
  *   as a formula (`=`, `+`, `-`, `@`, a tab or a carriage return first) is
@@ -22,45 +21,8 @@ export type DownloadContent =
     | ReadonlyArray<ReadonlyArray<unknown>>
     | ReadonlyArray<Readonly<Record<string, unknown>>>;
 
-let insideGesture = false;
-
-/**
- * Called by the runtime when a click on a widget starts (capture phase). The
- * timeout is the backstop: it fires once the whole dispatch is over, even if
- * a widget's handler threw before the click bubbled back.
- */
-export function beginWidgetGesture(event?: {
-    nativeEvent?: { isTrusted?: boolean };
-}): void {
-    // A click the page dispatched itself (`el.click()`) is not the user's.
-    if (event?.nativeEvent?.isTrusted === false) {
-        return;
-    }
-
-    insideGesture = true;
-    setTimeout(endWidgetGesture, 0);
-}
-
-/** Called by the runtime once that click has bubbled back to the widget. */
-export function endWidgetGesture(): void {
-    insideGesture = false;
-}
-
-function isInsideGesture(): boolean {
-    if (!insideGesture) {
-        return false;
-    }
-
-    // Belt and braces where the browser can tell: the click must be a real one.
-    const activation = (
-        globalThis.navigator as { userActivation?: { isActive: boolean } }
-    )?.userActivation;
-
-    return activation === undefined || activation.isActive;
-}
-
 export function download(filename: unknown, content: unknown): boolean {
-    if (!isInsideGesture()) {
+    if (currentWidgetGesture() === null) {
         console.warn(
             'wm.download() only works inside a click on the widget; the download was blocked.',
         );

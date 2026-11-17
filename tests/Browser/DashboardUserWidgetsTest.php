@@ -831,3 +831,72 @@ it('keeps one bulk actions bar on a dashboard with two transaction widgets', fun
         ->assertNoConsoleLogs()
         ->assertNoJavascriptErrors();
 });
+
+/**
+ * A widget that links to an account's page and to a category's transactions
+ * with `wm.open()`.
+ *
+ * @return array{0: User, 1: WidgetDefinition, 2: Account, 3: Category}
+ */
+function dashboardWithLinkingWidget(): array
+{
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate(CustomDashboards::class);
+    $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Nómina']);
+    $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Supermercado']);
+
+    $dashboard = Dashboard::factory()->for($user)->create(['name' => 'Links']);
+    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+
+    $service = app(WidgetDefinitionService::class);
+    $widget = $service->create($user, groceriesManifest(), str_replace(
+        ['<account id>', '<category id>'],
+        [$account->id, $category->id],
+        <<<'TSX'
+            import { Button, wm } from '@whisper-money/widget-sdk';
+
+            export default function Links() {
+                return (
+                    <div className="flex h-full flex-col gap-2 p-4">
+                        <Button variant="outline" size="sm" onClick={() => wm.open({ account: '<account id>' })}>Ver la cuenta</Button>
+                        <p className="cursor-pointer" onClick={() => wm.open({ transactions: { categoryIds: ['<category id>'], dateFrom: '2026-10-01', dateTo: '2026-10-31' } })}>Súper de octubre</p>
+                    </div>
+                );
+            }
+            TSX), WidgetOrigin::Mcp);
+    $service->place($dashboard, $widget);
+
+    return [$user, $widget, $account, $category];
+}
+
+it('opens an account and a category\'s transactions from a click on a widget', function () {
+    [$user, , $account, $category] = dashboardWithLinkingWidget();
+    actingAs($user);
+
+    visit('/dashboard')
+        ->click('Ver la cuenta')
+        ->assertPathIs("/accounts/{$account->id}")
+        ->assertNoJavascriptErrors();
+
+    $page = visit('/dashboard')
+        ->click('Súper de octubre')
+        ->assertPathIs('/transactions')
+        ->assertNoJavascriptErrors();
+
+    $query = urldecode((string) $page->script('window.location.search'));
+
+    expect($query)->toMatch("/category_ids\[0?\]={$category->id}/")->toContain('date_from=2026-10-01', 'date_to=2026-10-31');
+});
+
+it('opens nothing from a widget while the dashboard is edited', function () {
+    [$user] = dashboardWithLinkingWidget();
+    actingAs($user);
+
+    visit('/dashboard')
+        ->assertSee('Ver la cuenta')
+        ->press('Edit')
+        ->click('Ver la cuenta')
+        ->wait(1)
+        ->assertPathIs('/dashboard')
+        ->assertNoJavascriptErrors();
+});

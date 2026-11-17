@@ -24,8 +24,8 @@ import {
     WidgetSdkProvider,
     type WidgetSdkValue,
 } from '../sdk/context';
-import { beginWidgetGesture, endWidgetGesture } from '../sdk/download';
 import { setDefaultMoneyLocale } from '../sdk/format-money';
+import { beginWidgetGesture, endWidgetGesture } from '../sdk/gesture';
 import {
     scopedTransactionTable,
     WidgetTransactionTableProvider,
@@ -65,6 +65,7 @@ export default function UserWidgetFrame({
     onError,
     onSettled,
     renderTransactionTable,
+    canNavigate = false,
     className,
 }: UserWidgetProps) {
     const [state, setState] = useState<LoadState>({ status: 'loading' });
@@ -145,7 +146,9 @@ export default function UserWidgetFrame({
                 carded && WIDGET_CARD_CLASS_NAME,
                 className,
             )}
-            onClickCapture={(event) => beginWidgetGesture(event)}
+            onClickCapture={(event) =>
+                beginWidgetGesture(event, { canNavigate })
+            }
             onClick={endWidgetGesture}
         >
             {state.status === 'loading' && (

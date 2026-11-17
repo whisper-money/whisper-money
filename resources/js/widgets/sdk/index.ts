@@ -1,5 +1,6 @@
 import { cn as joinClasses } from '@/lib/utils';
 import { download } from './download';
+import { open } from './open';
 
 /**
  * `@whisper-money/widget-sdk`: everything a user widget may import besides
@@ -49,5 +50,8 @@ export function cn(...classes: unknown[]): string {
     );
 }
 
-/** The widget's way out to the user: `wm.download(filename, content)`. */
-export const wm = Object.freeze({ download });
+/**
+ * The widget's ways out to the user, both from a click on it:
+ * `wm.download(filename, content)` and `wm.open(destination)`.
+ */
+export const wm = Object.freeze({ download, open });
