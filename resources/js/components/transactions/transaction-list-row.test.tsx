@@ -122,6 +122,26 @@ describe('TransactionListRow', () => {
         expect(labelLine.nextElementSibling).toHaveTextContent('Weekly shop');
     });
 
+    it("draws each label chip in the label's own colour", () => {
+        renderRow({
+            transaction: buildTransaction({
+                label_ids: ['label-trip', 'label-home'],
+            }),
+        });
+
+        expect(screen.getByText('Trip')).toHaveClass(
+            'bg-blue-100',
+            'text-blue-700',
+            'dark:bg-blue-900/30',
+            'dark:text-blue-300',
+        );
+        expect(screen.getByText('Home')).toHaveClass(
+            'bg-green-100',
+            'text-green-700',
+        );
+        expect(screen.getByText('Trip')).not.toHaveClass('bg-neutral-100');
+    });
+
     it('draws no label line when there is nothing to show', () => {
         renderRow({
             transaction: buildTransaction({ label_ids: ['label-trip'] }),

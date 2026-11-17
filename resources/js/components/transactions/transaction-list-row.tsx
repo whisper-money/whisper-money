@@ -1,5 +1,6 @@
 import { BankLogo } from '@/components/bank-logo';
 import { CategoryIcon } from '@/components/shared/category-combobox';
+import { LabelIcon } from '@/components/shared/label-icon';
 import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import {
@@ -13,7 +14,7 @@ import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
-import { type Label } from '@/types/label';
+import { getLabelColorClasses, type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Check, HelpCircle } from 'lucide-react';
@@ -210,12 +211,7 @@ export function TransactionListRow({
                     // cut to "Rec…" says nothing.
                     <div className="flex flex-wrap gap-1 pt-0.5">
                         {transactionLabels.map((label) => (
-                            <span
-                                key={label.id}
-                                className="rounded-full bg-neutral-100 px-1.5 py-px text-[11px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                            >
-                                {label.name}
-                            </span>
+                            <CompactLabelChip key={label.id} label={label} />
                         ))}
                     </div>
                 )}
@@ -360,6 +356,24 @@ function CircleFace({
             )}
         >
             <HelpCircle className="size-[18px]" />
+        </span>
+    );
+}
+
+/** A label in its own colour, as the table's badge draws it, sized for the list. */
+function CompactLabelChip({ label }: { label: Label }) {
+    const colorClasses = getLabelColorClasses(label.color);
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[11px] font-medium',
+                colorClasses.bg,
+                colorClasses.text,
+            )}
+        >
+            <LabelIcon label={label} className="size-2.5 shrink-0" />
+            {label.name}
         </span>
     );
 }
