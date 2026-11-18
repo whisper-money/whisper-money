@@ -288,4 +288,143 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
                 .hasAttribute('disabled'),
         ).toBe(true);
     });
+
+    describe('MyInvestor', () => {
+        async function reachMyInvestorStep(
+            fixture: string,
+            notice: string,
+            heading: string,
+            accounts: Account[] = [],
+        ) {
+            renderDrawer(accounts);
+
+            fireEvent.click(
+                await screen.findByText("Upload the file and we'll create it"),
+            );
+            upload(fixture);
+
+            expect(await screen.findByText(notice)).not.toBeNull();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+            await screen.findByText(heading);
+        }
+
+        it('imports the current-account xlsx into a new savings account, balance from the file', async () => {
+            await reachMyInvestorStep(
+                'myinvestor-cash.xlsx',
+                'This is a MyInvestor current-account export',
+                'MyInvestor current account',
+            );
+
+            // The file says the balance: nothing to type.
+            expect(document.querySelector('#broker-cash-balance')).toBeNull();
+            expect(screen.getByText(/The file's last balance/)).not.toBeNull();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Import 5 transactions',
+                }),
+            );
+
+            await waitFor(() => expect(create).toHaveBeenCalledTimes(5));
+            expect(
+                post.mock.calls
+                    .filter(([url]) =>
+                        String(url).includes('/settings/accounts'),
+                    )
+                    .map(([, body]) => [body.name, body.type]),
+            ).toEqual([['MyInvestor', 'savings']]);
+            await waitFor(() =>
+                expect(
+                    post.mock.calls.filter(([url]) =>
+                        String(url).includes('/balances'),
+                    ),
+                ).toHaveLength(1),
+            );
+        });
+
+        it('lets the balance be typed when the CSV has none', async () => {
+            await reachMyInvestorStep(
+                'myinvestor-cash.csv',
+                'This is a MyInvestor current-account export',
+                'MyInvestor current account',
+            );
+
+            expect(
+                document.querySelector('#broker-cash-balance'),
+            ).not.toBeNull();
+        });
+
+        it('writes only the portfolio history for the securities file', async () => {
+            await reachMyInvestorStep(
+                'myinvestor-salida.xls',
+                'MyInvestor securities operations',
+                'MyInvestor portfolio',
+            );
+
+            expect(
+                screen.getByText(/1 pension-plan contribution has no ISIN/),
+            ).not.toBeNull();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Import portfolio history',
+                }),
+            );
+
+            await waitFor(() =>
+                expect(
+                    post.mock.calls.filter(([url]) =>
+                        String(url).includes('/balances'),
+                    ),
+                ).toHaveLength(1),
+            );
+            expect(
+                post.mock.calls
+                    .filter(([url]) =>
+                        String(url).includes('/settings/accounts'),
+                    )
+                    .map(([, body]) => [body.name, body.type]),
+            ).toEqual([['MyInvestor · Portfolio', 'investment']]);
+            expect(create).not.toHaveBeenCalled();
+            expect(checkDuplicates).not.toHaveBeenCalled();
+        });
+
+        it('picks the portfolio account of the last import again', async () => {
+            const portfolio: Account = {
+                ...checking,
+                id: 'mi-portfolio',
+                name: 'MyInvestor · Portfolio',
+                bank: null,
+                type: 'investment',
+            };
+
+            await reachMyInvestorStep(
+                'myinvestor-salida.xls',
+                'MyInvestor securities operations',
+                'MyInvestor portfolio',
+                [checking, portfolio],
+            );
+
+            expect(screen.getByRole('combobox').textContent).toContain(
+                'MyInvestor · Portfolio',
+            );
+
+            fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Import portfolio history',
+                }),
+            );
+
+            await waitFor(() =>
+                expect(post.mock.calls.map(([url]) => String(url))).toEqual([
+                    expect.stringContaining('mi-portfolio'),
+                ]),
+            );
+        });
+    });
 });

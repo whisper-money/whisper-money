@@ -1,4 +1,19 @@
+import { chosenAccountId } from '@/lib/broker-imports/broker-accounts';
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
+import { parseMyInvestorCash } from '@/lib/broker-imports/myinvestor-cash';
+import {
+    defaultMyInvestorCashPlan,
+    defaultMyInvestorSecuritiesPlan,
+    myInvestorCashPreviewRows,
+    myInvestorCurrency,
+    type MyInvestorCashImport,
+    type MyInvestorSecuritiesImport,
+} from '@/lib/broker-imports/myinvestor-import';
+import {
+    runMyInvestorCashImport,
+    runMyInvestorSecuritiesImport,
+} from '@/lib/broker-imports/myinvestor-run';
+import { parseMyInvestorSecurities } from '@/lib/broker-imports/myinvestor-securities';
 import { readBrokerGrid } from '@/lib/broker-imports/read';
 import { parseTradeRepublic } from '@/lib/broker-imports/trade-republic';
 import {
@@ -22,7 +37,10 @@ import { todayDateString } from '@/utils/date';
  * import, and the drawer only goes through the functions here, which switch
  * on `kind`.
  */
-export type BrokerImport = TradeRepublicImport;
+export type BrokerImport =
+    | TradeRepublicImport
+    | MyInvestorCashImport
+    | MyInvestorSecuritiesImport;
 
 /** Which of a broker import's accounts an account is, e.g. its cash account. */
 export type BrokerAccountRole = string;
@@ -47,7 +65,10 @@ export interface BrokerRunResult {
 
 /** For the `default` of a switch over every broker: a new one fails to compile. */
 export function unknownBroker(broker: never): never {
-    throw new Error(`Unknown broker import: ${JSON.stringify(broker)}`);
+    // Only its kind: the rest is the user's file.
+    throw new Error(
+        `Unknown broker import: ${(broker as { kind?: string }).kind}`,
+    );
 }
 
 /**
@@ -79,6 +100,27 @@ export async function readBrokerImport(
                 ),
             };
         }
+        case 'myinvestor_cash': {
+            const parsed = parseMyInvestorCash(grid);
+
+            return {
+                kind: 'myinvestor_cash',
+                file: parsed,
+                today,
+                plan: defaultMyInvestorCashPlan(
+                    parsed,
+                    accounts,
+                    selectedAccountId,
+                ),
+            };
+        }
+        case 'myinvestor_securities':
+            return {
+                kind: 'myinvestor_securities',
+                file: parseMyInvestorSecurities(grid),
+                today,
+                plan: defaultMyInvestorSecuritiesPlan(accounts),
+            };
         default:
             return null;
     }
@@ -88,11 +130,12 @@ export async function readBrokerImport(
 export function brokerCashAccountId(broker: BrokerImport): UUID | null {
     switch (broker.kind) {
         case 'trade_republic':
-            return broker.plan.cash.kind === 'existing'
-                ? broker.plan.cash.accountId
-                : null;
+        case 'myinvestor_cash':
+            return chosenAccountId(broker.plan.cash);
+        case 'myinvestor_securities':
+            return null;
         default:
-            return unknownBroker(broker.kind);
+            return unknownBroker(broker);
     }
 }
 
@@ -107,10 +150,27 @@ export function withBrokerCashAccount(
                 ...broker,
                 plan: { ...broker.plan, cash: { kind: 'existing', accountId } },
             };
+        case 'myinvestor_cash':
+            return {
+                ...broker,
+                plan: { ...broker.plan, cash: { kind: 'existing', accountId } },
+            };
+        case 'myinvestor_securities':
+            return broker;
         default:
-            return unknownBroker(broker.kind);
+            return unknownBroker(broker);
     }
 }
+
+/** The accounts each broker's plan picks, by role: a new broker must list its own. */
+const ACCOUNT_ROLES: Record<
+    BrokerImport['kind'],
+    readonly BrokerAccountRole[]
+> = {
+    trade_republic: ['cash', 'portfolio'],
+    myinvestor_cash: ['cash'],
+    myinvestor_securities: ['portfolio'],
+};
 
 /** The import with an account it just made standing in for "create". */
 export function withBrokerAccountCreated(
@@ -118,20 +178,18 @@ export function withBrokerAccountCreated(
     role: BrokerAccountRole,
     account: Account,
 ): BrokerImport {
-    switch (broker.kind) {
-        case 'trade_republic':
-            return role === 'cash' || role === 'portfolio'
-                ? {
-                      ...broker,
-                      plan: {
-                          ...broker.plan,
-                          [role]: { kind: 'existing', accountId: account.id },
-                      },
-                  }
-                : broker;
-        default:
-            return unknownBroker(broker.kind);
+    if (!ACCOUNT_ROLES[broker.kind].includes(role)) {
+        return broker;
     }
+
+    // The role is one of this plan's account fields, so the plan keeps its shape.
+    return {
+        ...broker,
+        plan: {
+            ...broker.plan,
+            [role]: { kind: 'existing', accountId: account.id },
+        },
+    } as BrokerImport;
 }
 
 /** The currency the broker file is kept in. */
@@ -139,8 +197,11 @@ export function brokerCurrency(broker: BrokerImport): string {
     switch (broker.kind) {
         case 'trade_republic':
             return tradeRepublicCurrency(broker.file);
+        case 'myinvestor_cash':
+        case 'myinvestor_securities':
+            return myInvestorCurrency(broker.file);
         default:
-            return unknownBroker(broker.kind);
+            return unknownBroker(broker);
     }
 }
 
@@ -153,8 +214,16 @@ export function brokerPreviewRows(broker: BrokerImport): ParsedTransaction[] {
                 broker.plan.balanceToday,
                 broker.today,
             );
+        case 'myinvestor_cash':
+            return myInvestorCashPreviewRows(
+                broker.file,
+                broker.plan.balanceToday,
+                broker.today,
+            );
+        case 'myinvestor_securities':
+            return [];
         default:
-            return unknownBroker(broker.kind);
+            return unknownBroker(broker);
     }
 }
 
@@ -166,7 +235,11 @@ export function runBrokerImport(
     switch (broker.kind) {
         case 'trade_republic':
             return runTradeRepublicImport({ ...options, broker });
+        case 'myinvestor_cash':
+            return runMyInvestorCashImport(broker, options);
+        case 'myinvestor_securities':
+            return runMyInvestorSecuritiesImport(broker, options);
         default:
-            return unknownBroker(broker.kind);
+            return unknownBroker(broker);
     }
 }

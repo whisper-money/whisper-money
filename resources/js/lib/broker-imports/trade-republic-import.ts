@@ -1,26 +1,21 @@
 import {
-    cashBalances,
-    computedCashBalance,
-    dailyInvested,
-} from '@/lib/broker-imports/series';
+    balancePayload,
+    bankNamed,
+    cashAccountOptions,
+    choiceOf,
+    investedBalancePayload,
+    investedOn,
+    movementPreviewRows,
+    portfolioAccountOptions,
+    type AccountChoice,
+    type PortfolioChoice,
+} from '@/lib/broker-imports/broker-accounts';
+import { cashBalances, computedCashBalance } from '@/lib/broker-imports/series';
 import { type TradeRepublicFile } from '@/lib/broker-imports/trade-republic';
 import { type BulkBalance } from '@/lib/transaction-import';
-import {
-    filterTransactionalAccounts,
-    supportsInvestedAmount,
-    type Account,
-    type Bank,
-} from '@/types/account';
+import { type Account, type Bank } from '@/types/account';
 import { type ParsedTransaction } from '@/types/import';
 import { type UUID } from '@/types/uuid';
-
-/** Where a part of the file goes: an account the user has, or one made for it on import. */
-export type AccountChoice =
-    | { kind: 'existing'; accountId: UUID }
-    | { kind: 'create' };
-
-/** The portfolio can also be left out of the import altogether. */
-export type PortfolioChoice = AccountChoice | { kind: 'skip' };
 
 /** What the user decided on the Trade Republic step. */
 export interface TradeRepublicPlan {
@@ -57,10 +52,7 @@ const DEFAULT_CURRENCY = 'EUR';
 
 /** Whether a bank is Trade Republic, by its name as the banks list writes it. */
 export function isTradeRepublicBank(bank: Pick<Bank, 'name'> | null): boolean {
-    return (
-        bank !== null &&
-        bank.name.toLowerCase().replace(/\s+/g, '') === 'traderepublic'
-    );
+    return bankNamed(bank, 'traderepublic');
 }
 
 /**
@@ -103,18 +95,6 @@ export function tradeRepublicCurrency(file: TradeRepublicFile): string {
     );
 }
 
-/** The accounts the cash can go to. */
-export function cashAccountOptions(accounts: Account[]): Account[] {
-    return filterTransactionalAccounts(accounts);
-}
-
-/** The accounts the portfolio can go to: those that keep what was invested. */
-export function portfolioAccountOptions(accounts: Account[]): Account[] {
-    return accounts.filter(
-        (account) => !account.archived_at && supportsInvestedAmount(account),
-    );
-}
-
 /**
  * Where each part goes before the user changes anything: the account picked
  * on the first step, else one the user already keeps at Trade Republic, else
@@ -139,20 +119,16 @@ export function defaultTradeRepublicPlan(
     );
 
     return {
-        cash: cashAccount
-            ? { kind: 'existing', accountId: cashAccount.id }
-            : { kind: 'create' },
+        cash: choiceOf(cashAccount),
         balanceToday: computedCashBalance(file.cash),
-        portfolio: portfolioAccount
-            ? { kind: 'existing', accountId: portfolioAccount.id }
-            : { kind: 'create' },
+        portfolio: choiceOf(portfolioAccount),
         currentValue: null,
     };
 }
 
 /** What had been invested at the end of today, in minor units. */
 export function investedToday(file: TradeRepublicFile, today: string): number {
-    return dailyInvested(file.trades, today).at(-1)?.investedMinor ?? 0;
+    return investedOn(file.trades, today);
 }
 
 /**
@@ -165,23 +141,10 @@ export function tradeRepublicPreviewRows(
     balanceToday: number,
     today: string,
 ): ParsedTransaction[] {
-    const balanceByDay = new Map(
-        cashBalances(file.cash, balanceToday, today).map((point) => [
-            point.date,
-            point.balanceMinor,
-        ]),
+    return movementPreviewRows(
+        file.cash,
+        cashBalances(file.cash, balanceToday, today),
     );
-
-    return file.cash
-        .map((movement) => ({
-            transaction_date: movement.date,
-            description: movement.description,
-            amount: movement.amount,
-            currency_code: movement.currency,
-            balance: balanceByDay.get(movement.date) ?? null,
-            external_id: movement.externalId,
-        }))
-        .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
 }
 
 /** One balance per day on the cash account, from the first movement to today. */
@@ -190,10 +153,7 @@ export function cashBalancePayload(
     balanceToday: number,
     today: string,
 ): BulkBalance[] {
-    return cashBalances(file.cash, balanceToday, today).map((point) => ({
-        balance_date: point.date,
-        balance: point.balanceMinor,
-    }));
+    return balancePayload(cashBalances(file.cash, balanceToday, today));
 }
 
 /**
@@ -206,12 +166,5 @@ export function portfolioBalancePayload(
     currentValue: number | null,
     today: string,
 ): BulkBalance[] {
-    return dailyInvested(file.trades, today).map((point) => ({
-        balance_date: point.date,
-        balance:
-            point.date === today && currentValue !== null
-                ? currentValue
-                : point.investedMinor,
-        invested_amount: point.investedMinor,
-    }));
+    return investedBalancePayload(file.trades, currentValue, today);
 }
