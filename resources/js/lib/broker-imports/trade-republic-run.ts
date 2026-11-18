@@ -32,7 +32,6 @@ export interface TradeRepublicRunOptions {
     categories: Category[];
     banks: Bank[];
     automationRules: AutomationRule[];
-    today: string;
     onProgress?: (processed: number) => void;
     /** Told as soon as an account exists, so a retry uses it instead of making another. */
     onAccountCreated?: (role: TradeRepublicRole, account: Account) => void;
@@ -115,14 +114,22 @@ async function writeBalances(
         if (accountHasBalance(cashAccount)) {
             await storeBalancesInBulk(
                 cashAccount.id,
-                cashBalancePayload(file, plan.balanceToday, options.today),
+                cashBalancePayload(
+                    file,
+                    plan.balanceToday,
+                    options.broker.today,
+                ),
             );
         }
 
         if (portfolioAccount) {
             await storeBalancesInBulk(
                 portfolioAccount.id,
-                portfolioBalancePayload(file, plan.currentValue, options.today),
+                portfolioBalancePayload(
+                    file,
+                    plan.currentValue,
+                    options.broker.today,
+                ),
             );
         }
 

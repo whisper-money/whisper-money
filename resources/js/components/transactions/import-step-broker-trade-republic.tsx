@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useLocale } from '@/hooks/use-locale';
+import { brokerCashAccountId } from '@/lib/broker-imports/broker-import';
 import {
     cashAccountOptions,
     investedToday,
@@ -27,7 +28,7 @@ import {
 } from '@/lib/broker-imports/trade-republic-import';
 import { cn } from '@/lib/utils';
 import { formatAccountType, type Account } from '@/types/account';
-import { formatDate } from '@/utils/date';
+import { formatDate, formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertTriangle } from 'lucide-react';
 import { type ReactNode } from 'react';
@@ -35,7 +36,6 @@ import { type ReactNode } from 'react';
 interface ImportStepBrokerTradeRepublicProps {
     broker: TradeRepublicImport;
     accounts: Account[];
-    today: string;
     onPlanChange: (plan: TradeRepublicPlan) => void;
     onNext: () => void;
     onBack: () => void;
@@ -48,12 +48,19 @@ function choiceValue(choice: PortfolioChoice): string {
     return choice.kind === 'existing' ? choice.accountId : choice.kind;
 }
 
-function choiceFrom(value: string): PortfolioChoice {
-    if (value === CREATE || value === SKIP) {
-        return { kind: value };
-    }
+function accountChoiceFrom(value: string): AccountChoice {
+    return value === CREATE
+        ? { kind: 'create' }
+        : { kind: 'existing', accountId: value };
+}
 
-    return { kind: 'existing', accountId: value };
+function portfolioChoiceFrom(value: string): PortfolioChoice {
+    return value === SKIP ? { kind: 'skip' } : accountChoiceFrom(value);
+}
+
+/** The first day among some dated rows, `YYYY-MM-DD`, or null for none. */
+function firstDay(rows: { date: string }[]): string | null {
+    return rows.map((row) => row.date).sort()[0] ?? null;
 }
 
 function accountLabel(account: Account): string {
@@ -85,27 +92,34 @@ function Panel({
     );
 }
 
-function AccountSelect({
+function AccountSelect<Choice extends PortfolioChoice>({
     id,
     value,
     accounts,
     createLabel,
     skipLabel,
+    replacesFrom,
+    parse,
     onChange,
 }: {
     id: string;
-    value: PortfolioChoice;
+    value: Choice;
     accounts: Account[];
     createLabel: string;
     skipLabel?: string;
-    onChange: (choice: PortfolioChoice) => void;
+    /** The first day whose balance the import writes, told when the account already exists. */
+    replacesFrom: string | null;
+    parse: (value: string) => Choice;
+    onChange: (choice: Choice) => void;
 }) {
+    const locale = useLocale();
+
     return (
         <div className="flex flex-col gap-2">
             <Label htmlFor={id}>{__('Account')}</Label>
             <Select
                 value={choiceValue(value)}
-                onValueChange={(next) => onChange(choiceFrom(next))}
+                onValueChange={(next) => onChange(parse(next))}
             >
                 <SelectTrigger id={id}>
                     <SelectValue />
@@ -122,6 +136,14 @@ function AccountSelect({
                     )}
                 </SelectContent>
             </Select>
+            {value.kind === 'existing' && replacesFrom && (
+                <p className="text-xs text-muted-foreground">
+                    {__(
+                        "Its daily balances from :date on are replaced with the file's.",
+                        { date: formatDateMedium(replacesFrom, locale) },
+                    )}
+                </p>
+            )}
         </div>
     );
 }
@@ -134,7 +156,6 @@ function AccountSelect({
 export function ImportStepBrokerTradeRepublic({
     broker,
     accounts,
-    today,
     onPlanChange,
     onNext,
     onBack,
@@ -143,16 +164,12 @@ export function ImportStepBrokerTradeRepublic({
     const currencyCode = tradeRepublicCurrency(file);
     const cashOptions = cashAccountOptions(accounts);
     const portfolioOptions = portfolioAccountOptions(accounts);
-    const invested = investedToday(file, today);
+    const invested = investedToday(file, broker.today);
     const securities = new Set(file.trades.map((trade) => trade.symbol)).size;
-    const cashAccount =
-        plan.cash.kind === 'existing'
-            ? cashOptions.find(
-                  (account) =>
-                      plan.cash.kind === 'existing' &&
-                      account.id === plan.cash.accountId,
-              )
-            : undefined;
+    const cashAccountId = brokerCashAccountId(broker);
+    const cashAccount = cashOptions.find(
+        (account) => account.id === cashAccountId,
+    );
     const update = (changes: Partial<TradeRepublicPlan>) =>
         onPlanChange({ ...plan, ...changes });
 
@@ -174,9 +191,9 @@ export function ImportStepBrokerTradeRepublic({
                             name: TRADE_REPUBLIC_CASH_NAME,
                             type: formatAccountType('checking'),
                         })}
-                        onChange={(choice) =>
-                            update({ cash: choice as AccountChoice })
-                        }
+                        replacesFrom={firstDay(file.cash)}
+                        parse={accountChoiceFrom}
+                        onChange={(cash) => update({ cash })}
                     />
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="broker-cash-balance">
@@ -218,6 +235,8 @@ export function ImportStepBrokerTradeRepublic({
                             type: formatAccountType('investment'),
                         })}
                         skipLabel={__("Don't import the portfolio")}
+                        replacesFrom={firstDay(file.trades)}
+                        parse={portfolioChoiceFrom}
                         onChange={(portfolio) => update({ portfolio })}
                     />
                     {plan.portfolio.kind !== 'skip' && (
@@ -308,13 +327,12 @@ export function TradeRepublicFileNotice({
 }) {
     const locale = useLocale();
     const { movements, from, to } = tradeRepublicSummary(broker.file);
+    const firstMonth = from ? monthLabel(from, locale) : '';
+    const lastMonth = to ? monthLabel(to, locale) : '';
     const range =
-        from && to
-            ? __(':from – :to', {
-                  from: monthLabel(from, locale),
-                  to: monthLabel(to, locale),
-              })
-            : '';
+        firstMonth === lastMonth
+            ? firstMonth
+            : __(':from – :to', { from: firstMonth, to: lastMonth });
 
     return (
         <div className="flex items-start gap-3 rounded-lg border bg-muted/40 px-4 py-3.5">
@@ -354,15 +372,13 @@ function SummaryTile({
 /** The strip above the preview: where the two accounts will stand once imported. */
 export function TradeRepublicSummaryStrip({
     broker,
-    today,
 }: {
     broker: TradeRepublicImport;
-    today: string;
 }) {
     const locale = useLocale();
     const { file, plan } = broker;
     const currencyCode = tradeRepublicCurrency(file);
-    const invested = investedToday(file, today);
+    const invested = investedToday(file, broker.today);
     const showsPortfolio = plan.portfolio.kind !== 'skip';
     const gain =
         showsPortfolio && plan.currentValue !== null

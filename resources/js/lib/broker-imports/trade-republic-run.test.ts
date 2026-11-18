@@ -51,6 +51,7 @@ async function sampleImport(
     return {
         kind: 'trade_republic',
         file,
+        today: TODAY,
         plan: { ...defaultTradeRepublicPlan(file, [], null), ...plan },
     };
 }
@@ -71,7 +72,6 @@ function importFirstRowIntoChecking(broker: TradeRepublicImport) {
         categories: [],
         banks: [],
         automationRules: [],
-        today: TODAY,
     });
 }
 
@@ -117,7 +117,6 @@ describe('runTradeRepublicImport', () => {
             categories: [],
             banks: [tradeRepublicBank],
             automationRules: [],
-            today: TODAY,
             onAccountCreated,
         });
 
@@ -186,7 +185,6 @@ describe('runTradeRepublicImport', () => {
             categories: [],
             banks: [],
             automationRules: [],
-            today: TODAY,
         });
 
         expect(postedTo('/settings/accounts')).toHaveLength(0);

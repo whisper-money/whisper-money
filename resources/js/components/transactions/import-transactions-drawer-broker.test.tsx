@@ -176,9 +176,25 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
         );
 
         expect(
-            await screen.findByText(/Pick the account it belongs to/),
+            await screen.findByText(/Pick the account this file belongs to/),
         ).not.toBeNull();
         expect(screen.getByRole('radio')).not.toBeNull();
+    });
+
+    it('asks to create an account first when a non-broker file comes with none to pick', async () => {
+        renderDrawer([]);
+
+        fireEvent.click(
+            await screen.findByText("Upload the file and we'll create it"),
+        );
+        upload(
+            'bank.csv',
+            new File(['Date,Amount\n2026-01-01,10\n'], 'bank.csv'),
+        );
+
+        expect(
+            await screen.findByText(/Create the account this file belongs to/),
+        ).not.toBeNull();
     });
 
     it('warns when the cash goes to an account at another bank', async () => {

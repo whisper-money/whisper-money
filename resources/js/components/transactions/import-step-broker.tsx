@@ -1,4 +1,7 @@
-import { type BrokerImport } from '@/lib/broker-imports/broker-import';
+import {
+    unknownBroker,
+    type BrokerImport,
+} from '@/lib/broker-imports/broker-import';
 import { type Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import {
@@ -16,7 +19,6 @@ import {
 interface ImportStepBrokerProps {
     broker: BrokerImport;
     accounts: Account[];
-    today: string;
     onBrokerChange: (broker: BrokerImport) => void;
     onNext: () => void;
     onBack: () => void;
@@ -37,6 +39,8 @@ export function ImportStepBroker({
                     {...props}
                 />
             );
+        default:
+            return unknownBroker(broker.kind);
     }
 }
 
@@ -45,20 +49,18 @@ export function BrokerFileNotice({ broker }: { broker: BrokerImport }) {
     switch (broker.kind) {
         case 'trade_republic':
             return <TradeRepublicFileNotice broker={broker} />;
+        default:
+            return unknownBroker(broker.kind);
     }
 }
 
 /** The strip the preview opens with for a broker file. */
-export function BrokerImportSummary({
-    broker,
-    today,
-}: {
-    broker: BrokerImport;
-    today: string;
-}) {
+export function BrokerImportSummary({ broker }: { broker: BrokerImport }) {
     switch (broker.kind) {
         case 'trade_republic':
-            return <TradeRepublicSummaryStrip broker={broker} today={today} />;
+            return <TradeRepublicSummaryStrip broker={broker} />;
+        default:
+            return unknownBroker(broker.kind);
     }
 }
 
@@ -75,5 +77,7 @@ export function brokerStepInfo(broker: BrokerImport): {
                     'The file carries cash and securities: we keep them in two accounts',
                 ),
             };
+        default:
+            return unknownBroker(broker.kind);
     }
 }

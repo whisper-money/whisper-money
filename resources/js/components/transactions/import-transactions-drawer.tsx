@@ -22,9 +22,11 @@ import {
     brokerPreviewRows,
     readBrokerImport,
     runBrokerImport,
+    withBrokerAccountCreated,
+    withBrokerCashAccount,
+    type BrokerAccountRole,
     type BrokerImport,
 } from '@/lib/broker-imports/broker-import';
-import { type TradeRepublicRole } from '@/lib/broker-imports/trade-republic-run';
 import { describeColumns } from '@/lib/column-shape';
 import {
     convertRowsToTransactions,
@@ -40,7 +42,11 @@ import {
 } from '@/lib/transaction-import';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
-import { type Account, type Bank } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    type Account,
+    type Bank,
+} from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import {
@@ -52,10 +58,9 @@ import {
     type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
-import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import {
@@ -164,7 +169,9 @@ export function ImportTransactionsDrawer({
         () => [...accounts, ...createdAccounts],
         [accounts, createdAccounts],
     );
-    const today = todayDateString();
+    // Bumped on every file change, so a slow broker read cannot land over a
+    // file picked (or removed) after it.
+    const brokerRead = useRef(0);
     const ai = useAiColumnSuggestion();
     const { begin: resetAi } = ai;
     // A credit card has no balance, so the import neither asks for one nor
@@ -209,25 +216,19 @@ export function ImportTransactionsDrawer({
     const handleAccountSelect = (accountId: UUID) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
         // A broker file already read follows the account picked for it.
-        setBroker((prev) =>
-            prev
-                ? {
-                      ...prev,
-                      plan: {
-                          ...prev.plan,
-                          cash: { kind: 'existing', accountId },
-                      },
-                  }
-                : prev,
-        );
+        setBroker((prev) => prev && withBrokerCashAccount(prev, accountId));
     };
 
     const handleImportWithoutAccount = () => {
         setError(null);
         setSelectedAccount(null);
+        // A file read for the account picked before is read again without it.
+        setBroker(null);
+        brokerRead.current++;
         setState((prev) => ({
             ...prev,
             selectedAccountId: null,
+            file: null,
             step: ImportStep.UploadFile,
         }));
     };
@@ -239,6 +240,8 @@ export function ImportTransactionsDrawer({
      * pick one.
      */
     const handleBrokerFile = async (file: File): Promise<boolean> => {
+        const read = brokerRead.current;
+
         try {
             const recognised = await readBrokerImport(
                 file,
@@ -246,15 +249,20 @@ export function ImportTransactionsDrawer({
                 state.selectedAccountId,
             );
 
+            if (read !== brokerRead.current) {
+                return true;
+            }
+
             if (recognised) {
                 setBroker(recognised);
                 setState((prev) => ({ ...prev, file }));
 
                 return true;
             }
-        } catch {
+        } catch (err) {
             // Not a file the broker reader understands: the column mapping
             // reads it, or says why it cannot.
+            console.warn('Broker file detection failed:', err);
         }
 
         if (state.selectedAccountId) {
@@ -267,9 +275,13 @@ export function ImportTransactionsDrawer({
             step: ImportStep.SelectAccount,
         }));
         setError(
-            __(
-                "This file isn't a Trade Republic or MyInvestor export we can import on its own. Pick the account it belongs to, then upload it again.",
-            ),
+            filterTransactionalAccounts(accounts).length === 0
+                ? __(
+                      'Only a Trade Republic file can be imported without an account. Create the account this file belongs to first, then import it.',
+                  )
+                : __(
+                      'Only a Trade Republic file can be imported without an account. Pick the account this file belongs to, then upload it again.',
+                  ),
         );
 
         return true;
@@ -332,6 +344,7 @@ export function ImportTransactionsDrawer({
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
         setBroker(null);
+        brokerRead.current++;
         const token = ai.begin();
 
         if (!file) {
@@ -482,7 +495,7 @@ export function ImportTransactionsDrawer({
 
         const transactions = await withDuplicateFlags(
             brokerCashAccountId(broker),
-            brokerPreviewRows(broker, today),
+            brokerPreviewRows(broker),
         );
 
         setState((prev) => ({
@@ -494,20 +507,12 @@ export function ImportTransactionsDrawer({
 
     /** An account the broker import just made now stands in for "create" in its plan. */
     const handleBrokerAccountCreated = (
-        role: TradeRepublicRole,
+        role: BrokerAccountRole,
         account: Account,
     ) => {
         setCreatedAccounts((prev) => [...prev, account]);
-        setBroker((prev) =>
-            prev
-                ? {
-                      ...prev,
-                      plan: {
-                          ...prev.plan,
-                          [role]: { kind: 'existing', accountId: account.id },
-                      },
-                  }
-                : prev,
+        setBroker(
+            (prev) => prev && withBrokerAccountCreated(prev, role, account),
         );
     };
 
@@ -522,7 +527,6 @@ export function ImportTransactionsDrawer({
                 categories,
                 banks,
                 automationRules,
-                today,
                 onProgress: setImportProgress,
                 onAccountCreated: handleBrokerAccountCreated,
             });
@@ -712,16 +716,18 @@ export function ImportTransactionsDrawer({
                         'Match your file columns to transaction fields',
                     ),
                 };
+            case ImportStep.Broker:
+                return broker
+                    ? brokerStepInfo(broker)
+                    : {
+                          title: __('Import Transactions'),
+                          description: '',
+                      };
             case ImportStep.Preview:
                 return {
                     title: __('Preview Transactions'),
                     description: __('Review transactions before importing'),
                 };
-            case ImportStep.Broker:
-                if (broker) {
-                    return brokerStepInfo(broker);
-                }
-            // falls through: a broker step without a file has nothing to say
             default:
                 if (isImporting) {
                     return {
@@ -792,7 +798,6 @@ export function ImportTransactionsDrawer({
                         <ImportStepBroker
                             broker={broker}
                             accounts={knownAccounts}
-                            today={today}
                             onBrokerChange={setBroker}
                             onNext={handleBrokerPreview}
                             onBack={() => moveToStep(ImportStep.UploadFile)}
@@ -859,12 +864,7 @@ export function ImportTransactionsDrawer({
                         onSelectAll={handleSelectAll}
                         isImporting={isImporting}
                         summary={
-                            broker && (
-                                <BrokerImportSummary
-                                    broker={broker}
-                                    today={today}
-                                />
-                            )
+                            broker && <BrokerImportSummary broker={broker} />
                         }
                     />
                 );

@@ -3998,7 +3998,6 @@
     "Saveback": "Saveback",
     "Coming from Trade Republic or MyInvestor without an account yet?": "¿Vienes de Trade Republic o MyInvestor y aún no tienes la cuenta?",
     "Upload the file and we'll create it": "Sube el archivo y la creamos",
-    "This file isn't a Trade Republic or MyInvestor export we can import on its own. Pick the account it belongs to, then upload it again.": "Este archivo no es una exportación de Trade Republic o MyInvestor que podamos importar por sí sola. Elige la cuenta a la que pertenece y vuelve a subirlo.",
     "The transactions are in, but the accounts' daily balances could not be saved": "Los movimientos se han importado, pero no se han podido guardar los saldos diarios de las cuentas",
     "Trade Republic accounts": "Cuentas de Trade Republic",
     "The file carries cash and securities: we keep them in two accounts": "El archivo trae efectivo y valores: los guardamos en dos cuentas",
@@ -4022,5 +4021,8 @@
     ":count movements, :range. No column mapping needed: you'll choose the accounts next.": ":count movimientos, :range. No hace falta asignar columnas: en el siguiente paso eliges las cuentas.",
     "Cash today": "Efectivo hoy",
     "Portfolio · invested": "Cartera · invertido",
-    "Portfolio · current value": "Cartera · valor actual"
+    "Portfolio · current value": "Cartera · valor actual",
+    "Only a Trade Republic file can be imported without an account. Create the account this file belongs to first, then import it.": "Sin cuenta solo se puede importar un archivo de Trade Republic. Crea primero la cuenta a la que pertenece este archivo y luego impórtalo.",
+    "Only a Trade Republic file can be imported without an account. Pick the account this file belongs to, then upload it again.": "Sin cuenta solo se puede importar un archivo de Trade Republic. Elige la cuenta a la que pertenece este archivo y vuelve a subirlo.",
+    "Its daily balances from :date on are replaced with the file's.": "Sus saldos diarios desde el :date se sustituyen por los del archivo."
 }

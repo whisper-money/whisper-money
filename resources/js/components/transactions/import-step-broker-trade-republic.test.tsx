@@ -44,6 +44,7 @@ async function sampleImport(
     return {
         kind: 'trade_republic',
         file,
+        today: TODAY,
         plan: { ...defaultTradeRepublicPlan(file, [], null), ...plan },
     };
 }
@@ -57,7 +58,6 @@ function renderStep(
         <ImportStepBrokerTradeRepublic
             broker={broker}
             accounts={accounts}
-            today={TODAY}
             onPlanChange={onPlanChange}
             onNext={vi.fn()}
             onBack={vi.fn()}
@@ -114,6 +114,18 @@ describe('ImportStepBrokerTradeRepublic', () => {
         ).toBe(false);
     });
 
+    it('says an existing account gets its daily balances replaced', async () => {
+        renderStep(
+            await sampleImport({
+                cash: { kind: 'existing', accountId: checking.id },
+            }),
+        );
+
+        expect(
+            screen.getByText(/Its daily balances from Jan 2, 2026 on/),
+        ).not.toBeNull();
+    });
+
     it('does not warn for a new Trade Republic account', async () => {
         renderStep(await sampleImport());
 
@@ -124,10 +136,7 @@ describe('ImportStepBrokerTradeRepublic', () => {
 describe('TradeRepublicSummaryStrip', () => {
     it('shows the gain only once a value was typed', async () => {
         const { rerender } = render(
-            <TradeRepublicSummaryStrip
-                broker={await sampleImport()}
-                today={TODAY}
-            />,
+            <TradeRepublicSummaryStrip broker={await sampleImport()} />,
         );
 
         expect(screen.queryByText('Gain')).toBeNull();
@@ -135,7 +144,6 @@ describe('TradeRepublicSummaryStrip', () => {
         rerender(
             <TradeRepublicSummaryStrip
                 broker={await sampleImport({ currentValue: 30_000 })}
-                today={TODAY}
             />,
         );
 

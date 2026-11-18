@@ -36,6 +36,8 @@ export interface TradeRepublicPlan {
 export interface TradeRepublicImport {
     kind: 'trade_republic';
     file: TradeRepublicFile;
+    /** The day the file was read, `YYYY-MM-DD`: the balances run up to it. */
+    today: string;
     plan: TradeRepublicPlan;
 }
 
