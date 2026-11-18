@@ -9,13 +9,21 @@ const {
     convertRowsToTransactions,
     collectBalancesToImport,
     mappingProps,
+    parseFile,
+    readBrokerGrid,
 } = vi.hoisted(() => ({
     create: vi.fn(),
     checkDuplicates: vi.fn(),
     convertRowsToTransactions: vi.fn(),
     collectBalancesToImport: vi.fn(),
     mappingProps: vi.fn(),
+    parseFile: vi.fn(),
+    readBrokerGrid: vi.fn(),
 }));
+
+// With the broker imports flag off (these tests' shared props carry no
+// flags), the drawer must not read a file a second time to look for a broker.
+vi.mock('@/lib/broker-imports/read', () => ({ readBrokerGrid }));
 
 vi.mock('@/services/transaction-sync', () => ({
     transactionSyncService: { create, checkDuplicates },
@@ -24,7 +32,7 @@ vi.mock('@/services/transaction-sync', () => ({
 // The file itself is beside the point here: the rows the mapping would produce
 // are handed straight to the preview.
 vi.mock('@/lib/file-parser', () => ({
-    parseFile: vi.fn(),
+    parseFile,
     autoDetectColumns: vi.fn(() => ({})),
     detectDateFormat: vi.fn(() => null),
     convertRowsToTransactions,
@@ -40,10 +48,26 @@ vi.mock('@/lib/import-config-storage', () => ({
 // The two steps between the account and the preview only have to be walked
 // through; what they show is covered by their own tests.
 vi.mock('@/components/import-step-upload', () => ({
-    ImportStepUpload: ({ onNext }: { onNext: () => void }) => (
-        <button type="button" onClick={onNext}>
-            leave upload
-        </button>
+    ImportStepUpload: ({
+        onNext,
+        onFileSelect,
+    }: {
+        onNext: () => void;
+        onFileSelect: (file: File) => void;
+    }) => (
+        <>
+            <button
+                type="button"
+                onClick={() =>
+                    onFileSelect(new File(['x'], 'trade-republic.csv'))
+                }
+            >
+                pick file
+            </button>
+            <button type="button" onClick={onNext}>
+                leave upload
+            </button>
+        </>
     ),
 }));
 
@@ -290,6 +314,72 @@ describe('ImportTransactionsDrawer', () => {
                     (call) => (call[0] as { balance?: number }).balance,
                 ),
             ).not.toContain(259550);
+        });
+    });
+
+    describe('with the broker imports flag off', () => {
+        it('keeps the account step as it was: no way on without an account', async () => {
+            render(
+                <ImportTransactionsDrawer
+                    open
+                    onOpenChange={vi.fn()}
+                    accounts={[account]}
+                />,
+            );
+
+            await screen.findByRole('radio');
+
+            expect(
+                screen.queryByText("Upload the file and we'll create it"),
+            ).toBeNull();
+        });
+
+        it('still dead-ends with no accounts at all', async () => {
+            render(
+                <ImportTransactionsDrawer
+                    open
+                    onOpenChange={vi.fn()}
+                    accounts={[]}
+                />,
+            );
+
+            expect(
+                await screen.findByText(
+                    'No accounts found. Please create an account first.',
+                ),
+            ).not.toBeNull();
+            expect(
+                screen.queryByText("Upload the file and we'll create it"),
+            ).toBeNull();
+        });
+
+        it('reads a picked file only once and maps its columns', async () => {
+            parseFile.mockResolvedValue({
+                headers: ['Date'],
+                data: [],
+                rowNumbers: [],
+                columns: [[]],
+                headerRowIndex: 0,
+            });
+
+            render(
+                <ImportTransactionsDrawer
+                    open
+                    onOpenChange={vi.fn()}
+                    accounts={[account]}
+                />,
+            );
+
+            fireEvent.click(await screen.findByRole('radio'));
+            fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+            fireEvent.click(await screen.findByText('pick file'));
+
+            await waitFor(() => expect(parseFile).toHaveBeenCalledTimes(1));
+
+            fireEvent.click(screen.getByText('leave upload'));
+
+            expect(await screen.findByText('leave mapping')).not.toBeNull();
+            expect(readBrokerGrid).not.toHaveBeenCalled();
         });
     });
 });

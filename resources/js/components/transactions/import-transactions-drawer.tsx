@@ -16,6 +16,15 @@ import {
     suggestedTransactionMapping,
     TRANSACTION_FIELDS,
 } from '@/lib/ai-import-mapping';
+import {
+    brokerCashAccountId,
+    brokerCurrency,
+    brokerPreviewRows,
+    readBrokerImport,
+    runBrokerImport,
+    type BrokerImport,
+} from '@/lib/broker-imports/broker-import';
+import { type TradeRepublicRole } from '@/lib/broker-imports/trade-republic-run';
 import { describeColumns } from '@/lib/column-shape';
 import {
     convertRowsToTransactions,
@@ -27,6 +36,7 @@ import {
     applyTransactionSuggestion,
     importTransactions,
     parseImportFile,
+    type ImportOutcome,
 } from '@/lib/transaction-import';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
@@ -42,11 +52,18 @@ import {
     type ParsedTransaction,
 } from '@/types/import';
 import { type UUID } from '@/types/uuid';
+import { todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
+import {
+    BrokerFileNotice,
+    BrokerImportSummary,
+    brokerStepInfo,
+    ImportStepBroker,
+} from './import-step-broker';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
 
@@ -87,6 +104,22 @@ const EMPTY_STATE: ImportState = {
     transactions: [],
 };
 
+/** The rows as the preview takes them: one the account already holds starts unselected. */
+async function withDuplicateFlags(
+    accountId: UUID | null,
+    rows: ParsedTransaction[],
+): Promise<ParsedTransaction[]> {
+    const duplicateFlags = accountId
+        ? await transactionSyncService.checkDuplicates(accountId, rows)
+        : rows.map(() => false);
+
+    return rows.map((transaction, index) => ({
+        ...transaction,
+        isDuplicate: duplicateFlags[index],
+        selected: !duplicateFlags[index],
+    }));
+}
+
 interface ImportError {
     rowNumber: number;
     transaction: {
@@ -107,7 +140,8 @@ export function ImportTransactionsDrawer({
     initialAccountId = null,
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
-    const { locale, currencies } = usePage<SharedData>().props;
+    const { locale, currencies, features } = usePage<SharedData>().props;
+    const brokerImportsEnabled = features?.brokerImports === true;
     const supportedCurrencies = useMemo(
         () => currencies.accounts.map((currency) => currency.code),
         [currencies],
@@ -121,6 +155,16 @@ export function ImportTransactionsDrawer({
         null,
     );
     const [state, setState] = useState<ImportState>(EMPTY_STATE);
+    // A recognised broker file, imported through its own step. Only ever set
+    // with the broker imports flag on.
+    const [broker, setBroker] = useState<BrokerImport | null>(null);
+    // Accounts this import made, kept so a retry reuses them.
+    const [createdAccounts, setCreatedAccounts] = useState<Account[]>([]);
+    const knownAccounts = useMemo(
+        () => [...accounts, ...createdAccounts],
+        [accounts, createdAccounts],
+    );
+    const today = todayDateString();
     const ai = useAiColumnSuggestion();
     const { begin: resetAi } = ai;
     // A credit card has no balance, so the import neither asks for one nor
@@ -156,12 +200,79 @@ export function ImportTransactionsDrawer({
             setIsImporting(false);
             setError(null);
             setSelectedAccount(null);
+            setBroker(null);
+            setCreatedAccounts([]);
             resetAi();
         }
     }, [open, resetAi]);
 
     const handleAccountSelect = (accountId: UUID) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
+        // A broker file already read follows the account picked for it.
+        setBroker((prev) =>
+            prev
+                ? {
+                      ...prev,
+                      plan: {
+                          ...prev.plan,
+                          cash: { kind: 'existing', accountId },
+                      },
+                  }
+                : prev,
+        );
+    };
+
+    const handleImportWithoutAccount = () => {
+        setError(null);
+        setSelectedAccount(null);
+        setState((prev) => ({
+            ...prev,
+            selectedAccountId: null,
+            step: ImportStep.UploadFile,
+        }));
+    };
+
+    /**
+     * Take the file through its broker's step when it is a broker export.
+     * True when the file is dealt with here: a broker file, or any other file
+     * picked with no account to import it into, which sends the user back to
+     * pick one.
+     */
+    const handleBrokerFile = async (file: File): Promise<boolean> => {
+        try {
+            const recognised = await readBrokerImport(
+                file,
+                accounts,
+                state.selectedAccountId,
+            );
+
+            if (recognised) {
+                setBroker(recognised);
+                setState((prev) => ({ ...prev, file }));
+
+                return true;
+            }
+        } catch {
+            // Not a file the broker reader understands: the column mapping
+            // reads it, or says why it cannot.
+        }
+
+        if (state.selectedAccountId) {
+            return false;
+        }
+
+        setState((prev) => ({
+            ...prev,
+            file: null,
+            step: ImportStep.SelectAccount,
+        }));
+        setError(
+            __(
+                "This file isn't a Trade Republic or MyInvestor export we can import on its own. Pick the account it belongs to, then upload it again.",
+            ),
+        );
+
+        return true;
     };
 
     /**
@@ -220,6 +331,7 @@ export function ImportTransactionsDrawer({
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
+        setBroker(null);
         const token = ai.begin();
 
         if (!file) {
@@ -231,6 +343,10 @@ export function ImportTransactionsDrawer({
                 columnHeaders: [],
                 columnOptions: [],
             }));
+            return;
+        }
+
+        if (brokerImportsEnabled && (await handleBrokerFile(file))) {
             return;
         }
 
@@ -340,22 +456,14 @@ export function ImportTransactionsDrawer({
                     : { ...transaction, balance: null },
             );
 
-            const duplicateFlags = await transactionSyncService.checkDuplicates(
+            const transactions = await withDuplicateFlags(
                 account.id,
                 parsedTransactions,
             );
 
-            const transactionsWithDuplicateCheck = parsedTransactions.map(
-                (transaction, index) => ({
-                    ...transaction,
-                    isDuplicate: duplicateFlags[index],
-                    selected: !duplicateFlags[index],
-                }),
-            );
-
             setState((prev) => ({
                 ...prev,
-                transactions: transactionsWithDuplicateCheck,
+                transactions,
                 step: ImportStep.Preview,
             }));
         } catch (err) {
@@ -365,6 +473,113 @@ export function ImportTransactionsDrawer({
                     : 'Failed to process transactions',
             );
         }
+    };
+
+    const handleBrokerPreview = async () => {
+        if (!broker) {
+            return;
+        }
+
+        const transactions = await withDuplicateFlags(
+            brokerCashAccountId(broker),
+            brokerPreviewRows(broker, today),
+        );
+
+        setState((prev) => ({
+            ...prev,
+            transactions,
+            step: ImportStep.Preview,
+        }));
+    };
+
+    /** An account the broker import just made now stands in for "create" in its plan. */
+    const handleBrokerAccountCreated = (
+        role: TradeRepublicRole,
+        account: Account,
+    ) => {
+        setCreatedAccounts((prev) => [...prev, account]);
+        setBroker((prev) =>
+            prev
+                ? {
+                      ...prev,
+                      plan: {
+                          ...prev.plan,
+                          [role]: { kind: 'existing', accountId: account.id },
+                      },
+                  }
+                : prev,
+        );
+    };
+
+    const importBrokerRows = async (
+        current: BrokerImport,
+        rows: ParsedTransaction[],
+    ): Promise<ImportOutcome | null> => {
+        try {
+            const { outcome, balancesFailed } = await runBrokerImport(current, {
+                rows,
+                accounts: knownAccounts,
+                categories,
+                banks,
+                automationRules,
+                today,
+                onProgress: setImportProgress,
+                onAccountCreated: handleBrokerAccountCreated,
+            });
+
+            if (balancesFailed) {
+                toast.error(
+                    __(
+                        "The transactions are in, but the accounts' daily balances could not be saved",
+                    ),
+                );
+            }
+
+            return outcome;
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : __('Failed to create account. Please try again.'),
+            );
+
+            return null;
+        }
+    };
+
+    const importMappedRows = async (
+        rows: ParsedTransaction[],
+    ): Promise<ImportOutcome | null> => {
+        if (!selectedAccount) {
+            setError('Selected account not found');
+            return null;
+        }
+
+        const outcome = await importTransactions({
+            account: selectedAccount,
+            rows,
+            categories,
+            accounts,
+            banks,
+            automationRules,
+            onProgress: setImportProgress,
+        });
+
+        // Only a mapping that actually brought rows in is worth remembering:
+        // an abandoned or failed import would leave a bad layout behind.
+        if (outcome.successCount > 0) {
+            void saveImportConfig(selectedAccount.id, {
+                columnMapping: state.columnMapping,
+                dateFormat: state.dateFormat,
+                aiSuggested: ai.importedWith(
+                    state.columnMapping,
+                    'account_drawer',
+                    'transaction',
+                ),
+            });
+        }
+
+        return outcome;
     };
 
     const handleConfirmImport = async () => {
@@ -382,22 +597,16 @@ export function ImportTransactionsDrawer({
         setImportTotal(rows.length);
         setImportProgress(0);
 
-        if (!selectedAccount) {
-            setError('Selected account not found');
+        const outcome = broker
+            ? await importBrokerRows(broker, rows)
+            : await importMappedRows(rows);
+
+        if (!outcome) {
             setIsImporting(false);
             return;
         }
 
-        const { imported, errors, successCount, uncategorizedCount } =
-            await importTransactions({
-                account: selectedAccount,
-                rows,
-                categories,
-                accounts,
-                banks,
-                automationRules,
-                onProgress: setImportProgress,
-            });
+        const { imported, errors, successCount, uncategorizedCount } = outcome;
 
         // A partial import keeps the drawer open on the same preview, so the
         // rows already created have to be taken out of the selection: pressing
@@ -419,20 +628,6 @@ export function ImportTransactionsDrawer({
 
         setImportErrors(errors);
         setIsImporting(false);
-
-        // Only a mapping that actually brought rows in is worth remembering:
-        // an abandoned or failed import would leave a bad layout behind.
-        if (successCount > 0) {
-            void saveImportConfig(selectedAccount.id, {
-                columnMapping: state.columnMapping,
-                dateFormat: state.dateFormat,
-                aiSuggested: ai.importedWith(
-                    state.columnMapping,
-                    'account_drawer',
-                    'transaction',
-                ),
-            });
-        }
 
         const errorCount = errors.length;
 
@@ -522,6 +717,11 @@ export function ImportTransactionsDrawer({
                     title: __('Preview Transactions'),
                     description: __('Review transactions before importing'),
                 };
+            case ImportStep.Broker:
+                if (broker) {
+                    return brokerStepInfo(broker);
+                }
+            // falls through: a broker step without a file has nothing to say
             default:
                 if (isImporting) {
                     return {
@@ -541,6 +741,14 @@ export function ImportTransactionsDrawer({
         }
     };
 
+    // A broker file's rows go to the account its step picked, which may not
+    // exist until the import makes it.
+    const brokerAccountId = broker ? brokerCashAccountId(broker) : null;
+    const previewAccount = broker
+        ? (knownAccounts.find((account) => account.id === brokerAccountId) ??
+          null)
+        : selectedAccount;
+
     const renderStep = () => {
         switch (state.step) {
             case ImportStep.SelectAccount:
@@ -550,8 +758,14 @@ export function ImportTransactionsDrawer({
                         selectedAccountId={state.selectedAccountId}
                         onAccountSelect={handleAccountSelect}
                         onNext={() => {
+                            setError(null);
                             moveToStep(ImportStep.UploadFile);
                         }}
+                        onImportWithoutAccount={
+                            brokerImportsEnabled
+                                ? handleImportWithoutAccount
+                                : undefined
+                        }
                     />
                 );
 
@@ -561,10 +775,29 @@ export function ImportTransactionsDrawer({
                         file={state.file}
                         onFileSelect={handleFileSelect}
                         onNext={() => {
-                            moveToStep(ImportStep.MapColumns);
+                            moveToStep(
+                                broker
+                                    ? ImportStep.Broker
+                                    : ImportStep.MapColumns,
+                            );
                         }}
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
+                        notice={broker && <BrokerFileNotice broker={broker} />}
                     />
+                );
+
+            case ImportStep.Broker:
+                return (
+                    broker && (
+                        <ImportStepBroker
+                            broker={broker}
+                            accounts={knownAccounts}
+                            today={today}
+                            onBrokerChange={setBroker}
+                            onNext={handleBrokerPreview}
+                            onBack={() => moveToStep(ImportStep.UploadFile)}
+                        />
+                    )
                 );
 
             case ImportStep.MapColumns:
@@ -609,13 +842,30 @@ export function ImportTransactionsDrawer({
                 return (
                     <ImportStepPreview
                         transactions={state.transactions}
-                        currencyCode={selectedAccount?.currency_code || 'USD'}
-                        accountId={selectedAccount?.id || ''}
+                        currencyCode={
+                            previewAccount?.currency_code ??
+                            (broker ? brokerCurrency(broker) : 'USD')
+                        }
+                        accountId={previewAccount?.id || ''}
                         onConfirm={handleConfirmImport}
-                        onBack={() => moveToStep(ImportStep.MapColumns)}
+                        onBack={() =>
+                            moveToStep(
+                                broker
+                                    ? ImportStep.Broker
+                                    : ImportStep.MapColumns,
+                            )
+                        }
                         onSelectionChange={handleSelectionChange}
                         onSelectAll={handleSelectAll}
                         isImporting={isImporting}
+                        summary={
+                            broker && (
+                                <BrokerImportSummary
+                                    broker={broker}
+                                    today={today}
+                                />
+                            )
+                        }
                     />
                 );
 

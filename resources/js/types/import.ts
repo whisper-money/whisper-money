@@ -4,6 +4,8 @@ export enum ImportStep {
     SelectAccount = 'select-account',
     UploadFile = 'upload-file',
     MapColumns = 'map-columns',
+    /** A recognised broker file: its accounts are chosen here instead of mapping columns. */
+    Broker = 'broker',
     Preview = 'preview',
 }
 
@@ -100,6 +102,8 @@ export interface ParsedTransaction {
     balance?: number | null;
     creditor_name?: string | null;
     debtor_name?: string | null;
+    /** The id the file's own app gave the row (a broker export's), kept to spot a re-import. */
+    external_id?: string | null;
     isDuplicate?: boolean;
     selected?: boolean;
     /** Set once the row is in: a retry of the same preview must not resend it. */
