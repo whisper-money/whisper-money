@@ -10,6 +10,7 @@ import {
     type AccountChoice,
     type PortfolioChoice,
 } from '@/lib/broker-imports/broker-accounts';
+import { type BrokerLink } from '@/lib/broker-imports/broker-memory';
 import { cashBalances, computedCashBalance } from '@/lib/broker-imports/series';
 import { type TradeRepublicFile } from '@/lib/broker-imports/trade-republic';
 import { type BulkBalance } from '@/lib/transaction-import';
@@ -34,6 +35,8 @@ export interface TradeRepublicImport {
     /** The day the file was read, `YYYY-MM-DD`: the balances run up to it. */
     today: string;
     plan: TradeRepublicPlan;
+    /** The import of this broker remembered from last time, when there is one. */
+    memory?: BrokerLink | null;
 }
 
 /** What the upload step tells about a recognised file. */

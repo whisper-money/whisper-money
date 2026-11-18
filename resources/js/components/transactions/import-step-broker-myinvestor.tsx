@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useLocale } from '@/hooks/use-locale';
 import {
     cashAccountOptions,
+    chosenAccountId,
     portfolioAccountOptions,
 } from '@/lib/broker-imports/broker-accounts';
 import {
@@ -40,8 +41,10 @@ import {
     InvestedAndValueFields,
     Panel,
     PortfolioSummaryTiles,
+    RememberedAccountsBox,
     SummaryTile,
     useMonthRange,
+    useRememberedAccounts,
 } from './import-step-broker-parts';
 
 interface StepProps<Broker, Plan> {
@@ -67,9 +70,21 @@ export function ImportStepBrokerMyInvestorCash({
     const { file, plan } = broker;
     const balanceFromFile = fileBalanceToday(file) !== null;
     const { to } = myInvestorCashSummary(file);
+    const cashOptions = cashAccountOptions(accounts);
+    const { remembered, showPickers, change } = useRememberedAccounts(broker);
+    const cashAccount = cashOptions.find(
+        (account) => account.id === chosenAccountId(plan.cash),
+    );
 
     return (
         <div className="flex flex-col gap-4">
+            {!showPickers && remembered && cashAccount && (
+                <RememberedAccountsBox
+                    importedAt={remembered.lastImportedAt}
+                    accounts={[{ name: cashAccount.name }]}
+                    onChange={change}
+                />
+            )}
             <Panel
                 title={__('Current account')}
                 tag={__(':count movements', { count: file.movements.length })}
@@ -77,18 +92,20 @@ export function ImportStepBrokerMyInvestorCash({
                     'Card payments, transfers, Bizum, direct debits and interest.',
                 )}
             >
-                <AccountSelect
-                    id="broker-cash-account"
-                    value={plan.cash}
-                    accounts={cashAccountOptions(accounts)}
-                    createLabel={__('Create “:name” · :type', {
-                        name: MYINVESTOR_CASH_NAME,
-                        type: formatAccountType('savings'),
-                    })}
-                    replacesFrom={firstDay(file.movements)}
-                    parse={accountChoiceFrom}
-                    onChange={(cash) => onPlanChange({ ...plan, cash })}
-                />
+                {showPickers && (
+                    <AccountSelect
+                        id="broker-cash-account"
+                        value={plan.cash}
+                        accounts={cashOptions}
+                        createLabel={__('Create “:name” · :type', {
+                            name: MYINVESTOR_CASH_NAME,
+                            type: formatAccountType('savings'),
+                        })}
+                        replacesFrom={firstDay(file.movements)}
+                        parse={accountChoiceFrom}
+                        onChange={(cash) => onPlanChange({ ...plan, cash })}
+                    />
+                )}
                 <CashBalanceField
                     label={__('Balance today')}
                     value={plan.balanceToday}
@@ -136,9 +153,21 @@ export function ImportStepBrokerMyInvestorSecurities({
     const securities = new Set(
         investedOrders(file).map((order) => order.symbol),
     ).size;
+    const portfolioOptions = portfolioAccountOptions(accounts);
+    const { remembered, showPickers, change } = useRememberedAccounts(broker);
+    const portfolioAccount = portfolioOptions.find(
+        (account) => account.id === chosenAccountId(plan.portfolio),
+    );
 
     return (
         <div className="flex flex-col gap-4">
+            {!showPickers && remembered && portfolioAccount && (
+                <RememberedAccountsBox
+                    importedAt={remembered.lastImportedAt}
+                    accounts={[{ name: portfolioAccount.name }]}
+                    onChange={change}
+                />
+            )}
             <Panel
                 title={__('Securities portfolio')}
                 tag={__(':count securities', { count: securities })}
@@ -146,20 +175,22 @@ export function ImportStepBrokerMyInvestorSecurities({
                     'Funds, ETFs, stocks and pension plans. We keep what was invested day by day.',
                 )}
             >
-                <AccountSelect
-                    id="broker-portfolio-account"
-                    value={plan.portfolio}
-                    accounts={portfolioAccountOptions(accounts)}
-                    createLabel={__('Create “:name” · :type', {
-                        name: MYINVESTOR_PORTFOLIO_NAME,
-                        type: formatAccountType('investment'),
-                    })}
-                    replacesFrom={firstDay(investedOrders(file))}
-                    parse={accountChoiceFrom}
-                    onChange={(portfolio) =>
-                        onPlanChange({ ...plan, portfolio })
-                    }
-                />
+                {showPickers && (
+                    <AccountSelect
+                        id="broker-portfolio-account"
+                        value={plan.portfolio}
+                        accounts={portfolioOptions}
+                        createLabel={__('Create “:name” · :type', {
+                            name: MYINVESTOR_PORTFOLIO_NAME,
+                            type: formatAccountType('investment'),
+                        })}
+                        replacesFrom={firstDay(investedOrders(file))}
+                        parse={accountChoiceFrom}
+                        onChange={(portfolio) =>
+                            onPlanChange({ ...plan, portfolio })
+                        }
+                    />
+                )}
                 <InvestedAndValueFields
                     invested={myInvestorInvestedToday(file, broker.today)}
                     currentValue={plan.currentValue}
@@ -167,6 +198,7 @@ export function ImportStepBrokerMyInvestorSecurities({
                     hint={__(
                         'Copy the total value MyInvestor shows. Leave it empty and we use what was invested until you update it.',
                     )}
+                    remembered={remembered}
                     onCurrentValueChange={(currentValue) =>
                         onPlanChange({ ...plan, currentValue })
                     }

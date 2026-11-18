@@ -142,3 +142,89 @@ test('rejects an invalid config', function (array $payload, string $invalidField
     'config without a column mapping' => [['type' => 'transaction', 'config' => ['dateFormat' => 'YYYY-MM-DD']], 'config.columnMapping'],
     'non-boolean AI suggestion flag' => [['type' => 'transaction', 'config' => [...$transactionConfig, 'aiSuggested' => 'maybe']], 'config.aiSuggested'],
 ]);
+
+$brokerConfig = [
+    'broker' => 'trade_republic',
+    'lastImportedAt' => '2026-11-18T10:00:00.000Z',
+    'lastValueMinor' => 1398000,
+    'lastValueDate' => '2026-11-18',
+    'lastInvestedMinor' => 1245000,
+];
+
+test('saves a broker link beside the column mapping of the same account', function () use ($transactionConfig, $brokerConfig) {
+    $portfolio = Account::factory()->create(['user_id' => $this->user->id]);
+    $url = "/api/accounts/{$this->account->id}/import-config";
+
+    $this->putJson($url, ['type' => 'transaction', 'config' => $transactionConfig])->assertOk();
+    $this->putJson($url, [
+        'type' => 'broker',
+        'config' => [...$brokerConfig, 'portfolioAccountId' => $portfolio->id],
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.broker', 'trade_republic')
+        ->assertJsonPath('data.portfolioAccountId', $portfolio->id);
+
+    $this->getJson("{$url}?type=broker")
+        ->assertJsonPath('data.lastValueMinor', 1398000)
+        ->assertJsonPath('data.lastInvestedMinor', 1245000);
+    $this->getJson("{$url}?type=transaction")
+        ->assertJsonPath('data.columnMapping.description', 'Concept');
+});
+
+test('a broker link keeps only the fields it knows', function () use ($brokerConfig) {
+    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
+        'type' => 'broker',
+        'config' => [...$brokerConfig, 'notes' => 'anything'],
+    ])->assertOk()->assertJsonMissingPath('data.notes');
+});
+
+test('rejects an invalid broker link', function (array $config, string $invalidField) use ($brokerConfig) {
+    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
+        'type' => 'broker',
+        'config' => [...$brokerConfig, ...$config],
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($invalidField);
+})->with([
+    'unknown broker' => [['broker' => 'degiro'], 'config.broker'],
+    'no import date' => [['lastImportedAt' => null], 'config.lastImportedAt'],
+    'value that is not whole minor units' => [['lastValueMinor' => 12.5], 'config.lastValueMinor'],
+    'value date in another format' => [['lastValueDate' => '18/11/2026'], 'config.lastValueDate'],
+]);
+
+test('a broker link cannot point at another user account', function () use ($brokerConfig) {
+    $otherAccount = Account::factory()->create();
+
+    $this->putJson("/api/accounts/{$this->account->id}/import-config", [
+        'type' => 'broker',
+        'config' => [...$brokerConfig, 'portfolioAccountId' => $otherAccount->id],
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('config.portfolioAccountId');
+});
+
+test('lists the configs of one type across the user accounts only', function () use ($transactionConfig, $brokerConfig) {
+    $portfolio = Account::factory()->create(['user_id' => $this->user->id]);
+    $deleted = Account::factory()->create(['user_id' => $this->user->id]);
+    $otherAccount = Account::factory()->create();
+
+    AccountImportConfig::factory()->create(['account_id' => $this->account->id, 'type' => 'broker', 'config' => $brokerConfig]);
+    AccountImportConfig::factory()->create(['account_id' => $portfolio->id, 'type' => 'broker', 'config' => [...$brokerConfig, 'broker' => 'myinvestor_securities']]);
+    AccountImportConfig::factory()->create(['account_id' => $this->account->id, 'type' => 'transaction', 'config' => $transactionConfig]);
+    AccountImportConfig::factory()->create(['account_id' => $deleted->id, 'type' => 'broker', 'config' => $brokerConfig]);
+    AccountImportConfig::factory()->create(['account_id' => $otherAccount->id, 'type' => 'broker', 'config' => $brokerConfig]);
+    $deleted->delete();
+
+    $response = $this->getJson('/api/import-configs?type=broker')->assertOk();
+
+    expect(collect($response->json('data'))->pluck('account_id')->sort()->values()->all())
+        ->toBe(collect([$this->account->id, $portfolio->id])->sort()->values()->all());
+    expect(collect($response->json('data'))->firstWhere('account_id', $portfolio->id)['config']['broker'])
+        ->toBe('myinvestor_securities');
+});
+
+test('listing import configs needs a known type', function () {
+    $this->getJson('/api/import-configs?type=nonsense')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('type');
+});

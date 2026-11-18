@@ -15,12 +15,17 @@ import {
     type AccountChoice,
     type PortfolioChoice,
 } from '@/lib/broker-imports/broker-accounts';
+import { type BrokerImport } from '@/lib/broker-imports/broker-import';
+import {
+    brokerMemoryInUse,
+    type BrokerLinkConfig,
+} from '@/lib/broker-imports/broker-memory';
 import { cn } from '@/lib/utils';
 import { formatAccountType, type Account } from '@/types/account';
 import { formatDate, formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertTriangle } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 
 /*
  * The pieces every broker's step, file notice and summary strip are built
@@ -183,18 +188,73 @@ export function CashBalanceField({
     );
 }
 
+/** What the last import said about the portfolio, beside today's figures. */
+function SinceLastTime({
+    invested,
+    remembered,
+    currencyCode,
+}: {
+    invested: number;
+    remembered: BrokerLinkConfig | null;
+    currencyCode: string;
+}) {
+    const last = remembered?.lastInvestedMinor ?? null;
+
+    if (last === null || last === invested) {
+        return null;
+    }
+
+    return (
+        <span className="text-xs font-normal text-muted-foreground">
+            <AmountDisplay
+                amountInCents={invested - last}
+                currencyCode={currencyCode}
+                showSign
+            />{' '}
+            {__('since last time')}
+        </span>
+    );
+}
+
+function LastValue({
+    remembered,
+    currencyCode,
+}: {
+    remembered: BrokerLinkConfig | null;
+    currencyCode: string;
+}) {
+    const locale = useLocale();
+    const value = remembered?.lastValueMinor ?? null;
+    const day = remembered?.lastValueDate ?? null;
+
+    if (value === null || day === null) {
+        return null;
+    }
+
+    return (
+        <p className="text-xs text-muted-foreground">
+            {__('Last time you entered')}{' '}
+            <AmountDisplay amountInCents={value} currencyCode={currencyCode} />{' '}
+            ({formatDateMedium(day, locale)}).
+        </p>
+    );
+}
+
 /** What was invested, read-only, beside the value the user may type. */
 export function InvestedAndValueFields({
     invested,
     currentValue,
     currencyCode,
     hint,
+    remembered = null,
     onCurrentValueChange,
 }: {
     invested: number;
     currentValue: number | null;
     currencyCode: string;
     hint: string;
+    /** The last import of this broker, to show how things moved since. */
+    remembered?: BrokerLinkConfig | null;
     onCurrentValueChange: (value: number | null) => void;
 }) {
     return (
@@ -204,9 +264,14 @@ export function InvestedAndValueFields({
                     <span className="text-sm font-medium">
                         {__('Invested')}
                     </span>
-                    <span className="flex h-9 items-center text-sm font-medium">
+                    <span className="flex h-9 flex-wrap items-center gap-x-1.5 text-sm font-medium">
                         <AmountDisplay
                             amountInCents={invested}
+                            currencyCode={currencyCode}
+                        />
+                        <SinceLastTime
+                            invested={invested}
+                            remembered={remembered}
                             currencyCode={currencyCode}
                         />
                     </span>
@@ -226,8 +291,91 @@ export function InvestedAndValueFields({
                     />
                 </div>
             </div>
+            <LastValue remembered={remembered} currencyCode={currencyCode} />
             <p className="text-xs text-muted-foreground">{hint}</p>
         </>
+    );
+}
+
+/**
+ * Whether a broker step shows the accounts of last time in a compact box
+ * instead of the pickers, and the way to the pickers. Once the user asks to
+ * change them, the pickers stay.
+ */
+export function useRememberedAccounts(broker: BrokerImport): {
+    /** The last import, while the plan still goes where it went. */
+    remembered: BrokerLinkConfig | null;
+    showPickers: boolean;
+    change: () => void;
+} {
+    const [changing, setChanging] = useState(false);
+    const remembered = brokerMemoryInUse(broker)?.config ?? null;
+
+    return {
+        remembered,
+        showPickers: changing || remembered === null,
+        change: () => setChanging(true),
+    };
+}
+
+/** An account the box names, with what it holds when the import has more than one. */
+export interface RememberedAccount {
+    name: string;
+    role?: string;
+}
+
+/** "Last import: <date>", naming the accounts it went to, with a way to change them. */
+export function RememberedAccountsBox({
+    importedAt,
+    accounts,
+    onChange,
+}: {
+    importedAt: string;
+    accounts: RememberedAccount[];
+    onChange: () => void;
+}) {
+    const locale = useLocale();
+    // The names joined the reader's way ("A and B", "A y B"), each kept apart
+    // so it can be bold and carry its role.
+    let named = 0;
+    const parts = new Intl.ListFormat(locale, { type: 'conjunction' })
+        .formatToParts(accounts.map((account) => account.name))
+        .map((part) => ({
+            text: part.value,
+            account: part.type === 'element' ? accounts[named++] : null,
+        }));
+
+    return (
+        <div className="flex flex-col gap-1 rounded-lg border bg-muted/40 px-4 py-3.5">
+            <span className="text-sm font-medium">
+                {__('Last import: :date', {
+                    date: formatDateMedium(importedAt, locale),
+                })}
+            </span>
+            <p className="text-[13px] text-muted-foreground">
+                {__('Same accounts as last time:')}{' '}
+                {parts.map(({ text, account }, position) =>
+                    account ? (
+                        <Fragment key={position}>
+                            <strong className="font-medium text-foreground">
+                                {text}
+                            </strong>
+                            {account.role && ` (${account.role})`}
+                        </Fragment>
+                    ) : (
+                        <Fragment key={position}>{text}</Fragment>
+                    ),
+                )}
+                .{' '}
+                <Button
+                    variant="link"
+                    className="h-auto p-0 text-[13px]"
+                    onClick={onChange}
+                >
+                    {__('Change')}
+                </Button>
+            </p>
+        </div>
     );
 }
 

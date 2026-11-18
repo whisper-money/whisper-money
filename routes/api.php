@@ -56,6 +56,7 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');
 
     // Account import configuration (per-account column mapping, synced across devices)
+    Route::get('import-configs', [AccountImportConfigController::class, 'index'])->name('api.import-configs.index');
     Route::get('accounts/{account}/import-config', [AccountImportConfigController::class, 'show'])->name('api.accounts.import-config.show');
     Route::put('accounts/{account}/import-config', [AccountImportConfigController::class, 'update'])->name('api.accounts.import-config.update');
 

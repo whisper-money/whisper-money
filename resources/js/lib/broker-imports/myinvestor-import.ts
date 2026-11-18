@@ -9,6 +9,7 @@ import {
     portfolioAccountOptions,
     type AccountChoice,
 } from '@/lib/broker-imports/broker-accounts';
+import { type BrokerLink } from '@/lib/broker-imports/broker-memory';
 import { DEFAULT_CURRENCY } from '@/lib/broker-imports/grid';
 import { type MyInvestorCashFile } from '@/lib/broker-imports/myinvestor-cash';
 import { type MyInvestorSecuritiesFile } from '@/lib/broker-imports/myinvestor-securities';
@@ -44,6 +45,8 @@ export interface MyInvestorCashImport {
     /** The day the file was read, `YYYY-MM-DD`: the balances run up to it. */
     today: string;
     plan: MyInvestorCashPlan;
+    /** The import of this broker remembered from last time, when there is one. */
+    memory?: BrokerLink | null;
 }
 
 /** What the user decided on the MyInvestor securities step. */
@@ -59,6 +62,8 @@ export interface MyInvestorSecuritiesImport {
     file: MyInvestorSecuritiesFile;
     today: string;
     plan: MyInvestorSecuritiesPlan;
+    /** The import of this broker remembered from last time, when there is one. */
+    memory?: BrokerLink | null;
 }
 
 /** What the upload step tells about a recognised file. */
