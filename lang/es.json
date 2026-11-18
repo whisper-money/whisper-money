@@ -3994,5 +3994,6 @@
     "Buy · :name": "Compra · :name",
     "Sell · :name": "Venta · :name",
     "Dividend · :name": "Dividendo · :name",
-    "Interest": "Intereses"
+    "Interest": "Intereses",
+    "Saveback": "Saveback"
 }
