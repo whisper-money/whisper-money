@@ -2,11 +2,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepReveal } from './step-reveal';
 
-const { get, post, captureEvent } = vi.hoisted(() => ({
+const { get, post, captureEvent, captureMessage } = vi.hoisted(() => ({
     get: vi.fn(),
     post: vi.fn(),
     captureEvent: vi.fn(),
+    captureMessage: vi.fn(),
 }));
+
+vi.mock('@sentry/react', () => ({ captureMessage }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
@@ -111,6 +114,7 @@ describe('StepReveal', () => {
         get.mockReset();
         post.mockReset();
         captureEvent.mockReset();
+        captureMessage.mockReset();
     });
 
     it('puts the guess beside the number, and the merchants under it', async () => {
@@ -256,6 +260,26 @@ describe('StepReveal', () => {
 
         expect(onContinue).toHaveBeenCalled();
     });
+
+    it.each([
+        ['an HTML page', '<!DOCTYPE html><html></html>'],
+        ['null', null],
+        ['an empty object', {}],
+        ['an assets body without accounts', { variant: 'assets' }],
+        ['a spending body without merchants', { variant: 'spending' }],
+    ])(
+        'moves on instead of crashing when the answer is %s',
+        async (_, body) => {
+            get.mockResolvedValue({ data: body });
+            const onContinue = vi.fn();
+
+            await renderReveal({ onContinue });
+
+            expect(onContinue).toHaveBeenCalled();
+            expect(captureEvent).not.toHaveBeenCalled();
+            expect(captureMessage).toHaveBeenCalled();
+        },
+    );
 
     it('moves on when the numbers behind the screen never arrive', async () => {
         get.mockRejectedValue(new Error('offline'));
