@@ -18,7 +18,7 @@ import {
 export const SETTLE_GRACE_MS = 1500;
 
 export type UserWidgetsGate =
-    /** Nothing to mount: the flag is off, or there are no user widgets. */
+    /** Nothing to mount: there are no user widgets. */
     | { mode: 'off' }
     /** Not decided yet: the server and the first render cannot know. */
     | { mode: 'pending' }
@@ -32,9 +32,9 @@ export type UserWidgetsGate =
  * widgets the page is about to draw.
  */
 export function useUserWidgetsGate(widgetIds: string[]): UserWidgetsGate {
-    const { features, auth } = usePage<SharedData>().props;
+    const { auth } = usePage<SharedData>().props;
     const userId = auth?.user?.id ?? 'guest';
-    const enabled = Boolean(features?.customDashboards) && widgetIds.length > 0;
+    const enabled = widgetIds.length > 0;
     const [decision, setDecision] = useState<
         'pending' | 'run' | SafeModeReason
     >('pending');

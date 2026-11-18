@@ -38,9 +38,8 @@ vi.mock('../sdk/gesture', async (importOriginal) => {
 // The stylesheet is Vite's business; the registry is the real one.
 vi.mock('../../../css/widgets.css', () => ({}));
 
-function pageProps(customDashboards: boolean) {
+function pageProps() {
     page.props = {
-        features: { customDashboards },
         locale: 'es-ES',
         auth: { user: { id: 'user-1', currency_code: 'EUR' } },
         accounts: [],
@@ -65,7 +64,7 @@ function inApp(children: ReactNode) {
 
 describe('<UserWidget>', () => {
     beforeEach(() => {
-        pageProps(true);
+        pageProps();
         vi.stubGlobal('matchMedia', () => ({
             matches: false,
             addEventListener: () => {},
@@ -243,25 +242,11 @@ describe('<UserWidget>', () => {
             },
         );
     });
-
-    it('renders nothing with the flag off', () => {
-        pageProps(false);
-
-        const { container } = inApp(
-            <UserWidget
-                js={RENDERS}
-                data={{}}
-                size={{ width: '1/2', height: 'm' }}
-            />,
-        );
-
-        expect(container).toBeEmptyDOMElement();
-    });
 });
 
 describe('useUserWidgetsGate', () => {
     beforeEach(() => {
-        pageProps(true);
+        pageProps();
         window.history.replaceState(null, '', '/dashboard');
     });
 
@@ -270,16 +255,10 @@ describe('useUserWidgetsGate', () => {
         localStorage.clear();
     });
 
-    it('is off with the flag off or no user widgets', () => {
+    it('is off with no user widgets', () => {
         expect(renderHook(() => useUserWidgetsGate([])).result.current).toEqual(
             { mode: 'off' },
         );
-
-        pageProps(false);
-
-        expect(
-            renderHook(() => useUserWidgetsGate(['a'])).result.current,
-        ).toEqual({ mode: 'off' });
     });
 
     it('marks the load before the widgets mount and clears it once they drew', () => {
@@ -439,7 +418,7 @@ describe('useUserWidgetsGate', () => {
 
 describe('safe mode without storage', () => {
     it('still runs when localStorage throws', async () => {
-        pageProps(true);
+        pageProps();
         const original = Object.getOwnPropertyDescriptor(
             window,
             'localStorage',

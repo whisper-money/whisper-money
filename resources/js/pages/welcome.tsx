@@ -2490,14 +2490,8 @@ export default function Welcome({
     /** The language the page is written in, not the format region in `locale`. */
     language: string;
 }) {
-    const {
-        appUrl,
-        subscriptionsEnabled,
-        demoEnabled,
-        pricing,
-        locale,
-        features,
-    } = usePage<SharedData>().props;
+    const { appUrl, subscriptionsEnabled, demoEnabled, pricing, locale } =
+        usePage<SharedData>().props;
     const cta = useLandingCta(canRegister);
     const ctaLabel = cta.isSignedIn
         ? __('Go to Dashboard')
@@ -2993,12 +2987,10 @@ export default function Welcome({
 
                     <StarredByStrip />
 
-                    {features.customDashboards && (
-                        <CustomDashboardsSection
-                            currency={pricing.currency}
-                            locale={locale}
-                        />
-                    )}
+                    <CustomDashboardsSection
+                        currency={pricing.currency}
+                        locale={locale}
+                    />
 
                     <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-3">

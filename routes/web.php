@@ -280,9 +280,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
-    // The user's own dashboards and the system widgets placed on them. Not
-    // behind the CustomDashboards flag, which only hides the UI. Writes are
-    // closed to the demo and press accounts, whose dashboards everybody shares.
+    // The user's own dashboards and the system widgets placed on them. Writes
+    // are closed to the demo and press accounts, whose dashboards everybody shares.
     Route::middleware('block-shared')->prefix('dashboards')->name('dashboards.')->group(function () {
         Route::post('/', [DashboardManagementController::class, 'store'])->name('store');
         Route::patch('reorder', [DashboardManagementController::class, 'reorder'])->name('reorder');
@@ -300,8 +299,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 
     // The widgets the user's agent writes: their data, read from the saved
     // manifest through the widget gateway, the runtime errors they raise and
-    // going back to an earlier revision. Like the dashboards, not behind the
-    // CustomDashboards flag.
+    // going back to an earlier revision.
     Route::get('dashboards/{dashboard}/widgets/data', [WidgetDataController::class, 'dashboard'])->name('dashboards.widgets.data');
     Route::prefix('widgets/{widget}')->name('widgets.')->group(function () {
         Route::get('data', [WidgetDataController::class, 'show'])->name('data');

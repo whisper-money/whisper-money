@@ -1,8 +1,6 @@
 <?php
 
-use App\Features\CustomDashboards;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -102,23 +100,12 @@ it('plays the full tour in a dialog and resumes the hero loop when it closes', f
         ->assertNoJavascriptErrors();
 });
 
-it('shows the custom dashboards block right after the starred-by strip only with the flag on', function (bool $active) {
-    if ($active) {
-        Feature::for(null)->activate(CustomDashboards::class);
-    }
-
-    $page = visit('/?lang=en');
-
-    if ($active) {
-        $page->assertSee('Ask for a chart. It lands on your dashboard.')
-            ->assertPresent('a[href="/documentation/custom-dashboards"]')
-            // Third section of the page: after the hero and the "Starred on GitHub by people at" strip.
-            ->assertScript("document.querySelector('main').children[1].getAttribute('aria-label')", 'Starred on GitHub by people at')
-            ->assertScript("document.querySelector('main').children[2].getAttribute('aria-labelledby')", 'custom-dashboards-heading');
-    } else {
-        $page->assertDontSee('Ask for a chart. It lands on your dashboard.')
-            ->assertMissing('#custom-dashboards-heading');
-    }
-
-    $page->assertNoJavascriptErrors();
-})->with(['flag on' => true, 'flag off' => false]);
+it('shows every guest the custom dashboards block right after the starred-by strip', function () {
+    visit('/?lang=en')
+        ->assertSee('Ask for a chart. It lands on your dashboard.')
+        ->assertPresent('a[href="/documentation/custom-dashboards"]')
+        // Third section of the page: after the hero and the "Starred on GitHub by people at" strip.
+        ->assertScript("document.querySelector('main').children[1].getAttribute('aria-label')", 'Starred on GitHub by people at')
+        ->assertScript("document.querySelector('main').children[2].getAttribute('aria-labelledby')", 'custom-dashboards-heading')
+        ->assertNoJavascriptErrors();
+});

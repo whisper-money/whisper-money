@@ -1,13 +1,11 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
-use App\Features\CustomDashboards;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\FailedInvoice;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -63,58 +61,16 @@ test('shared feature flags do not include coinbase flag', function () {
         'cashflow' => true,
         'fullImport' => false,
         'fullImportSettings' => false,
-        'customDashboards' => false,
     ]);
 });
 
-test('shared feature flags reflect the custom dashboards flag per user', function (bool $active) {
+test('shared feature flags no longer carry the custom dashboards flag', function () {
     $user = User::factory()->onboarded()->create();
-
-    if ($active) {
-        Feature::for($user)->activate(CustomDashboards::class);
-    }
 
     actingAs($user)->withoutVite()->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('features.customDashboards', $active)
-        );
-})->with(['active' => true, 'inactive' => false]);
-
-test('guests do not get the custom dashboards flag by default', function () {
-    $this->withoutVite()->get(route('home'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('features.customDashboards', false)
-        );
-});
-
-test('guests get the custom dashboards flag once it is active for the null scope', function () {
-    Feature::for(null)->activate(CustomDashboards::class);
-
-    $this->withoutVite()->get(route('home'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('features.customDashboards', true)
-        );
-});
-
-test('guests get the custom dashboards flag once it is active for everyone', function () {
-    // Stored for the null scope first, as a guest visit would have left it.
-    Feature::for(null)->active(CustomDashboards::class);
-
-    Feature::activateForEveryone(CustomDashboards::class);
-
-    $this->withoutVite()->get(route('home'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('features.customDashboards', true)
-        );
-});
-
-test('signed-in users follow their own custom dashboards scope, not the guest one', function () {
-    Feature::for(null)->activate(CustomDashboards::class);
-    $user = User::factory()->onboarded()->create();
-
-    actingAs($user)->withoutVite()->get(route('home'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('features.customDashboards', false)
+            ->has('features.cashflow')
+            ->missing('features.customDashboards')
         );
 });
 
