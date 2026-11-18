@@ -3,6 +3,7 @@
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Import;
 use App\Models\User;
 
 use function Pest\Laravel\actingAs;
@@ -137,9 +138,53 @@ it('refuses a credit card, which has no balance', function () {
 
     actingAs($user)->postJson(bulkBalancesUrl($account), [
         'balances' => [['balance_date' => '2026-01-01', 'balance' => 1000]],
-    ])->assertUnprocessable()->assertJsonValidationErrors('balance');
+    ])->assertUnprocessable()->assertJsonValidationErrors('balances');
 
     expect(AccountBalance::query()->count())->toBe(0);
+});
+
+it('refuses a connected account, whose next sync would overwrite the balances', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->connected()->create(['type' => AccountType::Checking]);
+
+    actingAs($user)->postJson(bulkBalancesUrl($account), [
+        'balances' => [['balance_date' => '2026-01-01', 'balance' => 1000]],
+    ])->assertUnprocessable()->assertJsonValidationErrors('balances');
+
+    expect(AccountBalance::query()->count())->toBe(0);
+});
+
+it('reads every spelling of a day as that day', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create(['type' => AccountType::Checking]);
+
+    actingAs($user)->postJson(bulkBalancesUrl($account), [
+        'balances' => [
+            ['balance_date' => '2026-01-05', 'balance' => 1000],
+            ['balance_date' => '2026-01-05T10:00:00', 'balance' => 2000],
+        ],
+    ])->assertCreated()->assertJson(['written' => 1]);
+
+    expect($account->balances()->sole())
+        ->balance->toBe(2000)
+        ->balance_date->toDateString()->toBe('2026-01-05');
+});
+
+it('takes a rewritten day away from the full import that wrote it', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create(['type' => AccountType::Checking]);
+    $import = Import::factory()->for($user)->create();
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => '2026-01-01',
+        'balance' => 1,
+        'import_id' => $import->id,
+    ]);
+
+    actingAs($user)->postJson(bulkBalancesUrl($account), [
+        'balances' => [['balance_date' => '2026-01-01', 'balance' => 1000]],
+    ])->assertCreated();
+
+    expect($account->balances()->sole()->import_id)->toBeNull();
 });
 
 it('validates every row', function (array $balances, string $error) {

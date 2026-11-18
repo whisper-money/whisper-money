@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Rules\StorableDate;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -75,6 +76,9 @@ class AccountBalanceRecorder
      * that tracks one; on any other it is dropped, as if it were null. When a
      * day comes twice, the last one wins.
      *
+     * A day rewritten here is the caller's from then on, so it stops belonging
+     * to the full import that wrote it: undoing that import leaves it alone.
+     *
      * One upsert per kind of row (with and without an invested amount, since
      * an upsert updates the same columns on every row), inside one
      * transaction, so a failed write leaves the account as it was.
@@ -84,15 +88,39 @@ class AccountBalanceRecorder
      */
     public function recordMany(Account $account, array $balances): int
     {
+        $rowsByDate = $this->bulkRows($account, $balances);
+        $hasInvested = fn (array $row): bool => array_key_exists('invested_amount', $row);
+
+        DB::transaction(function () use ($rowsByDate, $hasInvested): void {
+            $updated = ['balance', 'derived', 'import_id', 'updated_at'];
+
+            $this->upsertInChunks(array_filter($rowsByDate, fn (array $row): bool => ! $hasInvested($row)), $updated);
+            $this->upsertInChunks(array_filter($rowsByDate, $hasInvested), [...$updated, 'invested_amount']);
+        });
+
+        return count($rowsByDate);
+    }
+
+    /**
+     * One row per day, keyed by the day, ready for an upsert.
+     *
+     * @param  list<array{balance_date: string, balance: int, invested_amount?: int|null}>  $balances
+     * @return array<string, array<string, mixed>>
+     */
+    private function bulkRows(Account $account, array $balances): array
+    {
         $keepsInvested = $account->type->supportsInvestedAmount();
         $now = now();
-        $byDate = [];
+        $rowsByDate = [];
 
         foreach ($balances as $balance) {
-            $date = substr($balance['balance_date'], 0, 10);
+            // The `date` rule takes more than Y-m-d, so the day is read the
+            // way the database would store it, and two spellings of one day
+            // are one day.
+            $date = Carbon::parse($balance['balance_date'])->toDateString();
             $investedAmount = $keepsInvested ? ($balance['invested_amount'] ?? null) : null;
 
-            $byDate[$date] = [
+            $rowsByDate[$date] = [
                 'id' => (string) Str::uuid(),
                 'account_id' => $account->id,
                 'balance_date' => $date,
@@ -100,27 +128,24 @@ class AccountBalanceRecorder
                 // The caller's own figure, so the backwards balance walk stops
                 // treating this day as its own to recalculate.
                 'derived' => false,
+                'import_id' => null,
                 'created_at' => $now,
                 'updated_at' => $now,
                 ...$investedAmount !== null ? ['invested_amount' => (int) $investedAmount] : [],
             ];
         }
 
-        $withInvested = array_values(array_filter($byDate, fn (array $row): bool => array_key_exists('invested_amount', $row)));
-        $withoutInvested = array_values(array_filter($byDate, fn (array $row): bool => ! array_key_exists('invested_amount', $row)));
+        return $rowsByDate;
+    }
 
-        DB::transaction(function () use ($withInvested, $withoutInvested): void {
-            $updated = ['balance', 'derived', 'updated_at'];
-
-            foreach (array_chunk($withoutInvested, 1000) as $chunk) {
-                AccountBalance::query()->upsert($chunk, ['account_id', 'balance_date'], $updated);
-            }
-
-            foreach (array_chunk($withInvested, 1000) as $chunk) {
-                AccountBalance::query()->upsert($chunk, ['account_id', 'balance_date'], [...$updated, 'invested_amount']);
-            }
-        });
-
-        return count($byDate);
+    /**
+     * @param  array<string, array<string, mixed>>  $rows
+     * @param  list<string>  $updated
+     */
+    private function upsertInChunks(array $rows, array $updated): void
+    {
+        foreach (array_chunk(array_values($rows), 1000) as $chunk) {
+            AccountBalance::query()->upsert($chunk, ['account_id', 'balance_date'], $updated);
+        }
     }
 }
