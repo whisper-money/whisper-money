@@ -10,6 +10,7 @@ use App\Models\BudgetTransaction;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -86,10 +87,11 @@ class BudgetTransactionService
         $parentMaps = [];
         $users = [];
         $transactions = collect($transactions);
-        $this->claimsByPeriod = [];
-        $this->candidatePeriodsByUser = $this->loadCandidatePeriods($transactions);
 
         try {
+            $this->claimsByPeriod = [];
+            $this->candidatePeriodsByUser = $this->loadCandidatePeriods($transactions);
+
             foreach ($transactions as $transaction) {
                 $userId = $transaction->user_id;
 
@@ -110,11 +112,9 @@ class BudgetTransactionService
     }
 
     /**
-     * Every period of each user's budgets that overlaps the dates of that
-     * user's transactions in the batch, with the budget's categories and
-     * labels: a superset of what {@see self::trackedPeriodIds()} and
-     * {@see self::catchAllPeriodIds()} would query one transaction at a time,
-     * narrowed in memory by {@see self::candidatePeriods()}.
+     * Every period of each user's budgets overlapping the dates of that user's
+     * transactions in the batch, for {@see self::candidatePeriods()} to narrow
+     * down per transaction in memory.
      *
      * @param  SupportCollection<int, Transaction>  $transactions
      * @return array<string, Collection<int, BudgetPeriod>>
@@ -125,27 +125,22 @@ class BudgetTransactionService
             ->filter(fn (Transaction $transaction): bool => $transaction->user_id !== null)
             ->groupBy('user_id')
             ->map(function (SupportCollection $userTransactions, string $userId): Collection {
-                $dates = $userTransactions->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString());
+                $dates = $userTransactions->pluck('transaction_date');
 
-                return $this->periodsCoveringQuery($userId, $dates->min(), $dates->max())
-                    ->with('budget.categories:id', 'budget.labels:id')
-                    ->get();
+                return $this->periodsOverlapping($userId, $dates->min(), $dates->max());
             })
             ->all();
     }
 
     /**
      * Periods of the user's budgets overlapping [$from, $to] whose budget was
-     * not archived on or before $from. Matching the {@see self::trackedPeriodIds()}
-     * rules: an archived budget takes in nothing dated from its archive day on.
+     * not archived on or before $from, with `budget.categories` and
+     * `budget.labels` loaded. An archived budget takes in nothing dated from
+     * its archive day on; {@see self::candidatePeriods()} applies that per day.
      *
-     * Compared as plain dates: a Carbon binding serializes with a time
-     * ("Y-m-d H:i:s"), and on SQLite that string sorts after a stored
-     * date-only end_date — so the period's own last day never matched.
-     *
-     * @return Builder<BudgetPeriod>
+     * @return Collection<int, BudgetPeriod>
      */
-    private function periodsCoveringQuery(string $userId, string $from, string $to): Builder
+    private function periodsOverlapping(string $userId, Carbon $from, Carbon $to): Collection
     {
         return BudgetPeriod::query()
             // Spelled out rather than via Budget::scopeNotArchived: inside a
@@ -154,30 +149,34 @@ class BudgetTransactionService
                 ->where('user_id', $userId)
                 ->where(fn ($archive) => $archive
                     ->whereNull('archived_at')
-                    ->orWhereDate('archived_at', '>', $from)))
-            ->where('start_date', '<=', $to)
-            ->where('end_date', '>=', $from);
+                    ->orWhereDate('archived_at', '>', $from->toDateString())))
+            ->overlapping($from, $to)
+            ->with('budget.categories:id', 'budget.labels:id')
+            ->get();
     }
 
     /**
      * The periods covering the transaction's date whose budget still counts on
-     * that day, with `budget.categories` and `budget.labels` loaded. Read from
-     * the batch's preload when there is one, otherwise queried.
+     * that day: what {@see self::trackedPeriodIds()} and
+     * {@see self::catchAllPeriodIds()} pick from. Read from the batch's preload
+     * when there is one, otherwise queried for this day alone.
+     *
+     * An archived budget stops counting on its archive day, while what is
+     * dated before is still its own, as {@see self::claimsOverPeriod()} tells
+     * the catch-all — otherwise a late or edited transaction would land in
+     * neither. Dates are compared as plain `Y-m-d` strings, as the SQL does
+     * (`date(archived_at)`, in UTC like the app).
      *
      * @return Collection<int, BudgetPeriod>
      */
     private function candidatePeriods(Transaction $transaction): Collection
     {
-        $day = $transaction->transaction_date->toDateString();
-        $preloaded = $this->candidatePeriodsByUser[$transaction->user_id] ?? null;
+        $date = $transaction->transaction_date;
+        $day = $date->toDateString();
+        $periods = $this->candidatePeriodsByUser[$transaction->user_id]
+            ?? $this->periodsOverlapping($transaction->user_id, $date, $date);
 
-        if ($preloaded === null) {
-            return $this->periodsCoveringQuery($transaction->user_id, $day, $day)
-                ->with('budget.categories:id', 'budget.labels:id')
-                ->get();
-        }
-
-        return $preloaded->filter(fn (BudgetPeriod $period): bool => $period->start_date->toDateString() <= $day
+        return $periods->filter(fn (BudgetPeriod $period): bool => $period->start_date->toDateString() <= $day
             && $period->end_date->toDateString() >= $day
             && ($period->budget->archived_at === null || $period->budget->archived_at->toDateString() > $day))
             ->values();
@@ -212,14 +211,15 @@ class BudgetTransactionService
             ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id, $categoryParentMap)
             : [];
 
-        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $userId, $categoryMatchIds);
+        $candidatePeriods = $this->candidatePeriods($transaction);
+        $matchingPeriodIds = $this->trackedPeriodIds($transaction, $candidatePeriods, $categoryMatchIds);
 
         // A catch-all budget only absorbs what nothing else counts. Any budget
         // already tracking this transaction — by category or by label — in a
         // period covering its date takes precedence, so the catch-all steps in
         // only when there is no such period.
         if ($matchingPeriodIds === []) {
-            $matchingPeriodIds = $this->catchAllPeriodIds($transaction, $categoryMatchIds);
+            $matchingPeriodIds = $this->catchAllPeriodIds($transaction, $candidatePeriods, $categoryMatchIds);
         }
 
         // Converted before the lock below is taken: a missing rate may be
@@ -697,25 +697,18 @@ class BudgetTransactionService
      * Budget periods that track this transaction by category or by label and
      * cover its date.
      *
+     * @param  Collection<int, BudgetPeriod>  $candidatePeriods  {@see self::candidatePeriods()}
      * @param  array<int, string>  $categoryMatchIds  the transaction's category and its ancestors
      * @return array<int, string>
      */
-    private function trackedPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
+    private function trackedPeriodIds(Transaction $transaction, Collection $candidatePeriods, array $categoryMatchIds): array
     {
         $transactionLabelIds = $transaction->labels->pluck('id');
-
-        // Every period covering its date, then narrowed to the budgets that
-        // track the transaction. A budget archived on or before that day is
-        // already left out: it stops counting from its archive day, while what
-        // is dated before is still its own, as {@see self::claimsOverPeriod()}
-        // tells the catch-all — otherwise a late or edited transaction would
-        // land in neither.
-        $budgetPeriods = $this->candidatePeriods($transaction);
 
         // Narrow down to periods whose budget actually matches the transaction.
         $matchingPeriodIds = [];
 
-        foreach ($budgetPeriods as $period) {
+        foreach ($candidatePeriods as $period) {
             $budget = $period->budget;
 
             $matchesCategory = $categoryMatchIds !== []
@@ -739,10 +732,11 @@ class BudgetTransactionService
      * period, the way {@see self::applyCatchAllFilters()} backfills one, so a
      * transaction lands where the rebuild would have put it.
      *
+     * @param  Collection<int, BudgetPeriod>  $candidatePeriods  {@see self::candidatePeriods()}
      * @param  array<int, string>  $categoryMatchIds  the transaction's category and its ancestors
      * @return array<int, string>
      */
-    private function catchAllPeriodIds(Transaction $transaction, array $categoryMatchIds): array
+    private function catchAllPeriodIds(Transaction $transaction, Collection $candidatePeriods, array $categoryMatchIds): array
     {
         if ($transaction->category_id === null) {
             return [];
@@ -754,7 +748,7 @@ class BudgetTransactionService
             return [];
         }
 
-        return $this->candidatePeriods($transaction)
+        return $candidatePeriods
             ->filter(fn (BudgetPeriod $period): bool => $period->budget->is_catch_all && $period->budget->archived_at === null)
             ->reject(fn (BudgetPeriod $period): bool => collect($this->claimsOverPeriod($transaction->user_id, $period))
                 ->contains(fn (array $claim): bool => $this->claimCoversTransaction($claim, $transaction, $categoryMatchIds)))
@@ -814,7 +808,7 @@ class BudgetTransactionService
             ->where(fn (Builder $query) => $query
                 ->whereNull('archived_at')
                 ->orWhereDate('archived_at', '>', $period->start_date->toDateString()))
-            // Date-only comparison for the same reason as in trackedPeriodIds().
+            // Date-only comparison for the same reason as in BudgetPeriod::scopeOverlapping().
             ->whereHas('periods', fn (Builder $query) => $query
                 ->where('start_date', '<=', $period->end_date->toDateString())
                 ->where('end_date', '>=', $period->start_date->toDateString()))

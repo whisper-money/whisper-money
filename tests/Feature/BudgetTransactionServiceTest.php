@@ -1108,6 +1108,15 @@ test('reassigning a mixed batch lands every transaction where assigning it alone
     ]);
     $catchAll = catchAllPeriodOf($this->user);
 
+    // A deleted budget on the same category takes in nothing.
+    $deletedBudget = Budget::factory()->forCategories($parent)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $deletedBudget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+    $deletedBudget->delete();
+
     // Second user: a label budget whose period ends today.
     $otherCategory = Category::factory()->create(['user_id' => $otherUser->id, 'type' => CategoryType::Expense]);
     $otherLabel = Label::factory()->create(['user_id' => $otherUser->id]);
@@ -1145,8 +1154,9 @@ test('reassigning a mixed batch lands every transaction where assigning it alone
         [$make($this->user, $untracked, 2), [$catchAll->id]],
         // Outside every period.
         [$make($this->user, $child, 60), []],
-        // The other user's label, on its period's last day and a day after.
+        // The other user's label, on its period's last and first days and a day before.
         [$make($otherUser, $otherCategory, 0, $otherLabel), [$otherPeriod->id]],
+        [$make($otherUser, $otherCategory, 10, $otherLabel), [$otherPeriod->id]],
         [$make($otherUser, $otherCategory, 11, $otherLabel), []],
         // The other user's category is tracked by no budget of theirs.
         [$make($otherUser, $otherCategory, 2), []],
