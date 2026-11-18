@@ -18,7 +18,7 @@ import {
     endOfDayBalances,
     type BalancePoint,
 } from '@/lib/broker-imports/series';
-import { type Trade } from '@/lib/broker-imports/types';
+import { type BrokerLink, type Trade } from '@/lib/broker-imports/types';
 import { type BulkBalance } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type ParsedTransaction } from '@/types/import';
@@ -44,6 +44,8 @@ export interface MyInvestorCashImport {
     /** The day the file was read, `YYYY-MM-DD`: the balances run up to it. */
     today: string;
     plan: MyInvestorCashPlan;
+    /** The import of this broker remembered from last time, when there is one. */
+    memory?: BrokerLink | null;
 }
 
 /** What the user decided on the MyInvestor securities step. */
@@ -59,6 +61,8 @@ export interface MyInvestorSecuritiesImport {
     file: MyInvestorSecuritiesFile;
     today: string;
     plan: MyInvestorSecuritiesPlan;
+    /** The import of this broker remembered from last time, when there is one. */
+    memory?: BrokerLink | null;
 }
 
 /** What the upload step tells about a recognised file. */

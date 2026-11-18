@@ -72,7 +72,11 @@ export async function runMyInvestorCashImport(
             },
         ]));
 
-    return { outcome, balancesFailed: !balancesWritten };
+    return {
+        outcome,
+        balancesFailed: !balancesWritten,
+        accounts: { cash: account },
+    };
 }
 
 /**
@@ -117,5 +121,6 @@ export async function runMyInvestorSecuritiesImport(
             uncategorizedCount: 0,
         },
         balancesFailed: !balancesWritten,
+        accounts: { portfolio: account },
     };
 }

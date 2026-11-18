@@ -27,12 +27,13 @@ import {
     type BrokerAccountRole,
     type BrokerImport,
 } from '@/lib/broker-imports/broker-import';
+import { rememberBrokerImport } from '@/lib/broker-imports/broker-memory';
 import { describeColumns } from '@/lib/column-shape';
 import {
     convertRowsToTransactions,
     isInAccountCurrency,
 } from '@/lib/file-parser';
-import { saveImportConfig } from '@/lib/import-config-storage';
+import { loadBrokerLinks, saveImportConfig } from '@/lib/import-config-storage';
 import {
     applyStoredImportConfig,
     applyTransactionSuggestion,
@@ -251,6 +252,7 @@ export function ImportTransactionsDrawer({
                 file,
                 accounts,
                 state.selectedAccountId,
+                loadBrokerLinks,
             );
 
             if (read !== brokerRead.current) {
@@ -525,15 +527,23 @@ export function ImportTransactionsDrawer({
         rows: ParsedTransaction[],
     ): Promise<ImportOutcome | null> => {
         try {
-            const { outcome, balancesFailed } = await runBrokerImport(current, {
-                rows,
-                accounts: knownAccounts,
-                categories,
-                banks,
-                automationRules,
-                onProgress: setImportProgress,
-                onAccountCreated: handleBrokerAccountCreated,
-            });
+            const { outcome, balancesFailed, accounts } = await runBrokerImport(
+                current,
+                {
+                    rows,
+                    accounts: knownAccounts,
+                    categories,
+                    banks,
+                    automationRules,
+                    onProgress: setImportProgress,
+                    onAccountCreated: handleBrokerAccountCreated,
+                },
+            );
+
+            // Nothing new came in: the figures of the last import still stand.
+            if (outcome.successCount > 0) {
+                void rememberBrokerImport(current, accounts);
+            }
 
             if (balancesFailed) {
                 toast.error(
@@ -561,14 +571,17 @@ export function ImportTransactionsDrawer({
         setError(null);
 
         try {
-            const { balancesFailed } = await runBrokerImport(current, {
-                rows: [],
-                accounts: knownAccounts,
-                categories,
-                banks,
-                automationRules,
-                onAccountCreated: handleBrokerAccountCreated,
-            });
+            const { balancesFailed, accounts } = await runBrokerImport(
+                current,
+                {
+                    rows: [],
+                    accounts: knownAccounts,
+                    categories,
+                    banks,
+                    automationRules,
+                    onAccountCreated: handleBrokerAccountCreated,
+                },
+            );
 
             if (balancesFailed) {
                 setError(
@@ -579,6 +592,8 @@ export function ImportTransactionsDrawer({
 
                 return;
             }
+
+            void rememberBrokerImport(current, accounts);
 
             toast.success(__('Portfolio history imported'));
             onImportComplete?.(0);

@@ -4047,5 +4047,11 @@
     "MyInvestor portfolio": "Cartera de MyInvestor",
     "We keep what was invested day by day in an investment account": "Guardamos lo invertido día a día en una cuenta de inversión",
     "The portfolio's daily balances could not be saved. Please try again.": "No se han podido guardar los saldos diarios de la cartera. Inténtalo de nuevo.",
-    "Portfolio history imported": "Historial de la cartera importado"
+    "Portfolio history imported": "Historial de la cartera importado",
+    "We recognised the file and the accounts from last time": "Reconocemos el archivo y las cuentas de la última vez",
+    "Last import: :date": "Última importación: :date",
+    "Same accounts as last time:": "Mismas cuentas que la otra vez:",
+    "cash": "efectivo",
+    "since last time": "desde la última vez",
+    "Last time you entered": "La última vez pusiste"
 }

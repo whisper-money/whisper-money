@@ -1,6 +1,7 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     cashAccountOptions,
+    chosenAccountId,
     portfolioAccountOptions,
 } from '@/lib/broker-imports/broker-accounts';
 import { brokerCashAccountId } from '@/lib/broker-imports/broker-import';
@@ -28,8 +29,12 @@ import {
     Panel,
     portfolioChoiceFrom,
     PortfolioSummaryTiles,
+    RememberedAccountsBox,
+    ReplacesFromNote,
     SummaryTile,
     useMonthRange,
+    useRememberedAccounts,
+    type RememberedAccount,
 } from './import-step-broker-parts';
 
 interface ImportStepBrokerTradeRepublicProps {
@@ -64,9 +69,31 @@ export function ImportStepBrokerTradeRepublic({
     );
     const update = (changes: Partial<TradeRepublicPlan>) =>
         onPlanChange({ ...plan, ...changes });
+    const { remembered, showPickers, change } = useRememberedAccounts(
+        broker,
+        cashAccount !== undefined,
+    );
+    const rememberedPortfolio =
+        remembered?.portfolioAccountId &&
+        chosenAccountId(plan.portfolio) === remembered.portfolioAccountId
+            ? portfolioOptions.find(
+                  (account) => account.id === remembered.portfolioAccountId,
+              )
+            : undefined;
+    const rememberedAccounts: RememberedAccount[] = [
+        ...(cashAccount ? [{ name: cashAccount.name, role: __('cash') }] : []),
+        ...(rememberedPortfolio ? [{ name: rememberedPortfolio.name }] : []),
+    ];
 
     return (
         <div className="flex flex-col gap-4">
+            {!showPickers && remembered && (
+                <RememberedAccountsBox
+                    importedAt={remembered.lastImportedAt}
+                    accounts={rememberedAccounts}
+                    onChange={change}
+                />
+            )}
             <div className="grid gap-4 md:grid-cols-2">
                 <Panel
                     title={__('Cash')}
@@ -75,18 +102,22 @@ export function ImportStepBrokerTradeRepublic({
                         'Card payments, transfers, direct debits, interest and dividends. Buys and sells of securities come out of it too.',
                     )}
                 >
-                    <AccountSelect
-                        id="broker-cash-account"
-                        value={plan.cash}
-                        accounts={cashOptions}
-                        createLabel={__('Create “:name” · :type', {
-                            name: TRADE_REPUBLIC_CASH_NAME,
-                            type: formatAccountType('checking'),
-                        })}
-                        replacesFrom={firstDay(file.cash)}
-                        parse={accountChoiceFrom}
-                        onChange={(cash) => update({ cash })}
-                    />
+                    {showPickers ? (
+                        <AccountSelect
+                            id="broker-cash-account"
+                            value={plan.cash}
+                            accounts={cashOptions}
+                            createLabel={__('Create “:name” · :type', {
+                                name: TRADE_REPUBLIC_CASH_NAME,
+                                type: formatAccountType('checking'),
+                            })}
+                            replacesFrom={firstDay(file.cash)}
+                            parse={accountChoiceFrom}
+                            onChange={(cash) => update({ cash })}
+                        />
+                    ) : (
+                        <ReplacesFromNote replacesFrom={firstDay(file.cash)} />
+                    )}
                     <CashBalanceField
                         label={__('Cash balance today')}
                         value={plan.balanceToday}
@@ -108,19 +139,25 @@ export function ImportStepBrokerTradeRepublic({
                         'Stocks, ETFs, savings plans and crypto. We keep what was invested day by day.',
                     )}
                 >
-                    <AccountSelect
-                        id="broker-portfolio-account"
-                        value={plan.portfolio}
-                        accounts={portfolioOptions}
-                        createLabel={__('Create “:name” · :type', {
-                            name: TRADE_REPUBLIC_PORTFOLIO_NAME,
-                            type: formatAccountType('investment'),
-                        })}
-                        skipLabel={__("Don't import the portfolio")}
-                        replacesFrom={firstDay(file.trades)}
-                        parse={portfolioChoiceFrom}
-                        onChange={(portfolio) => update({ portfolio })}
-                    />
+                    {showPickers || !rememberedPortfolio ? (
+                        <AccountSelect
+                            id="broker-portfolio-account"
+                            value={plan.portfolio}
+                            accounts={portfolioOptions}
+                            createLabel={__('Create “:name” · :type', {
+                                name: TRADE_REPUBLIC_PORTFOLIO_NAME,
+                                type: formatAccountType('investment'),
+                            })}
+                            skipLabel={__("Don't import the portfolio")}
+                            replacesFrom={firstDay(file.trades)}
+                            parse={portfolioChoiceFrom}
+                            onChange={(portfolio) => update({ portfolio })}
+                        />
+                    ) : (
+                        <ReplacesFromNote
+                            replacesFrom={firstDay(file.trades)}
+                        />
+                    )}
                     {plan.portfolio.kind !== 'skip' && (
                         <InvestedAndValueFields
                             invested={invested}
@@ -129,6 +166,7 @@ export function ImportStepBrokerTradeRepublic({
                             hint={__(
                                 'Copy the total value Trade Republic shows. Leave it empty and we use what was invested until you update it.',
                             )}
+                            remembered={remembered}
                             onCurrentValueChange={(currentValue) =>
                                 update({ currentValue })
                             }
@@ -137,22 +175,24 @@ export function ImportStepBrokerTradeRepublic({
                 </Panel>
             </div>
 
-            {cashAccount && !isTradeRepublicAccount(cashAccount) && (
-                <BrokerWarning>
-                    {cashAccount.bank
-                        ? __(
-                              'You picked “:account”, which is at :bank. Sure the Trade Republic cash goes there? You can create a new account above.',
-                              {
-                                  account: cashAccount.name,
-                                  bank: cashAccount.bank.name,
-                              },
-                          )
-                        : __(
-                              'You picked “:account”, which is not a Trade Republic account. Sure the Trade Republic cash goes there? You can create a new account above.',
-                              { account: cashAccount.name },
-                          )}
-                </BrokerWarning>
-            )}
+            {showPickers &&
+                cashAccount &&
+                !isTradeRepublicAccount(cashAccount) && (
+                    <BrokerWarning>
+                        {cashAccount.bank
+                            ? __(
+                                  'You picked “:account”, which is at :bank. Sure the Trade Republic cash goes there? You can create a new account above.',
+                                  {
+                                      account: cashAccount.name,
+                                      bank: cashAccount.bank.name,
+                                  },
+                              )
+                            : __(
+                                  'You picked “:account”, which is not a Trade Republic account. Sure the Trade Republic cash goes there? You can create a new account above.',
+                                  { account: cashAccount.name },
+                              )}
+                    </BrokerWarning>
+                )}
 
             <BrokerStepFooter onBack={onBack} onNext={onNext} />
         </div>

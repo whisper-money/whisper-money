@@ -205,6 +205,7 @@ it('refuses anything beyond headers and shapes', function (array $payload, strin
     Http::assertNothingSent();
 })->with([
     'an unknown kind' => [['kind' => 'loan', 'columns' => [['header' => 'A', 'shape' => 'text']]], 'kind'],
+    'a broker file, which has no columns to map' => [['kind' => 'broker', 'columns' => [['header' => 'A', 'shape' => 'text']]], 'kind'],
     'no columns' => [['kind' => 'transaction', 'columns' => []], 'columns'],
     'too many columns' => [['kind' => 'transaction', 'columns' => array_fill(0, 61, ['header' => 'A', 'shape' => 'text'])], 'columns'],
     'columns keyed by name' => [['kind' => 'transaction', 'columns' => ['a' => ['header' => 'A', 'shape' => 'text']]], 'columns'],

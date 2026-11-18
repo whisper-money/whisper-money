@@ -2,6 +2,7 @@ import {
     unknownBroker,
     type BrokerImport,
 } from '@/lib/broker-imports/broker-import';
+import { brokerMemoryInUse } from '@/lib/broker-imports/broker-memory';
 import { type Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import {
@@ -96,8 +97,24 @@ export function BrokerImportSummary({ broker }: { broker: BrokerImport }) {
     }
 }
 
-/** The broker step's heading. */
+/** The broker step's heading: it says so when the accounts are last time's. */
 export function brokerStepInfo(broker: BrokerImport): {
+    title: string;
+    description: string;
+} {
+    const { title, description } = firstImportStepInfo(broker);
+
+    return brokerMemoryInUse(broker)
+        ? {
+              title,
+              description: __(
+                  'We recognised the file and the accounts from last time',
+              ),
+          }
+        : { title, description };
+}
+
+function firstImportStepInfo(broker: BrokerImport): {
     title: string;
     description: string;
 } {

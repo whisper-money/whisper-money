@@ -1,3 +1,5 @@
+import { type UUID } from '@/types/uuid';
+
 /** Which broker export a file is, once recognised. */
 export type BrokerFileKind =
     | 'trade_republic'
@@ -72,4 +74,28 @@ export interface Position {
     /** Buys minus sells, in minor units. */
     invested: number;
     currency: string;
+}
+
+/*
+ * What a broker import remembers for the next one, kept on the account the
+ * file went to (see broker-memory.ts).
+ */
+
+export interface BrokerLinkConfig {
+    broker: BrokerFileKind;
+    /** Trade Republic only: the account its securities went to, null when skipped. */
+    portfolioAccountId?: UUID | null;
+    /** When the import ran, as an ISO timestamp. */
+    lastImportedAt: string;
+    /** The portfolio value the user typed, in minor units, and the day it was for. */
+    lastValueMinor?: number | null;
+    lastValueDate?: string | null;
+    /** What had been invested on the day of the import, in minor units. */
+    lastInvestedMinor?: number | null;
+}
+
+/** A remembered import, with the account it is kept on. */
+export interface BrokerLink {
+    accountId: UUID;
+    config: BrokerLinkConfig;
 }

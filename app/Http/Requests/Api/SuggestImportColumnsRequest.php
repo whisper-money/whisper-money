@@ -38,7 +38,7 @@ class SuggestImportColumnsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'kind' => ['required', Rule::enum(ImportConfigType::class)],
+            'kind' => ['required', Rule::enum(ImportConfigType::class)->only(ImportConfigType::columnMapped())],
             'account_id' => ['sometimes', 'nullable', 'uuid', Rule::exists(Account::class, 'id')],
             'columns' => ['required', 'list', 'max:'.self::MAX_COLUMNS],
             'columns.*' => ['required', 'array:header,shape'],

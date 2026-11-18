@@ -1,4 +1,5 @@
 import { chosenAccountId } from '@/lib/broker-imports/broker-accounts';
+import { withRememberedAccounts } from '@/lib/broker-imports/broker-memory';
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
 import { parseMyInvestorCash } from '@/lib/broker-imports/myinvestor-cash';
 import {
@@ -23,6 +24,7 @@ import {
     type TradeRepublicImport,
 } from '@/lib/broker-imports/trade-republic-import';
 import { runTradeRepublicImport } from '@/lib/broker-imports/trade-republic-run';
+import { type BrokerGrid, type BrokerLink } from '@/lib/broker-imports/types';
 import { type ImportOutcome } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -61,6 +63,8 @@ export interface BrokerRunResult {
     outcome: ImportOutcome;
     /** Some daily balances could not be written: the transactions are in regardless. */
     balancesFailed: boolean;
+    /** The accounts the file went to, by role, made ones included. */
+    accounts: Partial<Record<BrokerAccountRole, Account>>;
 }
 
 /** For the `default` of a switch over every broker: a new one fails to compile. */
@@ -71,20 +75,13 @@ export function unknownBroker(broker: never): never {
     );
 }
 
-/**
- * Reads a file and, when it is an export of a broker the drawer imports,
- * what it holds and where each part goes by default. Null for any other
- * file, which then goes through the column mapping. `today` is fixed here,
- * so a drawer left open past midnight keeps one day throughout.
- */
-export async function readBrokerImport(
-    file: File,
+/** What a grid holds, by broker, with the heuristic's accounts. */
+function brokerImportFrom(
+    grid: BrokerGrid,
     accounts: Account[],
     selectedAccountId: UUID | null,
-    today: string = todayDateString(),
-): Promise<BrokerImport | null> {
-    const grid = await readBrokerGrid(file);
-
+    today: string,
+): BrokerImport | null {
     switch (detectBrokerFile(grid)) {
         case 'trade_republic': {
             const parsed = parseTradeRepublic(grid);
@@ -124,6 +121,39 @@ export async function readBrokerImport(
         default:
             return null;
     }
+}
+
+/**
+ * Reads a file and, when it is an export of a broker the drawer imports,
+ * what it holds and where each part goes by default: the accounts it went
+ * to last time, else the ones the heuristic finds. Null for any other file,
+ * which then goes through the column mapping. What was remembered is only
+ * asked for once the file is a broker's. `today` is fixed here, so a drawer
+ * left open past midnight keeps one day throughout.
+ */
+export async function readBrokerImport(
+    file: File,
+    accounts: Account[],
+    selectedAccountId: UUID | null,
+    loadLinks: () => Promise<BrokerLink[]> = async () => [],
+    today: string = todayDateString(),
+): Promise<BrokerImport | null> {
+    const broker = brokerImportFrom(
+        await readBrokerGrid(file),
+        accounts,
+        selectedAccountId,
+        today,
+    );
+
+    return (
+        broker &&
+        withRememberedAccounts(
+            broker,
+            await loadLinks(),
+            accounts,
+            selectedAccountId,
+        )
+    );
 }
 
 /** The account the transactions go to, when it already exists. */

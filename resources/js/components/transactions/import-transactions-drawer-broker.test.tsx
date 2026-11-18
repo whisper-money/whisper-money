@@ -10,11 +10,14 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
 
-const { create, checkDuplicates, post } = vi.hoisted(() => ({
-    create: vi.fn(),
-    checkDuplicates: vi.fn(),
-    post: vi.fn(),
-}));
+const { create, checkDuplicates, post, loadBrokerLinks, saveBrokerLink } =
+    vi.hoisted(() => ({
+        create: vi.fn(),
+        checkDuplicates: vi.fn(),
+        post: vi.fn(),
+        loadBrokerLinks: vi.fn(),
+        saveBrokerLink: vi.fn(),
+    }));
 
 vi.mock('@/services/transaction-sync', () => ({
     transactionSyncService: { create, checkDuplicates },
@@ -23,6 +26,8 @@ vi.mock('@/services/transaction-sync', () => ({
 vi.mock('@/lib/import-config-storage', () => ({
     loadImportConfig: vi.fn(async () => null),
     saveImportConfig: vi.fn(),
+    loadBrokerLinks,
+    saveBrokerLink,
 }));
 
 vi.mock('sonner', () => ({
@@ -107,6 +112,7 @@ async function reachTradeRepublicStep(accounts: Account[]) {
 describe('ImportTransactionsDrawer with broker imports on', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        loadBrokerLinks.mockResolvedValue([]);
         checkDuplicates.mockImplementation(async (_id, rows: unknown[]) =>
             rows.map(() => false),
         );
@@ -287,6 +293,76 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
                 .getByRole('button', { name: /Import 0 transactions/ })
                 .hasAttribute('disabled'),
         ).toBe(true);
+    });
+
+    describe('remembering the import', () => {
+        const renamedCash: Account = {
+            ...checking,
+            id: 'cash',
+            name: 'Spending',
+            bank: null,
+        };
+        const renamedPortfolio: Account = {
+            ...checking,
+            id: 'portfolio',
+            name: 'My ETFs',
+            bank: null,
+            type: 'investment',
+        };
+
+        it('remembers the accounts it made on the cash account', async () => {
+            await reachTradeRepublicStep([]);
+
+            fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+            fireEvent.click(
+                await screen.findByRole('button', {
+                    name: 'Import 22 transactions',
+                }),
+            );
+
+            await waitFor(() => expect(saveBrokerLink).toHaveBeenCalled());
+            expect(saveBrokerLink).toHaveBeenCalledWith(
+                'new-1',
+                expect.objectContaining({
+                    broker: 'trade_republic',
+                    portfolioAccountId: 'new-2',
+                }),
+            );
+        });
+
+        it('shows the accounts of last time, with a way to change them', async () => {
+            loadBrokerLinks.mockResolvedValue([
+                {
+                    accountId: renamedCash.id,
+                    config: {
+                        broker: 'trade_republic',
+                        portfolioAccountId: renamedPortfolio.id,
+                        lastImportedAt: '2026-02-01T10:00:00.000Z',
+                        lastValueMinor: 130_000,
+                        lastValueDate: '2026-02-01',
+                        lastInvestedMinor: 100_000,
+                    },
+                },
+            ]);
+
+            await reachTradeRepublicStep([renamedCash, renamedPortfolio]);
+
+            expect(screen.getByText('Last import: Feb 1, 2026')).not.toBeNull();
+            expect(screen.getByText('Spending')).not.toBeNull();
+            expect(screen.getByText('My ETFs')).not.toBeNull();
+            expect(screen.getByText(/Last time you entered/)).not.toBeNull();
+            expect(screen.getByText('since last time')).not.toBeNull();
+            expect(screen.queryByRole('combobox')).toBeNull();
+            // Both accounts exist: what the import overwrites is still told.
+            expect(
+                screen.getAllByText(/Its daily balances from .* are replaced/),
+            ).toHaveLength(2);
+
+            fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+
+            expect(screen.queryByText(/Last import:/)).toBeNull();
+            expect(screen.getAllByRole('combobox')).toHaveLength(2);
+        });
     });
 
     describe('MyInvestor', () => {

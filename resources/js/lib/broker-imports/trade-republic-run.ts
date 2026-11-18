@@ -42,6 +42,8 @@ export interface TradeRepublicRunResult {
     outcome: ImportOutcome;
     /** Some daily balances could not be written: the transactions are in regardless. */
     balancesFailed: boolean;
+    /** The accounts the file went to, made ones included; no portfolio when skipped. */
+    accounts: { cash: Account; portfolio?: Account };
 }
 
 /** What each account is called and what it is when the import makes it. */
@@ -138,5 +140,12 @@ export async function runTradeRepublicImport(
         outcome.successCount === 0 ||
         (await writeBalances(cashAccount, portfolioAccount, options));
 
-    return { outcome, balancesFailed: !balancesWritten };
+    return {
+        outcome,
+        balancesFailed: !balancesWritten,
+        accounts: {
+            cash: cashAccount,
+            ...(portfolioAccount ? { portfolio: portfolioAccount } : {}),
+        },
+    };
 }
