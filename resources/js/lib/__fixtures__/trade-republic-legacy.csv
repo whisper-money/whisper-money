@@ -1,0 +1,4 @@
+datetime;date;account_type;category;type;asset_class;name;symbol;shares;price;amount;fee;tax;currency;original_amount;original_currency;fx_rate;description;transaction_id;value_date;counterparty_name;counterparty_iban;payment_reference
+2024-05-02T00:00:00Z;2024-05-02;DEFAULT;CASH;TRANSFER_INBOUND;;;;;;1000.00;;;EUR;;;;Incoming transfer;22222222-0000-4000-8000-000000000001;2024-05-02;;;
+2024-05-15T12:15:59.231683Z;2024-05-15;DEFAULT;TRADING;BUY;STOCK;Test Corp;US0000000003;2.0000000000;100.0000000000;-200.00;-1.00;;EUR;;;;Buy trade US0000000003 TEST CORP, quantity: 2;22222222-0000-4000-8000-000000000002;2024-05-17;;;
+2024-05-20T09:00:00Z;2024-05-20;DEFAULT;CASH;CARD_TRANSACTION;;;;;;-7.25;;;EUR;;;;Test Bakery;22222222-0000-4000-8000-000000000003;2024-05-20;;;
