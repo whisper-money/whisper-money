@@ -20,7 +20,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class StoreAccountBalancesBulkRequest extends FormRequest
 {
     /** The most balances one request may carry. */
-    public const int MAX_BALANCES = 5000;
+    private const int MAX_BALANCES = 5000;
 
     public function authorize(): bool
     {
