@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
 use App\Enums\BankingProvider;
-use App\Features\CustomDashboards;
 use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
@@ -25,7 +24,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
 use Inertia\OnceProp;
-use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -547,15 +545,8 @@ class HandleInertiaRequests extends Middleware
                 'cashflow' => true,
                 'fullImport' => false,
                 'fullImportSettings' => false,
-                // Pennant's null scope, so the landing's block reaches visitors
-                // once the flag is on for that scope (see CustomDashboards). One
-                // lookup per request; the first guest visit also stores the row.
-                'customDashboards' => Feature::for(null)->active(CustomDashboards::class),
             ];
         }
-
-        // One query for every flag, however many of them get read below.
-        Feature::for($user)->load([CustomDashboards::class]);
 
         return [
             'cashflow' => true,
@@ -566,7 +557,6 @@ class HandleInertiaRequests extends Middleware
             // pages pay for it.
             'fullImport' => $user->canUseFullImport(),
             'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
-            'customDashboards' => Feature::for($user)->active(CustomDashboards::class),
         ];
     }
 

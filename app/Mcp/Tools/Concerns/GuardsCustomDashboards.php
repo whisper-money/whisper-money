@@ -12,7 +12,6 @@ use Laravel\Mcp\Response;
  * open to the shared demo and press accounts, whose data everyone holding the
  * credentials sees. Checked before the MCP's own gate ({@see McpTool::refusal()}),
  * so the agent gets a message about dashboards it can pass on to the user.
- * Not behind the CustomDashboards flag: that one only hides the web UI.
  */
 trait GuardsCustomDashboards
 {

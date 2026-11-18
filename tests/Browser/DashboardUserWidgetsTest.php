@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SystemWidget;
 use App\Enums\WidgetOrigin;
-use App\Features\CustomDashboards;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Dashboard;
@@ -14,7 +13,6 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\WidgetDefinition;
 use App\Services\Widgets\WidgetDefinitionService;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -88,18 +86,14 @@ function crashingWidgetSource(): string
 }
 
 /**
- * A user with the flag on, a dashboard of their own as the default one with
- * the net worth chart, and a groceries widget saved by their agent on it.
+ * A user with a dashboard of their own as the default one with the net worth
+ * chart, and a groceries widget saved by their agent on it.
  *
  * @return array{0: User, 1: Dashboard, 2: WidgetDefinition}
  */
-function dashboardWithUserWidget(bool $flag = true): array
+function dashboardWithUserWidget(): array
 {
     $user = User::factory()->onboarded()->create();
-
-    if ($flag) {
-        Feature::for($user)->activate(CustomDashboards::class);
-    }
 
     $account = Account::factory()->create(['user_id' => $user->id]);
     Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'transaction_date' => '2026-09-03', 'amount' => -4210]);
@@ -232,18 +226,6 @@ it('leaves safe mode and loads the user widgets', function () {
         ->click('Load widgets')
         ->assertSee('Supermercado este año')
         ->assertDontSee('Safe mode: your widgets are not loaded')
-        ->assertNoJavascriptErrors();
-});
-
-it('draws no user widget with the flag off', function () {
-    [$user] = dashboardWithUserWidget(flag: false);
-    actingAs($user);
-
-    visit('/dashboard')
-        ->assertSee('Overview of your financial health')
-        ->assertMissing('[data-user-widget]')
-        ->assertMissing('.wm-widget')
-        ->assertDontSee('Supermercado este año')
         ->assertNoJavascriptErrors();
 });
 
@@ -445,7 +427,6 @@ it('gives the widgets of a wider dashboard\'s row one height, the tallest one\'s
 function dashboardWithAutoHeightWidgets(): array
 {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
 
     $account = Account::factory()->create(['user_id' => $user->id]);
     Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'transaction_date' => '2026-09-03', 'amount' => -4210]);
@@ -548,7 +529,6 @@ it('sizes an auto widget to its content on a phone', function () {
 function dashboardWithTransactionListWidget(string $width = '1/2'): array
 {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate(CustomDashboards::class);
 
     $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Nómina', 'currency_code' => 'EUR']);
     $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Moto', 'icon' => 'Car', 'color' => 'red']);
@@ -841,7 +821,6 @@ it('keeps one bulk actions bar on a dashboard with two transaction widgets', fun
 function dashboardWithLinkingWidget(): array
 {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
     $account = Account::factory()->create(['user_id' => $user->id, 'name' => 'Nómina']);
     $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Supermercado']);
 

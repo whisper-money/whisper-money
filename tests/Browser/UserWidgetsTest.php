@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Features\CustomDashboards;
 use App\Models\User;
 use App\Services\Widgets\WidgetCompiler;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -122,7 +120,6 @@ function userWidgetsLayout($page): array
 function userWidgetsUser(): User
 {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
 
     return $user;
 }
@@ -201,13 +198,4 @@ it('opens in safe mode by itself when the last load never finished', function ()
         ->assertMissing('.wm-widget')
         ->click('Load widgets')
         ->assertSee('Supermercado por mes');
-});
-
-it('mounts no user widget with the flag off', function () {
-    actingAs(User::factory()->onboarded()->create());
-
-    visit('/testing/user-widgets')
-        ->assertMissing('.wm-widget')
-        ->assertDontSee('Safe mode: your widgets are not loaded')
-        ->assertNoJavascriptErrors();
 });

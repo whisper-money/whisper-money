@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 use App\Enums\SystemWidget;
 use App\Enums\WidgetWidth;
-use App\Features\CustomDashboards;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
 /**
- * The dashboard picker and the 12-column grid of the user's own dashboards,
- * which only show behind the CustomDashboards flag.
+ * The dashboard picker and the 12-column grid of the user's own dashboards.
  */
 beforeEach(function (): void {
     // With subscriptions off every user has the paid plan.
@@ -55,26 +52,8 @@ function dragWidget($page, string $from, string $to): void
     JS);
 }
 
-it('looks the same as before with the flag off', function () {
-    $user = User::factory()->onboarded()->create();
-    // Even a default dashboard of their own (set by an agent, say) is ignored.
-    $dashboard = Dashboard::factory()->for($user)->create(['name' => 'Agent board']);
-    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
-
-    actingAs($user);
-
-    visit('/dashboard')
-        ->assertSee('Overview of your financial health')
-        ->assertSee('Net Worth Evolution')
-        ->assertMissing('[aria-label="Switch dashboard"]')
-        ->assertDontSee('Agent board')
-        ->assertDontSee('This dashboard is empty')
-        ->assertNoJavascriptErrors();
-});
-
 it('builds two dashboards, edits their widgets and picks the default one', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
 
     actingAs($user);
 
@@ -166,7 +145,6 @@ it('builds two dashboards, edits their widgets and picks the default one', funct
 
 it('reorders widgets with the keyboard', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
     $dashboard = Dashboard::factory()->for($user)->create();
     $first = DashboardWidget::factory()->for($dashboard)->system(SystemWidget::TopCategories)->create(['position' => 0]);
     DashboardWidget::factory()->for($dashboard)->system(SystemWidget::NetWorth)->create(['position' => 1]);
@@ -191,7 +169,6 @@ it('reorders widgets with the keyboard', function () {
 
 it('fits a phone: every widget full width, keeping its height', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
     $dashboard = Dashboard::factory()->for($user)->create();
     $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
     DashboardWidget::factory()->for($dashboard)->system(SystemWidget::NetWorth)->create(['position' => 0, 'width' => '1/2', 'height' => 'l']);
@@ -231,7 +208,6 @@ it('fits a phone: every widget full width, keeping its height', function () {
 
 it('opens the guide to building a dashboard with AI from the picker', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(CustomDashboards::class);
 
     actingAs($user);
 

@@ -3,12 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\SystemWidget;
-use App\Features\CustomDashboards;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
 use App\Models\User;
 use App\Models\WidgetDefinition;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -28,7 +26,6 @@ beforeEach(function (): void {
 function lapsedUserWithDashboard(): array
 {
     $user = User::factory()->onboarded()->formerSubscriber()->create(['paywall_seen_at' => now()]);
-    Feature::for($user)->activate(CustomDashboards::class);
     $widget = WidgetDefinition::factory()->for($user)->create(['name' => 'Groceries by month']);
     $dashboard = Dashboard::factory()->for($user)->create(['name' => 'Mine']);
     DashboardWidget::factory()->for($dashboard)->system(SystemWidget::NetWorth)->create(['position' => 0, 'width' => '1/2', 'height' => 'l']);

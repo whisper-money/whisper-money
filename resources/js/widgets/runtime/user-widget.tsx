@@ -1,7 +1,5 @@
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
-import { type SharedData } from '@/types';
 import { type WidgetFrame } from '@/types/dashboard';
-import { usePage } from '@inertiajs/react';
 import { lazy, Suspense } from 'react';
 import { type RenderWidgetTransactionTable } from '../sdk/transaction-table-host';
 import { type WidgetRuntimeError } from './widget-error-boundary';
@@ -40,16 +38,8 @@ const UserWidgetFrame = lazy(() => import('./user-widget-frame'));
  * it inside `.wm-widget` (the scope of the precompiled widget CSS) and an
  * error boundary, and hands it data, theme, size, privacy mode and currency
  * through the SDK context (see user-widget-frame.tsx).
- *
- * Renders nothing while the CustomDashboards flag is off.
  */
 export function UserWidget(props: UserWidgetProps) {
-    const { features } = usePage<SharedData>().props;
-
-    if (!features?.customDashboards) {
-        return null;
-    }
-
     return (
         <Suspense
             // Plain markup on purpose: a component imported here would end up
