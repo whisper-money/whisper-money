@@ -6,7 +6,7 @@ import {
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 export { isSupportedImportFile };
 
@@ -16,6 +16,8 @@ interface ImportStepUploadProps {
     onNext: () => void;
     onBack: () => void;
     showBackButton?: boolean;
+    /** Shown under the file once one is picked, e.g. what kind of export it is. */
+    notice?: ReactNode;
 }
 
 export function ImportStepUpload({
@@ -24,6 +26,7 @@ export function ImportStepUpload({
     onNext,
     onBack,
     showBackButton = true,
+    notice,
 }: ImportStepUploadProps) {
     const [isDragging, setIsDragging] = useState(false);
 
@@ -128,6 +131,8 @@ export function ImportStepUpload({
                     </div>
                 )}
             </div>
+
+            {file && notice}
 
             <div
                 className={cn(

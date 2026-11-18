@@ -39,6 +39,8 @@ interface ImportStepPreviewProps {
     onSelectionChange: (index: number, selected: boolean) => void;
     onSelectAll: (selected: boolean) => void;
     isImporting: boolean;
+    /** Shown above the rows, e.g. where a broker's accounts will stand. */
+    summary?: ReactNode;
 }
 
 /** A row kept with its index in the full list, which selection is keyed by. */
@@ -110,6 +112,7 @@ export function ImportStepPreview({
     onSelectionChange,
     onSelectAll,
     isImporting,
+    summary,
 }: ImportStepPreviewProps) {
     const locale = useLocale();
     const [existingTransactions, setExistingTransactions] = useState<
@@ -213,6 +216,8 @@ export function ImportStepPreview({
 
     return (
         <div className="flex flex-col gap-4">
+            {summary}
+
             <EstimatesOverlapNotice
                 accountId={accountId}
                 transactions={transactions}

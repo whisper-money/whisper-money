@@ -15,6 +15,31 @@ interface ImportStepAccountProps {
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
+    /**
+     * Go on to the upload with no account, for a broker file whose accounts
+     * the import creates. Offered only when given.
+     */
+    onImportWithoutAccount?: () => void;
+}
+
+/** The way on for someone whose broker account is not in the app yet. */
+function ImportWithoutAccountLink({ onClick }: { onClick: () => void }) {
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
+            <span className="text-muted-foreground">
+                {__(
+                    'Coming from Trade Republic or MyInvestor without an account yet?',
+                )}
+            </span>
+            <Button
+                variant="link"
+                className="h-auto p-0 text-[13px]"
+                onClick={onClick}
+            >
+                {__("Upload the file and we'll create it")}
+            </Button>
+        </div>
+    );
 }
 
 export function ImportStepAccount({
@@ -22,8 +47,17 @@ export function ImportStepAccount({
     selectedAccountId,
     onAccountSelect,
     onNext,
+    onImportWithoutAccount,
 }: ImportStepAccountProps) {
     const accounts = filterTransactionalAccounts(rawAccounts);
+
+    if (accounts.length === 0 && onImportWithoutAccount) {
+        return (
+            <div className="py-8">
+                <ImportWithoutAccountLink onClick={onImportWithoutAccount} />
+            </div>
+        );
+    }
 
     if (accounts.length === 0) {
         return (
@@ -73,6 +107,10 @@ export function ImportStepAccount({
                     ))}
                 </div>
             </RadioGroup>
+
+            {onImportWithoutAccount && (
+                <ImportWithoutAccountLink onClick={onImportWithoutAccount} />
+            )}
 
             <div className="flex justify-end">
                 <Button onClick={onNext} disabled={!selectedAccountId}>

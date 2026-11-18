@@ -321,6 +321,11 @@ interface ImportTransactionsOptions {
     banks: Bank[];
     automationRules: AutomationRule[];
     onProgress?: (processed: number) => void;
+    /**
+     * Write the balances the rows carry, one request per day. Off for a
+     * caller that writes the account's balances itself, in bulk.
+     */
+    writeRowBalances?: boolean;
 }
 
 /** Rows are created this many at a time, in parallel within the batch. */
@@ -483,6 +488,9 @@ export async function importTransactions(
                     debtor_name: row.debtor_name ?? null,
                     source: 'imported' as const,
                     label_ids: labelIds.length > 0 ? labelIds : undefined,
+                    ...(row.external_id
+                        ? { external_transaction_id: row.external_id }
+                        : {}),
                 });
 
                 return { hasCategory: categoryId !== null };
@@ -530,7 +538,9 @@ export async function importTransactions(
         onProgress?.(processed);
     }
 
-    await importBalances(account, rows);
+    if (options.writeRowBalances !== false) {
+        await importBalances(account, rows);
+    }
 
     return { imported, errors, successCount, uncategorizedCount };
 }
