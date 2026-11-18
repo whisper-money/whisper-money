@@ -22,6 +22,7 @@ import {
     toMajorUnits,
 } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
+import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
 
@@ -84,6 +85,27 @@ interface AssetsReveal {
 
 type RevealData = SpendingReveal | AssetsReveal;
 
+/**
+ * The body is only trusted once it looks like one of the two payloads. A 200
+ * can still be something else: the dashboard HTML after a followed redirect,
+ * or a shape from another deploy. Rendered blind, that crashes the screen.
+ * The check is deliberately shallow: the variant and the list each screen
+ * maps over, which is what a foreign body is missing.
+ */
+function isRevealData(body: unknown): body is RevealData {
+    if (typeof body !== 'object' || body === null) {
+        return false;
+    }
+
+    const candidate = body as Partial<SpendingReveal> | Partial<AssetsReveal>;
+
+    if (candidate.variant === 'spending') {
+        return Array.isArray(candidate.merchants);
+    }
+
+    return candidate.variant === 'assets' && Array.isArray(candidate.accounts);
+}
+
 /** Under two, the sentence about repeat charges has no plural to stand on. */
 const MIN_RECURRING = 2;
 
@@ -122,9 +144,18 @@ export function StepReveal({
         let cancelled = false;
 
         axios
-            .get<RevealData>(reveal().url)
+            .get<unknown>(reveal().url)
             .then(({ data }) => {
                 if (cancelled) {
+                    return;
+                }
+
+                if (!isRevealData(data)) {
+                    Sentry.captureMessage(
+                        'Onboarding reveal answered with an unexpected body',
+                        { level: 'warning', extra: { type: typeof data } },
+                    );
+                    onContinueRef.current();
                     return;
                 }
 
