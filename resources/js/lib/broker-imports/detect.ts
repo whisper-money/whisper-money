@@ -1,5 +1,5 @@
 import { findHeaderRow } from '@/lib/broker-imports/grid';
-import { isMyInvestorCashHeader } from '@/lib/broker-imports/myinvestor-cash';
+import { findMyInvestorCashHeader } from '@/lib/broker-imports/myinvestor-cash';
 import { isSecuritiesOrderRow } from '@/lib/broker-imports/myinvestor-securities';
 import { isTradeRepublicHeader } from '@/lib/broker-imports/trade-republic';
 import {
@@ -23,7 +23,5 @@ export function detectBrokerFile(grid: BrokerGrid): BrokerFileKind | null {
         return 'myinvestor_securities';
     }
 
-    return findHeaderRow(grid, isMyInvestorCashHeader) !== -1
-        ? 'myinvestor_cash'
-        : null;
+    return findMyInvestorCashHeader(grid) !== -1 ? 'myinvestor_cash' : null;
 }

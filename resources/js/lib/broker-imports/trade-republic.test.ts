@@ -231,6 +231,32 @@ describe('parseTradeRepublic', () => {
         expect(file.cash).toHaveLength(3);
     });
 
+    it('keeps shares bought without cash in the position', async () => {
+        const grid = await fixtureGrid('trade-republic-legacy.csv');
+        const perk = [...grid[2]];
+        perk[10] = '0.00';
+        perk[11] = '';
+        perk[18] = '22222222-0000-4000-8000-000000000009';
+
+        const file = parseTradeRepublic([...grid, perk]);
+
+        expect(file.cash).toHaveLength(3);
+        expect(file.trades).toHaveLength(2);
+        expect(file.positions[0]).toMatchObject({ shares: 4, invested: 20100 });
+    });
+
+    it('gives a row without a transaction id a stable one', async () => {
+        const grid = await fixtureGrid('trade-republic-legacy.csv');
+        const withoutId = [...grid[3]];
+        withoutId[18] = '';
+
+        const first = parseTradeRepublic([grid[0], withoutId]);
+        const second = parseTradeRepublic([grid[0], withoutId]);
+
+        expect(first.cash[0].externalId).toMatch(/^trade-republic-/);
+        expect(second.cash[0].externalId).toBe(first.cash[0].externalId);
+    });
+
     it('reads nothing from a file without the header', () => {
         expect(parseTradeRepublic([['a', 'b']])).toEqual({
             cash: [],

@@ -1,11 +1,16 @@
 import {
     cellString,
     columnIndexes,
+    DEFAULT_CURRENCY,
     findHeaderRow,
+    parseDay,
+} from '@/lib/broker-imports/grid';
+import { stableHash } from '@/lib/broker-imports/ids';
+import {
     positionsFrom,
     tradeChange,
     type PositionChange,
-} from '@/lib/broker-imports/grid';
+} from '@/lib/broker-imports/positions';
 import {
     type BrokerGrid,
     type CashMovement,
@@ -13,11 +18,9 @@ import {
     type Position,
     type Trade,
 } from '@/lib/broker-imports/types';
-import { parseAmount, parseDate } from '@/lib/file-parser';
+import { parseAmount } from '@/lib/file-parser';
 import { normalizeText } from '@/lib/full-import-profiles';
-import { DateFormat } from '@/types/import';
 import { toMinorUnits } from '@/utils/currency';
-import { formatLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 
 /** The columns every Trade Republic transaction export carries, by normalised name. */
@@ -122,12 +125,7 @@ function minorUnits(text: string, currency: string): number {
 }
 
 function bookingDay(cells: RowCells): string | null {
-    const date = parseDate(
-        cells('date') || cells('datetime').slice(0, 10),
-        DateFormat.YearMonthDay,
-    );
-
-    return date ? formatLocalDate(date) : null;
+    return parseDay(cells('date') || cells('datetime').slice(0, 10));
 }
 
 /**
@@ -198,13 +196,36 @@ function describe(kind: CashMovementKind, cells: RowCells): string {
     }
 }
 
-function tradeOf(
-    side: Trade['side'],
-    date: string,
-    net: number,
-    cells: RowCells,
-): Trade {
+/** The side of a buy or sell row, by its type, or null for any other row. */
+function tradeSide(type: string): Trade['side'] | null {
+    const kind = KIND_BY_TYPE[type];
+
+    return kind === 'buy' || kind === 'sell' ? kind : null;
+}
+
+/** What a row did to the cash balance, in minor units, and the parts of it. */
+function cashEffectOf(cells: RowCells) {
+    const currency = cells('currency') || DEFAULT_CURRENCY;
+    const amount = minorUnits(cells('amount'), currency);
+    const fee = minorUnits(cells('fee'), currency);
+    const tax = minorUnits(cells('tax'), currency);
+
+    return { currency, amount, fee, tax, net: amount + fee + tax };
+}
+
+/**
+ * A buy or sell, whether or not it moved cash: shares bought with a perk or
+ * a bonus still belong to the position.
+ */
+function tradeOf(date: string, id: string, cells: RowCells): Trade | null {
+    const side = tradeSide(cells('type'));
     const shares = parseAmount(cells('shares')) ?? 0;
+
+    if (!side || shares === 0) {
+        return null;
+    }
+
+    const { currency, net } = cashEffectOf(cells);
 
     return {
         date,
@@ -214,8 +235,8 @@ function tradeOf(
         assetClass: cells('asset class') || null,
         shares: Math.abs(shares),
         amount: Math.abs(net),
-        currency: cells('currency') || 'EUR',
-        externalId: cells('transaction id'),
+        currency,
+        externalId: id,
         isTransfer: false,
     };
 }
@@ -230,18 +251,18 @@ function deliveryOf(cells: RowCells): PositionChange | null {
         symbol: cells('symbol'),
         name: cells('name') || cells('symbol'),
         assetClass: cells('asset class') || null,
-        currency: cells('currency') || 'EUR',
+        currency: cells('currency') || DEFAULT_CURRENCY,
         shares: parseAmount(cells('shares')) ?? 0,
         invested: 0,
     };
 }
 
-function cashMovementOf(date: string, cells: RowCells): CashMovement | null {
-    const currency = cells('currency') || 'EUR';
-    const amount = minorUnits(cells('amount'), currency);
-    const fee = minorUnits(cells('fee'), currency);
-    const tax = minorUnits(cells('tax'), currency);
-    const net = amount + fee + tax;
+function cashMovementOf(
+    date: string,
+    id: string,
+    cells: RowCells,
+): CashMovement | null {
+    const { currency, amount, fee, tax, net } = cashEffectOf(cells);
 
     if (net === 0) {
         return null;
@@ -254,7 +275,7 @@ function cashMovementOf(date: string, cells: RowCells): CashMovement | null {
         amount: net,
         currency,
         description: describe(kind, cells),
-        externalId: cells('transaction id'),
+        externalId: id,
         kind,
         ...(cells('symbol') ? { isin: cells('symbol') } : {}),
         ...(cells('name') ? { name: cells('name') } : {}),
@@ -282,24 +303,28 @@ export function parseTradeRepublic(grid: BrokerGrid): TradeRepublicFile {
     for (const row of grid.slice(headerRow + 1)) {
         const cells: RowCells = (name) =>
             cellString(row[indexes.get(name) ?? -1]);
-        const id = cells('transaction id');
         const date = bookingDay(cells);
+        // Every export seen has an id per row; a row without one falls back
+        // to a hash of what it says, the same on every read.
+        const id =
+            cells('transaction id') ||
+            `trade-republic-${stableHash(row.map(cellString).join('|'))}`;
 
-        if (!date || !id || seen.has(id)) {
+        if (!date || seen.has(id)) {
             continue;
         }
 
         seen.add(id);
 
-        const movement = cashMovementOf(date, cells);
+        const movement = cashMovementOf(date, id, cells);
+        const trade = tradeOf(date, id, cells);
         const delivery = deliveryOf(cells);
 
         if (movement) {
             result.cash.push(movement);
         }
 
-        if (movement && (movement.kind === 'buy' || movement.kind === 'sell')) {
-            const trade = tradeOf(movement.kind, date, movement.amount, cells);
+        if (trade) {
             result.trades.push(trade);
             changes.push(tradeChange(trade));
         } else if (delivery) {

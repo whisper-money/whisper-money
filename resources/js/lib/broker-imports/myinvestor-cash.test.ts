@@ -80,6 +80,7 @@ describe('parseMyInvestorCash', () => {
 
     it('reads dates written as spreadsheet serials and skips footers', () => {
         const { movements } = parseMyInvestorCash([
+            ['Resumen de movimientos'],
             ['Fecha', 'Concepto', 'Importe', 'Divisa'],
             [46297, 'Compra con tarjeta DEMO', -10, 'USD'],
             ['Total', '', '', ''],
@@ -93,6 +94,15 @@ describe('parseMyInvestorCash', () => {
                 kind: 'card',
             }),
         ]);
+    });
+
+    it('leaves a generic "Fecha, Concepto, Importe" file alone', () => {
+        expect(
+            parseMyInvestorCash([
+                ['Fecha', 'Concepto', 'Importe'],
+                ['02/10/2026', 'Café', '-2,50'],
+            ]).movements,
+        ).toEqual([]);
     });
 
     it('reads nothing from a file without the header', () => {

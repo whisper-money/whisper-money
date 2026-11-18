@@ -1,9 +1,5 @@
-import {
-    type BrokerGrid,
-    type Position,
-    type Trade,
-} from '@/lib/broker-imports/types';
-import { parseAmount, parseDate, parseFile } from '@/lib/file-parser';
+import { type BrokerGrid } from '@/lib/broker-imports/types';
+import { parseAmount, parseDate } from '@/lib/file-parser';
 import { normalizeText } from '@/lib/full-import-profiles';
 import { DateFormat } from '@/types/import';
 import { formatLocalDate } from '@/utils/date';
@@ -11,21 +7,8 @@ import { formatLocalDate } from '@/utils/date';
 /** How far down a file the header row is looked for, past any title rows. */
 export const HEADER_SCAN_ROWS = 15;
 
-/** The rows of a file as `parseFile` read them, turned back from its columns. */
-export function gridFromColumns(columns: unknown[][]): BrokerGrid {
-    const height = Math.max(0, ...columns.map((column) => column.length));
-
-    return Array.from({ length: height }, (_, rowIndex) =>
-        columns.map((column) => column[rowIndex]),
-    );
-}
-
-/** Reads a file into its grid, with the same reader the import drawer uses. */
-export async function readBrokerGrid(file: File): Promise<BrokerGrid> {
-    const { columns } = await parseFile(file);
-
-    return gridFromColumns(columns);
-}
+/** The currency a row is in when the file does not say. */
+export const DEFAULT_CURRENCY = 'EUR';
 
 /** The trimmed text of a cell, '' when it is empty. */
 export function cellString(cell: unknown): string {
@@ -95,72 +78,4 @@ export function parseDay(cell: unknown): string | null {
     const date = parseDate(cell, format);
 
     return date ? formatLocalDate(date) : null;
-}
-
-/**
- * A short, stable hash of a text (cyrb53), for ids of rows the bank gives no
- * id to. Not for anything secret.
- */
-export function stableHash(text: string): string {
-    let h1 = 0xdeadbeef;
-    let h2 = 0x41c6ce57;
-
-    for (let index = 0; index < text.length; index++) {
-        const code = text.charCodeAt(index);
-        h1 = Math.imul(h1 ^ code, 2654435761);
-        h2 = Math.imul(h2 ^ code, 1597334677);
-    }
-
-    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
-    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
-    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-
-    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
-}
-
-/** Shares rounded away from float noise, so a closed position reads 0. */
-function roundShares(shares: number): number {
-    return Math.round(shares * 1e10) / 1e10;
-}
-
-/** One change to a holding: a trade, or shares received without paying. */
-export type PositionChange = Omit<Position, 'shares' | 'invested'> & {
-    /** Signed. */
-    shares: number;
-    /** Signed, in minor units. */
-    invested: number;
-};
-
-/** A trade as the change it makes to its holding. */
-export function tradeChange(trade: Trade): PositionChange {
-    const sign = trade.side === 'buy' ? 1 : -1;
-
-    return {
-        symbol: trade.symbol,
-        name: trade.name,
-        assetClass: trade.assetClass,
-        currency: trade.currency,
-        shares: sign * trade.shares,
-        invested: sign * trade.amount,
-    };
-}
-
-/** What is held of each symbol, in the order the symbols first appear. */
-export function positionsFrom(changes: PositionChange[]): Position[] {
-    const bySymbol = new Map<string, Position>();
-
-    for (const change of changes) {
-        const position = bySymbol.get(change.symbol) ?? {
-            ...change,
-            shares: 0,
-            invested: 0,
-        };
-
-        position.shares = roundShares(position.shares + change.shares);
-        position.invested += change.invested;
-        bySymbol.set(change.symbol, position);
-    }
-
-    return [...bySymbol.values()];
 }

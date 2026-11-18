@@ -1,4 +1,4 @@
-import { readBrokerGrid } from '@/lib/broker-imports/grid';
+import { readBrokerGrid } from '@/lib/broker-imports/read';
 import { type BrokerGrid } from '@/lib/broker-imports/types';
 import { readFileSync } from 'node:fs';
 

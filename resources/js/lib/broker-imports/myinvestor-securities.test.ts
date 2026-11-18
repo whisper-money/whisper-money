@@ -31,7 +31,6 @@ describe('parseMyInvestorSecurities', () => {
             expect(file.trades[3]).toMatchObject({
                 name: 'FONDO DEMO RENTA FIJA ESPAÑA',
                 assetClass: 'FUND',
-                externalId: '150388404',
             });
             expect(file.trades[4].assetClass).toBe('STOCK');
             expect(file.dividends).toEqual([
@@ -70,7 +69,43 @@ describe('parseMyInvestorSecurities', () => {
         expect(on('2026-06-01')).toBe(151000);
     });
 
-    it('sums positions, pension plans included', async () => {
+    it('gives every order its own id, the same on every read', async () => {
+        const first = parseMyInvestorSecurities(
+            await fixtureGrid('myinvestor-salida.xls'),
+        );
+        const second = parseMyInvestorSecurities(
+            await fixtureGrid('myinvestor-salida.xlsx'),
+        );
+        const ids = (file: typeof first) =>
+            [...file.trades, ...file.unassigned, ...file.dividends].map(
+                (one) => one.externalId,
+            );
+
+        expect(new Set(ids(first)).size).toBe(10);
+        expect(ids(second)).toEqual(ids(first));
+    });
+
+    it('tells repeated identical orders apart', () => {
+        const order = [
+            '2026-01-10',
+            '2026-01-12',
+            '150388401',
+            'FONDOS EXTRANJEROS',
+            'SUSCRIPCION',
+            'IE0000000101',
+            'FONDO DEMO',
+            '1',
+            'EUR',
+            '10,00',
+            '10,00',
+        ];
+        const { trades } = parseMyInvestorSecurities([order, order]);
+
+        expect(trades).toHaveLength(2);
+        expect(trades[0].externalId).not.toBe(trades[1].externalId);
+    });
+
+    it('sums positions, transfers carrying their average cost across', async () => {
         const { positions } = parseMyInvestorSecurities(
             await fixtureGrid('myinvestor-salida.xls'),
         );
@@ -78,10 +113,10 @@ describe('parseMyInvestorSecurities', () => {
         expect(
             positions.map((one) => [one.symbol, one.shares, one.invested]),
         ).toEqual([
-            ['IE0000000101', 0, -23000],
-            ['ES0000000202', 60, 60000],
+            ['IE0000000101', 0, 0],
+            ['ES0000000202', 60, 50800],
             ['ES0000000303', 10, 14000],
-            ['LU0000000404', 90, 90000],
+            ['LU0000000404', 90, 76200],
             ['N0001', 3, 10000],
         ]);
     });

@@ -1,5 +1,17 @@
 import { type CashMovement, type Trade } from '@/lib/broker-imports/types';
 
+/** What had been invested at the end of a day, in minor units. */
+export interface InvestedPoint {
+    date: string;
+    investedMinor: number;
+}
+
+/** The cash balance at the end of a day, in minor units. */
+export interface BalancePoint {
+    date: string;
+    balanceMinor: number;
+}
+
 const DAY_MS = 86_400_000;
 
 function dayNumber(day: string): number {
@@ -14,7 +26,9 @@ function dayOf(number: number): string {
 function daysBetween(first: string, last: string): string[] {
     const days: string[] = [];
 
-    for (let day = dayNumber(first); day <= dayNumber(last); day++) {
+    const lastDay = dayNumber(last);
+
+    for (let day = dayNumber(first); day <= lastDay; day++) {
         days.push(dayOf(day));
     }
 
@@ -45,21 +59,23 @@ function earliest(items: { date: string }[]): string | null {
 
 /**
  * What had been invested at the end of each day, buys minus sells, from the
- * first trade up to `today` (or the last trade, if that is later).
+ * first trade up to `today` (or the last trade, if that is later). Transfers
+ * between funds move money already invested, so they leave it as it was.
  */
-export function dailyInvested(
-    trades: Trade[],
-    today: string,
-): { date: string; investedMinor: number }[] {
+export function dailyInvested(trades: Trade[], today: string): InvestedPoint[] {
     const first = earliest(trades);
 
     if (first === null) {
         return [];
     }
 
-    const changes = totalsByDay(trades, (trade) =>
-        trade.side === 'buy' ? trade.amount : -trade.amount,
-    );
+    const changes = totalsByDay(trades, (trade) => {
+        if (trade.isTransfer) {
+            return 0;
+        }
+
+        return trade.side === 'buy' ? trade.amount : -trade.amount;
+    });
     const last = [...changes.keys(), today].sort().at(-1) ?? today;
     let invested = 0;
 
@@ -80,7 +96,7 @@ export function cashBalances(
     movements: CashMovement[],
     balanceToday: number,
     today: string,
-): { date: string; balanceMinor: number }[] {
+): BalancePoint[] {
     const first = earliest(movements);
 
     if (first === null) {

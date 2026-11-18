@@ -1,9 +1,6 @@
-import {
-    gridFromColumns,
-    parseDay,
-    parseSpanishNumber,
-    stableHash,
-} from '@/lib/broker-imports/grid';
+import { parseDay, parseSpanishNumber } from '@/lib/broker-imports/grid';
+import { rowIdFactory, stableHash } from '@/lib/broker-imports/ids';
+import { gridFromColumns } from '@/lib/broker-imports/read';
 import { describe, expect, it } from 'vitest';
 
 describe('parseSpanishNumber', () => {
@@ -47,6 +44,18 @@ describe('stableHash', () => {
         expect(stableHash('2026-10-03|-6235|cafe')).not.toBe(
             stableHash('2026-10-03|-6236|cafe'),
         );
+    });
+});
+
+describe('rowIdFactory', () => {
+    it('numbers identical rows and keeps others apart', () => {
+        const idOf = rowIdFactory('demo');
+        const coffee = idOf(['2026-10-03', -250, 'cafe']);
+        const sameCoffee = idOf(['2026-10-03', -250, 'cafe']);
+
+        expect(coffee).toMatch(/^demo-\w+-0$/);
+        expect(sameCoffee).toBe(coffee.replace(/-0$/, '-1'));
+        expect(idOf(['2026-10-03', -251, 'cafe'])).toMatch(/-0$/);
     });
 });
 

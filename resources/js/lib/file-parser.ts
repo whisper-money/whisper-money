@@ -81,7 +81,7 @@ function spreadsheetDateToIsoDate(value: Date): string {
 
 const UTF8_BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
 
-function readBytes(file: File): Promise<Uint8Array<ArrayBuffer>> {
+function readBytes(file: Blob): Promise<Uint8Array<ArrayBuffer>> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () =>
@@ -122,28 +122,33 @@ async function withUtf8ByteOrderMark(file: File): Promise<File> {
  * Some banks export an HTML table saved as `.xls` in ISO-8859-1 (Inversis'
  * `salida.xls` for MyInvestor). The spreadsheet reader takes HTML as UTF-8, so
  * every accented byte swallows the markup after it and cells run together.
- * Such a file is handed over as text decoded the way it was written; any other
- * file, an HTML one that is valid UTF-8 included, returns null. Only `.xls`
- * and `.html` names are looked at: other formats are never read twice.
+ * Such a file is re-encoded as UTF-8 (decoded as windows-1252, the superset of
+ * ISO-8859-1 browsers use for it); any other file, an HTML one that is already
+ * valid UTF-8 included, is left alone. Only `.xls` and `.html` names are looked
+ * at, and only past a first peek that finds markup.
  */
-async function latin1HtmlText(file: File): Promise<string | null> {
+async function withUtf8Html(file: File): Promise<File> {
     if (!/\.(xls|html?)$/i.test(file.name)) {
-        return null;
+        return file;
+    }
+
+    const head = await readBytes(file.slice(0, 512));
+    const start = head.findIndex((byte) => byte > 0x20);
+
+    if (start === -1 || head[start] !== 0x3c) {
+        return file;
     }
 
     const bytes = await readBytes(file);
-    const start = bytes.findIndex((byte) => byte > 0x20);
-
-    if (start === -1 || bytes[start] !== 0x3c) {
-        return null;
-    }
 
     try {
         new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 
-        return null;
+        return file;
     } catch {
-        return new TextDecoder('windows-1252').decode(bytes);
+        const text = new TextDecoder('windows-1252').decode(bytes);
+
+        return new File([text], file.name, { type: file.type });
     }
 }
 
@@ -155,11 +160,9 @@ export async function parseFile(file: File): Promise<{
     headerRowIndex: number;
 }> {
     let fileToRead: File;
-    let htmlText: string | null;
 
     try {
-        fileToRead = await withUtf8ByteOrderMark(file);
-        htmlText = await latin1HtmlText(fileToRead);
+        fileToRead = await withUtf8Html(await withUtf8ByteOrderMark(file));
     } catch {
         // Reading the bytes fails the same way the reader below would: a
         // folder named like a CSV is the usual case.
@@ -171,7 +174,7 @@ export async function parseFile(file: File): Promise<{
 
         reader.onload = (e) => {
             try {
-                const data = htmlText ?? e.target?.result;
+                const data = e.target?.result;
                 if (!data) {
                     reject(new Error(UNREADABLE_FILE_MESSAGE));
                     return;
@@ -182,10 +185,7 @@ export async function parseFile(file: File): Promise<{
                 // date-like values into Excel serial numbers. parseDate then
                 // applies the user-selected format. Native spreadsheet dates
                 // (.xls/.xlsx) still arrive as numbers and use the serial path.
-                const workbook = XLSX.read(data, {
-                    type: htmlText === null ? 'binary' : 'string',
-                    raw: true,
-                });
+                const workbook = XLSX.read(data, { type: 'binary', raw: true });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 

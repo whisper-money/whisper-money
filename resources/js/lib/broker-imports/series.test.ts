@@ -52,6 +52,21 @@ describe('dailyInvested', () => {
         ]);
     });
 
+    it('leaves transfers between funds out', () => {
+        const out = { ...trade('2026-03-01', 'sell', 600), isTransfer: true };
+        const into = { ...trade('2026-03-02', 'buy', 610), isTransfer: true };
+
+        expect(
+            dailyInvested(
+                [trade('2026-03-01', 'buy', 1000), out, into],
+                '2026-03-02',
+            ),
+        ).toEqual([
+            { date: '2026-03-01', investedMinor: 1000 },
+            { date: '2026-03-02', investedMinor: 1000 },
+        ]);
+    });
+
     it('is empty without trades', () => {
         expect(dailyInvested([], '2026-03-03')).toEqual([]);
     });

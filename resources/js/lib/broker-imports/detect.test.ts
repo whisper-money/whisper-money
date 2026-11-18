@@ -46,19 +46,47 @@ describe('detectBrokerFile', () => {
         ).toBeNull();
     });
 
-    it('finds the MyInvestor header below title rows, but not past the scan window', () => {
+    it('takes a date, concept and amount header for MyInvestor only with its title rows above', () => {
+        const header = ['Fecha', 'Movimiento', 'Importe', 'Saldo'];
+        const row = [
+            '02/10/2026',
+            'Compra con tarjeta DEMO',
+            '-10,00',
+            '90,00',
+        ];
+
+        expect(detectBrokerFile([header, row])).toBeNull();
+        expect(
+            detectBrokerFile([['Banco Demo'], ['Extracto'], header, row]),
+        ).toBeNull();
+        expect(
+            detectBrokerFile([['', 'Resumen de movimientos'], [], header, row]),
+        ).toBe('myinvestor_cash');
+        expect(
+            detectBrokerFile([
+                ['Cuenta', 'ES12 1544 7889 0000 0000 0001'],
+                header,
+                row,
+            ]),
+        ).toBe('myinvestor_cash');
+    });
+
+    it('does not look for the MyInvestor header past the scan window', () => {
         const titles = Array.from({ length: 15 }, () => [
             'Resumen de movimientos',
         ]);
 
         expect(
-            detectBrokerFile([
-                ...titles.slice(0, 3),
-                ['Fecha', 'Movimiento', 'Importe'],
-            ]),
-        ).toBe('myinvestor_cash');
-        expect(
             detectBrokerFile([...titles, ['Fecha', 'Concepto', 'Importe']]),
+        ).toBeNull();
+    });
+
+    it('needs the Inversis order number and dates around an ISIN to call it a securities export', () => {
+        expect(
+            detectBrokerFile([
+                ['Tipo', 'ISIN', 'Nombre', 'Importe'],
+                ['COMPRA', 'IE0000000101', 'FONDO DEMO', '100,00'],
+            ]),
         ).toBeNull();
     });
 });

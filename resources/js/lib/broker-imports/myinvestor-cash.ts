@@ -1,11 +1,12 @@
 import {
     cellString,
     columnIndexes,
+    DEFAULT_CURRENCY,
     findHeaderRow,
     parseDay,
     parseSpanishNumber,
-    stableHash,
 } from '@/lib/broker-imports/grid';
+import { rowIdFactory } from '@/lib/broker-imports/ids';
 import {
     type BrokerGrid,
     type CashMovement,
@@ -27,27 +28,63 @@ const COLUMN_NAMES = {
 
 type Column = keyof typeof COLUMN_NAMES;
 
-const KNOWN_NAMES: string[] = Object.values(COLUMN_NAMES).flat();
+/** The header of the `;` CSV, exactly as MyInvestor writes it. */
+const CSV_HEADER = [
+    'fecha de operacion',
+    'fecha de valor',
+    'concepto',
+    'importe',
+    'divisa',
+];
 
 /**
- * Whether a row's normalised cells are the current account's header: a date,
- * a concept and an amount, and nothing the export does not write. The last
- * rule keeps other Spanish exports (Banktrack's has a "Banco" and a
- * "Categorías" column) from being taken for MyInvestor's.
+ * What the title rows of the xlsx say that no other bank's export does: its
+ * title, or an account at MyInvestor's bank code (1544).
  */
-export function isMyInvestorCashHeader(names: string[]): boolean {
-    const present = names.filter(Boolean);
+const TITLE_FINGERPRINTS = [
+    /resumen de movimientos/,
+    /myinvestor/,
+    /^es\d{2} ?1544/,
+];
+
+/** Whether a row's normalised cells have a date, a concept and an amount column. */
+function looksLikeCashHeader(names: string[]): boolean {
     const has = (column: Column) =>
-        present.some((name) =>
+        names.some((name) =>
             (COLUMN_NAMES[column] as readonly string[]).includes(name),
         );
 
-    return (
-        has('date') &&
-        has('concept') &&
-        has('amount') &&
-        present.every((name) => KNOWN_NAMES.includes(name))
+    return has('date') && has('concept') && has('amount');
+}
+
+function hasMyInvestorTitle(rows: unknown[][]): boolean {
+    return rows.some((row) =>
+        row.some((cell) => {
+            const text = normalizeText(cell);
+
+            return TITLE_FINGERPRINTS.some((pattern) => pattern.test(text));
+        }),
     );
+}
+
+/**
+ * The row of the current account's header, or -1. A date, concept and
+ * amount header is what most Spanish banks write, so it only counts as
+ * MyInvestor's with something MyInvestor's own: the CSV's exact header, or
+ * the xlsx's title rows above it. Any other "Fecha, Concepto, Importe" file
+ * stays with the generic importer.
+ */
+export function findMyInvestorCashHeader(grid: BrokerGrid): number {
+    const row = findHeaderRow(grid, looksLikeCashHeader);
+
+    if (row === -1) {
+        return -1;
+    }
+
+    const names = grid[row].map(normalizeText);
+    const isCsvHeader = CSV_HEADER.every((name) => names.includes(name));
+
+    return isCsvHeader || hasMyInvestorTitle(grid.slice(0, row)) ? row : -1;
 }
 
 /** The first words of a concept, by normalised text, and the kind they mean. */
@@ -113,12 +150,10 @@ export interface MyInvestorCashFile {
 /**
  * Reads MyInvestor's current-account "Resumen de movimientos", as xlsx (title
  * rows above the header) or as the `;` CSV. The bank gives no id per
- * movement, so each gets a hash of its day, amount and concept, plus its
- * ordinal among identical rows of the file: two equal coffees on one day stay
- * two transactions, and the same file imported twice gets the same ids.
+ * movement, so each gets one from its day, amount and concept (`rowIdFactory`).
  */
 export function parseMyInvestorCash(grid: BrokerGrid): MyInvestorCashFile {
-    const headerRow = findHeaderRow(grid, isMyInvestorCashHeader);
+    const headerRow = findMyInvestorCashHeader(grid);
 
     if (headerRow === -1) {
         return { movements: [], hasBalance: false };
@@ -126,7 +161,7 @@ export function parseMyInvestorCash(grid: BrokerGrid): MyInvestorCashFile {
 
     const columns = columnsOf(grid[headerRow]);
     const hasBalance = columns.balance !== undefined;
-    const occurrences = new Map<string, number>();
+    const idOf = rowIdFactory('myinvestor');
     const movements: CashMovement[] = [];
 
     for (const row of grid.slice(headerRow + 1)) {
@@ -140,22 +175,17 @@ export function parseMyInvestorCash(grid: BrokerGrid): MyInvestorCashFile {
         }
 
         const currency =
-            parseCurrencyCode(cellString(cell('currency'))) ?? 'EUR';
+            parseCurrencyCode(cellString(cell('currency'))) ?? DEFAULT_CURRENCY;
         const amount = toMinorUnits(value, currency);
         const description = cellString(cell('concept'));
-        const key = stableHash(
-            `${date}|${amount}|${normalizeText(description)}`,
-        );
-        const ordinal = occurrences.get(key) ?? 0;
         const balance = hasBalance ? parseSpanishNumber(cell('balance')) : null;
 
-        occurrences.set(key, ordinal + 1);
         movements.push({
             date,
             amount,
             currency,
             description,
-            externalId: `myinvestor-${key}-${ordinal}`,
+            externalId: idOf([date, amount, normalizeText(description)]),
             kind: kindOf(description),
             ...(balance === null
                 ? {}
