@@ -9,6 +9,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\AutomationRuleService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -307,6 +308,112 @@ test('job queries automation rules once regardless of transaction count', functi
     (new ReEvaluateTransactionRulesJob($this->user, $jobId))->handle(app(AutomationRuleService::class));
 
     expect($ruleQueries)->toBe(1);
+});
+
+test('job does not reload each transaction it re-evaluates', function () {
+    $createTransactions = fn (int $count) => Transaction::factory()->enableBanking()->count($count)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => $this->category->id,
+    ]);
+
+    // Created before the rule, so the creation listener has nothing to apply.
+    $createTransactions(3);
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $countQueries = function (): int {
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        (new ReEvaluateTransactionRulesJob($this->user, 'test-job-'.uniqid()))
+            ->handle(app(AutomationRuleService::class));
+
+        DB::getEventDispatcher()->forget(QueryExecuted::class);
+
+        return $queries;
+    };
+
+    $queriesForThree = $countQueries();
+
+    Transaction::withoutEvents(fn () => $createTransactions(20));
+
+    expect($countQueries())->toBe($queriesForThree);
+});
+
+test('job counts only the transactions a rule actually changed', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = fn (string $description, array $attributes = []) => Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => $description,
+        'amount' => -1000,
+        'category_id' => null,
+        'notes' => null,
+        ...$attributes,
+    ]);
+
+    // Created before the rules, so the creation listener has nothing to apply.
+    $recategorized = $transaction('Grocery Store');
+    $alreadyCategorized = $transaction('Grocery Market', ['category_id' => $this->category->id]);
+    $noted = $transaction('Spotify Premium');
+    $alreadyNoted = $transaction('Spotify Family', ['notes' => 'Streaming service']);
+    $labelled = $transaction('Netflix monthly');
+    $alreadyLabelled = $transaction('Netflix yearly');
+    $alreadyLabelled->labels()->attach($label);
+    $unmatched = $transaction('Coffee Shop');
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 2,
+        'rules_json' => ['in' => ['spotify', ['var' => 'description']]],
+        'action_category_id' => null,
+        'action_note' => 'Streaming service',
+    ]);
+    AutomationRule::factory()
+        ->hasAttached($label, [], 'labels')
+        ->create([
+            'user_id' => $this->user->id,
+            'priority' => 3,
+            'rules_json' => ['in' => ['netflix', ['var' => 'description']]],
+            'action_category_id' => null,
+        ]);
+
+    $jobId = 'test-job-'.uniqid();
+    (new ReEvaluateTransactionRulesJob($this->user, $jobId))->handle(app(AutomationRuleService::class));
+
+    expect($recategorized->fresh()->category_id)->toBe($this->category->id)
+        ->and($noted->fresh()->notes)->toBe('Streaming service')
+        ->and($alreadyNoted->fresh()->notes)->toBe('Streaming service')
+        ->and($labelled->fresh()->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($alreadyLabelled->fresh()->labels->pluck('id')->all())->toBe([$label->id])
+        ->and($alreadyCategorized->fresh()->category_id)->toBe($this->category->id)
+        ->and($unmatched->fresh()->category_id)->toBeNull();
+
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($this->user->id, $jobId));
+
+    expect($progress)->toMatchArray([
+        'status' => 'done',
+        'processed' => 7,
+        'total' => 7,
+        'updated' => 3,
+    ]);
 });
 
 test('job marks cache as failed and preserves counts', function () {

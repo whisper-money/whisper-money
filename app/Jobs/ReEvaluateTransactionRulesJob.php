@@ -49,28 +49,27 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
             $reassignIds = [];
 
             foreach ($transactions as $transaction) {
-                $categoryBefore = $transaction->category_id;
-                $labelsBefore = $transaction->labels->pluck('id')->sort()->values()->all();
                 $notesBefore = $transaction->notes;
 
                 // The reassignment is batched per chunk below, so this must not
                 // queue a job of its own for every transaction it changes.
-                if ($service->applyRules($transaction, reassignBudgets: false)) {
+                $affectsBudgets = $service->applyRules($transaction, reassignBudgets: false);
+
+                if ($affectsBudgets) {
                     $reassignIds[] = $transaction->id;
                 }
 
-                $transaction->refresh();
-                $categoryAfter = $transaction->category_id;
-                $labelsAfter = $transaction->labels->pluck('id')->sort()->values()->all();
-                $notesAfter = $transaction->notes;
-
-                if ($categoryBefore !== $categoryAfter || $labelsBefore !== $labelsAfter || $notesBefore !== $notesAfter) {
+                // applyRules() returns true only when it changed the category or
+                // attached a label, and it writes a note on the in-memory model, so
+                // the outcome is known without reloading the row.
+                if ($affectsBudgets || $transaction->notes !== $notesBefore) {
                     $updated++;
                 }
 
                 $processed++;
-                $this->updateProgress(status: 'processing', processed: $processed, total: $total, updated: $updated);
             }
+
+            $this->updateProgress(status: 'processing', processed: $processed, total: $total, updated: $updated);
 
             // Re-evaluating the whole history is an administrative act, not
             // spending, so it must not raise budget emails.
