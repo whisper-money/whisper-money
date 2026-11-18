@@ -81,7 +81,7 @@ function spreadsheetDateToIsoDate(value: Date): string {
 
 const UTF8_BOM = new Uint8Array([0xef, 0xbb, 0xbf]);
 
-function readBytes(file: File): Promise<Uint8Array<ArrayBuffer>> {
+function readBytes(file: Blob): Promise<Uint8Array<ArrayBuffer>> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () =>
@@ -118,6 +118,40 @@ async function withUtf8ByteOrderMark(file: File): Promise<File> {
     return new File([UTF8_BOM, bytes], file.name, { type: file.type });
 }
 
+/**
+ * Some banks export an HTML table saved as `.xls` in ISO-8859-1 (Inversis'
+ * `salida.xls` for MyInvestor). The spreadsheet reader takes HTML as UTF-8, so
+ * every accented byte swallows the markup after it and cells run together.
+ * Such a file is re-encoded as UTF-8 (decoded as windows-1252, the superset of
+ * ISO-8859-1 browsers use for it); any other file, an HTML one that is already
+ * valid UTF-8 included, is left alone. Only `.xls` and `.html` names are looked
+ * at, and only past a first peek that finds markup.
+ */
+async function withUtf8Html(file: File): Promise<File> {
+    if (!/\.(xls|html?)$/i.test(file.name)) {
+        return file;
+    }
+
+    const head = await readBytes(file.slice(0, 512));
+    const start = head.findIndex((byte) => byte > 0x20);
+
+    if (start === -1 || head[start] !== 0x3c) {
+        return file;
+    }
+
+    const bytes = await readBytes(file);
+
+    try {
+        new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+
+        return file;
+    } catch {
+        const text = new TextDecoder('windows-1252').decode(bytes);
+
+        return new File([text], file.name, { type: file.type });
+    }
+}
+
 export async function parseFile(file: File): Promise<{
     headers: string[];
     data: ParsedRow[];
@@ -128,7 +162,7 @@ export async function parseFile(file: File): Promise<{
     let fileToRead: File;
 
     try {
-        fileToRead = await withUtf8ByteOrderMark(file);
+        fileToRead = await withUtf8Html(await withUtf8ByteOrderMark(file));
     } catch {
         // Reading the bytes fails the same way the reader below would: a
         // folder named like a CSV is the usual case.

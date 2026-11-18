@@ -1,0 +1,15 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></head><body><table border="1">
+<tr><th colspan="2">Fechas</th><th rowspan="2">Nº Orden</th><th rowspan="2">Mercado</th><th rowspan="2">Transacción</th><th rowspan="2">ISIN</th><th rowspan="2">Valor</th><th rowspan="2">Títulos</th><th rowspan="2">Divisa</th><th rowspan="2">Precio neto</th><th rowspan="2">Importe neto</th></tr>
+<tr><th>Operación</th><th>Liquidación</th></tr>
+<tr><td>2026-01-10</td><td>2026-01-12</td><td>150388401</td><td>FONDOS EXTRANJEROS</td><td>SUSCRIPCION</td><td>IE0000000101</td><td>FONDO DEMO GLOBAL</td><td>10,5</td><td>EUR</td><td>100,00</td><td>1.050,00</td></tr>
+<tr><td>2026-02-10</td><td>2026-02-12</td><td>150388402</td><td>FONDOS EXTRANJEROS</td><td>SUSCRIPCION</td><td>IE0000000101</td><td>FONDO DEMO GLOBAL</td><td>2</td><td>EUR</td><td>110,00</td><td>220,00</td></tr>
+<tr><td>2026-03-01</td><td>2026-03-03</td><td>150388403</td><td>FONDOS EXTRANJEROS</td><td>REEMB.POR TRASPASO</td><td>IE0000000101</td><td>FONDO DEMO GLOBAL</td><td>5</td><td>EUR</td><td>120,00</td><td>600,00</td></tr>
+<tr><td>2026-03-01</td><td>2026-03-04</td><td>150388404</td><td>FONDOS NACIONALES</td><td>SUSCR.POR TRASPASO</td><td>ES0000000202</td><td>FONDO DEMO RENTA FIJA ESPAÑA</td><td>60</td><td>EUR</td><td>10,00</td><td>600,00</td></tr>
+<tr><td>2026-03-15</td><td>2026-03-17</td><td>150388405</td><td>MERCADO CONTINUO</td><td>COMPRA</td><td>ES0000000303</td><td>ACCIONES DEMO SA</td><td>20</td><td>EUR</td><td>15,00</td><td>300,00</td></tr>
+<tr><td>2026-04-01</td><td>2026-04-01</td><td>150388406</td><td>MERCADO CONTINUO</td><td>DIVIDENDO</td><td>ES0000000303</td><td>ACCIONES DEMO SA</td><td>20</td><td>EUR</td><td>0,25</td><td>5,00</td></tr>
+<tr><td>2026-04-10</td><td>2026-04-12</td><td>150388407</td><td>MERCADO CONTINUO</td><td>VENTA</td><td>ES0000000303</td><td>ACCIONES DEMO SA</td><td>10</td><td>EUR</td><td>16,00</td><td>160,00</td></tr>
+<tr><td>2026-04-20</td><td>2026-04-20</td><td>150388408</td><td>MERCADO CONTINUO</td><td>CANJE</td><td>ES0000000303</td><td>ACCIONES DEMO SA</td><td>10</td><td>EUR</td><td>0,00</td><td>0,00</td></tr>
+<tr><td>2026-05-02</td><td>2026-05-04</td><td>150388409</td><td>FONDOS EXTRANJEROS</td><td>BAJA IIC SWITCH</td><td>IE0000000101</td><td>FONDO DEMO GLOBAL</td><td>7,5</td><td>EUR</td><td>120,00</td><td>900,00</td></tr>
+<tr><td>2026-05-02</td><td>2026-05-05</td><td>150388410</td><td>FONDOS EXTRANJEROS</td><td>ALTA IIC SWITCH</td><td>LU0000000404</td><td>FONDO DEMO EMERGENTES</td><td>90</td><td>EUR</td><td>10,00</td><td>900,00</td></tr>
+<tr><td>2026-06-01</td><td>2026-06-01</td><td>150388411</td><td>PLANES DE PENSIONES</td><td>APORTACION PERIODICA</td><td>N0001</td><td>PLAN DEMO PENSIONES</td><td>3</td><td>EUR</td><td>33,33</td><td>100,00</td></tr>
+</table></body></html>

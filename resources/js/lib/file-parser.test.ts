@@ -1075,6 +1075,37 @@ describe('formatLocalDate', () => {
 });
 
 describe('parseFile', () => {
+    it('reads an HTML table saved as .xls in ISO-8859-1 without mangling its accents', async () => {
+        const file = new File(
+            [
+                new Uint8Array(
+                    readFileSync(
+                        'resources/js/lib/__fixtures__/myinvestor-salida.xls',
+                    ),
+                ),
+            ],
+            'salida.xls',
+        );
+
+        const { columns } = await parseFile(file);
+        const cells = columns.flat();
+
+        expect(cells).toContain('Transacción');
+        expect(cells).toContain('ISIN');
+        expect(cells).toContain('FONDO DEMO RENTA FIJA ESPAÑA');
+    });
+
+    it('still reads an HTML table written in UTF-8 as UTF-8', async () => {
+        const html =
+            '<table><tr><th>Fecha</th><th>Descripción</th></tr><tr><td>2026-01-02</td><td>Panadería</td></tr></table>';
+        const file = new File([html], 'export.xls');
+
+        const { columns } = await parseFile(file);
+
+        expect(columns.flat()).toContain('Descripción');
+        expect(columns.flat()).toContain('Panadería');
+    });
+
     it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
         const csv = [
             'Fecha,Concepto,Importe',
