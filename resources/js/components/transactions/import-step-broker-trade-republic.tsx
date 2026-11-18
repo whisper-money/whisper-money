@@ -15,7 +15,7 @@ import { brokerCashAccountId } from '@/lib/broker-imports/broker-import';
 import {
     cashAccountOptions,
     investedToday,
-    isTradeRepublicBank,
+    isTradeRepublicAccount,
     portfolioAccountOptions,
     TRADE_REPUBLIC_CASH_NAME,
     TRADE_REPUBLIC_PORTFOLIO_NAME,
@@ -284,7 +284,7 @@ export function ImportStepBrokerTradeRepublic({
                 </Panel>
             </div>
 
-            {cashAccount && !isTradeRepublicBank(cashAccount.bank) && (
+            {cashAccount && !isTradeRepublicAccount(cashAccount) && (
                 <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                     <AlertTriangle />
                     <AlertDescription className="text-inherit">

@@ -63,6 +63,21 @@ export function isTradeRepublicBank(bank: Pick<Bank, 'name'> | null): boolean {
     );
 }
 
+/**
+ * Whether an account is kept at Trade Republic: by its bank or, when the
+ * banks list has no Trade Republic to attach, by the name this import gives
+ * the accounts it creates.
+ */
+export function isTradeRepublicAccount(
+    account: Pick<Account, 'bank' | 'name'>,
+): boolean {
+    return (
+        isTradeRepublicBank(account.bank) ||
+        account.name === TRADE_REPUBLIC_CASH_NAME ||
+        account.name === TRADE_REPUBLIC_PORTFOLIO_NAME
+    );
+}
+
 export function tradeRepublicSummary(
     file: TradeRepublicFile,
 ): TradeRepublicSummary {
@@ -116,12 +131,11 @@ export function defaultTradeRepublicPlan(
         ) ??
         cashAccountOptions(accounts).find(
             (account) =>
-                account.type === 'checking' &&
-                isTradeRepublicBank(account.bank),
+                account.type === 'checking' && isTradeRepublicAccount(account),
         );
     const portfolioAccount = portfolioAccountOptions(accounts).find(
         (account) =>
-            account.type === 'investment' && isTradeRepublicBank(account.bank),
+            account.type === 'investment' && isTradeRepublicAccount(account),
     );
 
     return {

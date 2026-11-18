@@ -107,6 +107,29 @@ describe('defaultTradeRepublicPlan', () => {
     });
 });
 
+describe('defaultTradeRepublicPlan on a re-import', () => {
+    it('reuses the accounts a past import created, even with no bank attached', async () => {
+        const plan = defaultTradeRepublicPlan(
+            await readSample(),
+            [
+                anAccount({ id: 'tr-cash', name: 'Trade Republic' }),
+                anAccount({
+                    id: 'tr-portfolio',
+                    name: 'Trade Republic · Portfolio',
+                    type: 'investment',
+                }),
+            ],
+            null,
+        );
+
+        expect(plan.cash).toEqual({ kind: 'existing', accountId: 'tr-cash' });
+        expect(plan.portfolio).toEqual({
+            kind: 'existing',
+            accountId: 'tr-portfolio',
+        });
+    });
+});
+
 describe('tradeRepublicPreviewRows', () => {
     it('turns every cash movement into a row with its id and its day-end balance, newest first', async () => {
         const file = await readSample();
