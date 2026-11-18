@@ -1,4 +1,7 @@
-import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import {
+    store as storeBalance,
+    storeMany as storeBalancesRoute,
+} from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
 import {
     applySuggestion,
@@ -29,6 +32,7 @@ import {
 import { type UUID } from '@/types/uuid';
 import { toMajorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
+import axios from 'axios';
 
 /**
  * Everything SheetJS can read for us. Apple Numbers files are a zipped IWA
@@ -396,6 +400,42 @@ async function importBalances(
     } catch (error) {
         console.error('Failed to import balances:', error);
     }
+}
+
+/** One day's balance for the bulk write, amounts in minor units. */
+export interface BulkBalance {
+    balance_date: string;
+    balance: number;
+    /** Only kept on account types that track it; null leaves the stored one alone. */
+    invested_amount?: number | null;
+}
+
+/** The most balances the bulk endpoint takes per request (mirrors the server). */
+const BULK_BALANCES_PER_REQUEST = 5000;
+
+/**
+ * Write many daily balances on an account, replacing the ones already on
+ * those days, in as few requests as the server allows. A failed request
+ * rejects, so the caller decides what the user is told.
+ *
+ * @returns How many days were written.
+ */
+export async function storeBalancesInBulk(
+    accountId: UUID,
+    balances: BulkBalance[],
+): Promise<number> {
+    let written = 0;
+
+    for (let i = 0; i < balances.length; i += BULK_BALANCES_PER_REQUEST) {
+        const response = await axios.post<{ written: number }>(
+            storeBalancesRoute.url(accountId),
+            { balances: balances.slice(i, i + BULK_BALANCES_PER_REQUEST) },
+        );
+
+        written += response.data.written;
+    }
+
+    return written;
 }
 
 /**

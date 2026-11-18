@@ -1349,3 +1349,55 @@ test('transactions index hides internal columns and keeps the standard field set
         'raw_data', 'dedup_fingerprint', 'external_transaction_id', 'original_description', 'deleted_at',
     ]);
 });
+
+test('a created transaction keeps the external id its file gave it', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->for($user)->create(['currency_code' => 'EUR']);
+
+    $response = actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'Savings plan',
+        'transaction_date' => '2026-03-02',
+        'amount' => -5000,
+        'currency_code' => 'EUR',
+        'source' => 'imported',
+        'external_transaction_id' => 'tr-3f1c9a',
+    ]);
+
+    $response->assertCreated()->assertJsonMissingPath('data.external_transaction_id');
+
+    expect(Transaction::query()->findOrFail($response->json('data.id'))->external_transaction_id)->toBe('tr-3f1c9a');
+});
+
+test('a created transaction without an external id stores none', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->for($user)->create(['currency_code' => 'EUR']);
+
+    $response = actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'Coffee',
+        'transaction_date' => '2026-03-02',
+        'amount' => -250,
+        'currency_code' => 'EUR',
+        'source' => 'manually_created',
+    ]);
+
+    $response->assertCreated();
+
+    expect(Transaction::query()->findOrFail($response->json('data.id'))->external_transaction_id)->toBeNull();
+});
+
+test('an external id longer than 255 characters is refused', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->for($user)->create(['currency_code' => 'EUR']);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'Coffee',
+        'transaction_date' => '2026-03-02',
+        'amount' => -250,
+        'currency_code' => 'EUR',
+        'source' => 'imported',
+        'external_transaction_id' => str_repeat('a', 256),
+    ])->assertUnprocessable()->assertJsonValidationErrors('external_transaction_id');
+});

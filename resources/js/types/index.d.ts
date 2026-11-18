@@ -68,6 +68,8 @@ export interface Features {
     fullImport: boolean;
     /** Settings shows the import page: eligible, or an import can still be undone. */
     fullImportSettings: boolean;
+    /** The header import drawer recognises Trade Republic and MyInvestor files. */
+    brokerImports: boolean;
 }
 
 /** A bank connection that stopped syncing until the user reconnects it. */

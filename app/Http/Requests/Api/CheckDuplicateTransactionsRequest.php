@@ -24,6 +24,7 @@ class CheckDuplicateTransactionsRequest extends FormRequest
             'transactions.*.transaction_date' => ['required', 'date', new StorableDate],
             'transactions.*.amount' => ['required', 'integer'],
             'transactions.*.description' => ['required', 'string'],
+            'transactions.*.external_id' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

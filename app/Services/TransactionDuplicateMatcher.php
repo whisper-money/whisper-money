@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * A row matches on the same day, the exact amount (both in integer minor
  * units) and the description compared case-insensitively with collapsed
- * whitespace.
+ * whitespace. A row that carries the id its own app gave it also matches when
+ * the account already holds that id, whatever its day, amount or description.
  */
 class TransactionDuplicateMatcher
 {
@@ -21,7 +22,7 @@ class TransactionDuplicateMatcher
      * Flag which of the given rows already exist on the account, one boolean
      * per row, in order.
      *
-     * @param  list<array{transaction_date: string, amount: int|string, description: string}>  $incoming
+     * @param  list<array{transaction_date: string, amount: int|string, description: string, external_id?: string|null}>  $incoming
      * @return list<bool>
      */
     public function flag(Account $account, array $incoming): array
@@ -32,15 +33,43 @@ class TransactionDuplicateMatcher
 
         $dates = array_map(fn (array $row): string => substr($row['transaction_date'], 0, 10), $incoming);
         $seen = $this->existingKeys($account, min($dates), max($dates));
+        $heldExternalIds = $this->heldExternalIds($account, $incoming);
 
         return array_map(
-            fn (array $row): bool => isset($seen[$this->key(
+            fn (array $row): bool => isset($heldExternalIds[$row['external_id'] ?? '']) || isset($seen[$this->key(
                 substr($row['transaction_date'], 0, 10),
                 (int) $row['amount'],
                 $row['description'],
             )]),
             $incoming,
         );
+    }
+
+    /**
+     * Which of the external ids the incoming rows carry the account already
+     * holds, as a set. Only those ids are looked up, so a file without them
+     * costs no query.
+     *
+     * @param  list<array{external_id?: string|null}>  $incoming
+     * @return array<string, true>
+     */
+    private function heldExternalIds(Account $account, array $incoming): array
+    {
+        $wanted = array_values(array_unique(array_filter(
+            array_map(fn (array $row): ?string => $row['external_id'] ?? null, $incoming),
+            fn (?string $id): bool => $id !== null && $id !== '',
+        )));
+
+        if ($wanted === []) {
+            return [];
+        }
+
+        $ids = $this->heldTransactions($account, null)
+            ->whereIn('external_transaction_id', $wanted)
+            ->pluck('external_transaction_id')
+            ->all();
+
+        return array_fill_keys($ids, true);
     }
 
     /**

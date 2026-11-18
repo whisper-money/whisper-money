@@ -13,6 +13,7 @@ const dbMock = vi.hoisted(() => ({
 const axiosMock = vi.hoisted(() => ({
     delete: vi.fn(async () => ({ data: {} })),
     patch: vi.fn(async () => ({ data: { count: 1 } })),
+    post: vi.fn(async () => ({ data: {} })),
 }));
 
 // Keep the real withDb (reads globalThis live); swap only the Dexie-backed db.
@@ -105,6 +106,68 @@ describe.each([
             expect.objectContaining({
                 filters: { date_from: '2026-09-09', date_to: '2026-09-09' },
             }),
+        );
+    });
+});
+
+describe('transactionSyncService external ids', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('sends the external id of a created transaction', async () => {
+        axiosMock.post.mockResolvedValueOnce({
+            data: { data: { id: 't1', transaction_date: '2026-03-02' } },
+        });
+
+        await transactionSyncService.create({
+            external_transaction_id: 'tr-1',
+        } as Parameters<typeof transactionSyncService.create>[0]);
+
+        expect(axiosMock.post).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({ external_transaction_id: 'tr-1' }),
+        );
+    });
+
+    it('sends the external id of a row to the duplicate check only when it has one', async () => {
+        axiosMock.post.mockResolvedValueOnce({
+            data: { duplicates: [true, false] },
+        });
+
+        const flags = await transactionSyncService.checkDuplicates('a1', [
+            {
+                transaction_date: '2026-03-02',
+                amount: -100,
+                description: 'Buy',
+                external_id: 'tr-1',
+            },
+            {
+                transaction_date: '2026-03-02',
+                amount: -100,
+                description: 'Coffee',
+            },
+        ]);
+
+        expect(flags).toEqual([true, false]);
+        expect(axiosMock.post).toHaveBeenCalledWith(
+            '/api/transactions/check-duplicates',
+            {
+                account_id: 'a1',
+                transactions: [
+                    {
+                        transaction_date: '2026-03-02',
+                        amount: -100,
+                        description: 'Buy',
+                        external_id: 'tr-1',
+                    },
+                    {
+                        transaction_date: '2026-03-02',
+                        amount: -100,
+                        description: 'Coffee',
+                    },
+                ],
+            },
         );
     });
 });
