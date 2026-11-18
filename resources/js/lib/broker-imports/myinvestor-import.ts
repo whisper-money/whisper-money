@@ -129,12 +129,20 @@ export function myInvestorCurrency(
     return first?.currency ?? DEFAULT_CURRENCY;
 }
 
-/** The balance the file ends on, when its rows carry one. */
+/**
+ * The balance the file ends on, when its rows carry one. Null when its last
+ * day has none, since a balance from before it would leave those movements
+ * out.
+ */
 export function fileBalanceToday(file: MyInvestorCashFile): number | null {
-    const balances = endOfDayBalances(file.movements);
-    const lastDay = [...balances.keys()].sort().at(-1);
+    const lastDay = file.movements
+        .map((movement) => movement.date)
+        .sort()
+        .at(-1);
 
-    return lastDay === undefined ? null : (balances.get(lastDay) ?? null);
+    return lastDay === undefined
+        ? null
+        : (endOfDayBalances(file.movements).get(lastDay) ?? null);
 }
 
 /**

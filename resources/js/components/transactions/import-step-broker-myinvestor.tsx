@@ -341,7 +341,10 @@ export function MyInvestorSecuritiesPreview({
                 >
                     {__('Back')}
                 </Button>
-                <Button onClick={onConfirm} disabled={isImporting}>
+                <Button
+                    onClick={onConfirm}
+                    disabled={isImporting || rows.length === 0}
+                >
                     {isImporting
                         ? __('Importing...')
                         : __('Import portfolio history')}

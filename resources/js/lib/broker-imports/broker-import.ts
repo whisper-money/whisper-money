@@ -43,7 +43,7 @@ export type BrokerImport =
     | MyInvestorSecuritiesImport;
 
 /** Which of a broker import's accounts an account is, e.g. its cash account. */
-export type BrokerAccountRole = string;
+export type BrokerAccountRole = 'cash' | 'portfolio';
 
 export interface BrokerRunOptions {
     /** The preview rows the user kept. */
@@ -182,7 +182,7 @@ export function withBrokerAccountCreated(
         return broker;
     }
 
-    // The role is one of this plan's account fields, so the plan keeps its shape.
+    // ACCOUNT_ROLES lists only fields this kind's plan has, so it keeps its shape.
     return {
         ...broker,
         plan: {

@@ -71,6 +71,19 @@ describe('MyInvestor current-account import', () => {
         );
     });
 
+    it("leaves the balance to be worked out when the file's last day has none", async () => {
+        const file = await cashFile();
+        const [last, ...earlier] = [...file.movements].reverse();
+        const withoutBalance = { ...last, balance: undefined };
+
+        expect(
+            fileBalanceToday({
+                ...file,
+                movements: [...earlier.reverse(), withoutBalance],
+            }),
+        ).toBeNull();
+    });
+
     it('summarises the movements and their range', async () => {
         expect(myInvestorCashSummary(await cashFile())).toEqual({
             count: 5,
