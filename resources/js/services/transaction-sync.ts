@@ -24,6 +24,19 @@ export type UpdatedTransaction = Transaction & {
     learned_rule?: LearnedRuleNotice | null;
 };
 
+/**
+ * A new transaction as the app sends it. `external_transaction_id` is the id
+ * the file's own app gave the row (a broker export's), which the duplicate
+ * check matches a later import of the same file on. The server never sends
+ * it back.
+ */
+export type TransactionCreateData = Omit<
+    Transaction,
+    'id' | 'created_at' | 'updated_at'
+> & {
+    external_transaction_id?: string | null;
+};
+
 interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
 }
@@ -84,7 +97,7 @@ class TransactionSyncService {
     }
 
     async create(
-        data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
+        data: TransactionCreateData,
         options?: { updateBalance?: boolean },
     ): Promise<Transaction> {
         const response = await axios.post(storeRoute.url(), {
@@ -95,7 +108,7 @@ class TransactionSyncService {
     }
 
     async createMany(
-        transactions: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>[],
+        transactions: TransactionCreateData[],
     ): Promise<Transaction[]> {
         const created: Transaction[] = [];
 
@@ -251,6 +264,8 @@ class TransactionSyncService {
             transaction_date: string;
             amount: number;
             description: string;
+            /** The row's id in its own app: a match on it is a duplicate on its own. */
+            external_id?: string | null;
         }>,
     ): Promise<boolean[]> {
         if (transactions.length === 0) {
@@ -266,6 +281,9 @@ class TransactionSyncService {
                         transaction_date: t.transaction_date,
                         amount: t.amount,
                         description: t.description,
+                        ...(t.external_id
+                            ? { external_id: t.external_id }
+                            : {}),
                     })),
                 },
             );

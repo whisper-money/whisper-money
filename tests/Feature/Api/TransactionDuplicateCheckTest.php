@@ -199,3 +199,89 @@ it('stops flagging a split parent once its parts are gone too', function () {
 
     $response->assertOk()->assertJson(['duplicates' => [false]]);
 });
+
+it('flags a row whose external id the account already holds, whatever its day, amount or description', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => 1234,
+        'description' => 'Coffee Shop',
+        'external_transaction_id' => 'tr-1',
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-02-20', 'amount' => 999, 'description' => 'Renamed', 'external_id' => 'tr-1'],
+            ['transaction_date' => '2026-02-20', 'amount' => 999, 'description' => 'Renamed', 'external_id' => 'tr-2'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [true, false]]);
+});
+
+it('still matches on day, amount and description when the external id is new or missing', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-01-15',
+        'amount' => 1234,
+        'description' => 'Coffee Shop',
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => 'Coffee Shop', 'external_id' => 'tr-new'],
+            ['transaction_date' => '2026-01-15', 'amount' => 1234, 'description' => 'Coffee Shop', 'external_id' => null],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [true, true]]);
+});
+
+it('only matches external ids held on the given account', function () {
+    $otherAccount = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $otherAccount->id,
+        'external_transaction_id' => 'tr-1',
+    ]);
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-02-20', 'amount' => 999, 'description' => 'Renamed', 'external_id' => 'tr-1'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [false]]);
+});
+
+it('does not take a row the user deleted for one the account holds by external id', function () {
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'external_transaction_id' => 'tr-1',
+    ])->delete();
+
+    $response = $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-02-20', 'amount' => 999, 'description' => 'Renamed', 'external_id' => 'tr-1'],
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['duplicates' => [false]]);
+});
+
+it('refuses an external id longer than 255 characters', function () {
+    $this->postJson('/api/transactions/check-duplicates', [
+        'account_id' => $this->account->id,
+        'transactions' => [
+            ['transaction_date' => '2026-02-20', 'amount' => 999, 'description' => 'x', 'external_id' => str_repeat('a', 256)],
+        ],
+    ])->assertUnprocessable()->assertJsonValidationErrors('transactions.0.external_id');
+});

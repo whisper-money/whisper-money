@@ -4,12 +4,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     applyStoredImportConfig,
     applyTransactionSuggestion,
+    storeBalancesInBulk,
     type ParsedImportFile,
 } from './transaction-import';
+
+const axiosPost = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/import-config-storage', () => ({
     loadImportConfig: vi.fn(),
 }));
+
+vi.mock('axios', () => ({ default: { post: axiosPost } }));
 
 const ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -225,5 +230,39 @@ describe('applyTransactionSuggestion', () => {
             creditor_name: null,
             debtor_name: 'Ordenante',
         });
+    });
+});
+
+describe('storeBalancesInBulk', () => {
+    beforeEach(() => {
+        axiosPost.mockReset();
+    });
+
+    it('sends the balances in requests of at most five thousand days', async () => {
+        axiosPost.mockImplementation(
+            async (_url: string, body: { balances: unknown[] }) => ({
+                data: { written: body.balances.length },
+            }),
+        );
+
+        const balances = Array.from({ length: 5001 }, (_, day) => ({
+            balance_date: `2026-01-${String((day % 28) + 1).padStart(2, '0')}`,
+            balance: day,
+        }));
+
+        const written = await storeBalancesInBulk(ACCOUNT_ID, balances);
+
+        expect(written).toBe(5001);
+        expect(axiosPost).toHaveBeenCalledTimes(2);
+        expect(axiosPost.mock.calls[0][0]).toBe(
+            `/api/accounts/${ACCOUNT_ID}/balances/bulk`,
+        );
+        expect(axiosPost.mock.calls[0][1].balances).toHaveLength(5000);
+        expect(axiosPost.mock.calls[1][1].balances).toHaveLength(1);
+    });
+
+    it('sends nothing when there are no balances', async () => {
+        expect(await storeBalancesInBulk(ACCOUNT_ID, [])).toBe(0);
+        expect(axiosPost).not.toHaveBeenCalled();
     });
 });

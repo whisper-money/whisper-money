@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAccountBalanceRequest;
+use App\Http\Requests\StoreAccountBalancesBulkRequest;
 use App\Http\Requests\UpdateCurrentAccountBalanceRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Services\Accounts\AccountBalanceRecorder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 
@@ -55,6 +57,20 @@ class AccountBalanceController extends Controller
         return response()->json([
             'data' => $balance,
         ], 201);
+    }
+
+    /**
+     * Store many daily balances for an account at once, replacing the ones
+     * already on those days. What an import with a balance per day sends,
+     * instead of one request per day.
+     */
+    public function storeMany(StoreAccountBalancesBulkRequest $request, Account $account, AccountBalanceRecorder $recorder): JsonResponse
+    {
+        $this->authorize('update', $account);
+
+        $written = $recorder->recordMany($account, $request->validated('balances'));
+
+        return response()->json(['written' => $written], 201);
     }
 
     /**

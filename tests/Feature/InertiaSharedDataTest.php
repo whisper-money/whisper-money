@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Features\BrokerImports;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\FailedInvoice;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -61,6 +63,7 @@ test('shared feature flags do not include coinbase flag', function () {
         'cashflow' => true,
         'fullImport' => false,
         'fullImportSettings' => false,
+        'brokerImports' => false,
     ]);
 });
 
@@ -303,4 +306,26 @@ test('guests never get AI import mapping', function () {
     $response = $this->withoutVite()->get(route('home'));
 
     $response->assertInertia(fn (Assert $page) => $page->where('aiImportMappingEnabled', false));
+});
+
+test('shared feature flags reflect the broker imports flag per user', function (bool $active) {
+    $user = User::factory()->onboarded()->create();
+
+    if ($active) {
+        Feature::for($user)->activate(BrokerImports::class);
+    }
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.brokerImports', $active)
+        );
+})->with(['active' => true, 'inactive' => false]);
+
+test('guests never get the broker imports flag, even with the null scope active', function () {
+    Feature::for(null)->activate(BrokerImports::class);
+
+    $this->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.brokerImports', false)
+        );
 });

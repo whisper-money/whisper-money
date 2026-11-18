@@ -63,6 +63,8 @@ Route::middleware(['web', 'auth', 'throttle:300,1'])->group(function () {
     Route::put('accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('api.accounts.balance.update-current');
     Route::get('accounts/{account}/balances', [AccountBalanceController::class, 'index'])->name('api.accounts.balances.index');
     Route::post('accounts/{account}/balances', [AccountBalanceController::class, 'store'])->name('api.accounts.balances.store');
+    // Many daily balances in one request, for an import that carries a balance per day
+    Route::post('accounts/{account}/balances/bulk', [AccountBalanceController::class, 'storeMany'])->name('api.accounts.balances.store-many');
     Route::delete('accounts/{account}/balances/{accountBalance}', [AccountBalanceController::class, 'destroy'])->name('api.accounts.balances.destroy');
 
     // Dashboard Analytics

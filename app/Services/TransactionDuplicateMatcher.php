@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * A row matches on the same day, the exact amount (both in integer minor
  * units) and the description compared case-insensitively with collapsed
- * whitespace.
+ * whitespace. A row that carries the id its own app gave it also matches when
+ * the account already holds that id, whatever its day, amount or description.
  */
 class TransactionDuplicateMatcher
 {
@@ -21,7 +22,7 @@ class TransactionDuplicateMatcher
      * Flag which of the given rows already exist on the account, one boolean
      * per row, in order.
      *
-     * @param  list<array{transaction_date: string, amount: int|string, description: string}>  $incoming
+     * @param  list<array{transaction_date: string, amount: int|string, description: string, external_id?: string|null}>  $incoming
      * @return list<bool>
      */
     public function flag(Account $account, array $incoming): array
@@ -32,9 +33,12 @@ class TransactionDuplicateMatcher
 
         $dates = array_map(fn (array $row): string => substr($row['transaction_date'], 0, 10), $incoming);
         $seen = $this->existingKeys($account, min($dates), max($dates));
+        $externalIds = array_values(array_filter(array_column($incoming, 'external_id'), fn (?string $id): bool => $id !== null && $id !== ''));
+        // A file without external ids costs no query.
+        $heldExternalIds = $externalIds === [] ? [] : $this->existingExternalIds($account, only: $externalIds);
 
         return array_map(
-            fn (array $row): bool => isset($seen[$this->key(
+            fn (array $row): bool => isset($heldExternalIds[$row['external_id'] ?? '']) || isset($seen[$this->key(
                 substr($row['transaction_date'], 0, 10),
                 (int) $row['amount'],
                 $row['description'],
@@ -73,14 +77,16 @@ class TransactionDuplicateMatcher
     /**
      * The ids another app gave the rows the account holds, as a set, leaving
      * out the import asking. What the full import reads to make a second run
-     * of the same file a no-op.
+     * of the same file a no-op. With $only, just which of those ids it holds.
      *
+     * @param  list<string>|null  $only
      * @return array<string, true>
      */
-    public function existingExternalIds(Account $account, ?string $exceptImportId = null): array
+    public function existingExternalIds(Account $account, ?string $exceptImportId = null, ?array $only = null): array
     {
         $ids = $this->heldTransactions($account, $exceptImportId)
             ->whereNotNull('external_transaction_id')
+            ->when($only !== null, fn (Builder $query) => $query->whereIn('external_transaction_id', array_values(array_unique($only))))
             ->pluck('external_transaction_id')
             ->all();
 

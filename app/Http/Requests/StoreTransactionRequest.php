@@ -32,6 +32,9 @@ class StoreTransactionRequest extends FormRequest
             'creditor_name' => ['nullable', 'string', 'max:255'],
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
+            // The id the file's own app gave the row, so importing it again
+            // is caught by the duplicate check.
+            'external_transaction_id' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['string', 'uuid', $this->userOwned('labels'), ...$this->assignableLabelRules()],
         ];
