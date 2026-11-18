@@ -10,7 +10,10 @@ import {
 } from '@/lib/broker-imports/broker-import';
 import { myInvestorInvestedToday } from '@/lib/broker-imports/myinvestor-import';
 import { investedToday } from '@/lib/broker-imports/trade-republic-import';
-import { type BrokerFileKind } from '@/lib/broker-imports/types';
+import {
+    type BrokerFileKind,
+    type BrokerLink,
+} from '@/lib/broker-imports/types';
 import { saveBrokerLink } from '@/lib/import-config-storage';
 import { type Account } from '@/types/account';
 import { type UUID } from '@/types/uuid';
@@ -21,25 +24,6 @@ import { type UUID } from '@/types/uuid';
  * worth, so a re-import picks the same accounts even when the user renamed
  * them, and shows how things moved since.
  */
-
-export interface BrokerLinkConfig {
-    broker: BrokerFileKind;
-    /** Trade Republic only: the account its securities went to, null when skipped. */
-    portfolioAccountId?: UUID | null;
-    /** When the import ran, as an ISO timestamp. */
-    lastImportedAt: string;
-    /** The portfolio value the user typed, in minor units, and the day it was for. */
-    lastValueMinor?: number | null;
-    lastValueDate?: string | null;
-    /** What had been invested on the day of the import, in minor units. */
-    lastInvestedMinor?: number | null;
-}
-
-/** A remembered import, with the account it is kept on. */
-export interface BrokerLink {
-    accountId: UUID;
-    config: BrokerLinkConfig;
-}
 
 /** Which of an import's accounts its link is kept on: the one the file went to. */
 const LINK_ROLE: Record<BrokerFileKind, BrokerAccountRole> = {

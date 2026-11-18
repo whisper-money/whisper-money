@@ -353,6 +353,10 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
             expect(screen.getByText(/Last time you entered/)).not.toBeNull();
             expect(screen.getByText('since last time')).not.toBeNull();
             expect(screen.queryByRole('combobox')).toBeNull();
+            // Both accounts exist: what the import overwrites is still told.
+            expect(
+                screen.getAllByText(/Its daily balances from .* are replaced/),
+            ).toHaveLength(2);
 
             fireEvent.click(screen.getByRole('button', { name: 'Change' }));
 

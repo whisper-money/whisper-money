@@ -30,6 +30,7 @@ import {
     portfolioChoiceFrom,
     PortfolioSummaryTiles,
     RememberedAccountsBox,
+    ReplacesFromNote,
     SummaryTile,
     useMonthRange,
     useRememberedAccounts,
@@ -68,7 +69,10 @@ export function ImportStepBrokerTradeRepublic({
     );
     const update = (changes: Partial<TradeRepublicPlan>) =>
         onPlanChange({ ...plan, ...changes });
-    const { remembered, showPickers, change } = useRememberedAccounts(broker);
+    const { remembered, showPickers, change } = useRememberedAccounts(
+        broker,
+        cashAccount !== undefined,
+    );
     const rememberedPortfolio =
         remembered?.portfolioAccountId &&
         chosenAccountId(plan.portfolio) === remembered.portfolioAccountId
@@ -98,7 +102,7 @@ export function ImportStepBrokerTradeRepublic({
                         'Card payments, transfers, direct debits, interest and dividends. Buys and sells of securities come out of it too.',
                     )}
                 >
-                    {showPickers && (
+                    {showPickers ? (
                         <AccountSelect
                             id="broker-cash-account"
                             value={plan.cash}
@@ -111,6 +115,8 @@ export function ImportStepBrokerTradeRepublic({
                             parse={accountChoiceFrom}
                             onChange={(cash) => update({ cash })}
                         />
+                    ) : (
+                        <ReplacesFromNote replacesFrom={firstDay(file.cash)} />
                     )}
                     <CashBalanceField
                         label={__('Cash balance today')}
@@ -133,7 +139,7 @@ export function ImportStepBrokerTradeRepublic({
                         'Stocks, ETFs, savings plans and crypto. We keep what was invested day by day.',
                     )}
                 >
-                    {(showPickers || !rememberedPortfolio) && (
+                    {showPickers || !rememberedPortfolio ? (
                         <AccountSelect
                             id="broker-portfolio-account"
                             value={plan.portfolio}
@@ -146,6 +152,10 @@ export function ImportStepBrokerTradeRepublic({
                             replacesFrom={firstDay(file.trades)}
                             parse={portfolioChoiceFrom}
                             onChange={(portfolio) => update({ portfolio })}
+                        />
+                    ) : (
+                        <ReplacesFromNote
+                            replacesFrom={firstDay(file.trades)}
                         />
                     )}
                     {plan.portfolio.kind !== 'skip' && (

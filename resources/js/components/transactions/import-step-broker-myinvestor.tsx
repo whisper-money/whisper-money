@@ -42,6 +42,7 @@ import {
     Panel,
     PortfolioSummaryTiles,
     RememberedAccountsBox,
+    ReplacesFromNote,
     SummaryTile,
     useMonthRange,
     useRememberedAccounts,
@@ -71,9 +72,12 @@ export function ImportStepBrokerMyInvestorCash({
     const balanceFromFile = fileBalanceToday(file) !== null;
     const { to } = myInvestorCashSummary(file);
     const cashOptions = cashAccountOptions(accounts);
-    const { remembered, showPickers, change } = useRememberedAccounts(broker);
     const cashAccount = cashOptions.find(
         (account) => account.id === chosenAccountId(plan.cash),
+    );
+    const { remembered, showPickers, change } = useRememberedAccounts(
+        broker,
+        cashAccount !== undefined,
     );
 
     return (
@@ -92,7 +96,7 @@ export function ImportStepBrokerMyInvestorCash({
                     'Card payments, transfers, Bizum, direct debits and interest.',
                 )}
             >
-                {showPickers && (
+                {showPickers ? (
                     <AccountSelect
                         id="broker-cash-account"
                         value={plan.cash}
@@ -105,6 +109,8 @@ export function ImportStepBrokerMyInvestorCash({
                         parse={accountChoiceFrom}
                         onChange={(cash) => onPlanChange({ ...plan, cash })}
                     />
+                ) : (
+                    <ReplacesFromNote replacesFrom={firstDay(file.movements)} />
                 )}
                 <CashBalanceField
                     label={__('Balance today')}
@@ -154,9 +160,12 @@ export function ImportStepBrokerMyInvestorSecurities({
         investedOrders(file).map((order) => order.symbol),
     ).size;
     const portfolioOptions = portfolioAccountOptions(accounts);
-    const { remembered, showPickers, change } = useRememberedAccounts(broker);
     const portfolioAccount = portfolioOptions.find(
         (account) => account.id === chosenAccountId(plan.portfolio),
+    );
+    const { remembered, showPickers, change } = useRememberedAccounts(
+        broker,
+        portfolioAccount !== undefined,
     );
 
     return (
@@ -175,7 +184,7 @@ export function ImportStepBrokerMyInvestorSecurities({
                     'Funds, ETFs, stocks and pension plans. We keep what was invested day by day.',
                 )}
             >
-                {showPickers && (
+                {showPickers ? (
                     <AccountSelect
                         id="broker-portfolio-account"
                         value={plan.portfolio}
@@ -189,6 +198,10 @@ export function ImportStepBrokerMyInvestorSecurities({
                         onChange={(portfolio) =>
                             onPlanChange({ ...plan, portfolio })
                         }
+                    />
+                ) : (
+                    <ReplacesFromNote
+                        replacesFrom={firstDay(investedOrders(file))}
                     />
                 )}
                 <InvestedAndValueFields

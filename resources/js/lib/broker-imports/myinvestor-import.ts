@@ -9,7 +9,6 @@ import {
     portfolioAccountOptions,
     type AccountChoice,
 } from '@/lib/broker-imports/broker-accounts';
-import { type BrokerLink } from '@/lib/broker-imports/broker-memory';
 import { DEFAULT_CURRENCY } from '@/lib/broker-imports/grid';
 import { type MyInvestorCashFile } from '@/lib/broker-imports/myinvestor-cash';
 import { type MyInvestorSecuritiesFile } from '@/lib/broker-imports/myinvestor-securities';
@@ -19,7 +18,7 @@ import {
     endOfDayBalances,
     type BalancePoint,
 } from '@/lib/broker-imports/series';
-import { type Trade } from '@/lib/broker-imports/types';
+import { type BrokerLink, type Trade } from '@/lib/broker-imports/types';
 import { type BulkBalance } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type ParsedTransaction } from '@/types/import';

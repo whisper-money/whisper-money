@@ -3,10 +3,7 @@ import {
     show as showImportConfig,
     update as updateImportConfig,
 } from '@/actions/App/Http/Controllers/Api/AccountImportConfigController';
-import type {
-    BrokerLink,
-    BrokerLinkConfig,
-} from '@/lib/broker-imports/broker-memory';
+import type { BrokerLink, BrokerLinkConfig } from '@/lib/broker-imports/types';
 import type { BalanceColumnMapping } from '@/types/balance-import';
 import { type ColumnMapping, DateFormat } from '@/types/import';
 import { type UUID } from '@/types/uuid';

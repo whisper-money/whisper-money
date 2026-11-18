@@ -2,10 +2,10 @@ import { readBrokerImport } from '@/lib/broker-imports/broker-import';
 import {
     brokerLinkAfterImport,
     brokerMemoryInUse,
-    type BrokerLink,
 } from '@/lib/broker-imports/broker-memory';
 import { fixtureFile } from '@/lib/broker-imports/testing';
 import { investedToday } from '@/lib/broker-imports/trade-republic-import';
+import { type BrokerLink } from '@/lib/broker-imports/types';
 import { type Account } from '@/types/account';
 import { describe, expect, it, vi } from 'vitest';
 

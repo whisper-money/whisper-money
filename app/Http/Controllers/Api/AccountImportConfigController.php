@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\ImportConfigType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ListAccountImportConfigsRequest;
 use App\Http\Requests\Api\UpdateAccountImportConfigRequest;
 use App\Models\Account;
 use App\Models\AccountImportConfig;
@@ -20,14 +21,10 @@ class AccountImportConfigController extends Controller
      * Every config of one type across the user's accounts, so an import can
      * find the account a file went to last time without knowing it first.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListAccountImportConfigsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'type' => ['required', Rule::enum(ImportConfigType::class)],
-        ]);
-
         $configs = AccountImportConfig::query()
-            ->where('type', $validated['type'])
+            ->where('type', $request->validated('type'))
             ->whereHas('account', fn ($query) => $query->where('user_id', $request->user()->id))
             ->get(['account_id', 'config']);
 

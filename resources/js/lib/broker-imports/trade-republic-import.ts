@@ -10,9 +10,9 @@ import {
     type AccountChoice,
     type PortfolioChoice,
 } from '@/lib/broker-imports/broker-accounts';
-import { type BrokerLink } from '@/lib/broker-imports/broker-memory';
 import { cashBalances, computedCashBalance } from '@/lib/broker-imports/series';
 import { type TradeRepublicFile } from '@/lib/broker-imports/trade-republic';
+import { type BrokerLink } from '@/lib/broker-imports/types';
 import { type BulkBalance } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type ParsedTransaction } from '@/types/import';

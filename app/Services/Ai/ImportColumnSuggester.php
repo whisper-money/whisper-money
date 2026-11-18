@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\User;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
+use LogicException;
 use Throwable;
 
 /**
@@ -50,8 +51,8 @@ class ImportColumnSuggester
                 'balance' => 'Pick the column holding the account balance or market value on that date. Not a contribution or invested amount.',
                 'invested_amount' => 'Pick the column holding the amount of money invested or contributed so far (cost basis). Not the current balance or market value.',
             ],
-            // A broker file has its own reader: the request never asks for it.
-            ImportConfigType::Broker => [],
+            // A broker file has its own reader: the request refuses the kind.
+            ImportConfigType::Broker => throw new LogicException('A broker file has no columns to map.'),
         };
     }
 

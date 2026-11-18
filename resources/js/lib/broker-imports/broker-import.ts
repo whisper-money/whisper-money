@@ -1,8 +1,5 @@
 import { chosenAccountId } from '@/lib/broker-imports/broker-accounts';
-import {
-    withRememberedAccounts,
-    type BrokerLink,
-} from '@/lib/broker-imports/broker-memory';
+import { withRememberedAccounts } from '@/lib/broker-imports/broker-memory';
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
 import { parseMyInvestorCash } from '@/lib/broker-imports/myinvestor-cash';
 import {
@@ -27,7 +24,7 @@ import {
     type TradeRepublicImport,
 } from '@/lib/broker-imports/trade-republic-import';
 import { runTradeRepublicImport } from '@/lib/broker-imports/trade-republic-run';
-import { type BrokerGrid } from '@/lib/broker-imports/types';
+import { type BrokerGrid, type BrokerLink } from '@/lib/broker-imports/types';
 import { type ImportOutcome } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';

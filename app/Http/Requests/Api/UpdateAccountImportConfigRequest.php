@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Enums\BrokerImportKind;
 use App\Enums\ImportConfigType;
 use App\Models\Account;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -54,7 +55,7 @@ class UpdateAccountImportConfigRequest extends FormRequest
     private function brokerRules(): array
     {
         return [
-            'config.broker' => ['required', 'string', Rule::in(['trade_republic', 'myinvestor_cash', 'myinvestor_securities'])],
+            'config.broker' => ['required', Rule::enum(BrokerImportKind::class)],
             'config.portfolioAccountId' => [
                 'sometimes',
                 'nullable',

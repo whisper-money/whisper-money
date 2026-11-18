@@ -16,10 +16,8 @@ import {
     type PortfolioChoice,
 } from '@/lib/broker-imports/broker-accounts';
 import { type BrokerImport } from '@/lib/broker-imports/broker-import';
-import {
-    brokerMemoryInUse,
-    type BrokerLinkConfig,
-} from '@/lib/broker-imports/broker-memory';
+import { brokerMemoryInUse } from '@/lib/broker-imports/broker-memory';
+import { type BrokerLinkConfig } from '@/lib/broker-imports/types';
 import { cn } from '@/lib/utils';
 import { formatAccountType, type Account } from '@/types/account';
 import { formatDate, formatDateMedium } from '@/utils/date';
@@ -105,8 +103,6 @@ export function AccountSelect<Choice extends PortfolioChoice>({
     parse: (value: string) => Choice;
     onChange: (choice: Choice) => void;
 }) {
-    const locale = useLocale();
-
     return (
         <div className="flex flex-col gap-2">
             <Label htmlFor={id}>{__('Account')}</Label>
@@ -129,16 +125,29 @@ export function AccountSelect<Choice extends PortfolioChoice>({
                     )}
                 </SelectContent>
             </Select>
-            {value.kind === 'existing' && replacesFrom && (
-                <p className="text-xs text-muted-foreground">
-                    {__(
-                        "Its daily balances from :date on are replaced with the file's.",
-                        { date: formatDateMedium(replacesFrom, locale) },
-                    )}
-                </p>
+            {value.kind === 'existing' && (
+                <ReplacesFromNote replacesFrom={replacesFrom} />
             )}
         </div>
     );
+}
+
+/** That an existing account's daily balances from the file's first day on are overwritten. */
+export function ReplacesFromNote({
+    replacesFrom,
+}: {
+    replacesFrom: string | null;
+}) {
+    const locale = useLocale();
+
+    return replacesFrom ? (
+        <p className="text-xs text-muted-foreground">
+            {__(
+                "Its daily balances from :date on are replaced with the file's.",
+                { date: formatDateMedium(replacesFrom, locale) },
+            )}
+        </p>
+    ) : null;
 }
 
 /**
@@ -302,7 +311,11 @@ export function InvestedAndValueFields({
  * instead of the pickers, and the way to the pickers. Once the user asks to
  * change them, the pickers stay.
  */
-export function useRememberedAccounts(broker: BrokerImport): {
+export function useRememberedAccounts(
+    broker: BrokerImport,
+    /** Whether the box finds the accounts to name: without them, the pickers. */
+    accountsFound: boolean,
+): {
     /** The last import, while the plan still goes where it went. */
     remembered: BrokerLinkConfig | null;
     showPickers: boolean;
@@ -313,7 +326,7 @@ export function useRememberedAccounts(broker: BrokerImport): {
 
     return {
         remembered,
-        showPickers: changing || remembered === null,
+        showPickers: changing || remembered === null || !accountsFound,
         change: () => setChanging(true),
     };
 }

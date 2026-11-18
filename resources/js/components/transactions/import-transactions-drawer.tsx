@@ -540,7 +540,10 @@ export function ImportTransactionsDrawer({
                 },
             );
 
-            void rememberBrokerImport(current, accounts);
+            // Nothing new came in: the figures of the last import still stand.
+            if (outcome.successCount > 0) {
+                void rememberBrokerImport(current, accounts);
+            }
 
             if (balancesFailed) {
                 toast.error(
@@ -580,8 +583,6 @@ export function ImportTransactionsDrawer({
                 },
             );
 
-            void rememberBrokerImport(current, accounts);
-
             if (balancesFailed) {
                 setError(
                     __(
@@ -591,6 +592,8 @@ export function ImportTransactionsDrawer({
 
                 return;
             }
+
+            void rememberBrokerImport(current, accounts);
 
             toast.success(__('Portfolio history imported'));
             onImportComplete?.(0);
