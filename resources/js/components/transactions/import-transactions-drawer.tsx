@@ -69,6 +69,7 @@ import {
     brokerStepInfo,
     ImportStepBroker,
 } from './import-step-broker';
+import { MyInvestorSecuritiesPreview } from './import-step-broker-myinvestor';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
 
@@ -152,6 +153,8 @@ export function ImportTransactionsDrawer({
         [currencies],
     );
     const [isImporting, setIsImporting] = useState(false);
+    // A file that only writes balances has no rows to count through.
+    const [isSavingBalances, setIsSavingBalances] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
     const [importErrors, setImportErrors] = useState<ImportError[]>([]);
@@ -205,6 +208,7 @@ export function ImportTransactionsDrawer({
         if (!open) {
             setState(EMPTY_STATE);
             setIsImporting(false);
+            setIsSavingBalances(false);
             setError(null);
             setSelectedAccount(null);
             setBroker(null);
@@ -277,10 +281,10 @@ export function ImportTransactionsDrawer({
         setError(
             filterTransactionalAccounts(accounts).length === 0
                 ? __(
-                      'Only a Trade Republic file can be imported without an account. Create the account this file belongs to first, then import it.',
+                      'Only a Trade Republic or MyInvestor file can be imported without an account. Create the account this file belongs to first, then import it.',
                   )
                 : __(
-                      'Only a Trade Republic file can be imported without an account. Pick the account this file belongs to, then upload it again.',
+                      'Only a Trade Republic or MyInvestor file can be imported without an account. Pick the account this file belongs to, then upload it again.',
                   ),
         );
 
@@ -548,6 +552,45 @@ export function ImportTransactionsDrawer({
             );
 
             return null;
+        }
+    };
+
+    /** A file with no transactions: only the portfolio's daily balances are written. */
+    const handleConfirmBalancesImport = async (current: BrokerImport) => {
+        setIsSavingBalances(true);
+        setError(null);
+
+        try {
+            const { balancesFailed } = await runBrokerImport(current, {
+                rows: [],
+                accounts: knownAccounts,
+                categories,
+                banks,
+                automationRules,
+                onAccountCreated: handleBrokerAccountCreated,
+            });
+
+            if (balancesFailed) {
+                setError(
+                    __(
+                        "The portfolio's daily balances could not be saved. Please try again.",
+                    ),
+                );
+
+                return;
+            }
+
+            toast.success(__('Portfolio history imported'));
+            onImportComplete?.(0);
+            onOpenChange(false);
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : __('Failed to create account. Please try again.'),
+            );
+        } finally {
+            setIsSavingBalances(false);
         }
     };
 
@@ -844,6 +887,19 @@ export function ImportTransactionsDrawer({
                 );
 
             case ImportStep.Preview:
+                if (broker?.kind === 'myinvestor_securities') {
+                    return (
+                        <MyInvestorSecuritiesPreview
+                            broker={broker}
+                            isImporting={isSavingBalances}
+                            onBack={() => moveToStep(ImportStep.Broker)}
+                            onConfirm={() =>
+                                handleConfirmBalancesImport(broker)
+                            }
+                        />
+                    );
+                }
+
                 return (
                     <ImportStepPreview
                         transactions={state.transactions}

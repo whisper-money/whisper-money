@@ -90,12 +90,15 @@ export function dailyInvested(trades: Trade[], today: string): InvestedPoint[] {
  * The cash balance at the end of each day, from the first movement up to
  * `today`, rebuilt backwards from today's balance: a file that does not start
  * at account opening still ends where the account is. Movements dated after
- * today are left out: today's balance does not hold them yet.
+ * today are left out: today's balance does not hold them yet. A day in
+ * `knownBalances` (what the file says it ended on) takes that balance, and
+ * the days before it are rebuilt from there.
  */
 export function cashBalances(
     movements: CashMovement[],
     balanceToday: number,
     today: string,
+    knownBalances: Map<string, number> = new Map(),
 ): BalancePoint[] {
     const first = earliest(movements);
 
@@ -108,6 +111,7 @@ export function cashBalances(
     const points = daysBetween(first < today ? first : today, today)
         .reverse()
         .map((date) => {
+            balance = knownBalances.get(date) ?? balance;
             const point = { date, balanceMinor: balance };
             balance -= changes.get(date) ?? 0;
 
@@ -120,4 +124,44 @@ export function cashBalances(
 /** The balance a file adds up to, for a file that starts when the account opened. */
 export function computedCashBalance(movements: CashMovement[]): number {
     return movements.reduce((sum, movement) => sum + movement.amount, 0);
+}
+
+/**
+ * The balance each day ended on, for the days whose movements carry the
+ * balance after them. Rows of one day may come in either order, so the last
+ * is the one whose balance no other row of that day starts from.
+ */
+export function endOfDayBalances(
+    movements: CashMovement[],
+): Map<string, number> {
+    const byDay = new Map<string, CashMovement[]>();
+
+    for (const movement of movements) {
+        if (movement.balance !== undefined) {
+            byDay.set(movement.date, [
+                ...(byDay.get(movement.date) ?? []),
+                movement,
+            ]);
+        }
+    }
+
+    const balances = new Map<string, number>();
+
+    for (const [date, rows] of byDay) {
+        const last =
+            rows.find(
+                (row) =>
+                    !rows.some(
+                        (other) =>
+                            other !== row &&
+                            (other.balance ?? 0) - other.amount === row.balance,
+                    ),
+            ) ?? rows.at(-1);
+
+        if (last?.balance !== undefined) {
+            balances.set(date, last.balance);
+        }
+    }
+
+    return balances;
 }

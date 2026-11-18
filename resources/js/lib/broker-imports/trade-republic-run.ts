@@ -1,5 +1,9 @@
-import { store as storeAccount } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
+import {
+    resolveBrokerAccount,
+    writeBalanceSeries,
+    type AccountChoice,
+} from '@/lib/broker-imports/broker-accounts';
 import {
     cashBalancePayload,
     isTradeRepublicBank,
@@ -7,19 +11,16 @@ import {
     TRADE_REPUBLIC_CASH_NAME,
     TRADE_REPUBLIC_PORTFOLIO_NAME,
     tradeRepublicCurrency,
-    type AccountChoice,
     type TradeRepublicImport,
 } from '@/lib/broker-imports/trade-republic-import';
 import {
     importTransactions,
-    storeBalancesInBulk,
     type ImportOutcome,
 } from '@/lib/transaction-import';
 import { type Account, type AccountType, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type ParsedTransaction } from '@/types/import';
-import axios from 'axios';
 
 /** Which of the two accounts of a Trade Republic import an account is. */
 export type TradeRepublicRole = 'cash' | 'portfolio';
@@ -52,93 +53,58 @@ const NEW_ACCOUNTS: Record<
     portfolio: { name: TRADE_REPUBLIC_PORTFOLIO_NAME, type: 'investment' },
 };
 
-/**
- * A manual account, made through the same endpoint the accounts page uses,
- * at Trade Republic when the banks list knows it.
- */
-async function createAccount(
-    name: string,
-    type: AccountType,
-    currencyCode: string,
-    banks: Bank[],
-): Promise<Account> {
-    const bank = banks.find(isTradeRepublicBank) ?? null;
-    const response = await axios.post<Account>(storeAccount.url(), {
-        name,
-        type,
-        currency_code: currencyCode,
-        ...(bank ? { bank_id: bank.id } : {}),
-    });
-
-    return { ...response.data, bank };
-}
-
-async function resolveAccount(
+/** The account a choice points at, made at Trade Republic when the banks list knows it. */
+function resolveAccount(
     choice: AccountChoice,
     role: TradeRepublicRole,
     options: TradeRepublicRunOptions,
 ): Promise<Account> {
-    if (choice.kind === 'existing') {
-        const account = options.accounts.find(
-            (candidate) => candidate.id === choice.accountId,
-        );
-
-        if (!account) {
-            throw new Error('Selected account not found');
-        }
-
-        return account;
-    }
-
-    const account = await createAccount(
-        NEW_ACCOUNTS[role].name,
-        NEW_ACCOUNTS[role].type,
-        tradeRepublicCurrency(options.broker.file),
-        options.banks,
+    return resolveBrokerAccount(
+        choice,
+        options.accounts,
+        {
+            ...NEW_ACCOUNTS[role],
+            currencyCode: tradeRepublicCurrency(options.broker.file),
+            bank: options.banks.find(isTradeRepublicBank) ?? null,
+        },
+        (account) => options.onAccountCreated?.(role, account),
     );
-
-    options.onAccountCreated?.(role, account);
-
-    return account;
 }
 
 /** Writes the daily balances of both accounts; false when a request failed. */
-async function writeBalances(
+function writeBalances(
     cashAccount: Account,
     portfolioAccount: Account | null,
     options: TradeRepublicRunOptions,
 ): Promise<boolean> {
-    const { file, plan } = options.broker;
+    const { file, plan, today } = options.broker;
 
-    try {
-        if (accountHasBalance(cashAccount)) {
-            await storeBalancesInBulk(
-                cashAccount.id,
-                cashBalancePayload(
-                    file,
-                    plan.balanceToday,
-                    options.broker.today,
-                ),
-            );
-        }
-
-        if (portfolioAccount) {
-            await storeBalancesInBulk(
-                portfolioAccount.id,
-                portfolioBalancePayload(
-                    file,
-                    plan.currentValue,
-                    options.broker.today,
-                ),
-            );
-        }
-
-        return true;
-    } catch (error) {
-        console.error('Failed to import broker balances:', error);
-
-        return false;
-    }
+    return writeBalanceSeries([
+        ...(accountHasBalance(cashAccount)
+            ? [
+                  {
+                      account: cashAccount,
+                      balances: cashBalancePayload(
+                          file,
+                          plan.balanceToday,
+                          today,
+                      ),
+                  },
+              ]
+            : []),
+        ...(portfolioAccount
+            ? [
+                  {
+                      account: portfolioAccount,
+                      balances: portfolioBalancePayload(
+                          file,
+                          plan.currentValue,
+                          today,
+                      ),
+                  },
+              ]
+            : []),
+    ]);
 }
 
 /**

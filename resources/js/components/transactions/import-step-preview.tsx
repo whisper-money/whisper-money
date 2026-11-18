@@ -49,7 +49,7 @@ interface IndexedTransaction {
     index: number;
 }
 
-interface CompactRow {
+export interface CompactRow {
     key: string;
     date: string;
     description: ReactNode;
@@ -58,7 +58,7 @@ interface CompactRow {
 }
 
 /** Date, description, amount: the shape both folded-away tables take. */
-function CompactTransactionTable({
+export function CompactTransactionTable({
     rows,
     locale,
 }: {
