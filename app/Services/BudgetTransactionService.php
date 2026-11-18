@@ -122,7 +122,7 @@ class BudgetTransactionService
     private function loadCandidatePeriods(SupportCollection $transactions): array
     {
         return $transactions
-            ->filter(fn (Transaction $transaction): bool => $transaction->user_id !== null)
+            ->whereNotNull('user_id')
             ->groupBy('user_id')
             ->map(function (SupportCollection $userTransactions, string $userId): Collection {
                 $dates = $userTransactions->pluck('transaction_date');
