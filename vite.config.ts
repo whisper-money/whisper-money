@@ -15,6 +15,12 @@ const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 // failing instead; other builds (local, self-hosted) keep the lenient default.
 const sentryUploadRequired = process.env.SENTRY_UPLOAD_REQUIRED === 'true';
 
+if (sentryUploadRequired && !sentryAuthToken) {
+    throw new Error(
+        'SENTRY_UPLOAD_REQUIRED is set but SENTRY_AUTH_TOKEN is empty: source maps would not be uploaded.',
+    );
+}
+
 export default defineConfig({
     envPrefix: ['VITE_', 'SENTRY_LARAVEL_DSN'],
     build: {
@@ -55,11 +61,13 @@ export default defineConfig({
                       project: 'php-laravel',
                       // CI creates and finalizes the release with sentry-cli;
                       // naming it here ties the uploaded maps to the same
-                      // release instead of a git SHA the Docker build can't see.
+                      // release instead of a git SHA the Docker build can't see
+                      // (`|| undefined` so an empty ARG falls back to the default).
                       release: {
                           name: process.env.SENTRY_RELEASE || undefined,
                           create: false,
                           finalize: false,
+                          setCommits: false,
                       },
                       errorHandler: sentryUploadRequired
                           ? (error: Error): never => {
