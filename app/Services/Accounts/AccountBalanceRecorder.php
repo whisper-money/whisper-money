@@ -13,8 +13,8 @@ use Illuminate\Support\Str;
 /**
  * Recording a balance snapshot on an account, shared by the create_balance
  * MCP tool, `POST /api/v1/accounts/{account}/balances` and the bulk write a
- * broker import and the "Import balances" drawer make. One snapshot per day: recording another for the same
- * date replaces it.
+ * broker import and the "Import balances" drawer make. One snapshot per day:
+ * recording another for the same date replaces it.
  */
 class AccountBalanceRecorder
 {
