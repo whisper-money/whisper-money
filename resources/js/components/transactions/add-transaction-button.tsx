@@ -1,7 +1,5 @@
-import {
-    EditTransactionDialog,
-    type TransactionCreateOrigin,
-} from '@/components/transactions/edit-transaction-dialog';
+import { type TransactionCreateOrigin } from '@/components/transactions/edit-transaction-dialog';
+import { useNewTransactionDialog } from '@/components/transactions/use-new-transaction-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -9,14 +7,10 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { ICON_ONLY_BELOW_SM } from '@/lib/icon-only-below-sm';
-import { refreshPageAfterWrite } from '@/lib/refresh-page';
 import { cn } from '@/lib/utils';
-import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
 
 /**
  * "+ Transaction", the face of every add-transaction button above a
@@ -62,41 +56,13 @@ export function AddTransactionButton({
     testId = 'add-transaction-button',
     className,
 }: AddTransactionButtonProps) {
-    const { data, loading, load } = useTransactionDialogData();
-    const [open, setOpen] = useState(false);
-    // Set only by the toast's "Change category", which reopens the same dialog
-    // on the transaction a rule just filed away out of sight.
-    const [editing, setEditing] = useState<ServerTransaction | null>(null);
-    // A ref, not state: the dialog reports the save and closes in the same
-    // batch, so a state flag would still read false in the close handler.
-    const savedSomething = useRef(false);
+    const { show, loading, dialog } = useNewTransactionDialog(origin);
 
     const isDisabled = !hasTransactionalAccounts;
 
-    async function handleOpen() {
-        if (isDisabled || loading) {
-            return;
-        }
-
-        if (await load()) {
-            setOpen(true);
-        }
-    }
-
-    function handleOpenChange(next: boolean) {
-        setOpen(next);
-
-        if (next) {
-            return;
-        }
-
-        setEditing(null);
-
-        // The page underneath was rendered before any of this existed, so it
-        // only learns about the new rows once the dialog is out of the way.
-        if (savedSomething.current) {
-            savedSomething.current = false;
-            refreshPageAfterWrite();
+    function handleOpen() {
+        if (!isDisabled) {
+            void show();
         }
     }
 
@@ -129,27 +95,7 @@ export function AddTransactionButton({
                 </Tooltip>
             </TooltipProvider>
 
-            {data && (
-                <EditTransactionDialog
-                    transaction={editing}
-                    categories={data.categories}
-                    accounts={data.accounts}
-                    banks={data.banks}
-                    labels={data.labels}
-                    automationRules={data.automationRules}
-                    open={open}
-                    onOpenChange={handleOpenChange}
-                    onSuccess={() => {
-                        savedSomething.current = true;
-                    }}
-                    mode={editing ? 'edit' : 'create'}
-                    origin={origin}
-                    onRequestEdit={(created) => {
-                        setEditing(created);
-                        setOpen(true);
-                    }}
-                />
-            )}
+            {dialog}
         </>
     );
 }

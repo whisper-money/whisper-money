@@ -25,22 +25,26 @@ export function useTransactionDialogData() {
     const [data, setData] = useState<TransactionDialogData | null>(null);
     const [loading, setLoading] = useState(false);
 
-    /** Resolves to whether the data is there, so the caller knows to open. */
-    async function load(): Promise<boolean> {
+    /**
+     * Resolves to the lists once they are there (null when they could not be
+     * fetched), so the caller knows to open and what it opens on.
+     */
+    async function load(): Promise<TransactionDialogData | null> {
         setLoading(true);
         try {
             const response = await fetch(importDataRoute.url());
             if (!response.ok) {
                 throw new Error('Failed to load import data');
             }
-            setData(await response.json());
+            const loaded: TransactionDialogData = await response.json();
+            setData(loaded);
 
-            return true;
+            return loaded;
         } catch (error) {
             toast.error(__('Failed to load import data'));
             console.error(error);
 
-            return false;
+            return null;
         } finally {
             setLoading(false);
         }

@@ -1,5 +1,22 @@
-/** What a `wm.open()` destination resolves to: the URL, or why it is not one. */
-export type Resolved = { url: string } | { error: string };
+/**
+ * A dialog of the app a widget can open over the dashboard, with what it
+ * starts on. The host opens it (see `WidgetGesture.openDialog`); nothing is
+ * written until the user confirms there.
+ */
+export interface WidgetDialogRequest {
+    dialog: 'newTransaction' | 'import';
+    /** The account to start on; null leaves the dialog's own default. */
+    accountId: string | null;
+}
+
+/**
+ * What a `wm.open()` destination resolves to: a page to visit, a dialog to
+ * open in place, or why it is neither.
+ */
+export type Resolved =
+    | { url: string }
+    | { dialog: WidgetDialogRequest }
+    | { error: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

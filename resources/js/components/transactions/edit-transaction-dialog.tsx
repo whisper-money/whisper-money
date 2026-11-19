@@ -96,7 +96,8 @@ export type TransactionCreateOrigin =
     | 'full_dialog'
     | 'account_page'
     | 'header'
-    | 'duplicate';
+    | 'duplicate'
+    | 'widget';
 
 interface EditTransactionDialogProps {
     transaction: ServerTransaction | null;

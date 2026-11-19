@@ -15,6 +15,7 @@ import {
     WidgetErrorState,
     type WidgetRuntimeError,
 } from '@/widgets/runtime/widget-error-boundary';
+import { type OpenWidgetDialog } from '@/widgets/sdk/gesture';
 import { type RenderWidgetTransactionTable } from '@/widgets/sdk/transaction-table-host';
 import { EllipsisVertical, ShieldAlert, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -48,6 +49,8 @@ export interface UserWidgetCellProps {
     onRemove?: () => void;
     /** Draws the widget's transactions as the app's table; absent while the dashboard is edited. */
     renderTransactionTable?: RenderWidgetTransactionTable;
+    /** Opens the app's dialogs for the widget's `wm.open()`; absent while the dashboard is edited. */
+    openDialog?: OpenWidgetDialog;
 }
 
 type Content =
@@ -126,6 +129,7 @@ export function UserWidgetCell({
     isEditing,
     onRemove,
     renderTransactionTable,
+    openDialog,
 }: UserWidgetCellProps) {
     const content = useCellContent(placement, definition, gate, data);
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -185,6 +189,7 @@ export function UserWidgetCell({
                         onSettled={() => settle?.(placement.id)}
                         renderTransactionTable={renderTransactionTable}
                         canNavigate={!isEditing}
+                        openDialog={openDialog}
                     />
                     {content.resolved.truncated && (
                         <span

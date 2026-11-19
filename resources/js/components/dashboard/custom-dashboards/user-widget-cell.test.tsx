@@ -95,6 +95,13 @@ describe('<UserWidgetCell>', () => {
         expect(drawn.props?.canNavigate).toBe(false);
     });
 
+    it("hands the widget the host's dialogs for its wm.open()", () => {
+        const openDialog = vi.fn();
+
+        renderCell({ openDialog });
+        expect(drawn.props?.openDialog).toBe(openDialog);
+    });
+
     it('shows a skeleton while the data or the page decide', () => {
         renderCell({ data: { status: 'loading' } });
         expect(cellState()).toBe('loading');

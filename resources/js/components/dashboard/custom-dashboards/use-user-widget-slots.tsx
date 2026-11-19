@@ -4,24 +4,36 @@ import {
     useUserWidgetsGate,
     type UserWidgetsGate,
 } from '@/widgets/runtime/use-user-widgets-gate';
+import { type OpenWidgetDialog } from '@/widgets/sdk/gesture';
 import { type RenderWidgetTransactionTable } from '@/widgets/sdk/transaction-table-host';
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import {
+    lazy,
+    Suspense,
+    useCallback,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 import { dashboardActions } from './dashboard-actions';
 import { type UserWidgetSlots } from './dashboard-grid';
 import { userWidgetSizeRules, type PlacedWidget } from './grid-layout';
 import { useUserWidgetData } from './use-user-widget-data';
 import { useWidgetErrorReporter } from './use-widget-error-reporter';
 import { UserWidgetCell } from './user-widget-cell';
+import { type WidgetDialogAsk } from './widget-dialogs';
 
 // Its own chunk: the table, its dialogs and bulk actions load with the first
 // widget that lists transactions.
 const WidgetTransactionTable = lazy(() => import('./widget-transaction-table'));
+// Its own chunk too: the dialogs load the first time a widget opens one.
+const WidgetDialogs = lazy(() => import('./widget-dialogs'));
 
 /**
  * Everything the grid needs to draw the user widgets of the dashboard on
  * screen: whether they may run (safe mode), their data in one request, their
- * runtime errors stored with them, a cell for each, and the transactions
- * table a widget's `<TransactionList>` becomes.
+ * runtime errors stored with them, a cell for each, the transactions table
+ * a widget's `<TransactionList>` becomes, and the app's dialogs a widget's
+ * `wm.open()` opens over the dashboard (`dialogs`, drawn once for the page).
  */
 export function useUserWidgetSlots({
     dashboard,
@@ -38,6 +50,7 @@ export function useUserWidgetSlots({
 }): {
     gate: UserWidgetsGate;
     slots: UserWidgetSlots;
+    dialogs: ReactNode;
 } {
     const placementIds = useMemo(
         () => placed.flatMap((item) => (item.kind === 'user' ? [item.id] : [])),
@@ -91,6 +104,15 @@ export function useUserWidgetSlots({
                       />
                   </Suspense>
               );
+    const [dialogAsk, setDialogAsk] = useState<WidgetDialogAsk | null>(null);
+    const openDialog = useCallback<OpenWidgetDialog>(
+        (request) =>
+            setDialogAsk((previous) => ({
+                id: (previous?.id ?? 0) + 1,
+                request,
+            })),
+        [],
+    );
     const { errors, report } = useWidgetErrorReporter(
         !data.auth.isSharedAccount,
     );
@@ -115,6 +137,8 @@ export function useUserWidgetSlots({
                 canRevert={canEdit}
                 isEditing={isEditing}
                 renderTransactionTable={transactionTableFor(item.id)}
+                // Arranging the dashboard opens nothing.
+                openDialog={isEditing ? undefined : openDialog}
                 onRemove={
                     canEdit
                         ? () =>
@@ -128,5 +152,11 @@ export function useUserWidgetSlots({
         ),
     };
 
-    return { gate, slots };
+    const dialogs = dialogAsk && (
+        <Suspense fallback={null}>
+            <WidgetDialogs ask={dialogAsk} />
+        </Suspense>
+    );
+
+    return { gate, slots, dialogs };
 }
