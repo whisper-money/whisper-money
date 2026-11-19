@@ -26,7 +26,9 @@ export type { OpenTransactionsFilters } from './open-transactions';
  * user confirms there. Like `wm.download`, it only works inside a click on the
  * widget (see gesture.ts), and only where the host lets the widget navigate:
  * never while the dashboard is edited, nor in the MCP preview. It returns
- * whether the visit started or the dialog was asked for, and never throws.
+ * whether the visit started or the host took the ask for the dialog (which
+ * then loads its lists, and may still fail to open with a toast of its own),
+ * and never throws.
  */
 export type OpenDestination =
     | { account: string }
@@ -68,16 +70,16 @@ const DESTINATIONS: Record<string, Destination> = {
     transactions: { usage: TRANSACTIONS_USAGE, resolve: transactionsUrl },
     newTransaction: {
         usage: '{ newTransaction: { accountId? } }',
-        resolve: (options) => dialog('newTransaction', options),
+        resolve: (options) => dialogDestination('newTransaction', options),
     },
     import: {
         usage: '{ import: { accountId? } }',
-        resolve: (options) => dialog('import', options),
+        resolve: (options) => dialogDestination('import', options),
     },
 };
 
 /** A dialog destination: `{ accountId? }`, nothing else. */
-function dialog(
+function dialogDestination(
     name: WidgetDialogRequest['dialog'],
     options: unknown,
 ): Resolved {

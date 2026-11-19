@@ -4,7 +4,10 @@ import {
 } from '@/components/transactions/edit-transaction-dialog';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
-import { filterTransactionalAccounts } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    transactionalAccountId,
+} from '@/types/account';
 import { type ServerTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { type ReactNode, useRef, useState } from 'react';
@@ -48,19 +51,13 @@ export function useNewTransactionDialog(origin: TransactionCreateOrigin): {
             return false;
         }
 
-        const accounts = filterTransactionalAccounts(loaded.accounts);
-
-        if (accounts.length === 0) {
+        if (filterTransactionalAccounts(loaded.accounts).length === 0) {
             toast.error(__('You need an account to record transactions'));
 
             return false;
         }
 
-        setInitialAccountId(
-            accounts.some((account) => account.id === accountId)
-                ? accountId
-                : null,
-        );
+        setInitialAccountId(transactionalAccountId(loaded.accounts, accountId));
         setOpen(true);
 
         return true;

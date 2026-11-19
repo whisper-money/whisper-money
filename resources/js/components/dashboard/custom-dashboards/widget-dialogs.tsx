@@ -2,7 +2,7 @@ import { ImportTransactionsDrawer } from '@/components/transactions/import-trans
 import { useNewTransactionDialog } from '@/components/transactions/use-new-transaction-dialog';
 import { useTransactionDialogData } from '@/hooks/use-transaction-dialog-data';
 import { refreshPageAfterWrite } from '@/lib/refresh-page';
-import { filterTransactionalAccounts } from '@/types/account';
+import { transactionalAccountId } from '@/types/account';
 import { type WidgetDialogRequest } from '@/widgets/sdk/open-values';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
@@ -70,13 +70,8 @@ function useImportDialog(): {
             return false;
         }
 
-        setInitialAccountId(
-            filterTransactionalAccounts(loaded.accounts).some(
-                (account) => account.id === accountId,
-            )
-                ? accountId
-                : null,
-        );
+        // The drawer's own account step lists the same accounts.
+        setInitialAccountId(transactionalAccountId(loaded.accounts, accountId));
         isOpen.current = true;
         setOpen(true);
 
