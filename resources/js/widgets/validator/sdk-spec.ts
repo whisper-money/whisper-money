@@ -14,7 +14,8 @@ import type { ComponentProps } from './component-props';
  * - `cn(...classes)`: joins literal classes (the validator reads its arguments).
  * - `wm`: `{ download(filename, content), open(destination) }`, from a click
  *   only: `download` hands data to the user as a CSV, `open` takes them to an
- *   account, a budget or the filtered transactions list (never a URL).
+ *   account, a budget or the transactions list with any of its filters
+ *   (never a URL; see OpenTransactionsFilters in sdk/open.ts).
  */
 export const SDK_VALUES: ReadonlySet<string> = new Set([
     'useWidgetData',

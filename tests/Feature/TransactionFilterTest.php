@@ -718,3 +718,42 @@ test('a positive amount range only matches income, so small expenses need the ne
             ->where('appliedFilters.amount_min', -30)
             ->where('appliedFilters.amount_max', 0));
 });
+
+test('the query a widget opens with wm.open lands as the page applied filters', function () {
+    $savings = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Savings]);
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $match = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $savings->id,
+        'creditor_name' => 'Mercadona',
+        'amount' => -2000,
+        'currency_code' => 'EUR',
+        'transaction_date' => '2026-11-10',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $food->id,
+        'creditor_name' => 'Mercadona',
+        'amount' => -2000,
+        'currency_code' => 'EUR',
+        'transaction_date' => '2026-11-10',
+    ]);
+
+    // The URL resources/js/widgets/sdk/open.test.ts expects wm.open() to build
+    // for these filters: keep both sides on the same string.
+    $query = 'category_types[]=savings&category_types[]=investment&date_from=2026-11-01&date_to=2026-11-30'
+        .'&amount_min=-50.00&amount_max=-12.34&creditor_name=Mercadona';
+
+    actingAs($this->user)->get('/transactions?'.$query)
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->has('transactions.data', 1)
+            ->where('transactions.data.0.id', $match->id)
+            ->where('appliedFilters.category_types', ['savings', 'investment'])
+            ->where('appliedFilters.amount_min', -50)
+            ->where('appliedFilters.amount_max', -12.34)
+            ->where('appliedFilters.creditor_name', 'Mercadona')
+        );
+});
