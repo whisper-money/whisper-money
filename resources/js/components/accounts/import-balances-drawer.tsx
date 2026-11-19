@@ -65,15 +65,20 @@ interface ImportBalancesDrawerProps {
 }
 
 /**
- * What to tell the user about a refused bulk write. A validation error names
+ * What to tell the user about a failed bulk write. A validation error names
  * the balance it is about by its position in the request, which is its row in
  * the preview, so the message leads with that row.
  */
 function importErrorMessage(error: unknown, fallback: string): string {
+    // Only a validation error says something the user can act on; a server
+    // error's "Server Error" does not.
+    if (!isAxiosError(error) || error.response?.status !== 422) {
+        return fallback;
+    }
+
     const message = requestErrorMessage(error, fallback);
-    const errors = isAxiosError(error)
-        ? (error.response?.data as { errors?: Record<string, unknown> })?.errors
-        : undefined;
+    const errors = (error.response.data as { errors?: Record<string, unknown> })
+        ?.errors;
     const index = Object.keys(errors ?? {})[0]?.match(
         /^balances\.(\d+)\./,
     )?.[1];

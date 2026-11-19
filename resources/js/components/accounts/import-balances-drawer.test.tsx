@@ -268,18 +268,27 @@ describe('ImportBalancesDrawer with AI column mapping', () => {
         expect(saveBalanceImportConfig).not.toHaveBeenCalled();
     });
 
-    it('falls back to a generic message when the request fails for another reason', async () => {
-        axiosPost.mockRejectedValue(new Error('Network Error'));
+    it.each([
+        new Error('Network Error'),
+        new AxiosError('Server Error', '500', undefined, undefined, {
+            status: 500,
+            data: { message: 'Server Error' },
+        } as AxiosResponse),
+    ])(
+        'falls back to a generic message when the request fails for another reason (%s)',
+        async (failure) => {
+            axiosPost.mockRejectedValue(failure);
 
-        await reachMapping();
-        fireEvent.click(screen.getByText('leave mapping'));
-        fireEvent.click(await screen.findByText('confirm import'));
+            await reachMapping();
+            fireEvent.click(screen.getByText('leave mapping'));
+            fireEvent.click(await screen.findByText('confirm import'));
 
-        expect(
-            await screen.findByText('The balances could not be imported.'),
-        ).toBeInTheDocument();
-        expect(toast.success).not.toHaveBeenCalled();
-    });
+            expect(
+                await screen.findByText('The balances could not be imported.'),
+            ).toBeInTheDocument();
+            expect(toast.success).not.toHaveBeenCalled();
+        },
+    );
 
     it('keeps a stored layout that fits without asking the AI', async () => {
         loadBalanceImportConfig.mockResolvedValue({
