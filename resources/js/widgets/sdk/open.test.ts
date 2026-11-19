@@ -96,6 +96,28 @@ describe('wm.open', () => {
         ).toBe('/transactions');
     });
 
+    it('builds the query the page test opens /transactions with', () => {
+        // tests/Feature/TransactionFilterTest.php visits this exact URL and
+        // checks each filter lands among the page's applied filters.
+        expect(
+            urlOf({
+                transactions: {
+                    categoryTypes: ['savings', 'investment'],
+                    dateFrom: '2026-11-01',
+                    dateTo: '2026-11-30',
+                    amountMin: -5000,
+                    amountMax: -1234,
+                    currency: 'EUR',
+                    creditorName: 'Mercadona',
+                },
+            }),
+        ).toBe(
+            '/transactions?category_types[]=savings&category_types[]=investment' +
+                '&date_from=2026-11-01&date_to=2026-11-30' +
+                '&amount_min=-50.00&amount_max=-12.34&creditor_name=Mercadona',
+        );
+    });
+
     it.each([['fixed'], ['variable'], ['general'], ['saved'], ['invested']])(
         'opens the %s cashflow block over a period',
         (block) => {

@@ -741,7 +741,8 @@ test('the query a widget opens with wm.open lands as the page applied filters', 
         'transaction_date' => '2026-11-10',
     ]);
 
-    // Exactly what resolveDestination() builds in resources/js/widgets/sdk/open.ts.
+    // The URL resources/js/widgets/sdk/open.test.ts expects wm.open() to build
+    // for these filters: keep both sides on the same string.
     $query = 'category_types[]=savings&category_types[]=investment&date_from=2026-11-01&date_to=2026-11-30'
         .'&amount_min=-50.00&amount_max=-12.34&creditor_name=Mercadona';
 
