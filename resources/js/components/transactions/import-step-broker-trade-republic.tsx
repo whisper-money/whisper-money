@@ -73,6 +73,8 @@ export function ImportStepBrokerTradeRepublic({
     // The sync brings this account's movements and balance: only the portfolio comes in.
     const cashSynced = isBankConnected(cashAccount);
     const portfolioSkipped = plan.portfolio.kind === 'skip';
+    // The sync keeps the cash account's balances: the file replaces none.
+    const cashReplacesFrom = cashSynced ? null : firstDay(file.cash);
     const update = (changes: Partial<TradeRepublicPlan>) =>
         onPlanChange({ ...plan, ...changes });
     const { remembered, showPickers, change } = useRememberedAccounts(
@@ -117,12 +119,12 @@ export function ImportStepBrokerTradeRepublic({
                                 name: TRADE_REPUBLIC_CASH_NAME,
                                 type: formatAccountType('checking'),
                             })}
-                            replacesFrom={firstDay(file.cash)}
+                            replacesFrom={cashReplacesFrom}
                             parse={accountChoiceFrom}
                             onChange={(cash) => update({ cash })}
                         />
                     ) : (
-                        <ReplacesFromNote replacesFrom={firstDay(file.cash)} />
+                        <ReplacesFromNote replacesFrom={cashReplacesFrom} />
                     )}
                     {!cashSynced && (
                         <CashBalanceField
@@ -208,7 +210,7 @@ export function ImportStepBrokerTradeRepublic({
                 <BankConnectedNotice>
                     {portfolioSkipped
                         ? __(
-                              '“:account” is connected to your bank: its movements and balance come from the sync. Import the portfolio, or there is nothing to import.',
+                              '“:account” is connected to your bank: its movements and balance come from the sync. Choose an account for the portfolio above, or there is nothing to import.',
                               { account: cashAccount.name },
                           )
                         : __(
@@ -221,7 +223,9 @@ export function ImportStepBrokerTradeRepublic({
             <BrokerStepFooter
                 onBack={onBack}
                 onNext={onNext}
-                nextDisabled={cashSynced && portfolioSkipped}
+                nextDisabled={
+                    cashSynced && (portfolioSkipped || file.trades.length === 0)
+                }
             />
         </div>
     );

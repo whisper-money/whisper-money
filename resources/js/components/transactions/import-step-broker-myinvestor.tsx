@@ -72,6 +72,8 @@ export function ImportStepBrokerMyInvestorCash({
         (account) => account.id === chosenAccountId(plan.cash),
     );
     const cashSynced = isBankConnected(cashAccount);
+    // The sync keeps a connected account's balances: the file replaces none.
+    const replacesFrom = cashSynced ? null : firstDay(file.movements);
     const { remembered, showPickers, change } = useRememberedAccounts(
         broker,
         cashAccount !== undefined,
@@ -102,12 +104,12 @@ export function ImportStepBrokerMyInvestorCash({
                             name: MYINVESTOR_CASH_NAME,
                             type: formatAccountType('savings'),
                         })}
-                        replacesFrom={firstDay(file.movements)}
+                        replacesFrom={replacesFrom}
                         parse={accountChoiceFrom}
                         onChange={(cash) => onPlanChange({ ...plan, cash })}
                     />
                 ) : (
-                    <ReplacesFromNote replacesFrom={firstDay(file.movements)} />
+                    <ReplacesFromNote replacesFrom={replacesFrom} />
                 )}
                 {!cashSynced && (
                     <CashBalanceField

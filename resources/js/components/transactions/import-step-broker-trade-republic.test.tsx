@@ -160,6 +160,8 @@ describe('ImportStepBrokerTradeRepublic with a connected cash account', () => {
             screen.getByText(/so only the portfolio will be imported/),
         ).not.toBeNull();
         expect(screen.queryByLabelText('Cash balance today')).toBeNull();
+        // Nor are its daily balances replaced.
+        expect(screen.queryByText(/Its daily balances from/)).toBeNull();
     });
 
     it('has nothing to preview once the portfolio is left out too', async () => {
@@ -173,7 +175,7 @@ describe('ImportStepBrokerTradeRepublic with a connected cash account', () => {
         );
 
         expect(
-            screen.getByText(/Import the portfolio, or there is nothing/),
+            screen.getByText(/Choose an account for the portfolio above/),
         ).not.toBeNull();
         expect(
             screen

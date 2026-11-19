@@ -2,7 +2,7 @@ import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import {
     brokerBank,
     isBankConnected,
-    NO_TRANSACTIONS,
+    noTransactions,
     resolveBrokerAccount,
     writeBalanceSeries,
     type AccountChoice,
@@ -140,7 +140,7 @@ export async function runTradeRepublicImport(
 
     const cashSynced = isBankConnected(cashAccount);
     const outcome = cashSynced
-        ? NO_TRANSACTIONS
+        ? noTransactions()
         : await importTransactions({
               account: cashAccount,
               rows: options.rows,
@@ -152,9 +152,11 @@ export async function runTradeRepublicImport(
               writeRowBalances: false,
           });
 
+    // Nothing new came into a cash account of the app's: its balances stand.
     // With the movements left to the sync, the portfolio is all there is.
+    const nothingToWrite = !cashSynced && outcome.successCount === 0;
     const balancesWritten =
-        (outcome.successCount === 0 && !cashSynced) ||
+        nothingToWrite ||
         (await writeBalances(cashAccount, portfolioAccount, options));
 
     return {

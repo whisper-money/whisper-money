@@ -190,13 +190,15 @@ export function isBankConnected(
     return Boolean(account?.banking_connection_id);
 }
 
-/** What a run that brought no transactions reports. */
-export const NO_TRANSACTIONS: ImportOutcome = {
-    imported: [],
-    errors: [],
-    successCount: 0,
-    uncategorizedCount: 0,
-};
+/** What a run that brought no transactions reports, fresh each time. */
+export function noTransactions(): ImportOutcome {
+    return {
+        imported: [],
+        errors: [],
+        successCount: 0,
+        uncategorizedCount: 0,
+    };
+}
 
 /**
  * The broker's bank, to make its accounts at. The banks list only holds the

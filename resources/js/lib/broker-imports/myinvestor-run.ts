@@ -2,7 +2,7 @@ import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import {
     brokerBank,
     isBankConnected,
-    NO_TRANSACTIONS,
+    noTransactions,
     resolveBrokerAccount,
     writeBalanceSeries,
 } from '@/lib/broker-imports/broker-accounts';
@@ -48,7 +48,7 @@ export async function runMyInvestorCashImport(
 
     if (isBankConnected(account)) {
         return {
-            outcome: NO_TRANSACTIONS,
+            outcome: noTransactions(),
             balancesFailed: false,
             accounts: { cash: account },
         };
@@ -121,7 +121,7 @@ export async function runMyInvestorSecuritiesImport(
     ]);
 
     return {
-        outcome: NO_TRANSACTIONS,
+        outcome: noTransactions(),
         balancesFailed: !balancesWritten,
         accounts: { portfolio: account },
     };
