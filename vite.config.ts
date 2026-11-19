@@ -10,6 +10,17 @@ import { defineConfig } from 'vite';
 // emits .js.map files there is nothing to leak into public/build/assets/.
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
+// The plugin only logs a failed upload and lets the build pass, which ships
+// bundles with debug IDs Sentry has never seen. The CI image build opts into
+// failing instead; other builds (local, self-hosted) keep the lenient default.
+const sentryUploadRequired = process.env.SENTRY_UPLOAD_REQUIRED === 'true';
+
+if (sentryUploadRequired && !sentryAuthToken) {
+    throw new Error(
+        'SENTRY_UPLOAD_REQUIRED is set but SENTRY_AUTH_TOKEN is empty: source maps would not be uploaded.',
+    );
+}
+
 export default defineConfig({
     envPrefix: ['VITE_', 'SENTRY_LARAVEL_DSN'],
     build: {
@@ -48,10 +59,21 @@ export default defineConfig({
                       // project (see app.tsx Sentry.init using SENTRY_LARAVEL_DSN),
                       // so maps must be uploaded there to symbolicate them.
                       project: 'php-laravel',
+                      // CI creates and finalizes the release with sentry-cli;
+                      // naming it here ties the uploaded maps to the same
+                      // release instead of a git SHA the Docker build can't see
+                      // (`|| undefined` so an empty ARG falls back to the default).
                       release: {
+                          name: process.env.SENTRY_RELEASE || undefined,
                           create: false,
                           finalize: false,
+                          setCommits: false,
                       },
+                      errorHandler: sentryUploadRequired
+                          ? (error: Error): never => {
+                                throw error;
+                            }
+                          : undefined,
                       sourcemaps: {
                           filesToDeleteAfterUpload: ['**/*.js.map'],
                       },

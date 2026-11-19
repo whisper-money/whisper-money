@@ -1,7 +1,11 @@
+# syntax=docker/dockerfile:1
 # Pinned to the patch release so a cached base image cannot ship an unpatched PHP
 FROM php:8.5.12-fpm
 
 ARG SENTRY_RELEASE
+# CI sets this so a failed source map upload fails the image build instead of
+# shipping bundles whose debug IDs Sentry has never seen.
+ARG SENTRY_UPLOAD_REQUIRED=false
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -86,7 +90,16 @@ RUN mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx
 
 # Build assets with HIDE_AUTH_BUTTONS=false so Wayfinder generates all routes
 # (HIDE_AUTH_BUTTONS will be set to true at runtime via .env)
-RUN HIDE_AUTH_BUTTONS=false bun run build:ssr
+#
+# The Sentry auth token arrives as a BuildKit secret (`--secret id=sentry_auth_token`),
+# never as an ARG/ENV, so it is not stored in any image layer or in the history.
+# With it, vite.config.ts emits hidden source maps, uploads them and deletes them.
+# Without it, the build is unchanged: no maps, no upload. The final find is a
+# guard so a map can never be served from public/build, even if an upload fails
+# before the plugin deletes them.
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+    HIDE_AUTH_BUTTONS=false bun run build:ssr \
+    && find public/build bootstrap/ssr -name '*.map' -delete
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf

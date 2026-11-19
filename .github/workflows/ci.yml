@@ -565,6 +565,13 @@ jobs:
           labels: ${{ steps.production-meta.outputs.labels }}
           build-args: |
             SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
+            SENTRY_UPLOAD_REQUIRED=true
+          # BuildKit secret, not a build-arg: it never lands in a layer or the
+          # image history. Both arches upload: the bundles are identical, so
+          # Sentry dedupes them by debug ID, and whichever image is served has
+          # its maps there.
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha,scope=production
           cache-to: type=gha,mode=max,scope=production
 
@@ -656,6 +663,10 @@ jobs:
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           build-args: |
             SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
+            SENTRY_UPLOAD_REQUIRED=true
+          # Same secret as the amd64 production build (see the comment there).
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha,scope=production-arm64
           cache-to: type=gha,mode=max,scope=production-arm64
 
