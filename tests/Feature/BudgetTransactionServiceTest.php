@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryType;
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
@@ -1031,4 +1032,148 @@ test('assignHistoricalTransactionsToPeriod refreshes stale snapshots and only co
         ->and($newSnapshot->amount)->toBe(3000)
         ->and(Str::isUuid($newSnapshot->id))->toBeTrue()
         ->and($newSnapshot->created_at->equalTo(now()))->toBeTrue();
+});
+
+/**
+ * Queries reading `budget_periods` as their main table, not the eager loads
+ * that join through it.
+ *
+ * @param  array<int, string>  $queries
+ */
+function budgetPeriodQueries(array $queries): int
+{
+    return collect($queries)
+        ->filter(fn (string $query): bool => str_starts_with($query, 'select * from "budget_periods"')
+            || str_starts_with($query, 'select * from `budget_periods`'))
+        ->count();
+}
+
+function catchAllPeriodOf(User $user): BudgetPeriod
+{
+    return BudgetPeriod::factory()->create([
+        'budget_id' => Budget::factory()->catchAll()->create(['user_id' => $user->id])->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+}
+
+test('reassigning a batch reads the budget periods once per user instead of per transaction', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    periodTracking($category);
+    catchAllPeriodOf($this->user);
+
+    $countFor = function (int $size) use ($category, $label): int {
+        $transactions = Transaction::factory()->count($size)->create([
+            'user_id' => $this->user->id,
+            'category_id' => $category->id,
+            'transaction_date' => now()->subDays(2),
+        ]);
+        $transactions->each(fn (Transaction $transaction) => $transaction->labels()->attach($label));
+        BudgetTransaction::query()->delete();
+
+        $result = countQueries(fn () => (new ReassignTransactionsToBudgets($transactions->modelKeys(), notify: false))->handle($this->service));
+
+        return budgetPeriodQueries($result['queries']);
+    };
+
+    // The query Sentry flagged ran once per transaction (PHP-LARAVEL-7Q).
+    expect($countFor(3))->toBe(1)
+        ->and($countFor(15))->toBe(1);
+});
+
+test('reassigning a mixed batch lands every transaction where assigning it alone would', function () {
+    $otherUser = User::factory()->create();
+
+    // First user: a parent category budget, a label budget, an archived
+    // budget on the same category and a catch-all.
+    $parent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $child = Category::factory()->childOf($parent)->create(['type' => CategoryType::Expense]);
+    $untracked = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $categoryPeriod = periodTracking($parent);
+    $labelPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => Budget::factory()->forLabels($label)->create(['user_id' => $this->user->id])->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+    $archivedPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => Budget::factory()->forCategories($parent)->create([
+            'user_id' => $this->user->id,
+            'archived_at' => now()->subDays(5),
+        ])->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+    $catchAll = catchAllPeriodOf($this->user);
+
+    // A deleted budget on the same category takes in nothing.
+    $deletedBudget = Budget::factory()->forCategories($parent)->create(['user_id' => $this->user->id]);
+    BudgetPeriod::factory()->create([
+        'budget_id' => $deletedBudget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+    $deletedBudget->delete();
+
+    // Second user: a label budget whose period ends today.
+    $otherCategory = Category::factory()->create(['user_id' => $otherUser->id, 'type' => CategoryType::Expense]);
+    $otherLabel = Label::factory()->create(['user_id' => $otherUser->id]);
+    $otherPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => Budget::factory()->forLabels($otherLabel)->create(['user_id' => $otherUser->id])->id,
+        'start_date' => now()->subDays(10),
+        'end_date' => now(),
+    ]);
+
+    $make = function (User $user, ?Category $category, int $daysAgo, ?Label $label = null): Transaction {
+        $transaction = Transaction::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category?->id,
+            'transaction_date' => now()->subDays($daysAgo),
+        ]);
+
+        if ($label) {
+            $transaction->labels()->attach($label);
+        }
+
+        return $transaction;
+    };
+
+    $expected = [
+        // Before the archive day: both budgets on the parent still count it.
+        [$make($this->user, $child, 10), [$categoryPeriod->id, $archivedPeriod->id]],
+        // On and after the archive day: only the running budget.
+        [$make($this->user, $child, 5), [$categoryPeriod->id]],
+        [$make($this->user, $child, 2), [$categoryPeriod->id]],
+        // Tracked by label and by category at once.
+        [$make($this->user, $parent, 2, $label), [$categoryPeriod->id, $labelPeriod->id]],
+        // A label claim keeps it out of the catch-all.
+        [$make($this->user, $untracked, 2, $label), [$labelPeriod->id]],
+        // Nothing claims it: the catch-all absorbs it.
+        [$make($this->user, $untracked, 2), [$catchAll->id]],
+        // Outside every period.
+        [$make($this->user, $child, 60), []],
+        // The other user's label, on its period's last and first days and a day before.
+        [$make($otherUser, $otherCategory, 0, $otherLabel), [$otherPeriod->id]],
+        [$make($otherUser, $otherCategory, 10, $otherLabel), [$otherPeriod->id]],
+        [$make($otherUser, $otherCategory, 11, $otherLabel), []],
+        // The other user's category is tracked by no budget of theirs.
+        [$make($otherUser, $otherCategory, 2), []],
+    ];
+
+    $transactions = collect($expected)->map(fn (array $case): Transaction => $case[0]);
+
+    // One transaction at a time, through the per-transaction queries.
+    BudgetTransaction::query()->delete();
+    $transactions->each(fn (Transaction $transaction) => $this->service->assignTransaction($transaction->fresh(), notify: false));
+    $alone = $transactions->mapWithKeys(fn (Transaction $transaction): array => [$transaction->id => periodIdsOf($transaction)]);
+
+    BudgetTransaction::query()->delete();
+    (new ReassignTransactionsToBudgets($transactions->pluck('id')->all(), notify: false))->handle($this->service);
+
+    foreach ($expected as [$transaction, $periodIds]) {
+        expect(periodIdsOf($transaction))->toEqualCanonicalizing($periodIds)
+            ->and(periodIdsOf($transaction))->toEqualCanonicalizing($alone[$transaction->id]);
+    }
 });
