@@ -47,6 +47,7 @@ import { toMinorUnits } from '@/utils/currency';
 import { formatLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
+import { isAxiosError } from 'axios';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -61,6 +62,25 @@ interface ImportBalancesDrawerProps {
     account?: Account;
     accountId?: UUID;
     onSuccess?: () => void;
+}
+
+/**
+ * What to tell the user about a refused bulk write. A validation error names
+ * the balance it is about by its position in the request, which is its row in
+ * the preview, so the message leads with that row.
+ */
+function importErrorMessage(error: unknown, fallback: string): string {
+    const message = requestErrorMessage(error, fallback);
+    const errors = isAxiosError(error)
+        ? (error.response?.data as { errors?: Record<string, unknown> })?.errors
+        : undefined;
+    const index = Object.keys(errors ?? {})[0]?.match(
+        /^balances\.(\d+)\./,
+    )?.[1];
+
+    return index === undefined
+        ? message
+        : `${__('Row')} ${Number(index) + 1}: ${message}`;
 }
 
 export function ImportBalancesDrawer({
@@ -501,7 +521,7 @@ export function ImportBalancesDrawer({
                 },
             );
         } catch (requestError) {
-            failure = requestErrorMessage(
+            failure = importErrorMessage(
                 requestError,
                 isLoan
                     ? __('The owed amounts could not be imported.')

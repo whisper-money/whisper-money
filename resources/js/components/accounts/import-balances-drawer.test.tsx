@@ -259,10 +259,10 @@ describe('ImportBalancesDrawer with AI column mapping', () => {
         fireEvent.click(await screen.findByText('confirm import'));
 
         expect(
-            await screen.findByText('The balance date is out of range.'),
+            await screen.findByText('Row 2: The balance date is out of range.'),
         ).toBeInTheDocument();
         expect(toast.error).toHaveBeenCalledWith(
-            'The balance date is out of range.',
+            'Row 2: The balance date is out of range.',
         );
         expect(toast.success).not.toHaveBeenCalled();
         expect(saveBalanceImportConfig).not.toHaveBeenCalled();

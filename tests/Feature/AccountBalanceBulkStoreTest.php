@@ -231,3 +231,17 @@ it('writes five thousand days in one request', function () {
 
     expect($account->balances()->count())->toBe(5000);
 });
+
+it('names the field, not its position, in a row error', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create(['type' => AccountType::Checking]);
+
+    actingAs($user)->postJson(bulkBalancesUrl($account), [
+        'balances' => [
+            ['balance_date' => '2026-01-01', 'balance' => 1000],
+            ['balance_date' => 'not a date', 'balance' => 1000],
+        ],
+    ])->assertUnprocessable()
+        ->assertJsonPath('errors', fn (array $errors): bool => str_contains($errors['balances.1.balance_date'][0], 'balance date')
+            && ! str_contains($errors['balances.1.balance_date'][0], 'balances.1'));
+});
