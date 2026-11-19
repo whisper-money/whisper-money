@@ -1,3 +1,5 @@
+import { type WidgetDialogRequest } from './open-values';
+
 /**
  * The user gesture the SDK's ways out of a widget (`wm.download`, `wm.open`)
  * need: a click (or a key that clicks) on the widget. `<UserWidget>` opens it
@@ -11,10 +13,19 @@ export interface WidgetGesture {
      * the host says so: a dashboard being edited and the MCP preview never do.
      */
     canNavigate: boolean;
+    /**
+     * Opens one of the app's dialogs (new transaction, import) over the
+     * page. Only the host gives it, never the widget; absent where the host
+     * has none to offer.
+     */
+    openDialog?: OpenWidgetDialog;
 }
+
+export type OpenWidgetDialog = (request: WidgetDialogRequest) => void;
 
 export interface WidgetGestureOptions {
     canNavigate?: boolean;
+    openDialog?: OpenWidgetDialog;
 }
 
 let current: WidgetGesture | null = null;
@@ -33,7 +44,10 @@ export function beginWidgetGesture(
         return;
     }
 
-    current = { canNavigate: options.canNavigate === true };
+    current = {
+        canNavigate: options.canNavigate === true,
+        openDialog: options.openDialog,
+    };
     setTimeout(endWidgetGesture, 0);
 }
 

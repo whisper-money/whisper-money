@@ -66,6 +66,7 @@ export default function UserWidgetFrame({
     onSettled,
     renderTransactionTable,
     canNavigate = false,
+    openDialog,
     className,
 }: UserWidgetProps) {
     const [state, setState] = useState<LoadState>({ status: 'loading' });
@@ -147,7 +148,7 @@ export default function UserWidgetFrame({
                 className,
             )}
             onClickCapture={(event) =>
-                beginWidgetGesture(event, { canNavigate })
+                beginWidgetGesture(event, { canNavigate, openDialog })
             }
             onClick={endWidgetGesture}
         >

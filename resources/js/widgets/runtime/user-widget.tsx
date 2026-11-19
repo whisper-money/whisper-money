@@ -1,6 +1,7 @@
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
 import { type WidgetFrame } from '@/types/dashboard';
 import { lazy, Suspense } from 'react';
+import { type OpenWidgetDialog } from '../sdk/gesture';
 import { type RenderWidgetTransactionTable } from '../sdk/transaction-table-host';
 import { type WidgetRuntimeError } from './widget-error-boundary';
 
@@ -27,6 +28,12 @@ export interface UserWidgetProps {
      * default: a dashboard being edited leaves it off.
      */
     canNavigate?: boolean;
+    /**
+     * Opens the app's new-transaction dialog or importer over the page for
+     * the widget's `wm.open()`. Absent where the host has none (the MCP
+     * preview); like navigation, it needs `canNavigate`.
+     */
+    openDialog?: OpenWidgetDialog;
     className?: string;
 }
 

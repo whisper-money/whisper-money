@@ -297,6 +297,21 @@ export function filterTransactionalAccounts<
     );
 }
 
+/**
+ * `accountId` when it names one of `accounts` money can be assigned to (see
+ * filterTransactionalAccounts), otherwise null: what a dialog asked to start
+ * on an account opens on.
+ */
+export function transactionalAccountId<
+    T extends { id: string; type: AccountType; archived_at?: string | null },
+>(accounts: T[], accountId: string | null): string | null {
+    return filterTransactionalAccounts(accounts).some(
+        (account) => account.id === accountId,
+    )
+        ? accountId
+        : null;
+}
+
 export function isLoanAccount(account: Pick<Account, 'type'>): boolean {
     return account.type === 'loan';
 }

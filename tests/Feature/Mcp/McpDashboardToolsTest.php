@@ -184,6 +184,18 @@ describe('widget reference', function () {
         );
     });
 
+    it('documents the dialogs wm.open opens: new transaction and import, on an optional account, saving nothing unconfirmed', function () {
+        $rules = implode("\n", dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk())['rules']);
+
+        expect($rules)->toContain(
+            '{ newTransaction: { accountId? } }',
+            '{ import: { accountId? } }',
+            'nothing is saved or imported until the user confirms',
+            'the dashboard reloads',
+            'opens on its usual default',
+        );
+    });
+
     it('documents <TransactionList>: every prop it takes, and an example that compiles', function () {
         $json = dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk());
         $docs = $json['component_docs']['TransactionList'];

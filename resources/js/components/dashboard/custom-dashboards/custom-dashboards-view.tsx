@@ -190,7 +190,7 @@ function UserDashboard({
     canEdit: boolean;
     onStartEditing: () => void;
 }) {
-    const { gate, slots } = useUserWidgetSlots({
+    const { gate, slots, dialogs } = useUserWidgetSlots({
         dashboard,
         placed: widgets,
         data,
@@ -221,6 +221,7 @@ function UserDashboard({
             {gate.mode === 'safe' && (
                 <SafeModeNotice reason={gate.reason} onExit={gate.exit} />
             )}
+            {dialogs}
             {isEditing ? (
                 <EditableDashboardGrid
                     widgets={widgets}

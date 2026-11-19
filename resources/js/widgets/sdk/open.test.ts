@@ -156,6 +156,62 @@ describe('wm.open', () => {
         );
     });
 
+    it('resolves the dialogs, with or without an account', () => {
+        expect(
+            resolveDestination({ newTransaction: { accountId: ACCOUNT } }),
+        ).toEqual({
+            dialog: { dialog: 'newTransaction', accountId: ACCOUNT },
+        });
+        expect(resolveDestination({ newTransaction: {} })).toEqual({
+            dialog: { dialog: 'newTransaction', accountId: null },
+        });
+        expect(resolveDestination({ import: { accountId: ACCOUNT } })).toEqual({
+            dialog: { dialog: 'import', accountId: ACCOUNT },
+        });
+        expect(resolveDestination({ import: {} })).toEqual({
+            dialog: { dialog: 'import', accountId: null },
+        });
+    });
+
+    it("asks the host's dialog from a click, and visits nothing", () => {
+        const openDialog = vi.fn();
+        beginWidgetGesture(undefined, { canNavigate: true, openDialog });
+
+        expect(wm.open({ import: { accountId: ACCOUNT } })).toBe(true);
+        expect(openDialog).toHaveBeenCalledWith({
+            dialog: 'import',
+            accountId: ACCOUNT,
+        });
+        expect(router.visit).not.toHaveBeenCalled();
+    });
+
+    it('opens no dialog outside a click, while editing or in a preview', () => {
+        const openDialog = vi.fn();
+
+        expect(wm.open({ newTransaction: {} })).toBe(false);
+
+        beginWidgetGesture(undefined, { canNavigate: false, openDialog });
+        expect(wm.open({ newTransaction: {} })).toBe(false);
+        endWidgetGesture();
+
+        // The MCP preview navigates nowhere and has no dialogs to offer.
+        beginWidgetGesture(undefined, { canNavigate: true });
+        expect(wm.open({ import: {} })).toBe(false);
+
+        expect(openDialog).not.toHaveBeenCalled();
+        expect(console.warn).toHaveBeenCalledWith(
+            expect.stringContaining('cannot open that dialog here'),
+        );
+    });
+
+    it('lists the dialogs in the usage line', () => {
+        expect(resolveDestination({})).toEqual({
+            error: expect.stringContaining(
+                '{ newTransaction: { accountId? } }, { import: { accountId? } }',
+            ),
+        });
+    });
+
     it('visits the page from a click where the host lets it navigate', () => {
         beginWidgetGesture(undefined, { canNavigate: true });
 
@@ -307,6 +363,16 @@ describe('wm.open', () => {
             'a category source the page cannot show',
             { transactions: { categorySource: 'manual' } },
         ],
+        ['a dialog without its options object', { newTransaction: ACCOUNT }],
+        ['a dialog given null', { import: null }],
+        ['a name for an account id', { newTransaction: { accountId: 'Cash' } }],
+        ['a numeric account id', { import: { accountId: 7 } }],
+        ['a null account id', { import: { accountId: null } }],
+        [
+            'an option a dialog does not take',
+            { newTransaction: { accountId: ACCOUNT, amount: 1000 } },
+        ],
+        ['an account list', { import: { accountIds: [ACCOUNT] } }],
     ])('refuses %s, with a warning and no throw', (_name, destination) => {
         beginWidgetGesture(undefined, { canNavigate: true });
 

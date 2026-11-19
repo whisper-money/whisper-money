@@ -15,7 +15,9 @@ import type { ComponentProps } from './component-props';
  * - `wm`: `{ download(filename, content), open(destination) }`, from a click
  *   only: `download` hands data to the user as a CSV, `open` takes them to an
  *   account, a budget or the transactions list with any of its filters
- *   (never a URL; see OpenTransactionsFilters in sdk/open.ts).
+ *   (never a URL; see OpenTransactionsFilters in sdk/open.ts), or opens the
+ *   app's new-transaction dialog or importer over the dashboard, optionally
+ *   on an account (`{ newTransaction: { accountId? } }`, `{ import: { accountId? } }`).
  */
 export const SDK_VALUES: ReadonlySet<string> = new Set([
     'useWidgetData',

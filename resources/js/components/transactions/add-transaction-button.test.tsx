@@ -15,17 +15,18 @@ const { refreshPageAfterWrite } = vi.hoisted(() => ({
 
 vi.mock('@/lib/refresh-page', () => ({ refreshPageAfterWrite }));
 
-const load = vi.fn(async () => true);
+const dialogData = {
+    accounts: [{ id: 'account-1', type: 'checking', archived_at: null }],
+    categories: [],
+    banks: [],
+    labels: [],
+    automationRules: [],
+};
+const load = vi.fn(async () => dialogData);
 
 vi.mock('@/hooks/use-transaction-dialog-data', () => ({
     useTransactionDialogData: () => ({
-        data: {
-            accounts: [],
-            categories: [],
-            banks: [],
-            labels: [],
-            automationRules: [],
-        },
+        data: dialogData,
         loading: false,
         load,
     }),

@@ -30,7 +30,7 @@ vi.mock('../sdk/gesture', async (importOriginal) => {
         ...actual,
         beginWidgetGesture: (
             _event: unknown,
-            options?: { canNavigate?: boolean },
+            options?: { canNavigate?: boolean; openDialog?: () => void },
         ) => actual.beginWidgetGesture(undefined, options),
     };
 });
@@ -401,6 +401,44 @@ describe('useUserWidgetsGate', () => {
             (await screen.findByRole('button', { name: 'Open' })).click();
 
             expect(router.visit).toHaveBeenCalledTimes(visits);
+            vi.unstubAllGlobals();
+        },
+    );
+
+    it.each([
+        [true, 1],
+        [false, 0],
+    ])(
+        "asks the host's dialog from a click when canNavigate is %s",
+        async (canNavigate, asks) => {
+            vi.spyOn(console, 'warn').mockImplementation(() => {});
+            vi.stubGlobal('matchMedia', () => ({
+                matches: false,
+                addEventListener: () => {},
+                removeEventListener: () => {},
+            }));
+            const openDialog = vi.fn();
+            const OPENS = `import{jsx as j}from"react/jsx-runtime";import{Button as B,wm}from"@whisper-money/widget-sdk";export default function W(){return j(B,{onClick:()=>wm.open({newTransaction:{accountId:"0198f0a1-7c3e-7a10-9b2c-1d2e3f4a5b6c"}}),children:"Add"})}`;
+
+            inApp(
+                <UserWidget
+                    js={OPENS}
+                    data={{}}
+                    size={{ width: '1/2', height: 'm' }}
+                    canNavigate={canNavigate}
+                    openDialog={openDialog}
+                />,
+            );
+
+            (await screen.findByRole('button', { name: 'Add' })).click();
+
+            expect(openDialog).toHaveBeenCalledTimes(asks);
+            if (asks > 0) {
+                expect(openDialog).toHaveBeenCalledWith({
+                    dialog: 'newTransaction',
+                    accountId: '0198f0a1-7c3e-7a10-9b2c-1d2e3f4a5b6c',
+                });
+            }
             vi.unstubAllGlobals();
         },
     );
