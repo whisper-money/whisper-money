@@ -283,3 +283,13 @@ test('caches an empty result briefly when it may not be permanent', function (st
         fn () => fn () => Http::response('Error', 500),
     ],
 ]);
+
+test('still looks up the first release day itself', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@2024-03-02/*' => Http::response(['eur' => ['usd' => 1.08]]),
+    ]);
+
+    expect((new CurrencyConversionService)->getRatesForCurrency('EUR', '2024-03-02'))->toBe(['usd' => 1.08]);
+
+    Http::assertSentCount(1);
+});
