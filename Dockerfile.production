@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Pinned to the patch release so a cached base image cannot ship an unpatched PHP
-FROM php:8.5.12-fpm
+FROM php:8.5.13-fpm
 
 ARG SENTRY_RELEASE
 # CI sets this so a failed source map upload fails the image build instead of
