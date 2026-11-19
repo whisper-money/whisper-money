@@ -228,3 +228,58 @@ test('the cache write guard does not swallow a broken cache read', function () {
     expect(fn () => (new CurrencyConversionService)->getRatesForCurrency('EUR', '2026-01-15'))
         ->toThrow(QueryException::class);
 });
+
+test('answers a date before the first release without any request (regression for PHP-LARAVEL-80)', function () {
+    Http::fake();
+
+    $service = new CurrencyConversionService;
+
+    expect($service->getRatesForCurrency('EUR', '2022-10-19'))->toBe([])
+        ->and($service->convert('BTC', 'EUR', 1.0, '2024-03-01'))->toBe(0.0);
+
+    Http::assertNothingSent();
+});
+
+test('drops lookback dates before the first release', function () {
+    Http::fake(['*' => Http::response('Not Found', 404)]);
+
+    (new CurrencyConversionService)->getRatesForCurrency('EUR', '2024-03-03');
+
+    // 2024-03-03 and 2024-03-02, primary + fallback each; nothing earlier.
+    Http::assertSentCount(4);
+});
+
+test('caches a historical date every source 404s for as long as a real release', function () {
+    Http::fake(['*' => Http::response('Not Found', 404)]);
+
+    (new CurrencyConversionService)->getRatesForCurrency('EUR', '2025-06-10');
+
+    $this->travel(29)->days();
+
+    expect(Cache::get('currency-rates:eur:2025-06-10'))->toBe([]);
+});
+
+test('caches an empty result briefly when it may not be permanent', function (string $date, Closure $fake) {
+    Http::fake($fake);
+
+    (new CurrencyConversionService)->getRatesForCurrency('EUR', $date);
+
+    $this->travel(11)->minutes();
+
+    expect(Cache::has("currency-rates:eur:{$date}"))->toBeFalse();
+})->with([
+    'recent date, not published yet' => [
+        fn (): string => now()->subDays(2)->toDateString(),
+        fn () => fn () => Http::response('Not Found', 404),
+    ],
+    'historical date, source unreachable' => [
+        '2025-06-10',
+        fn () => function () {
+            throw new ConnectionException('cURL error 28: Operation timed out');
+        },
+    ],
+    'historical date, server error' => [
+        '2025-06-10',
+        fn () => fn () => Http::response('Error', 500),
+    ],
+]);

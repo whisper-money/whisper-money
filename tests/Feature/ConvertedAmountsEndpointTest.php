@@ -2,6 +2,7 @@
 
 use App\Models\ExchangeRate;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\postJson;
@@ -42,6 +43,20 @@ test('it answers null for an amount whose day holds no rate for its currency', f
         ]])
         ->assertOk()
         ->assertExactJson(['amounts' => [6000, null]]);
+});
+
+test('it answers null without calling the rate API for days before its first release (regression for PHP-LARAVEL-80)', function () {
+    Http::fake();
+
+    actingAs(User::factory()->onboarded()->create(['currency_code' => 'EUR']))
+        ->postJson('/api/converted-amounts', ['items' => [
+            ['from' => 'USD', 'amount' => 12000, 'date' => '2022-10-19'],
+            ['from' => 'USD', 'amount' => 12000, 'date' => '2022-10-14'],
+        ]])
+        ->assertOk()
+        ->assertExactJson(['amounts' => [null, null]]);
+
+    Http::assertNothingSent();
 });
 
 test('it hands back amounts already in the user currency untouched', function () {
