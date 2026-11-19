@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { formatAccountType, type Account } from '@/types/account';
 import { formatDate, formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Link2 } from 'lucide-react';
 import { Fragment, useState, type ReactNode } from 'react';
 
 /*
@@ -404,20 +404,40 @@ export function BrokerWarning({ children }: { children: ReactNode }) {
     );
 }
 
+/**
+ * Says the account the cash goes to is connected to the bank, whose sync
+ * brings its movements and balance, so the file's are left out.
+ */
+export function BankConnectedNotice({ children }: { children: ReactNode }) {
+    return (
+        <Alert className="border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-200">
+            <Link2 />
+            <AlertDescription className="text-inherit">
+                {children}
+            </AlertDescription>
+        </Alert>
+    );
+}
+
 /** Back and on to the preview, at the foot of a broker step. */
 export function BrokerStepFooter({
     onBack,
     onNext,
+    nextDisabled = false,
 }: {
     onBack: () => void;
     onNext: () => void;
+    /** Nothing would come in, so there is nothing to preview. */
+    nextDisabled?: boolean;
 }) {
     return (
         <div className="flex justify-between">
             <Button variant="outline" onClick={onBack}>
                 {__('Back')}
             </Button>
-            <Button onClick={onNext}>{__('Preview')}</Button>
+            <Button onClick={onNext} disabled={nextDisabled}>
+                {__('Preview')}
+            </Button>
         </div>
     );
 }

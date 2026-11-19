@@ -1,14 +1,9 @@
-import { FOOTNOTE } from '@/components/transactions/import-section';
-import {
-    CompactTransactionTable,
-    type CompactRow,
-} from '@/components/transactions/import-step-preview';
 import { AmountDisplay } from '@/components/ui/amount-display';
-import { Button } from '@/components/ui/button';
 import { useLocale } from '@/hooks/use-locale';
 import {
     cashAccountOptions,
     chosenAccountId,
+    isBankConnected,
     portfolioAccountOptions,
 } from '@/lib/broker-imports/broker-accounts';
 import {
@@ -25,7 +20,6 @@ import {
     type MyInvestorSecuritiesImport,
     type MyInvestorSecuritiesPlan,
 } from '@/lib/broker-imports/myinvestor-import';
-import { type Trade } from '@/lib/broker-imports/types';
 import { formatAccountType, type Account } from '@/types/account';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -33,6 +27,7 @@ import { Info } from 'lucide-react';
 import {
     accountChoiceFrom,
     AccountSelect,
+    BankConnectedNotice,
     BrokerFileNoticeCard,
     BrokerStepFooter,
     BrokerWarning,
@@ -47,6 +42,7 @@ import {
     useMonthRange,
     useRememberedAccounts,
 } from './import-step-broker-parts';
+import { PortfolioOperationsPreview } from './import-step-broker-portfolio-preview';
 
 interface StepProps<Broker, Plan> {
     broker: Broker;
@@ -75,6 +71,9 @@ export function ImportStepBrokerMyInvestorCash({
     const cashAccount = cashOptions.find(
         (account) => account.id === chosenAccountId(plan.cash),
     );
+    const cashSynced = isBankConnected(cashAccount);
+    // The sync keeps a connected account's balances: the file replaces none.
+    const replacesFrom = cashSynced ? null : firstDay(file.movements);
     const { remembered, showPickers, change } = useRememberedAccounts(
         broker,
         cashAccount !== undefined,
@@ -105,41 +104,56 @@ export function ImportStepBrokerMyInvestorCash({
                             name: MYINVESTOR_CASH_NAME,
                             type: formatAccountType('savings'),
                         })}
-                        replacesFrom={firstDay(file.movements)}
+                        replacesFrom={replacesFrom}
                         parse={accountChoiceFrom}
                         onChange={(cash) => onPlanChange({ ...plan, cash })}
                     />
                 ) : (
-                    <ReplacesFromNote replacesFrom={firstDay(file.movements)} />
+                    <ReplacesFromNote replacesFrom={replacesFrom} />
                 )}
-                <CashBalanceField
-                    label={__('Balance today')}
-                    value={plan.balanceToday}
-                    currencyCode={myInvestorCurrency(file)}
-                    hint={
-                        balanceFromFile
-                            ? __(
-                                  "The file's last balance, on :date. Each day's balance comes from the file too.",
-                                  {
-                                      date: to
-                                          ? formatDateMedium(to, locale)
-                                          : '',
-                                  },
-                              )
-                            : __(
-                                  "Worked out from the file. If it doesn't match the app, correct it and we rebuild each day's balance backwards from it.",
-                              )
-                    }
-                    onChange={
-                        balanceFromFile
-                            ? undefined
-                            : (balanceToday) =>
-                                  onPlanChange({ ...plan, balanceToday })
-                    }
-                />
+                {!cashSynced && (
+                    <CashBalanceField
+                        label={__('Balance today')}
+                        value={plan.balanceToday}
+                        currencyCode={myInvestorCurrency(file)}
+                        hint={
+                            balanceFromFile
+                                ? __(
+                                      "The file's last balance, on :date. Each day's balance comes from the file too.",
+                                      {
+                                          date: to
+                                              ? formatDateMedium(to, locale)
+                                              : '',
+                                      },
+                                  )
+                                : __(
+                                      "Worked out from the file. If it doesn't match the app, correct it and we rebuild each day's balance backwards from it.",
+                                  )
+                        }
+                        onChange={
+                            balanceFromFile
+                                ? undefined
+                                : (balanceToday) =>
+                                      onPlanChange({ ...plan, balanceToday })
+                        }
+                    />
+                )}
             </Panel>
 
-            <BrokerStepFooter onBack={onBack} onNext={onNext} />
+            {cashAccount && cashSynced && (
+                <BankConnectedNotice>
+                    {__(
+                        '“:account” is connected to your bank: its movements and balance come from the sync, so this file has nothing to import into it.',
+                        { account: cashAccount.name },
+                    )}
+                </BankConnectedNotice>
+            )}
+
+            <BrokerStepFooter
+                onBack={onBack}
+                onNext={onNext}
+                nextDisabled={cashSynced}
+            />
         </div>
     );
 }
@@ -321,27 +335,6 @@ export function MyInvestorSecuritiesSummaryStrip({
     );
 }
 
-function operationLabel(order: Trade): string {
-    if (order.isTransfer) {
-        return __('Transfer · :name', { name: order.name });
-    }
-
-    return order.side === 'buy'
-        ? __('Buy · :name', { name: order.name })
-        : __('Sell · :name', { name: order.name });
-}
-
-/** An order as a row: money into the portfolio is positive, out of it negative. */
-function operationRow(order: Trade): CompactRow {
-    return {
-        key: order.externalId,
-        date: order.date,
-        description: operationLabel(order),
-        amountInCents: order.side === 'buy' ? order.amount : -order.amount,
-        currencyCode: order.currency,
-    };
-}
-
 /**
  * The preview of a securities file. It brings no transactions, so there is
  * nothing to pick: the operations are listed for reference, and importing
@@ -349,52 +342,21 @@ function operationRow(order: Trade): CompactRow {
  */
 export function MyInvestorSecuritiesPreview({
     broker,
-    isImporting,
-    onBack,
-    onConfirm,
+    ...props
 }: {
     broker: MyInvestorSecuritiesImport;
     isImporting: boolean;
     onBack: () => void;
     onConfirm: () => void;
 }) {
-    const locale = useLocale();
-    const rows = investedOrders(broker.file)
-        .map(operationRow)
-        .sort((a, b) => b.date.localeCompare(a.date));
-
     return (
-        <div className="flex flex-col gap-4">
-            <MyInvestorSecuritiesSummaryStrip broker={broker} />
-
-            <div className="overflow-hidden rounded-lg border">
-                <div className="max-h-[45vh] overflow-auto">
-                    <CompactTransactionTable rows={rows} locale={locale} />
-                </div>
-                <p className={FOOTNOTE}>
-                    {__(
-                        'For reference only: this file brings no transactions. Importing it writes what the portfolio was worth each day.',
-                    )}
-                </p>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-                <Button
-                    variant="outline"
-                    onClick={onBack}
-                    disabled={isImporting}
-                >
-                    {__('Back')}
-                </Button>
-                <Button
-                    onClick={onConfirm}
-                    disabled={isImporting || rows.length === 0}
-                >
-                    {isImporting
-                        ? __('Importing...')
-                        : __('Import portfolio history')}
-                </Button>
-            </div>
-        </div>
+        <PortfolioOperationsPreview
+            orders={investedOrders(broker.file)}
+            summary={<MyInvestorSecuritiesSummaryStrip broker={broker} />}
+            footnote={__(
+                'For reference only: this file brings no transactions. Importing it writes what the portfolio was worth each day.',
+            )}
+            {...props}
+        />
     );
 }

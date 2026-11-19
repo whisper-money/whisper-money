@@ -2,6 +2,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     cashAccountOptions,
     chosenAccountId,
+    isBankConnected,
     portfolioAccountOptions,
 } from '@/lib/broker-imports/broker-accounts';
 import { brokerCashAccountId } from '@/lib/broker-imports/broker-import';
@@ -20,6 +21,7 @@ import { __ } from '@/utils/i18n';
 import {
     accountChoiceFrom,
     AccountSelect,
+    BankConnectedNotice,
     BrokerFileNoticeCard,
     BrokerStepFooter,
     BrokerWarning,
@@ -36,6 +38,7 @@ import {
     useRememberedAccounts,
     type RememberedAccount,
 } from './import-step-broker-parts';
+import { PortfolioOperationsPreview } from './import-step-broker-portfolio-preview';
 
 interface ImportStepBrokerTradeRepublicProps {
     broker: TradeRepublicImport;
@@ -67,6 +70,11 @@ export function ImportStepBrokerTradeRepublic({
     const cashAccount = cashOptions.find(
         (account) => account.id === cashAccountId,
     );
+    // The sync brings this account's movements and balance: only the portfolio comes in.
+    const cashSynced = isBankConnected(cashAccount);
+    const portfolioSkipped = plan.portfolio.kind === 'skip';
+    // The sync keeps the cash account's balances: the file replaces none.
+    const cashReplacesFrom = cashSynced ? null : firstDay(file.cash);
     const update = (changes: Partial<TradeRepublicPlan>) =>
         onPlanChange({ ...plan, ...changes });
     const { remembered, showPickers, change } = useRememberedAccounts(
@@ -111,22 +119,26 @@ export function ImportStepBrokerTradeRepublic({
                                 name: TRADE_REPUBLIC_CASH_NAME,
                                 type: formatAccountType('checking'),
                             })}
-                            replacesFrom={firstDay(file.cash)}
+                            replacesFrom={cashReplacesFrom}
                             parse={accountChoiceFrom}
                             onChange={(cash) => update({ cash })}
                         />
                     ) : (
-                        <ReplacesFromNote replacesFrom={firstDay(file.cash)} />
+                        <ReplacesFromNote replacesFrom={cashReplacesFrom} />
                     )}
-                    <CashBalanceField
-                        label={__('Cash balance today')}
-                        value={plan.balanceToday}
-                        currencyCode={currencyCode}
-                        hint={__(
-                            "Worked out from the file. If it doesn't match the app, correct it and we rebuild each day's balance backwards from it.",
-                        )}
-                        onChange={(balanceToday) => update({ balanceToday })}
-                    />
+                    {!cashSynced && (
+                        <CashBalanceField
+                            label={__('Cash balance today')}
+                            value={plan.balanceToday}
+                            currencyCode={currencyCode}
+                            hint={__(
+                                "Worked out from the file. If it doesn't match the app, correct it and we rebuild each day's balance backwards from it.",
+                            )}
+                            onChange={(balanceToday) =>
+                                update({ balanceToday })
+                            }
+                        />
+                    )}
                 </Panel>
 
                 <Panel
@@ -158,7 +170,7 @@ export function ImportStepBrokerTradeRepublic({
                             replacesFrom={firstDay(file.trades)}
                         />
                     )}
-                    {plan.portfolio.kind !== 'skip' && (
+                    {!portfolioSkipped && (
                         <InvestedAndValueFields
                             invested={invested}
                             currentValue={plan.currentValue}
@@ -194,7 +206,27 @@ export function ImportStepBrokerTradeRepublic({
                     </BrokerWarning>
                 )}
 
-            <BrokerStepFooter onBack={onBack} onNext={onNext} />
+            {cashAccount && cashSynced && (
+                <BankConnectedNotice>
+                    {portfolioSkipped
+                        ? __(
+                              '“:account” is connected to your bank: its movements and balance come from the sync. Choose an account for the portfolio above, or there is nothing to import.',
+                              { account: cashAccount.name },
+                          )
+                        : __(
+                              '“:account” is connected to your bank: its movements and balance come from the sync, so only the portfolio will be imported.',
+                              { account: cashAccount.name },
+                          )}
+                </BankConnectedNotice>
+            )}
+
+            <BrokerStepFooter
+                onBack={onBack}
+                onNext={onNext}
+                nextDisabled={
+                    cashSynced && (portfolioSkipped || file.trades.length === 0)
+                }
+            />
         </div>
     );
 }
@@ -246,5 +278,41 @@ export function TradeRepublicSummaryStrip({
                 />
             )}
         </div>
+    );
+}
+
+/**
+ * The preview of a Trade Republic file whose cash account is connected to
+ * the bank: the sync brings the movements, so there are none to pick, and
+ * importing writes what the portfolio was worth each day.
+ */
+export function TradeRepublicPortfolioPreview({
+    broker,
+    ...props
+}: {
+    broker: TradeRepublicImport;
+    isImporting: boolean;
+    onBack: () => void;
+    onConfirm: () => void;
+}) {
+    const { file, plan } = broker;
+
+    return (
+        <PortfolioOperationsPreview
+            orders={file.trades}
+            summary={
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <PortfolioSummaryTiles
+                        invested={investedToday(file, broker.today)}
+                        currentValue={plan.currentValue}
+                        currencyCode={tradeRepublicCurrency(file)}
+                    />
+                </div>
+            }
+            footnote={__(
+                'For reference only: the cash movements come from the bank sync. Importing writes what the portfolio was worth each day.',
+            )}
+            {...props}
+        />
     );
 }

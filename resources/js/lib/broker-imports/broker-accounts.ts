@@ -4,6 +4,7 @@ import { type CashMovement, type Trade } from '@/lib/broker-imports/types';
 import {
     storeBalancesInBulk,
     type BulkBalance,
+    type ImportOutcome,
 } from '@/lib/transaction-import';
 import {
     filterTransactionalAccounts,
@@ -156,21 +157,68 @@ export async function resolveBrokerAccount(
     return account;
 }
 
-/** Writes each account's daily balances, in order; false when a request failed. */
+/**
+ * Writes each account's daily balances, one account after the other, and
+ * goes on to the next when one fails: a refused cash series must not cost
+ * the portfolio its own. False when any of them failed.
+ */
 export async function writeBalanceSeries(
     series: { account: Account; balances: BulkBalance[] }[],
 ): Promise<boolean> {
-    try {
-        for (const { account, balances } of series) {
+    let allWritten = true;
+
+    for (const { account, balances } of series) {
+        try {
             await storeBalancesInBulk(account.id, balances);
+        } catch (error) {
+            console.error('Failed to import broker balances:', error);
+            allWritten = false;
         }
-
-        return true;
-    } catch (error) {
-        console.error('Failed to import broker balances:', error);
-
-        return false;
     }
+
+    return allWritten;
+}
+
+/**
+ * Whether the account is connected to the user's bank. Its movements and
+ * balances come from the sync, so a broker file brings it nothing: the
+ * file's own copies would land next to the synced ones as duplicates.
+ */
+export function isBankConnected(
+    account: Pick<Account, 'banking_connection_id'> | undefined,
+): boolean {
+    return Boolean(account?.banking_connection_id);
+}
+
+/** What a run that brought no transactions reports, fresh each time. */
+export function noTransactions(): ImportOutcome {
+    return {
+        imported: [],
+        errors: [],
+        successCount: 0,
+        uncategorizedCount: 0,
+    };
+}
+
+/**
+ * The broker's bank, to make its accounts at. The banks list only holds the
+ * banks the user made, so a broker known through a connected account is
+ * found on that account instead.
+ */
+export function brokerBank(
+    banks: Bank[],
+    accounts: Account[],
+    isBrokerBank: (bank: Pick<Bank, 'name'> | null) => boolean,
+): Bank | null {
+    return (
+        banks.find(isBrokerBank) ??
+        accounts
+            .map((account) => account.bank ?? null)
+            .find(
+                (bank): bank is Bank => bank !== null && isBrokerBank(bank),
+            ) ??
+        null
+    );
 }
 
 /** Whether a bank is the broker's, by its name as the banks list writes it. */

@@ -133,6 +133,58 @@ describe('ImportStepBrokerTradeRepublic', () => {
     });
 });
 
+describe('ImportStepBrokerTradeRepublic with a connected cash account', () => {
+    const connected: Account = {
+        ...checking,
+        id: 'tr-connected',
+        name: 'Trade Republic',
+        bank: {
+            id: 'bank-tr',
+            user_id: null,
+            name: 'Trade Republic',
+            logo: null,
+        },
+        banking_connection_id: 'connection-1',
+    };
+
+    it('says only the portfolio comes in and asks for no cash balance', async () => {
+        renderStep(
+            await sampleImport({
+                cash: { kind: 'existing', accountId: connected.id },
+            }),
+            vi.fn(),
+            [connected],
+        );
+
+        expect(
+            screen.getByText(/so only the portfolio will be imported/),
+        ).not.toBeNull();
+        expect(screen.queryByLabelText('Cash balance today')).toBeNull();
+        // Nor are its daily balances replaced.
+        expect(screen.queryByText(/Its daily balances from/)).toBeNull();
+    });
+
+    it('has nothing to preview once the portfolio is left out too', async () => {
+        renderStep(
+            await sampleImport({
+                cash: { kind: 'existing', accountId: connected.id },
+                portfolio: { kind: 'skip' },
+            }),
+            vi.fn(),
+            [connected],
+        );
+
+        expect(
+            screen.getByText(/Choose an account for the portfolio above/),
+        ).not.toBeNull();
+        expect(
+            screen
+                .getByRole('button', { name: 'Preview' })
+                .hasAttribute('disabled'),
+        ).toBe(true);
+    });
+});
+
 describe('TradeRepublicSummaryStrip', () => {
     it('shows the gain only once a value was typed', async () => {
         const { rerender } = render(

@@ -1,5 +1,8 @@
-import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
+import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import {
+    brokerBank,
+    isBankConnected,
+    noTransactions,
     resolveBrokerAccount,
     writeBalanceSeries,
     type AccountChoice,
@@ -67,13 +70,21 @@ function resolveAccount(
         {
             ...NEW_ACCOUNTS[role],
             currencyCode: tradeRepublicCurrency(options.broker.file),
-            bank: options.banks.find(isTradeRepublicBank) ?? null,
+            bank: brokerBank(
+                options.banks,
+                options.accounts,
+                isTradeRepublicBank,
+            ),
         },
         (account) => options.onAccountCreated?.(role, account),
     );
 }
 
-/** Writes the daily balances of both accounts; false when a request failed. */
+/**
+ * Writes the daily balances of both accounts; false when a request failed.
+ * The cash account's are left out when its balance is not the app's to
+ * write, as on an account connected to the bank.
+ */
 function writeBalances(
     cashAccount: Account,
     portfolioAccount: Account | null,
@@ -82,7 +93,7 @@ function writeBalances(
     const { file, plan, today } = options.broker;
 
     return writeBalanceSeries([
-        ...(accountHasBalance(cashAccount)
+        ...(ownsBalanceUpdates(cashAccount)
             ? [
                   {
                       account: cashAccount,
@@ -114,6 +125,8 @@ function writeBalances(
  * the cash movements as transactions on the cash account (categorised by the
  * user's rules, with Trade Republic's id on each), then the cash account's
  * balance for every day and, when the portfolio is imported, what it held.
+ * A cash account connected to the bank gets neither movements nor
+ * balances, the sync bringing both: only the portfolio comes in.
  */
 export async function runTradeRepublicImport(
     options: TradeRepublicRunOptions,
@@ -125,19 +138,25 @@ export async function runTradeRepublicImport(
             ? null
             : await resolveAccount(plan.portfolio, 'portfolio', options);
 
-    const outcome = await importTransactions({
-        account: cashAccount,
-        rows: options.rows,
-        categories: options.categories,
-        accounts: options.accounts,
-        banks: options.banks,
-        automationRules: options.automationRules,
-        onProgress: options.onProgress,
-        writeRowBalances: false,
-    });
+    const cashSynced = isBankConnected(cashAccount);
+    const outcome = cashSynced
+        ? noTransactions()
+        : await importTransactions({
+              account: cashAccount,
+              rows: options.rows,
+              categories: options.categories,
+              accounts: options.accounts,
+              banks: options.banks,
+              automationRules: options.automationRules,
+              onProgress: options.onProgress,
+              writeRowBalances: false,
+          });
 
+    // Nothing new came into a cash account of the app's: its balances stand.
+    // With the movements left to the sync, the portfolio is all there is.
+    const nothingToWrite = !cashSynced && outcome.successCount === 0;
     const balancesWritten =
-        outcome.successCount === 0 ||
+        nothingToWrite ||
         (await writeBalances(cashAccount, portfolioAccount, options));
 
     return {

@@ -1,4 +1,7 @@
-import { chosenAccountId } from '@/lib/broker-imports/broker-accounts';
+import {
+    chosenAccountId,
+    isBankConnected,
+} from '@/lib/broker-imports/broker-accounts';
 import { withRememberedAccounts } from '@/lib/broker-imports/broker-memory';
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
 import { parseMyInvestorCash } from '@/lib/broker-imports/myinvestor-cash';
@@ -164,6 +167,46 @@ export function brokerCashAccountId(broker: BrokerImport): UUID | null {
             return chosenAccountId(broker.plan.cash);
         case 'myinvestor_securities':
             return null;
+        default:
+            return unknownBroker(broker);
+    }
+}
+
+/**
+ * Whether the file's cash goes to an account connected to the bank. The
+ * sync brings that account's movements and balance, so the import leaves
+ * both out and only a portfolio, when the file has one, comes in.
+ */
+export function brokerCashSynced(
+    broker: BrokerImport,
+    accounts: Account[],
+): boolean {
+    const cashAccountId = brokerCashAccountId(broker);
+
+    return (
+        cashAccountId !== null &&
+        isBankConnected(
+            accounts.find((account) => account.id === cashAccountId),
+        )
+    );
+}
+
+/**
+ * Whether importing the file only writes a portfolio's daily balances, with
+ * no transactions to pick: a securities file, or a Trade Republic one whose
+ * cash is left to the bank sync.
+ */
+export function brokerImportsPortfolioOnly(
+    broker: BrokerImport,
+    accounts: Account[],
+): boolean {
+    switch (broker.kind) {
+        case 'myinvestor_securities':
+            return true;
+        case 'trade_republic':
+            return brokerCashSynced(broker, accounts);
+        case 'myinvestor_cash':
+            return false;
         default:
             return unknownBroker(broker);
     }

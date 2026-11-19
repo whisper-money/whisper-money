@@ -1,5 +1,8 @@
-import { accountHasBalance } from '@/hooks/use-owns-balance-updates';
+import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import {
+    brokerBank,
+    isBankConnected,
+    noTransactions,
     resolveBrokerAccount,
     writeBalanceSeries,
 } from '@/lib/broker-imports/broker-accounts';
@@ -18,17 +21,13 @@ import {
     type MyInvestorSecuritiesImport,
 } from '@/lib/broker-imports/myinvestor-import';
 import { importTransactions } from '@/lib/transaction-import';
-import { type Bank } from '@/types/account';
-
-function myInvestorBank(banks: Bank[]): Bank | null {
-    return banks.find(isMyInvestorBank) ?? null;
-}
 
 /**
  * Brings a MyInvestor current-account file in: makes the savings account
  * when chosen, the movements as transactions on it (categorised by the
  * user's rules, each with the id made from what it says), then its balance
- * for every day.
+ * for every day. An account connected to the bank already gets both from
+ * the sync, so the file brings it nothing.
  */
 export async function runMyInvestorCashImport(
     broker: MyInvestorCashImport,
@@ -42,10 +41,18 @@ export async function runMyInvestorCashImport(
             name: MYINVESTOR_CASH_NAME,
             type: 'savings',
             currencyCode: myInvestorCurrency(file),
-            bank: myInvestorBank(options.banks),
+            bank: brokerBank(options.banks, options.accounts, isMyInvestorBank),
         },
         (created) => options.onAccountCreated?.('cash', created),
     );
+
+    if (isBankConnected(account)) {
+        return {
+            outcome: noTransactions(),
+            balancesFailed: false,
+            accounts: { cash: account },
+        };
+    }
 
     const outcome = await importTransactions({
         account,
@@ -60,7 +67,7 @@ export async function runMyInvestorCashImport(
 
     const balancesWritten =
         outcome.successCount === 0 ||
-        !accountHasBalance(account) ||
+        !ownsBalanceUpdates(account) ||
         (await writeBalanceSeries([
             {
                 account,
@@ -97,7 +104,7 @@ export async function runMyInvestorSecuritiesImport(
             name: MYINVESTOR_PORTFOLIO_NAME,
             type: 'investment',
             currencyCode: myInvestorCurrency(file),
-            bank: myInvestorBank(options.banks),
+            bank: brokerBank(options.banks, options.accounts, isMyInvestorBank),
         },
         (created) => options.onAccountCreated?.('portfolio', created),
     );
@@ -114,12 +121,7 @@ export async function runMyInvestorSecuritiesImport(
     ]);
 
     return {
-        outcome: {
-            imported: [],
-            errors: [],
-            successCount: 0,
-            uncategorizedCount: 0,
-        },
+        outcome: noTransactions(),
         balancesFailed: !balancesWritten,
         accounts: { portfolio: account },
     };

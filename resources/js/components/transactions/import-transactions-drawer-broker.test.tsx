@@ -295,6 +295,51 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
         ).toBe(true);
     });
 
+    it('imports only the portfolio when the cash account is connected to the bank', async () => {
+        const connectedCash: Account = {
+            ...checking,
+            id: 'tr-connected',
+            name: 'Trade Republic',
+            bank: {
+                id: 'bank-tr',
+                user_id: null,
+                name: 'Trade Republic',
+                logo: null,
+            },
+            banking_connection_id: 'connection-1',
+        };
+
+        await reachTradeRepublicStep([connectedCash]);
+
+        expect(
+            screen.getByText(/so only the portfolio will be imported/),
+        ).not.toBeNull();
+        // The sync owns the balance: nothing to type.
+        expect(screen.queryByText('Cash balance today')).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Import portfolio history',
+            }),
+        );
+
+        await waitFor(() =>
+            expect(
+                post.mock.calls
+                    .map(([url]) => String(url))
+                    .filter((url) => url.includes('/balances')),
+            ).toEqual([expect.stringContaining('new-1')]),
+        );
+        expect(
+            post.mock.calls
+                .filter(([url]) => String(url).includes('/settings/accounts'))
+                .map(([, body]) => body.name),
+        ).toEqual(['Trade Republic · Portfolio']);
+        expect(create).not.toHaveBeenCalled();
+        expect(checkDuplicates).not.toHaveBeenCalled();
+    });
+
     describe('remembering the import', () => {
         const renamedCash: Account = {
             ...checking,
@@ -419,6 +464,38 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
                     ),
                 ).toHaveLength(1),
             );
+        });
+
+        it('has nothing to import into a current account connected to the bank', async () => {
+            const connected: Account = {
+                ...checking,
+                id: 'mi-connected',
+                name: 'MyInvestor',
+                bank: {
+                    id: 'bank-mi',
+                    user_id: null,
+                    name: 'MyInvestor',
+                    logo: null,
+                },
+                type: 'savings',
+                banking_connection_id: 'connection-1',
+            };
+
+            await reachMyInvestorStep(
+                'myinvestor-cash.xlsx',
+                'This is a MyInvestor current-account export',
+                'MyInvestor current account',
+                [connected],
+            );
+
+            expect(
+                screen.getByText(/this file has nothing to import into it/),
+            ).not.toBeNull();
+            expect(
+                screen
+                    .getByRole('button', { name: 'Preview' })
+                    .hasAttribute('disabled'),
+            ).toBe(true);
         });
 
         it('lets the balance be typed when the CSV has none', async () => {
