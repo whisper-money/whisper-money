@@ -34,6 +34,18 @@ const myInvestorBank = {
     logo: null,
 };
 
+/** MyInvestor's current account, kept up to date by the bank sync. */
+const connected = {
+    id: 'mi-connected',
+    name: 'MyInvestor',
+    bank: myInvestorBank,
+    type: 'savings' as const,
+    currency_code: 'EUR',
+    banking_connection_id: 'connection-1',
+    external_account_id: 'mi-external',
+    linked_at: null,
+};
+
 const RUN_OPTIONS = {
     accounts: [],
     categories: [],
@@ -210,5 +222,42 @@ describe('MyInvestor runs', () => {
 
         expect(balancesFailed).toBe(true);
         expect(postedTo('/settings/accounts')).toEqual([]);
+    });
+
+    it('imports nothing into a cash account connected to the bank', async () => {
+        const broker = await cashImport();
+
+        const { outcome, balancesFailed } = await runMyInvestorCashImport(
+            {
+                ...broker,
+                plan: {
+                    ...broker.plan,
+                    cash: { kind: 'existing', accountId: connected.id },
+                },
+            },
+            {
+                ...RUN_OPTIONS,
+                accounts: [connected],
+                rows: myInvestorCashPreviewRows(broker.file, 123456, TODAY),
+            },
+        );
+
+        expect(create).not.toHaveBeenCalled();
+        expect(post).not.toHaveBeenCalled();
+        expect(outcome.successCount).toBe(0);
+        expect(balancesFailed).toBe(false);
+    });
+
+    it('makes the portfolio at the bank a connected account is at when the banks list lacks it', async () => {
+        await runMyInvestorSecuritiesImport(await securitiesImport(null), {
+            ...RUN_OPTIONS,
+            accounts: [connected],
+            banks: [],
+            rows: [],
+        });
+
+        expect(postedTo('/settings/accounts')).toEqual([
+            expect.objectContaining({ bank_id: 'bank-mi' }),
+        ]);
     });
 });

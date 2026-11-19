@@ -11,11 +11,13 @@ import {
     MyInvestorCashFileNotice,
     MyInvestorCashSummaryStrip,
     MyInvestorSecuritiesFileNotice,
+    MyInvestorSecuritiesPreview,
     MyInvestorSecuritiesSummaryStrip,
 } from './import-step-broker-myinvestor';
 import {
     ImportStepBrokerTradeRepublic,
     TradeRepublicFileNotice,
+    TradeRepublicPortfolioPreview,
     TradeRepublicSummaryStrip,
 } from './import-step-broker-trade-republic';
 
@@ -92,6 +94,34 @@ export function BrokerImportSummary({ broker }: { broker: BrokerImport }) {
             return <MyInvestorCashSummaryStrip broker={broker} />;
         case 'myinvestor_securities':
             return <MyInvestorSecuritiesSummaryStrip broker={broker} />;
+        default:
+            return unknownBroker(broker);
+    }
+}
+
+interface BrokerPortfolioPreviewProps {
+    broker: BrokerImport;
+    isImporting: boolean;
+    onBack: () => void;
+    onConfirm: () => void;
+}
+
+/**
+ * The preview of an import that only writes a portfolio's daily balances,
+ * for a broker file `brokerImportsPortfolioOnly` says so of. Null for a file
+ * that never imports that way.
+ */
+export function BrokerPortfolioPreview({
+    broker,
+    ...props
+}: BrokerPortfolioPreviewProps) {
+    switch (broker.kind) {
+        case 'trade_republic':
+            return <TradeRepublicPortfolioPreview broker={broker} {...props} />;
+        case 'myinvestor_securities':
+            return <MyInvestorSecuritiesPreview broker={broker} {...props} />;
+        case 'myinvestor_cash':
+            return null;
         default:
             return unknownBroker(broker);
     }

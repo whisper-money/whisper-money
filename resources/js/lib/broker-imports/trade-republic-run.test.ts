@@ -41,6 +41,16 @@ const checking: Account = {
     linked_at: null,
 };
 
+/** Trade Republic's checking account, kept up to date by the bank sync. */
+const connectedTradeRepublic: Account = {
+    ...checking,
+    id: 'tr-connected',
+    name: 'Trade Republic',
+    bank: tradeRepublicBank,
+    banking_connection_id: 'connection-1',
+    external_account_id: 'tr-external',
+};
+
 async function sampleImport(
     plan: Partial<TradeRepublicImport['plan']> = {},
 ): Promise<TradeRepublicImport> {
@@ -230,5 +240,74 @@ describe('runTradeRepublicImport', () => {
 
         expect(outcome.successCount).toBe(1);
         expect(balancesFailed).toBe(true);
+    });
+
+    it('leaves the movements and balances of a connected cash account to the sync, importing only the portfolio', async () => {
+        const broker = await sampleImport({
+            cash: { kind: 'existing', accountId: connectedTradeRepublic.id },
+            currentValue: 25_000,
+        });
+
+        const { outcome, balancesFailed, accounts } =
+            await runTradeRepublicImport({
+                broker,
+                rows: tradeRepublicPreviewRows(broker.file, 0, TODAY),
+                accounts: [connectedTradeRepublic],
+                categories: [],
+                // The list only has the user's own banks, not Trade Republic.
+                banks: [],
+                automationRules: [],
+            });
+
+        expect(create).not.toHaveBeenCalled();
+        expect(outcome.successCount).toBe(0);
+        expect(balancesFailed).toBe(false);
+        expect(accounts.cash).toBe(connectedTradeRepublic);
+
+        // The portfolio is made at the bank the connected account is at.
+        expect(postedTo('/settings/accounts')).toEqual([
+            {
+                name: 'Trade Republic · Portfolio',
+                type: 'investment',
+                currency_code: 'EUR',
+                bank_id: 'bank-tr',
+            },
+        ]);
+
+        const balanceUrls = post.mock.calls
+            .map(([url]) => String(url))
+            .filter((url) => url.includes('/balances'));
+
+        expect(balanceUrls).toHaveLength(1);
+        expect(balanceUrls[0]).toContain('new-1');
+    });
+
+    it("still writes the portfolio's balances when the cash account's are refused", async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        post.mockImplementation(async (url: string) => {
+            if (url.includes(checking.id)) {
+                throw new Error('Server said no');
+            }
+
+            return url.includes('/balances')
+                ? { data: { written: 1 } }
+                : { data: { id: 'new-1', currency_code: 'EUR' } };
+        });
+        const broker = await sampleImport({
+            cash: { kind: 'existing', accountId: checking.id },
+        });
+
+        const { outcome, balancesFailed } =
+            await importFirstRowIntoChecking(broker);
+
+        expect(outcome.successCount).toBe(1);
+        expect(balancesFailed).toBe(true);
+
+        const balanceUrls = post.mock.calls
+            .map(([url]) => String(url))
+            .filter((url) => url.includes('/balances'));
+
+        expect(balanceUrls).toHaveLength(2);
+        expect(balanceUrls[1]).toContain('new-1');
     });
 });

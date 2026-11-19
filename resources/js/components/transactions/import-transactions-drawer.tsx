@@ -19,6 +19,7 @@ import {
 import {
     brokerCashAccountId,
     brokerCurrency,
+    brokerImportsPortfolioOnly,
     brokerPreviewRows,
     readBrokerImport,
     runBrokerImport,
@@ -67,10 +68,10 @@ import { ImportStepAccount } from './import-step-account';
 import {
     BrokerFileNotice,
     BrokerImportSummary,
+    BrokerPortfolioPreview,
     brokerStepInfo,
     ImportStepBroker,
 } from './import-step-broker';
-import { MyInvestorSecuritiesPreview } from './import-step-broker-myinvestor';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
 
@@ -499,10 +500,13 @@ export function ImportTransactionsDrawer({
             return;
         }
 
-        const transactions = await withDuplicateFlags(
-            brokerCashAccountId(broker),
-            brokerPreviewRows(broker),
-        );
+        // No transactions come in, so there are none to check against.
+        const transactions = brokerImportsPortfolioOnly(broker, knownAccounts)
+            ? []
+            : await withDuplicateFlags(
+                  brokerCashAccountId(broker),
+                  brokerPreviewRows(broker),
+              );
 
         setState((prev) => ({
             ...prev,
@@ -902,9 +906,12 @@ export function ImportTransactionsDrawer({
                 );
 
             case ImportStep.Preview:
-                if (broker?.kind === 'myinvestor_securities') {
+                if (
+                    broker &&
+                    brokerImportsPortfolioOnly(broker, knownAccounts)
+                ) {
                     return (
-                        <MyInvestorSecuritiesPreview
+                        <BrokerPortfolioPreview
                             broker={broker}
                             isImporting={isSavingBalances}
                             onBack={() => moveToStep(ImportStep.Broker)}
