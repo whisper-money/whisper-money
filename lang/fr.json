@@ -2910,5 +2910,7 @@
     "Archive": "Archiver",
     "Unarchive": "Désarchiver",
     "The label “:name” is archived. Unarchive it in Settings → Labels to use it.": "L’étiquette « :name » est archivée. Désarchivez-la dans Configuration → Balises pour l’utiliser.",
-    "Archived: once removed, it cannot be added again.": "Archivée : une fois retirée, elle ne peut plus être ajoutée."
+    "Archived: once removed, it cannot be added again.": "Archivée : une fois retirée, elle ne peut plus être ajoutée.",
+    "The balances could not be imported.": "Les soldes n'ont pas pu être importés.",
+    "The owed amounts could not be imported.": "Les montants dus n'ont pas pu être importés."
 }

@@ -261,6 +261,24 @@ describe('storeBalancesInBulk', () => {
         expect(axiosPost.mock.calls[1][1].balances).toHaveLength(1);
     });
 
+    it('reports what each request wrote, so a failed one keeps the earlier ones counted', async () => {
+        axiosPost
+            .mockResolvedValueOnce({ data: { written: 4990 } })
+            .mockRejectedValueOnce(new Error('boom'));
+        const onProgress = vi.fn();
+
+        const balances = Array.from({ length: 5001 }, (_, day) => ({
+            balance_date: '2026-01-01',
+            balance: day,
+        }));
+
+        await expect(
+            storeBalancesInBulk(ACCOUNT_ID, balances, onProgress),
+        ).rejects.toThrow('boom');
+        expect(onProgress).toHaveBeenCalledTimes(1);
+        expect(onProgress).toHaveBeenCalledWith(4990, 5000);
+    });
+
     it('sends nothing when there are no balances', async () => {
         expect(await storeBalancesInBulk(ACCOUNT_ID, [])).toBe(0);
         expect(axiosPost).not.toHaveBeenCalled();

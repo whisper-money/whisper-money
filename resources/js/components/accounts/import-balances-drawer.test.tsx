@@ -2,8 +2,10 @@ import type { Account } from '@/types/account';
 import type { BalanceColumnMapping } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { type ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImportBalancesDrawer } from './import-balances-drawer';
 
 const {
@@ -11,12 +13,23 @@ const {
     loadBalanceImportConfig,
     saveBalanceImportConfig,
     mappingProps,
+    axiosPost,
 } = vi.hoisted(() => ({
     fetchColumnSuggestions: vi.fn(),
     loadBalanceImportConfig: vi.fn(),
     saveBalanceImportConfig: vi.fn(),
     mappingProps: vi.fn(),
+    axiosPost: vi.fn(),
 }));
+
+vi.mock('axios', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('axios')>();
+
+    return {
+        ...actual,
+        default: { ...actual.default, post: axiosPost },
+    };
+});
 
 const headers = ['Datum', 'Depotwert', 'Einstand'];
 const rows = [
@@ -49,7 +62,6 @@ vi.mock('@/lib/import-config-storage', () => ({
 }));
 
 vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
-vi.mock('@/lib/csrf', () => ({ getCsrfToken: () => 'token' }));
 
 vi.mock('@/components/accounts/synced-balance-notice', () => ({
     SyncedBalanceNotice: () => null,
@@ -139,15 +151,9 @@ async function reachMapping() {
 }
 
 describe('ImportBalancesDrawer with AI column mapping', () => {
-    const fetchMock = vi.fn();
-
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.stubGlobal('fetch', fetchMock);
-        fetchMock.mockResolvedValue({
-            ok: true,
-            json: async () => ({ data: { id: 'balance' } }),
-        });
+        axiosPost.mockResolvedValue({ data: { written: rows.length } });
         loadBalanceImportConfig.mockResolvedValue(null);
         fetchColumnSuggestions.mockResolvedValue({
             cached: true,
@@ -162,8 +168,6 @@ describe('ImportBalancesDrawer with AI column mapping', () => {
             },
         });
     });
-
-    afterEach(() => vi.unstubAllGlobals());
 
     it('asks the AI for the balance columns when no stored layout fits', async () => {
         await reachMapping();
@@ -208,18 +212,73 @@ describe('ImportBalancesDrawer with AI column mapping', () => {
         );
     });
 
-    it('leaves no layout behind when every balance failed', async () => {
-        fetchMock.mockResolvedValue({
-            ok: false,
-            json: async () => ({ message: 'No' }),
-        });
+    it('writes every row in one bulk request', async () => {
+        await reachMapping();
+        await screen.findByText('Suggested by AI');
+        fireEvent.click(screen.getByText('leave mapping'));
+        fireEvent.click(await screen.findByText('confirm import'));
+
+        await waitFor(() => expect(toast.success).toHaveBeenCalled());
+        expect(axiosPost).toHaveBeenCalledTimes(1);
+        expect(axiosPost).toHaveBeenCalledWith(
+            '/api/accounts/account-1/balances/bulk',
+            {
+                balances: [
+                    {
+                        balance_date: '2025-01-31',
+                        balance: 1020000,
+                        invested_amount: 900000,
+                    },
+                    {
+                        balance_date: '2025-02-28',
+                        balance: 1065000,
+                        invested_amount: 950000,
+                    },
+                ],
+            },
+        );
+    });
+
+    it('shows why the server refused the import and leaves no layout behind', async () => {
+        axiosPost.mockRejectedValue(
+            new AxiosError('Unprocessable', '422', undefined, undefined, {
+                status: 422,
+                data: {
+                    message: 'The given data was invalid.',
+                    errors: {
+                        'balances.1.balance_date': [
+                            'The balance date is out of range.',
+                        ],
+                    },
+                },
+            } as AxiosResponse),
+        );
 
         await reachMapping();
         fireEvent.click(screen.getByText('leave mapping'));
         fireEvent.click(await screen.findByText('confirm import'));
 
-        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        expect(
+            await screen.findByText('The balance date is out of range.'),
+        ).toBeInTheDocument();
+        expect(toast.error).toHaveBeenCalledWith(
+            'The balance date is out of range.',
+        );
+        expect(toast.success).not.toHaveBeenCalled();
         expect(saveBalanceImportConfig).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a generic message when the request fails for another reason', async () => {
+        axiosPost.mockRejectedValue(new Error('Network Error'));
+
+        await reachMapping();
+        fireEvent.click(screen.getByText('leave mapping'));
+        fireEvent.click(await screen.findByText('confirm import'));
+
+        expect(
+            await screen.findByText('The balances could not be imported.'),
+        ).toBeInTheDocument();
+        expect(toast.success).not.toHaveBeenCalled();
     });
 
     it('keeps a stored layout that fits without asking the AI', async () => {

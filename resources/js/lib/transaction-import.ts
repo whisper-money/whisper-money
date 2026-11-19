@@ -421,23 +421,27 @@ const BULK_BALANCES_PER_REQUEST = 5000;
 /**
  * Write many daily balances on an account, replacing the ones already on
  * those days, in as few requests as the server allows. A failed request
- * rejects, so the caller decides what the user is told.
+ * rejects, so the caller decides what the user is told; the requests before
+ * it stay written, which `onProgress` reports after each one.
  *
  * @returns How many days were written.
  */
 export async function storeBalancesInBulk(
     accountId: UUID,
     balances: BulkBalance[],
+    onProgress?: (written: number, sent: number) => void,
 ): Promise<number> {
     let written = 0;
 
     for (let i = 0; i < balances.length; i += BULK_BALANCES_PER_REQUEST) {
+        const chunk = balances.slice(i, i + BULK_BALANCES_PER_REQUEST);
         const response = await axios.post<{ written: number }>(
             storeBalancesRoute.url(accountId),
-            { balances: balances.slice(i, i + BULK_BALANCES_PER_REQUEST) },
+            { balances: chunk },
         );
 
         written += response.data.written;
+        onProgress?.(written, i + chunk.length);
     }
 
     return written;

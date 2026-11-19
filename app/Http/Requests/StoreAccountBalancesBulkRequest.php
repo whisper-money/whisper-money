@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Rules\StorableDate;
-use App\Services\Accounts\AccountBalanceRecorder;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,9 +13,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Many daily balances for one account in a single request, for an import that
  * carries a balance per day (a broker export can hold years of them).
  *
- * Refuses the accounts a manual snapshot does not belong on: a credit card,
- * which has no balance, and a connected account, whose next sync would
- * overwrite every day written here.
+ * Refuses a credit card, which has no balance. A connected account is taken,
+ * as the single-balance endpoint takes it: a sync only rewrites today and the
+ * days still to come, so the history the "Import balances" drawer writes on
+ * one stays. The broker import leaves connected accounts out on its own.
  */
 class StoreAccountBalancesBulkRequest extends FormRequest
 {
@@ -54,8 +55,8 @@ class StoreAccountBalancesBulkRequest extends FormRequest
                 return;
             }
 
-            foreach (AccountBalanceRecorder::unwritableErrors($account, 'balances') as $key => $message) {
-                $validator->errors()->add($key, $message);
+            if (! $account->type->hasBalance()) {
+                $validator->errors()->add('balances', AccountType::NO_BALANCE_MESSAGE);
             }
         }];
     }
