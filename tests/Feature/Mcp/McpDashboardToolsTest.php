@@ -175,8 +175,11 @@ describe('widget reference', function () {
             'only work from a click',
             '{ account: accountId }',
             '{ budget: budgetId }',
-            '{ transactions: { categoryIds, accountIds, labelIds, dateFrom, dateTo, search } }',
+            '{ transactions: { categoryIds, categoryTypes, accountIds, labelIds, dateFrom, dateTo, cashflowBlock, amountMin, amountMax, currency, creditorName, debtorName, categorySource, search } }',
             'YYYY-MM-DD',
+            'needs both dateFrom and dateTo',
+            'minor units',
+            'need currency',
             'Never a URL',
         );
     });

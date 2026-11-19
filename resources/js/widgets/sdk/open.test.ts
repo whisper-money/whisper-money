@@ -56,6 +56,84 @@ describe('wm.open', () => {
         );
     });
 
+    it('takes every filter the transactions page takes, in any combination', () => {
+        expect(
+            urlOf({
+                transactions: {
+                    categoryTypes: ['savings', 'investment'],
+                    accountIds: [ACCOUNT],
+                    creditorName: 'Mercadona',
+                    debtorName: 'Ana',
+                    categorySource: 'ai',
+                },
+            }),
+        ).toBe(
+            '/transactions?category_types[]=savings&category_types[]=investment' +
+                `&account_ids[]=${ACCOUNT}&creditor_name=Mercadona&debtor_name=Ana` +
+                '&category_source=ai',
+        );
+        expect(
+            urlOf({
+                transactions: {
+                    cashflowBlock: 'fixed',
+                    dateFrom: '2026-11-01',
+                    dateTo: '2026-11-30',
+                    labelIds: [LABEL],
+                },
+            }),
+        ).toBe(
+            '/transactions?cashflow_block=fixed&date_from=2026-11-01' +
+                `&date_to=2026-11-30&label_ids[]=${LABEL}`,
+        );
+        expect(
+            urlOf({
+                transactions: {
+                    categoryTypes: [],
+                    creditorName: ' ',
+                    debtorName: '',
+                },
+            }),
+        ).toBe('/transactions');
+    });
+
+    it.each([['fixed'], ['variable'], ['general'], ['saved'], ['invested']])(
+        'opens the %s cashflow block over a period',
+        (block) => {
+            expect(
+                urlOf({
+                    transactions: {
+                        dateFrom: '2026-11-01',
+                        dateTo: '2026-11-30',
+                        cashflowBlock: block,
+                    },
+                }),
+            ).toBe(
+                `/transactions?date_from=2026-11-01&date_to=2026-11-30&cashflow_block=${block}`,
+            );
+        },
+    );
+
+    it('turns amounts in minor units into the major units the list filters by', () => {
+        expect(
+            urlOf({
+                transactions: {
+                    amountMin: -5000,
+                    amountMax: -1234,
+                    currency: 'EUR',
+                },
+            }),
+        ).toBe('/transactions?amount_min=-50.00&amount_max=-12.34');
+        expect(
+            urlOf({ transactions: { currency: 'cop', amountMin: 25000 } }),
+        ).toBe('/transactions?amount_min=25000');
+        expect(urlOf({ transactions: { amountMax: 5, currency: 'KWD' } })).toBe(
+            '/transactions?amount_max=0.005',
+        );
+        expect(urlOf({ transactions: { currency: 'EUR' } })).toBe(
+            '/transactions',
+        );
+    });
+
     it('visits the page from a click where the host lets it navigate', () => {
         beginWidgetGesture(undefined, { canNavigate: true });
 
@@ -101,6 +179,17 @@ describe('wm.open', () => {
         );
     });
 
+    it('says why a cashflow block or an amount is refused', () => {
+        expect(
+            resolveDestination({ transactions: { cashflowBlock: 'fixed' } }),
+        ).toEqual({
+            error: expect.stringContaining('both dateFrom and dateTo'),
+        });
+        expect(
+            resolveDestination({ transactions: { amountMin: -5000 } }),
+        ).toEqual({ error: expect.stringContaining('currency') });
+    });
+
     it.each([
         ['nothing', undefined],
         ['a URL', 'https://evil.test'],
@@ -130,6 +219,72 @@ describe('wm.open', () => {
         ],
         ['a search that is not text', { transactions: { search: 42 } }],
         ['a search too long', { transactions: { search: 'x'.repeat(201) } }],
+        [
+            'a category type that does not exist',
+            { transactions: { categoryTypes: ['savings', 'shopping'] } },
+        ],
+        [
+            'category types that are not a list',
+            { transactions: { categoryTypes: 'savings' } },
+        ],
+        [
+            'an unknown cashflow block',
+            {
+                transactions: {
+                    cashflowBlock: 'rent',
+                    dateFrom: '2026-11-01',
+                    dateTo: '2026-11-30',
+                },
+            },
+        ],
+        [
+            'a cashflow block without dates',
+            { transactions: { cashflowBlock: 'fixed' } },
+        ],
+        [
+            'a cashflow block with only one date',
+            {
+                transactions: {
+                    cashflowBlock: 'variable',
+                    dateFrom: '2026-11-01',
+                },
+            },
+        ],
+        [
+            'an amount without its currency',
+            { transactions: { amountMin: -5000 } },
+        ],
+        [
+            'an amount in major units',
+            { transactions: { amountMin: -50.5, currency: 'EUR' } },
+        ],
+        [
+            'an amount written as text',
+            { transactions: { amountMax: '100', currency: 'EUR' } },
+        ],
+        [
+            'an amount with a made-up currency',
+            { transactions: { amountMax: 100, currency: 'euro' } },
+        ],
+        [
+            'amounts the wrong way round',
+            {
+                transactions: {
+                    amountMin: -100,
+                    amountMax: -5000,
+                    currency: 'EUR',
+                },
+            },
+        ],
+        [
+            'a creditor name too long',
+            { transactions: { creditorName: 'x'.repeat(256) } },
+        ],
+        ['a debtor name that is not text', { transactions: { debtorName: 7 } }],
+        [
+            'a category source the page cannot show',
+            { transactions: { categorySource: 'manual' } },
+        ],
     ])('refuses %s, with a warning and no throw', (_name, destination) => {
         beginWidgetGesture(undefined, { canNavigate: true });
 
