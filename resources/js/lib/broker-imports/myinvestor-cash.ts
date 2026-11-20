@@ -47,6 +47,22 @@ const TITLE_FINGERPRINTS = [
     /^es\d{2} ?1544/,
 ];
 
+/**
+ * The label cells of the current account's "account template" xlsx (a sheet
+ * whose only MyInvestor mark is its logo image): the holder and the account
+ * number, each in its own cell beside its value.
+ */
+const ACCOUNT_TEMPLATE_LABELS = ['titular', 'cuenta'];
+
+/** The columns the account template's header always has, by normalised name. */
+const ACCOUNT_TEMPLATE_HEADER = [
+    'fecha operacion',
+    'fecha valor',
+    'movimiento',
+    'importe',
+    'saldo',
+];
+
 /** Whether a row's normalised cells have a date, a concept and an amount column. */
 function looksLikeCashHeader(names: string[]): boolean {
     const has = (column: Column) =>
@@ -68,10 +84,25 @@ function hasMyInvestorTitle(rows: unknown[][]): boolean {
 }
 
 /**
+ * Whether the rows above the header label the account holder and number, and
+ * the header has every column of the account template. Either alone is what
+ * other Spanish banks write too; together they are this template's.
+ */
+function isAccountTemplate(rows: unknown[][], names: string[]): boolean {
+    const labels = new Set(rows.flat().map(normalizeText));
+
+    return (
+        ACCOUNT_TEMPLATE_LABELS.every((label) => labels.has(label)) &&
+        ACCOUNT_TEMPLATE_HEADER.every((name) => names.includes(name))
+    );
+}
+
+/**
  * The row of the current account's header, or -1. A date, concept and
  * amount header is what most Spanish banks write, so it only counts as
- * MyInvestor's with something MyInvestor's own: the CSV's exact header, or
- * the xlsx's title rows above it. Any other "Fecha, Concepto, Importe" file
+ * MyInvestor's with something MyInvestor's own: the CSV's exact header, the
+ * xlsx's title rows above it, or the account template's holder and account
+ * labels above its full header. Any other "Fecha, Concepto, Importe" file
  * stays with the generic importer.
  */
 export function findMyInvestorCashHeader(grid: BrokerGrid): number {
@@ -84,7 +115,13 @@ export function findMyInvestorCashHeader(grid: BrokerGrid): number {
     const names = grid[row].map(normalizeText);
     const isCsvHeader = CSV_HEADER.every((name) => names.includes(name));
 
-    return isCsvHeader || hasMyInvestorTitle(grid.slice(0, row)) ? row : -1;
+    const above = grid.slice(0, row);
+
+    return isCsvHeader ||
+        hasMyInvestorTitle(above) ||
+        isAccountTemplate(above, names)
+        ? row
+        : -1;
 }
 
 /** The first words of a concept, by normalised text, and the kind they mean. */
@@ -149,7 +186,7 @@ export interface MyInvestorCashFile {
 
 /**
  * Reads MyInvestor's current-account "Resumen de movimientos", as xlsx (title
- * rows above the header) or as the `;` CSV. The bank gives no id per
+ * rows above the header), as the account template xlsx or as the `;` CSV. The bank gives no id per
  * movement, so each gets one from its day, amount and concept (`rowIdFactory`).
  */
 export function parseMyInvestorCash(grid: BrokerGrid): MyInvestorCashFile {
