@@ -197,6 +197,57 @@ it('loads each chunk\'s accounts in one query instead of one per transaction', f
     expect($accountEagerLoadQueries)->toHaveCount(1);
 });
 
+it('loads each chunk\'s categories in one query instead of one per transaction', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+    $category = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    // Expenses no budget claims, so each falls through to the catch-all, the
+    // path that reads the transaction's category.
+    $transactions = Transaction::factory()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'transaction_date' => now(),
+        'amount' => -1000,
+    ]);
+
+    $queries = [];
+
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    (new ReassignTransactionsToBudgets($transactions->pluck('id')->all()))
+        ->handle(app(BudgetTransactionService::class));
+
+    $categoryEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "categories"') || str_contains($query, 'from `categories`'))
+            && (str_contains($query, '"categories"."id" in') || str_contains($query, '`categories`.`id` in')));
+
+    // One load for the chunk. Without it the catch-all check's per-transaction
+    // loadMissing() fires once per row, which is the N+1 Sentry flagged.
+    expect($categoryEagerLoadQueries)->toHaveCount(1);
+
+    foreach ($transactions as $transaction) {
+        expect(budgetsOf($transaction))->toBe([$this->catchAllPeriod->id]);
+    }
+});
+
+it('keeps a transaction whose category was soft deleted out of the catch-all', function () {
+    $category = Category::query()->findOrFail($this->transaction->category_id);
+    $category->delete();
+
+    (new ReassignTransactionsToBudgets([$this->transaction->id]))
+        ->handle(app(BudgetTransactionService::class));
+
+    // The batch load keeps the soft-delete scope, so the trashed category reads
+    // as null and the catch-all's expense check still turns the row away.
+    expect(budgetsOf($this->transaction))->toBe([]);
+});
+
 it('still weighs a transaction by a soft deleted account\'s ownership share', function () {
     $account = Account::query()->findOrFail($this->transaction->account_id);
     $account->update(['ownership_percentage' => 50]);
