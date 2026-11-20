@@ -32,7 +32,7 @@ import { Fragment, useState, type ReactNode } from 'react';
  */
 
 /** The documentation page on importing a broker's export. */
-export const BROKER_GUIDE_SLUG = 'transactions/import-from-a-broker';
+const BROKER_GUIDE_SLUG = 'transactions/import-from-a-broker';
 
 /** The section of that page each broker's files are explained in. */
 const BROKER_GUIDE_SECTIONS: Record<BrokerImport['kind'], string> = {
@@ -54,7 +54,7 @@ export function BrokerGuideLink({
     return (
         <DocGuideLink
             slug={BROKER_GUIDE_SLUG}
-            anchor={kind && BROKER_GUIDE_SECTIONS[kind]}
+            anchor={kind ? BROKER_GUIDE_SECTIONS[kind] : undefined}
             className={cn('text-[13px]', className)}
         >
             {children}
