@@ -70,9 +70,10 @@ function seededTransaction() {
 
 /**
  * Splits, savings goals and broker imports are all still behind a feature flag
- * that resolves false, and `demo:reset` seeds neither splits nor goals, so their
- * screens would be a 404, an empty chart and a drawer with no broker step. They are seeded here rather than in app/Services/Demo, which
- * is the public demo account and is governed by its own rules.
+ * that resolves false, so their screens would be a 404, a missing page and a
+ * drawer with no broker step. `demo:reset` seeds no split and no goal either.
+ * They are seeded here rather than in app/Services/Demo, which is the public
+ * demo account and is governed by its own rules.
  *
  * The goal's contributions are written rather than borrowed from the seeded
  * transactions: six even monthly transfers draw a saving pace, which is the
@@ -320,7 +321,12 @@ async function openTransactions(page) {
     await page.goto(`${BASE_URL}/transactions`, {
         waitUntil: 'domcontentloaded',
     });
-    await page.getByRole('button', { name: 'Filters', exact: true }).waitFor();
+    // The button the importer opens from, rather than the filter bar, whose
+    // controls change with the viewport.
+    await page
+        .getByRole('button', { name: 'Import transactions' })
+        .first()
+        .waitFor();
 
     const dismiss = page.getByRole('button', { name: 'Dismiss' });
 
@@ -337,7 +343,10 @@ async function openTransactions(page) {
  */
 async function openImportDrawer(page) {
     await openTransactions(page);
-    await page.getByRole('button', { name: 'Import transactions' }).click();
+    await page
+        .getByRole('button', { name: 'Import transactions' })
+        .first()
+        .click();
     await dialog(page).waitFor();
     await page.waitForTimeout(800);
     await page.getByRole('radio', { name: new RegExp(ACCOUNT) }).click();
@@ -557,23 +566,18 @@ async function openMappingStep(page, file) {
 /** The broker importer's own fixtures, uploaded as the broker hands them out. */
 const BROKER_FIXTURES = 'resources/js/lib/__fixtures__';
 
-/**
- * The importer on its account step, opened from the transactions page by the
- * button it is labelled with rather than by the page's filter bar, whose
- * controls change with the viewport.
- */
+/** The link the account step offers someone with no broker account yet. */
+const IMPORT_WITHOUT_ACCOUNT = "Upload the file and we'll create it";
+
+/** The importer on its account step, with the way on for a new broker account. */
 async function openBrokerImporter(page) {
-    await page.goto(`${BASE_URL}/transactions`, {
-        waitUntil: 'domcontentloaded',
-    });
-    const button = page.getByRole('button', { name: 'Import transactions' });
-    await button.first().waitFor();
-    await page.waitForTimeout(1200);
-    await button.first().click();
-    await dialog(page).waitFor();
+    await openTransactions(page);
     await page
-        .getByRole('button', { name: "Upload the file and we'll create it" })
-        .waitFor();
+        .getByRole('button', { name: 'Import transactions' })
+        .first()
+        .click();
+    await dialog(page).waitFor();
+    await page.getByRole('button', { name: IMPORT_WITHOUT_ACCOUNT }).waitFor();
     await page.waitForTimeout(800);
 }
 
@@ -583,9 +587,7 @@ async function openBrokerImporter(page) {
  */
 async function uploadBrokerFile(page, file) {
     await openBrokerImporter(page);
-    await page
-        .getByRole('button', { name: "Upload the file and we'll create it" })
-        .click();
+    await page.getByRole('button', { name: IMPORT_WITHOUT_ACCOUNT }).click();
     await page.getByText('Upload File').waitFor();
     await page
         .locator('input[type="file"]')

@@ -56,8 +56,12 @@ The transactions are described like this:
 - Everything else, with the counterparty's name or Trade Republic's description.
 
 The portfolio covers stocks, ETFs, savings plans and crypto. Its balance on each
-day is what had been invested up to that day (buys minus sells). If you don't
-want it, choose **Don't import the portfolio**.
+day is what had been invested up to that day: what you paid for buys minus what
+you got for sells. A sale at a gain takes off more than it cost, so what was
+invested can drop a lot, even below zero. Shares that arrive without moving cash,
+such as crypto rewards or a transfer in from another broker, don't count as
+invested. If you don't want the portfolio, choose **Don't import the
+portfolio**.
 
 ## MyInvestor
 
@@ -107,11 +111,12 @@ the same.
 What is read from each operation:
 
 - **Buys and subscriptions** add to what was invested; **sells and redemptions**
-  take from it.
+  take off what you got for them.
 - **Transfers and switches** between funds don't change what was invested: the
   money leaves one fund and goes into another.
 - **Pension-plan contributions** count as invested. They carry no ISIN, so the
-  step warns you that they can't be matched to a fund.
+  step warns you that they can't be matched to a fund. Pension-plan
+  **payouts** (prestaciones) take off, like a sell.
 - **Dividends** aren't imported from this file. When they are paid into the
   current account, they come in with its file.
 
@@ -140,12 +145,14 @@ recognised goes the usual way, with its column mapping.
 The broker step has a box for each part of the file, with an **Account** picker:
 
 - **Create “Trade Republic” · Checking**, **Create “MyInvestor” · Savings** or
-  **Create “… · Portfolio” · Investment** create the account when you import.
+  and, for the portfolio, **Create “Trade Republic · Portfolio” · Investment**
+  or **Create “MyInvestor · Portfolio” · Investment** create the account when
+  you import.
   When the broker's bank is in your list, the account is created there.
 - You can also pick an account you already have. If you already have an account
   at that broker, it comes picked.
 - If you pick an account that isn't at Trade Republic for Trade Republic's cash,
-  the step asks whether you are sure.
+  the step warns you in case it's a mistake, but lets you go on.
 - On an existing account, the step tells you from which day its daily balances
   are replaced with the file's.
 
@@ -153,11 +160,13 @@ The broker step has a box for each part of the file, with an **Account** picker:
 
 ### Today's balance
 
-Each day's balance is rebuilt backwards from today's, so a file that doesn't
-start when you opened the account still ends where your account is.
+Each day's balance is rebuilt backwards from today's. When today's balance is
+right, each day's balance adds up even if the file doesn't start when you opened
+the account.
 
 - For Trade Republic, the **Cash balance today** is worked out by adding up the
-  file's movements. If it doesn't match the one the Trade Republic app shows,
+  file's movements, which is only right when the file starts when you opened the
+  account. If it doesn't match the one the Trade Republic app shows,
   correct it.
 - For MyInvestor, when the file has balances, **Balance today** is the file's
   last one and can't be edited. When it doesn't, it is worked out and you can
@@ -216,7 +225,8 @@ with the new months included.
 - **The balances are redone.** The daily balances from the file's first day on
   are replaced with the new ones. With a Trade Republic file or a MyInvestor
   current-account file, only when some new movement comes in: when nothing is
-  new, the balances stay as they were, Trade Republic's portfolio included.
+  new, the balances stay as they were, Trade Republic's portfolio included. A
+  MyInvestor securities file always redoes them.
 
 ## When the account is connected to your bank
 

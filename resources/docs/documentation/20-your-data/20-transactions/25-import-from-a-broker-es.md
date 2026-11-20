@@ -56,8 +56,12 @@ Las transacciones se describen así:
 - El resto, con el nombre de la contraparte o la descripción de Trade Republic.
 
 La cartera recoge acciones, ETF, planes de inversión y criptomonedas. Su saldo de
-cada día es lo invertido hasta ese día (compras menos ventas). Si no quieres
-traerla, elige **No importar la cartera**.
+cada día es lo invertido hasta ese día: lo que pagaste en las compras menos lo
+que cobraste en las ventas. Una venta con ganancia resta más de lo que costó, así
+que lo invertido puede bajar mucho, incluso por debajo de cero. Las acciones que
+llegan sin mover efectivo, como las recompensas en cripto o un traspaso desde
+otro bróker, no cuentan como invertido. Si no quieres traer la cartera, elige
+**No importar la cartera**.
 
 ## MyInvestor
 
@@ -105,11 +109,13 @@ las cabeceras no cuadren con las columnas: se lee igual.
 
 Qué se lee de cada operación:
 
-- **Compras y suscripciones** suman a lo invertido; **ventas y reembolsos** restan.
+- **Compras y suscripciones** suman a lo invertido; **ventas y reembolsos**
+  restan lo que cobraste por ellos.
 - **Traspasos y switches** entre fondos no cambian lo invertido: el dinero sale de
   un fondo y entra en otro.
 - Las **aportaciones a planes de pensiones** cuentan como invertido. Como no
-  llevan ISIN, el paso te avisa de que no se pueden asociar a un fondo.
+  llevan ISIN, el paso te avisa de que no se pueden asociar a un fondo. Las
+  **prestaciones** de un plan restan, como una venta.
 - Los **dividendos** no se importan desde este archivo. Si se cobran en la
   cuenta remunerada, llegan con su archivo.
 
@@ -139,12 +145,13 @@ El paso del bróker tiene un recuadro por cada parte del archivo, con un selecto
 de **Cuenta**:
 
 - **Crear «Trade Republic» · Cuenta Corriente**, **Crear «MyInvestor» · Ahorros**
-  o **Crear «… · Portfolio» · Inversión** crean la cuenta al importar. Si tienes
+  y, para la cartera, **Crear «Trade Republic · Portfolio» · Inversión** o
+  **Crear «MyInvestor · Portfolio» · Inversión** crean la cuenta al importar. Si tienes
   el banco del bróker en tu lista, la cuenta se crea en él.
 - También puedes elegir una cuenta que ya tengas. Si ya tienes una cuenta de ese
   bróker, viene elegida.
 - Si eliges una cuenta que no es de Trade Republic para el efectivo de Trade
-  Republic, el paso te pregunta si estás seguro.
+  Republic, el paso te avisa por si te has equivocado, aunque te deja seguir.
 - En una cuenta que ya existe, el paso te dice desde qué día se sustituyen sus
   saldos diarios por los del archivo.
 
@@ -152,12 +159,13 @@ de **Cuenta**:
 
 ### El saldo de hoy
 
-El saldo de cada día se reconstruye hacia atrás desde el de hoy, así que un
-archivo que no empieza cuando abriste la cuenta termina igualmente donde está tu
-cuenta.
+El saldo de cada día se reconstruye hacia atrás desde el de hoy. Si el saldo de
+hoy es el correcto, los saldos de cada día cuadran aunque el archivo no empiece
+cuando abriste la cuenta.
 
 - En Trade Republic, el **Saldo de efectivo hoy** se calcula sumando los
-  movimientos del archivo. Si no coincide con el que muestra la app de Trade
+  movimientos del archivo, lo que solo es correcto si el archivo empieza cuando
+  abriste la cuenta. Si no coincide con el que muestra la app de Trade
   Republic, corrígelo.
 - En MyInvestor, si el archivo trae saldos, el **Saldo hoy** es el último del
   archivo y no se edita. Si no los trae, se calcula y puedes corregirlo.
@@ -215,7 +223,7 @@ periodo completo, con los meses nuevos incluidos.
   sustituyen por los nuevos. Con un archivo de Trade Republic o de la cuenta
   remunerada de MyInvestor, solo cuando entra algún movimiento nuevo: si no hay
   nada nuevo, los saldos se quedan como estaban, también los de la cartera de
-  Trade Republic.
+  Trade Republic. El archivo de valores de MyInvestor los rehace siempre.
 
 ## Si la cuenta está conectada a tu banco
 
