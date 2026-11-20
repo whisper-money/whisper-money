@@ -78,7 +78,8 @@ class BudgetTransactionService
      *
      * The tree and the catch-all claims are only held for this call, so the
      * next batch sees any category re-parented or budget created in the meantime.
-     * Each user is read once too, for the currency their snapshots are in.
+     * Each user is read once too, for the currency their snapshots are in, and
+     * the categories in one query, for {@see self::catchAllPeriodIds()}.
      *
      * @param  iterable<int, Transaction>  $transactions
      */
@@ -87,6 +88,11 @@ class BudgetTransactionService
         $parentMaps = [];
         $users = [];
         $transactions = collect($transactions);
+
+        // Loaded into the same models, with the default soft-delete scope that
+        // the per-transaction loadMissing() there uses, so a trashed category
+        // still reads as null.
+        Collection::make($transactions->all())->loadMissing('category');
 
         try {
             $this->claimsByPeriod = [];
