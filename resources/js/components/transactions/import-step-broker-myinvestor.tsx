@@ -150,6 +150,7 @@ export function ImportStepBrokerMyInvestorCash({
             )}
 
             <BrokerStepFooter
+                kind={broker.kind}
                 onBack={onBack}
                 onNext={onNext}
                 nextDisabled={cashSynced}
@@ -251,7 +252,11 @@ export function ImportStepBrokerMyInvestorSecurities({
                 </BrokerWarning>
             )}
 
-            <BrokerStepFooter onBack={onBack} onNext={onNext} />
+            <BrokerStepFooter
+                kind={broker.kind}
+                onBack={onBack}
+                onNext={onNext}
+            />
         </div>
     );
 }
@@ -267,6 +272,7 @@ export function MyInvestorCashFileNotice({
 
     return (
         <BrokerFileNoticeCard
+            kind={broker.kind}
             badge="MI"
             title={__('This is a MyInvestor current-account export')}
         >
@@ -289,6 +295,7 @@ export function MyInvestorSecuritiesFileNotice({
 
     return (
         <BrokerFileNoticeCard
+            kind={broker.kind}
             badge="MI"
             title={__('MyInvestor securities operations')}
         >

@@ -1,4 +1,5 @@
 import { fixtureFile } from '@/lib/broker-imports/testing';
+import documentation from '@/routes/documentation';
 import type { Account } from '@/types/account';
 import {
     fireEvent,
@@ -430,6 +431,32 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
 
             await screen.findByText(heading);
         }
+
+        it("links the guide's MyInvestor section from the file notice and the step", async () => {
+            renderDrawer([]);
+
+            fireEvent.click(
+                await screen.findByText("Upload the file and we'll create it"),
+            );
+            upload('myinvestor-cash.xlsx');
+
+            const guide = `${documentation.show.url('transactions/import-from-a-broker')}#myinvestor`;
+            const notice = await screen.findByRole('link', {
+                name: 'Read the full guide',
+            });
+
+            expect(notice.getAttribute('href')).toBe(guide);
+            expect(notice.getAttribute('target')).toBe('_blank');
+
+            fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+            await screen.findByText('MyInvestor current account');
+
+            expect(
+                screen
+                    .getByRole('link', { name: 'What this import does' })
+                    .getAttribute('href'),
+            ).toBe(guide);
+        });
 
         it('imports the current-account xlsx into a new savings account, balance from the file', async () => {
             await reachMyInvestorStep(

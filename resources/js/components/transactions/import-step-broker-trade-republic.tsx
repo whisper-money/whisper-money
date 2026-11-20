@@ -221,6 +221,7 @@ export function ImportStepBrokerTradeRepublic({
             )}
 
             <BrokerStepFooter
+                kind={broker.kind}
                 onBack={onBack}
                 onNext={onNext}
                 nextDisabled={
@@ -242,6 +243,7 @@ export function TradeRepublicFileNotice({
 
     return (
         <BrokerFileNoticeCard
+            kind={broker.kind}
             badge="TR"
             title={__('This is a Trade Republic export')}
         >

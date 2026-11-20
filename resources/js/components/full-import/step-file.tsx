@@ -1,3 +1,4 @@
+import { DocGuideLink } from '@/components/documentation/doc-guide-link';
 import {
     ChoiceCards,
     Notice,
@@ -13,10 +14,9 @@ import {
 } from '@/lib/full-import-format';
 import { SUPPORTED_IMPORT_EXTENSIONS } from '@/lib/transaction-import';
 import { cn } from '@/lib/utils';
-import documentation from '@/routes/documentation';
 import { type FullImportSource } from '@/types/full-import';
 import { __ } from '@/utils/i18n';
-import { ExternalLink, FileSpreadsheet, Lock, Upload, X } from 'lucide-react';
+import { FileSpreadsheet, Lock, Upload, X } from 'lucide-react';
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 
 const SOURCES: {
@@ -275,19 +275,12 @@ export function StepFile({
                             <li key={step}>{__(step)}</li>
                         ))}
                     </ol>
-                    {/* A new tab, so leaving for the guide keeps the file
-                        already read here. */}
-                    <a
-                        href={documentation.show.url(
-                            'import-from-another-app/banktrack',
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                    <DocGuideLink
+                        slug="import-from-another-app/banktrack"
+                        className="mt-3"
                     >
                         {__('Read the full guide')}
-                        <ExternalLink className="size-3.5" aria-hidden="true" />
-                    </a>
+                    </DocGuideLink>
                 </details>
             )}
 

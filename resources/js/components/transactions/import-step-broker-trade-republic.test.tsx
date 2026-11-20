@@ -5,6 +5,7 @@ import {
     type TradeRepublicImport,
     type TradeRepublicPlan,
 } from '@/lib/broker-imports/trade-republic-import';
+import documentation from '@/routes/documentation';
 import type { Account } from '@/types/account';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -68,6 +69,20 @@ function renderStep(
 }
 
 describe('ImportStepBrokerTradeRepublic', () => {
+    it("links the guide's Trade Republic section in a new tab", async () => {
+        renderStep(await sampleImport());
+
+        const link = screen.getByRole('link', {
+            name: 'What this import does',
+        });
+
+        expect(link.getAttribute('href')).toBe(
+            `${documentation.show.url('transactions/import-from-a-broker')}#trade-republic`,
+        );
+        expect(link.getAttribute('target')).toBe('_blank');
+        expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
     it('prefills the cash balance worked out from the file', async () => {
         const broker = await sampleImport({ balanceToday: 123_456 });
         renderStep(broker);
