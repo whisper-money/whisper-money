@@ -4057,5 +4057,7 @@
     "Same accounts as last time:": "Mismas cuentas que la otra vez:",
     "cash": "efectivo",
     "since last time": "desde la última vez",
-    "Last time you entered": "La última vez pusiste"
+    "Last time you entered": "La última vez pusiste",
+    "The balances could not be imported.": "No se han podido importar los saldos.",
+    "The owed amounts could not be imported.": "No se han podido importar los montos adeudados."
 }

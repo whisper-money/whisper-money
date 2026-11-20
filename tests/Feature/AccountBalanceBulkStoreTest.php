@@ -143,15 +143,15 @@ it('refuses a credit card, which has no balance', function () {
     expect(AccountBalance::query()->count())->toBe(0);
 });
 
-it('refuses a connected account, whose next sync would overwrite the balances', function () {
+it('takes the history of a connected account, as the single-balance endpoint does', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->connected()->create(['type' => AccountType::Checking]);
 
     actingAs($user)->postJson(bulkBalancesUrl($account), [
         'balances' => [['balance_date' => '2026-01-01', 'balance' => 1000]],
-    ])->assertUnprocessable()->assertJsonValidationErrors('balances');
+    ])->assertCreated()->assertJson(['written' => 1]);
 
-    expect(AccountBalance::query()->count())->toBe(0);
+    expect($account->balances()->value('balance'))->toBe(1000);
 });
 
 it('reads every spelling of a day as that day', function () {
@@ -230,4 +230,18 @@ it('writes five thousand days in one request', function () {
         ->assertJson(['written' => 5000]);
 
     expect($account->balances()->count())->toBe(5000);
+});
+
+it('names the field, not its position, in a row error', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create(['type' => AccountType::Checking]);
+
+    actingAs($user)->postJson(bulkBalancesUrl($account), [
+        'balances' => [
+            ['balance_date' => '2026-01-01', 'balance' => 1000],
+            ['balance_date' => 'not a date', 'balance' => 1000],
+        ],
+    ])->assertUnprocessable()
+        ->assertJsonPath('errors', fn (array $errors): bool => str_contains($errors['balances.1.balance_date'][0], 'balance date')
+            && ! str_contains($errors['balances.1.balance_date'][0], 'balances.1'));
 });

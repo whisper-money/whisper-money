@@ -1,4 +1,3 @@
-import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { SyncedBalanceNotice } from '@/components/accounts/synced-balance-notice';
 import { AiColumnDetection } from '@/components/ai-column-detection';
 import AlertError from '@/components/alert-error';
@@ -18,18 +17,21 @@ import {
     suggestedBalanceMapping,
 } from '@/lib/ai-import-mapping';
 import { describeColumns } from '@/lib/column-shape';
-import { getCsrfToken } from '@/lib/csrf';
 import {
     detectDateFormat,
     parseAmount,
     parseDate,
     parseFile,
 } from '@/lib/file-parser';
+import { requestErrorMessage } from '@/lib/full-import-api';
 import {
     loadBalanceImportConfig,
     saveBalanceImportConfig,
 } from '@/lib/import-config-storage';
-import { mapsOnlyKnownColumns } from '@/lib/transaction-import';
+import {
+    mapsOnlyKnownColumns,
+    storeBalancesInBulk,
+} from '@/lib/transaction-import';
 import { type SharedData } from '@/types';
 import { supportsInvestedAmount, type Account } from '@/types/account';
 import {
@@ -41,10 +43,11 @@ import {
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
 import type { UUID } from '@/types/uuid';
-import { toMajorUnits, toMinorUnits } from '@/utils/currency';
+import { toMinorUnits } from '@/utils/currency';
 import { formatLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
+import { isAxiosError } from 'axios';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -61,13 +64,28 @@ interface ImportBalancesDrawerProps {
     onSuccess?: () => void;
 }
 
-interface ImportError {
-    rowNumber: number;
-    balance: {
-        date: string;
-        amount: string;
-    };
-    error: string;
+/**
+ * What to tell the user about a failed bulk write. A validation error names
+ * the balance it is about by its position in the request, which is its row in
+ * the preview, so the message leads with that row.
+ */
+function importErrorMessage(error: unknown, fallback: string): string {
+    // Only a validation error says something the user can act on; a server
+    // error's "Server Error" does not.
+    if (!isAxiosError(error) || error.response?.status !== 422) {
+        return fallback;
+    }
+
+    const message = requestErrorMessage(error, fallback);
+    const errors = (error.response.data as { errors?: Record<string, unknown> })
+        ?.errors;
+    const index = Object.keys(errors ?? {})[0]?.match(
+        /^balances\.(\d+)\./,
+    )?.[1];
+
+    return index === undefined
+        ? message
+        : `${__('Row')} ${Number(index) + 1}: ${message}`;
 }
 
 export function ImportBalancesDrawer({
@@ -82,7 +100,6 @@ export function ImportBalancesDrawer({
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
-    const [importErrors, setImportErrors] = useState<ImportError[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(
         null,
@@ -145,7 +162,6 @@ export function ImportBalancesDrawer({
             setIsImporting(false);
             setError(null);
             setSelectedAccount(null);
-            setImportErrors([]);
             setImportProgress(0);
             setImportTotal(0);
             resetAi();
@@ -479,111 +495,50 @@ export function ImportBalancesDrawer({
     };
 
     const handleConfirmImport = async () => {
-        setIsImporting(true);
-        setError(null);
-        setImportErrors([]);
-
-        const total = state.balances.length;
-        setImportTotal(total);
-        setImportProgress(0);
-
         if (!selectedAccount) {
             setError('Selected account not found');
-            setIsImporting(false);
             return;
         }
 
-        const createdBalances: unknown[] = [];
-        const errors: ImportError[] = [];
+        setIsImporting(true);
+        setError(null);
+        setImportTotal(state.balances.length);
+        setImportProgress(0);
 
-        const BATCH_SIZE = 50;
-        let processedCount = 0;
+        const isLoan = selectedAccount.type === 'loan';
+        const term = isLoan ? 'owed amount' : 'balance';
+        const termPlural = isLoan ? 'owed amounts' : 'balances';
+        const imported = (count: number) =>
+            `${count} ${count !== 1 ? termPlural : term}`;
 
-        const xsrfToken = getCsrfToken();
+        // One request per few thousand days rather than one per day: a file
+        // with a few hundred rows used to run into the API's rate limit.
+        let written = 0;
+        let failure: string | null = null;
 
-        for (let i = 0; i < state.balances.length; i += BATCH_SIZE) {
-            const batch = state.balances.slice(i, i + BATCH_SIZE);
-
-            const batchResults = await Promise.allSettled(
-                batch.map(async (balance, batchIndex) => {
-                    const rowNumber = i + batchIndex + 1;
-
-                    const response = await fetch(
-                        store.url(selectedAccount.id),
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-XSRF-TOKEN': xsrfToken,
-                                Accept: 'application/json',
-                            },
-                            body: JSON.stringify({
-                                balance_date: balance.balance_date,
-                                balance: balance.balance,
-                                ...(balance.invested_amount !== null
-                                    ? {
-                                          invested_amount:
-                                              balance.invested_amount,
-                                      }
-                                    : {}),
-                            }),
-                        },
-                    );
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        throw new Error(
-                            data.message || 'Failed to create balance',
-                        );
-                    }
-
-                    const data = await response.json();
-                    return {
-                        success: true,
-                        balance: data.data,
-                        rowNumber,
-                    };
-                }),
+        try {
+            await storeBalancesInBulk(
+                selectedAccount.id,
+                state.balances,
+                (writtenSoFar, sentSoFar) => {
+                    written = writtenSoFar;
+                    setImportProgress(sentSoFar);
+                },
             );
-
-            batchResults.forEach((result, batchIndex) => {
-                const balance = batch[batchIndex];
-                const rowNumber = i + batchIndex + 1;
-
-                if (result.status === 'fulfilled') {
-                    createdBalances.push(result.value.balance);
-                } else {
-                    const errorMessage =
-                        result.reason instanceof Error
-                            ? result.reason.message
-                            : __('Unknown error');
-
-                    errors.push({
-                        rowNumber,
-                        balance: {
-                            date: balance.balance_date,
-                            amount: toMajorUnits(
-                                balance.balance,
-                                selectedAccount?.currency_code || 'USD',
-                            ).toString(),
-                        },
-                        error: errorMessage,
-                    });
-                }
-            });
-
-            processedCount += batch.length;
-            setImportProgress(processedCount);
+        } catch (requestError) {
+            failure = importErrorMessage(
+                requestError,
+                isLoan
+                    ? __('The owed amounts could not be imported.')
+                    : __('The balances could not be imported.'),
+            );
         }
 
-        setImportErrors(errors);
         setIsImporting(false);
-
-        const successCount = createdBalances.length;
 
         // Only a mapping that actually brought rows in is worth remembering:
         // an abandoned or failed import would leave a bad layout behind.
-        if (successCount > 0) {
+        if (written > 0) {
             void saveBalanceImportConfig(selectedAccount.id, {
                 columnMapping: state.columnMapping,
                 dateFormat: state.dateFormat,
@@ -593,41 +548,26 @@ export function ImportBalancesDrawer({
                     'balance',
                 ),
             });
+            onSuccess?.();
         }
-        const errorCount = errors.length;
-        const isLoan = selectedAccount?.type === 'loan';
-        const term = isLoan ? 'owed amount' : 'balance';
-        const termPlural = isLoan ? 'owed amounts' : 'balances';
 
-        if (errorCount === 0 && successCount > 0) {
-            toast.success(
-                `${successCount} ${successCount !== 1 ? termPlural : term} imported successfully`,
-                {
-                    icon: <Check className="h-4 w-4" />,
-                },
-            );
-            onSuccess?.();
+        if (failure === null) {
+            toast.success(`${imported(written)} imported successfully`, {
+                icon: <Check className="h-4 w-4" />,
+            });
             onOpenChange(false);
-        } else if (successCount > 0 && errorCount > 0) {
+
+            return;
+        }
+
+        setError(failure);
+
+        if (written > 0) {
             toast.warning(
-                `${successCount} ${successCount !== 1 ? termPlural : term} imported, ${errorCount} failed`,
+                `${imported(written)} imported, the rest failed: ${failure}`,
             );
-            onSuccess?.();
-        } else if (successCount > 0) {
-            toast.success(
-                `${successCount} ${successCount !== 1 ? termPlural : term} imported successfully`,
-                {
-                    icon: <Check className="h-4 w-4" />,
-                },
-            );
-            onSuccess?.();
-            onOpenChange(false);
         } else {
-            toast.error(
-                isLoan
-                    ? 'All owed amounts failed to import'
-                    : 'All balances failed to import',
-            );
+            toast.error(failure);
         }
     };
 
@@ -793,57 +733,6 @@ export function ImportBalancesDrawer({
                     </div>
                     <Progress value={percentage} className="h-4" />
                 </div>
-
-                {importErrors.length > 0 && (
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-destructive">
-                                {__('Errors (')}
-                                {importErrors.length})
-                            </h3>
-                        </div>
-                        <div className="max-h-[300px] overflow-y-auto rounded-lg border">
-                            <table className="w-full text-sm">
-                                <thead className="sticky top-0 bg-muted">
-                                    <tr className="border-b">
-                                        <th className="px-4 py-2 text-left font-medium">
-                                            {__('Row')}
-                                        </th>
-                                        <th className="px-4 py-2 text-left font-medium">
-                                            {__('Date')}
-                                        </th>
-                                        <th className="px-4 py-2 text-left font-medium">
-                                            {isLoan
-                                                ? __('Owed Amount')
-                                                : __('Balance')}
-                                        </th>
-                                        <th className="px-4 py-2 text-left font-medium">
-                                            {__('Error')}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {importErrors.map((error, index) => (
-                                        <tr key={index} className="border-b">
-                                            <td className="px-4 py-2 font-mono text-xs">
-                                                {error.rowNumber}
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                {error.balance.date}
-                                            </td>
-                                            <td className="px-4 py-2 font-mono">
-                                                {error.balance.amount}
-                                            </td>
-                                            <td className="max-w-[200px] truncate px-4 py-2 text-destructive">
-                                                {error.error}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
             </div>
         );
     };

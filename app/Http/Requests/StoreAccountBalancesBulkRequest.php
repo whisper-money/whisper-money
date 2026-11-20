@@ -13,9 +13,10 @@ use Illuminate\Foundation\Http\FormRequest;
  * Many daily balances for one account in a single request, for an import that
  * carries a balance per day (a broker export can hold years of them).
  *
- * Refuses the accounts a manual snapshot does not belong on: a credit card,
- * which has no balance, and a connected account, whose next sync would
- * overwrite every day written here.
+ * Refuses a credit card, which has no balance. A connected account is taken,
+ * as the web single-balance endpoint takes it: the "Import balances" drawer is
+ * offered on one to fill in its history. The broker import leaves connected
+ * accounts out on its own.
  */
 class StoreAccountBalancesBulkRequest extends FormRequest
 {
@@ -41,6 +42,21 @@ class StoreAccountBalancesBulkRequest extends FormRequest
     }
 
     /**
+     * Name the field rather than its position, since the drawer prefixes the
+     * row the message is about.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'balances.*.balance_date' => 'balance date',
+            'balances.*.balance' => 'balance',
+            'balances.*.invested_amount' => 'invested amount',
+        ];
+    }
+
+    /**
      * @return array<int, callable>
      */
     public function after(): array
@@ -54,7 +70,7 @@ class StoreAccountBalancesBulkRequest extends FormRequest
                 return;
             }
 
-            foreach (AccountBalanceRecorder::unwritableErrors($account, 'balances') as $key => $message) {
+            foreach (AccountBalanceRecorder::noBalanceErrors($account, 'balances') as $key => $message) {
                 $validator->errors()->add($key, $message);
             }
         }];
