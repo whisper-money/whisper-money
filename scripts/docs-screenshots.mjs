@@ -69,9 +69,9 @@ function seededTransaction() {
 }
 
 /**
- * Splits and savings goals are both still behind a feature flag that resolves
- * false, and `demo:reset` seeds neither one, so their screens would be a 404 and
- * an empty chart. They are seeded here rather than in app/Services/Demo, which
+ * Splits, savings goals and broker imports are all still behind a feature flag
+ * that resolves false, and `demo:reset` seeds neither splits nor goals, so their
+ * screens would be a 404, an empty chart and a drawer with no broker step. They are seeded here rather than in app/Services/Demo, which
  * is the public demo account and is governed by its own rules.
  *
  * The goal's contributions are written rather than borrowed from the seeded
@@ -86,6 +86,7 @@ function seedFeatures() {
         `$user = App\\Models\\User::where('email', '${EMAIL}')->firstOrFail();
          Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\SplitTransactions::class);
          Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\SavingsGoals::class);
+         Laravel\\Pennant\\Feature::for($user)->activate(App\\Features\\BrokerImports::class);
 
          // demo:reset clears labels but not goals, so a re-run would otherwise
          // pile up goals whose label no longer exists.
@@ -553,6 +554,54 @@ async function openMappingStep(page, file) {
     await showAiSuggestion(page);
 }
 
+/** The broker importer's own fixtures, uploaded as the broker hands them out. */
+const BROKER_FIXTURES = 'resources/js/lib/__fixtures__';
+
+/**
+ * The importer on its account step, opened from the transactions page by the
+ * button it is labelled with rather than by the page's filter bar, whose
+ * controls change with the viewport.
+ */
+async function openBrokerImporter(page) {
+    await page.goto(`${BASE_URL}/transactions`, {
+        waitUntil: 'domcontentloaded',
+    });
+    const button = page.getByRole('button', { name: 'Import transactions' });
+    await button.first().waitFor();
+    await page.waitForTimeout(1200);
+    await button.first().click();
+    await dialog(page).waitFor();
+    await page
+        .getByRole('button', { name: "Upload the file and we'll create it" })
+        .waitFor();
+    await page.waitForTimeout(800);
+}
+
+/**
+ * The importer for someone whose broker account is not in the app yet: past
+ * the account step without picking one, a broker file chosen and recognised.
+ */
+async function uploadBrokerFile(page, file) {
+    await openBrokerImporter(page);
+    await page
+        .getByRole('button', { name: "Upload the file and we'll create it" })
+        .click();
+    await page.getByText('Upload File').waitFor();
+    await page
+        .locator('input[type="file"]')
+        .setInputFiles(join(BROKER_FIXTURES, file));
+    await page.locator('[data-slot="drawer-header"]').last().waitFor();
+    await page.waitForTimeout(1500);
+}
+
+/** The broker step of a recognised file, opened from the upload step. */
+async function openBrokerStep(page, file, heading) {
+    await uploadBrokerFile(page, file);
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByText(heading).first().waitFor();
+    await page.waitForTimeout(800);
+}
+
 /** Every amount positive, and a column saying which way the money went. */
 function writeTypeColumnFixture() {
     const path = join(mkdtempSync(join(tmpdir(), 'docs-shots-')), 'typed.csv');
@@ -705,6 +754,62 @@ const SHOTS = {
             .getByRole('button', { name: 'Preview Transactions' })
             .click();
         await page.waitForTimeout(2000);
+
+        return drawerClip(page);
+    },
+
+    'broker-import-without-account': async (page) => {
+        await openBrokerImporter(page);
+
+        return drawerClip(page);
+    },
+
+    'broker-import-trade-republic-upload': async (page) => {
+        await uploadBrokerFile(page, 'trade-republic-sample.csv');
+        await page.getByText('This is a Trade Republic export').waitFor();
+
+        return drawerClip(page);
+    },
+
+    'broker-import-trade-republic': async (page) => {
+        await openBrokerStep(
+            page,
+            'trade-republic-sample.csv',
+            'Trade Republic accounts',
+        );
+
+        return drawerClip(page);
+    },
+
+    'broker-import-trade-republic-preview': async (page) => {
+        await openBrokerStep(
+            page,
+            'trade-republic-sample.csv',
+            'Trade Republic accounts',
+        );
+        await page.getByRole('button', { name: 'Preview' }).click();
+        await page.getByText('Cash today').waitFor();
+        await page.waitForTimeout(2000);
+
+        return drawerClip(page);
+    },
+
+    'broker-import-myinvestor-cash': async (page) => {
+        await openBrokerStep(
+            page,
+            'myinvestor-cash.xlsx',
+            'MyInvestor current account',
+        );
+
+        return drawerClip(page);
+    },
+
+    'broker-import-myinvestor-securities': async (page) => {
+        await openBrokerStep(
+            page,
+            'myinvestor-salida.xlsx',
+            'MyInvestor portfolio',
+        );
 
         return drawerClip(page);
     },

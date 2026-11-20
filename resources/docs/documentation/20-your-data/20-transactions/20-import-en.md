@@ -4,7 +4,9 @@ Importing brings a bank file into Whisper Money when automatic syncing is not av
 
 This imports one file into one account. To bring over a whole export from
 another app, with many accounts and its categories, use
-[Import from another app](/documentation/import-from-another-app).
+[Import from another app](/documentation/import-from-another-app). Trade
+Republic and MyInvestor exports are recognised on their own and need no column
+mapping: see [Import from a broker](/documentation/transactions/import-from-a-broker).
 
 {{TOC}}
 
@@ -200,6 +202,10 @@ This works best when descriptions are consistent. If imported rows come from the
 ### Which file should I use?
 
 Use the cleanest export your bank provides. CSV and spreadsheet-style files are usually easiest.
+
+Coming from Trade Republic or MyInvestor?
+[Import from a broker](/documentation/transactions/import-from-a-broker) says
+which file to download from each.
 
 ### Why are amounts reversed?
 

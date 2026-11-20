@@ -4,7 +4,10 @@ Importar trae un archivo del banco a Whisper Money cuando la sincronización aut
 
 Así se importa un archivo a una cuenta. Para traer la exportación entera de otra
 app, con muchas cuentas y sus categorías, usa
-[Importar desde otra app](/documentation/import-from-another-app).
+[Importar desde otra app](/documentation/import-from-another-app). Las
+exportaciones de Trade Republic y MyInvestor se reconocen solas y no necesitan
+mapeo de columnas: se explican en
+[Importar desde un bróker](/documentation/transactions/import-from-a-broker).
 
 {{TOC}}
 
@@ -202,6 +205,10 @@ Funciona mejor cuando las descripciones son consistentes. Si siempre importas el
 ### ¿Qué archivo debería usar?
 
 Usa la exportación más limpia que ofrezca tu banco. CSV y archivos tipo hoja de cálculo suelen ser los más fáciles.
+
+Si vienes de Trade Republic o MyInvestor, en
+[Importar desde un bróker](/documentation/transactions/import-from-a-broker)
+tienes qué archivo descargar de cada uno.
 
 ### ¿Por qué los importes están invertidos?
 
