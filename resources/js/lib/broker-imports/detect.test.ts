@@ -8,6 +8,7 @@ describe('detectBrokerFile', () => {
         ['trade-republic-legacy.csv', 'trade_republic'],
         ['myinvestor-cash.csv', 'myinvestor_cash'],
         ['myinvestor-cash.xlsx', 'myinvestor_cash'],
+        ['myinvestor-cash-account.xlsx', 'myinvestor_cash'],
         ['myinvestor-salida.xls', 'myinvestor_securities'],
         ['myinvestor-salida.xlsx', 'myinvestor_securities'],
     ])('recognises %s', async (name, kind) => {
@@ -69,6 +70,63 @@ describe('detectBrokerFile', () => {
                 row,
             ]),
         ).toBe('myinvestor_cash');
+    });
+
+    it('takes the account template header for MyInvestor only below its holder and 10-digit account number', () => {
+        const labels = [
+            ['', '', '', 'TITULAR:', 'JANE DEMO'],
+            ['', '', '', 'CUENTA:', '0000000001'],
+        ];
+        const header = [
+            '',
+            'Fecha Operación',
+            'Fecha Valor',
+            'Movimiento',
+            '',
+            'Importe',
+            'Saldo',
+        ];
+        const row = ['', '02/10/2026', '02/10/2026', 'Café', '', -2.5, 97.5];
+
+        expect(detectBrokerFile([...labels, header, row])).toBe(
+            'myinvestor_cash',
+        );
+        expect(detectBrokerFile([labels[0], header, row])).toBeNull();
+        expect(
+            detectBrokerFile([
+                ['Banco Demo'],
+                [
+                    'Fecha Operación',
+                    'Fecha Valor',
+                    'Concepto',
+                    'Importe',
+                    'Saldo',
+                ],
+                row,
+            ]),
+        ).toBeNull();
+        expect(
+            detectBrokerFile([
+                ...labels,
+                ['Fecha', 'Movimiento', 'Importe', 'Saldo'],
+                row,
+            ]),
+        ).toBeNull();
+        expect(
+            detectBrokerFile([
+                ['Titular:', 'JANE DEMO'],
+                ['Cuenta:', 'ES12 2100 0000 0000 0000 0001'],
+                [
+                    'Fecha operación',
+                    'Fecha valor',
+                    'Movimiento',
+                    'Más datos',
+                    'Importe',
+                    'Saldo',
+                ],
+                ['02/10/2026', '02/10/2026', 'Café', '', -2.5, 97.5],
+            ]),
+        ).toBeNull();
     });
 
     it('does not look for the MyInvestor header past the scan window', () => {

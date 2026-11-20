@@ -57,6 +57,53 @@ describe('parseMyInvestorCash', () => {
         ]);
     });
 
+    it('reads the account template xlsx, its columns starting at B with the concept merged over two', async () => {
+        const { movements, hasBalance } = parseMyInvestorCash(
+            await fixtureGrid('myinvestor-cash-account.xlsx'),
+        );
+
+        expect(hasBalance).toBe(true);
+        expect(
+            movements.map((one) => [
+                one.date,
+                one.amount,
+                one.balance,
+                one.description,
+                one.kind,
+            ]),
+        ).toEqual([
+            [
+                '2025-12-12',
+                1,
+                1286,
+                'PERIODO 11/11/2025 11/12/2025',
+                'interest',
+            ],
+            [
+                '2026-06-03',
+                3578773,
+                3580060,
+                'DEMO TRESORERIE FUND ACC EUR',
+                'other',
+            ],
+            [
+                '2026-06-03',
+                -3580060,
+                0,
+                'Transferencia desde MyInvestor',
+                'other',
+            ],
+            ['2026-09-27', 100000, 100000, 'Septiembre', 'other'],
+            [
+                '2026-10-01',
+                -9735,
+                90265,
+                'DEMO GLOBAL SMALL CAP INDEX',
+                'other',
+            ],
+        ]);
+    });
+
     it('gives identical rows of one file their own ids, the same on every read', async () => {
         const first = parseMyInvestorCash(
             await fixtureGrid('myinvestor-cash.xlsx'),
@@ -101,6 +148,22 @@ describe('parseMyInvestorCash', () => {
             parseMyInvestorCash([
                 ['Fecha', 'Concepto', 'Importe'],
                 ['02/10/2026', 'Café', '-2,50'],
+            ]).movements,
+        ).toEqual([]);
+    });
+
+    it('leaves a bank file with the full header but no holder and account labels alone', () => {
+        expect(
+            parseMyInvestorCash([
+                ['Banco Demo'],
+                [
+                    'Fecha Operación',
+                    'Fecha Valor',
+                    'Concepto',
+                    'Importe',
+                    'Saldo',
+                ],
+                ['02/10/2026', '02/10/2026', 'Café', -2.5, 97.5],
             ]).movements,
         ).toEqual([]);
     });
