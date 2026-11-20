@@ -236,6 +236,18 @@ it('loads each chunk\'s categories in one query instead of one per transaction',
     }
 });
 
+it('keeps a transaction whose category was soft deleted out of the catch-all', function () {
+    $category = Category::query()->findOrFail($this->transaction->category_id);
+    $category->delete();
+
+    (new ReassignTransactionsToBudgets([$this->transaction->id]))
+        ->handle(app(BudgetTransactionService::class));
+
+    // The batch load keeps the soft-delete scope, so the trashed category reads
+    // as null and the catch-all's expense check still turns the row away.
+    expect(budgetsOf($this->transaction))->toBe([]);
+});
+
 it('still weighs a transaction by a soft deleted account\'s ownership share', function () {
     $account = Account::query()->findOrFail($this->transaction->account_id);
     $account->update(['ownership_percentage' => 50]);

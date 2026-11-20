@@ -89,9 +89,10 @@ class BudgetTransactionService
         $users = [];
         $transactions = collect($transactions);
 
-        // Loaded into the same models, with the default soft-delete scope that
-        // the per-transaction loadMissing() there uses, so a trashed category
-        // still reads as null.
+        // Wrapped in an Eloquent collection only for loadMissing(). The relation
+        // lands on the same models, with the default soft-delete scope that the
+        // per-transaction loadMissing() there uses, so a trashed category still
+        // reads as null.
         Collection::make($transactions->all())->loadMissing('category');
 
         try {
