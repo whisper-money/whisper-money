@@ -120,8 +120,8 @@ function isAccountTemplate(rows: unknown[][], names: string[]): boolean {
  * The row of the current account's header, or -1. A date, concept and
  * amount header is what most Spanish banks write, so it only counts as
  * MyInvestor's with something MyInvestor's own: the CSV's exact header, the
- * xlsx's title rows above it, or the account template's holder and account
- * labels above its full header. Any other "Fecha, Concepto, Importe" file
+ * xlsx's title rows above it, or the account template's holder and 10-digit
+ * account number above its full header. Any other "Fecha, Concepto, Importe" file
  * stays with the generic importer.
  */
 export function findMyInvestorCashHeader(grid: BrokerGrid): number {
