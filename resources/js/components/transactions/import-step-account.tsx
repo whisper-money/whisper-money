@@ -9,6 +9,7 @@ import {
 } from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
+import { BrokerGuideLink } from './import-step-broker-parts';
 
 interface ImportStepAccountProps {
     accounts?: Account[];
@@ -26,11 +27,14 @@ interface ImportStepAccountProps {
 function ImportWithoutAccountLink({ onClick }: { onClick: () => void }) {
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 text-[13px]">
-            <span className="text-muted-foreground">
-                {__(
-                    'Coming from Trade Republic or MyInvestor without an account yet?',
-                )}
-            </span>
+            <div className="flex flex-col items-start gap-1">
+                <span className="text-muted-foreground">
+                    {__(
+                        'Coming from Trade Republic or MyInvestor without an account yet?',
+                    )}
+                </span>
+                <BrokerGuideLink>{__('How to get the export')}</BrokerGuideLink>
+            </div>
             <Button
                 variant="link"
                 className="h-auto p-0 text-[13px]"

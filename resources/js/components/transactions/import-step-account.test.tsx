@@ -1,3 +1,4 @@
+import documentation from '@/routes/documentation';
 import type { Account } from '@/types/account';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -35,5 +36,42 @@ describe('ImportStepAccount', () => {
         );
         expect(onAccountSelect).not.toHaveBeenCalled();
         expect(onNext).not.toHaveBeenCalled();
+    });
+
+    it('links the broker guide next to the way on without an account', () => {
+        render(
+            <ImportStepAccount
+                accounts={[account]}
+                selectedAccountId={null}
+                onAccountSelect={vi.fn()}
+                onNext={vi.fn()}
+                onImportWithoutAccount={vi.fn()}
+            />,
+        );
+
+        const link = screen.getByRole('link', {
+            name: 'How to get the export',
+        });
+
+        expect(link.getAttribute('href')).toBe(
+            documentation.show.url('transactions/import-from-a-broker'),
+        );
+        expect(link.getAttribute('target')).toBe('_blank');
+        expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
+    it('leaves the broker guide out when there is no way on without an account', () => {
+        render(
+            <ImportStepAccount
+                accounts={[account]}
+                selectedAccountId={null}
+                onAccountSelect={vi.fn()}
+                onNext={vi.fn()}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('link', { name: 'How to get the export' }),
+        ).toBeNull();
     });
 });

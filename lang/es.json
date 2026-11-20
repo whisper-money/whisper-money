@@ -4059,5 +4059,7 @@
     "since last time": "desde la última vez",
     "Last time you entered": "La última vez pusiste",
     "The balances could not be imported.": "No se han podido importar los saldos.",
-    "The owed amounts could not be imported.": "No se han podido importar los montos adeudados."
+    "The owed amounts could not be imported.": "No se han podido importar los montos adeudados.",
+    "What this import does": "Qué hace esta importación",
+    "How to get the export": "Cómo conseguir el archivo"
 }

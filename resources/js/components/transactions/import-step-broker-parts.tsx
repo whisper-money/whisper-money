@@ -1,3 +1,4 @@
+import { DocGuideLink } from '@/components/documentation/doc-guide-link';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -29,6 +30,37 @@ import { Fragment, useState, type ReactNode } from 'react';
  * The pieces every broker's step, file notice and summary strip are built
  * from, so each broker only says what its file holds.
  */
+
+/** The documentation page on importing a broker's export. */
+export const BROKER_GUIDE_SLUG = 'transactions/import-from-a-broker';
+
+/** The section of that page each broker's files are explained in. */
+const BROKER_GUIDE_SECTIONS: Record<BrokerImport['kind'], string> = {
+    trade_republic: 'trade-republic',
+    myinvestor_cash: 'myinvestor',
+    myinvestor_securities: 'myinvestor',
+};
+
+/** A link to the guide's section on this broker, in a new tab. */
+export function BrokerGuideLink({
+    kind,
+    className,
+    children,
+}: {
+    kind?: BrokerImport['kind'];
+    className?: string;
+    children: ReactNode;
+}) {
+    return (
+        <DocGuideLink
+            slug={BROKER_GUIDE_SLUG}
+            anchor={kind && BROKER_GUIDE_SECTIONS[kind]}
+            className={cn('text-[13px]', className)}
+        >
+            {children}
+        </DocGuideLink>
+    );
+}
 
 const CREATE = 'create';
 const SKIP = 'skip';
@@ -421,23 +453,31 @@ export function BankConnectedNotice({ children }: { children: ReactNode }) {
 
 /** Back and on to the preview, at the foot of a broker step. */
 export function BrokerStepFooter({
+    kind,
     onBack,
     onNext,
     nextDisabled = false,
 }: {
+    /** The broker whose section of the guide the footer links to. */
+    kind: BrokerImport['kind'];
     onBack: () => void;
     onNext: () => void;
     /** Nothing would come in, so there is nothing to preview. */
     nextDisabled?: boolean;
 }) {
     return (
-        <div className="flex justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
             <Button variant="outline" onClick={onBack}>
                 {__('Back')}
             </Button>
-            <Button onClick={onNext} disabled={nextDisabled}>
-                {__('Preview')}
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-4">
+                <BrokerGuideLink kind={kind}>
+                    {__('What this import does')}
+                </BrokerGuideLink>
+                <Button onClick={onNext} disabled={nextDisabled}>
+                    {__('Preview')}
+                </Button>
+            </div>
         </div>
     );
 }
@@ -460,10 +500,13 @@ export function useMonthRange(from: string | null, to: string | null): string {
 
 /** What the upload step says under a recognised file. */
 export function BrokerFileNoticeCard({
+    kind,
     badge,
     title,
     children,
 }: {
+    /** The broker whose section of the guide the notice links to. */
+    kind: BrokerImport['kind'];
     badge: string;
     title: string;
     children: ReactNode;
@@ -476,6 +519,9 @@ export function BrokerFileNoticeCard({
             <div className="flex flex-col gap-1">
                 <p className="text-sm font-medium">{title}</p>
                 <p className="text-[13px] text-muted-foreground">{children}</p>
+                <BrokerGuideLink kind={kind} className="self-start">
+                    {__('Read the full guide')}
+                </BrokerGuideLink>
             </div>
         </div>
     );
