@@ -72,7 +72,7 @@ describe('detectBrokerFile', () => {
         ).toBe('myinvestor_cash');
     });
 
-    it('takes the account template header for MyInvestor only below its holder and account labels', () => {
+    it('takes the account template header for MyInvestor only below its holder and 10-digit account number', () => {
         const labels = [
             ['', '', '', 'TITULAR:', 'JANE DEMO'],
             ['', '', '', 'CUENTA:', '0000000001'],
@@ -110,6 +110,21 @@ describe('detectBrokerFile', () => {
                 ...labels,
                 ['Fecha', 'Movimiento', 'Importe', 'Saldo'],
                 row,
+            ]),
+        ).toBeNull();
+        expect(
+            detectBrokerFile([
+                ['Titular:', 'JANE DEMO'],
+                ['Cuenta:', 'ES12 2100 0000 0000 0000 0001'],
+                [
+                    'Fecha operación',
+                    'Fecha valor',
+                    'Movimiento',
+                    'Más datos',
+                    'Importe',
+                    'Saldo',
+                ],
+                ['02/10/2026', '02/10/2026', 'Café', '', -2.5, 97.5],
             ]),
         ).toBeNull();
     });

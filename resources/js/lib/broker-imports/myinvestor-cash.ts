@@ -48,11 +48,14 @@ const TITLE_FINGERPRINTS = [
 ];
 
 /**
- * The label cells of the current account's "account template" xlsx (a sheet
- * whose only MyInvestor mark is its logo image): the holder and the account
- * number, each in its own cell beside its value.
+ * The account template xlsx (a sheet whose only MyInvestor mark is its logo
+ * image) labels the holder and the account number, each in its own cell with
+ * its value in the next one. The number is the bare 10 digits, not the IBAN
+ * other banks write there.
  */
-const ACCOUNT_TEMPLATE_LABELS = ['titular', 'cuenta'];
+const ACCOUNT_TEMPLATE_HOLDER_LABEL = 'titular';
+const ACCOUNT_TEMPLATE_ACCOUNT_LABEL = 'cuenta';
+const ACCOUNT_TEMPLATE_NUMBER = /^\d{10}$/;
 
 /** The columns the account template's header always has, by normalised name. */
 const ACCOUNT_TEMPLATE_HEADER = [
@@ -83,17 +86,33 @@ function hasMyInvestorTitle(rows: unknown[][]): boolean {
     );
 }
 
+/** Whether some row has the label in a cell and the next cell passes the test. */
+function hasLabelledCell(
+    rows: unknown[][],
+    label: string,
+    value: (cell: unknown) => boolean = () => true,
+): boolean {
+    return rows.some((row) =>
+        row.some(
+            (cell, index) =>
+                normalizeText(cell) === label && value(row[index + 1]),
+        ),
+    );
+}
+
 /**
- * Whether the rows above the header label the account holder and number, and
- * the header has every column of the account template. Either alone is what
- * other Spanish banks write too; together they are this template's.
+ * Whether the rows above the header label the holder and the 10-digit
+ * account number, and the header has every column of the account template.
+ * Either alone is what other Spanish banks write too; together they are this
+ * template's.
  */
 function isAccountTemplate(rows: unknown[][], names: string[]): boolean {
-    const labels = new Set(rows.flat().map(normalizeText));
-
     return (
-        ACCOUNT_TEMPLATE_LABELS.every((label) => labels.has(label)) &&
-        ACCOUNT_TEMPLATE_HEADER.every((name) => names.includes(name))
+        ACCOUNT_TEMPLATE_HEADER.every((name) => names.includes(name)) &&
+        hasLabelledCell(rows, ACCOUNT_TEMPLATE_HOLDER_LABEL) &&
+        hasLabelledCell(rows, ACCOUNT_TEMPLATE_ACCOUNT_LABEL, (cell) =>
+            ACCOUNT_TEMPLATE_NUMBER.test(cellString(cell)),
+        )
     );
 }
 
@@ -186,8 +205,9 @@ export interface MyInvestorCashFile {
 
 /**
  * Reads MyInvestor's current-account "Resumen de movimientos", as xlsx (title
- * rows above the header), as the account template xlsx or as the `;` CSV. The bank gives no id per
- * movement, so each gets one from its day, amount and concept (`rowIdFactory`).
+ * rows above the header), as the account template xlsx or as the `;` CSV.
+ * The bank gives no id per movement, so each gets one from its day, amount
+ * and concept (`rowIdFactory`).
  */
 export function parseMyInvestorCash(grid: BrokerGrid): MyInvestorCashFile {
     const headerRow = findMyInvestorCashHeader(grid);
