@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\BudgetNotificationService;
 use App\Services\BudgetTransactionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -1372,4 +1373,41 @@ test('reassigning a batch writes it in one deadlock-retried database transaction
     $this->service->assignTransactions($transactions, notify: false);
 
     expect($period->budgetTransactions()->count())->toBe(3);
+});
+
+test('a notification failing for one transaction of a batch still lets the others go out', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    periodTracking($category);
+    [$failing, $other] = Transaction::factory()->count(2)->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+    ])->all();
+    BudgetTransaction::query()->delete();
+
+    $notifications = new class($failing->id) extends BudgetNotificationService
+    {
+        /** @var array<int, string> */
+        public array $notified = [];
+
+        public function __construct(private readonly string $failingId) {}
+
+        public function handleAssignment(Transaction $transaction, array $matchingPeriodIds, array $createdPeriodIds): void
+        {
+            if ($transaction->id === $this->failingId) {
+                throw new RuntimeException('Mail server down');
+            }
+
+            $this->notified[] = $transaction->id;
+        }
+    };
+    app()->instance(BudgetNotificationService::class, $notifications);
+    Exceptions::fake();
+
+    app(BudgetTransactionService::class)->assignTransactions([$failing, $other]);
+
+    expect($notifications->notified)->toBe([$other->id])
+        ->and(periodIdsOf($failing))->toHaveCount(1)
+        ->and(periodIdsOf($other))->toHaveCount(1);
+    Exceptions::assertReported(RuntimeException::class);
 });

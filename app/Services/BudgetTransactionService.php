@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * @phpstan-type Claim array{categories: array<int, string>, labels: array<int, string>, until: ?string}
@@ -266,8 +267,15 @@ class BudgetTransactionService
      * one database transaction that locks its rows in one query and writes in
      * a handful, rather than all of that once per transaction.
      *
+     * The caller bounds the batch (the reassign job chunks 200 rows), which
+     * bounds how many rows stay locked, and for how long. A failure rolls the
+     * whole batch back, for the job to retry from scratch.
+     *
      * Notifications go out after the commit, each with the periods its
-     * transaction was newly added to.
+     * transaction was newly added to, so each reads the budget's spending
+     * with the whole batch in it. One that fails is reported and the rest
+     * still go out: the rows are committed, so a retry would see nothing new
+     * to announce.
      *
      * @param  array<int, Assignment>  $assignments
      */
@@ -291,7 +299,11 @@ class BudgetTransactionService
         foreach ($assignments as $assignment) {
             $transaction = $assignment['transaction'];
 
-            $this->notifications->handleAssignment($transaction, $assignment['periodIds'], $createdPeriodIds[$transaction->id] ?? []);
+            try {
+                $this->notifications->handleAssignment($transaction, $assignment['periodIds'], $createdPeriodIds[$transaction->id] ?? []);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
     }
 
