@@ -39,6 +39,13 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 - **Cache/Queue:** Redis
 - **Testing:** Pest v4
 
+## Design system
+
+The interface follows a small design system built on shadcn/ui and Tailwind tokens:
+
+- [`docs/design-system.md`](docs/design-system.md): the rules (tokens, components, amounts, charts, page patterns) and the catalog of known gaps.
+- [whisper.money/design-system](https://whisper.money/design-system): live previews of the real components, with light/dark, privacy mode and chart-theme toggles.
+
 ## Running Locally
 
 ### Quick Start (Recommended)
