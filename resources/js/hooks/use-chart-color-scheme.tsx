@@ -15,7 +15,8 @@ const setCookie = (name: string, value: string, days = 365) => {
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
 
-const applyColorScheme = (scheme: ChartColorScheme) => {
+/** Puts a chart theme on <html>: neutral is the absence of the attribute. */
+export const applyColorScheme = (scheme: ChartColorScheme) => {
     if (typeof document === 'undefined') {
         return;
     }

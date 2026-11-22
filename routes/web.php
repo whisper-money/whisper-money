@@ -57,10 +57,12 @@ use App\Models\Bank;
 use App\Support\Marketing\ComparisonPages;
 use App\Support\Marketing\IntegrationsPage;
 use App\Support\Marketing\MarketingContent;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 Route::get('/', function () {
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
@@ -124,6 +126,17 @@ Route::get('privacy', function () {
 Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
+
+/**
+ * The live design system: previews of the real components, for whoever builds
+ * a screen. Public so it opens without an account, but kept out of search
+ * engines and the sitemap, and linked only from the README.
+ */
+Route::get('design-system', function (Request $request): SymfonyResponse {
+    return Inertia::render('design-system')
+        ->toResponse($request)
+        ->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('design-system');
 
 /**
  * The documentation, and a Markdown twin of every page for agents. The `.md`
