@@ -9,10 +9,10 @@ import {
     StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import {
-    stepControlClass,
     StepError,
     StepNote,
     StepScreen,
+    stepControlClass,
 } from '@/components/onboarding/step-screen';
 import {
     BetaConnectorBadge,
@@ -240,15 +240,15 @@ export function ConnectAccountInline({
         setStep('bank');
     }, [step, institutions.length, onBack, setStep, trigger]);
 
+    const pwaNotice = usePwaConnectNotice();
+    const { recordConnectHere } = pwaNotice;
+
     /**
      * The last thing that happens inside our app before the bank takes over, and
      * the widest gap in the onboarding funnel: whoever does not come back from
      * the redirect is only visible here. This inline flow is the onboarding one
      * (settings uses the dialog), so the event is named for that surface.
      */
-    const pwaNotice = usePwaConnectNotice();
-    const { recordConnectHere } = pwaNotice;
-
     const startConnect = useCallback(() => {
         captureEvent('onboarding_bank_connect_started', {
             country,
