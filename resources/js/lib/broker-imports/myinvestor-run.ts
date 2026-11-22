@@ -68,8 +68,9 @@ export async function runMyInvestorCashImport(
     const balancesWritten =
         outcome.successCount === 0 ||
         !ownsBalanceUpdates(account) ||
-        (await writeBalanceSeries([
+        (await writeBalanceSeries('myinvestor_cash', [
             {
+                role: 'cash',
                 account,
                 balances: myInvestorCashBalancePayload(
                     file,
@@ -109,8 +110,9 @@ export async function runMyInvestorSecuritiesImport(
         (created) => options.onAccountCreated?.('portfolio', created),
     );
 
-    const balancesWritten = await writeBalanceSeries([
+    const balancesWritten = await writeBalanceSeries('myinvestor_securities', [
         {
+            role: 'portfolio',
             account,
             balances: myInvestorPortfolioPayload(
                 file,

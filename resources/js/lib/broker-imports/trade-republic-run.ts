@@ -92,10 +92,11 @@ function writeBalances(
 ): Promise<boolean> {
     const { file, plan, today } = options.broker;
 
-    return writeBalanceSeries([
+    return writeBalanceSeries('trade_republic', [
         ...(ownsBalanceUpdates(cashAccount)
             ? [
                   {
+                      role: 'cash' as const,
                       account: cashAccount,
                       balances: cashBalancePayload(
                           file,
@@ -108,6 +109,7 @@ function writeBalances(
         ...(portfolioAccount
             ? [
                   {
+                      role: 'portfolio' as const,
                       account: portfolioAccount,
                       balances: portfolioBalancePayload(
                           file,

@@ -1,8 +1,12 @@
+import { store as storeAccount } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import {
     chosenAccountId,
     isBankConnected,
 } from '@/lib/broker-imports/broker-accounts';
-import { withRememberedAccounts } from '@/lib/broker-imports/broker-memory';
+import {
+    brokerMemoryInUse,
+    withRememberedAccounts,
+} from '@/lib/broker-imports/broker-memory';
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
 import { parseMyInvestorCash } from '@/lib/broker-imports/myinvestor-cash';
 import {
@@ -19,6 +23,14 @@ import {
 } from '@/lib/broker-imports/myinvestor-run';
 import { parseMyInvestorSecurities } from '@/lib/broker-imports/myinvestor-securities';
 import { readBrokerGrid } from '@/lib/broker-imports/read';
+import {
+    reportBrokerImportFailed,
+    reportBrokerParseError,
+    trackBrokerFileDetected,
+    trackBrokerImportCompleted,
+    type BrokerImportStage,
+    type BrokerRunSummary,
+} from '@/lib/broker-imports/telemetry';
 import { parseTradeRepublic } from '@/lib/broker-imports/trade-republic';
 import {
     defaultTradeRepublicPlan,
@@ -27,7 +39,11 @@ import {
     type TradeRepublicImport,
 } from '@/lib/broker-imports/trade-republic-import';
 import { runTradeRepublicImport } from '@/lib/broker-imports/trade-republic-run';
-import { type BrokerGrid, type BrokerLink } from '@/lib/broker-imports/types';
+import {
+    type BrokerFileKind,
+    type BrokerGrid,
+    type BrokerLink,
+} from '@/lib/broker-imports/types';
 import { type ImportOutcome } from '@/lib/transaction-import';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -78,14 +94,47 @@ export function unknownBroker(broker: never): never {
     );
 }
 
-/** What a grid holds, by broker, with the heuristic's accounts. */
+/**
+ * What a grid holds, by broker, with the heuristic's accounts. A file told
+ * apart as a broker's that its parser then cannot read goes to Sentry: the
+ * broker has likely changed its export.
+ */
 function brokerImportFrom(
     grid: BrokerGrid,
     accounts: Account[],
     selectedAccountId: UUID | null,
     today: string,
 ): BrokerImport | null {
-    switch (detectBrokerFile(grid)) {
+    const kind = detectBrokerFile(grid);
+
+    if (kind === null) {
+        return null;
+    }
+
+    try {
+        return parsedBrokerImport(
+            kind,
+            grid,
+            accounts,
+            selectedAccountId,
+            today,
+        );
+    } catch (error) {
+        reportBrokerParseError(error, kind);
+
+        throw error;
+    }
+}
+
+/** A recognised grid, parsed by its broker's parser. */
+function parsedBrokerImport(
+    kind: BrokerFileKind,
+    grid: BrokerGrid,
+    accounts: Account[],
+    selectedAccountId: UUID | null,
+    today: string,
+): BrokerImport {
+    switch (kind) {
         case 'trade_republic': {
             const parsed = parseTradeRepublic(grid);
 
@@ -122,7 +171,7 @@ function brokerImportFrom(
                 plan: defaultMyInvestorSecuritiesPlan(accounts),
             };
         default:
-            return null;
+            return unknownBroker(kind);
     }
 }
 
@@ -148,15 +197,24 @@ export async function readBrokerImport(
         today,
     );
 
-    return (
-        broker &&
-        withRememberedAccounts(
-            broker,
-            await loadLinks(),
-            accounts,
-            selectedAccountId,
-        )
+    if (!broker) {
+        return null;
+    }
+
+    const remembered = withRememberedAccounts(
+        broker,
+        await loadLinks(),
+        accounts,
+        selectedAccountId,
     );
+
+    trackBrokerFileDetected(
+        remembered.kind,
+        file.name,
+        brokerMemoryInUse(remembered) !== null,
+    );
+
+    return remembered;
 }
 
 /** The account the transactions go to, when it already exists. */
@@ -300,8 +358,75 @@ export function brokerPreviewRows(broker: BrokerImport): ParsedTransaction[] {
     }
 }
 
-/** Brings a broker file in, the way its broker needs. */
-export function runBrokerImport(
+/** Whether the import has a portfolio and the user kept it, for telemetry. */
+function portfolioPlan(broker: BrokerImport): BrokerRunSummary['portfolio'] {
+    switch (broker.kind) {
+        case 'trade_republic':
+            return broker.plan.portfolio.kind === 'skip'
+                ? 'skipped'
+                : 'imported';
+        case 'myinvestor_securities':
+            return 'imported';
+        case 'myinvestor_cash':
+            return 'n/a';
+        default:
+            return unknownBroker(broker);
+    }
+}
+
+/** Which step a run that threw was on: making an account, or the rest. */
+function failedStage(error: unknown): BrokerImportStage {
+    const url = (error as { config?: { url?: unknown } } | null)?.config?.url;
+
+    return url === storeAccount.url() ? 'accounts' : 'run';
+}
+
+/**
+ * Brings a broker file in, the way its broker needs, and tells PostHog how
+ * it went (and Sentry when it threw), with counts only.
+ */
+export async function runBrokerImport(
+    broker: BrokerImport,
+    options: BrokerRunOptions,
+): Promise<BrokerRunResult> {
+    const accountsCreated: Partial<Record<BrokerAccountRole, number>> = {};
+    const reimport = brokerMemoryInUse(broker) !== null;
+    const tracked: BrokerRunOptions = {
+        ...options,
+        onAccountCreated: (role, account) => {
+            accountsCreated[role] = (accountsCreated[role] ?? 0) + 1;
+            options.onAccountCreated?.(role, account);
+        },
+    };
+
+    try {
+        const result = await dispatchBrokerImport(broker, tracked);
+
+        trackBrokerImportCompleted({
+            kind: broker.kind,
+            rows: options.rows.length,
+            outcome: result.outcome,
+            balancesFailed: result.balancesFailed,
+            portfolio: portfolioPlan(broker),
+            cashConnected: isBankConnected(result.accounts.cash),
+            accountsCreated,
+            reimport,
+        });
+
+        return result;
+    } catch (error) {
+        reportBrokerImportFailed(error, broker.kind, failedStage(error), {
+            rows: options.rows.length,
+            accounts_created_cash: accountsCreated.cash ?? 0,
+            accounts_created_portfolio: accountsCreated.portfolio ?? 0,
+            reimport,
+        });
+
+        throw error;
+    }
+}
+
+function dispatchBrokerImport(
     broker: BrokerImport,
     options: BrokerRunOptions,
 ): Promise<BrokerRunResult> {

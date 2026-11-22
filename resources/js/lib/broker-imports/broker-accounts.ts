@@ -1,6 +1,12 @@
 import { store as storeAccount } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { type BrokerAccountRole } from '@/lib/broker-imports/broker-import';
 import { dailyInvested, type BalancePoint } from '@/lib/broker-imports/series';
-import { type CashMovement, type Trade } from '@/lib/broker-imports/types';
+import { reportBrokerBalancesFailed } from '@/lib/broker-imports/telemetry';
+import {
+    type BrokerFileKind,
+    type CashMovement,
+    type Trade,
+} from '@/lib/broker-imports/types';
 import {
     storeBalancesInBulk,
     type BulkBalance,
@@ -160,18 +166,30 @@ export async function resolveBrokerAccount(
 /**
  * Writes each account's daily balances, one account after the other, and
  * goes on to the next when one fails: a refused cash series must not cost
- * the portfolio its own. False when any of them failed.
+ * the portfolio its own. False when any of them failed; each failure goes
+ * to Sentry with the account's role, never its name or the amounts.
  */
 export async function writeBalanceSeries(
-    series: { account: Account; balances: BulkBalance[] }[],
+    kind: BrokerFileKind,
+    series: {
+        role: BrokerAccountRole;
+        account: Account;
+        balances: BulkBalance[];
+    }[],
 ): Promise<boolean> {
     let allWritten = true;
 
-    for (const { account, balances } of series) {
+    for (const { role, account, balances } of series) {
         try {
             await storeBalancesInBulk(account.id, balances);
         } catch (error) {
             console.error('Failed to import broker balances:', error);
+            reportBrokerBalancesFailed(error, kind, {
+                role,
+                accountType: account.type,
+                connected: isBankConnected(account),
+                balances: balances.length,
+            });
             allWritten = false;
         }
     }
