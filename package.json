@@ -78,6 +78,7 @@
         "@sentry/react": "^10.40.0",
         "@tailwindcss/vite": "^4.2.1",
         "@tanstack/react-table": "^8.21.3",
+        "@tanstack/react-virtual": "^3.13.12",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.4",
