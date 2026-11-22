@@ -51,6 +51,7 @@ export async function runMyInvestorCashImport(
             outcome: noTransactions(),
             balancesFailed: false,
             accounts: { cash: account },
+            balancesSent: 0,
         };
     }
 
@@ -65,23 +66,25 @@ export async function runMyInvestorCashImport(
         writeRowBalances: false,
     });
 
-    const balancesWritten =
-        outcome.successCount === 0 ||
-        !ownsBalanceUpdates(account) ||
-        (await writeBalanceSeries([
-            {
-                account,
-                balances: myInvestorCashBalancePayload(
-                    file,
-                    plan.balanceToday,
-                    today,
-                ),
-            },
-        ]));
+    const balances =
+        outcome.successCount === 0 || !ownsBalanceUpdates(account)
+            ? { allWritten: true, sent: 0 }
+            : await writeBalanceSeries('myinvestor_cash', [
+                  {
+                      role: 'cash',
+                      account,
+                      balances: myInvestorCashBalancePayload(
+                          file,
+                          plan.balanceToday,
+                          today,
+                      ),
+                  },
+              ]);
 
     return {
         outcome,
-        balancesFailed: !balancesWritten,
+        balancesFailed: !balances.allWritten,
+        balancesSent: balances.sent,
         accounts: { cash: account },
     };
 }
@@ -109,8 +112,9 @@ export async function runMyInvestorSecuritiesImport(
         (created) => options.onAccountCreated?.('portfolio', created),
     );
 
-    const balancesWritten = await writeBalanceSeries([
+    const balances = await writeBalanceSeries('myinvestor_securities', [
         {
+            role: 'portfolio',
             account,
             balances: myInvestorPortfolioPayload(
                 file,
@@ -122,7 +126,8 @@ export async function runMyInvestorSecuritiesImport(
 
     return {
         outcome: noTransactions(),
-        balancesFailed: !balancesWritten,
+        balancesFailed: !balances.allWritten,
+        balancesSent: balances.sent,
         accounts: { portfolio: account },
     };
 }

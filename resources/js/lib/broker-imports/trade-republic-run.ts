@@ -47,6 +47,8 @@ export interface TradeRepublicRunResult {
     balancesFailed: boolean;
     /** The accounts the file went to, made ones included; no portfolio when skipped. */
     accounts: { cash: Account; portfolio?: Account };
+    /** How many daily balances were sent, for telemetry. */
+    balancesSent: number;
 }
 
 /** What each account is called and what it is when the import makes it. */
@@ -81,7 +83,8 @@ function resolveAccount(
 }
 
 /**
- * Writes the daily balances of both accounts; false when a request failed.
+ * Writes the daily balances of both accounts; `allWritten` is false when a
+ * request failed.
  * The cash account's are left out when its balance is not the app's to
  * write, as on an account connected to the bank.
  */
@@ -89,13 +92,14 @@ function writeBalances(
     cashAccount: Account,
     portfolioAccount: Account | null,
     options: TradeRepublicRunOptions,
-): Promise<boolean> {
+): Promise<{ allWritten: boolean; sent: number }> {
     const { file, plan, today } = options.broker;
 
-    return writeBalanceSeries([
+    return writeBalanceSeries('trade_republic', [
         ...(ownsBalanceUpdates(cashAccount)
             ? [
                   {
+                      role: 'cash' as const,
                       account: cashAccount,
                       balances: cashBalancePayload(
                           file,
@@ -108,6 +112,7 @@ function writeBalances(
         ...(portfolioAccount
             ? [
                   {
+                      role: 'portfolio' as const,
                       account: portfolioAccount,
                       balances: portfolioBalancePayload(
                           file,
@@ -155,13 +160,14 @@ export async function runTradeRepublicImport(
     // Nothing new came into a cash account of the app's: its balances stand.
     // With the movements left to the sync, the portfolio is all there is.
     const nothingToWrite = !cashSynced && outcome.successCount === 0;
-    const balancesWritten =
-        nothingToWrite ||
-        (await writeBalances(cashAccount, portfolioAccount, options));
+    const balances = nothingToWrite
+        ? { allWritten: true, sent: 0 }
+        : await writeBalances(cashAccount, portfolioAccount, options);
 
     return {
         outcome,
-        balancesFailed: !balancesWritten,
+        balancesFailed: !balances.allWritten,
+        balancesSent: balances.sent,
         accounts: {
             cash: cashAccount,
             ...(portfolioAccount ? { portfolio: portfolioAccount } : {}),

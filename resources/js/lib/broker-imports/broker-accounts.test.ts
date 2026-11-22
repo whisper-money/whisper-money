@@ -7,9 +7,14 @@ import { isTradeRepublicBank } from '@/lib/broker-imports/trade-republic-import'
 import { type Account } from '@/types/account';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { post } = vi.hoisted(() => ({ post: vi.fn() }));
+const { post, captureException } = vi.hoisted(() => ({
+    post: vi.fn(),
+    captureException: vi.fn(),
+}));
 
 vi.mock('axios', () => ({ default: { post } }));
+vi.mock('@sentry/react', () => ({ captureException }));
+vi.mock('@/lib/posthog', () => ({ captureEvent: vi.fn() }));
 
 const tradeRepublicBank = {
     id: 'bank-tr',
@@ -43,33 +48,64 @@ describe('writeBalanceSeries', () => {
     it("writes every account's series even when an earlier one fails, and reports the failure", async () => {
         post.mockImplementation(async (url: string) => {
             if (url.includes('cash')) {
-                throw new Error('Server said no');
+                throw Object.assign(new Error('Server said no'), {
+                    response: { status: 422 },
+                });
             }
 
             return { data: { written: 1 } };
         });
 
-        const written = await writeBalanceSeries([
-            { account: account('cash'), balances: BALANCES },
-            { account: account('portfolio'), balances: BALANCES },
+        const written = await writeBalanceSeries('trade_republic', [
+            {
+                role: 'cash',
+                account: account('cash', { banking_connection_id: 'c-1' }),
+                balances: BALANCES,
+            },
+            {
+                role: 'portfolio',
+                account: account('portfolio'),
+                balances: BALANCES,
+            },
         ]);
 
-        expect(written).toBe(false);
+        expect(written).toEqual({ allWritten: false, sent: 2 });
         expect(post.mock.calls.map(([url]) => String(url))).toEqual([
             expect.stringContaining('cash'),
             expect.stringContaining('portfolio'),
         ]);
+        // Even a refusal: the import planned the series, so it is our bug.
+        expect(captureException).toHaveBeenCalledTimes(1);
+        expect(captureException).toHaveBeenCalledWith(expect.any(Error), {
+            tags: {
+                feature: 'broker_import',
+                kind: 'trade_republic',
+                stage: 'balances',
+                role: 'cash',
+            },
+            extra: {
+                status: 422,
+                account_type: 'checking',
+                connected: true,
+                balances: 1,
+            },
+        });
     });
 
     it('is true when every series was written', async () => {
         post.mockResolvedValue({ data: { written: 1 } });
 
         expect(
-            await writeBalanceSeries([
-                { account: account('cash'), balances: BALANCES },
-                { account: account('portfolio'), balances: BALANCES },
+            await writeBalanceSeries('trade_republic', [
+                { role: 'cash', account: account('cash'), balances: BALANCES },
+                {
+                    role: 'portfolio',
+                    account: account('portfolio'),
+                    balances: BALANCES,
+                },
             ]),
-        ).toBe(true);
+        ).toEqual({ allWritten: true, sent: 2 });
+        expect(captureException).not.toHaveBeenCalled();
     });
 });
 
