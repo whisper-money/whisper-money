@@ -9,8 +9,10 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetNotificationService;
 use App\Services\BudgetTransactionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -1176,4 +1178,236 @@ test('reassigning a mixed batch lands every transaction where assigning it alone
         expect(periodIdsOf($transaction))->toEqualCanonicalizing($periodIds)
             ->and(periodIdsOf($transaction))->toEqualCanonicalizing($alone[$transaction->id]);
     }
+});
+
+/**
+ * @param  array<int, string>  $queries
+ */
+function queriesStartingWith(array $queries, string $prefix): int
+{
+    return collect($queries)
+        ->filter(fn (string $query): bool => str_starts_with(str_replace(['`', '"'], '', $query), $prefix))
+        ->count();
+}
+
+test('reassigning a batch locks and cleans up its transactions in a fixed number of queries', function () {
+    $tracked = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $untracked = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income]);
+    $period = periodTracking($tracked);
+    $stalePeriod = periodTracking(Category::factory()->create(['user_id' => $this->user->id]));
+
+    $countFor = function (int $size) use ($tracked, $untracked, $period, $stalePeriod): array {
+        $transactions = collect(range(1, $size))->map(fn (int $index): Transaction => Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'category_id' => $index % 2 === 0 ? $tracked->id : $untracked->id,
+            'transaction_date' => now()->subDays(2),
+        ]));
+        // Creating them assigned them already; start from the rows below.
+        BudgetTransaction::query()->delete();
+
+        // Every transaction holds a stale snapshot, half of them a current one too.
+        $transactions->each(function (Transaction $transaction, int $index) use ($period, $stalePeriod): void {
+            BudgetTransaction::factory()->create(['transaction_id' => $transaction->id, 'budget_period_id' => $stalePeriod->id]);
+
+            if ($index % 4 === 1) {
+                BudgetTransaction::factory()->create(['transaction_id' => $transaction->id, 'budget_period_id' => $period->id]);
+            }
+        });
+
+        $queries = countQueries(fn () => (new ReassignTransactionsToBudgets($transactions->pluck('id')->all(), notify: false))->handle($this->service))['queries'];
+
+        return [
+            'locks' => collect($queries)->filter(fn (string $query): bool => str_contains($query, 'for update'))->count(),
+            'deletes' => queriesStartingWith($queries, 'delete from budget_transactions'),
+            'upserts' => queriesStartingWith($queries, 'insert into budget_transactions'),
+        ];
+    };
+
+    // Both ran once per transaction before (PHP-LARAVEL-83). One delete for the
+    // transactions matching nothing, one for those matching $period.
+    expect($countFor(4))->toBe(['locks' => 1, 'deletes' => 2, 'upserts' => 1])
+        ->and($countFor(16))->toBe(['locks' => 1, 'deletes' => 2, 'upserts' => 1]);
+});
+
+test('reassigning a batch drops stale snapshots, keeps current ones and refreshes their amounts', function () {
+    $tracked = Category::factory()->create(['user_id' => $this->user->id]);
+    $other = Category::factory()->create(['user_id' => $this->user->id]);
+    $period = periodTracking($tracked);
+    $stalePeriod = periodTracking($other);
+
+    $make = fn (?Category $category, int $amount): Transaction => Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category?->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => $amount,
+        'currency_code' => $this->user->currency_code,
+    ]);
+
+    $moved = $make($tracked, -1000);
+    $changed = $make($tracked, -2500);
+    $unchanged = $make($tracked, -3000);
+    $orphaned = $make(null, -4000);
+    // Creating them assigned them already; start from the rows below.
+    BudgetTransaction::query()->delete();
+
+    // Moved from $other to $tracked: the stale row goes, a new one comes.
+    BudgetTransaction::factory()->create(['transaction_id' => $moved->id, 'budget_period_id' => $stalePeriod->id, 'amount' => 1000]);
+
+    // Still tracked, amount changed since its snapshot.
+    BudgetTransaction::factory()->create(['transaction_id' => $changed->id, 'budget_period_id' => $period->id, 'amount' => 2000]);
+
+    // Still tracked, snapshot already right: left untouched.
+    $untouched = BudgetTransaction::factory()->create([
+        'transaction_id' => $unchanged->id,
+        'budget_period_id' => $period->id,
+        'amount' => 3000,
+        'updated_at' => now()->subDay(),
+    ]);
+
+    // No longer tracked by anything: every row goes.
+    BudgetTransaction::factory()->create(['transaction_id' => $orphaned->id, 'budget_period_id' => $period->id]);
+    BudgetTransaction::factory()->create(['transaction_id' => $orphaned->id, 'budget_period_id' => $stalePeriod->id]);
+
+    $this->service->assignTransactions([$moved, $changed, $unchanged, $orphaned], notify: false);
+
+    $amountIn = fn (Transaction $transaction): int => (int) BudgetTransaction::query()
+        ->where('transaction_id', $transaction->id)
+        ->value('amount');
+
+    expect(periodIdsOf($moved))->toBe([$period->id])
+        ->and($amountIn($moved))->toBe(1000)
+        ->and(periodIdsOf($changed))->toBe([$period->id])
+        ->and($amountIn($changed))->toBe(2500)
+        ->and(periodIdsOf($unchanged))->toBe([$period->id])
+        ->and($untouched->fresh()->updated_at->equalTo($untouched->updated_at))->toBeTrue()
+        ->and(periodIdsOf($orphaned))->toBe([]);
+});
+
+/**
+ * Bind a notification service that records what it is told instead of sending.
+ */
+function recordingNotifications(): BudgetNotificationService
+{
+    $notifications = new class extends BudgetNotificationService
+    {
+        /** @var array<string, array{matching: array<int, string>, created: array<int, string>}> */
+        public array $calls = [];
+
+        public function handleAssignment(Transaction $transaction, array $matchingPeriodIds, array $createdPeriodIds): void
+        {
+            $this->calls[$transaction->id] = ['matching' => $matchingPeriodIds, 'created' => $createdPeriodIds];
+        }
+    };
+
+    app()->instance(BudgetNotificationService::class, $notifications);
+
+    return $notifications;
+}
+
+test('reassigning a batch tells the notifications which periods each transaction newly joined', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $period = periodTracking($category);
+    $secondPeriod = periodTracking($category);
+
+    $make = fn (): Transaction => Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+
+    $fresh = $make();
+    $halfAssigned = $make();
+    // Creating them assigned them already; start from the row below.
+    BudgetTransaction::query()->delete();
+    BudgetTransaction::factory()->create(['transaction_id' => $halfAssigned->id, 'budget_period_id' => $period->id]);
+    $unowned = $make();
+    $unowned->forceFill(['user_id' => null]);
+
+    $notifications = recordingNotifications();
+
+    app(BudgetTransactionService::class)->assignTransactions([$fresh, $halfAssigned, $unowned]);
+
+    $both = [$period->id, $secondPeriod->id];
+
+    expect($notifications->calls)->toHaveKeys([$fresh->id, $halfAssigned->id])->toHaveCount(2)
+        ->and($notifications->calls[$fresh->id]['matching'])->toEqualCanonicalizing($both)
+        ->and($notifications->calls[$fresh->id]['created'])->toEqualCanonicalizing($both)
+        ->and($notifications->calls[$halfAssigned->id]['matching'])->toEqualCanonicalizing($both)
+        ->and($notifications->calls[$halfAssigned->id]['created'])->toBe([$secondPeriod->id]);
+});
+
+test('reassigning a batch without notifying sends nothing', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    periodTracking($category);
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+
+    $notifications = recordingNotifications();
+
+    app(BudgetTransactionService::class)->assignTransactions([$transaction], notify: false);
+
+    expect($notifications->calls)->toBe([])
+        ->and(periodIdsOf($transaction))->toHaveCount(1);
+});
+
+test('reassigning a batch writes it in one deadlock-retried database transaction', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $period = periodTracking($category);
+    $transactions = Transaction::factory()->count(3)->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+    ]);
+    BudgetTransaction::query()->delete();
+
+    $databaseManager = DB::getFacadeRoot();
+
+    DB::shouldReceive('transaction')
+        ->once()
+        ->withArgs(fn ($callback, $attempts) => $callback instanceof Closure && $attempts === 5)
+        ->andReturnUsing(fn ($callback, $attempts) => $databaseManager->transaction($callback, $attempts));
+
+    $this->service->assignTransactions($transactions, notify: false);
+
+    expect($period->budgetTransactions()->count())->toBe(3);
+});
+
+test('a notification failing for one transaction of a batch still lets the others go out', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    periodTracking($category);
+    [$failing, $other] = Transaction::factory()->count(2)->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+    ])->all();
+    BudgetTransaction::query()->delete();
+
+    $notifications = new class($failing->id) extends BudgetNotificationService
+    {
+        /** @var array<int, string> */
+        public array $notified = [];
+
+        public function __construct(private readonly string $failingId) {}
+
+        public function handleAssignment(Transaction $transaction, array $matchingPeriodIds, array $createdPeriodIds): void
+        {
+            if ($transaction->id === $this->failingId) {
+                throw new RuntimeException('Mail server down');
+            }
+
+            $this->notified[] = $transaction->id;
+        }
+    };
+    app()->instance(BudgetNotificationService::class, $notifications);
+    Exceptions::fake();
+
+    app(BudgetTransactionService::class)->assignTransactions([$failing, $other]);
+
+    expect($notifications->notified)->toBe([$other->id])
+        ->and(periodIdsOf($failing))->toHaveCount(1)
+        ->and(periodIdsOf($other))->toHaveCount(1);
+    Exceptions::assertReported(RuntimeException::class);
 });

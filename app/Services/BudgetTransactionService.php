@@ -17,9 +17,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * @phpstan-type Claim array{categories: array<int, string>, labels: array<int, string>, until: ?string}
+ * @phpstan-type Assignment array{transaction: Transaction, periodIds: array<int, string>, amount: int}
+ * @phpstan-type SnapshotRow array{transaction_id: string, budget_period_id: string, amount: int}
  */
 class BudgetTransactionService
 {
@@ -68,7 +71,9 @@ class BudgetTransactionService
      */
     public function assignTransaction(Transaction $transaction, bool $notify = true): void
     {
-        $this->assignWithCategoryTree($transaction, $notify, categoryParentMap: null);
+        $assignment = $this->planAssignment($transaction, categoryParentMap: null);
+
+        $this->applyAssignments($assignment ? [$assignment] : [], $notify);
     }
 
     /**
@@ -81,12 +86,16 @@ class BudgetTransactionService
      * Each user is read once too, for the currency their snapshots are in, and
      * the categories in one query, for {@see self::catchAllPeriodIds()}.
      *
+     * Every transaction's periods are worked out first, then written in one
+     * database transaction for the whole batch, see {@see self::applyAssignments()}.
+     *
      * @param  iterable<int, Transaction>  $transactions
      */
     public function assignTransactions(iterable $transactions, bool $notify = true): void
     {
         $parentMaps = [];
         $users = [];
+        $assignments = [];
         $transactions = collect($transactions);
 
         // Wrapped in an Eloquent collection only for loadMissing(). The relation
@@ -110,12 +119,19 @@ class BudgetTransactionService
                     ? ($parentMaps[$userId] ??= $this->tree->parentMap($userId))
                     : null;
 
-                $this->assignWithCategoryTree($transaction, $notify, $parentMap);
+                $assignment = $this->planAssignment($transaction, $parentMap);
+
+                if ($assignment) {
+                    // Keyed by id: a transaction listed twice is written once.
+                    $assignments[$transaction->id] = $assignment;
+                }
             }
         } finally {
             $this->claimsByPeriod = null;
             $this->candidatePeriodsByUser = null;
         }
+
+        $this->applyAssignments(array_values($assignments), $notify);
     }
 
     /**
@@ -190,15 +206,20 @@ class BudgetTransactionService
     }
 
     /**
+     * The budget periods the transaction belongs in and the amount its
+     * snapshots hold, without writing anything: {@see self::applyAssignments()}
+     * does that. Null for a transaction with no owner, which is left alone.
+     *
      * @param  array<string, ?string>|null  $categoryParentMap  the user's {@see CategoryTree::parentMap()},
      *                                                          or null to load it for this transaction
+     * @return Assignment|null
      */
-    private function assignWithCategoryTree(Transaction $transaction, bool $notify, ?array $categoryParentMap): void
+    private function planAssignment(Transaction $transaction, ?array $categoryParentMap): ?array
     {
         $userId = $transaction->user_id;
 
         if (! $userId) {
-            return;
+            return null;
         }
 
         // Ensure labels are available for matching, and the account for the
@@ -229,43 +250,113 @@ class BudgetTransactionService
             $matchingPeriodIds = $this->catchAllPeriodIds($transaction, $candidatePeriods, $categoryMatchIds);
         }
 
-        // Converted before the lock below is taken: a missing rate may be
-        // fetched from the provider, which is no work to hold a row lock over.
+        // Converted here, before applyAssignments() takes its locks: a missing
+        // rate may be fetched from the provider, which is no work to hold a
+        // row lock over.
         $amount = $matchingPeriodIds === [] ? 0 : $this->snapshotAmount($transaction, $transaction->user->currency_code);
 
-        // Apply changes atomically so concurrent workers cannot leave the
-        // transaction half-assigned and the unique index guards duplicates.
+        return ['transaction' => $transaction, 'periodIds' => $matchingPeriodIds, 'amount' => $amount];
+    }
+
+    /**
+     * Write planned assignments: each transaction ends up with a snapshot in
+     * exactly its periods, and in no other.
+     *
+     * Applied atomically so concurrent workers cannot leave a transaction
+     * half-assigned, and the unique index guards duplicates. A batch goes in
+     * one database transaction that locks its rows in one query and writes in
+     * a handful, rather than all of that once per transaction.
+     *
+     * The caller bounds the batch (the reassign job chunks 200 rows), which
+     * bounds how many rows stay locked, and for how long. A failure rolls the
+     * whole batch back, for the job to retry from scratch.
+     *
+     * Notifications go out after the commit, each with the periods its
+     * transaction was newly added to, so each reads the budget's spending
+     * with the whole batch in it. One that fails is reported and the rest
+     * still go out: the rows are committed, so a retry would see nothing new
+     * to announce.
+     *
+     * @param  array<int, Assignment>  $assignments
+     */
+    private function applyAssignments(array $assignments, bool $notify): void
+    {
+        if ($assignments === []) {
+            return;
+        }
+
         $createdPeriodIds = [];
 
-        DB::transaction(function () use ($transaction, $matchingPeriodIds, $amount, &$createdPeriodIds) {
-            // Reset per attempt: a deadlock retry re-runs this closure.
-            $createdPeriodIds = [];
-
-            Transaction::query()
-                ->whereKey($transaction->id)
-                ->lockForUpdate()
-                ->first();
-
-            BudgetTransaction::query()
-                ->where('transaction_id', $transaction->id)
-                ->when(
-                    $matchingPeriodIds !== [],
-                    fn ($q) => $q->whereNotIn('budget_period_id', $matchingPeriodIds),
-                )
-                ->delete();
-
-            foreach ($matchingPeriodIds as $periodId) {
-                $budgetTransaction = $this->recordSnapshot($transaction, $periodId, $amount);
-
-                if ($budgetTransaction->wasRecentlyCreated) {
-                    $createdPeriodIds[] = $periodId;
-                }
-            }
+        DB::transaction(function () use ($assignments, &$createdPeriodIds): void {
+            // Assigned, not appended: a deadlock retry re-runs this closure.
+            $createdPeriodIds = $this->writeAssignments($assignments);
         }, attempts: 5);
 
-        if ($notify) {
-            $this->notifications->handleAssignment($transaction, $matchingPeriodIds, $createdPeriodIds);
+        if (! $notify) {
+            return;
         }
+
+        foreach ($assignments as $assignment) {
+            $transaction = $assignment['transaction'];
+
+            try {
+                $this->notifications->handleAssignment($transaction, $assignment['periodIds'], $createdPeriodIds[$transaction->id] ?? []);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, Assignment>  $assignments
+     * @return array<string, array<int, string>> the periods each transaction was newly added to, keyed by transaction id
+     */
+    private function writeAssignments(array $assignments): array
+    {
+        // Locked in id order, so two batches sharing rows queue up behind each
+        // other instead of deadlocking.
+        Transaction::query()
+            ->whereKey(array_map(fn (array $assignment): string => $assignment['transaction']->id, $assignments))
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->pluck('id');
+
+        $this->deleteStaleSnapshots($assignments);
+
+        $rows = [];
+
+        foreach ($assignments as $assignment) {
+            foreach ($assignment['periodIds'] as $periodId) {
+                $rows[] = [
+                    'transaction_id' => $assignment['transaction']->id,
+                    'budget_period_id' => $periodId,
+                    'amount' => $assignment['amount'],
+                ];
+            }
+        }
+
+        return $this->upsertSnapshots($rows);
+    }
+
+    /**
+     * Drop each transaction's snapshots in periods it no longer belongs in,
+     * with one delete per distinct set of periods: transactions matching the
+     * same periods (or none, the common case) share a query.
+     *
+     * @param  array<int, Assignment>  $assignments
+     */
+    private function deleteStaleSnapshots(array $assignments): void
+    {
+        collect($assignments)
+            ->groupBy(fn (array $assignment): string => collect($assignment['periodIds'])->sort()->implode(','))
+            ->each(function (SupportCollection $group): void {
+                $periodIds = $group->first()['periodIds'];
+
+                BudgetTransaction::query()
+                    ->whereIn('transaction_id', $group->map(fn (array $assignment): string => $assignment['transaction']->id)->all())
+                    ->when($periodIds !== [], fn (Builder $query) => $query->whereNotIn('budget_period_id', $periodIds))
+                    ->delete();
+            });
     }
 
     public function unassignTransaction(Transaction $transaction): void
@@ -431,34 +522,58 @@ class BudgetTransactionService
     }
 
     /**
-     * Record what a transaction contributes to a budget period: its
-     * {@see self::snapshotAmount()}, worked out by the caller.
-     *
-     * The amount is a snapshot taken here and never revisited, so a later
-     * change to the account's share has to go through
-     * {@see self::reweighAccountSnapshots()}.
-     */
-    private function recordSnapshot(Transaction $transaction, string $budgetPeriodId, int $amount): BudgetTransaction
-    {
-        return BudgetTransaction::updateOrCreate(
-            [
-                'transaction_id' => $transaction->id,
-                'budget_period_id' => $budgetPeriodId,
-            ],
-            [
-                'amount' => $amount,
-            ],
-        );
-    }
-
-    /**
-     * {@see self::recordSnapshot()} for a chunk of transactions in one period,
-     * in one lookup and one upsert rather than both per transaction.
+     * Record what transactions contribute to budget periods: each row's
+     * {@see self::snapshotAmount()}, worked out by the caller, in one lookup
+     * and one upsert rather than both per row.
      *
      * Behaves as updateOrCreate() would row by row: a missing snapshot is
      * inserted, one whose amount changed is refreshed, and one already holding
      * the right amount is left untouched, updated_at included. Eloquent's
      * upsert() fills in the ids and timestamps the model would have set.
+     *
+     * The amount is a snapshot taken here and never revisited, so a later
+     * change to the account's share has to go through
+     * {@see self::reweighAccountSnapshots()}.
+     *
+     * @param  array<int, SnapshotRow>  $rows  at most one per transaction and period
+     * @return array<string, array<int, string>> the periods each transaction was newly added to, keyed by transaction id
+     */
+    private function upsertSnapshots(array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $snapshotKey = fn (string $transactionId, string $periodId): string => $transactionId.'|'.$periodId;
+
+        $existingAmounts = BudgetTransaction::query()
+            ->whereIn('transaction_id', array_unique(array_column($rows, 'transaction_id')))
+            ->whereIn('budget_period_id', array_unique(array_column($rows, 'budget_period_id')))
+            ->get(['transaction_id', 'budget_period_id', 'amount'])
+            ->mapWithKeys(fn (BudgetTransaction $row): array => [$snapshotKey($row->transaction_id, $row->budget_period_id) => $row->amount]);
+
+        $changedRows = [];
+        $createdPeriodIds = [];
+
+        foreach ($rows as $row) {
+            $key = $snapshotKey($row['transaction_id'], $row['budget_period_id']);
+
+            if (! $existingAmounts->has($key)) {
+                $createdPeriodIds[$row['transaction_id']][] = $row['budget_period_id'];
+            } elseif ($existingAmounts->get($key) === $row['amount']) {
+                continue;
+            }
+
+            $changedRows[] = $row;
+        }
+
+        BudgetTransaction::upsert($changedRows, ['transaction_id', 'budget_period_id'], ['amount']);
+
+        return $createdPeriodIds;
+    }
+
+    /**
+     * {@see self::upsertSnapshots()} for a chunk of transactions in one period.
      *
      * @param  Collection<int, Transaction>  $transactions  with `account` loaded
      * @param  string  $currency  the budget owner's currency
@@ -468,30 +583,16 @@ class BudgetTransactionService
     {
         $this->preloadExchangeRates($transactions, $currency);
 
-        $existingAmounts = BudgetTransaction::query()
-            ->where('budget_period_id', $budgetPeriodId)
-            ->whereIn('transaction_id', $transactions->modelKeys())
-            ->pluck('amount', 'transaction_id');
-
-        $rows = [];
-
-        foreach ($transactions as $transaction) {
-            $amount = $this->snapshotAmount($transaction, $currency);
-
-            if ($existingAmounts->get($transaction->id) === $amount) {
-                continue;
-            }
-
-            $rows[] = [
+        $rows = $transactions
+            ->map(fn (Transaction $transaction): array => [
                 'transaction_id' => $transaction->id,
                 'budget_period_id' => $budgetPeriodId,
-                'amount' => $amount,
-            ];
-        }
+                'amount' => $this->snapshotAmount($transaction, $currency),
+            ])
+            ->all();
 
-        BudgetTransaction::upsert($rows, ['transaction_id', 'budget_period_id'], ['amount']);
-
-        return $transactions->count() - $existingAmounts->count();
+        // One period, so each newly created transaction holds one entry.
+        return count($this->upsertSnapshots($rows));
     }
 
     /**
@@ -510,7 +611,7 @@ class BudgetTransactionService
 
     /**
      * Rewrite the given budget rows from their transactions as they stand now,
-     * in their owner's currency, the way {@see self::recordSnapshot()} would
+     * in their owner's currency, the way {@see self::upsertSnapshots()} would
      * write them today. Rows already holding the right amount are left alone,
      * and rows whose transaction is gone are skipped.
      *
@@ -596,7 +697,7 @@ class BudgetTransactionService
      * changed. Rows booked in their owner's currency are rewritten in SQL, so
      * they stay one query no matter how much history the account has, using
      * {@see Transaction::OWNED_AMOUNT_SQL} so the rounding matches what
-     * {@see self::recordSnapshot()} would have written. Rows booked in another
+     * {@see self::upsertSnapshots()} would have written. Rows booked in another
      * currency need a rate per day, so they go through {@see self::resnapshot()}.
      *
      * @return int the same-currency rows the SQL update touched plus the
