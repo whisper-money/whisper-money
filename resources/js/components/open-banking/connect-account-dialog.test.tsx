@@ -3,6 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConnectAccountDialog } from './connect-account-dialog';
 
+vi.mock('@/lib/pwa', () => ({
+    isInstalledPwa: () => false,
+    detectMobilePlatform: () => null,
+}));
+
 globalThis.ResizeObserver ??= class {
     observe() {}
     unobserve() {}

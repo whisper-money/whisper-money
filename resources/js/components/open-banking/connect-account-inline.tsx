@@ -9,10 +9,10 @@ import {
     StepSectionLabel,
 } from '@/components/onboarding/step-list';
 import {
+    stepControlClass,
     StepError,
     StepNote,
     StepScreen,
-    stepControlClass,
 } from '@/components/onboarding/step-screen';
 import {
     BetaConnectorBadge,
@@ -22,6 +22,11 @@ import {
     BrokerRows,
     ConnectBrokerInline,
 } from '@/components/open-banking/connect-broker-inline';
+import {
+    captureBankRedirectChoice,
+    PwaBankRedirectNotice,
+    useInstalledPwa,
+} from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
@@ -245,13 +250,20 @@ export function ConnectAccountInline({
      * the redirect is only visible here. This inline flow is the onboarding one
      * (settings uses the dialog), so the event is named for that surface.
      */
+    const installedPwa = useInstalledPwa();
+
     const startConnect = useCallback(() => {
         captureEvent('onboarding_bank_connect_started', {
             country,
             provider: 'enable_banking',
         });
+
+        if (installedPwa) {
+            captureBankRedirectChoice('connect', 'here_anyway');
+        }
+
         handleAuthorize();
-    }, [country, handleAuthorize]);
+    }, [country, handleAuthorize, installedPwa]);
 
     const back = (
         <StepButton text={__('Back')} variant="ghost" onClick={handleBack} />
@@ -363,9 +375,13 @@ export function ConnectAccountInline({
                 footer={
                     <>
                         <StepButton
-                            text={__('Continue to :bank', {
-                                bank: selectedBank.name,
-                            })}
+                            text={
+                                installedPwa
+                                    ? __('Connect here anyway')
+                                    : __('Continue to :bank', {
+                                          bank: selectedBank.name,
+                                      })
+                            }
                             loading={isSubmitting}
                             loadingText={__('Connecting...')}
                             onClick={startConnect}
@@ -405,6 +421,13 @@ export function ConnectAccountInline({
                 </StepList>
 
                 {selectedBank.beta && <BetaConnectorNotice />}
+
+                {installedPwa && (
+                    <PwaBankRedirectNotice
+                        browserUrl={window.location.href}
+                        flow="connect"
+                    />
+                )}
 
                 {isAlreadyConnected && (
                     <ReplaceConnectionWarning

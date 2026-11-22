@@ -4,7 +4,7 @@ import { __ } from '@/utils/i18n';
 import { FlaskConical } from 'lucide-react';
 
 /** Matches the badge, so the pill and the notice read as the same signal. */
-const AMBER =
+export const AMBER =
     'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300';
 
 /**

@@ -4061,5 +4061,15 @@
     "The balances could not be imported.": "No se han podido importar los saldos.",
     "The owed amounts could not be imported.": "No se han podido importar los montos adeudados.",
     "What this import does": "Qué hace esta importación",
-    "How to get the export": "Cómo conseguir el archivo"
+    "How to get the export": "Cómo conseguir el archivo",
+    "Better from the browser": "Mejor desde el navegador",
+    "You're in the installed app. When you come back from your bank, your phone may open another window and the connection gets lost.": "Estás en la app instalada. Al volver de tu banco, el móvil puede abrir otra ventana y la conexión se pierde.",
+    "Open in browser": "Abrir en el navegador",
+    "Copy link": "Copiar enlace",
+    "Link copied. Paste it in Safari.": "Enlace copiado. Pégalo en Safari.",
+    "Could not copy the link.": "No se pudo copiar el enlace.",
+    "Connect here anyway": "Conectar aquí igualmente",
+    "Reconnect :bank": "Reconectar :bank",
+    "We'll take you to your bank to renew access.": "Te llevamos a tu banco para renovar el permiso.",
+    "Reconnect here anyway": "Reconectar aquí igualmente"
 }

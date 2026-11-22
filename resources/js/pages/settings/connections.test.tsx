@@ -4,6 +4,11 @@ import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ConnectionsPage from './connections';
 
+vi.mock('@/lib/pwa', () => ({
+    isInstalledPwa: () => false,
+    detectMobilePlatform: () => null,
+}));
+
 const mocks = vi.hoisted(() => ({
     routerPost: vi.fn(),
     routerVisit: vi.fn(),

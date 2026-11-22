@@ -2912,5 +2912,15 @@
     "The label “:name” is archived. Unarchive it in Settings → Labels to use it.": "L’étiquette « :name » est archivée. Désarchivez-la dans Configuration → Balises pour l’utiliser.",
     "Archived: once removed, it cannot be added again.": "Archivée : une fois retirée, elle ne peut plus être ajoutée.",
     "The balances could not be imported.": "Les soldes n'ont pas pu être importés.",
-    "The owed amounts could not be imported.": "Les montants dus n'ont pas pu être importés."
+    "The owed amounts could not be imported.": "Les montants dus n'ont pas pu être importés.",
+    "Better from the browser": "Mieux depuis le navigateur",
+    "You're in the installed app. When you come back from your bank, your phone may open another window and the connection gets lost.": "Vous êtes dans l'application installée. Au retour de votre banque, votre téléphone peut ouvrir une autre fenêtre et la connexion se perd.",
+    "Open in browser": "Ouvrir dans le navigateur",
+    "Copy link": "Copier le lien",
+    "Link copied. Paste it in Safari.": "Lien copié. Collez-le dans Safari.",
+    "Could not copy the link.": "Impossible de copier le lien.",
+    "Connect here anyway": "Connecter ici quand même",
+    "Reconnect :bank": "Reconnecter :bank",
+    "We'll take you to your bank to renew access.": "Nous vous emmenons à votre banque pour renouveler l'accès.",
+    "Reconnect here anyway": "Reconnecter ici quand même"
 }
