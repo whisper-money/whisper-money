@@ -5,9 +5,11 @@ import {
 } from '@/lib/broker-imports/broker-import';
 import {
     defaultMyInvestorSecuritiesPlan,
+    myInvestorPortfolioPayload,
     type MyInvestorSecuritiesImport,
 } from '@/lib/broker-imports/myinvestor-import';
 import { parseMyInvestorSecurities } from '@/lib/broker-imports/myinvestor-securities';
+import { reportBrokerImportFailed } from '@/lib/broker-imports/telemetry';
 import { fixtureFile, fixtureGrid } from '@/lib/broker-imports/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,10 +106,9 @@ describe('broker import telemetry', () => {
     it('tracks a completed run with counts and booleans only', async () => {
         const onAccountCreated = vi.fn();
 
-        await runBrokerImport(await securitiesImport(), {
-            ...RUN_OPTIONS,
-            onAccountCreated,
-        });
+        const broker = await securitiesImport();
+
+        await runBrokerImport(broker, { ...RUN_OPTIONS, onAccountCreated });
 
         expect(onAccountCreated).toHaveBeenCalledWith(
             'portfolio',
@@ -122,6 +123,8 @@ describe('broker import telemetry', () => {
             portfolio: 'imported',
             cash_connected: false,
             balances_failed: false,
+            balances_sent: myInvestorPortfolioPayload(broker.file, null, TODAY)
+                .length,
             accounts_created_cash: 0,
             accounts_created_portfolio: 1,
             reimport: false,
@@ -206,5 +209,53 @@ describe('broker import telemetry', () => {
             expect.objectContaining({ stage: 'accounts', status: 422 }),
         );
         expect(captureException).not.toHaveBeenCalled();
+    });
+
+    it('puts a run whose chosen account is gone at the accounts stage', async () => {
+        const broker = await securitiesImport();
+
+        await expect(
+            runBrokerImport(
+                {
+                    ...broker,
+                    plan: {
+                        ...broker.plan,
+                        portfolio: { kind: 'existing', accountId: 'gone' },
+                    },
+                },
+                RUN_OPTIONS,
+            ),
+        ).rejects.toThrow('Selected account not found');
+
+        expect(captureEvent).toHaveBeenCalledWith(
+            'broker_import_failed',
+            expect.objectContaining({ stage: 'accounts', status: 0 }),
+        );
+        expect(captureException).toHaveBeenCalledWith(
+            expect.any(Error),
+            expect.objectContaining({
+                tags: expect.objectContaining({ stage: 'accounts' }),
+            }),
+        );
+    });
+
+    it('reports a recognised file that could not be read, with nothing of it', () => {
+        const error = new TypeError('Cannot read properties of undefined');
+
+        reportBrokerImportFailed(error, 'trade_republic', 'read');
+
+        expect(captureEvent).toHaveBeenCalledWith('broker_import_failed', {
+            kind: 'trade_republic',
+            stage: 'read',
+            status: 0,
+        });
+        expect(captureException).toHaveBeenCalledWith(error, {
+            tags: {
+                feature: 'broker_import',
+                kind: 'trade_republic',
+                stage: 'read',
+            },
+            extra: { status: 0 },
+        });
     });
 });

@@ -1,8 +1,11 @@
 import { store as storeAccount } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { type BrokerAccountRole } from '@/lib/broker-imports/broker-import';
 import { dailyInvested, type BalancePoint } from '@/lib/broker-imports/series';
-import { reportBrokerBalancesFailed } from '@/lib/broker-imports/telemetry';
 import {
+    atBrokerStage,
+    reportBrokerBalancesFailed,
+} from '@/lib/broker-imports/telemetry';
+import {
+    type BrokerAccountRole,
     type BrokerFileKind,
     type CashMovement,
     type Trade,
@@ -143,19 +146,26 @@ export async function resolveBrokerAccount(
         );
 
         if (!account) {
-            throw new Error('Selected account not found');
+            throw atBrokerStage(
+                new Error('Selected account not found'),
+                'accounts',
+            );
         }
 
         return account;
     }
 
     const { bank } = newAccount;
-    const response = await axios.post<Account>(storeAccount.url(), {
-        name: newAccount.name,
-        type: newAccount.type,
-        currency_code: newAccount.currencyCode,
-        ...(bank ? { bank_id: bank.id } : {}),
-    });
+    const response = await axios
+        .post<Account>(storeAccount.url(), {
+            name: newAccount.name,
+            type: newAccount.type,
+            currency_code: newAccount.currencyCode,
+            ...(bank ? { bank_id: bank.id } : {}),
+        })
+        .catch((error: unknown) => {
+            throw atBrokerStage(error, 'accounts');
+        });
     const account = { ...response.data, bank };
 
     onCreated?.(account);
@@ -166,8 +176,9 @@ export async function resolveBrokerAccount(
 /**
  * Writes each account's daily balances, one account after the other, and
  * goes on to the next when one fails: a refused cash series must not cost
- * the portfolio its own. False when any of them failed; each failure goes
- * to Sentry with the account's role, never its name or the amounts.
+ * the portfolio its own. Whether all of them were written, and how many
+ * balances were sent for telemetry; each failure goes to Sentry with the
+ * account's role, never its name or the amounts.
  */
 export async function writeBalanceSeries(
     kind: BrokerFileKind,
@@ -176,10 +187,13 @@ export async function writeBalanceSeries(
         account: Account;
         balances: BulkBalance[];
     }[],
-): Promise<boolean> {
+): Promise<{ allWritten: boolean; sent: number }> {
     let allWritten = true;
+    let sent = 0;
 
     for (const { role, account, balances } of series) {
+        sent += balances.length;
+
         try {
             await storeBalancesInBulk(account.id, balances);
         } catch (error) {
@@ -194,7 +208,7 @@ export async function writeBalanceSeries(
         }
     }
 
-    return allWritten;
+    return { allWritten, sent };
 }
 
 /**

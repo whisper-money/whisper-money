@@ -1,5 +1,7 @@
-import { type BrokerAccountRole } from '@/lib/broker-imports/broker-import';
-import { type BrokerFileKind } from '@/lib/broker-imports/types';
+import {
+    type BrokerAccountRole,
+    type BrokerFileKind,
+} from '@/lib/broker-imports/types';
 import {
     fileExtension,
     shouldReportImportError,
@@ -15,20 +17,48 @@ import * as Sentry from '@sentry/react';
  * account's name or any amount (no balance, no invested sum, no value).
  */
 
-/** Where a broker import went wrong. */
-export type BrokerImportStage = 'parse' | 'accounts' | 'run' | 'balances';
+/** Where a broker import that threw was: reading the file, making an account, or the rest. */
+export type BrokerImportStage = 'read' | 'accounts' | 'run';
+
+/** What every run event carries, whether it finished or threw. */
+export interface BrokerRunContext {
+    rows: number;
+    accountsCreated: Partial<Record<BrokerAccountRole, number>>;
+    /** A remembered link sent the file to the accounts of last time. */
+    reimport: boolean;
+}
 
 /** What a finished run says, before PostHog hears of it. */
-export interface BrokerRunSummary {
-    kind: BrokerFileKind;
-    rows: number;
+export interface BrokerRunSummary extends BrokerRunContext {
     outcome: ImportOutcome;
     balancesFailed: boolean;
+    balancesSent: number;
     /** Whether the plan has a portfolio and the user kept it. */
     portfolio: 'imported' | 'skipped' | 'n/a';
     cashConnected: boolean;
-    accountsCreated: Partial<Record<BrokerAccountRole, number>>;
-    reimport: boolean;
+}
+
+/** The stage an error was thrown at, when the code that threw said so. */
+const stages = new WeakMap<object, BrokerImportStage>();
+
+/** Marks an error as thrown at `stage`, for {@link brokerErrorStage}. */
+export function atBrokerStage<T>(error: T, stage: BrokerImportStage): T {
+    if (typeof error === 'object' && error !== null) {
+        stages.set(error, stage);
+    }
+
+    return error;
+}
+
+/** The stage an error was marked with, else `fallback`. */
+export function brokerErrorStage(
+    error: unknown,
+    fallback: BrokerImportStage,
+): BrokerImportStage {
+    return (
+        (typeof error === 'object' && error !== null && stages.get(error)) ||
+        fallback
+    );
 }
 
 /** The HTTP status a failed request carries, 0 when it never got an answer. */
@@ -37,6 +67,28 @@ function responseStatus(error: unknown): number {
         ?.response?.status;
 
     return typeof status === 'number' ? status : 0;
+}
+
+/** A run's context, flattened into event properties. */
+function contextProperties(context: BrokerRunContext): Record<string, unknown> {
+    return {
+        rows: context.rows,
+        accounts_created_cash: context.accountsCreated.cash ?? 0,
+        accounts_created_portfolio: context.accountsCreated.portfolio ?? 0,
+        reimport: context.reimport,
+    };
+}
+
+/** An error to Sentry, tagged as the broker import's, with its HTTP status. */
+function captureBrokerError(
+    error: unknown,
+    tags: { kind: BrokerFileKind; stage: string; role?: BrokerAccountRole },
+    extra: Record<string, unknown> = {},
+): void {
+    Sentry.captureException(error, {
+        tags: { feature: 'broker_import', ...tags },
+        extra: { status: responseStatus(error), ...extra },
+    });
 }
 
 /** A broker file was recognised and read. */
@@ -53,57 +105,46 @@ export function trackBrokerFileDetected(
 }
 
 /** `broker_import_completed`, with how the run went. */
-export function trackBrokerImportCompleted(summary: BrokerRunSummary): void {
+export function trackBrokerImportCompleted(
+    kind: BrokerFileKind,
+    summary: BrokerRunSummary,
+): void {
     trackImport('broker_import_completed', {
-        kind: summary.kind,
-        rows: summary.rows,
+        kind,
+        ...contextProperties(summary),
         success_count: summary.outcome.successCount,
         failure_count: summary.outcome.errors.length,
         uncategorized_count: summary.outcome.uncategorizedCount,
         portfolio: summary.portfolio,
         cash_connected: summary.cashConnected,
         balances_failed: summary.balancesFailed,
-        accounts_created_cash: summary.accountsCreated.cash ?? 0,
-        accounts_created_portfolio: summary.accountsCreated.portfolio ?? 0,
-        reimport: summary.reimport,
+        balances_sent: summary.balancesSent,
     });
 }
 
 /**
- * `broker_import_failed` for a run that threw, and the error to Sentry when
- * somebody should look at it: a refusal (4xx) the user is told about is not.
+ * `broker_import_failed` for an import that threw, and the error to Sentry
+ * when somebody should look at it: a refusal (4xx) the user is told about
+ * is not. Without a run context it failed reading the file.
  */
 export function reportBrokerImportFailed(
     error: unknown,
     kind: BrokerFileKind,
     stage: BrokerImportStage,
-    extra: Record<string, number | boolean | string>,
+    context?: BrokerRunContext,
 ): void {
-    const status = responseStatus(error);
+    const extra = context ? contextProperties(context) : {};
 
-    trackImport('broker_import_failed', { kind, stage, status, ...extra });
+    trackImport('broker_import_failed', {
+        kind,
+        stage,
+        status: responseStatus(error),
+        ...extra,
+    });
 
-    if (!shouldReportImportError(error)) {
-        return;
+    if (shouldReportImportError(error)) {
+        captureBrokerError(error, { kind, stage }, extra);
     }
-
-    Sentry.captureException(error, {
-        tags: { feature: 'broker_import', kind, stage },
-        extra: { status, ...extra },
-    });
-}
-
-/**
- * A recognised broker file its parser could not read: the broker likely
- * changed its export. Nothing of the file goes with it.
- */
-export function reportBrokerParseError(
-    error: unknown,
-    kind: BrokerFileKind,
-): void {
-    Sentry.captureException(error, {
-        tags: { feature: 'broker_import', kind, stage: 'parse' },
-    });
 }
 
 /**
@@ -125,18 +166,13 @@ export function reportBrokerBalancesFailed(
         return;
     }
 
-    Sentry.captureException(error, {
-        tags: {
-            feature: 'broker_import',
-            kind,
-            stage: 'balances',
-            role: details.role,
-        },
-        extra: {
-            status: responseStatus(error),
+    captureBrokerError(
+        error,
+        { kind, stage: 'balances', role: details.role },
+        {
             account_type: details.accountType,
             connected: details.connected,
             balances: details.balances,
         },
-    });
+    );
 }

@@ -69,7 +69,7 @@ describe('writeBalanceSeries', () => {
             },
         ]);
 
-        expect(written).toBe(false);
+        expect(written).toEqual({ allWritten: false, sent: 2 });
         expect(post.mock.calls.map(([url]) => String(url))).toEqual([
             expect.stringContaining('cash'),
             expect.stringContaining('portfolio'),
@@ -104,7 +104,7 @@ describe('writeBalanceSeries', () => {
                     balances: BALANCES,
                 },
             ]),
-        ).toBe(true);
+        ).toEqual({ allWritten: true, sent: 2 });
         expect(captureException).not.toHaveBeenCalled();
     });
 });

@@ -1,4 +1,3 @@
-import { store as storeAccount } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import {
     chosenAccountId,
     isBankConnected,
@@ -24,11 +23,11 @@ import {
 import { parseMyInvestorSecurities } from '@/lib/broker-imports/myinvestor-securities';
 import { readBrokerGrid } from '@/lib/broker-imports/read';
 import {
+    brokerErrorStage,
     reportBrokerImportFailed,
-    reportBrokerParseError,
     trackBrokerFileDetected,
     trackBrokerImportCompleted,
-    type BrokerImportStage,
+    type BrokerRunContext,
     type BrokerRunSummary,
 } from '@/lib/broker-imports/telemetry';
 import { parseTradeRepublic } from '@/lib/broker-imports/trade-republic';
@@ -40,6 +39,7 @@ import {
 } from '@/lib/broker-imports/trade-republic-import';
 import { runTradeRepublicImport } from '@/lib/broker-imports/trade-republic-run';
 import {
+    type BrokerAccountRole,
     type BrokerFileKind,
     type BrokerGrid,
     type BrokerLink,
@@ -63,8 +63,7 @@ export type BrokerImport =
     | MyInvestorCashImport
     | MyInvestorSecuritiesImport;
 
-/** Which of a broker import's accounts an account is, e.g. its cash account. */
-export type BrokerAccountRole = 'cash' | 'portfolio';
+export type { BrokerAccountRole };
 
 export interface BrokerRunOptions {
     /** The preview rows the user kept. */
@@ -84,6 +83,8 @@ export interface BrokerRunResult {
     balancesFailed: boolean;
     /** The accounts the file went to, by role, made ones included. */
     accounts: Partial<Record<BrokerAccountRole, Account>>;
+    /** How many daily balances were sent, for telemetry: none means nothing was written. */
+    balancesSent: number;
 }
 
 /** For the `default` of a switch over every broker: a new one fails to compile. */
@@ -120,7 +121,7 @@ function brokerImportFrom(
             today,
         );
     } catch (error) {
-        reportBrokerParseError(error, kind);
+        reportBrokerImportFailed(error, kind, 'read');
 
         throw error;
     }
@@ -374,13 +375,6 @@ function portfolioPlan(broker: BrokerImport): BrokerRunSummary['portfolio'] {
     }
 }
 
-/** Which step a run that threw was on: making an account, or the rest. */
-function failedStage(error: unknown): BrokerImportStage {
-    const url = (error as { config?: { url?: unknown } } | null)?.config?.url;
-
-    return url === storeAccount.url() ? 'accounts' : 'run';
-}
-
 /**
  * Brings a broker file in, the way its broker needs, and tells PostHog how
  * it went (and Sentry when it threw), with counts only.
@@ -389,12 +383,16 @@ export async function runBrokerImport(
     broker: BrokerImport,
     options: BrokerRunOptions,
 ): Promise<BrokerRunResult> {
-    const accountsCreated: Partial<Record<BrokerAccountRole, number>> = {};
-    const reimport = brokerMemoryInUse(broker) !== null;
+    const context: BrokerRunContext = {
+        rows: options.rows.length,
+        accountsCreated: {},
+        reimport: brokerMemoryInUse(broker) !== null,
+    };
     const tracked: BrokerRunOptions = {
         ...options,
         onAccountCreated: (role, account) => {
-            accountsCreated[role] = (accountsCreated[role] ?? 0) + 1;
+            context.accountsCreated[role] =
+                (context.accountsCreated[role] ?? 0) + 1;
             options.onAccountCreated?.(role, account);
         },
     };
@@ -402,25 +400,23 @@ export async function runBrokerImport(
     try {
         const result = await dispatchBrokerImport(broker, tracked);
 
-        trackBrokerImportCompleted({
-            kind: broker.kind,
-            rows: options.rows.length,
+        trackBrokerImportCompleted(broker.kind, {
+            ...context,
             outcome: result.outcome,
             balancesFailed: result.balancesFailed,
+            balancesSent: result.balancesSent,
             portfolio: portfolioPlan(broker),
             cashConnected: isBankConnected(result.accounts.cash),
-            accountsCreated,
-            reimport,
         });
 
         return result;
     } catch (error) {
-        reportBrokerImportFailed(error, broker.kind, failedStage(error), {
-            rows: options.rows.length,
-            accounts_created_cash: accountsCreated.cash ?? 0,
-            accounts_created_portfolio: accountsCreated.portfolio ?? 0,
-            reimport,
-        });
+        reportBrokerImportFailed(
+            error,
+            broker.kind,
+            brokerErrorStage(error, 'run'),
+            context,
+        );
 
         throw error;
     }

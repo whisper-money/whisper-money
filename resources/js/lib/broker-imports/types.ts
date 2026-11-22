@@ -1,5 +1,8 @@
 import { type UUID } from '@/types/uuid';
 
+/** Which of a broker import's accounts an account is, e.g. its cash account. */
+export type BrokerAccountRole = 'cash' | 'portfolio';
+
 /** Which broker export a file is, once recognised. */
 export type BrokerFileKind =
     | 'trade_republic'
