@@ -78,7 +78,7 @@ class ConnectionAccountController extends Controller
             $account = $connection->user->accounts()->create([
                 'name' => $validated['name'] ?? $iban ?? $connection->aspsp_name.' Account',
                 'bank_id' => $bank->id,
-                'currency_code' => $validated['currency'] ?? 'EUR',
+                'currency_code' => $accountUserCurrencyService->resolveImportedCurrency($validated['currency'] ?? null, $connection->user),
                 'type' => $connection->provider->defaultAccountType()->value,
                 'banking_connection_id' => $connection->id,
                 'external_account_id' => $uid,

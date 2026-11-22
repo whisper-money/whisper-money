@@ -138,6 +138,25 @@ test('map create adds a new synced account and dispatches a sync', function () {
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
 
+test('map create stores the user currency when the bank reports the XXX placeholder', function (?string $reported) {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'MXN']);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.connection-accounts.map', $connection), array_filter([
+            'bank_account_uid' => 'xxx-uid',
+            'action' => 'create',
+            'name' => 'Checking',
+            'currency' => $reported,
+        ]))
+        ->assertRedirect();
+
+    expect(Account::query()->where('external_account_id', 'xxx-uid')->sole()->currency_code)->toBe('MXN');
+    expect($user->refresh()->currency_code)->toBe('MXN');
+})->with(['XXX' => 'XXX', 'lowercase xxx' => 'xxx', 'missing' => null]);
+
 test('map link moves syncing to another account and unlinks the previous one', function () {
     Queue::fake();
 
