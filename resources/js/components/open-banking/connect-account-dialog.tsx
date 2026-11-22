@@ -4,11 +4,7 @@ import {
     BetaConnectorBadge,
     BetaConnectorNotice,
 } from '@/components/open-banking/beta-connector';
-import {
-    captureBankRedirectChoice,
-    PwaBankRedirectNotice,
-    useInstalledPwa,
-} from '@/components/open-banking/pwa-bank-redirect-notice';
+import { usePwaConnectNotice } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import {
     StandardPlanNotice,
@@ -83,12 +79,13 @@ export function ConnectAccountDialog({
     } = useConnectFlow(connections);
 
     const countries = useConnectCountries();
+    const pwaNotice = usePwaConnectNotice();
     // An API-key provider connects in place; only a bank redirect can get lost.
-    const warnPwa = useInstalledPwa() && !provider;
+    const warnPwa = pwaNotice.warn && !provider;
 
     const connect = () => {
-        if (warnPwa) {
-            captureBankRedirectChoice('connect', 'here_anyway');
+        if (!provider) {
+            pwaNotice.recordConnectHere();
         }
 
         handleAuthorize();
@@ -329,12 +326,7 @@ export function ConnectAccountDialog({
                                 />
                             )}
 
-                            {warnPwa && (
-                                <PwaBankRedirectNotice
-                                    browserUrl={window.location.href}
-                                    flow="connect"
-                                />
-                            )}
+                            {!provider && pwaNotice.notice}
 
                             {isAlreadyConnected && (
                                 <ReplaceConnectionWarning

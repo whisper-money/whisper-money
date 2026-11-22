@@ -22,11 +22,7 @@ import {
     BrokerRows,
     ConnectBrokerInline,
 } from '@/components/open-banking/connect-broker-inline';
-import {
-    captureBankRedirectChoice,
-    PwaBankRedirectNotice,
-    useInstalledPwa,
-} from '@/components/open-banking/pwa-bank-redirect-notice';
+import { usePwaConnectNotice } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
@@ -250,20 +246,17 @@ export function ConnectAccountInline({
      * the redirect is only visible here. This inline flow is the onboarding one
      * (settings uses the dialog), so the event is named for that surface.
      */
-    const installedPwa = useInstalledPwa();
+    const pwaNotice = usePwaConnectNotice();
+    const { recordConnectHere } = pwaNotice;
 
     const startConnect = useCallback(() => {
         captureEvent('onboarding_bank_connect_started', {
             country,
             provider: 'enable_banking',
         });
-
-        if (installedPwa) {
-            captureBankRedirectChoice('connect', 'here_anyway');
-        }
-
+        recordConnectHere();
         handleAuthorize();
-    }, [country, handleAuthorize, installedPwa]);
+    }, [country, handleAuthorize, recordConnectHere]);
 
     const back = (
         <StepButton text={__('Back')} variant="ghost" onClick={handleBack} />
@@ -376,7 +369,7 @@ export function ConnectAccountInline({
                     <>
                         <StepButton
                             text={
-                                installedPwa
+                                pwaNotice.warn
                                     ? __('Connect here anyway')
                                     : __('Continue to :bank', {
                                           bank: selectedBank.name,
@@ -422,12 +415,7 @@ export function ConnectAccountInline({
 
                 {selectedBank.beta && <BetaConnectorNotice />}
 
-                {installedPwa && (
-                    <PwaBankRedirectNotice
-                        browserUrl={window.location.href}
-                        flow="connect"
-                    />
-                )}
+                {pwaNotice.notice}
 
                 {isAlreadyConnected && (
                     <ReplaceConnectionWarning

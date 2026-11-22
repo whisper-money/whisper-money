@@ -92,7 +92,7 @@ describe('PwaBankRedirectNotice', () => {
 });
 
 function GateHarness({ proceed }: { proceed: () => void }) {
-    const { requestReconnect, dialog } = usePwaReconnectGate();
+    const { requestReconnect, reconnectDialog } = usePwaReconnectGate();
 
     return (
         <>
@@ -101,13 +101,13 @@ function GateHarness({ proceed }: { proceed: () => void }) {
                     requestReconnect({
                         bankName: 'BBVA',
                         browserUrl: reconnectPath,
-                        proceed,
+                        reconnectHere: proceed,
                     })
                 }
             >
                 Reconnect
             </button>
-            {dialog}
+            {reconnectDialog}
         </>
     );
 }
@@ -116,6 +116,19 @@ describe('usePwaReconnectGate', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.installed = false;
+        mocks.platform = 'android';
+    });
+
+    it('leaves a desktop install alone, where the round trip stays in one window', () => {
+        mocks.installed = true;
+        mocks.platform = null;
+        const proceed = vi.fn();
+        render(<GateHarness proceed={proceed} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+        expect(proceed).toHaveBeenCalledOnce();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('goes straight to the bank in a browser tab', () => {

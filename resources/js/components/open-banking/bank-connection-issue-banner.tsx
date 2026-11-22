@@ -98,7 +98,7 @@ export function BankConnectionIssueBanner() {
         [bankConnectionIssues],
     );
     const onConnectionsPage = url.split('?')[0] === connectionsIndex.url();
-    const { requestReconnect, dialog: reconnectDialog } = usePwaReconnectGate();
+    const { requestReconnect, reconnectDialog } = usePwaReconnectGate();
 
     // Unknown until mounted: storage does not exist during SSR.
     const [dismissal, setDismissal] = useState<Dismissal | null | undefined>(
@@ -148,7 +148,7 @@ export function BankConnectionIssueBanner() {
                 bankName: single.aspsp_name,
                 browserUrl: reconnectUrl,
                 // The reconnect route redirects to the bank, which Inertia cannot follow.
-                proceed: () => leavePage(reconnectUrl),
+                reconnectHere: () => leavePage(reconnectUrl),
             });
 
             return;

@@ -1,4 +1,7 @@
-import { AMBER } from '@/components/open-banking/beta-connector';
+import {
+    AMBER,
+    BetaConnectorNotice,
+} from '@/components/open-banking/beta-connector';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,26 +26,28 @@ import { Copy, ExternalLink, Smartphone } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-export type BankRedirectFlow = 'connect' | 'reconnect';
+type BankRedirectFlow = 'connect' | 'reconnect';
 
 type BankRedirectChoice = 'open_in_browser' | 'copy_link' | 'here_anyway';
 
 /**
- * Whether the page runs as the installed app. False until mounted, so the
- * server render and the first client render agree.
+ * Whether the page runs as the app installed on a phone, where the bank's
+ * return gets lost. A desktop install keeps the round trip in one window, and
+ * the notice's copy (phone, Safari) would not fit it. False until mounted, so
+ * the server render and the first client render agree.
  */
-export function useInstalledPwa(): boolean {
+function useInstalledMobilePwa(): boolean {
     const [installed, setInstalled] = useState(false);
 
     useEffect(() => {
-        setInstalled(isInstalledPwa());
+        setInstalled(isInstalledPwa() && detectMobilePlatform() !== null);
     }, []);
 
     return installed;
 }
 
 /** What the user did with the notice: leave for the browser, or stay. */
-export function captureBankRedirectChoice(
+function captureBankRedirectChoice(
     flow: BankRedirectFlow,
     choice: BankRedirectChoice,
 ): void {
@@ -56,22 +61,22 @@ export function captureBankRedirectChoice(
  * connection stays pending. We cannot fix the bank's return; we can send the
  * user to the browser, where the round trip stays in one tab.
  *
- * `browserUrl` is where the browser should start: the page itself for a new
- * connection (the user picks the bank again), the reconnect route for an
- * existing one. Never blocks: the caller keeps a "here anyway" action.
+ * `browserUrl` is where the browser should start: the reconnect route for an
+ * existing connection, or by default the page itself, where the user picks
+ * the bank again. Never blocks: the caller keeps a "here anyway" action.
  */
 export function PwaBankRedirectNotice({
     browserUrl,
     flow,
 }: {
-    browserUrl: string;
+    browserUrl?: string;
     flow: BankRedirectFlow;
 }) {
     const [, copy] = useClipboard();
     const handoff = browserHandoff(detectMobilePlatform());
 
     const handOver = async () => {
-        const url = absoluteUrl(browserUrl);
+        const url = absoluteUrl(browserUrl ?? window.location.href);
 
         if (handoff === 'open') {
             captureBankRedirectChoice(flow, 'open_in_browser');
@@ -123,10 +128,36 @@ export function PwaBankRedirectNotice({
     );
 }
 
+/**
+ * The PWA notice for a new connection's confirm step. `notice` is null outside
+ * the installed app; callers run `recordConnectHere` before their own
+ * authorize so the "here anyway" choice is recorded.
+ */
+export function usePwaConnectNotice(): {
+    warn: boolean;
+    notice: ReactNode;
+    recordConnectHere: () => void;
+} {
+    const warn = useInstalledMobilePwa();
+
+    const recordConnectHere = useCallback(() => {
+        if (warn) {
+            captureBankRedirectChoice('connect', 'here_anyway');
+        }
+    }, [warn]);
+
+    return {
+        warn,
+        notice: warn ? <PwaBankRedirectNotice flow="connect" /> : null,
+        recordConnectHere,
+    };
+}
+
 interface ReconnectRequest {
     bankName: string;
     browserUrl: string;
-    proceed: () => void;
+    beta?: boolean;
+    reconnectHere: () => void;
 }
 
 /**
@@ -136,9 +167,9 @@ interface ReconnectRequest {
  */
 export function usePwaReconnectGate(): {
     requestReconnect: (request: ReconnectRequest) => void;
-    dialog: ReactNode;
+    reconnectDialog: ReactNode;
 } {
-    const installed = useInstalledPwa();
+    const installed = useInstalledMobilePwa();
     const [pending, setPending] = useState<ReconnectRequest | null>(null);
 
     const requestReconnect = useCallback(
@@ -149,7 +180,7 @@ export function usePwaReconnectGate(): {
                 return;
             }
 
-            request.proceed();
+            request.reconnectHere();
         },
         [installed],
     );
@@ -161,10 +192,10 @@ export function usePwaReconnectGate(): {
 
         captureBankRedirectChoice('reconnect', 'here_anyway');
         setPending(null);
-        pending.proceed();
+        pending.reconnectHere();
     };
 
-    const dialog = (
+    const reconnectDialog = (
         <Dialog
             open={pending !== null}
             onOpenChange={(open) => !open && setPending(null)}
@@ -179,6 +210,7 @@ export function usePwaReconnectGate(): {
                             {__("We'll take you to your bank to renew access.")}
                         </DialogDescription>
                     </DialogHeader>
+                    {pending.beta && <BetaConnectorNotice />}
                     <PwaBankRedirectNotice
                         browserUrl={pending.browserUrl}
                         flow="reconnect"
@@ -199,5 +231,5 @@ export function usePwaReconnectGate(): {
         </Dialog>
     );
 
-    return { requestReconnect, dialog };
+    return { requestReconnect, reconnectDialog };
 }

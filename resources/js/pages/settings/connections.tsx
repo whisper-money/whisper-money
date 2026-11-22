@@ -118,7 +118,7 @@ export default function ConnectionsPage({ connections }: Props) {
     const [updateCredentialsConnection, setUpdateCredentialsConnection] =
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
-    const { requestReconnect, dialog: reconnectDialog } = usePwaReconnectGate();
+    const { requestReconnect, reconnectDialog } = usePwaReconnectGate();
 
     const hasSyncing = connections.some(isFirstSyncRunning);
 
@@ -149,7 +149,8 @@ export default function ConnectionsPage({ connections }: Props) {
         requestReconnect({
             bankName: connection.aspsp_name,
             browserUrl: reconnect.url(connection.id),
-            proceed: () => startReconnect(connection),
+            beta: connection.is_beta,
+            reconnectHere: () => startReconnect(connection),
         });
     }
 
