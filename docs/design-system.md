@@ -8,7 +8,8 @@ the few decisions that were never written down. It is not a redesign.
 - **Source of truth is the code**: `resources/css/app.css` (token values, light
   and dark, chart palettes), `resources/css/theme.css` (the Tailwind theme,
   shared with the user-widget stylesheet `widgets.css`) and
-  `resources/js/components/ui` (the primitives). When this document and the
+  `resources/js/components/ui` (the primitives). User widgets only get the
+  classes safelisted in `widgets.css` (`warning` is not there yet). When this document and the
   code disagree, the code wins and this document gets fixed.
 - **Live previews**: [`/design-system`](https://whisper.money/design-system)
   renders the real components with light/dark, privacy mode and chart-theme
@@ -43,21 +44,21 @@ the few decisions that were never written down. It is not a redesign.
 Defined as CSS variables in `:root` (light) and `.dark` in `app.css`, and
 exposed as Tailwind colors (`bg-*`, `text-*`, `border-*`…) in `theme.css`.
 
-| Token | Use it for |
-| --- | --- |
-| `background` / `foreground` | Page surface and default text. |
-| `card` / `card-foreground` | `Card` surfaces. Same as background today. |
-| `popover` / `popover-foreground` | Popovers, menus, dropdowns. |
-| `primary` / `primary-foreground` | The main action (default `Button`). Near-black in light, near-white in dark. |
-| `secondary` / `secondary-foreground` | Secondary buttons and quiet fills. |
-| `muted` / `muted-foreground` | Quiet surfaces and secondary text (descriptions, captions, unfavourable trends). |
-| `accent` / `accent-foreground` | Hover and selected states of menu items and toggles. |
-| `border`, `input`, `ring` | Borders, input borders, focus rings. |
-| `success` | Money in the user's favour: income amounts, favourable trends. Not for charts. |
-| `warning` / `warning-foreground` | Something the user should act on that is not an error (an expiring connection, a budget close to its limit). `warning` is the ink (text, icon, border); `warning-foreground` is text on a `bg-warning` fill. |
-| `destructive` / `destructive-foreground` | Errors and destructive actions only. Note that `destructive-foreground` is used as error *text* (`Alert`), not as text on a red fill. |
-| `sidebar-*` | The app sidebar. Don't use outside it. |
-| `chart-1` … `chart-10` | Data series. See [Chart palettes](#chart-palettes). |
+| Token                                    | Use it for                                                                                                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `background` / `foreground`              | Page surface and default text.                                                                                                                                                                               |
+| `card` / `card-foreground`               | `Card` surfaces. Same as background today.                                                                                                                                                                   |
+| `popover` / `popover-foreground`         | Popovers, menus, dropdowns.                                                                                                                                                                                  |
+| `primary` / `primary-foreground`         | The main action (default `Button`). Near-black in light, near-white in dark.                                                                                                                                 |
+| `secondary` / `secondary-foreground`     | Secondary buttons and quiet fills.                                                                                                                                                                           |
+| `muted` / `muted-foreground`             | Quiet surfaces and secondary text (descriptions, captions, unfavourable trends).                                                                                                                             |
+| `accent` / `accent-foreground`           | Hover and selected states of menu items and toggles.                                                                                                                                                         |
+| `border`, `input`, `ring`                | Borders, input borders, focus rings.                                                                                                                                                                         |
+| `success`                                | Money in the user's favour: income amounts, favourable trends. Not for charts.                                                                                                                               |
+| `warning` / `warning-foreground`         | Something the user should act on that is not an error (an expiring connection, a budget close to its limit). `warning` is the ink (text, icon, border); `warning-foreground` is text on a `bg-warning` fill. |
+| `destructive` / `destructive-foreground` | Errors and destructive actions only. Note that `destructive-foreground` is used as error _text_ (`Alert`), not as text on a red fill.                                                                        |
+| `sidebar-*`                              | The app sidebar. Don't use outside it.                                                                                                                                                                       |
+| `chart-1` … `chart-10`                   | Data series. See [Chart palettes](#chart-palettes).                                                                                                                                                          |
 
 Feature tokens that only one feature uses. Don't use them elsewhere:
 
@@ -89,11 +90,11 @@ The rules for using them are in [Charts](#charts).
 
 ### Typography
 
-| Class | Font | Use it for |
-| --- | --- | --- |
-| `font-sans` (default) | IBM Plex Sans | Everything. |
-| `font-mono` | Google Sans Code | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`). |
-| `font-heading` | IBM Plex Serif, italic | Display headings: page titles in onboarding, summaries and empty states, section titles on `/design-system`. A plain CSS class in `app.css` (base layer), not a theme token. |
+| Class                 | Font                   | Use it for                                                                                                                                                                   |
+| --------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `font-sans` (default) | IBM Plex Sans          | Everything.                                                                                                                                                                  |
+| `font-mono`           | Google Sans Code       | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`).                                                                                        |
+| `font-heading`        | IBM Plex Serif, italic | Display headings: page titles in onboarding, summaries and empty states, section titles on `/design-system`. A plain CSS class in `app.css` (base layer), not a theme token. |
 
 Sizes are Tailwind's default scale (`text-xs` … `text-4xl`). Body text is
 `text-sm` in dense UI (tables, cards, forms) and `text-base` in reading
@@ -163,8 +164,8 @@ and tags. Not for counts in navigation, and not as buttons.
 ### Alerts
 
 `Alert` (`default`, `destructive`) with `AlertTitle`/`AlertDescription`, for a
-message that belongs to a page or a form. `alert-error.tsx` renders a list of
-errors. For a transient message, use a toast (`sonner`, via `AppToaster`). A
+message that belongs to a page or a form. `components/alert-error.tsx` renders a
+list of errors. For a transient message, use a toast (`sonner`, via `AppToaster`). A
 warning alert uses the `warning` token (no variant yet: see the
 [debt catalog](#debt-catalog), item a).
 
@@ -319,19 +320,19 @@ switch the comboboxes use. Use these instead of writing the switch again.
 
 ## Do and don't
 
-| Do | Don't |
-| --- | --- |
-| `text-success` for income and favourable trends | `text-green-600`, `text-emerald-500` |
-| `text-warning` for warnings | `text-amber-600`, `bg-yellow-50` |
-| `text-destructive` for errors and destructive actions | Red for expenses or unfavourable trends |
-| `<AmountDisplay>` for money | `formatCurrency()` straight into JSX |
-| `var(--color-chart-N)` in charts | `--success`, palette colors, or an `isColorful` branch in a chart |
-| `<Card>` for a bordered group | `<div className="rounded-xl border">` |
-| A primitive from `components/ui` | A copy of its markup, or a new library for the same thing |
-| `gap-*` between siblings | Margins between siblings |
-| `mx-auto max-w-page` for page width | A one-off `max-w-[…]` |
-| `Skeleton` shaped like the content | A centred spinner for page content |
-| Check light and dark | Tokens with a `dark:` duplicate, or palette classes without one |
+| Do                                                    | Don't                                                             |
+| ----------------------------------------------------- | ----------------------------------------------------------------- |
+| `text-success` for income and favourable trends       | `text-green-600`, `text-emerald-500`                              |
+| `text-warning` for warnings                           | `text-amber-600`, `bg-yellow-50`                                  |
+| `text-destructive` for errors and destructive actions | Red for expenses or unfavourable trends                           |
+| `<AmountDisplay>` for money                           | `formatCurrency()` straight into JSX                              |
+| `var(--color-chart-N)` in charts                      | `--success`, palette colors, or an `isColorful` branch in a chart |
+| `<Card>` for a bordered group                         | `<div className="rounded-xl border">`                             |
+| A primitive from `components/ui`                      | A copy of its markup, or a new library for the same thing         |
+| `gap-*` between siblings                              | Margins between siblings                                          |
+| `mx-auto max-w-page` for page width                   | A one-off `max-w-[…]`                                             |
+| `Skeleton` shaped like the content                    | A centred spinner for page content                                |
+| Check light and dark                                  | Tokens with a `dark:` duplicate, or palette classes without one   |
 
 ## Debt catalog
 
@@ -339,14 +340,14 @@ Patterns in today's code that break these rules. Each has an issue, fixed by a
 stacked PR in the design-system stack. Counts were measured over
 `resources/js` excluding tests and the out-of-scope marketing pages.
 
-| | Debt | Evidence | Issue |
-| --- | --- | --- | --- |
-| a | Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground` | 72 files (red 35, emerald 28, amber 25, green 24, rose 5). E.g. `pages/settings/billing.tsx`, `components/transactions/transaction-analysis-drawer.tsx`, `components/dashboard/percentage-trend-indicator.tsx`, `components/ui/amount-display.tsx` (`positive-highlight`), `components/input-error.tsx` | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
-| b | Components branching on the chart theme (`isColorful` in `useChartColors`) | `hooks/use-chart-color-scheme.tsx` and 11 consumers, e.g. `components/dashboard/net-worth-chart.tsx`, `components/charts/cashflow-trend-chart.tsx`, `components/charts/sankey-chart.tsx` | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
-| c | Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay` | 42 `.tsx` files (vs 41 using `AmountDisplay`). E.g. `components/onboarding/step-reveal.tsx`, `components/transactions/split-transaction-dialog.tsx`, `pages/savings-goals/show.tsx` | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
-| d | No shared `EmptyState` | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx` | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
-| e | No shared `PageHeader` | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx` | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
-| f | No generic `StatTile` | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx` | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
-| g | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>` | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx` | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
-| h | `@headlessui/react` next to Radix | Only `Transition`, in `pages/settings/account.tsx` and `pages/settings/password.tsx` | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |
-| i | Unused auth layouts | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are imported nowhere; `auth-simple-layout.tsx` is used through `AuthLayout` | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |
+|     | Debt                                                                                                                 | Evidence                                                                                                                                                                                                                                                                                                | Issue                                                               |
+| --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| a   | Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground` | 72 files (red 35, emerald 28, amber 25, green 24, rose 5). E.g. `pages/settings/billing.tsx`, `components/transactions/transaction-analysis-drawer.tsx`, `components/dashboard/percentage-trend-indicator.tsx`, `components/ui/amount-display.tsx` (`positive-highlight`), `components/input-error.tsx` | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
+| b   | Components branching on the chart theme (`isColorful` in `useChartColors`)                                           | `hooks/use-chart-color-scheme.tsx` and 11 consumers, e.g. `components/dashboard/net-worth-chart.tsx`, `components/charts/cashflow-trend-chart.tsx`, `components/charts/sankey-chart.tsx`                                                                                                                | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
+| c   | Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`                                      | 42 `.tsx` files (vs 41 using `AmountDisplay`). E.g. `components/onboarding/step-reveal.tsx`, `components/transactions/split-transaction-dialog.tsx`, `pages/savings-goals/show.tsx`                                                                                                                     | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
+| d   | No shared `EmptyState`                                                                                               | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx`                                                                                                                                                                   | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
+| e   | No shared `PageHeader`                                                                                               | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx`                                                                                                                                                                               | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
+| f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
+| g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
+| h   | `@headlessui/react` next to Radix                                                                                    | Only `Transition`, in `pages/settings/account.tsx` and `pages/settings/password.tsx`                                                                                                                                                                                                                    | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |
+| i   | Unused auth layouts                                                                                                  | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are imported nowhere; `auth-simple-layout.tsx` is used through `AuthLayout`                                                                                                                                                             | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |

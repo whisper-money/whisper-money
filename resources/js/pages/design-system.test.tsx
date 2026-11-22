@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import DesignSystem from './design-system';
@@ -43,9 +43,15 @@ describe('design system page', () => {
             expect(
                 screen.getByRole('heading', { level: 2, name: title }),
             ).toBeInTheDocument();
-            expect(screen.getByRole('link', { name: title })).toHaveAttribute(
+            expect(
+                within(
+                    screen.getByRole('navigation', {
+                        name: 'Design system sections',
+                    }),
+                ).getByRole('link', { name: title }),
+            ).toHaveAttribute(
                 'href',
-                expect.stringMatching(/^#/),
+                `#${title.toLowerCase().replace(' ', '-')}`,
             );
         }
     });

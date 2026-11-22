@@ -6,18 +6,20 @@ import {
     CHART_COLOR_SCHEMES,
     DESIGN_SYSTEM_DOC_URL,
     DesignSystemDisplayProvider,
+    isChartColorScheme,
     Preview,
+    readChartColorScheme,
     ShowcaseSection,
     useLocalDocumentDisplay,
+    type DesignSystemDisplay,
     type PreviewEntry,
 } from '@/components/design-system/showcase';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FixedPrivacyMode } from '@/contexts/privacy-mode-context';
-import { type ChartColorScheme } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const SECTIONS: { id: string; title: string; previews: PreviewEntry[] }[] = [
     { id: 'foundations', title: 'Foundations', previews: FOUNDATION_PREVIEWS },
@@ -34,23 +36,87 @@ const SECTIONS: { id: string; title: string; previews: PreviewEntry[] }[] = [
     },
 ];
 
-function isChartColorScheme(value: string): value is ChartColorScheme {
-    return (CHART_COLOR_SCHEMES as string[]).includes(value);
+/** What the server renders and the first client render repeats. */
+const SERVER_DISPLAY: DesignSystemDisplay = {
+    isDark: false,
+    chartScheme: 'neutral',
+};
+
+function Toolbar({
+    display,
+    onChange,
+    isMasked,
+    onMaskedChange,
+}: {
+    display: DesignSystemDisplay;
+    onChange: (display: DesignSystemDisplay) => void;
+    isMasked: boolean;
+    onMaskedChange: (isMasked: boolean) => void;
+}) {
+    const { isDark, chartScheme } = display;
+
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <Button
+                variant="outline"
+                size="sm"
+                aria-pressed={isDark}
+                onClick={() => onChange({ ...display, isDark: !isDark })}
+            >
+                {isDark ? <Moon /> : <Sun />}
+                {isDark ? 'Dark' : 'Light'}
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                aria-pressed={isMasked}
+                onClick={() => onMaskedChange(!isMasked)}
+            >
+                {isMasked ? <EyeOff /> : <Eye />}
+                Privacy mode
+            </Button>
+            <ToggleGroup
+                type="single"
+                variant="outline"
+                size="sm"
+                aria-label="Chart theme"
+                value={chartScheme}
+                onValueChange={(value) =>
+                    isChartColorScheme(value) &&
+                    onChange({ ...display, chartScheme: value })
+                }
+            >
+                {CHART_COLOR_SCHEMES.map((scheme) => (
+                    <ToggleGroupItem
+                        key={scheme}
+                        value={scheme}
+                        className="px-2.5"
+                    >
+                        {scheme}
+                    </ToggleGroupItem>
+                ))}
+            </ToggleGroup>
+        </div>
+    );
 }
 
-/** Starts from what the visitor's page already shows, read off the root. */
-function initialDisplay() {
-    if (typeof document === 'undefined') {
-        return { isDark: false, chartScheme: 'colorful' as ChartColorScheme };
-    }
-
-    const root = document.documentElement;
-    const scheme = root.getAttribute('data-chart-color') ?? 'neutral';
-
-    return {
-        isDark: root.classList.contains('dark'),
-        chartScheme: isChartColorScheme(scheme) ? scheme : 'colorful',
-    };
+function SectionLinks() {
+    return (
+        <nav
+            aria-label="Design system sections (compact)"
+            className="flex gap-4 overflow-x-auto text-sm lg:hidden"
+        >
+            {SECTIONS.map((section) => (
+                <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                    {section.title}
+                </a>
+            ))}
+        </nav>
+    );
 }
 
 function SideIndex() {
@@ -80,81 +146,54 @@ function SideIndex() {
 }
 
 export default function DesignSystem() {
-    const [initial] = useState(initialDisplay);
-    const [isDark, setIsDark] = useState(initial.isDark);
-    const [chartScheme, setChartScheme] = useState(initial.chartScheme);
+    // Null until the page has read what <html> shows (theme and chart palette
+    // of the visitor), so the server and the first client render agree.
+    const [display, setDisplay] = useState<DesignSystemDisplay | null>(null);
     const [isMasked, setIsMasked] = useState(false);
-    const display = useMemo(
-        () => ({ isDark, chartScheme }),
-        [isDark, chartScheme],
-    );
+
+    useEffect(() => {
+        setDisplay({
+            isDark: document.documentElement.classList.contains('dark'),
+            chartScheme: readChartColorScheme(),
+        });
+    }, []);
 
     useLocalDocumentDisplay(display);
+
+    const shownDisplay = display ?? SERVER_DISPLAY;
 
     return (
         <>
             <Head title="Design system">
                 <meta name="robots" content="noindex, nofollow" />
             </Head>
-            <DesignSystemDisplayProvider value={display}>
+            <DesignSystemDisplayProvider value={shownDisplay}>
                 <FixedPrivacyMode enabled={isMasked}>
                     <div className="min-h-screen bg-background text-foreground">
                         <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
-                            <div className="mx-auto flex max-w-page flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-                                <div className="flex items-baseline gap-3">
-                                    <h1 className="font-heading text-2xl">
-                                        Whisper Money design system
-                                    </h1>
-                                    <a
-                                        href={DESIGN_SYSTEM_DOC_URL}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                                    >
-                                        docs/design-system.md
-                                    </a>
+                            <div className="mx-auto flex max-w-page flex-col gap-3 px-4 py-3 sm:px-6">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-baseline gap-3">
+                                        <h1 className="font-heading text-2xl">
+                                            Whisper Money design system
+                                        </h1>
+                                        <a
+                                            href={DESIGN_SYSTEM_DOC_URL}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="hidden text-sm text-muted-foreground underline-offset-4 hover:underline sm:inline"
+                                        >
+                                            docs/design-system.md
+                                        </a>
+                                    </div>
+                                    <Toolbar
+                                        display={shownDisplay}
+                                        onChange={setDisplay}
+                                        isMasked={isMasked}
+                                        onMaskedChange={setIsMasked}
+                                    />
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        aria-pressed={isDark}
-                                        onClick={() => setIsDark(!isDark)}
-                                    >
-                                        {isDark ? <Moon /> : <Sun />}
-                                        {isDark ? 'Dark' : 'Light'}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        aria-pressed={isMasked}
-                                        onClick={() => setIsMasked(!isMasked)}
-                                    >
-                                        {isMasked ? <EyeOff /> : <Eye />}
-                                        Privacy mode
-                                    </Button>
-                                    <ToggleGroup
-                                        type="single"
-                                        variant="outline"
-                                        size="sm"
-                                        aria-label="Chart theme"
-                                        value={chartScheme}
-                                        onValueChange={(value) =>
-                                            isChartColorScheme(value) &&
-                                            setChartScheme(value)
-                                        }
-                                    >
-                                        {CHART_COLOR_SCHEMES.map((scheme) => (
-                                            <ToggleGroupItem
-                                                key={scheme}
-                                                value={scheme}
-                                                className="px-2.5"
-                                            >
-                                                {scheme}
-                                            </ToggleGroupItem>
-                                        ))}
-                                    </ToggleGroup>
-                                </div>
+                                <SectionLinks />
                             </div>
                         </header>
                         <div className="mx-auto flex max-w-page gap-10 px-4 py-8 sm:px-6">

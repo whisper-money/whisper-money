@@ -11,7 +11,9 @@
 
 /* `[data-chart-color='neutral']` lets one block show the neutral chart palette
    while the page uses another (the /design-system palettes, side by side). The
-   app itself never sets it: neutral is the absence of the attribute. */
+   app itself never sets it: neutral is the absence of the attribute.
+   The block gets every token below, not only the chart slots, so in dark mode
+   it must carry `.dark` too or its surface turns light. */
 :root,
 [data-chart-color='neutral'] {
     --safe-area-top: env(safe-area-inset-top, 0px);

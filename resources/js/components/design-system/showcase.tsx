@@ -1,3 +1,4 @@
+import { applyColorScheme } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { type ChartColorScheme } from '@/types';
 import { BookOpen } from 'lucide-react';
@@ -27,7 +28,7 @@ export interface DesignSystemDisplay {
 
 const DesignSystemDisplayContext = createContext<DesignSystemDisplay>({
     isDark: false,
-    chartScheme: 'colorful',
+    chartScheme: 'neutral',
 });
 
 export const DesignSystemDisplayProvider = DesignSystemDisplayContext.Provider;
@@ -41,13 +42,23 @@ export function useDesignSystemDisplay(): DesignSystemDisplay {
  * the app reads them (the `.dark` class and `data-chart-color`), so dialogs and
  * popovers portalled to <body> follow them too. Each effect puts back what it
  * found when it is undone, so leaving the page restores the visitor's own
- * settings: nothing is written to storage, cookies or the account.
+ * settings: nothing is written to storage, cookies or the account. Does
+ * nothing until the page has read the root (`display` is null until then).
+ *
+ * Known limit: the app's own `prefers-color-scheme` listener still runs, so an
+ * OS theme switch while the page is open overrides the local toggle.
  */
-export function useLocalDocumentDisplay({
-    isDark,
-    chartScheme,
-}: DesignSystemDisplay): void {
+export function useLocalDocumentDisplay(
+    display: DesignSystemDisplay | null,
+): void {
+    const isDark = display?.isDark;
+    const chartScheme = display?.chartScheme;
+
     useEffect(() => {
+        if (isDark === undefined) {
+            return;
+        }
+
         const root = document.documentElement;
         const wasDark = root.classList.contains('dark');
         const previousColorScheme = root.style.colorScheme;
@@ -62,21 +73,28 @@ export function useLocalDocumentDisplay({
     }, [isDark]);
 
     useEffect(() => {
-        const root = document.documentElement;
-        const previousScheme = root.getAttribute('data-chart-color');
+        if (chartScheme === undefined) {
+            return;
+        }
 
-        setChartColorAttribute(root, chartScheme);
+        const previousScheme = readChartColorScheme();
 
-        return () => setChartColorAttribute(root, previousScheme);
+        applyColorScheme(chartScheme);
+
+        return () => applyColorScheme(previousScheme);
     }, [chartScheme]);
 }
 
-function setChartColorAttribute(element: HTMLElement, scheme: string | null) {
-    if (scheme === null || scheme === 'neutral') {
-        element.removeAttribute('data-chart-color');
-    } else {
-        element.setAttribute('data-chart-color', scheme);
-    }
+/** The chart theme <html> carries now; no attribute means neutral. */
+export function readChartColorScheme(): ChartColorScheme {
+    const scheme =
+        document.documentElement.getAttribute('data-chart-color') ?? 'neutral';
+
+    return isChartColorScheme(scheme) ? scheme : 'neutral';
+}
+
+export function isChartColorScheme(value: string): value is ChartColorScheme {
+    return (CHART_COLOR_SCHEMES as string[]).includes(value);
 }
 
 export function DocLink({ anchor }: { anchor: string }) {
@@ -114,7 +132,7 @@ export function ShowcaseSection({
         <section
             id={id}
             aria-labelledby={`${id}-title`}
-            className="flex scroll-mt-20 flex-col gap-6"
+            className="flex scroll-mt-48 flex-col gap-6 lg:scroll-mt-24"
         >
             <div className="flex items-baseline justify-between gap-4 border-b pb-2">
                 <h2
@@ -143,7 +161,10 @@ export function Preview({
     children: ReactNode;
 }) {
     return (
-        <div id={id} className="flex scroll-mt-20 flex-col gap-3">
+        <div
+            id={id}
+            className="flex scroll-mt-48 flex-col gap-3 lg:scroll-mt-24"
+        >
             <div className="flex items-baseline justify-between gap-4">
                 <h3 className="text-base font-medium">{title}</h3>
                 <DocLink anchor={id} />
