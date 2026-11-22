@@ -2,6 +2,7 @@ import { BetaConnectorBadge } from '@/components/open-banking/beta-connector';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
+import { usePwaReconnectGate } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
 import {
     isBankAggregatorProvider,
@@ -38,6 +39,7 @@ import {
 import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import { leavePage } from '@/lib/leave-page';
+import { reconnect } from '@/routes/open-banking';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -116,6 +118,7 @@ export default function ConnectionsPage({ connections }: Props) {
     const [updateCredentialsConnection, setUpdateCredentialsConnection] =
         useState<BankingConnection | null>(null);
     const [reconnectingId, setReconnectingId] = useState<string | null>(null);
+    const { requestReconnect, reconnectDialog } = usePwaReconnectGate();
 
     const hasSyncing = connections.some(isFirstSyncRunning);
 
@@ -142,7 +145,16 @@ export default function ConnectionsPage({ connections }: Props) {
         router.post(`/settings/connections/${connection.id}/sync`);
     }
 
-    async function handleReconnect(connection: BankingConnection) {
+    function handleReconnect(connection: BankingConnection) {
+        requestReconnect({
+            bankName: connection.aspsp_name,
+            browserUrl: reconnect.url(connection.id),
+            beta: connection.is_beta,
+            reconnectHere: () => startReconnect(connection),
+        });
+    }
+
+    async function startReconnect(connection: BankingConnection) {
         setReconnectingId(connection.id);
         try {
             const response = await fetch(
@@ -717,6 +729,8 @@ export default function ConnectionsPage({ connections }: Props) {
                         }}
                     />
                 )}
+
+                {reconnectDialog}
             </SettingsLayout>
         </AppLayout>
     );

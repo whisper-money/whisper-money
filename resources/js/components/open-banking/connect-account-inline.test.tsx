@@ -2,6 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConnectAccountInline } from './connect-account-inline';
 
+const pwa = vi.hoisted(() => ({ installed: false }));
+
+vi.mock('@/lib/pwa', () => ({
+    isInstalledPwa: () => pwa.installed,
+    detectMobilePlatform: () => 'android',
+}));
+
 const { captureEvent, leavePage } = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     leavePage: vi.fn(),
@@ -65,6 +72,7 @@ async function reachConnect(bank: RegExp) {
 describe('ConnectAccountInline', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        pwa.installed = false;
     });
 
     // The country is part of a bank's identity, not a filter, so the flow may
@@ -189,6 +197,39 @@ describe('ConnectAccountInline', () => {
             await reachConnect(/BBVA/);
 
             expect(captureEvent).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('in the installed app', () => {
+        it('suggests the browser before the bank redirect, without blocking it', async () => {
+            pwa.installed = true;
+            await reachBankStep();
+            fireEvent.click(screen.getByRole('button', { name: /BBVA/ }));
+
+            expect(
+                screen.getByText('Better from the browser'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /Open in browser/ }),
+            ).toBeInTheDocument();
+
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Connect here anyway' }),
+            );
+
+            expect(captureEvent).toHaveBeenCalledWith(
+                'pwa_bank_redirect_choice',
+                { flow: 'connect', choice: 'here_anyway' },
+            );
+            await waitFor(() => expect(leavePage).toHaveBeenCalled());
+        });
+
+        it('stays out of a browser tab', async () => {
+            await reachConnect(/BBVA/);
+
+            expect(
+                screen.queryByText('Better from the browser'),
+            ).not.toBeInTheDocument();
         });
     });
 });

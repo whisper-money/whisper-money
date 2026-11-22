@@ -3,6 +3,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BankConnectionIssueBanner } from './bank-connection-issue-banner';
 
+const pwa = vi.hoisted(() => ({ installed: false }));
+
+vi.mock('@/lib/pwa', () => ({
+    isInstalledPwa: () => pwa.installed,
+    detectMobilePlatform: () => 'android',
+}));
+
 const mocks = vi.hoisted(() => ({
     leavePage: vi.fn(),
     visit: vi.fn(),
@@ -56,6 +63,7 @@ describe('BankConnectionIssueBanner', () => {
         window.sessionStorage.clear();
         mocks.issues = [];
         mocks.url = '/dashboard';
+        pwa.installed = false;
     });
 
     it('renders nothing while every connection is syncing', () => {
@@ -90,6 +98,30 @@ describe('BankConnectionIssueBanner', () => {
         expect(mocks.captureEvent).toHaveBeenCalledWith(
             'bank_issue_banner_reconnect_clicked',
             { connections_count: 1, destination: 'bank' },
+        );
+    });
+
+    it('in the installed app, asks before leaving for the bank', () => {
+        pwa.installed = true;
+        mocks.issues = [issue({})];
+
+        render(<BankConnectionIssueBanner />);
+        fireEvent.click(screen.getByRole('button', { name: 'Reconnect' }));
+
+        expect(mocks.leavePage).not.toHaveBeenCalled();
+        expect(screen.getByText('Reconnect Santander')).toBeInTheDocument();
+        expect(screen.getByText('Better from the browser')).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reconnect here anyway' }),
+        );
+
+        expect(mocks.leavePage).toHaveBeenCalledWith(
+            '/open-banking/connections/conn-1/reconnect',
+        );
+        expect(mocks.captureEvent).toHaveBeenCalledWith(
+            'pwa_bank_redirect_choice',
+            { flow: 'reconnect', choice: 'here_anyway' },
         );
     });
 

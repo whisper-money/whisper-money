@@ -11,6 +11,11 @@ vi.mock('@/lib/posthog', () => ({
 
 import { pageProps } from '@/lib/onboarding-page-props';
 
+vi.mock('@/lib/pwa', () => ({
+    isInstalledPwa: () => false,
+    detectMobilePlatform: () => null,
+}));
+
 vi.mock('@inertiajs/react', () => ({
     usePage: () => ({ props: pageProps }),
 }));

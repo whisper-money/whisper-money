@@ -1,3 +1,4 @@
+import { usePwaReconnectGate } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { joinNames } from '@/lib/join-names';
@@ -97,6 +98,7 @@ export function BankConnectionIssueBanner() {
         [bankConnectionIssues],
     );
     const onConnectionsPage = url.split('?')[0] === connectionsIndex.url();
+    const { requestReconnect, reconnectDialog } = usePwaReconnectGate();
 
     // Unknown until mounted: storage does not exist during SSR.
     const [dismissal, setDismissal] = useState<Dismissal | null | undefined>(
@@ -141,9 +143,13 @@ export function BankConnectionIssueBanner() {
             destination: reconnectUrl ? 'bank' : 'connections_page',
         });
 
-        if (reconnectUrl) {
-            // The reconnect route redirects to the bank, which Inertia cannot follow.
-            leavePage(reconnectUrl);
+        if (single && reconnectUrl) {
+            requestReconnect({
+                bankName: single.aspsp_name,
+                browserUrl: reconnectUrl,
+                // The reconnect route redirects to the bank, which Inertia cannot follow.
+                reconnectHere: () => leavePage(reconnectUrl),
+            });
 
             return;
         }
@@ -202,6 +208,7 @@ export function BankConnectionIssueBanner() {
                     <XIcon className="size-4" />
                 </Button>
             </Alert>
+            {reconnectDialog}
         </div>
     );
 }

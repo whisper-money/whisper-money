@@ -22,6 +22,7 @@ import {
     BrokerRows,
     ConnectBrokerInline,
 } from '@/components/open-banking/connect-broker-inline';
+import { usePwaConnectNotice } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import { Input } from '@/components/ui/input';
 import {
@@ -239,6 +240,9 @@ export function ConnectAccountInline({
         setStep('bank');
     }, [step, institutions.length, onBack, setStep, trigger]);
 
+    const pwaNotice = usePwaConnectNotice();
+    const { recordConnectHere } = pwaNotice;
+
     /**
      * The last thing that happens inside our app before the bank takes over, and
      * the widest gap in the onboarding funnel: whoever does not come back from
@@ -250,8 +254,9 @@ export function ConnectAccountInline({
             country,
             provider: 'enable_banking',
         });
+        recordConnectHere();
         handleAuthorize();
-    }, [country, handleAuthorize]);
+    }, [country, handleAuthorize, recordConnectHere]);
 
     const back = (
         <StepButton text={__('Back')} variant="ghost" onClick={handleBack} />
@@ -363,9 +368,13 @@ export function ConnectAccountInline({
                 footer={
                     <>
                         <StepButton
-                            text={__('Continue to :bank', {
-                                bank: selectedBank.name,
-                            })}
+                            text={
+                                pwaNotice.warn
+                                    ? __('Connect here anyway')
+                                    : __('Continue to :bank', {
+                                          bank: selectedBank.name,
+                                      })
+                            }
                             loading={isSubmitting}
                             loadingText={__('Connecting...')}
                             onClick={startConnect}
@@ -405,6 +414,8 @@ export function ConnectAccountInline({
                 </StepList>
 
                 {selectedBank.beta && <BetaConnectorNotice />}
+
+                {pwaNotice.notice}
 
                 {isAlreadyConnected && (
                     <ReplaceConnectionWarning

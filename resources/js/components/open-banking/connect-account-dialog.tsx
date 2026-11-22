@@ -4,6 +4,7 @@ import {
     BetaConnectorBadge,
     BetaConnectorNotice,
 } from '@/components/open-banking/beta-connector';
+import { usePwaConnectNotice } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
 import {
     StandardPlanNotice,
@@ -78,6 +79,17 @@ export function ConnectAccountDialog({
     } = useConnectFlow(connections);
 
     const countries = useConnectCountries();
+    const pwaNotice = usePwaConnectNotice();
+    // An API-key provider connects in place; only a bank redirect can get lost.
+    const warnPwa = pwaNotice.warn && !provider;
+
+    const connect = () => {
+        if (!provider) {
+            pwaNotice.recordConnectHere();
+        }
+
+        handleAuthorize();
+    };
     // With open banking off the list this dialog offers is only the API-key
     // providers, so promising a bank picker would be a promise it cannot keep.
     const { openBankingEnabled } = usePage<SharedData>().props;
@@ -314,6 +326,8 @@ export function ConnectAccountDialog({
                                 />
                             )}
 
+                            {!provider && pwaNotice.notice}
+
                             {isAlreadyConnected && (
                                 <ReplaceConnectionWarning
                                     existingConnectionId={
@@ -342,13 +356,12 @@ export function ConnectAccountDialog({
                                 >
                                     {__('Back')}
                                 </Button>
-                                <Button
-                                    onClick={handleAuthorize}
-                                    disabled={!canSubmit}
-                                >
+                                <Button onClick={connect} disabled={!canSubmit}>
                                     {isSubmitting
                                         ? __('Connecting...')
-                                        : __('Connect')}
+                                        : warnPwa
+                                          ? __('Connect here anyway')
+                                          : __('Connect')}
                                 </Button>
                             </div>
                         </div>
