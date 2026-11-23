@@ -62,13 +62,15 @@ function isAllowed(file: string, allowed: readonly string[]): boolean {
 
 /**
  * Every "<file> <what>" where a source file outside `allowed` (paths relative
- * to resources/js) matches one of `forbidden`.
+ * to resources/js) matches one of `forbidden`. `within` narrows the scan to
+ * one folder (e.g. `pages/`); by default every file under resources/js.
  */
 export function findViolations(
     forbidden: readonly ForbiddenPattern[],
     allowed: readonly string[],
+    within = '',
 ): string[] {
-    return collectSourceFiles(jsRoot)
+    return collectSourceFiles(join(jsRoot, within))
         .map((path) => relative(jsRoot, path))
         .filter((file) => !isAllowed(file, allowed))
         .flatMap((file) => {

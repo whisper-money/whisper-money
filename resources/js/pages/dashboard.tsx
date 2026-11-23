@@ -1,6 +1,5 @@
 import { CustomDashboardsView } from '@/components/dashboard/custom-dashboards/custom-dashboards-view';
 import MonthlySummaryNotice from '@/components/dashboard/monthly-summary-notice';
-import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
@@ -23,12 +22,6 @@ export default function Dashboard() {
         },
     ];
 
-    const heading = (
-        <HeadingSmall
-            title={__('Dashboard')}
-            description={__('Overview of your financial health')}
-        />
-    );
     const notice = props.monthlySummary && (
         <MonthlySummaryNotice summary={props.monthlySummary} />
     );
@@ -50,7 +43,8 @@ export default function Dashboard() {
             <div className="space-y-6 p-6">
                 <CustomDashboardsView
                     data={props}
-                    heading={heading}
+                    title={__('Dashboard')}
+                    description={__('Overview of your financial health')}
                     notice={notice}
                 />
             </div>

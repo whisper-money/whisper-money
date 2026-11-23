@@ -11,7 +11,7 @@ import {
 } from '@/components/cashflow/period-navigation';
 import { SavedInvestedCard } from '@/components/cashflow/saved-invested-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
-import HeadingSmall from '@/components/heading-small';
+import { PageHeader } from '@/components/page-header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -178,21 +178,18 @@ export default function CashflowPage() {
             <Head title={__('Cashflow')} />
 
             <div className="space-y-6 p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <HeadingSmall
-                        title={__('Cashflow')}
-                        description={__(
-                            'Track your income, expenses, and savings',
-                        )}
-                    />
-
-                    <PeriodNavigation
-                        currentDate={currentDate}
-                        periodType={periodType}
-                        onDateChange={setCurrentDate}
-                        onPeriodTypeChange={setPeriodType}
-                    />
-                </div>
+                <PageHeader
+                    title={__('Cashflow')}
+                    description={__('Track your income, expenses, and savings')}
+                    actions={
+                        <PeriodNavigation
+                            currentDate={currentDate}
+                            periodType={periodType}
+                            onDateChange={setCurrentDate}
+                            onPeriodTypeChange={setPeriodType}
+                        />
+                    }
+                />
 
                 {hasError && (
                     <Alert variant="destructive">

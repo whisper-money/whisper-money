@@ -6,7 +6,7 @@ import { index as fullImportIndex } from '@/actions/App/Http/Controllers/Setting
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { index as mcpIndex } from '@/actions/App/Http/Controllers/Settings/McpTokenController';
 import { index as notificationsIndex } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
-import Heading from '@/components/heading';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -244,8 +244,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     );
 
     return (
-        <div className="p-6">
-            <Heading
+        <div className="flex flex-col gap-8 p-6">
+            <PageHeader
                 title={__('Settings')}
                 description={__('Manage your profile and account settings')}
             />

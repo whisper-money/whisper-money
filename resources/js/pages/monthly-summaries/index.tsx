@@ -2,6 +2,7 @@ import {
     index,
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
+import { PageHeader } from '@/components/page-header';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
@@ -55,16 +56,12 @@ export default function MonthlySummariesIndex({ summaries }: Props) {
             <Head title={__('Monthly summaries')} />
 
             <div className="mx-auto flex w-full max-w-page flex-col gap-6 p-4">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        {__('Monthly summaries')}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {__(
-                            'Every month we close, with the figures frozen as they were and the card you can share.',
-                        )}
-                    </p>
-                </div>
+                <PageHeader
+                    title={__('Monthly summaries')}
+                    description={__(
+                        'Every month we close, with the figures frozen as they were and the card you can share.',
+                    )}
+                />
 
                 {summaries.length === 0 ? (
                     <EmptyState>

@@ -3,6 +3,7 @@ import {
     SYSTEM_DASHBOARD_LAYOUT,
     type SystemWidgetId,
 } from '@/components/dashboard/widgets/registry';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
     EmptyState,
@@ -43,17 +44,24 @@ import { useUserWidgetSlots } from './use-user-widget-slots';
 
 interface Props {
     data: DashboardProps;
-    heading: ReactNode;
-    /** Drawn between the heading and the widgets, as on the system dashboard. */
+    /** The page's title and description, drawn as its PageHeader. */
+    title: string;
+    description: string;
+    /** Drawn between the header and the widgets, as on the system dashboard. */
     notice: ReactNode;
 }
 
 /**
- * The dashboard page with the user's own dashboards: a picker next to the
- * heading, and the selected dashboard drawn on the 12-column grid. The system
+ * The dashboard page with the user's own dashboards: a picker in the page
+ * header's actions, and the selected dashboard drawn on the 12-column grid. The system
  * dashboard keeps its fixed, read-only layout.
  */
-export function CustomDashboardsView({ data, heading, notice }: Props) {
+export function CustomDashboardsView({
+    data,
+    title,
+    description,
+    notice,
+}: Props) {
     const { auth } = data;
     const selected = data.selectedDashboard;
     const canManage = !auth.isSharedAccount;
@@ -81,60 +89,68 @@ export function CustomDashboardsView({ data, heading, notice }: Props) {
 
     return (
         <>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                {heading}
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    {/* An empty dashboard offers its own Add widget button. */}
-                    {isEditing && placed.length > 0 && (
-                        <AddWidgetMenu
-                            available={missingSystemWidgets(placed)}
-                            onAdd={(widget) =>
-                                dashboardActions.addWidget(selected.id, widget)
+            <PageHeader
+                title={title}
+                description={description}
+                actions={
+                    <>
+                        {/* An empty dashboard offers its own Add widget button. */}
+                        {isEditing && placed.length > 0 && (
+                            <AddWidgetMenu
+                                available={missingSystemWidgets(placed)}
+                                onAdd={(widget) =>
+                                    dashboardActions.addWidget(
+                                        selected.id,
+                                        widget,
+                                    )
+                                }
+                                userWidgets={missingUserWidgets(
+                                    placed,
+                                    data.widgetDefinitions ?? [],
+                                )}
+                                onAddUserWidget={(definitionId) =>
+                                    dashboardActions.addUserWidget(
+                                        selected.id,
+                                        definitionId,
+                                    )
+                                }
+                            />
+                        )}
+                        {canEdit && selected !== null && (
+                            <Button
+                                variant={isEditing ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() =>
+                                    setEditingId(isEditing ? null : selected.id)
+                                }
+                            >
+                                {isEditing ? (
+                                    <Check className="size-4" />
+                                ) : (
+                                    <Pencil className="size-4" />
+                                )}
+                                {isEditing ? __('Done') : __('Edit')}
+                            </Button>
+                        )}
+                        <DashboardPicker
+                            dashboards={dashboards}
+                            selectedId={selected?.id ?? null}
+                            selectedName={
+                                selected?.name ?? systemDashboardName()
                             }
-                            userWidgets={missingUserWidgets(
-                                placed,
-                                data.widgetDefinitions ?? [],
-                            )}
-                            onAddUserWidget={(definitionId) =>
-                                dashboardActions.addUserWidget(
-                                    selected.id,
-                                    definitionId,
-                                )
+                            defaultId={data.defaultDashboardId}
+                            canCreate={canEdit}
+                            canManage={canManage}
+                            isLoading={data.dashboards === undefined}
+                            onCreate={() =>
+                                canEdit ? setCreating(true) : setUpselling(true)
                             }
+                            onCreateWithAi={() => setAiGuideOpen(true)}
+                            onManage={() => setManaging(true)}
                         />
-                    )}
-                    {canEdit && selected !== null && (
-                        <Button
-                            variant={isEditing ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() =>
-                                setEditingId(isEditing ? null : selected.id)
-                            }
-                        >
-                            {isEditing ? (
-                                <Check className="size-4" />
-                            ) : (
-                                <Pencil className="size-4" />
-                            )}
-                            {isEditing ? __('Done') : __('Edit')}
-                        </Button>
-                    )}
-                    <DashboardPicker
-                        dashboards={dashboards}
-                        selectedId={selected?.id ?? null}
-                        selectedName={selected?.name ?? systemDashboardName()}
-                        defaultId={data.defaultDashboardId}
-                        canCreate={canEdit}
-                        canManage={canManage}
-                        isLoading={data.dashboards === undefined}
-                        onCreate={() =>
-                            canEdit ? setCreating(true) : setUpselling(true)
-                        }
-                        onCreateWithAi={() => setAiGuideOpen(true)}
-                        onManage={() => setManaging(true)}
-                    />
-                </div>
-            </div>
+                    </>
+                }
+            />
 
             {notice}
 

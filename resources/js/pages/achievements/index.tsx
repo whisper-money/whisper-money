@@ -10,6 +10,7 @@ import { Medal } from '@/components/achievements/medal';
 import { RarityTag } from '@/components/achievements/rarity-tag';
 import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
 import { TrackMedals } from '@/components/achievements/track-medals';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -260,16 +261,12 @@ export default function AchievementsIndex({ overview, tracks }: Props) {
             <Head title={__('Progress')} />
 
             <div className="mx-auto flex w-full max-w-page flex-col gap-6 p-4">
-                <div className="flex flex-col gap-1">
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        {__('Progress')}
-                    </h1>
-                    <p className="text-sm text-pretty text-muted-foreground">
-                        {__(
-                            'Every milestone your money has crossed, dated when it actually happened.',
-                        )}
-                    </p>
-                </div>
+                <PageHeader
+                    title={__('Progress')}
+                    description={__(
+                        'Every milestone your money has crossed, dated when it actually happened.',
+                    )}
+                />
 
                 <Overview overview={overview} />
 

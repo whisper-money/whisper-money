@@ -1,6 +1,7 @@
 import { index } from '@/actions/App/Http/Controllers/NotificationController';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { useMarkAllRead } from '@/components/notifications/use-mark-all-read';
+import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import AppLayout from '@/layouts/app-layout';
@@ -31,28 +32,24 @@ export default function NotificationsIndex({ notifications }: Props) {
             <Head title={__('Notifications')} />
 
             <div className="mx-auto flex w-full max-w-page flex-col gap-6 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                        <h1 className="text-xl font-semibold tracking-tight">
-                            {__('Notifications')}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {__(
-                                'Everything that happened in your account, newest first.',
-                            )}
-                        </p>
-                    </div>
-                    {unread > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={markAllRead}
-                        >
-                            <CheckCheckIcon />
-                            {__('Mark all as read')}
-                        </Button>
+                <PageHeader
+                    title={__('Notifications')}
+                    description={__(
+                        'Everything that happened in your account, newest first.',
                     )}
-                </div>
+                    actions={
+                        unread > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={markAllRead}
+                            >
+                                <CheckCheckIcon />
+                                {__('Mark all as read')}
+                            </Button>
+                        )
+                    }
+                />
 
                 {items.length === 0 ? (
                     <EmptyState>
