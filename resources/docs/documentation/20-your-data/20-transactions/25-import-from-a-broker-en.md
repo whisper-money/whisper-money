@@ -74,6 +74,10 @@ portfolio. Each is imported on its own and goes to its own account.
 | Current-account movements       | “MyInvestor”, a **Savings** account                 | One transaction per movement, and each day's balance.          |
 | Securities and funds operations | “MyInvestor · Portfolio”, an **Investment** account | What was invested each day and today's value. No transactions. |
 
+MyInvestor's **Órdenes** (orders) list is neither of them and can't be
+imported: the portfolio needs the securities operations file, `salida.xls` (see
+[Securities and funds operations](#securities-and-funds-operations) below).
+
 If you have both, import both files: they don't overlap. The securities file
 holds no cash, so it duplicates nothing from the current account. The money you
 move from the account to the portfolio, and fund subscriptions paid from the

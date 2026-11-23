@@ -74,6 +74,10 @@ se importa por separado y va a su propia cuenta.
 | Movimientos de la cuenta remunerada | «MyInvestor», de tipo **Ahorros**               | Una transacción por movimiento y el saldo de cada día.                   |
 | Operaciones de valores y fondos     | «MyInvestor · Portfolio», de tipo **Inversión** | El importe invertido de cada día y el valor de hoy. Ninguna transacción. |
 
+El listado de **Órdenes** de MyInvestor no es ninguno de los dos y no se puede
+importar: para la cartera hace falta el archivo de operaciones de valores,
+`salida.xls` (más abajo, en [Operaciones de valores y fondos](#operaciones-de-valores-y-fondos)).
+
 Si tienes las dos cosas, importa los dos archivos: no se pisan. El de valores no
 trae efectivo, así que no duplica nada de la cuenta remunerada. El dinero que
 pasas de la cuenta a la cartera y las suscripciones de fondos que se pagan desde

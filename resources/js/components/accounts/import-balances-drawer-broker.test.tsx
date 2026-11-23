@@ -83,6 +83,46 @@ describe("ImportBalancesDrawer with MyInvestor's orders list", () => {
         expect(fetchColumnSuggestions).not.toHaveBeenCalled();
     });
 
+    it('drops the file picked before it, so it is not imported instead', async () => {
+        render(
+            <ImportBalancesDrawer
+                open
+                onOpenChange={vi.fn()}
+                account={portfolio}
+                accountId={portfolio.id}
+            />,
+        );
+        fireEvent.change(
+            document.querySelector('input[type="file"]') as HTMLInputElement,
+            {
+                target: {
+                    files: [
+                        new File(
+                            ['Date,Balance\n2026-01-01,10\n'],
+                            'balances.csv',
+                        ),
+                    ],
+                },
+            },
+        );
+        const dropzone = (await screen.findByText('balances.csv')).closest(
+            '.border-dashed',
+        ) as HTMLElement;
+
+        fireEvent.drop(dropzone, {
+            dataTransfer: { files: [fixtureFile('myinvestor-orders.xlsx')] },
+        });
+
+        expect(
+            await screen.findByText(/This is MyInvestor's orders list/),
+        ).not.toBeNull();
+        expect(screen.queryByText('balances.csv')).toBeNull();
+        expect(
+            (screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement)
+                .disabled,
+        ).toBe(true);
+    });
+
     it('leaves the file to the balance mapping with broker imports off', async () => {
         brokerImports.enabled = false;
 

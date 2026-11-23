@@ -3,8 +3,9 @@ import { readBrokerGrid } from '@/lib/broker-imports/read';
 import { type BrokerGrid } from '@/lib/broker-imports/types';
 
 /**
- * The columns of the orders list MyInvestor exports from its "Órdenes" page,
- * normalised: order date, ISIN, estimated amount, shares and status.
+ * The columns, normalised, that tell the orders list MyInvestor exports from
+ * its "Órdenes" page (order date, ISIN, estimated amount, shares, status)
+ * from any other file.
  */
 const ORDERS_HEADER = ['fecha de la orden', 'isin', 'importe estimado'];
 

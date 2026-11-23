@@ -631,6 +631,37 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
                     ).disabled,
                 ).toBe(true);
             });
+
+            it('drops the file picked before it, so it is not imported instead', async () => {
+                renderDrawer([checking]);
+
+                fireEvent.click(await screen.findByRole('radio'));
+                fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+                upload(
+                    'bank.csv',
+                    new File(['Date,Amount\n2026-01-01,10\n'], 'bank.csv'),
+                );
+                const dropzone = (await screen.findByText('bank.csv')).closest(
+                    '.border-dashed',
+                ) as HTMLElement;
+
+                // With a file picked, another one can still be dropped on it.
+                fireEvent.drop(dropzone, {
+                    dataTransfer: {
+                        files: [fixtureFile('myinvestor-orders.xlsx')],
+                    },
+                });
+
+                expect(await screen.findByText(warning)).not.toBeNull();
+                expect(screen.queryByText('bank.csv')).toBeNull();
+                expect(
+                    (
+                        screen.getByRole('button', {
+                            name: 'Next',
+                        }) as HTMLButtonElement
+                    ).disabled,
+                ).toBe(true);
+            });
         });
 
         it('picks the portfolio account of the last import again', async () => {

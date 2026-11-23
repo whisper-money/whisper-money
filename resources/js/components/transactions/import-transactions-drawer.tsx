@@ -140,6 +140,18 @@ interface ImportError {
     error: string;
 }
 
+/** The import with no file picked, nothing read from one. */
+function withoutFile(state: ImportState): ImportState {
+    return {
+        ...state,
+        file: null,
+        parsedData: [],
+        rowNumbers: [],
+        columnHeaders: [],
+        columnOptions: [],
+    };
+}
+
 export function ImportTransactionsDrawer({
     accounts = [],
     categories = [],
@@ -283,6 +295,8 @@ export function ImportTransactionsDrawer({
         if (await isMyInvestorOrdersFile(file)) {
             if (read === brokerRead.current) {
                 setPickedOrdersList(true);
+                // A file picked before it would otherwise stay on to import.
+                setState(withoutFile);
             }
 
             return true;
@@ -372,14 +386,7 @@ export function ImportTransactionsDrawer({
         const token = ai.begin();
 
         if (!file) {
-            setState((prev) => ({
-                ...prev,
-                file: null,
-                parsedData: [],
-                rowNumbers: [],
-                columnHeaders: [],
-                columnOptions: [],
-            }));
+            setState(withoutFile);
             return;
         }
 
