@@ -115,8 +115,9 @@ the portfolio:
 1. Sign in at [inversis.com/cbmyinvestor](https://www.inversis.com/cbmyinvestor)
    with your MyInvestor username and password. A computer works best: if you
    have trouble signing in, try a private browser window.
-2. Go to **Inversiones** → **Fondos** (or **Valores** / **ETF**) → **Consulta de
-   operaciones**.
+2. Go to **Inversiones** → **Fondos** → **Operaciones y consultas** →
+   **Consultar operaciones**. All the operations are listed there, and that is
+   where the Excel file is downloaded.
 3. Set a start date before you opened the account, to bring your whole history,
    and download the Excel file (`salida.xls`).
 

@@ -115,8 +115,9 @@ cartera:
 1. Entra en [inversis.com/cbmyinvestor](https://www.inversis.com/cbmyinvestor)
    con el mismo usuario y contraseña de MyInvestor. Mejor desde el ordenador: si
    te cuesta entrar, prueba en una ventana privada del navegador.
-2. Ve a **Inversiones** → **Fondos** (o **Valores** / **ETF**) → **Consulta de
-   operaciones**.
+2. Ve a **Inversiones** → **Fondos** → **Operaciones y consultas** →
+   **Consultar operaciones**. Ahí salen todas las operaciones y se descarga el
+   Excel.
 3. Pon como fecha de inicio una anterior a cuando abriste la cuenta, para traer
    todo el historial, y descarga el Excel (`salida.xls`).
 
