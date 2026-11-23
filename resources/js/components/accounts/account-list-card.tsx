@@ -1,7 +1,6 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { BankLogo } from '@/components/bank-logo';
 import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
-import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -17,6 +16,7 @@ import { Link } from '@inertiajs/react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
+import { AccountBalanceStat } from './account-balance-stat';
 import { CreditCardUsageSummary } from './credit-card-usage-summary';
 import { UpdateBalanceDialog } from './update-balance-dialog';
 
@@ -69,7 +69,6 @@ export function AccountListCard({
         const prevMarketValue = account.previousBalance;
         const prevMortgageOwed = linkedLoanMetrics.previousBalance;
         const prevEquity = prevMarketValue - prevMortgageOwed;
-        const equityDiff = equity - prevEquity;
 
         // Build dual-line sparkline: market value (solid) + mortgage owed (dashed)
         const marketMap = new Map(
@@ -95,7 +94,6 @@ export function AccountListCard({
         return {
             equity,
             prevEquity,
-            equityDiff,
             mortgageOwed,
             marketValue,
             dualHistory,
@@ -133,11 +131,9 @@ export function AccountListCard({
     const displayBalance = equityData
         ? equityData.equity
         : account.currentBalance;
-    const displayDiff = equityData ? equityData.equityDiff : account.diff;
     const displayPreviousBalance = equityData
         ? equityData.prevEquity
         : account.previousBalance;
-    const isPositive = displayDiff >= 0;
     const isConnected = !!account.banking_connection_id;
     const creditCardUsage = account.creditCardUsage;
 
@@ -212,43 +208,17 @@ export function AccountListCard({
                                 className="shrink-0 items-start sm:items-end"
                             />
                         ) : (
-                            <div className="flex shrink-0 flex-col items-start sm:items-end">
-                                {isConnected ? (
-                                    <div className="-ml-2 px-2 py-1 sm:-mr-2 sm:ml-0">
-                                        <AmountDisplay
-                                            amountInCents={displayBalance}
-                                            currencyCode={currencyCode}
-                                            size="2xl"
-                                            weight="bold"
-                                        />
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setUpdateBalanceOpen(true)
-                                        }
-                                        className="-ml-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted sm:-mr-2 sm:ml-0"
-                                    >
-                                        <AmountDisplay
-                                            amountInCents={displayBalance}
-                                            currencyCode={currencyCode}
-                                            size="2xl"
-                                            weight="bold"
-                                        />
-                                    </button>
-                                )}
-                                <AmountTrendIndicator
-                                    isPositive={isPositive}
-                                    trend={Math.abs(displayDiff)}
-                                    label={__('vs last month')}
-                                    className="text-sm"
-                                    previousAmount={displayPreviousBalance}
-                                    currentAmount={displayBalance}
-                                    tooltipSide="bottom"
-                                    currencyCode={currencyCode}
-                                />
-                            </div>
+                            <AccountBalanceStat
+                                balance={displayBalance}
+                                previousBalance={displayPreviousBalance}
+                                currencyCode={currencyCode}
+                                onEditBalance={
+                                    isConnected
+                                        ? undefined
+                                        : () => setUpdateBalanceOpen(true)
+                                }
+                                alignEnd
+                            />
                         )}
                     </div>
 

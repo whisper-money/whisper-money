@@ -1,5 +1,10 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Progress } from '@/components/ui/progress';
+import {
+    StatTile,
+    StatTileDescription,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { cn } from '@/lib/utils';
 import { type CreditCardUsage } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -8,7 +13,6 @@ interface CreditCardUsageSummaryProps {
     usage: CreditCardUsage;
     /** The card's own currency: usage is never converted. */
     currencyCode: string;
-    weight?: 'medium' | 'bold';
     className?: string;
 }
 
@@ -19,7 +23,6 @@ interface CreditCardUsageSummaryProps {
 export function CreditCardUsageSummary({
     usage,
     currencyCode,
-    weight = 'bold',
     className,
 }: CreditCardUsageSummaryProps) {
     const { limit, used } = usage;
@@ -28,26 +31,24 @@ export function CreditCardUsageSummary({
         limit !== null && limit > 0 ? (used / limit) * 100 : 0;
 
     return (
-        <div className={cn('flex flex-col gap-1', className)}>
-            <AmountDisplay
-                amountInCents={used}
-                currencyCode={currencyCode}
-                size="2xl"
-                weight={weight}
-            />
+        <StatTile size="lg" className={className}>
+            <StatTileValue>
+                <AmountDisplay
+                    amountInCents={used}
+                    currencyCode={currencyCode}
+                />
+            </StatTileValue>
             {limit === null ? (
-                <span className="text-sm text-muted-foreground">
-                    {__('In use')}
-                </span>
+                <StatTileDescription>{__('In use')}</StatTileDescription>
             ) : (
                 <>
-                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <StatTileDescription className="flex items-center gap-1">
                         {__('In use of')}
                         <AmountDisplay
                             amountInCents={limit}
                             currencyCode={currencyCode}
                         />
-                    </span>
+                    </StatTileDescription>
                     <Progress
                         value={usedPercentage}
                         aria-label={__('Credit limit in use')}
@@ -56,6 +57,6 @@ export function CreditCardUsageSummary({
                     />
                 </>
             )}
-        </div>
+        </StatTile>
     );
 }

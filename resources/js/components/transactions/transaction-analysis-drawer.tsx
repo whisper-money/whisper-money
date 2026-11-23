@@ -22,6 +22,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    StatTile,
+    StatTileHeader,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -859,21 +865,16 @@ function SummaryCards({
                         currency={currency}
                         tone={net >= 0 ? 'income' : 'expense'}
                     />
-                    <div className="rounded-lg bg-muted/50 p-4">
-                        <div className="flex h-6 items-center">
-                            <p className="text-xs text-muted-foreground">
-                                {__('Margin')}
-                            </p>
-                        </div>
-                        <p
-                            className={cn(
-                                'mt-1 text-lg font-semibold tabular-nums',
-                                net >= 0 && 'text-success',
-                            )}
+                    <StatTile variant="muted">
+                        <StatTileHeader className="h-6">
+                            <StatTileLabel>{__('Margin')}</StatTileLabel>
+                        </StatTileHeader>
+                        <StatTileValue
+                            className={cn(net >= 0 && 'text-success')}
                         >
                             {margin}%
-                        </p>
-                    </div>
+                        </StatTileValue>
+                    </StatTile>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -883,24 +884,23 @@ function SummaryCards({
                         currency={currency}
                         tone="expense"
                     />
-                    <div className="rounded-lg bg-muted/50 p-4">
-                        <div className="flex h-6 items-center justify-between">
-                            <p className="text-xs text-muted-foreground">
-                                {__('Avg / day')}
-                            </p>
+                    <StatTile variant="muted">
+                        <StatTileHeader className="h-6">
+                            <StatTileLabel>{__('Avg / day')}</StatTileLabel>
                             <DayEditorPopover
                                 days={days}
                                 isOverridden={isDaysOverridden}
                                 isSaved={isSaved}
                                 onApply={onApplyDays}
                             />
-                        </div>
-                        <AmountDisplay
-                            amountInCents={averagePerDay}
-                            currencyCode={currency}
-                            className="mt-1 text-lg font-semibold tabular-nums"
-                        />
-                    </div>
+                        </StatTileHeader>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={averagePerDay}
+                                currencyCode={currency}
+                            />
+                        </StatTileValue>
+                    </StatTile>
                 </div>
             )}
 
@@ -929,22 +929,22 @@ function SummaryCard({
     badge?: ReactNode;
 }) {
     return (
-        <div className="rounded-lg bg-muted/50 p-4">
-            <div className="flex h-6 items-center">
-                <p className="text-xs text-muted-foreground">{label}</p>
-            </div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                <AmountDisplay
-                    amountInCents={amount}
-                    currencyCode={currency}
-                    className={cn(
-                        'text-lg font-semibold tabular-nums',
-                        tone === 'income' && 'text-success',
-                    )}
-                />
+        <StatTile variant="muted">
+            <StatTileHeader className="h-6">
+                <StatTileLabel>{label}</StatTileLabel>
+            </StatTileHeader>
+            <div className="flex flex-wrap items-baseline gap-x-2">
+                <StatTileValue
+                    className={cn(tone === 'income' && 'text-success')}
+                >
+                    <AmountDisplay
+                        amountInCents={amount}
+                        currencyCode={currency}
+                    />
+                </StatTileValue>
                 {badge}
             </div>
-        </div>
+        </StatTile>
     );
 }
 

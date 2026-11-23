@@ -1,5 +1,10 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+    StatTile,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PHONE_INSET } from '@/lib/compact-list-style';
 import { cn } from '@/lib/utils';
@@ -120,10 +125,10 @@ function SummaryCell({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex min-w-0 flex-col gap-0.5 border-r px-[18px] py-3.5">
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <span className="truncate text-xl font-semibold">{children}</span>
-        </div>
+        <StatTile className="min-w-0 border-r px-[18px] py-3.5">
+            <StatTileLabel>{label}</StatTileLabel>
+            <StatTileValue className="truncate">{children}</StatTileValue>
+        </StatTile>
     );
 }
 

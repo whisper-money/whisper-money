@@ -1,4 +1,5 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
+import { AccountBalanceStat } from '@/components/accounts/account-balance-stat';
 import { CreditCardUsageSummary } from '@/components/accounts/credit-card-usage-summary';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
@@ -16,7 +17,6 @@ import { Link } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
-import { AmountTrendIndicator } from './amount-trend-indicator';
 
 interface LinkedLoanMetrics {
     currentBalance: number;
@@ -99,7 +99,6 @@ export function AccountBalanceCard({
         const prevMarketValue = account.previousBalance;
         const prevMortgageOwed = linkedLoanMetrics.previousBalance;
         const prevEquity = prevMarketValue - prevMortgageOwed;
-        const equityDiff = equity - prevEquity;
 
         // Build dual-line sparkline: market value (solid) + mortgage owed (dashed)
         const marketMap = new Map(
@@ -125,7 +124,6 @@ export function AccountBalanceCard({
         return {
             equity,
             prevEquity,
-            equityDiff,
             dualHistory,
         };
     }, [hasMortgage, account, linkedLoanMetrics]);
@@ -147,11 +145,9 @@ export function AccountBalanceCard({
     const displayBalance = equityData
         ? equityData.equity
         : account.currentBalance;
-    const displayDiff = equityData ? equityData.equityDiff : account.diff;
     const displayPreviousBalance = equityData
         ? equityData.prevEquity
         : account.previousBalance;
-    const isPositive = displayDiff >= 0;
     const isConnected = !!account.banking_connection_id;
     const creditCardUsage = account.creditCardUsage;
 
@@ -208,44 +204,18 @@ export function AccountBalanceCard({
                         <CreditCardUsageSummary
                             usage={creditCardUsage}
                             currencyCode={currencyCode}
-                            weight="medium"
                         />
                     ) : (
-                        <div className="flex flex-col gap-1">
-                            {isConnected ? (
-                                <div className="-ml-2 px-2 py-1">
-                                    <AmountDisplay
-                                        amountInCents={displayBalance}
-                                        currencyCode={currencyCode}
-                                        size="2xl"
-                                        weight="medium"
-                                    />
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setUpdateBalanceOpen(true)}
-                                    className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
-                                >
-                                    <AmountDisplay
-                                        amountInCents={displayBalance}
-                                        currencyCode={currencyCode}
-                                        size="2xl"
-                                        weight="medium"
-                                    />
-                                </button>
-                            )}
-                            <AmountTrendIndicator
-                                isPositive={isPositive}
-                                trend={Math.abs(displayDiff)}
-                                label={__('vs last month')}
-                                className="text-sm"
-                                previousAmount={displayPreviousBalance}
-                                currentAmount={displayBalance}
-                                tooltipSide="bottom"
-                                currencyCode={currencyCode}
-                            />
-                        </div>
+                        <AccountBalanceStat
+                            balance={displayBalance}
+                            previousBalance={displayPreviousBalance}
+                            currencyCode={currencyCode}
+                            onEditBalance={
+                                isConnected
+                                    ? undefined
+                                    : () => setUpdateBalanceOpen(true)
+                            }
+                        />
                     )}
                     <div
                         ref={chartWrapperRef}

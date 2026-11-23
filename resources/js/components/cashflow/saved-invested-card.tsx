@@ -174,7 +174,6 @@ export function SavedInvestedCard({
                         }
                         amount={current.savings}
                         currency={currency}
-                        highlightPositive
                         comparison={
                             hasPreviousData ? { diff: savingsDiff } : null
                         }
@@ -191,7 +190,6 @@ export function SavedInvestedCard({
                         }
                         amount={current.investments}
                         currency={currency}
-                        highlightPositive
                         comparison={
                             hasPreviousData ? { diff: investmentsDiff } : null
                         }

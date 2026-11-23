@@ -50,6 +50,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    StatTile,
+    StatTileDescription,
+    StatTileTrend,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { Textarea } from '@/components/ui/textarea';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { chartRoleColors } from '@/lib/chart-colors';
@@ -808,35 +814,34 @@ function SparklineCard({
             </CardHeader>
             <CardContent>
                 <div className="flex items-center justify-between gap-6">
-                    <div className="flex flex-col gap-1">
-                        <div className="px-0 py-1">
+                    <StatTile size="lg">
+                        <StatTileValue className="py-1">
                             <AmountDisplay
                                 amountInCents={amountInCents}
                                 currencyCode={currencyCode}
-                                size="2xl"
-                                weight="medium"
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                             />
-                        </div>
+                        </StatTileValue>
                         {trend && (
-                            <AmountTrendIndicator
-                                isPositive={trend.diff >= 0}
-                                trend={Math.abs(trend.diff)}
-                                label={__('vs start')}
-                                className="text-sm"
-                                previousAmount={trend.previous}
-                                currentAmount={trend.current}
-                                tooltipSide="bottom"
-                                currencyCode={currencyCode}
-                            />
+                            <StatTileTrend>
+                                <AmountTrendIndicator
+                                    isPositive={trend.diff >= 0}
+                                    trend={Math.abs(trend.diff)}
+                                    label={__('vs start')}
+                                    previousAmount={trend.previous}
+                                    currentAmount={trend.current}
+                                    tooltipSide="bottom"
+                                    currencyCode={currencyCode}
+                                />
+                            </StatTileTrend>
                         )}
                         {subtitle && (
-                            <p className="text-sm text-muted-foreground">
+                            <StatTileDescription>
                                 {subtitle}
-                            </p>
+                            </StatTileDescription>
                         )}
-                    </div>
+                    </StatTile>
                     {history.length > 1 && (
                         <div className="h-[70px] w-full max-w-[250px] flex-1">
                             <ResponsiveContainer

@@ -289,6 +289,57 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
   `text-muted-foreground`; a money figure that is negative keeps the foreground
   color and its sign (an amount is not a trend).
 
+### Stat tiles
+
+A label and the figure it names (a balance, this month's income, a savings
+rate) is a `StatTile` (`components/ui/stat-tile.tsx`), never a muted `<p>`
+followed by an `AmountDisplay` of its own size. Its API mirrors `EmptyState`:
+compose only the parts you need.
+
+```tsx
+<StatTile size="lg">
+    <StatTileLabel>{__('Invested')}</StatTileLabel>
+    <StatTileValue>
+        <AmountDisplay amountInCents={invested} currencyCode={currency} />
+    </StatTileValue>
+    <StatTileTrend>
+        <AmountTrendIndicator … />
+    </StatTileTrend>
+    <StatTileDescription>{__(':percent% of invested', …)}</StatTileDescription>
+</StatTile>
+```
+
+- `size` sets the value's type: `sm` (`text-base`) for a row of figures
+  inside a card (the dashboard cashflow card, the figures under a cashflow
+  summary), `md` (`text-lg`, the default) for a grid of tiles, `lg`
+  (`text-2xl`) for the headline figure of a card (an account's balance,
+  credit used). The value is always `font-semibold tabular-nums`.
+- `variant="muted"` puts the tile on its own quiet surface
+  (`rounded-lg bg-muted/50 p-4`), for a grid of tiles with no card around
+  each (the cashflow and transaction analysis drawers).
+- Parts: `StatTileLabel` (`text-xs`, muted), `StatTileValue`,
+  `StatTileTrend` (an `AmountTrendIndicator`, a `PercentageTrendIndicator` or
+  the cashflow comparisons; see [Trend indicators](#trend-indicators)),
+  `StatTileDescription` (a line of context, muted). `StatTileHeader` puts
+  something at the end of the label's row: a badge, an icon, a small action.
+  In a `<dl>` of figures, `StatTileLabel asChild` / `StatTileValue asChild`
+  render a `<dt>` / `<dd>`.
+- Money goes in `StatTileValue` as an `AmountDisplay` **without** `size` or
+  `weight`: it inherits the tile's, and privacy mode masks it. A percentage
+  or a count goes in as plain text. A tone (`text-success` for income or a
+  favourable figure) goes on `StatTileValue`'s `className`.
+- `StatTileSkeleton` (`size`, `withTrend`) is the tile while its figure
+  loads, the same shape as the tile.
+- A card that *contains* a stat area uses `StatTile` inside it (the account
+  cards put it next to their sparkline); a chart or a hero figure with its
+  own controls (net worth, a cashflow summary's `4xl` headline) is not a
+  tile.
+- `lib/stat-tile-guard.test.ts` fails on the two hand-rolled shapes it
+  replaced: a `text-xs text-muted-foreground` label straight before an
+  `AmountDisplay` / `WholeAmount`, and a `bg-muted/50 p-4` tile that opens
+  with that label. It reads markup, so it can't see a label passed as a prop:
+  the rule is the rule even where the guard is blind.
+
 ### Charts
 
 - Series colors come **only** from `--chart-1..10` (`var(--color-chart-N)`),
@@ -446,6 +497,7 @@ switch the comboboxes use. Use these instead of writing the switch again.
 | `gap-*` between siblings                              | Margins between siblings                                          |
 | `mx-auto max-w-page` for page width                   | A one-off `max-w-[…]`                                             |
 | `Skeleton` shaped like the content                    | A centred spinner for page content                                |
+| `<StatTile>` for a label and its figure                | A muted `<p>` above an `AmountDisplay size="2xl"`                 |
 | `<EmptyState>` for "nothing here yet"                 | A hand-rolled `<p className="py-8 text-center text-muted-foreground">` |
 | Check light and dark                                  | Tokens with a `dark:` duplicate, or palette classes without one   |
 | Let the ESLint guard catch a stray palette class      | `text-green-*`, `bg-red-*`, `border-amber-*`… anywhere in `resources/js`: `bun run lint` fails on them (`no-restricted-syntax` in `eslint.config.js`) |
@@ -463,7 +515,7 @@ stacked PR in the design-system stack. Counts were measured over
 | c   | ~~Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`~~ **Resolved** | Money renders through `AmountDisplay`, or `useFormatAmount()` where it must be a string, so privacy mode masks it everywhere (it leaked in the onboarding reveal, the split and merge dialogs, chart tooltips and axes, import previews…); `lib/amount-display-guard.test.ts` fails on `formatCurrency(`, `style: 'currency'` or `notation: 'compact'` outside its allowlist | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
 | d   | ~~No shared `EmptyState`~~ **Resolved** | `components/ui/empty-state.tsx` (shadcn's `Empty` API: `EmptyState`, `EmptyStateHeader`, `EmptyStateMedia`, `EmptyStateTitle`, `EmptyStateDescription`, `EmptyStateContent`; `size` `page` or `inline`) replaced 42 hand-rolled blocks across pages, cards, charts, drawers, pickers, `DataTable`, `SettingsTable` and the widget SDK's `EmptyState`; see [Empty states](#empty-states). `lib/empty-state-guard.test.ts` fails on a centred or dashed block around `__('No …')` / `emptyMessage` copy, allowlisting only the marketing pages | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
 | e   | ~~No shared `PageHeader`~~ **Resolved** | `components/page-header.tsx` titles every app page (dashboard, transactions, cashflow, planning, budget and savings goal detail, accounts and account detail, notifications, progress, monthly summaries, admin, and settings through `SettingsLayout`), replacing four hand-written `<h1>` sizes and the `HeadingSmall` (`<h3>`) that left most pages with no `<h1>` at all; see [Page headers](#page-headers). `Heading` is deleted: its two page-level uses (settings, admin) are `PageHeader` now. `lib/page-header-guard.test.ts` fails on a raw `<h1>` under `pages/` outside its allowlist | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
-| f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
+| f   | ~~No generic `StatTile`~~ **Resolved** | `components/ui/stat-tile.tsx` (`StatTile`, `StatTileHeader`, `StatTileLabel`, `StatTileValue`, `StatTileTrend`, `StatTileDescription`, `StatTileSkeleton`; `size` `sm`/`md`/`lg`, `variant` `plain`/`muted`) draws the figures of the dashboard cashflow and account cards, the accounts list, the cashflow summary cards and details drawer, the account page's investment cards, the credit card usage and statement, and the category and transaction analysis drawers; see [Stat tiles](#stat-tiles). `lib/stat-tile-guard.test.ts` fails on a muted label straight before its amount, or a muted tile that opens with one, allowlisting only the marketing pages | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
 | g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
 | h   | ~~`@headlessui/react` next to Radix~~ **Resolved**                                                                   | The "Saved" flash in `pages/settings/account.tsx` and `pages/settings/password.tsx` now uses a `tw-animate-css` fade; the package is gone and ESLint `no-restricted-imports` forbids `@headlessui/*`                                                                                                    | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |
 | i   | ~~Unused auth layouts~~ **Resolved**                                                                                 | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are deleted, with the `quote` shared prop only the split one read; `auth-simple-layout.tsx` stays, used through `AuthLayout`                                                                                                            | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |

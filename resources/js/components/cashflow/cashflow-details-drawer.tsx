@@ -23,6 +23,12 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import {
+    StatTile,
+    StatTileDescription,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
+import {
     CashflowBudgetMargin,
     CashflowPeriodType,
     CashflowSummary,
@@ -51,7 +57,8 @@ interface CashflowDetailsDrawerProps {
     hrefs?: CashflowBlockHrefs;
 }
 
-function StatTile({
+/** One of the four figures above the income bar. */
+function DrawerFigure({
     label,
     caption,
     children,
@@ -61,15 +68,11 @@ function StatTile({
     children: ReactNode;
 }) {
     return (
-        <div className="rounded-lg bg-muted/50 p-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <div className="mt-1 text-lg font-semibold tabular-nums">
-                {children}
-            </div>
-            {caption && (
-                <p className="text-xs text-muted-foreground">{caption}</p>
-            )}
-        </div>
+        <StatTile variant="muted">
+            <StatTileLabel>{label}</StatTileLabel>
+            <StatTileValue>{children}</StatTileValue>
+            {caption && <StatTileDescription>{caption}</StatTileDescription>}
+        </StatTile>
     );
 }
 
@@ -417,28 +420,26 @@ export function CashflowDetailsDrawer({
                     </DrawerHeader>
 
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <StatTile label={__('Income')}>
+                        <DrawerFigure label={__('Income')}>
                             <WholeAmount
                                 amountInCents={current.income}
                                 currencyCode={currency}
-                                className="text-lg"
                             />
-                        </StatTile>
-                        <StatTile label={__('Allocated')}>
+                        </DrawerFigure>
+                        <DrawerFigure label={__('Allocated')}>
                             <WholeAmount
                                 amountInCents={allocatedOf(current)}
                                 currencyCode={currency}
-                                className="text-lg"
                             />
-                        </StatTile>
-                        <StatTile label={__('Available')}>
+                        </DrawerFigure>
+                        <DrawerFigure label={__('Available')}>
                             <WholeAmount
                                 amountInCents={available}
                                 currencyCode={currency}
-                                className={cn('text-lg', signTone(available))}
+                                className={signTone(available)}
                             />
-                        </StatTile>
-                        <StatTile
+                        </DrawerFigure>
+                        <DrawerFigure
                             label={__('Free (cashflow)')}
                             caption={
                                 <>
@@ -454,9 +455,9 @@ export function CashflowDetailsDrawer({
                             <WholeAmount
                                 amountInCents={free}
                                 currencyCode={currency}
-                                className={cn('text-lg', signTone(free))}
+                                className={signTone(free)}
                             />
-                        </StatTile>
+                        </DrawerFigure>
                     </div>
 
                     <IncomeBar summary={current} currency={currency} />

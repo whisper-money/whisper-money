@@ -1,5 +1,5 @@
+import { WholeAmount } from '@/components/cashflow/summary-card-parts';
 import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
-import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -7,6 +7,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    StatTile,
+    StatTileLabel,
+    StatTileSkeleton,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
@@ -44,10 +50,7 @@ export function CashflowSummaryCard({
                 <CardContent>
                     <div className="grid grid-cols-3 gap-4">
                         {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="space-y-2">
-                                <div className="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-                                <div className="h-6 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-                            </div>
+                            <StatTileSkeleton key={i} size="sm" />
                         ))}
                     </div>
                 </CardContent>
@@ -81,56 +84,40 @@ export function CashflowSummaryCard({
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-3 gap-4">
-                    {/* Income */}
-                    <div>
-                        <p className="text-xs text-muted-foreground">
-                            {__('Income')}
-                        </p>
-                        <AmountDisplay
-                            amountInCents={current.income}
-                            currencyCode={auth.user.currency_code}
-                            minimumFractionDigits={0}
-                            maximumFractionDigits={0}
-                            weight="semibold"
-                            highlightPositive
-                        />
-                    </div>
+                    <StatTile size="sm">
+                        <StatTileLabel>{__('Income')}</StatTileLabel>
+                        <StatTileValue>
+                            <WholeAmount
+                                amountInCents={current.income}
+                                currencyCode={auth.user.currency_code}
+                            />
+                        </StatTileValue>
+                    </StatTile>
 
-                    {/* Expenses */}
-                    <div>
-                        <p className="text-xs text-muted-foreground">
-                            {__('Expenses')}
-                        </p>
-                        <AmountDisplay
-                            amountInCents={current.expense}
-                            currencyCode={auth.user.currency_code}
-                            minimumFractionDigits={0}
-                            maximumFractionDigits={0}
-                            weight="semibold"
-                        />
-                    </div>
+                    <StatTile size="sm">
+                        <StatTileLabel>{__('Expenses')}</StatTileLabel>
+                        <StatTileValue>
+                            <WholeAmount
+                                amountInCents={current.expense}
+                                currencyCode={auth.user.currency_code}
+                            />
+                        </StatTileValue>
+                    </StatTile>
 
-                    {/* Net */}
-                    <div>
-                        <p className="text-xs text-muted-foreground">
-                            {__('Net')}
-                        </p>
-                        <div className="flex items-center gap-1">
+                    <StatTile size="sm">
+                        <StatTileLabel>{__('Net')}</StatTileLabel>
+                        <StatTileValue className="flex items-center gap-1">
                             {isPositiveNet ? (
                                 <TrendingUp className="size-4 text-success" />
                             ) : (
                                 <TrendingDown className="size-4 text-muted-foreground" />
                             )}
-                            <AmountDisplay
+                            <WholeAmount
                                 amountInCents={Math.abs(current.net)}
                                 currencyCode={auth.user.currency_code}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                                weight="semibold"
-                                highlightPositive
                             />
-                        </div>
-                    </div>
+                        </StatTileValue>
+                    </StatTile>
                 </div>
 
                 {/* Savings rate footer */}
