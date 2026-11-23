@@ -187,6 +187,18 @@ describe('the survey', function () {
         'other' => ['other', []],
     ]);
 
+    test('still reads answers recorded when the roadmap was offered', function () {
+        $answer = CancellationSurveyResponse::factory()->create([
+            'reason' => CancellationReason::MissingFeature,
+            'offer_shown' => 'roadmap',
+            'offer_accepted' => 'roadmap',
+        ]);
+
+        expect($answer->fresh())
+            ->offer_shown->toBe(CancellationOffer::Roadmap)
+            ->offer_accepted->toBe(CancellationOffer::Roadmap);
+    });
+
     test('quotes a trial its end date, a paid plan the end of its period', function () {
         $trial = cancellableSubscriber();
         fakeStripeForCancellation(periodEnd: now()->addDays(20)->getTimestamp());
