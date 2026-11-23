@@ -2,13 +2,15 @@
  * The serif is a marketing font, not part of the design system
  * (docs/design-system.md, Typography).
  *
- * IBM Plex Serif italic gives the landing hero its
- * editorial look, through `font-marketing-serif` in `app.css` (the
+ * IBM Plex Serif italic gives the landing hero its editorial look, through `font-marketing-serif` in `app.css` (the
  * documentation diagrams set it in CSS, `.dg-aside`). The app speaks IBM Plex
  * Sans and Google Sans Code only. This test fails when a file outside the
  * marketing pages names the serif: its class, the class it had before
  * (`font-heading`, which read like "the heading font" and drifted into app
  * pages), the font family itself, or Tailwind's `font-serif`.
+ *
+ * It scans TS/TSX under resources/js only: the class definition and
+ * `.dg-aside` in `app.css`, and Blade views, are outside its reach.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -23,7 +25,8 @@ import {
 const ALLOWED: readonly string[] = [
     // The landing hero's h1.
     'pages/welcome.tsx',
-    // The documentation pages and their diagrams (`.dg-aside`).
+    // The documentation pages and their diagrams, whose asides are set in
+    // the serif (`.dg-aside` in app.css).
     'pages/documentation/',
     'components/documentation/',
 ];
