@@ -101,8 +101,8 @@ function BenefitsGrid() {
                     key={benefit.title}
                     className="flex items-start gap-3 rounded-lg border bg-card p-4"
                 >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
-                        <benefit.icon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
+                        <benefit.icon className="size-5 text-success" />
                     </div>
                     <div>
                         <h3 className="font-medium">{benefit.title}</h3>
@@ -274,8 +274,8 @@ function StandardUpgradeCard({
             data-testid="standard-upgrade"
         >
             <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
-                    <LandmarkIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
+                    <LandmarkIcon className="size-5 text-success" />
                 </div>
                 <div>
                     <h4 className="font-medium">
@@ -321,7 +321,7 @@ function PlanStatus({
 
         return (
             <div className="flex items-center gap-2">
-                <CheckIcon className="size-5 text-emerald-500" />
+                <CheckIcon className="size-5 text-success" />
                 <span className="font-medium">
                     {__('Standard plan active')}
                 </span>
@@ -339,7 +339,7 @@ function PlanStatus({
     return (
         <div>
             <div className="flex items-center gap-2">
-                <SparklesIcon className="size-5 text-emerald-500" />
+                <SparklesIcon className="size-5 text-success" />
                 <span className="font-medium">
                     {__('Free trial — ends :date', { date })}
                 </span>
@@ -856,7 +856,7 @@ function AiConsentSection({
                 <ol className="space-y-4">
                     {steps.map((step, index) => (
                         <li key={step.title} className="flex items-start gap-3">
-                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-xs font-semibold text-success">
                                 {index + 1}
                             </span>
                             <div>
@@ -872,7 +872,7 @@ function AiConsentSection({
                 </ol>
 
                 <div className="flex items-start gap-3 rounded-md bg-muted/50 p-3">
-                    <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
                     <p className="text-sm text-muted-foreground">
                         {__(
                             "To do this, we send each transaction's description, amount, and the merchant or sender name to our AI provider, along with the names of your categories so it can pick one. We never send your full financial picture, and your data is never used to train AI models.",

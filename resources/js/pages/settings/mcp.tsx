@@ -194,7 +194,7 @@ export default function Mcp() {
                     {!auth.hasProPlan && <ProUpsellAlert source="mcp" />}
 
                     <Alert>
-                        <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <ShieldAlert className="h-4 w-4 text-warning" />
                         <AlertTitle>
                             {__('Your data leaves Whisper Money')}
                         </AlertTitle>

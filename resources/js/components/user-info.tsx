@@ -3,6 +3,9 @@ import { type User } from '@/types';
 import { Facehash } from 'facehash';
 import { Avatar } from './ui/avatar';
 
+// One avatar tint per user, picked from the whole palette: an identity color,
+// not a semantic one, so the semantic-colors guard (#1358) does not apply.
+/* eslint-disable no-restricted-syntax */
 export const tailwindColorClasses = [
     'bg-slate-200 dark:bg-slate-800',
     'bg-gray-200 dark:bg-gray-800',
@@ -27,6 +30,7 @@ export const tailwindColorClasses = [
     'bg-pink-200 dark:bg-pink-800',
     'bg-rose-200 dark:bg-rose-800',
 ];
+/* eslint-enable no-restricted-syntax */
 
 export function UserInfo({
     user,

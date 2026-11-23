@@ -81,10 +81,7 @@ export function ManageDashboardsDialog({
                     onClick={() => dashboardActions.setDefault(entry.id)}
                 >
                     <Star
-                        className={cn(
-                            'size-4',
-                            isDefault && 'fill-amber-400 text-amber-400',
-                        )}
+                        className={cn('size-4', isDefault && 'fill-current')}
                     />
                 </Button>
                 {actions}

@@ -107,7 +107,7 @@ function AccountActions({
                     {!account.banking_connection_id && (
                         <DropdownMenuItem
                             onClick={() => setDeleteOpen(true)}
-                            className="text-red-600"
+                            variant="destructive"
                         >
                             {__('Delete')}
                         </DropdownMenuItem>
@@ -191,7 +191,7 @@ function AccountRow({
                     {!account.banking_connection_id && (
                         <ContextMenuItem
                             onClick={() => setDeleteOpen(true)}
-                            className="text-red-600"
+                            variant="destructive"
                         >
                             {__('Delete')}
                         </ContextMenuItem>
@@ -311,7 +311,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                         </Badge>
                         {isConnected && (
                             <Link2
-                                className="size-4 text-emerald-600 dark:text-emerald-400"
+                                className="size-4 text-success"
                                 aria-label={__('Connected account')}
                             />
                         )}

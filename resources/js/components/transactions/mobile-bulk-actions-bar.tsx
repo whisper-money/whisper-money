@@ -35,6 +35,14 @@ interface MobileBulkActionsBarProps extends Omit<
 const ICON_BUTTON_CLASS =
     'size-11 rounded-xl bg-primary-foreground/10 text-primary-foreground shadow-none hover:bg-primary-foreground/20 focus-visible:ring-primary-foreground/30 aria-expanded:bg-primary-foreground/20';
 
+/**
+ * The delete action's red, shifted toward the bar's ink: the bar is inverted
+ * (`bg-primary`), so plain `text-destructive` would be too dark on it in light
+ * mode and too light on it in dark mode.
+ */
+export const BAR_DESTRUCTIVE_CLASS =
+    'text-[color-mix(in_oklch,var(--destructive),var(--primary-foreground)_35%)]';
+
 const MENU_ITEM_CLASS =
     'h-12 gap-3 rounded-[10px] px-3 text-[15px] focus:bg-primary-foreground/10 focus:text-primary-foreground [&_svg:not([class*=text-])]:text-primary-foreground/70';
 
@@ -195,7 +203,8 @@ export function MobileBulkActionsBar({
                     <DropdownMenuItem
                         className={cn(
                             MENU_ITEM_CLASS,
-                            'text-red-300 focus:text-red-200 dark:text-red-700 dark:focus:text-red-800 [&_svg]:!text-current',
+                            BAR_DESTRUCTIVE_CLASS,
+                            'focus:text-current [&_svg]:!text-current',
                         )}
                         disabled={isUpdating || isSelectingAll}
                         onSelect={() => onDelete()}

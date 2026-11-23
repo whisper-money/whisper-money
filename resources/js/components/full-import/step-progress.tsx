@@ -201,7 +201,7 @@ export function StepProgress({
                             className="flex items-center gap-3 px-4 py-3 sm:px-5"
                         >
                             {done ? (
-                                <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                <Check className="size-4 shrink-0 text-success" />
                             ) : active ? (
                                 <Spinner className="size-4 shrink-0" />
                             ) : (

@@ -89,7 +89,7 @@ export function UserWidgetDetailsDialog({
                             </h3>
                             {error === null ? (
                                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                                    <CircleCheck className="size-4 text-success" />
                                     {__(
                                         'This version has not raised any error.',
                                     )}
@@ -98,10 +98,10 @@ export function UserWidgetDetailsDialog({
                                 <div
                                     role="alert"
                                     data-slot="user-widget-last-error"
-                                    className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 dark:border-red-400/40 dark:bg-red-400/10"
+                                    className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3"
                                 >
                                     <p className="flex items-center gap-2 text-sm font-medium">
-                                        <TriangleAlert className="size-4 shrink-0 text-destructive dark:text-red-400" />
+                                        <TriangleAlert className="size-4 shrink-0 text-destructive" />
                                         {error.phase === 'load'
                                             ? __('It did not load')
                                             : __('It stopped while drawing')}

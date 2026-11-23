@@ -1,7 +1,13 @@
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import { ChevronRight, X } from 'lucide-react';
+
+// A decorative wash in the AI accent colors, not a status color (#1358).
+const AI_GRADIENT =
+    // eslint-disable-next-line no-restricted-syntax
+    'bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20';
 
 /** The banner above the first transaction asking to let AI categorize. */
 export function AiConsentBanner({
@@ -14,7 +20,12 @@ export function AiConsentBanner({
     onDismiss: () => void;
 }) {
     return (
-        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+        <div
+            className={cn(
+                AI_GRADIENT,
+                'flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between',
+            )}
+        >
             <div className="flex gap-3 sm:flex-1">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
                     <AiSparkleIcon className="h-5 w-5" />

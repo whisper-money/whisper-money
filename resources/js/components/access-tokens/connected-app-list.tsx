@@ -69,10 +69,7 @@ export function ConnectedAppList({
                                             {app.name}
                                         </span>
                                         {app.verified && (
-                                            <Badge
-                                                variant="outline"
-                                                className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
-                                            >
+                                            <Badge variant="success">
                                                 <BadgeCheck aria-hidden />
                                                 {__('Verified')}
                                             </Badge>

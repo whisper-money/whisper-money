@@ -63,14 +63,12 @@ interface Props {
     connections: BankingConnection[];
 }
 
-/** The amber "nothing is broken, but do something" notice under a card. */
-function AmberNotice({ children }: { children: ReactNode }) {
+/** The warning "nothing is broken, but do something" notice under a card. */
+function WarningNotice({ children }: { children: ReactNode }) {
     return (
-        <Alert className="mt-3 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        <Alert variant="warning" className="mt-3">
             <Clock />
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
-                {children}
-            </AlertDescription>
+            <AlertDescription>{children}</AlertDescription>
         </Alert>
     );
 }
@@ -556,7 +554,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                             )}
                                         </div>
                                         {isWaitingForBank(connection) && (
-                                            <AmberNotice>
+                                            <WarningNotice>
                                                 <p>
                                                     {__(
                                                         'Your bank limits how often we can fetch your data. We will retry automatically.',
@@ -570,7 +568,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                         )}
                                                     </p>
                                                 )}
-                                            </AmberNotice>
+                                            </WarningNotice>
                                         )}
                                         {isStoppedByPlan(connection) && (
                                             <div className="mt-3">
@@ -583,7 +581,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                         )}
                                         {isExpiringSoon(connection) &&
                                             !isLockedByPlan(connection) && (
-                                                <AmberNotice>
+                                                <WarningNotice>
                                                     <p>
                                                         {__(
                                                             'Your bank only grants access for a limited time, and this permission runs out shortly. Renew it now and your transactions keep arriving without a gap.',
@@ -602,15 +600,15 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             )
                                                         }
                                                     />
-                                                </AmberNotice>
+                                                </WarningNotice>
                                             )}
                                         {connection.status === 'error' &&
                                             !isLockedByPlan(connection) && (
-                                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
+                                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
                                                     <div className="flex items-start gap-2">
-                                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-destructive-foreground" />
+                                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                                                         <div className="space-y-2">
-                                                            <p className="text-sm text-destructive dark:text-foreground">
+                                                            <p className="text-sm text-destructive">
                                                                 {connection.error_message ??
                                                                     __(
                                                                         'An unexpected error occurred during sync.',

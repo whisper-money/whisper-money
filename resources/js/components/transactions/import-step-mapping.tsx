@@ -192,11 +192,11 @@ function FieldStatus({
         <div className="flex flex-col gap-1 md:pt-1.5">
             <div className="flex items-center gap-1.5">
                 {clean ? (
-                    <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <Check className="size-3.5 shrink-0 text-success" />
                 ) : skipped > 0 ? (
                     <XCircle className="size-3.5 shrink-0 text-destructive" />
                 ) : (
-                    <AlertCircle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <AlertCircle className="size-3.5 shrink-0 text-warning" />
                 )}
                 <span className="text-[13px]">
                     {clean
@@ -234,7 +234,7 @@ function ProblemRows({
 
         return fault.severity === 'skipped'
             ? 'rounded bg-destructive/10 px-1 text-destructive'
-            : 'rounded bg-amber-500/10 px-1 text-amber-600 dark:text-amber-400';
+            : 'rounded bg-warning/10 px-1 text-warning';
     };
 
     const columns: { field: MappedField; label: string; mono: boolean }[] = [
@@ -299,7 +299,7 @@ function ProblemRows({
                                 className={`px-4 py-2 ${
                                     problem.severity === 'skipped'
                                         ? 'text-destructive'
-                                        : 'text-amber-600 dark:text-amber-400'
+                                        : 'text-warning'
                                 }`}
                             >
                                 {problem.faults
@@ -537,7 +537,7 @@ export function ImportStepMapping({
                         />
                         <div className="flex items-center gap-2">
                             <span
-                                className={`text-xs ${dateFormatDetected ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`}
+                                className={`text-xs ${dateFormatDetected ? 'text-muted-foreground' : 'text-warning'}`}
                             >
                                 {dateFormatDetected
                                     ? __('Reading as')
@@ -624,12 +624,12 @@ export function ImportStepMapping({
                     className={
                         report.skippedCount > 0
                             ? 'border-destructive/40'
-                            : 'border-amber-500/40'
+                            : 'border-warning/40'
                     }
                     triggerClassName={
                         report.skippedCount > 0
                             ? 'bg-destructive/5'
-                            : 'bg-amber-500/5'
+                            : 'bg-warning/5'
                     }
                     hint={__('Show them')}
                     title={
@@ -637,7 +637,7 @@ export function ImportStepMapping({
                             {report.skippedCount > 0 ? (
                                 <XCircle className="size-4 shrink-0 text-destructive" />
                             ) : (
-                                <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <AlertCircle className="size-4 shrink-0 text-warning" />
                             )}
                             <span className="text-sm font-medium">
                                 {report.skippedCount > 0

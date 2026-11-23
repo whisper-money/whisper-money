@@ -103,7 +103,7 @@ export function TransactionDeleteDialogs({
                         <AlertDialogAction
                             onClick={dialog.onConfirm}
                             disabled={dialog.isDeleting}
-                            className="bg-red-600 hover:bg-red-700"
+                            variant="destructive"
                         >
                             {dialog.isDeleting
                                 ? __('Deleting...')

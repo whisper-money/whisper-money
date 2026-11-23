@@ -238,7 +238,7 @@ export default function FullImport({
                         <div className="grid gap-x-6 gap-y-3.5 sm:grid-cols-2">
                             {WHAT_GETS_IMPORTED.map((item) => (
                                 <div key={item.title} className="flex gap-2.5">
-                                    <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                    <Check className="mt-0.5 size-4 shrink-0 text-success" />
                                     <div>
                                         <div className="font-medium">
                                             {__(item.title)}

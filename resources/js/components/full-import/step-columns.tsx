@@ -471,7 +471,7 @@ function CurrencySymbolRows({
                                 }),
                             )}
                             {use.ambiguous && (
-                                <span className="font-medium text-amber-700 dark:text-amber-300">
+                                <span className="font-medium text-warning">
                                     {' '}
                                     {__(
                                         'Several currencies write it this way: check it is the right one.',

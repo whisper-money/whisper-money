@@ -240,7 +240,7 @@ export default function Account({
 
                                             {status ===
                                                 'verification-link-sent' && (
-                                                <div className="mt-2 text-sm font-medium text-green-600">
+                                                <div className="mt-2 text-sm font-medium text-success">
                                                     {__(
                                                         'A new verification link has\n                                                    been sent to your email\n                                                    address.',
                                                     )}

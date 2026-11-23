@@ -1144,7 +1144,7 @@ function ModeToggle({
                         );
                     })}
                     {unavailable && (
-                        <p className="px-2 pt-1 text-xs text-amber-600">
+                        <p className="px-2 pt-1 text-xs text-warning">
                             {__(
                                 'Monthly trend needs at least one whole calendar month.',
                             )}

@@ -99,7 +99,7 @@ export function StepDone({
     if (status.status === 'failed') {
         return (
             <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
-                <span className="flex size-12 items-center justify-center rounded-full bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200">
+                <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                     <TriangleAlert className="size-6" />
                 </span>
                 <h1 className="text-3xl font-semibold tracking-tight">
@@ -138,7 +138,7 @@ export function StepDone({
 
     return (
         <div className="mx-auto flex w-full max-w-xl flex-col gap-7">
-            <span className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+            <span className="flex size-12 items-center justify-center rounded-full bg-success/10 text-success">
                 <Check className="size-6" />
             </span>
             <div className="flex flex-col gap-2.5">

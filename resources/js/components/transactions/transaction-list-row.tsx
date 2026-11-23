@@ -252,7 +252,7 @@ function CategoryName({
 
     if (!category) {
         return (
-            <span className="shrink-0 font-medium text-amber-700 dark:text-amber-400">
+            <span className="shrink-0 font-medium text-warning">
                 {__('Uncategorized')}
             </span>
         );
@@ -352,7 +352,7 @@ function CircleFace({
         <span
             className={cn(
                 circle,
-                'flex items-center justify-center border-[1.5px] border-dashed border-amber-600 bg-background text-amber-700 dark:border-amber-500 dark:text-amber-400',
+                'flex items-center justify-center border-[1.5px] border-dashed border-warning bg-background text-warning',
             )}
         >
             <HelpCircle className="size-[18px]" />

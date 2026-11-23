@@ -25,7 +25,7 @@ export function UnreadableRows({
 
     return (
         <details className="text-[13px]">
-            <summary className="w-fit cursor-pointer font-medium text-amber-700 dark:text-amber-400">
+            <summary className="w-fit cursor-pointer font-medium text-warning">
                 {countLabel(
                     rows.length,
                     __("1 row can't be read"),

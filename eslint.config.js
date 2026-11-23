@@ -51,47 +51,30 @@ export default [
         },
     },
     {
-        // Semantic colors, part 1 (#1358): money in these folders is colored
-        // with the `success` / `warning` / `muted-foreground` tokens, never a
-        // raw green or red. t5b extends the list to the whole app plus amber.
-        files: [
-            'resources/js/components/accounts/**/*.{ts,tsx}',
-            'resources/js/components/budgets/**/*.{ts,tsx}',
-            'resources/js/components/cashflow/**/*.{ts,tsx}',
-            'resources/js/components/charts/**/*.{ts,tsx}',
-            'resources/js/components/dashboard/**/*.{ts,tsx}',
-            'resources/js/components/savings-goals/**/*.{ts,tsx}',
-            'resources/js/pages/Accounts/**/*.{ts,tsx}',
-            'resources/js/pages/budgets/**/*.{ts,tsx}',
-            'resources/js/pages/cashflow/**/*.{ts,tsx}',
-            'resources/js/pages/dashboard.tsx',
-            'resources/js/pages/monthly-summaries/**/*.{ts,tsx}',
-            'resources/js/pages/savings-goals/**/*.{ts,tsx}',
-            'resources/js/components/categories/category-analysis-drawer.tsx',
-            'resources/js/components/onboarding/step-import-preview.tsx',
-            'resources/js/components/transactions/import-step-broker-parts.tsx',
-            'resources/js/components/transactions/transaction-analysis-drawer.tsx',
-            'resources/js/components/transactions/transaction-base-columns.tsx',
-            'resources/js/components/transactions/transaction-day-header.tsx',
-            'resources/js/components/transactions/transaction-list-row.tsx',
-            'resources/js/components/ui/amount-display.tsx',
-            'resources/js/types/budget.ts',
-            'resources/js/types/savings-goal.ts',
-        ],
+        // Semantic colors (#1358): the app colors meaning with the `success`,
+        // `warning`, `destructive` and `muted-foreground` tokens, never a raw
+        // green, red, emerald, rose or amber palette class.
+        files: ['resources/js/**/*.{ts,tsx}'],
         ignores: [
+            // Tests assert on class names, including the ones the guard bans.
             '**/*.test.{ts,tsx}',
-            // Feedback and status colors, migrated in t5b.
-            'resources/js/components/accounts/delete-account-dialog.tsx',
-            'resources/js/components/dashboard/custom-dashboards/**',
+            // Marketing and legal pages have their own look (docs/design-system.md).
+            'resources/js/pages/{welcome,terms,privacy,comparison,roadmap,integrations}.tsx',
+            'resources/js/pages/documentation/**',
+            'resources/js/components/{landing,documentation}/**',
+            'resources/js/components/marketing-page.tsx',
+            // The color a user picks for a category or a label is user data.
+            'resources/js/types/category*.ts',
+            'resources/js/types/label*.ts',
         ],
         rules: {
             'no-restricted-syntax': [
                 'error',
                 ...['Literal[value', 'TemplateElement[value.raw'].map(
                     (node) => ({
-                        selector: `${node}=/-(green|red|emerald|rose)-\\d/]`,
+                        selector: `${node}=/-(green|red|emerald|rose|amber)-\\d/]`,
                         message:
-                            'Use the semantic color tokens (docs/design-system.md, #1358): income and favourable trends `text-success`, unfavourable trends `text-muted-foreground`, expenses the foreground, over budget `text-warning`, errors `destructive`.',
+                            'Use the semantic color tokens (docs/design-system.md, #1358): income and favourable trends `text-success`, unfavourable trends `text-muted-foreground`, expenses the foreground, warnings `warning`, errors and destructive actions `destructive`, confirmations `success`.',
                     }),
                 ),
             ],

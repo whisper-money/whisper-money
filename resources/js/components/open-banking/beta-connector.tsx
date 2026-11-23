@@ -3,10 +3,6 @@ import { Badge } from '@/components/ui/badge';
 import { __ } from '@/utils/i18n';
 import { FlaskConical } from 'lucide-react';
 
-/** Matches the badge, so the pill and the notice read as the same signal. */
-export const AMBER =
-    'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300';
-
 /**
  * Flags the banks on our curated beta list (`banking.beta_banks`): the ones
  * whose connections we have seen fail more often than the rest.
@@ -15,11 +11,7 @@ export const AMBER =
  * work, and it has to sit inside the bank-picker rows, which are buttons.
  */
 export function BetaConnectorBadge() {
-    return (
-        <Badge variant="secondary" className={AMBER}>
-            {__('Beta')}
-        </Badge>
-    );
+    return <Badge variant="warning">{__('Beta')}</Badge>;
 }
 
 /**
@@ -53,12 +45,10 @@ export function BetaConnectorNotice({
     const copy = NOTICE_COPY[source];
 
     return (
-        <Alert className={AMBER}>
+        <Alert variant="warning">
             <FlaskConical />
             <AlertTitle>{__(copy.title)}</AlertTitle>
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
-                {__(copy.description)}
-            </AlertDescription>
+            <AlertDescription>{__(copy.description)}</AlertDescription>
         </Alert>
     );
 }
