@@ -10,6 +10,15 @@ beforeEach(function (): void {
     // HTML a server-side render would produce. Left on, Inertia posts the page
     // to its SSR gateway and the suite's stray-request guard fails the test.
     config()->set('inertia.ssr.enabled', false);
+
+    // Every test here measures "a minute ago", "an hour ago" or "a week ago"
+    // against now, and the middleware cares which day and week that lands in.
+    // Left on the real clock, a run in the first hour of a UTC day (or the
+    // first one of a Monday) puts "an hour ago" on the day before and the
+    // streak moves. Pinned to a Wednesday noon, every relative instant stays
+    // on the side of the boundary the test means. Tests about a boundary
+    // travel to their own instant.
+    $this->travelTo('2026-09-16 12:00:00');
 });
 
 test('an authenticated request records the last active date', function () {
