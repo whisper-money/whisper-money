@@ -233,7 +233,7 @@ describe('CashflowDetailsDrawer', () => {
         const fixed = within(
             screen
                 .getByRole('heading', { name: 'Fixed budgets' })
-                .closest('section') as HTMLElement,
+                .closest('[data-slot="card"]') as HTMLElement,
         );
         expect(fixed.getByText('Rent')).toBeTruthy();
         expect(fixed.queryByText('Groceries')).toBeNull();
@@ -241,7 +241,7 @@ describe('CashflowDetailsDrawer', () => {
         const variable = within(
             screen
                 .getByRole('heading', { name: 'Variable budgets' })
-                .closest('section') as HTMLElement,
+                .closest('[data-slot="card"]') as HTMLElement,
         );
         expect(variable.getByText('Groceries')).toBeTruthy();
         expect(variable.getByText('Gym')).toBeTruthy();

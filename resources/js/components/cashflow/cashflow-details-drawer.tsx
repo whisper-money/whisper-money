@@ -14,6 +14,7 @@ import {
     WholeAmount,
 } from '@/components/cashflow/summary-card-parts';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     Drawer,
     DrawerClose,
@@ -320,56 +321,58 @@ function BudgetsPanel({
     );
 
     return (
-        <section className="rounded-lg border p-4">
-            <div className="flex items-baseline justify-between gap-2">
-                <h3 className="text-sm font-medium">{title}</h3>
-                <p className="text-xs text-muted-foreground">
-                    <WholeAmount
-                        amountInCents={reserved}
-                        currencyCode={currency}
-                        className="text-xs"
-                    />{' '}
-                    {__('reserved')}
-                </p>
-            </div>
-            {budgets.length === 0 ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                    {emptyText}
-                </p>
-            ) : (
-                <ul className="mt-3 flex flex-col gap-2">
-                    {budgets.map((budget) => (
-                        <li
-                            key={budget.budget_period_id}
-                            className="flex items-center justify-between gap-3 text-sm"
-                        >
-                            <div className="min-w-0">
-                                <p className="truncate">{budget.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                    <WholeAmount
-                                        amountInCents={budget.spent}
-                                        currencyCode={currency}
-                                        className="text-xs"
-                                    />{' '}
-                                    {__('of')}{' '}
-                                    <WholeAmount
-                                        amountInCents={budget.allocated}
-                                        currencyCode={currency}
-                                        className="text-xs"
-                                    />
-                                </p>
-                            </div>
-                            <WholeAmount
-                                amountInCents={budget.margin}
-                                currencyCode={currency}
-                                weight="medium"
-                                className={signTone(budget.margin)}
-                            />
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </section>
+        <Card size="sm">
+            <CardContent>
+                <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-sm font-medium">{title}</h3>
+                    <p className="text-xs text-muted-foreground">
+                        <WholeAmount
+                            amountInCents={reserved}
+                            currencyCode={currency}
+                            className="text-xs"
+                        />{' '}
+                        {__('reserved')}
+                    </p>
+                </div>
+                {budgets.length === 0 ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                        {emptyText}
+                    </p>
+                ) : (
+                    <ul className="mt-3 flex flex-col gap-2">
+                        {budgets.map((budget) => (
+                            <li
+                                key={budget.budget_period_id}
+                                className="flex items-center justify-between gap-3 text-sm"
+                            >
+                                <div className="min-w-0">
+                                    <p className="truncate">{budget.name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        <WholeAmount
+                                            amountInCents={budget.spent}
+                                            currencyCode={currency}
+                                            className="text-xs"
+                                        />{' '}
+                                        {__('of')}{' '}
+                                        <WholeAmount
+                                            amountInCents={budget.allocated}
+                                            currencyCode={currency}
+                                            className="text-xs"
+                                        />
+                                    </p>
+                                </div>
+                                <WholeAmount
+                                    amountInCents={budget.margin}
+                                    currencyCode={currency}
+                                    weight="medium"
+                                    className={signTone(budget.margin)}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 

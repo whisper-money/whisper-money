@@ -1,4 +1,5 @@
 import { WizardScreen } from '@/components/full-import/full-import-layout';
+import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
 import { countLabel, formatCount } from '@/lib/full-import-format';
@@ -188,40 +189,44 @@ export function StepProgress({
                 )}
             </div>
 
-            <ol className="flex flex-col divide-y rounded-xl border bg-card">
-                {stages.map((stage, index) => {
-                    const done =
-                        finished ||
-                        (currentIndex !== -1 && index < currentIndex);
-                    const active = !finished && index === currentIndex;
+            <Card size="flush">
+                <ol className="flex flex-col divide-y">
+                    {stages.map((stage, index) => {
+                        const done =
+                            finished ||
+                            (currentIndex !== -1 && index < currentIndex);
+                        const active = !finished && index === currentIndex;
 
-                    return (
-                        <li
-                            key={stage}
-                            className="flex items-center gap-3 px-4 py-3 sm:px-5"
-                        >
-                            {done ? (
-                                <Check className="size-4 shrink-0 text-success" />
-                            ) : active ? (
-                                <Spinner className="size-4 shrink-0" />
-                            ) : (
-                                <Circle className="size-4 shrink-0 text-muted-foreground/50" />
-                            )}
-                            <span
-                                className={cn(
-                                    'flex-1',
-                                    !done && !active && 'text-muted-foreground',
-                                )}
+                        return (
+                            <li
+                                key={stage}
+                                className="flex items-center gap-3 px-4 py-3 sm:px-5"
                             >
-                                {__(STAGE_LABELS[stage])}
-                            </span>
-                            <span className="text-[13px] text-muted-foreground tabular-nums">
-                                {stageMeta(stage, stats, locale)}
-                            </span>
-                        </li>
-                    );
-                })}
-            </ol>
+                                {done ? (
+                                    <Check className="size-4 shrink-0 text-success" />
+                                ) : active ? (
+                                    <Spinner className="size-4 shrink-0" />
+                                ) : (
+                                    <Circle className="size-4 shrink-0 text-muted-foreground/50" />
+                                )}
+                                <span
+                                    className={cn(
+                                        'flex-1',
+                                        !done &&
+                                            !active &&
+                                            'text-muted-foreground',
+                                    )}
+                                >
+                                    {__(STAGE_LABELS[stage])}
+                                </span>
+                                <span className="text-[13px] text-muted-foreground tabular-nums">
+                                    {stageMeta(stage, stats, locale)}
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </Card>
 
             {showDashboardLink && status && status.status !== 'draft' && (
                 <Link

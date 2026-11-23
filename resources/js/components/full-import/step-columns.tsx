@@ -5,6 +5,7 @@ import {
     DateFormatSelect,
 } from '@/components/transactions/import-step-mapping';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -229,197 +230,212 @@ export function StepColumns({
                 {aiDetection}
             </div>
 
-            <div className="flex flex-col divide-y overflow-hidden rounded-xl border bg-card">
-                <GroupLabel>{__('Required')}</GroupLabel>
-                {REQUIRED_FIELDS.map((spec) => (
-                    <FieldRow
-                        key={spec.field}
-                        label={__(spec.label)}
-                        sample={sampleOf(columnOptions, mapping[spec.field])}
-                        hint={
-                            spec.field === 'amount' && source === 'money_pro'
-                                ? __(
-                                      'Money Pro writes it without a sign: the transaction type gives it, and a transfer goes out of one account and into the other.',
-                                  )
-                                : spec.hint && __(spec.hint)
-                        }
-                        control={select(spec.field, false)}
-                    >
-                        {spec.field === 'date' && (
-                            <DateFormatSelect
-                                ariaLabel={__('Date format')}
-                                value={mapping.dateFormat}
-                                onChange={(dateFormat) => set({ dateFormat })}
-                            />
-                        )}
-                    </FieldRow>
-                ))}
-
-                <FieldRow
-                    label={__('Account')}
-                    sample={sampleOf(columnOptions, mapping.account)}
-                    hint={
-                        mapping.account
-                            ? countLabel(
-                                  accounts,
-                                  __(
-                                      'Every different value is an account: there is 1.',
-                                  ),
-                                  __(
-                                      'Every different value is an account: there are :count.',
-                                      { count: accounts },
-                                  ),
-                              )
-                            : undefined
-                    }
-                    control={
-                        <ColumnSelect
-                            id="full-import-account"
-                            value={mapping.account}
-                            placeholder={__('Select column')}
-                            columnOptions={columnOptions}
-                            extraOptions={[
-                                {
-                                    value: SINGLE_ACCOUNT_COLUMN,
-                                    label: __('All rows are one account'),
-                                },
-                            ]}
-                            onChange={(column) =>
-                                set({ account: column || null })
+            <Card size="flush">
+                <div className="flex flex-col divide-y overflow-hidden rounded-[inherit]">
+                    <GroupLabel>{__('Required')}</GroupLabel>
+                    {REQUIRED_FIELDS.map((spec) => (
+                        <FieldRow
+                            key={spec.field}
+                            label={__(spec.label)}
+                            sample={sampleOf(
+                                columnOptions,
+                                mapping[spec.field],
+                            )}
+                            hint={
+                                spec.field === 'amount' &&
+                                source === 'money_pro'
+                                    ? __(
+                                          'Money Pro writes it without a sign: the transaction type gives it, and a transfer goes out of one account and into the other.',
+                                      )
+                                    : spec.hint && __(spec.hint)
                             }
-                        />
-                    }
-                >
-                    {/* Money Pro names every account itself: nothing to split by. */}
-                    {source !== 'money_pro' &&
-                        mapping.account &&
-                        mapping.account !== SINGLE_ACCOUNT_COLUMN && (
-                            <label className="flex items-start gap-2.5 text-sm">
-                                <Checkbox
-                                    checked={mapping.splitByAccountDetail}
-                                    onCheckedChange={(checked) =>
-                                        set({
-                                            splitByAccountDetail:
-                                                checked === true,
-                                        })
+                            control={select(spec.field, false)}
+                        >
+                            {spec.field === 'date' && (
+                                <DateFormatSelect
+                                    ariaLabel={__('Date format')}
+                                    value={mapping.dateFormat}
+                                    onChange={(dateFormat) =>
+                                        set({ dateFormat })
                                     }
-                                    className="mt-0.5"
                                 />
-                                <span className="flex flex-col gap-0.5">
-                                    <span className="font-medium">
-                                        {mapping.accountDetail
-                                            ? __('Also split by «:column»', {
-                                                  column: mapping.accountDetail,
-                                              })
-                                            : __(
-                                                  'Also split by another column',
-                                              )}
-                                    </span>
-                                    <span className="text-[13px] text-muted-foreground">
-                                        {__(
-                                            "Banktrack doesn't always fill it in, so one account could show up twice. Turn it on only if you have several accounts at the same bank.",
-                                        )}
-                                    </span>
-                                </span>
-                            </label>
-                        )}
-                    {mapping.splitByAccountDetail &&
-                        source === 'generic' &&
-                        select('accountDetail', true)}
-                </FieldRow>
+                            )}
+                        </FieldRow>
+                    ))}
 
-                <GroupLabel>{__('Optional')}</GroupLabel>
-
-                <FieldRow
-                    label={__('Category')}
-                    sample={categorySample || null}
-                    control={select('category', true)}
-                >
-                    {mapping.category && (
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <Label
-                                htmlFor="full-import-separator"
-                                className="text-[13px] text-muted-foreground"
-                            >
-                                {__('Subcategory separator')}
-                            </Label>
-                            <Input
-                                id="full-import-separator"
-                                value={mapping.categorySeparator}
-                                maxLength={5}
-                                className="h-8 w-16 text-center"
-                                onChange={(event) =>
-                                    set({
-                                        categorySeparator: event.target.value,
-                                    })
+                    <FieldRow
+                        label={__('Account')}
+                        sample={sampleOf(columnOptions, mapping.account)}
+                        hint={
+                            mapping.account
+                                ? countLabel(
+                                      accounts,
+                                      __(
+                                          'Every different value is an account: there is 1.',
+                                      ),
+                                      __(
+                                          'Every different value is an account: there are :count.',
+                                          { count: accounts },
+                                      ),
+                                  )
+                                : undefined
+                        }
+                        control={
+                            <ColumnSelect
+                                id="full-import-account"
+                                value={mapping.account}
+                                placeholder={__('Select column')}
+                                columnOptions={columnOptions}
+                                extraOptions={[
+                                    {
+                                        value: SINGLE_ACCOUNT_COLUMN,
+                                        label: __('All rows are one account'),
+                                    },
+                                ]}
+                                onChange={(column) =>
+                                    set({ account: column || null })
                                 }
                             />
-                            {categoryPreview && (
-                                <span className="text-[13px] font-medium">
-                                    {categoryPreview}
-                                </span>
+                        }
+                    >
+                        {/* Money Pro names every account itself: nothing to split by. */}
+                        {source !== 'money_pro' &&
+                            mapping.account &&
+                            mapping.account !== SINGLE_ACCOUNT_COLUMN && (
+                                <label className="flex items-start gap-2.5 text-sm">
+                                    <Checkbox
+                                        checked={mapping.splitByAccountDetail}
+                                        onCheckedChange={(checked) =>
+                                            set({
+                                                splitByAccountDetail:
+                                                    checked === true,
+                                            })
+                                        }
+                                        className="mt-0.5"
+                                    />
+                                    <span className="flex flex-col gap-0.5">
+                                        <span className="font-medium">
+                                            {mapping.accountDetail
+                                                ? __(
+                                                      'Also split by «:column»',
+                                                      {
+                                                          column: mapping.accountDetail,
+                                                      },
+                                                  )
+                                                : __(
+                                                      'Also split by another column',
+                                                  )}
+                                        </span>
+                                        <span className="text-[13px] text-muted-foreground">
+                                            {__(
+                                                "Banktrack doesn't always fill it in, so one account could show up twice. Turn it on only if you have several accounts at the same bank.",
+                                            )}
+                                        </span>
+                                    </span>
+                                </label>
                             )}
+                        {mapping.splitByAccountDetail &&
+                            source === 'generic' &&
+                            select('accountDetail', true)}
+                    </FieldRow>
+
+                    <GroupLabel>{__('Optional')}</GroupLabel>
+
+                    <FieldRow
+                        label={__('Category')}
+                        sample={categorySample || null}
+                        control={select('category', true)}
+                    >
+                        {mapping.category && (
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                <Label
+                                    htmlFor="full-import-separator"
+                                    className="text-[13px] text-muted-foreground"
+                                >
+                                    {__('Subcategory separator')}
+                                </Label>
+                                <Input
+                                    id="full-import-separator"
+                                    value={mapping.categorySeparator}
+                                    maxLength={5}
+                                    className="h-8 w-16 text-center"
+                                    onChange={(event) =>
+                                        set({
+                                            categorySeparator:
+                                                event.target.value,
+                                        })
+                                    }
+                                />
+                                {categoryPreview && (
+                                    <span className="text-[13px] font-medium">
+                                        {categoryPreview}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </FieldRow>
+
+                    <FieldRow
+                        label={__('Balance')}
+                        sample={sampleOf(columnOptions, mapping.balance)}
+                        hint={
+                            mapping.balance
+                                ? countLabel(
+                                      balanceRows,
+                                      __(
+                                          'Only in 1 row: we import the balance of the accounts that have it.',
+                                      ),
+                                      __(
+                                          'Only in :count rows: we import the balance of the accounts that have it.',
+                                          {
+                                              count: formatCount(
+                                                  balanceRows,
+                                                  locale,
+                                              ),
+                                          },
+                                      ),
+                                  )
+                                : __('No column, no balances imported.')
+                        }
+                        control={select('balance', true)}
+                    />
+
+                    <CurrencySymbolRows
+                        uses={currencySymbols}
+                        currencies={currencies}
+                        locale={locale}
+                        onChange={(symbol, code) =>
+                            set({
+                                currencySymbols: {
+                                    ...mapping.currencySymbols,
+                                    [symbol]: code,
+                                },
+                            })
+                        }
+                    />
+
+                    {OPTIONAL_FIELDS.map((spec) => (
+                        <FieldRow
+                            key={spec.field}
+                            label={__(spec.label)}
+                            sample={sampleOf(
+                                columnOptions,
+                                mapping[spec.field],
+                            )}
+                            hint={spec.hint && __(spec.hint)}
+                            control={select(spec.field, true)}
+                        />
+                    ))}
+
+                    {notImported.length > 0 && (
+                        <div className="px-4 py-3.5 text-[13px] text-muted-foreground sm:px-5">
+                            {__('Not imported: :columns.', {
+                                columns: notImported.join(', '),
+                            })}
                         </div>
                     )}
-                </FieldRow>
-
-                <FieldRow
-                    label={__('Balance')}
-                    sample={sampleOf(columnOptions, mapping.balance)}
-                    hint={
-                        mapping.balance
-                            ? countLabel(
-                                  balanceRows,
-                                  __(
-                                      'Only in 1 row: we import the balance of the accounts that have it.',
-                                  ),
-                                  __(
-                                      'Only in :count rows: we import the balance of the accounts that have it.',
-                                      {
-                                          count: formatCount(
-                                              balanceRows,
-                                              locale,
-                                          ),
-                                      },
-                                  ),
-                              )
-                            : __('No column, no balances imported.')
-                    }
-                    control={select('balance', true)}
-                />
-
-                <CurrencySymbolRows
-                    uses={currencySymbols}
-                    currencies={currencies}
-                    locale={locale}
-                    onChange={(symbol, code) =>
-                        set({
-                            currencySymbols: {
-                                ...mapping.currencySymbols,
-                                [symbol]: code,
-                            },
-                        })
-                    }
-                />
-
-                {OPTIONAL_FIELDS.map((spec) => (
-                    <FieldRow
-                        key={spec.field}
-                        label={__(spec.label)}
-                        sample={sampleOf(columnOptions, mapping[spec.field])}
-                        hint={spec.hint && __(spec.hint)}
-                        control={select(spec.field, true)}
-                    />
-                ))}
-
-                {notImported.length > 0 && (
-                    <div className="px-4 py-3.5 text-[13px] text-muted-foreground sm:px-5">
-                        {__('Not imported: :columns.', {
-                            columns: notImported.join(', '),
-                        })}
-                    </div>
-                )}
-            </div>
+                </div>
+            </Card>
 
             <ColumnsPreview
                 normalized={normalized}

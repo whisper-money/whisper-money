@@ -4,6 +4,7 @@ import {
     WizardScreen,
 } from '@/components/full-import/full-import-layout';
 import { ImportBankField } from '@/components/full-import/import-bank-field';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -341,219 +342,240 @@ function AccountCard({
         });
 
     return (
-        <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2 font-semibold">
-                        {account.name}
-                        {accountActionPill(entry, fileAccounts)}
+        <Card size="sm">
+            <CardContent className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2 font-semibold">
+                            {account.name}
+                            {accountActionPill(entry, fileAccounts)}
+                        </div>
+                        <div className="text-[13px] text-muted-foreground">
+                            {[
+                                transactionCount(account.count, locale),
+                                formatMonthRange(
+                                    account.from,
+                                    account.to,
+                                    locale,
+                                ),
+                                balanceLine(
+                                    account,
+                                    entry.currencyCode,
+                                    locale,
+                                    formatAmount,
+                                ),
+                            ].join(' · ')}
+                        </div>
                     </div>
-                    <div className="text-[13px] text-muted-foreground">
-                        {[
-                            transactionCount(account.count, locale),
-                            formatMonthRange(account.from, account.to, locale),
-                            balanceLine(
-                                account,
-                                entry.currencyCode,
-                                locale,
-                                formatAmount,
-                            ),
-                        ].join(' · ')}
-                    </div>
-                </div>
-                <Select
-                    value={entry.action}
-                    onValueChange={(value) =>
-                        setAction(value as ImportAccountAction)
-                    }
-                >
-                    <SelectTrigger
-                        className="w-full sm:w-60"
-                        aria-label={__('What to do with :name', {
-                            name: account.name,
-                        })}
+                    <Select
+                        value={entry.action}
+                        onValueChange={(value) =>
+                            setAction(value as ImportAccountAction)
+                        }
                     >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {actions.map((action) => (
-                            <SelectItem key={action.value} value={action.value}>
-                                {action.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+                        <SelectTrigger
+                            className="w-full sm:w-60"
+                            aria-label={__('What to do with :name', {
+                                name: account.name,
+                            })}
+                        >
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {actions.map((action) => (
+                                <SelectItem
+                                    key={action.value}
+                                    value={action.value}
+                                >
+                                    {action.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-            {connected && entry.action === 'create' && (
-                <Notice icon={Lock}>
-                    {__(
-                        'Your :name is connected, so nothing is imported into it. A separate manual account gets the :source history.',
-                        { name: connected.name, source: sourceLabel },
-                    )}
-                </Notice>
-            )}
+                {connected && entry.action === 'create' && (
+                    <Notice icon={Lock}>
+                        {__(
+                            'Your :name is connected, so nothing is imported into it. A separate manual account gets the :source history.',
+                            { name: connected.name, source: sourceLabel },
+                        )}
+                    </Notice>
+                )}
 
-            {entry.action === 'create' && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field label={__('Name')} htmlFor={`${id}-name`}>
-                        <Input
-                            id={`${id}-name`}
-                            value={entry.name}
-                            onChange={(event) =>
-                                onChange({ ...entry, name: event.target.value })
-                            }
-                        />
-                    </Field>
-                    <Field label={__('Type')}>
-                        <Select
-                            value={entry.type}
-                            onValueChange={(value) =>
+                {entry.action === 'create' && (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <Field label={__('Name')} htmlFor={`${id}-name`}>
+                            <Input
+                                id={`${id}-name`}
+                                value={entry.name}
+                                onChange={(event) =>
+                                    onChange({
+                                        ...entry,
+                                        name: event.target.value,
+                                    })
+                                }
+                            />
+                        </Field>
+                        <Field label={__('Type')}>
+                            <Select
+                                value={entry.type}
+                                onValueChange={(value) =>
+                                    onChange({
+                                        ...entry,
+                                        type: value as ImportAccountType,
+                                    })
+                                }
+                            >
+                                <SelectTrigger aria-label={__('Type')}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {IMPORT_ACCOUNT_TYPES.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {formatAccountType(type)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        <Field label={__('Currency')}>
+                            <Select
+                                value={entry.currencyCode}
+                                onValueChange={(value) =>
+                                    onChange({ ...entry, currencyCode: value })
+                                }
+                            >
+                                <SelectTrigger aria-label={__('Currency')}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {currencies.map((currency) => (
+                                        <SelectItem
+                                            key={currency.code}
+                                            value={currency.code}
+                                        >
+                                            {currency.code}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        <Field label={__('Bank')}>
+                            <ImportBankField
+                                bank={entry.bank}
+                                newBankName={entry.newBankName}
+                                suggestedName={account.bankName}
+                                version={banksVersion}
+                                onChange={(choice) =>
+                                    onChange({ ...entry, ...choice })
+                                }
+                            />
+                        </Field>
+                    </div>
+                )}
+
+                {inactive && (
+                    <label className="flex items-center gap-2.5 text-sm">
+                        <Checkbox
+                            checked={entry.archive}
+                            onCheckedChange={(checked) =>
                                 onChange({
                                     ...entry,
-                                    type: value as ImportAccountType,
+                                    archive: checked === true,
                                 })
                             }
-                        >
-                            <SelectTrigger aria-label={__('Type')}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {IMPORT_ACCOUNT_TYPES.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                        {formatAccountType(type)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                    <Field label={__('Currency')}>
-                        <Select
-                            value={entry.currencyCode}
-                            onValueChange={(value) =>
-                                onChange({ ...entry, currencyCode: value })
-                            }
-                        >
-                            <SelectTrigger aria-label={__('Currency')}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {currencies.map((currency) => (
-                                    <SelectItem
-                                        key={currency.code}
-                                        value={currency.code}
-                                    >
-                                        {currency.code}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                    <Field label={__('Bank')}>
-                        <ImportBankField
-                            bank={entry.bank}
-                            newBankName={entry.newBankName}
-                            suggestedName={account.bankName}
-                            version={banksVersion}
-                            onChange={(choice) =>
-                                onChange({ ...entry, ...choice })
-                            }
                         />
+                        {__('Archive after import')}
+                    </label>
+                )}
+
+                {entry.action === 'map' && (
+                    <Field label={__('Destination account')}>
+                        <Select
+                            value={entry.targetAccountId ?? undefined}
+                            onValueChange={(value) =>
+                                onChange({ ...entry, targetAccountId: value })
+                            }
+                        >
+                            <SelectTrigger
+                                className="sm:w-80"
+                                aria-label={__('Destination account')}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {mappable.map((target) => (
+                                    <SelectItem
+                                        key={target.id}
+                                        value={target.id}
+                                    >
+                                        {target.name} · {__('manual')}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <span className="text-[13px] text-muted-foreground">
+                            {__(
+                                'Transactions already in it (same date, amount and description, or the same :source ID) are skipped.',
+                                { source: sourceLabel },
+                            )}
+                        </span>
+                        {mapTarget &&
+                            account.currency &&
+                            mapTarget.currency_code !== account.currency && (
+                                <Notice tone="warning">
+                                    {__(
+                                        "This account is in :target; the file's transactions are in :file and are imported as they are, without conversion.",
+                                        {
+                                            target: mapTarget.currency_code,
+                                            file: account.currency,
+                                        },
+                                    )}
+                                </Notice>
+                            )}
                     </Field>
-                </div>
-            )}
+                )}
 
-            {inactive && (
-                <label className="flex items-center gap-2.5 text-sm">
-                    <Checkbox
-                        checked={entry.archive}
-                        onCheckedChange={(checked) =>
-                            onChange({ ...entry, archive: checked === true })
-                        }
-                    />
-                    {__('Archive after import')}
-                </label>
-            )}
-
-            {entry.action === 'map' && (
-                <Field label={__('Destination account')}>
-                    <Select
-                        value={entry.targetAccountId ?? undefined}
-                        onValueChange={(value) =>
-                            onChange({ ...entry, targetAccountId: value })
-                        }
-                    >
-                        <SelectTrigger
-                            className="sm:w-80"
-                            aria-label={__('Destination account')}
+                {entry.action === 'merge' && (
+                    <Field label={__('Joins')}>
+                        <Select
+                            value={entry.mergeIntoKey ?? undefined}
+                            onValueChange={(value) =>
+                                onChange({ ...entry, mergeIntoKey: value })
+                            }
                         >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {mappable.map((target) => (
-                                <SelectItem key={target.id} value={target.id}>
-                                    {target.name} · {__('manual')}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <span className="text-[13px] text-muted-foreground">
-                        {__(
-                            'Transactions already in it (same date, amount and description, or the same :source ID) are skipped.',
-                            { source: sourceLabel },
-                        )}
-                    </span>
-                    {mapTarget &&
-                        account.currency &&
-                        mapTarget.currency_code !== account.currency && (
-                            <Notice tone="warning">
-                                {__(
-                                    "This account is in :target; the file's transactions are in :file and are imported as they are, without conversion.",
-                                    {
-                                        target: mapTarget.currency_code,
-                                        file: account.currency,
-                                    },
-                                )}
-                            </Notice>
-                        )}
-                </Field>
-            )}
-
-            {entry.action === 'merge' && (
-                <Field label={__('Joins')}>
-                    <Select
-                        value={entry.mergeIntoKey ?? undefined}
-                        onValueChange={(value) =>
-                            onChange({ ...entry, mergeIntoKey: value })
-                        }
-                    >
-                        <SelectTrigger
-                            className="sm:w-80"
-                            aria-label={__('Joins')}
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {mergeTargets.map((target) => (
-                                <SelectItem key={target.key} value={target.key}>
-                                    {plan[target.key].action === 'create'
-                                        ? plan[target.key].name
-                                        : target.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <span className="text-[13px] text-muted-foreground">
-                        {countLabel(
-                            account.count,
-                            __('Its transaction goes there.'),
-                            __('Its :count transactions go there.', {
-                                count: formatCount(account.count, locale),
-                            }),
-                        )}
-                    </span>
-                </Field>
-            )}
-        </div>
+                            <SelectTrigger
+                                className="sm:w-80"
+                                aria-label={__('Joins')}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {mergeTargets.map((target) => (
+                                    <SelectItem
+                                        key={target.key}
+                                        value={target.key}
+                                    >
+                                        {plan[target.key].action === 'create'
+                                            ? plan[target.key].name
+                                            : target.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <span className="text-[13px] text-muted-foreground">
+                            {countLabel(
+                                account.count,
+                                __('Its transaction goes there.'),
+                                __('Its :count transactions go there.', {
+                                    count: formatCount(account.count, locale),
+                                }),
+                            )}
+                        </span>
+                    </Field>
+                )}
+            </CardContent>
+        </Card>
     );
 }

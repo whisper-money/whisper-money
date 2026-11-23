@@ -5,6 +5,7 @@ import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
 import { CategorizerCard } from '@/components/transactions/categorizer-card';
 import { CategorizerCommand } from '@/components/transactions/categorizer-command';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Kbd } from '@/components/ui/kbd';
 import {
     Popover,
@@ -242,37 +243,41 @@ export function StepCategorizeTransactions({
                 </div>
 
                 {/* Progress: makes the "categorize at least N" goal obvious */}
-                <div className="flex flex-col gap-2.5 rounded-lg border p-4">
-                    {canContinue ? (
-                        <div className="flex items-center gap-3">
-                            <Check className="size-5 shrink-0" />
-                            <p className="text-[15px] font-medium">
-                                {__(
-                                    'That’s enough to continue. Keep going if you’re enjoying it.',
-                                )}
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="flex items-baseline justify-between gap-3">
+                <Card size="sm">
+                    <CardContent className="flex flex-col gap-2.5">
+                        {canContinue ? (
+                            <div className="flex items-center gap-3">
+                                <Check className="size-5 shrink-0" />
                                 <p className="text-[15px] font-medium">
-                                    {/* The minimum is min(5, what is left), so
+                                    {__(
+                                        'That’s enough to continue. Keep going if you’re enjoying it.',
+                                    )}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <p className="text-[15px] font-medium">
+                                        {/* The minimum is min(5, what is left), so
                                         one is an ordinary case and needs a
                                         sentence that reads in the singular. */}
-                                    {minimumRequired === 1
-                                        ? __('File one movement to carry on')
-                                        : __(
-                                              'File :count movements to carry on',
-                                              { count: minimumRequired },
-                                          )}
-                                </p>
-                                <span className="shrink-0 text-sm font-semibold tabular-nums">
-                                    {categorizedCount}/{minimumRequired}
-                                </span>
-                            </div>
-                            <div className="flex gap-1.5">
-                                {Array.from({ length: minimumRequired }).map(
-                                    (_, i) => (
+                                        {minimumRequired === 1
+                                            ? __(
+                                                  'File one movement to carry on',
+                                              )
+                                            : __(
+                                                  'File :count movements to carry on',
+                                                  { count: minimumRequired },
+                                              )}
+                                    </p>
+                                    <span className="shrink-0 text-sm font-semibold tabular-nums">
+                                        {categorizedCount}/{minimumRequired}
+                                    </span>
+                                </div>
+                                <div className="flex gap-1.5">
+                                    {Array.from({
+                                        length: minimumRequired,
+                                    }).map((_, i) => (
                                         <div
                                             key={i}
                                             className={`h-1 flex-1 rounded-full transition-colors ${
@@ -281,17 +286,17 @@ export function StepCategorizeTransactions({
                                                     : 'bg-border'
                                             }`}
                                         />
-                                    ),
-                                )}
-                            </div>
-                            <p className="text-[13px] text-muted-foreground">
-                                {__(
-                                    'The rest can wait — they’ll be on your transactions screen.',
-                                )}
-                            </p>
-                        </>
-                    )}
-                </div>
+                                    ))}
+                                </div>
+                                <p className="text-[13px] text-muted-foreground">
+                                    {__(
+                                        'The rest can wait — they’ll be on your transactions screen.',
+                                    )}
+                                </p>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <CategorizerCard
                     transaction={currentTransaction}

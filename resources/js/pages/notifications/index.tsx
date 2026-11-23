@@ -3,6 +3,7 @@ import { NotificationList } from '@/components/notifications/notification-list';
 import { useMarkAllRead } from '@/components/notifications/use-mark-all-read';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type NotificationItem } from '@/types';
@@ -60,9 +61,11 @@ export default function NotificationsIndex({ notifications }: Props) {
                         </EmptyStateDescription>
                     </EmptyState>
                 ) : (
-                    <div className="overflow-hidden rounded-lg border">
-                        <NotificationList items={items} roomy />
-                    </div>
+                    <Card size="flush">
+                        <div className="overflow-hidden rounded-[inherit]">
+                            <NotificationList items={items} roomy />
+                        </div>
+                    </Card>
                 )}
             </div>
         </AppLayout>
