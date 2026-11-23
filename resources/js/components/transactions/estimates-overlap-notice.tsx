@@ -52,7 +52,7 @@ export function EstimatesOverlapNotice({
     return (
         <div
             role="alert"
-            className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
+            className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
             <p className="flex gap-2 text-pretty">
                 <CircleAlert className="mt-0.5 size-4 shrink-0" />

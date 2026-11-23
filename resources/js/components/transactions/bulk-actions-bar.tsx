@@ -409,7 +409,7 @@ function DesktopBulkActionsBar({
                             compact={isCompact}
                             onClick={onDelete}
                             disabled={isUpdating}
-                            className="text-red-300 hover:text-red-200 dark:text-red-700 dark:hover:text-red-800"
+                            className="text-destructive-foreground hover:text-destructive-foreground/80"
                         />
                         <Shortcut
                             id="transaction-selection.delete-forward"

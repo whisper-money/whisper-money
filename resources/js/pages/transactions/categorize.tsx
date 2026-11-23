@@ -149,8 +149,8 @@ export default function CategorizeTransactions({
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
                     <div className="animate-bounce-in flex flex-col items-center gap-6 text-center">
                         <div className="relative">
-                            <div className="absolute inset-0 animate-ping rounded-full bg-emerald-400/30" />
-                            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/30">
+                            <div className="absolute inset-0 animate-ping rounded-full bg-success/30" />
+                            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-success shadow-lg shadow-success/30">
                                 <PartyPopper className="h-12 w-12 text-white" />
                             </div>
                         </div>
@@ -196,8 +196,8 @@ export default function CategorizeTransactions({
                 <Head title={__('Categorize Transactions')} />
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
                     <div className="flex flex-col items-center gap-6 text-center">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                            <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
+                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
+                            <CheckCircle2 className="h-10 w-10 text-success" />
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">

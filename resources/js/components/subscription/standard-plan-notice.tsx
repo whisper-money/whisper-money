@@ -27,9 +27,9 @@ export function isBankAggregatorProvider(provider: string): boolean {
  */
 export function StandardPlanNotice({ message }: { message: string }) {
     return (
-        <Alert className="border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        <Alert variant="warning">
             <Lock />
-            <AlertDescription className="flex flex-wrap items-center justify-between gap-3 text-amber-700 dark:text-amber-300">
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                 <span>{message}</span>
                 <Button
                     asChild

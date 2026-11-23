@@ -1,5 +1,4 @@
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 /**
  * The plan's name, as every pay surface writes it. A proper noun, so it reads
@@ -12,13 +11,7 @@ const PLAN_NAME = 'Standard';
  */
 export function ProBadge({ className }: { className?: string }) {
     return (
-        <Badge
-            variant="secondary"
-            className={cn(
-                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                className,
-            )}
-        >
+        <Badge variant="secondary" className={className}>
             {PLAN_NAME}
         </Badge>
     );

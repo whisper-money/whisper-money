@@ -1,4 +1,5 @@
 import { destroy } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -106,7 +107,7 @@ export function DeleteCategoryDialog({
                                     </RadioGroup>
                                 </div>
                             )}
-                            <p className="text-sm text-red-500">
+                            <p className="text-sm text-destructive-foreground">
                                 {hasChildren && strategy === 'cascade'
                                     ? __(
                                           'Transactions in the deleted categories will become uncategorized.',
@@ -115,11 +116,7 @@ export function DeleteCategoryDialog({
                                           'Its transactions will become uncategorized.',
                                       )}
                             </p>
-                            {errors.strategy && (
-                                <p className="text-sm text-red-500">
-                                    {errors.strategy}
-                                </p>
-                            )}
+                            <InputError message={errors.strategy} />
                             <DialogFooter>
                                 <Button
                                     type="button"

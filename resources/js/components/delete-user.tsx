@@ -90,8 +90,8 @@ export default function DeleteUser({
                 )}
             />
 
-            <div className="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
-                <div className="relative space-y-0.5 text-red-600 dark:text-red-100">
+            <div className="space-y-4 rounded-lg border border-destructive-foreground/20 bg-destructive/10 p-4">
+                <div className="relative space-y-0.5 text-destructive-foreground">
                     <p className="font-medium">{__('Warning')}</p>
                     <p className="text-sm">
                         {__(

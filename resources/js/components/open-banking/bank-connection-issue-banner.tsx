@@ -169,7 +169,7 @@ export function BankConnectionIssueBanner() {
 
     return (
         <div className="mx-auto w-full max-w-page px-5 pb-4 sm:px-6">
-            <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
+            <Alert variant="warning">
                 <TriangleAlertIcon />
                 <AlertTitle className="line-clamp-none pr-8">
                     {single
@@ -182,7 +182,7 @@ export function BankConnectionIssueBanner() {
                               ),
                           })}
                 </AlertTitle>
-                <AlertDescription className="text-amber-900/80 dark:text-amber-100/80">
+                <AlertDescription>
                     <p>
                         {reconnectUrl
                             ? __(
@@ -201,7 +201,7 @@ export function BankConnectionIssueBanner() {
                 <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute top-1.5 right-1.5 size-8 text-amber-900/70 hover:bg-amber-500/15 hover:text-amber-900 dark:text-amber-100/70 dark:hover:text-amber-100"
+                    className="absolute top-1.5 right-1.5 size-8 text-warning/70 hover:bg-warning/15 hover:text-warning"
                     onClick={dismiss}
                     aria-label={__('Dismiss')}
                 >

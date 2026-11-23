@@ -58,7 +58,7 @@ export function DeleteAccountDialog({
                             className="font-semibold"
                             dangerouslySetInnerHTML={{
                                 __html: __('Type :word to confirm.', {
-                                    word: `<span class="text-red-600">${confirmWord}</span>`,
+                                    word: `<span class="text-destructive-foreground">${confirmWord}</span>`,
                                 }),
                             }}
                         />

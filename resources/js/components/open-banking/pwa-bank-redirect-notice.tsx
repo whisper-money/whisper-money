@@ -1,7 +1,4 @@
-import {
-    AMBER,
-    BetaConnectorNotice,
-} from '@/components/open-banking/beta-connector';
+import { BetaConnectorNotice } from '@/components/open-banking/beta-connector';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -95,10 +92,10 @@ export function PwaBankRedirectNotice({
     };
 
     return (
-        <Alert className={AMBER}>
+        <Alert variant="warning">
             <Smartphone />
             <AlertTitle>{__('Better from the browser')}</AlertTitle>
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
+            <AlertDescription>
                 <p>
                     {__(
                         "You're in the installed app. When you come back from your bank, your phone may open another window and the connection gets lost.",

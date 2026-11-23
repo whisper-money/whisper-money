@@ -111,12 +111,7 @@ function CommandOutput({ result }: { result: CommandResult }) {
                     php artisan {result.command}
                 </code>
                 <Badge
-                    variant={result.exit_code === 0 ? 'outline' : 'destructive'}
-                    className={
-                        result.exit_code === 0
-                            ? 'border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                            : undefined
-                    }
+                    variant={result.exit_code === 0 ? 'success' : 'destructive'}
                 >
                     {__('exit')} {result.exit_code}
                 </Badge>

@@ -158,9 +158,9 @@ function StandardPlanBanner() {
     return (
         <div
             data-testid="ai-dashboard-guide-plan-banner"
-            className="flex flex-col items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100"
+            className="flex flex-col items-start gap-2 rounded-lg border bg-muted/50 p-4"
         >
-            <ProBadge className="bg-amber-900 text-[10px] tracking-wide text-amber-50 uppercase dark:bg-amber-200 dark:text-amber-950" />
+            <ProBadge className="bg-primary text-[10px] tracking-wide text-primary-foreground uppercase" />
             <p className="text-sm font-semibold">
                 {__("It's a Standard plan feature")}
             </p>

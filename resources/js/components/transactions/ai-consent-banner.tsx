@@ -14,7 +14,7 @@ export function AiConsentBanner({
     onDismiss: () => void;
 }) {
     return (
-        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-fuchsia-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-fuchsia-950/20">
             <div className="flex gap-3 sm:flex-1">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
                     <AiSparkleIcon className="h-5 w-5" />

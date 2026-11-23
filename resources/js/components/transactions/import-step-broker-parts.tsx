@@ -427,7 +427,7 @@ export function RememberedAccountsBox({
 /** Something on a broker step worth a second look before importing. */
 export function BrokerWarning({ children }: { children: ReactNode }) {
     return (
-        <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+        <Alert variant="warning">
             <AlertTriangle />
             <AlertDescription className="text-inherit">
                 {children}

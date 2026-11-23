@@ -149,7 +149,7 @@ export default function Header({
                                         badge={
                                             stars !== null && (
                                                 <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
-                                                    <StarIcon className="size-3 fill-amber-400 text-amber-400" />
+                                                    <StarIcon className="size-3 fill-current" />
                                                     {stars}
                                                 </span>
                                             )

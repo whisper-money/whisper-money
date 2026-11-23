@@ -56,7 +56,7 @@ exposed as Tailwind colors (`bg-*`, `text-*`, `border-*`…) in `theme.css`.
 | `border`, `input`, `ring`                | Borders, input borders, focus rings.                                                                                                                                                                         |
 | `success`                                | Money in the user's favour: income amounts, favourable trends. Not for charts.                                                                                                                               |
 | `warning` / `warning-foreground`         | Something the user should act on that is not an error (an expiring connection, a budget close to its limit). `warning` is the ink (text, icon, border); `warning-foreground` is text on a `bg-warning` fill. |
-| `destructive` / `destructive-foreground` | Errors and destructive actions only. Note that `destructive-foreground` is used as error _text_ (`Alert`), not as text on a red fill.                                                                        |
+| `destructive` / `destructive-foreground` | Errors and destructive actions only. `destructive-foreground` is the error _ink_ (text, icons, outlines: `InputError`, `Alert`, destructive menu items), not text on a red fill: in dark mode `destructive` is a dark red meant for fills and is unreadable as text.                                                                        |
 | `sidebar-*`                              | The app sidebar. Don't use outside it.                                                                                                                                                                       |
 | `chart-1` … `chart-10`                   | Data series. See [Chart palettes](#chart-palettes).                                                                                                                                                          |
 
@@ -183,16 +183,18 @@ some are our own. Import them; don't copy their markup.
 
 ### Badges
 
-`Badge`: `default`, `secondary`, `outline`, `destructive`. For short statuses
+`Badge`: `default`, `secondary`, `outline`, `destructive`, plus the tinted
+`success` (a healthy status: an active connection, a verified app) and `warning`
+(a status the user should act on: expiring soon, setup required). For short statuses
 and tags. Not for counts in navigation, and not as buttons.
 
 ### Alerts
 
-`Alert` (`default`, `destructive`) with `AlertTitle`/`AlertDescription`, for a
+`Alert` (`default`, `destructive`, `warning`) with `AlertTitle`/`AlertDescription`, for a
 message that belongs to a page or a form. `components/alert-error.tsx` renders a
-list of errors. For a transient message, use a toast (`sonner`, via `AppToaster`). A
-warning alert uses the `warning` token (no variant yet: see the
-[debt catalog](#debt-catalog), item a).
+list of errors. For a transient message, use a toast (`sonner`, via `AppToaster`).
+Use the `warning` variant for a notice the user should act on (a bank connection that
+stopped syncing, a plan limit); don't tint a default `Alert` by hand.
 
 ### Cards
 
@@ -355,7 +357,7 @@ switch the comboboxes use. Use these instead of writing the switch again.
 | ----------------------------------------------------- | ----------------------------------------------------------------- |
 | `text-success` for income and favourable trends       | `text-green-600`, `text-emerald-500`                              |
 | `text-warning` for warnings                           | `text-amber-600`, `bg-yellow-50`                                  |
-| `text-destructive` for errors and destructive actions | Red for expenses or unfavourable trends                           |
+| `text-destructive-foreground` for error text, `bg-destructive/10` behind it, `variant="destructive"` on buttons and menu items | Red for expenses or unfavourable trends, or `bg-red-600` on a confirm button |
 | `<AmountDisplay>` for money                           | `formatCurrency()` straight into JSX                              |
 | `var(--color-chart-N)` or a role token in charts      | `--success`, palette colors, or an `isColorful` branch in a chart |
 | `<Card>` for a bordered group                         | `<div className="rounded-xl border">`                             |
@@ -364,6 +366,7 @@ switch the comboboxes use. Use these instead of writing the switch again.
 | `mx-auto max-w-page` for page width                   | A one-off `max-w-[…]`                                             |
 | `Skeleton` shaped like the content                    | A centred spinner for page content                                |
 | Check light and dark                                  | Tokens with a `dark:` duplicate, or palette classes without one   |
+| Let the ESLint guard catch a stray palette class      | `text-green-*`, `bg-red-*`, `border-amber-*`… anywhere in `resources/js`: `bun run lint` fails on them (`no-restricted-syntax` in `eslint.config.js`) |
 
 ## Debt catalog
 
@@ -373,7 +376,7 @@ stacked PR in the design-system stack. Counts were measured over
 
 |     | Debt                                                                                                                 | Evidence                                                                                                                                                                                                                                                                                                | Issue                                                               |
 | --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| a   | Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground`: **partially resolved by t5a ([#1372](https://github.com/whisper-money/whisper-money/pull/1372))**, financial meaning | Migrated: amounts, balances, gains, deltas and trends, budget and savings-goal status, cashflow, credit card usage, chart tooltips (`components/{accounts,budgets,cashflow,charts,dashboard,savings-goals}`, `pages/{Accounts,budgets,cashflow,dashboard,monthly-summaries,savings-goals}`, `AmountDisplay`, the transaction analysis drawer, list row and day header, `types/{budget,savings-goal}.ts`). ESLint `no-restricted-syntax` in `eslint.config.js` fails on green/red/emerald/rose classes in those paths. **Left for t5b** (feedback and status): `components/input-error.tsx`, alerts and banners (`open-banking/*`, `subscription/*`, `transactions/ai-consent-banner.tsx`, `estimates-overlap-notice.tsx`), destructive buttons and dialogs (`delete-*`, bulk actions), `pages/settings/{billing,connections,mcp,accounts,account,full-import}.tsx`, `full-import/*`, `dashboard/custom-dashboards/*`, auth pages, `pages/transactions/categorize.tsx`, the uncategorized marker (amber, `transactions/category-cell.tsx`, `transaction-list-row.tsx`), the category type badges in `pages/settings/categories.tsx`, and the guard extended to the whole app plus amber. **Data-viz palettes, not migrated**: the cashflow block tones (`lib/cashflow-block.ts`, `cashflow-blocks.tsx`, `SAVINGS_TONE` / `INVESTMENTS_TONE`) paint bars, so they belong on chart tokens, not on `success`. User-chosen palettes (`types/category.ts`, `types/label.ts`, the `user-info.tsx` avatars) are user data and stay | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
+| a   | ~~Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground`~~ **Resolved** by t5a ([#1372](https://github.com/whisper-money/whisper-money/pull/1372), financial meaning) and t5b (feedback and status) | Money, trends, budgets and goals use `success` / `warning` / `muted-foreground`; form errors, alerts, destructive buttons and menu items, billing and connection badges, import and onboarding states use `destructive-foreground` / `warning` / `success`, through the `Badge` `success`/`warning` and `Alert` `warning` variants where they fit. The ESLint `no-restricted-syntax` guard in `eslint.config.js` fails on any `-(green\|red\|emerald\|rose\|amber)-<digit>` class across `resources/js`. Allowlisted: tests, the marketing and legal pages and their components, and the user-chosen category and label palettes (`types/category*`, `types/label*`). Disabled inline with a reason: the cashflow block tones (`lib/cashflow-block.ts`, `SAVINGS_TONE` / `INVESTMENTS_TONE`, the `free` segment), a data-viz palette that belongs on chart tokens, and the `user-info.tsx` avatar tints, an identity color | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
 | b   | ~~Components branching on the chart theme (`isColorful` in `useChartColors`)~~ **Resolved** | `useChartColors` is gone: charts draw with the [chart role tokens](#chart-role-tokens) through `lib/chart-colors.ts`, and `lib/chart-theme-guard.test.ts` fails if code reads `chartColorScheme` or compares against a theme | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
 | c   | Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`                                      | 42 `.tsx` files (vs 41 using `AmountDisplay`). E.g. `components/onboarding/step-reveal.tsx`, `components/transactions/split-transaction-dialog.tsx`, `pages/savings-goals/show.tsx`                                                                                                                     | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
 | d   | No shared `EmptyState`                                                                                               | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx`                                                                                                                                                                   | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |

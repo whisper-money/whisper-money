@@ -220,7 +220,7 @@ describe('<UserWidgetCell>', () => {
         expect(
             screen
                 .getByLabelText('Options for Groceries by month')
-                .querySelector('.bg-destructive'),
+                .querySelector('.bg-destructive-foreground'),
         ).not.toBeNull();
     });
 });

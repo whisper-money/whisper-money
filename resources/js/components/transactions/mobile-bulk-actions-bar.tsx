@@ -195,7 +195,7 @@ export function MobileBulkActionsBar({
                     <DropdownMenuItem
                         className={cn(
                             MENU_ITEM_CLASS,
-                            'text-red-300 focus:text-red-200 dark:text-red-700 dark:focus:text-red-800 [&_svg]:!text-current',
+                            'text-destructive-foreground focus:text-destructive-foreground/80 [&_svg]:!text-current',
                         )}
                         disabled={isUpdating || isSelectingAll}
                         onSelect={() => onDelete()}

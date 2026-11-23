@@ -52,7 +52,7 @@ function StepPills({
                         )}
                     >
                         {isDone ? (
-                            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <Check className="size-3.5 text-success" />
                         ) : (
                             <span className="tabular-nums">{index + 1}</span>
                         )}
@@ -190,14 +190,12 @@ export function WizardFooter({
     );
 }
 
-/** Tints laid over the shared Alert, which only ships a neutral and a destructive one. */
+/** Tints laid over the shared Alert, borderless so they read as asides. */
 const NOTICE_TONES = {
     muted: 'border-transparent bg-muted text-foreground/85',
-    success:
-        'border-transparent bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100',
-    warning:
-        'border-transparent bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100',
-    danger: 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-100',
+    success: 'border-transparent bg-success/10 text-success',
+    warning: 'border-transparent bg-warning/10 text-warning',
+    danger: 'border-destructive-foreground/30 bg-destructive/10 text-destructive-foreground',
 } as const;
 
 const NOTICE_ICONS: Record<keyof typeof NOTICE_TONES, LucideIcon> = {
@@ -301,11 +299,9 @@ export function SectionRow({
 const PILL_TONES = {
     neutral: 'bg-muted text-foreground/80',
     info: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200',
-    warning:
-        'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200',
-    danger: 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-200',
-    success:
-        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200',
+    warning: 'bg-warning/10 text-warning',
+    danger: 'bg-destructive/10 text-destructive-foreground',
+    success: 'bg-success/10 text-success',
 } as const;
 
 /** A small rounded label: an account's fate, a match's confidence, a count. */

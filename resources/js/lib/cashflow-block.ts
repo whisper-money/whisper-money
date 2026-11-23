@@ -38,6 +38,9 @@ export function isExpenseBlock(block: CashflowBlock): block is ExpenseBlock {
 
 // Each block reads apart from its neighbours by lightness, not only by hue, so
 // the bars still split for anyone who cannot tell rose from emerald.
+// They paint bars, so they are a data-viz palette, not a semantic color (#1358):
+// they belong on chart tokens, which the semantic-colors guard does not cover.
+/* eslint-disable no-restricted-syntax */
 export const CASHFLOW_BLOCK_TONES: Record<CashflowBlock, string> = {
     fixed: 'bg-rose-900 dark:bg-rose-700',
     variable: 'bg-rose-500 dark:bg-rose-400',
@@ -45,6 +48,7 @@ export const CASHFLOW_BLOCK_TONES: Record<CashflowBlock, string> = {
     saved: 'bg-emerald-700 dark:bg-emerald-600',
     invested: 'bg-blue-700 dark:bg-blue-500',
 };
+/* eslint-enable no-restricted-syntax */
 
 /**
  * Untranslated labels (run them through `__()`) the transactions list names

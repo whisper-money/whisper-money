@@ -89,7 +89,7 @@ export function DashboardPicker({
                         </span>
                         {entry.id === defaultId && (
                             <Star
-                                className="size-3.5 fill-amber-400 text-amber-400"
+                                className="size-3.5 fill-current"
                                 aria-label={__('Default')}
                             />
                         )}

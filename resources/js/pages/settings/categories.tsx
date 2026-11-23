@@ -234,13 +234,11 @@ export default function Categories() {
                 const typeConfig = {
                     income: {
                         label: __('Income'),
-                        className:
-                            'bg-green-50 text-green-700 dark:bg-green-700 dark:text-green-100',
+                        className: 'bg-success/10 text-success',
                     },
                     expense: {
                         label: __('Expense'),
-                        className:
-                            'bg-red-50 text-red-700 dark:bg-red-700 dark:text-red-100',
+                        className: 'bg-muted text-foreground',
                     },
                     transfer: {
                         label: __('Transfer'),
@@ -254,8 +252,7 @@ export default function Categories() {
                     },
                     investment: {
                         label: __('Investment'),
-                        className:
-                            'bg-emerald-50 text-emerald-700 dark:bg-emerald-700 dark:text-emerald-100',
+                        className: 'bg-success/10 text-success',
                     },
                 };
                 const cashflowDirectionConfig = {
