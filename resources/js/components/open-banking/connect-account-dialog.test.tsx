@@ -1,3 +1,4 @@
+import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import type { BankingConnection } from '@/types/banking';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -350,16 +351,21 @@ describe('ConnectAccountDialog', () => {
     });
 
     it('flags a native integration in beta with its own caveat', async () => {
+        // No native integration is in beta right now, so flag Kraken for this test.
+        const kraken = CONNECT_PROVIDERS.find(
+            (provider) => provider.providerKey === 'kraken',
+        )!;
+        kraken.betaUntil = '2026-11-23';
         vi.useFakeTimers({ toFake: ['Date'] });
         vi.setSystemTime(new Date('2026-10-01T12:00:00Z'));
 
         try {
             await reachBankStep([], [institution('BBVA')]);
 
-            const kraken = screen.getByRole('button', { name: /Kraken/ });
-            expect(kraken).toHaveTextContent('Beta');
+            const krakenEntry = screen.getByRole('button', { name: /Kraken/ });
+            expect(krakenEntry).toHaveTextContent('Beta');
 
-            fireEvent.click(kraken);
+            fireEvent.click(krakenEntry);
             fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
             expect(
@@ -373,6 +379,7 @@ describe('ConnectAccountDialog', () => {
             ).toBeInTheDocument();
         } finally {
             vi.useRealTimers();
+            delete kraken.betaUntil;
         }
     });
 

@@ -201,7 +201,6 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         },
         endpoint: '/open-banking/kraken/connect',
         sendsCountry: true,
-        betaUntil: '2026-11-23',
         headerDescription:
             'Enter your API Key and Private Key to connect your Kraken account.',
         cardDescription:
