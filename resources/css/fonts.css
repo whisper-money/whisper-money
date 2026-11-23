@@ -437,6 +437,11 @@
         U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/*
+ * Fraunces ships no Cyrillic or Greek subset: text in those scripts falls back
+ * to ui-serif / Georgia. Don't go looking for the missing files.
+ */
+
 /* vietnamese */
 @font-face {
     font-family: 'Fraunces';
