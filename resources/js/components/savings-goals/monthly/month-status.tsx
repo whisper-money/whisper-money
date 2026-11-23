@@ -7,7 +7,7 @@ import { ReactNode } from 'react';
 
 /**
  * The colour of a month, shared by the strip, the bar chart and the legend so
- * the three never disagree about what green means.
+ * the three never disagree about what a met month looks like.
  */
 export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
     met: 'bg-success',
@@ -80,7 +80,10 @@ export function noJudgedMonthYet(archived: boolean): string {
         : __('The first month is still in progress');
 }
 
-/** Text colour for a signed difference: ahead reads green, behind muted. */
+/**
+ * Text colour for a signed difference, a delta: ahead reads `success`, behind
+ * `muted-foreground` (the month's verdict, not this figure, carries the warning).
+ */
 export function differenceClassName(difference: number): string {
     if (difference > 0) {
         return 'text-success';

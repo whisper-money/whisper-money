@@ -89,7 +89,7 @@ export default [
                 'error',
                 ...['Literal[value', 'TemplateElement[value.raw'].map(
                     (node) => ({
-                        selector: `${node}=/(text|bg|border|fill|stroke|ring|from|to|via|outline|divide|decoration|shadow|accent|color)-(green|red|emerald|rose)-\\d/]`,
+                        selector: `${node}=/-(green|red|emerald|rose)-\\d/]`,
                         message:
                             'Use the semantic color tokens (docs/design-system.md, #1358): income and favourable trends `text-success`, unfavourable trends `text-muted-foreground`, expenses the foreground, over budget `text-warning`, errors `destructive`.',
                     }),
