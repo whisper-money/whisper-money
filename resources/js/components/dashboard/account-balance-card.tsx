@@ -5,11 +5,11 @@ import { BankLogo } from '@/components/bank-logo';
 import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import {
     AccountWithMetrics,
     figuresCurrencyCode,
 } from '@/hooks/use-dashboard-data';
+import { chartRoleColors } from '@/lib/chart-colors';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -49,7 +49,7 @@ export function AccountBalanceCard({
 }: AccountBalanceCardProps) {
     const currencyCode = figuresCurrencyCode(account, displayCurrencyCode);
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
-        useChartColors();
+        chartRoleColors;
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     const [tooltipHidden, setTooltipHidden] = useState(false);
     const chartWrapperRef = useRef<HTMLDivElement | null>(null);

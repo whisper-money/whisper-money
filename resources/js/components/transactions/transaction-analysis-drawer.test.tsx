@@ -39,7 +39,7 @@ vi.mock('@inertiajs/react', () => ({
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
         <a href={href}>{children}</a>
     ),
-    usePage: () => ({ props: { chartColorScheme: 'colorful' } }),
+    usePage: () => ({ props: {} }),
 }));
 
 const filters: TransactionFilters = {

@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { CashflowPeriodType, TrendDataPoint } from '@/hooks/use-cashflow-data';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
+import { chartRoleColors } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
 import { toMajorUnits } from '@/utils/currency';
 import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
@@ -133,7 +133,7 @@ export function CashflowTrendChart({
     const locale = useLocale();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
-    const { cashflowIncomeColor, cashflowExpenseColor } = useChartColors();
+    const { cashflowIncomeColor, cashflowExpenseColor } = chartRoleColors;
 
     const chartConfig: ChartConfig = {
         income: {

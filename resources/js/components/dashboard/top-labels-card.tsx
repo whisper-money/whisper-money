@@ -12,8 +12,8 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLast30Days } from '@/hooks/use-last-30-days';
+import { categoryChartColor } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { type CategoryColor } from '@/types/category';
@@ -38,7 +38,6 @@ export interface LabelSpending {
  */
 export function TopLabelsCard({ labels }: { labels: LabelSpending[] }) {
     const { auth } = usePage<SharedData>().props;
-    const { categoryBarColor } = useChartColors();
 
     const { dateFrom, dateTo } = useLast30Days();
 
@@ -54,7 +53,7 @@ export function TopLabelsCard({ labels }: { labels: LabelSpending[] }) {
         getPercentage: (item) =>
             item.total_amount > 0 ? (item.amount / item.total_amount) * 100 : 0,
         getBarColor: (item, index) =>
-            categoryBarColor(item.color as CategoryColor, index),
+            categoryChartColor(item.color as CategoryColor, index),
         renderLeading: (item) => {
             const color = getLabelColorClasses(item.color);
 

@@ -4,7 +4,9 @@ import {
     useDesignSystemDisplay,
     type PreviewEntry,
 } from '@/components/design-system/showcase';
+import { categoryChartColor, chartRoleTokens } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
+import { type CategoryColor } from '@/types/category';
 
 const COLOR_TOKENS = [
     'background',
@@ -39,6 +41,17 @@ const STREAK_TOKENS = [
 
 const CHART_SLOTS = Array.from({ length: 10 }, (_, index) => index + 1);
 
+const CHART_ROLE_TOKENS = Object.values(chartRoleTokens);
+
+/** A few category colors, to show how category series follow the theme. */
+const SAMPLE_CATEGORY_COLORS: CategoryColor[] = [
+    'purple',
+    'amber',
+    'rose',
+    'teal',
+    'lime',
+];
+
 function Swatch({ token }: { token: string }) {
     return (
         <Specimen label={`--${token}`} className="w-28">
@@ -68,9 +81,10 @@ function ColorTokens() {
 }
 
 /**
- * The four palettes side by side. Each block sets its own `data-chart-color`
- * (and `.dark`, which the dark palettes are keyed on) so it shows its palette
- * whatever the toolbar picked for the rest of the page.
+ * The four palettes side by side, with the chart role tokens and a few
+ * category series as each theme resolves them. Each block sets its own
+ * `data-chart-color` (and `.dark`, which the dark palettes are keyed on) so it
+ * shows its palette whatever the toolbar picked for the rest of the page.
  */
 function ChartPalettes() {
     const { isDark, chartScheme } = useDesignSystemDisplay();
@@ -101,6 +115,40 @@ function ChartPalettes() {
                     <span className="font-mono text-xs text-muted-foreground">
                         --chart-1 … --chart-10
                     </span>
+                    <ul className="flex flex-col gap-1">
+                        {CHART_ROLE_TOKENS.map((token) => (
+                            <li
+                                key={token}
+                                className="flex items-center gap-2 font-mono text-xs"
+                            >
+                                <span
+                                    className="size-3 shrink-0 rounded-full"
+                                    style={{ background: `var(${token})` }}
+                                />
+                                {token}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="flex flex-col gap-1">
+                        <div className="flex gap-1">
+                            {SAMPLE_CATEGORY_COLORS.map((color, index) => (
+                                <div
+                                    key={color}
+                                    title={color}
+                                    className="h-3 flex-1 rounded-full"
+                                    style={{
+                                        background: categoryChartColor(
+                                            color,
+                                            index,
+                                        ),
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <span className="font-mono text-xs text-muted-foreground">
+                            categoryChartColor()
+                        </span>
+                    </div>
                 </div>
             ))}
         </div>

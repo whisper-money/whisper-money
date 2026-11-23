@@ -1,8 +1,8 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
+import { categoryChartColor, chartRoleColors } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
 import {
     type GroupedCategory,
@@ -120,8 +120,7 @@ export function SankeyChart({
     const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
-    const { cashflowIncomeColor, cashflowExpenseColor, categoryBarColor } =
-        useChartColors();
+    const { cashflowIncomeColor, cashflowExpenseColor } = chartRoleColors;
 
     const periodKey = period
         ? `${period.from.getTime()}-${period.to.getTime()}`
@@ -261,7 +260,7 @@ export function SankeyChart({
                 nodes.push({
                     name: item.category.name,
                     amount: item.amount,
-                    color: categoryBarColor(item.category.color, index),
+                    color: categoryChartColor(item.category.color, index),
                     kind,
                     labelSide: childrenLoaded ? 'onbar' : collapsedSide,
                     share: formatShare(item.amount, sideTotal),
@@ -433,7 +432,10 @@ export function SankeyChart({
                 };
 
                 kids.forEach((kid, index) =>
-                    pushChild(kid, categoryBarColor(kid.category.color, index)),
+                    pushChild(
+                        kid,
+                        categoryChartColor(kid.category.color, index),
+                    ),
                 );
                 offsets.forEach((child) =>
                     pushChild(child, OFFSET_COLOR, true),
@@ -466,7 +468,6 @@ export function SankeyChart({
     }, [
         data,
         groupingThreshold,
-        categoryBarColor,
         expandedId,
         expandedKind,
         childrenById,

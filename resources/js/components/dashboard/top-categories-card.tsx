@@ -13,9 +13,9 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { useLast30Days } from '@/hooks/use-last-30-days';
+import { categoryChartColor } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
@@ -54,7 +54,6 @@ export function TopCategoriesCard({
     loading,
 }: TopCategoriesCardProps) {
     const { auth } = usePage<SharedData>().props;
-    const { categoryBarColor } = useChartColors();
 
     const { dateFrom, dateTo } = useLast30Days();
 
@@ -86,7 +85,7 @@ export function TopCategoriesCard({
         getPercentage: (item) =>
             item.total_amount > 0 ? (item.amount / item.total_amount) * 100 : 0,
         getBarColor: (item, index) =>
-            categoryBarColor(
+            categoryChartColor(
                 (item.category?.color ?? 'gray') as CategoryColor,
                 index,
             ),

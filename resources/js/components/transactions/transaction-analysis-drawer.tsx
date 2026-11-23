@@ -21,9 +21,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { useLocale } from '@/hooks/use-locale';
+import { categoryChartColor } from '@/lib/chart-colors';
 import {
     filtersFingerprint,
     serializeFilters,
@@ -1771,7 +1771,6 @@ function CategoryBreakdown({
     slices: CategorySlice[];
     currency: string;
 }) {
-    const { categoryBarColor } = useChartColors();
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
 
     const childrenById = useMemo(() => {
@@ -1796,7 +1795,7 @@ function CategoryBreakdown({
         getAmount: (item) => item.amount,
         getPercentage: (item) => (total > 0 ? (item.amount / total) * 100 : 0),
         getBarColor: (item, index) =>
-            categoryBarColor((item.color ?? 'gray') as CategoryColor, index),
+            categoryChartColor((item.color ?? 'gray') as CategoryColor, index),
         renderLeading: (item) => categoryLeading(item.color, item.icon),
         canExpand: (item) => (item.children?.length ?? 0) > 0,
     };
@@ -1890,7 +1889,6 @@ function TagBreakdown({
     slices: TagSlice[];
     currency: string;
 }) {
-    const { categoryBarColor } = useChartColors();
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
 
     const adapter: CategoryBreakdownAdapter<TagSlice> = {
@@ -1900,12 +1898,12 @@ function TagBreakdown({
         getAmount: (item) => item.amount,
         getPercentage: (item) => (total > 0 ? (item.amount / total) * 100 : 0),
         getBarColor: (item, index) =>
-            categoryBarColor((item.color ?? 'gray') as CategoryColor, index),
+            categoryChartColor((item.color ?? 'gray') as CategoryColor, index),
         renderLeading: (item, index) => (
             <span
                 className="size-3 shrink-0 rounded-full"
                 style={{
-                    backgroundColor: categoryBarColor(
+                    backgroundColor: categoryChartColor(
                         (item.color ?? 'gray') as CategoryColor,
                         index,
                     ),

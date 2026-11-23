@@ -4,12 +4,12 @@ import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import {
     AccountWithMetrics,
     figuresCurrencyCode,
 } from '@/hooks/use-dashboard-data';
 import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
+import { chartRoleColors } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -53,7 +53,7 @@ export function AccountListCard({
 }: AccountListCardProps) {
     const currencyCode = figuresCurrencyCode(account, displayCurrencyCode);
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
-        useChartColors();
+        chartRoleColors;
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
 
     const hasMortgage = !!linkedLoanMetrics;
