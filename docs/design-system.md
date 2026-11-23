@@ -120,7 +120,7 @@ is on.
 | `font-sans` (default) | IBM Plex Sans    | Everything.                                                                           |
 | `font-mono`           | Google Sans Code | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`). |
 
-The serif (IBM Plex Serif italic) exists only for marketing pages, as
+The serif (Fraunces, self-hosted) exists only for marketing pages, as
 `font-marketing-serif` (the landing hero) and `.dg-aside` (the documentation
 diagrams), and is not part of the design system: never use it in the app
 (`lib/marketing-serif-guard.test.ts`).

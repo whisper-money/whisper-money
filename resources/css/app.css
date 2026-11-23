@@ -328,12 +328,14 @@
     }
 
     /*
-     * Marketing pages only (the landing hero). Not part of the
-     * design system: never use it in the app (lib/marketing-serif-guard.test.ts).
+     * Marketing pages only (the landing hero), set upright in Fraunces. Not
+     * part of the design system: never use it in the app
+     * (lib/marketing-serif-guard.test.ts).
      */
     .font-marketing-serif {
-        font-family: 'IBM Plex Serif', ui-serif, Georgia, serif;
-        font-style: italic;
+        font-family: 'Fraunces', ui-serif, Georgia, serif;
+        font-weight: 560;
+        letter-spacing: -0.02em;
     }
 
     .animate-marquee {
@@ -703,7 +705,7 @@
 }
 
 .documentation-diagram .dg-aside {
-    font-family: 'IBM Plex Serif', ui-serif, Georgia, serif;
+    font-family: 'Fraunces', ui-serif, Georgia, serif;
     font-size: 12px;
     font-style: italic;
     fill: var(--dg-muted);

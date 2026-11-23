@@ -2,12 +2,13 @@
  * The serif is a marketing font, not part of the design system
  * (docs/design-system.md, Typography).
  *
- * IBM Plex Serif italic gives the landing hero its editorial look, through `font-marketing-serif` in `app.css` (the
- * documentation diagrams set it in CSS, `.dg-aside`). The app speaks IBM Plex
- * Sans and Google Sans Code only. This test fails when a file outside the
- * marketing pages names the serif: its class, the class it had before
- * (`font-heading`, which read like "the heading font" and drifted into app
- * pages), the font family itself, or Tailwind's `font-serif`.
+ * Fraunces gives the landing hero its editorial look, through
+ * `font-marketing-serif` in `app.css` (the documentation diagrams set it in
+ * CSS, `.dg-aside`). The app speaks IBM Plex Sans and Google Sans Code only.
+ * This test fails when a file outside the marketing pages names the serif: its
+ * class, the class it had before (`font-heading`, which read like "the heading
+ * font" and drifted into app pages), the font family itself (Fraunces, or IBM
+ * Plex Serif, which it replaced), or Tailwind's `font-serif`.
  *
  * It scans TS/TSX under resources/js only: the class definition and
  * `.dg-aside` in `app.css`, and Blade views, are outside its reach.
@@ -41,8 +42,12 @@ const FORBIDDEN: readonly ForbiddenPattern[] = [
         what: 'uses font-heading, a class that no longer exists (the serif is font-marketing-serif, marketing pages only)',
     },
     {
+        pattern: /\bFraunces\b/i,
+        what: 'names Fraunces, a marketing-only font',
+    },
+    {
         pattern: /Plex Serif/i,
-        what: 'names IBM Plex Serif, a marketing-only font',
+        what: 'names IBM Plex Serif, the marketing serif Fraunces replaced',
     },
     {
         pattern: /\bfont-serif\b/,
@@ -62,6 +67,7 @@ describe('marketing serif guard', () => {
         const serif = [
             `<h1 className="font-marketing-serif text-4xl">`,
             `<p className="font-heading mt-1 text-xs">`,
+            `style={{ fontFamily: "'Fraunces', serif" }}`,
             `style={{ fontFamily: "'IBM Plex Serif', serif" }}`,
             `<h2 className="font-serif italic">`,
         ];
