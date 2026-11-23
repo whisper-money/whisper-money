@@ -10,6 +10,8 @@ interface PageHeaderProps {
     media?: ReactNode;
     /** The page's actions, on the right. They wrap under the title when the row is too narrow for both. */
     actions?: ReactNode;
+    /** Sizes the actions' row, e.g. `w-full sm:w-auto` for controls that fill the phone's width once they wrap under the title. */
+    actionsClassName?: string;
     className?: string;
 }
 
@@ -24,6 +26,7 @@ export function PageHeader({
     description,
     media,
     actions,
+    actionsClassName,
     className,
 }: PageHeaderProps) {
     return (
@@ -56,7 +59,12 @@ export function PageHeader({
                 </div>
             </div>
             {actions && (
-                <div className="flex max-w-full flex-wrap items-center gap-2">
+                <div
+                    className={cn(
+                        'flex max-w-full flex-wrap items-center gap-2',
+                        actionsClassName,
+                    )}
+                >
                     {actions}
                 </div>
             )}

@@ -79,6 +79,20 @@ describe('PageHeader', () => {
         expect(screen.getByRole('banner').children).toHaveLength(1);
     });
 
+    it('merges an actionsClassName onto the actions row', () => {
+        render(
+            <PageHeader
+                title="Cashflow"
+                actions={<button type="button">Month</button>}
+                actionsClassName="w-full sm:w-auto"
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Month' }).parentElement,
+        ).toHaveClass('w-full', 'sm:w-auto');
+    });
+
     it('merges a className onto the header', () => {
         render(<PageHeader title="Transactions" className="items-center" />);
 

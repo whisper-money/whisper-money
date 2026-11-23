@@ -354,6 +354,8 @@ page's only `<h1>`:
   default `Button`, the rest `outline`, a period navigator, a "more" menu).
   When the row is too narrow for both, they wrap under the title instead of
   squeezing it: on a phone the title and description take the full width.
+  Controls that should fill the phone's width once they wrap (the cashflow
+  period navigation) pass `actionsClassName="w-full sm:w-auto"`.
 - Don't repeat what the header bar shows: no breadcrumbs or app name in it.
   A back link on the phone goes in the bar (`mobileLeading` on
   `AppSidebarLayout`), not in the page header.

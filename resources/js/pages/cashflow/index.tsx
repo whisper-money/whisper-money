@@ -181,6 +181,7 @@ export default function CashflowPage() {
                 <PageHeader
                     title={__('Cashflow')}
                     description={__('Track your income, expenses, and savings')}
+                    actionsClassName="w-full sm:w-auto"
                     actions={
                         <PeriodNavigation
                             currentDate={currentDate}
