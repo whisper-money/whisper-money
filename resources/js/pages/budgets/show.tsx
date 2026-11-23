@@ -11,6 +11,7 @@ import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -208,27 +209,29 @@ export default function BudgetShow({
                 />
 
                 {currentPeriod.processing_historical ? (
-                    <div className="space-y-4 rounded-lg border border-border bg-card p-6">
-                        <div className="flex items-center gap-3">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            <div>
-                                <h3 className="text-sm font-medium">
-                                    {__('Finding historical transactions')}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        "We're looking through your transaction\n                                    history to find expenses that match this\n                                    budget. This usually takes a few seconds.",
-                                    )}
-                                </p>
+                    <Card>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                <div>
+                                    <h3 className="text-sm font-medium">
+                                        {__('Finding historical transactions')}
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            "We're looking through your transaction\n                                    history to find expenses that match this\n                                    budget. This usually takes a few seconds.",
+                                        )}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-3">
-                            <Skeleton className="h-16 w-full" />
-                            <Skeleton className="h-16 w-full" />
-                            <Skeleton className="h-16 w-full" />
-                        </div>
-                    </div>
+                            <div className="space-y-3">
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                                <Skeleton className="h-16 w-full" />
+                            </div>
+                        </CardContent>
+                    </Card>
                 ) : (
                     <>
                         {hasSharedAccountTransactions && (

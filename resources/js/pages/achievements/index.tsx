@@ -12,6 +12,7 @@ import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
 import { TrackMedals } from '@/components/achievements/track-medals';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
@@ -62,7 +63,7 @@ function Overview({ overview }: Pick<Props, 'overview'>) {
     const percent = Math.round((overview.unlocked / overview.total) * 100);
 
     return (
-        <div className="grid grid-cols-1 rounded-lg border sm:grid-cols-3">
+        <Card size="flush" className="grid grid-cols-1 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5 border-b p-4 sm:border-r sm:border-b-0">
                 <span className="text-xs text-muted-foreground">
                     {__('Unlocked')}
@@ -107,45 +108,47 @@ function Overview({ overview }: Pick<Props, 'overview'>) {
                         : __('Checked once a day')}
                 </span>
             </div>
-        </div>
+        </Card>
     );
 }
 
 function Tracks({ tracks }: { tracks: AchievementTrack[] }) {
     return (
-        <div className="divide-y rounded-lg border">
-            {tracks.map((track) => (
-                <div
-                    key={track.key}
-                    className="grid items-start gap-3 p-4 sm:grid-cols-[7rem_minmax(0,1fr)]"
-                >
-                    <div className="flex flex-col gap-0.5 pt-0.5">
-                        <div className="flex items-baseline justify-between gap-2 sm:flex-col sm:gap-0.5">
-                            <span className="text-sm font-medium">
-                                {track.label}
-                            </span>
-                            <span className="text-xs text-muted-foreground tabular-nums">
-                                {__(':unlocked of :total', {
-                                    unlocked: track.unlocked,
-                                    total: track.medals.length,
-                                })}
-                            </span>
+        <Card size="flush">
+            <div className="divide-y">
+                {tracks.map((track) => (
+                    <div
+                        key={track.key}
+                        className="grid items-start gap-3 p-4 sm:grid-cols-[7rem_minmax(0,1fr)]"
+                    >
+                        <div className="flex flex-col gap-0.5 pt-0.5">
+                            <div className="flex items-baseline justify-between gap-2 sm:flex-col sm:gap-0.5">
+                                <span className="text-sm font-medium">
+                                    {track.label}
+                                </span>
+                                <span className="text-xs text-muted-foreground tabular-nums">
+                                    {__(':unlocked of :total', {
+                                        unlocked: track.unlocked,
+                                        total: track.medals.length,
+                                    })}
+                                </span>
+                            </div>
+                            {track.note && (
+                                <p className="mt-1 text-xs text-pretty text-muted-foreground">
+                                    {track.note}
+                                </p>
+                            )}
                         </div>
-                        {track.note && (
-                            <p className="mt-1 text-xs text-pretty text-muted-foreground">
-                                {track.note}
-                            </p>
-                        )}
-                    </div>
 
-                    {/* Sideways on a phone: the ladder keeps its direction
+                        {/* Sideways on a phone: the ladder keeps its direction
                         rather than wrapping into an unreadable block. */}
-                    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
-                        <TrackMedals medals={track.medals} />
+                        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+                            <TrackMedals medals={track.medals} />
+                        </div>
                     </div>
-                </div>
-            ))}
-        </div>
+                ))}
+            </div>
+        </Card>
     );
 }
 
@@ -196,56 +199,58 @@ function Timeline({ tracks }: { tracks: AchievementTrack[] }) {
                             </span>
                         </div>
 
-                        <div className="divide-y rounded-lg border">
-                            {medals.map((medal) => (
-                                <div
-                                    key={medal.key}
-                                    className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:gap-4 sm:px-4"
-                                >
-                                    <Medal
-                                        rarity={medal.rarity}
-                                        icon={medal.icon}
-                                        size={44}
-                                    />
-                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                        <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium">
-                                            {medal.name}
-                                            <AchievementFigure
-                                                figure={medal.figure}
-                                            />
-                                        </span>
-                                        <RarityTag
+                        <Card size="flush">
+                            <div className="divide-y">
+                                {medals.map((medal) => (
+                                    <div
+                                        key={medal.key}
+                                        className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:gap-4 sm:px-4"
+                                    >
+                                        <Medal
                                             rarity={medal.rarity}
-                                            share={medal.share}
+                                            icon={medal.icon}
+                                            size={44}
                                         />
-                                    </div>
-                                    <div className="ml-auto flex items-center gap-4 text-right sm:ml-0">
-                                        <AchievementFigure
-                                            figure={medal.reached}
-                                            className="text-[13px] text-muted-foreground"
-                                        />
-                                        <span className="w-18 text-xs text-muted-foreground tabular-nums">
-                                            {monthLabel(
-                                                medal.achieved_on,
-                                                locale,
-                                            )}
-                                        </span>
-                                        <ShareMedalDialog medal={medal}>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                aria-label={__(
-                                                    'Share this medal',
+                                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                            <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium">
+                                                {medal.name}
+                                                <AchievementFigure
+                                                    figure={medal.figure}
+                                                />
+                                            </span>
+                                            <RarityTag
+                                                rarity={medal.rarity}
+                                                share={medal.share}
+                                            />
+                                        </div>
+                                        <div className="ml-auto flex items-center gap-4 text-right sm:ml-0">
+                                            <AchievementFigure
+                                                figure={medal.reached}
+                                                className="text-[13px] text-muted-foreground"
+                                            />
+                                            <span className="w-18 text-xs text-muted-foreground tabular-nums">
+                                                {monthLabel(
+                                                    medal.achieved_on,
+                                                    locale,
                                                 )}
-                                                className="size-8 cursor-pointer text-muted-foreground"
-                                            >
-                                                <Share2Icon className="size-4" />
-                                            </Button>
-                                        </ShareMedalDialog>
+                                            </span>
+                                            <ShareMedalDialog medal={medal}>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label={__(
+                                                        'Share this medal',
+                                                    )}
+                                                    className="size-8 cursor-pointer text-muted-foreground"
+                                                >
+                                                    <Share2Icon className="size-4" />
+                                                </Button>
+                                            </ShareMedalDialog>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        </Card>
                     </div>
                 );
             })}

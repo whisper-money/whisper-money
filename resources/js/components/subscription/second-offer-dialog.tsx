@@ -1,6 +1,7 @@
 import { StepBadge, StepSectionLabel } from '@/components/onboarding/step-list';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { Card } from '@/components/ui/card';
 import { useOfferedPriceTier } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
 import { shown } from '@/routes/subscribe/second-offer';
@@ -85,26 +86,28 @@ function WaitingForACategory({
     return (
         <div className="flex flex-col">
             <StepSectionLabel>{__('Waiting for a category')}</StepSectionLabel>
-            <ul className="flex flex-col divide-y rounded-lg border">
-                {movements.map((movement) => (
-                    <li
-                        key={movement.id}
-                        className="flex items-center justify-between gap-3 px-3.5 py-3"
-                    >
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                            <span className="truncate text-sm font-medium">
-                                {movement.description}
+            <Card size="flush">
+                <ul className="flex flex-col divide-y">
+                    {movements.map((movement) => (
+                        <li
+                            key={movement.id}
+                            className="flex items-center justify-between gap-3 px-3.5 py-3"
+                        >
+                            <span className="flex min-w-0 flex-col gap-0.5">
+                                <span className="truncate text-sm font-medium">
+                                    {movement.description}
+                                </span>
+                                <AmountDisplay
+                                    amountInCents={movement.amount}
+                                    currencyCode={movement.currency_code}
+                                    className="text-[13px] text-muted-foreground"
+                                />
                             </span>
-                            <AmountDisplay
-                                amountInCents={movement.amount}
-                                currencyCode={movement.currency_code}
-                                className="text-[13px] text-muted-foreground"
-                            />
-                        </span>
-                        <StepBadge>{__('Needs a category')}</StepBadge>
-                    </li>
-                ))}
-            </ul>
+                            <StepBadge>{__('Needs a category')}</StepBadge>
+                        </li>
+                    ))}
+                </ul>
+            </Card>
         </div>
     );
 }

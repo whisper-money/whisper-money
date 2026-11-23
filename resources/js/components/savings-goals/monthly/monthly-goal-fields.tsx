@@ -1,4 +1,5 @@
 import { AmountInput } from '@/components/ui/amount-input';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
@@ -203,84 +204,91 @@ export function AutoTagFields({
     );
 
     return (
-        <div className="flex flex-col gap-3 rounded-lg border p-4">
-            <div className="flex items-start gap-3">
-                <Checkbox
-                    id="goal-auto-tag"
-                    checked={enabled}
-                    onCheckedChange={(state) => onEnabledChange(state === true)}
-                    // Still untickable if it was on when the last account was
-                    // taken.
-                    disabled={!hasFreeAccount && !enabled}
-                    className="mt-0.5"
-                />
-                <UILabel
-                    htmlFor="goal-auto-tag"
-                    className="flex flex-col items-start gap-1"
-                >
-                    <span>{__('Tag contributions automatically')}</span>
-                    <span className="text-sm font-normal text-muted-foreground">
-                        {__(
-                            'Tags every incoming transaction into the account from the 1st of this month, interest and refunds included, and creates an automation rule you can edit in Settings › Automation rules.',
-                        )}
-                    </span>
-                </UILabel>
-            </div>
-            {!hasFreeAccount && (
-                <p className="pl-7 text-sm text-muted-foreground">
-                    {savingsAccounts.length === 0
-                        ? __(
-                              'There are no savings accounts in this space. Link contributions to the goal by hand.',
-                          )
-                        : __(
-                              'There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.',
-                          )}
-                </p>
-            )}
-            {enabled && hasFreeAccount && (
-                <div className="flex flex-col gap-2 pl-7">
+        <Card size="sm">
+            <CardContent className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="goal-auto-tag"
+                        checked={enabled}
+                        onCheckedChange={(state) =>
+                            onEnabledChange(state === true)
+                        }
+                        // Still untickable if it was on when the last account was
+                        // taken.
+                        disabled={!hasFreeAccount && !enabled}
+                        className="mt-0.5"
+                    />
                     <UILabel
-                        htmlFor="goal-auto-tag-account"
-                        className="font-normal text-muted-foreground"
+                        htmlFor="goal-auto-tag"
+                        className="flex flex-col items-start gap-1"
                     >
-                        {__('Transfers into')}
+                        <span>{__('Tag contributions automatically')}</span>
+                        <span className="text-sm font-normal text-muted-foreground">
+                            {__(
+                                'Tags every incoming transaction into the account from the 1st of this month, interest and refunds included, and creates an automation rule you can edit in Settings › Automation rules.',
+                            )}
+                        </span>
                     </UILabel>
-                    <Select value={accountId} onValueChange={onAccountChange}>
-                        <SelectTrigger id="goal-auto-tag-account">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {savingsAccounts.map((account) => (
-                                <SelectItem
-                                    key={account.id}
-                                    value={account.id}
-                                    // Rules stop at the first match: a second
-                                    // goal on this account would see nothing.
-                                    disabled={account.used_by !== null}
-                                >
-                                    {account.bank
-                                        ? `${account.name} · ${account.bank.name}`
-                                        : account.name}
-                                    {account.used_by !== null && (
-                                        <span className="text-muted-foreground">
-                                            {' '}
-                                            ·{' '}
-                                            {__('Already used by “:goal”', {
-                                                goal: account.used_by,
-                                            })}
-                                        </span>
-                                    )}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
-            )}
-            {error && (
-                <div className="pl-7">
-                    <FieldError message={error} />
-                </div>
-            )}
-        </div>
+                {!hasFreeAccount && (
+                    <p className="pl-7 text-sm text-muted-foreground">
+                        {savingsAccounts.length === 0
+                            ? __(
+                                  'There are no savings accounts in this space. Link contributions to the goal by hand.',
+                              )
+                            : __(
+                                  'There are no free savings accounts in this space: each one already feeds another monthly goal. Link contributions to the goal by hand.',
+                              )}
+                    </p>
+                )}
+                {enabled && hasFreeAccount && (
+                    <div className="flex flex-col gap-2 pl-7">
+                        <UILabel
+                            htmlFor="goal-auto-tag-account"
+                            className="font-normal text-muted-foreground"
+                        >
+                            {__('Transfers into')}
+                        </UILabel>
+                        <Select
+                            value={accountId}
+                            onValueChange={onAccountChange}
+                        >
+                            <SelectTrigger id="goal-auto-tag-account">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {savingsAccounts.map((account) => (
+                                    <SelectItem
+                                        key={account.id}
+                                        value={account.id}
+                                        // Rules stop at the first match: a second
+                                        // goal on this account would see nothing.
+                                        disabled={account.used_by !== null}
+                                    >
+                                        {account.bank
+                                            ? `${account.name} · ${account.bank.name}`
+                                            : account.name}
+                                        {account.used_by !== null && (
+                                            <span className="text-muted-foreground">
+                                                {' '}
+                                                ·{' '}
+                                                {__('Already used by “:goal”', {
+                                                    goal: account.used_by,
+                                                })}
+                                            </span>
+                                        )}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+                {error && (
+                    <div className="pl-7">
+                        <FieldError message={error} />
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }

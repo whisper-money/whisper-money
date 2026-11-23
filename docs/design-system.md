@@ -203,8 +203,26 @@ stopped syncing, a plan limit); don't tint a default `Alert` by hand.
 ### Cards
 
 `Card` with `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`,
-`CardFooter`. Any bordered surface that groups content is a `Card`. Don't build
-a card from `rounded-xl border` divs (debt item g).
+`CardFooter`. Any bordered surface that groups content is a `Card`: a block of
+settings, a step's summary, a form inside a page, a list of rows. Don't build
+one from `rounded-xl border p-4` divs; `lib/card-guard.test.ts` fails on a
+rounded, bordered, padded class string outside `components/ui` and its
+allowlist ([#1364](https://github.com/whisper-money/whisper-money/issues/1364)).
+
+`size` sets the padding of the card and of its parts, so you don't override it:
+
+- `default` (24px): a card on a page.
+- `sm` (16px): a card inside a drawer, a dialog or an import step, or a small
+  card in a row or grid of them.
+- `flush` (none): a list whose rows carry their own padding. Put `divide-y` on
+  a child list, not on the card, and give that child
+  `overflow-hidden rounded-[inherit]` if its rows have a hover fill.
+
+Content goes in `CardContent` (with the layout classes the content needs),
+not straight in the card. Bordered boxes that are not cards stay as they are:
+table wrappers, tooltips and toasts (they float, with a shadow), selectable
+options (radio or checkbox tiles), tinted notices (`bg-muted`, `bg-warning/10`,
+`bg-destructive/10`), dropzones, image frames, skeletons and list rows.
 
 ### Form controls
 
@@ -519,6 +537,6 @@ stacked PR in the design-system stack. Counts were measured over
 | d   | ~~No shared `EmptyState`~~ **Resolved** | `components/ui/empty-state.tsx` (shadcn's `Empty` API: `EmptyState`, `EmptyStateHeader`, `EmptyStateMedia`, `EmptyStateTitle`, `EmptyStateDescription`, `EmptyStateContent`; `size` `page` or `inline`) replaced 42 hand-rolled blocks across pages, cards, charts, drawers, pickers, `DataTable`, `SettingsTable` and the widget SDK's `EmptyState`; see [Empty states](#empty-states). `lib/empty-state-guard.test.ts` fails on a centred or dashed block around `__('No …')` / `emptyMessage` copy, allowlisting only the marketing pages | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
 | e   | ~~No shared `PageHeader`~~ **Resolved** | `components/page-header.tsx` titles every app page (dashboard, transactions, cashflow, planning, budget and savings goal detail, accounts and account detail, notifications, progress, monthly summaries, admin, and settings through `SettingsLayout`), replacing four hand-written `<h1>` sizes and the `HeadingSmall` (`<h3>`) that left most pages with no `<h1>` at all; see [Page headers](#page-headers). `Heading` is deleted: its two page-level uses (settings, admin) are `PageHeader` now. `lib/page-header-guard.test.ts` fails on a raw `<h1>` under `pages/` outside its allowlist | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
 | f   | ~~No generic `StatTile`~~ **Resolved** | `components/ui/stat-tile.tsx` (`StatTile`, `StatTileHeader`, `StatTileLabel`, `StatTileValue`, `StatTileTrend`, `StatTileDescription`, `StatTileSkeleton`; `size` `sm`/`md`/`lg`, `variant` `plain`/`muted`) draws the figures of the dashboard cashflow and account cards, the accounts list, the cashflow summary cards and details drawer, the account page's investment cards, the credit card usage and statement, and the category and transaction analysis drawers; see [Stat tiles](#stat-tiles). `lib/stat-tile-guard.test.ts` fails on a muted label straight before its amount, or a muted tile that opens with one, allowlisting only the marketing pages | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
-| g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
+| g   | ~~Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`~~ **Resolved** | The card surfaces among them (billing, budget detail, the full import page and steps, monthly summaries, notifications, progress, the cashflow drawer, onboarding, savings goal and broker import blocks) are `Card`s, with a new `size` prop (`default`, `sm`, `flush`) instead of padding overrides; see [Cards](#cards). The rest were never cards (tooltips, toasts, option tiles, tinted notices, table wrappers, list rows) and stay. `lib/card-guard.test.ts` fails on a new rounded, bordered, padded class string outside `components/ui` and an allowlist with a reason per file | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
 | h   | ~~`@headlessui/react` next to Radix~~ **Resolved**                                                                   | The "Saved" flash in `pages/settings/account.tsx` and `pages/settings/password.tsx` now uses a `tw-animate-css` fade; the package is gone and ESLint `no-restricted-imports` forbids `@headlessui/*`                                                                                                    | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |
 | i   | ~~Unused auth layouts~~ **Resolved**                                                                                 | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are deleted, with the `quote` shared prop only the split one read; `auth-simple-layout.tsx` stays, used through `AuthLayout`                                                                                                            | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |

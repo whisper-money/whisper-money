@@ -3,6 +3,7 @@ import {
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import { PageHeader } from '@/components/page-header';
+import { Card } from '@/components/ui/card';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
@@ -72,37 +73,42 @@ export default function MonthlySummariesIndex({ summaries }: Props) {
                         </EmptyStateDescription>
                     </EmptyState>
                 ) : (
-                    <ul className="divide-y rounded-lg border">
-                        {summaries.map((summary) => (
-                            <li key={summary.id} data-testid="summary-row">
-                                <Link
-                                    href={show(summary.id).url}
-                                    className="flex items-center gap-4 p-4 transition-colors hover:bg-accent"
-                                >
-                                    <div className="flex flex-1 flex-col gap-0.5">
-                                        <span className="font-medium capitalize">
-                                            {monthLabel(summary.period, locale)}
-                                        </span>
-                                        <span className="text-sm text-muted-foreground">
-                                            {summary.payload.cashflow
-                                                ?.savings_rate !== undefined
-                                                ? __(':rate% saved', {
-                                                      rate: summary.payload
-                                                          .cashflow
-                                                          .savings_rate,
-                                                  })
-                                                : __('Summary')}
-                                            {!summary.complete &&
-                                                ` · ${__('partial month')}`}
-                                            {summary.shared &&
-                                                ` · ${__('shared')}`}
-                                        </span>
-                                    </div>
-                                    <ChevronRightIcon className="size-4 text-muted-foreground" />
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
+                    <Card size="flush">
+                        <ul className="divide-y overflow-hidden rounded-[inherit]">
+                            {summaries.map((summary) => (
+                                <li key={summary.id} data-testid="summary-row">
+                                    <Link
+                                        href={show(summary.id).url}
+                                        className="flex items-center gap-4 p-4 transition-colors hover:bg-accent"
+                                    >
+                                        <div className="flex flex-1 flex-col gap-0.5">
+                                            <span className="font-medium capitalize">
+                                                {monthLabel(
+                                                    summary.period,
+                                                    locale,
+                                                )}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground">
+                                                {summary.payload.cashflow
+                                                    ?.savings_rate !== undefined
+                                                    ? __(':rate% saved', {
+                                                          rate: summary.payload
+                                                              .cashflow
+                                                              .savings_rate,
+                                                      })
+                                                    : __('Summary')}
+                                                {!summary.complete &&
+                                                    ` · ${__('partial month')}`}
+                                                {summary.shared &&
+                                                    ` · ${__('shared')}`}
+                                            </span>
+                                        </div>
+                                        <ChevronRightIcon className="size-4 text-muted-foreground" />
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
                 )}
             </div>
         </AppLayout>

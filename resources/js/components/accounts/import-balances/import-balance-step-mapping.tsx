@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -229,68 +230,70 @@ export function ImportBalanceStepMapping({
                 )}
 
                 {!dateFormatDetected && (
-                    <div className="space-y-3 rounded-lg border p-4">
-                        <Label>{__('Date Format')}</Label>
-                        <RadioGroup
-                            value={dateFormat}
-                            onValueChange={(value) =>
-                                onDateFormatChange(value as DateFormat)
-                            }
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.YearMonthDay}
-                                    id="format-ymd"
-                                />
+                    <Card size="sm">
+                        <CardContent className="space-y-3">
+                            <Label>{__('Date Format')}</Label>
+                            <RadioGroup
+                                value={dateFormat}
+                                onValueChange={(value) =>
+                                    onDateFormatChange(value as DateFormat)
+                                }
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem
+                                        value={DateFormat.YearMonthDay}
+                                        id="format-ymd"
+                                    />
 
-                                <Label
-                                    htmlFor="format-ymd"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('YYYY-MM-DD (e.g., 2024-12-31)')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.MonthDayYear}
-                                    id="format-mdy"
-                                />
+                                    <Label
+                                        htmlFor="format-ymd"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('YYYY-MM-DD (e.g., 2024-12-31)')}
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem
+                                        value={DateFormat.MonthDayYear}
+                                        id="format-mdy"
+                                    />
 
-                                <Label
-                                    htmlFor="format-mdy"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('MM-DD-YYYY (e.g., 12-31-2024)')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.DayMonthYear}
-                                    id="format-dmy"
-                                />
+                                    <Label
+                                        htmlFor="format-mdy"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('MM-DD-YYYY (e.g., 12-31-2024)')}
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem
+                                        value={DateFormat.DayMonthYear}
+                                        id="format-dmy"
+                                    />
 
-                                <Label
-                                    htmlFor="format-dmy"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('DD-MM-YYYY (e.g., 31-12-2024)')}
-                                </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                    value={DateFormat.YearMonthDayCompact}
-                                    id="format-ymd-compact"
-                                />
+                                    <Label
+                                        htmlFor="format-dmy"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('DD-MM-YYYY (e.g., 31-12-2024)')}
+                                    </Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem
+                                        value={DateFormat.YearMonthDayCompact}
+                                        id="format-ymd-compact"
+                                    />
 
-                                <Label
-                                    htmlFor="format-ymd-compact"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    {__('YYYYMMDD (e.g., 20241231)')}
-                                </Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
+                                    <Label
+                                        htmlFor="format-ymd-compact"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('YYYYMMDD (e.g., 20241231)')}
+                                    </Label>
+                                </div>
+                            </RadioGroup>
+                        </CardContent>
+                    </Card>
                 )}
             </div>
 

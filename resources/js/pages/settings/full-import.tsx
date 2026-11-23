@@ -6,6 +6,7 @@ import { Notice, Pill } from '@/components/full-import/full-import-layout';
 import { UndoImportDialog } from '@/components/full-import/undo-import-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { useImportUndoneEvents } from '@/hooks/use-full-import-telemetry';
 import { useLocale } from '@/hooks/use-locale';
@@ -218,78 +219,85 @@ export default function FullImport({
                         <Notice tone="danger">{errors.import}</Notice>
                     )}
 
-                    <div className="flex flex-col gap-5 rounded-xl border p-5 sm:p-6">
-                        {daysLeft !== null && windowEndsAt && canStart && (
-                            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium">
-                                <Clock className="size-3.5" />
-                                {countLabel(
-                                    daysLeft,
-                                    __('1 day left, until :date', {
-                                        date: windowEnd,
-                                    }),
-                                    __(':count days left, until :date', {
-                                        count: daysLeft,
-                                        date: windowEnd,
-                                    }),
-                                )}
-                            </span>
-                        )}
-
-                        <div className="grid gap-x-6 gap-y-3.5 sm:grid-cols-2">
-                            {WHAT_GETS_IMPORTED.map((item) => (
-                                <div key={item.title} className="flex gap-2.5">
-                                    <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                                    <div>
-                                        <div className="font-medium">
-                                            {__(item.title)}
-                                        </div>
-                                        <div className="text-[13px] text-muted-foreground">
-                                            {__(item.description)}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-4 border-t pt-4">
-                            {canStart ? (
-                                <>
-                                    <Button asChild>
-                                        <Link href={create()}>
-                                            <Upload className="size-4" />
-                                            {__('Start import')}
-                                        </Link>
-                                    </Button>
-                                    <span className="text-[13px] text-muted-foreground">
-                                        {__(
-                                            'Banktrack, or any CSV, Excel or Numbers file',
-                                        )}
-                                    </span>
-                                </>
-                            ) : (
-                                <span className="text-[13px] text-muted-foreground">
-                                    {__(
-                                        'Importing from another app is open during your first days. You can still undo an import from here.',
+                    <Card>
+                        <CardContent className="flex flex-col gap-5">
+                            {daysLeft !== null && windowEndsAt && canStart && (
+                                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium">
+                                    <Clock className="size-3.5" />
+                                    {countLabel(
+                                        daysLeft,
+                                        __('1 day left, until :date', {
+                                            date: windowEnd,
+                                        }),
+                                        __(':count days left, until :date', {
+                                            count: daysLeft,
+                                            date: windowEnd,
+                                        }),
                                     )}
                                 </span>
                             )}
-                        </div>
-                    </div>
+
+                            <div className="grid gap-x-6 gap-y-3.5 sm:grid-cols-2">
+                                {WHAT_GETS_IMPORTED.map((item) => (
+                                    <div
+                                        key={item.title}
+                                        className="flex gap-2.5"
+                                    >
+                                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                                        <div>
+                                            <div className="font-medium">
+                                                {__(item.title)}
+                                            </div>
+                                            <div className="text-[13px] text-muted-foreground">
+                                                {__(item.description)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4 border-t pt-4">
+                                {canStart ? (
+                                    <>
+                                        <Button asChild>
+                                            <Link href={create()}>
+                                                <Upload className="size-4" />
+                                                {__('Start import')}
+                                            </Link>
+                                        </Button>
+                                        <span className="text-[13px] text-muted-foreground">
+                                            {__(
+                                                'Banktrack, or any CSV, Excel or Numbers file',
+                                            )}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <span className="text-[13px] text-muted-foreground">
+                                        {__(
+                                            'Importing from another app is open during your first days. You can still undo an import from here.',
+                                        )}
+                                    </span>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {imports.length > 0 && (
                         <div className="flex flex-col gap-3">
                             <h3 className="text-base font-medium">
                                 {__('Imports')}
                             </h3>
-                            <div className="flex flex-col divide-y rounded-xl border">
-                                {imports.map((entry) => (
-                                    <HistoryRow
-                                        key={entry.id}
-                                        entry={entry}
-                                        locale={locale}
-                                    />
-                                ))}
-                            </div>
+                            <Card size="flush">
+                                <div className="flex flex-col divide-y">
+                                    {imports.map((entry) => (
+                                        <HistoryRow
+                                            key={entry.id}
+                                            entry={entry}
+                                            locale={locale}
+                                        />
+                                    ))}
+                                </div>
+                            </Card>
                         </div>
                     )}
                 </div>

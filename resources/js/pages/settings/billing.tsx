@@ -10,6 +10,7 @@ import { checkoutHref } from '@/components/subscription/subscription-offer';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { usePriceTierChoice } from '@/hooks/use-price-tier';
 import AppLayout from '@/layouts/app-layout';
@@ -97,20 +98,19 @@ function BenefitsGrid() {
     return (
         <div className="grid gap-4 sm:grid-cols-2">
             {benefits.map((benefit) => (
-                <div
-                    key={benefit.title}
-                    className="flex items-start gap-3 rounded-lg border bg-card p-4"
-                >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
-                        <benefit.icon className="size-5 text-success" />
-                    </div>
-                    <div>
-                        <h3 className="font-medium">{benefit.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            {benefit.description}
-                        </p>
-                    </div>
-                </div>
+                <Card key={benefit.title} size="sm">
+                    <CardContent className="flex items-start gap-3">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
+                            <benefit.icon className="size-5 text-success" />
+                        </div>
+                        <div>
+                            <h3 className="font-medium">{benefit.title}</h3>
+                            <p className="text-sm text-muted-foreground">
+                                {benefit.description}
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
             ))}
         </div>
     );
@@ -140,38 +140,42 @@ function UpgradeSection({
 
             <BenefitsGrid />
 
-            <div className="rounded-lg border bg-card p-5">
-                <p className="mb-2 text-sm font-medium">
-                    {__('Choose your billing cycle')}
-                </p>
+            <Card>
+                <CardContent>
+                    <p className="mb-2 text-sm font-medium">
+                        {__('Choose your billing cycle')}
+                    </p>
 
-                {/* The same picker as the paywall and the upgrade dialog, at
+                    {/* The same picker as the paywall and the upgrade dialog, at
                     the app's own density — 52px rows would read as the
                     onboarding leaking into a settings page. */}
-                <PlanPicker
-                    plans={tierChoice.plans}
-                    currency={currency}
-                    selectedPlan={selectedPlan}
-                    onSelect={setSelectedPlan}
-                    size="compact"
-                    tierChoice={tierChoice}
-                />
+                    <PlanPicker
+                        plans={tierChoice.plans}
+                        currency={currency}
+                        selectedPlan={selectedPlan}
+                        onSelect={setSelectedPlan}
+                        size="compact"
+                        tierChoice={tierChoice}
+                    />
 
-                {terms && <p className="mt-4 text-sm font-medium">{terms}</p>}
+                    {terms && (
+                        <p className="mt-4 text-sm font-medium">{terms}</p>
+                    )}
 
-                <Button asChild className="mt-4 w-full">
-                    <a
-                        href={checkoutHref(
-                            selectedPlan,
-                            defaultPlan,
-                            'billing',
-                            tierChoice.tier,
-                        )}
-                    >
-                        {__('Start a plan')}
-                    </a>
-                </Button>
-            </div>
+                    <Button asChild className="mt-4 w-full">
+                        <a
+                            href={checkoutHref(
+                                selectedPlan,
+                                defaultPlan,
+                                'billing',
+                                tierChoice.tier,
+                            )}
+                        >
+                            {__('Start a plan')}
+                        </a>
+                    </Button>
+                </CardContent>
+            </Card>
         </div>
     );
 }
@@ -269,32 +273,31 @@ function StandardUpgradeCard({
     };
 
     return (
-        <div
-            className="rounded-lg border bg-card p-5"
-            data-testid="standard-upgrade"
-        >
-            <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
-                    <LandmarkIcon className="size-5 text-success" />
+        <Card data-testid="standard-upgrade">
+            <CardContent>
+                <div className="flex items-start gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-success/10">
+                        <LandmarkIcon className="size-5 text-success" />
+                    </div>
+                    <div>
+                        <h4 className="font-medium">
+                            {__('Connect your bank with the standard plan')}
+                        </h4>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {standardUpgradeTerms(upgrade, onTrial, total)}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h4 className="font-medium">
-                        {__('Connect your bank with the standard plan')}
-                    </h4>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {standardUpgradeTerms(upgrade, onTrial, total)}
-                    </p>
-                </div>
-            </div>
-            <Button
-                className="mt-4"
-                disabled={processing}
-                onClick={submit}
-                data-testid="swap-to-standard"
-            >
-                {__('Switch to the standard plan')}
-            </Button>
-        </div>
+                <Button
+                    className="mt-4"
+                    disabled={processing}
+                    onClick={submit}
+                    data-testid="swap-to-standard"
+                >
+                    {__('Switch to the standard plan')}
+                </Button>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -679,31 +682,33 @@ function SubscribedSection({
 
             <BenefitsGrid />
 
-            <div className="rounded-lg border bg-card p-5">
-                <PlanStatus
-                    subscription={subscription}
-                    defaultPlan={defaultPlan}
-                    currency={currency}
-                    locale={locale}
-                />
-                <p className="mt-2 text-sm text-muted-foreground">
-                    {__(
-                        'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
-                    )}
-                </p>
-                {!isSharedAccount && !showsPaymentFailure && (
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <ManageSubscriptionButton source="manage" />
-                        {subscription?.canCancel && (
-                            <CancelSubscriptionButton
-                                onTrial={subscription.onTrial}
-                                currency={currency}
-                                locale={locale}
-                            />
+            <Card>
+                <CardContent>
+                    <PlanStatus
+                        subscription={subscription}
+                        defaultPlan={defaultPlan}
+                        currency={currency}
+                        locale={locale}
+                    />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        {__(
+                            'Manage your subscription, update payment methods, or view invoices through the Stripe billing portal.',
                         )}
-                    </div>
-                )}
-            </div>
+                    </p>
+                    {!isSharedAccount && !showsPaymentFailure && (
+                        <div className="mt-4 flex flex-wrap items-center gap-3">
+                            <ManageSubscriptionButton source="manage" />
+                            {subscription?.canCancel && (
+                                <CancelSubscriptionButton
+                                    onTrial={subscription.onTrial}
+                                    currency={currency}
+                                    locale={locale}
+                                />
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {subscription?.standardUpgrade && !isSharedAccount && (
                 <StandardUpgradeCard
@@ -848,59 +853,66 @@ function AiConsentSection({
                 </p>
             </header>
 
-            <div className="space-y-5 rounded-lg border bg-card p-5">
-                <p className="text-sm font-medium">
-                    {__('What happens when you turn this on')}
-                </p>
-
-                <ol className="space-y-4">
-                    {steps.map((step, index) => (
-                        <li key={step.title} className="flex items-start gap-3">
-                            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-xs font-semibold text-success">
-                                {index + 1}
-                            </span>
-                            <div>
-                                <p className="text-sm font-medium">
-                                    {step.title}
-                                </p>
-                                <p className="mt-0.5 text-sm text-muted-foreground">
-                                    {step.description}
-                                </p>
-                            </div>
-                        </li>
-                    ))}
-                </ol>
-
-                <div className="flex items-start gap-3 rounded-md bg-muted/50 p-3">
-                    <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-                    <p className="text-sm text-muted-foreground">
-                        {__(
-                            "To do this, we send each transaction's description, amount, and the merchant or sender name to our AI provider, along with the names of your categories so it can pick one. We never send your full financial picture, and your data is never used to train AI models.",
-                        )}
+            <Card>
+                <CardContent className="space-y-5">
+                    <p className="text-sm font-medium">
+                        {__('What happens when you turn this on')}
                     </p>
-                </div>
-            </div>
 
-            <div className="rounded-lg border bg-card p-5">
-                <label className="flex items-start gap-3">
-                    <Checkbox
-                        checked={consented}
-                        disabled={saving}
-                        onCheckedChange={(checked) =>
-                            handleToggle(checked === true)
-                        }
-                        className="mt-0.5"
-                    />
-                    <div>
-                        <span className="font-medium">
-                            {__('Allow AI categorization')}
-                        </span>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {__('You can turn this off at any time.')}
+                    <ol className="space-y-4">
+                        {steps.map((step, index) => (
+                            <li
+                                key={step.title}
+                                className="flex items-start gap-3"
+                            >
+                                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-success/10 text-xs font-semibold text-success">
+                                    {index + 1}
+                                </span>
+                                <div>
+                                    <p className="text-sm font-medium">
+                                        {step.title}
+                                    </p>
+                                    <p className="mt-0.5 text-sm text-muted-foreground">
+                                        {step.description}
+                                    </p>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+
+                    <div className="flex items-start gap-3 rounded-md bg-muted/50 p-3">
+                        <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                "To do this, we send each transaction's description, amount, and the merchant or sender name to our AI provider, along with the names of your categories so it can pick one. We never send your full financial picture, and your data is never used to train AI models.",
+                            )}
                         </p>
                     </div>
-                </label>
-            </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardContent>
+                    <label className="flex items-start gap-3">
+                        <Checkbox
+                            checked={consented}
+                            disabled={saving}
+                            onCheckedChange={(checked) =>
+                                handleToggle(checked === true)
+                            }
+                            className="mt-0.5"
+                        />
+                        <div>
+                            <span className="font-medium">
+                                {__('Allow AI categorization')}
+                            </span>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {__('You can turn this off at any time.')}
+                            </p>
+                        </div>
+                    </label>
+                </CardContent>
+            </Card>
         </div>
     );
 }

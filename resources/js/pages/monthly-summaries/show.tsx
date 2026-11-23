@@ -6,6 +6,7 @@ import {
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
 import { ShareSummaryCardDialog } from '@/components/summaries/share-summary-card-dialog';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
@@ -283,29 +284,37 @@ export default function MonthlySummaryShow({
                     <h2 className="text-sm font-semibold">
                         {__('The figures')}
                     </h2>
-                    <ul className="divide-y rounded-lg border">
-                        {report.rows.map((row, index) => (
-                            <li
-                                key={index}
-                                className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
-                                dangerouslySetInnerHTML={{ __html: row.text }}
-                            />
-                        ))}
-                    </ul>
+                    <Card size="flush">
+                        <ul className="divide-y">
+                            {report.rows.map((row, index) => (
+                                <li
+                                    key={index}
+                                    className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
+                                    dangerouslySetInnerHTML={{
+                                        __html: row.text,
+                                    }}
+                                />
+                            ))}
+                        </ul>
+                    </Card>
                 </div>
 
                 {achievements?.map((group) => (
                     <div key={group.title} className="flex flex-col gap-4">
                         <h2 className="text-sm font-semibold">{group.title}</h2>
-                        <ul className="divide-y rounded-lg border">
-                            {group.lines.map((line, index) => (
-                                <li
-                                    key={index}
-                                    className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
-                                    dangerouslySetInnerHTML={{ __html: line }}
-                                />
-                            ))}
-                        </ul>
+                        <Card size="flush">
+                            <ul className="divide-y">
+                                {group.lines.map((line, index) => (
+                                    <li
+                                        key={index}
+                                        className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
+                                        dangerouslySetInnerHTML={{
+                                            __html: line,
+                                        }}
+                                    />
+                                ))}
+                            </ul>
+                        </Card>
                     </div>
                 ))}
 
@@ -323,17 +332,19 @@ export default function MonthlySummaryShow({
                         <h2 className="text-sm font-semibold">
                             {__('Worth five minutes')}
                         </h2>
-                        <ul className="divide-y rounded-lg border">
-                            {report.todos.map((todo, index) => (
-                                <li
-                                    key={index}
-                                    className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
-                                    dangerouslySetInnerHTML={{
-                                        __html: todo.text,
-                                    }}
-                                />
-                            ))}
-                        </ul>
+                        <Card size="flush">
+                            <ul className="divide-y">
+                                {report.todos.map((todo, index) => (
+                                    <li
+                                        key={index}
+                                        className="p-4 text-sm leading-relaxed text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
+                                        dangerouslySetInnerHTML={{
+                                            __html: todo.text,
+                                        }}
+                                    />
+                                ))}
+                            </ul>
+                        </Card>
                     </div>
                 )}
             </div>

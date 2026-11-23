@@ -1,6 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -246,19 +247,16 @@ export function SectionCard({
     children,
 }: PropsWithChildren<{ label?: ReactNode; className?: string }>) {
     return (
-        <div
-            className={cn(
-                'flex flex-col divide-y rounded-xl border bg-card',
-                className,
-            )}
-        >
-            {label && (
-                <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-[13px] font-medium text-muted-foreground sm:px-5">
-                    {label}
-                </div>
-            )}
-            {children}
-        </div>
+        <Card size="flush" className={className}>
+            <div className="flex flex-col divide-y">
+                {label && (
+                    <div className="flex flex-wrap items-center gap-2 px-4 py-3 text-[13px] font-medium text-muted-foreground sm:px-5">
+                        {label}
+                    </div>
+                )}
+                {children}
+            </div>
+        </Card>
     );
 }
 
@@ -333,17 +331,19 @@ export function StatCard({
     note?: ReactNode;
 }) {
     return (
-        <div className="flex min-w-36 flex-1 flex-col gap-0.5 rounded-xl border bg-card p-4">
-            <span className="text-2xl font-semibold tracking-tight tabular-nums">
-                {value}
-            </span>
-            <span className="font-medium">{label}</span>
-            {note && (
-                <span className="text-[13px] text-muted-foreground">
-                    {note}
+        <Card size="sm" className="min-w-36 flex-1">
+            <CardContent className="flex flex-col gap-0.5">
+                <span className="text-2xl font-semibold tracking-tight tabular-nums">
+                    {value}
                 </span>
-            )}
-        </div>
+                <span className="font-medium">{label}</span>
+                {note && (
+                    <span className="text-[13px] text-muted-foreground">
+                        {note}
+                    </span>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 

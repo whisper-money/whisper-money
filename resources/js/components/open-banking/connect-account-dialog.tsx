@@ -12,6 +12,7 @@ import {
 } from '@/components/subscription/standard-plan-notice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -302,26 +303,30 @@ export function ConnectAccountDialog({
 
                     {step === 'confirm' && selectedBank && (
                         <div className="space-y-4">
-                            <div className="rounded-lg border p-4">
-                                <div className="flex items-center gap-3">
-                                    <BankLogo
-                                        src={selectedBank.logo}
-                                        className="size-16 p-1"
-                                    />
-                                    <div>
-                                        <p className="font-medium">
-                                            {selectedBank.name}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {provider
-                                                ? __(provider.cardDescription)
-                                                : __(
-                                                      'You will be redirected to authorize access to your account data.',
-                                                  )}
-                                        </p>
+                            <Card size="sm">
+                                <CardContent>
+                                    <div className="flex items-center gap-3">
+                                        <BankLogo
+                                            src={selectedBank.logo}
+                                            className="size-16 p-1"
+                                        />
+                                        <div>
+                                            <p className="font-medium">
+                                                {selectedBank.name}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {provider
+                                                    ? __(
+                                                          provider.cardDescription,
+                                                      )
+                                                    : __(
+                                                          'You will be redirected to authorize access to your account data.',
+                                                      )}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
 
                             {selectedBank.beta && (
                                 <BetaConnectorNotice

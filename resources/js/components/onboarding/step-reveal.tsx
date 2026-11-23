@@ -12,6 +12,7 @@ import {
     StepScreen,
 } from '@/components/onboarding/step-screen';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -746,29 +747,31 @@ function RevealAssets({
                 </StepList>
 
                 {offerAccount && guess !== undefined ? (
-                    <div className="flex flex-col gap-3 rounded-lg border p-4.5">
-                        <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                            {__('You guessed')}
-                        </span>
-                        <span className="text-[28px] leading-none font-semibold tracking-tight tabular-nums">
-                            <StepFilled
-                                sentence={__(':guess a month')}
-                                values={{
-                                    guess: formatAmount(
-                                        guess,
-                                        data.currency_code,
-                                        { fractionDigits: 0 },
-                                    ),
-                                }}
-                            />
-                        </span>
-                        <span className="text-sm leading-normal text-pretty text-muted-foreground">
-                            {__(
-                                'Two minutes of round figures for :account and we can tell you how close you were.',
-                                { account: offerAccount.name },
-                            )}
-                        </span>
-                    </div>
+                    <Card size="sm">
+                        <CardContent className="flex flex-col gap-3">
+                            <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                                {__('You guessed')}
+                            </span>
+                            <span className="text-[28px] leading-none font-semibold tracking-tight tabular-nums">
+                                <StepFilled
+                                    sentence={__(':guess a month')}
+                                    values={{
+                                        guess: formatAmount(
+                                            guess,
+                                            data.currency_code,
+                                            { fractionDigits: 0 },
+                                        ),
+                                    }}
+                                />
+                            </span>
+                            <span className="text-sm leading-normal text-pretty text-muted-foreground">
+                                {__(
+                                    'Two minutes of round figures for :account and we can tell you how close you were.',
+                                    { account: offerAccount.name },
+                                )}
+                            </span>
+                        </CardContent>
+                    </Card>
                 ) : (
                     <StepCallout>
                         {awaitingMovements

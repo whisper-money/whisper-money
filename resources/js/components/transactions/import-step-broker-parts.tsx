@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -100,18 +101,20 @@ export function Panel({
     children: ReactNode;
 }) {
     return (
-        <section className="flex flex-col gap-4 rounded-lg border p-4">
-            <div className="flex items-center justify-between gap-2">
-                <h3 className="text-[15px] font-semibold">{title}</h3>
-                <span className="rounded-md border bg-muted px-1.5 text-xs font-medium">
-                    {tag}
-                </span>
-            </div>
-            {hint && (
-                <p className="text-[13px] text-muted-foreground">{hint}</p>
-            )}
-            {children}
-        </section>
+        <Card size="sm">
+            <CardContent className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-[15px] font-semibold">{title}</h3>
+                    <span className="rounded-md border bg-muted px-1.5 text-xs font-medium">
+                        {tag}
+                    </span>
+                </div>
+                {hint && (
+                    <p className="text-[13px] text-muted-foreground">{hint}</p>
+                )}
+                {children}
+            </CardContent>
+        </Card>
     );
 }
 
@@ -535,10 +538,12 @@ export function SummaryTile({
     children: ReactNode;
 }) {
     return (
-        <div className="flex flex-col gap-1 rounded-lg border px-3.5 py-3">
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <span className="text-base font-semibold">{children}</span>
-        </div>
+        <Card size="sm">
+            <CardContent className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <span className="text-base font-semibold">{children}</span>
+            </CardContent>
+        </Card>
     );
 }
 

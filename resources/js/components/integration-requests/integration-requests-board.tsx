@@ -7,6 +7,7 @@ import {
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -195,57 +196,63 @@ export function IntegrationRequestsBoard({
             </div>
 
             {showForm && (
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-3 rounded-lg border p-4"
-                >
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="integration-name">
-                                {__('Name')}
-                            </Label>
-                            <Input
-                                id="integration-name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder={__('e.g. Revolut')}
-                                maxLength={255}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="integration-url">
-                                {__('Link')}
-                            </Label>
-                            <Input
-                                id="integration-url"
-                                type="url"
-                                value={url}
-                                onChange={(e) => setUrl(e.target.value)}
-                                placeholder="https://..."
-                                maxLength={2048}
-                                required
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => {
-                                setShowForm(false);
-                                setError(null);
-                            }}
-                        >
-                            {__('Cancel')}
-                        </Button>
-                        <Button type="submit" disabled={busy || cannotRequest}>
-                            {__('Submit')}
-                        </Button>
-                    </div>
-                    <InputError message={error ?? undefined} />
-                </form>
+                <Card size="sm">
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="space-y-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="integration-name">
+                                        {__('Name')}
+                                    </Label>
+                                    <Input
+                                        id="integration-name"
+                                        value={name}
+                                        onChange={(e) =>
+                                            setName(e.target.value)
+                                        }
+                                        placeholder={__('e.g. Revolut')}
+                                        maxLength={255}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="integration-url">
+                                        {__('Link')}
+                                    </Label>
+                                    <Input
+                                        id="integration-url"
+                                        type="url"
+                                        value={url}
+                                        onChange={(e) => setUrl(e.target.value)}
+                                        placeholder="https://..."
+                                        maxLength={2048}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        setShowForm(false);
+                                        setError(null);
+                                    }}
+                                >
+                                    {__('Cancel')}
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={busy || cannotRequest}
+                                >
+                                    {__('Submit')}
+                                </Button>
+                            </div>
+                            <InputError message={error ?? undefined} />
+                        </form>
+                    </CardContent>
+                </Card>
             )}
 
             {requests === null ? (
