@@ -44,6 +44,26 @@ describe('empty state guard', () => {
         ).toEqual([]);
     });
 
+    it('recognises the hand-rolled shapes it replaced', () => {
+        const [{ pattern }] = FORBIDDEN;
+        const handRolled = [
+            `<p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">\n{__('Nothing here yet.')}\n</p>`,
+            `<div className="flex h-[300px] items-center justify-center text-muted-foreground">{__('No account data available')}</div>`,
+            `<TableCell colSpan={3} className="h-24 text-center align-middle">{emptyMessage}</TableCell>`,
+            `<div className={cn('p-6 text-center text-sm', framed && 'border-b')}>{emptyMessage}</div>`,
+        ];
+        const fine = [
+            `<EmptyState size="inline"><EmptyStateDescription>{__('No labels found.')}</EmptyStateDescription></EmptyState>`,
+            `<span className="text-2xl font-semibold">{__('Nothing to pay')}</span>`,
+            `<p className="py-12 text-center text-sm text-muted-foreground">{error}</p>`,
+        ];
+
+        expect(handRolled.filter((source) => !pattern.test(source))).toEqual(
+            [],
+        );
+        expect(fine.filter((source) => pattern.test(source))).toEqual([]);
+    });
+
     it('allows only files that exist', () => {
         expect(missingPaths(ALLOWED)).toEqual([]);
     });

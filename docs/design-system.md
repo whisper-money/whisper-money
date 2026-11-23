@@ -356,7 +356,8 @@ mirrors shadcn's `Empty`, so compose only the parts you need:
   the page's `<h1>`) and `EmptyStateDescription` (links inside it are styled).
   `EmptyStateContent` holds the actions.
 - Size and place it with `className`/`style` (a chart's height, `border-t`
-  in a list); don't restyle its type or colors.
+  in a list, tighter padding in a menu); don't restyle its colors. A title
+  that is the page's `<h1>` may take the page heading size.
 - Keep the copy short and say what fills the space. Search pickers built on
   cmdk keep `CommandEmpty`.
 - `lib/empty-state-guard.test.ts` fails on the old shape: a centred

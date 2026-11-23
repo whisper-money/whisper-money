@@ -221,7 +221,7 @@ export function EmptyState({
         <AppEmptyState
             data-slot="widget-empty-state"
             size="inline"
-            className={cn('h-full', classNameOf(className))}
+            className={cn('h-full gap-1 p-4', classNameOf(className))}
         >
             <AppEmptyStateHeader>
                 {typeof title === 'string' && (

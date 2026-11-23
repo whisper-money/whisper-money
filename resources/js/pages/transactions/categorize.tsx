@@ -208,7 +208,10 @@ export default function CategorizeTransactions({
                             <EmptyStateMedia className="text-success">
                                 <CheckCircle2 />
                             </EmptyStateMedia>
-                            <EmptyStateTitle asChild>
+                            <EmptyStateTitle
+                                asChild
+                                className="text-2xl font-semibold"
+                            >
                                 <h1>{__('No Uncategorized Transactions')}</h1>
                             </EmptyStateTitle>
                             <EmptyStateDescription>

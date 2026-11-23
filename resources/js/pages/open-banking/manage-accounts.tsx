@@ -241,7 +241,7 @@ export default function ManageAccountsPage({
                         {hasRefreshed &&
                             !refreshing &&
                             discovered.length === 0 && (
-                                <EmptyState size="inline">
+                                <EmptyState size="inline" className="mt-4">
                                     <EmptyStateDescription>
                                         {__(
                                             'No new accounts available to add.',

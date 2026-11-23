@@ -20,7 +20,7 @@ const emptyStateVariants = cva(
   {
     variants: {
       size: {
-        page: "gap-4 rounded-xl border border-dashed p-8 md:p-12",
+        page: "gap-4 rounded-xl border border-dashed p-8",
         inline: "gap-3 px-4 py-6",
       },
     },
@@ -72,7 +72,10 @@ const emptyStateMediaVariants = cva(
   }
 )
 
-/** A lucide icon (or any small graphic) above the title. */
+/**
+ * A lucide icon (or any small graphic) above the title. Decorative, so hidden
+ * from assistive tech; pass `aria-hidden={false}` if it carries meaning.
+ */
 function EmptyStateMedia({
   className,
   variant = "default",
@@ -112,9 +115,9 @@ function EmptyStateTitle({
 function EmptyStateDescription({
   className,
   ...props
-}: React.ComponentProps<"p">) {
+}: React.ComponentProps<"div">) {
   return (
-    <p
+    <div
       data-slot="empty-state-description"
       className={cn(
         "max-w-prose text-sm text-pretty text-muted-foreground [&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-4",

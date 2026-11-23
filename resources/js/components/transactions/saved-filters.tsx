@@ -319,7 +319,7 @@ export function SavedFiltersMenu({
                 <DropdownMenuSeparator />
 
                 {savedFilters.length === 0 ? (
-                    <EmptyState size="inline">
+                    <EmptyState size="inline" className="p-2">
                         <EmptyStateDescription>
                             {__('No saved filters yet')}
                         </EmptyStateDescription>
