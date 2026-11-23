@@ -59,7 +59,7 @@ export function ConnectionStatusBadge({
 
     if (status === 'active' && !lastSyncedAt) {
         return (
-            <Badge variant="success">
+            <Badge variant="secondary">
                 <Spinner className="size-3" />
                 {__('Syncing')}
             </Badge>

@@ -195,7 +195,7 @@ const NOTICE_TONES = {
     muted: 'border-transparent bg-muted text-foreground/85',
     success: 'border-transparent bg-success/10 text-success',
     warning: 'border-transparent bg-warning/10 text-warning',
-    danger: 'border-destructive-foreground/30 bg-destructive/10 text-destructive-foreground',
+    danger: 'border-destructive/30 bg-destructive/10 text-destructive',
 } as const;
 
 const NOTICE_ICONS: Record<keyof typeof NOTICE_TONES, LucideIcon> = {
@@ -300,7 +300,7 @@ const PILL_TONES = {
     neutral: 'bg-muted text-foreground/80',
     info: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200',
     warning: 'bg-warning/10 text-warning',
-    danger: 'bg-destructive/10 text-destructive-foreground',
+    danger: 'bg-destructive/10 text-destructive',
     success: 'bg-success/10 text-success',
 } as const;
 

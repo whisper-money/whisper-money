@@ -257,7 +257,7 @@ function UserWidgetMenu({
                     {hasError && (
                         <span
                             aria-hidden
-                            className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive-foreground"
+                            className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-destructive"
                         />
                     )}
                 </Button>

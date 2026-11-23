@@ -52,10 +52,10 @@ export function EstimatesOverlapNotice({
     return (
         <div
             role="alert"
-            className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
+            className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm"
         >
             <p className="flex gap-2 text-pretty">
-                <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
                 <span>
                     {estimates.length === 1
                         ? __(

@@ -604,11 +604,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                             )}
                                         {connection.status === 'error' &&
                                             !isLockedByPlan(connection) && (
-                                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
+                                                <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
                                                     <div className="flex items-start gap-2">
-                                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-destructive-foreground" />
+                                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                                                         <div className="space-y-2">
-                                                            <p className="text-sm text-destructive dark:text-foreground">
+                                                            <p className="text-sm text-destructive">
                                                                 {connection.error_message ??
                                                                     __(
                                                                         'An unexpected error occurred during sync.',

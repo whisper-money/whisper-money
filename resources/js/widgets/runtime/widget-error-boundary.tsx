@@ -40,9 +40,9 @@ export function WidgetErrorState({
         <div
             role="alert"
             data-slot="user-widget-error"
-            className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-destructive-foreground/40 p-4 text-center"
+            className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-destructive/40 p-4 text-center"
         >
-            <TriangleAlert className="size-5 text-destructive-foreground" />
+            <TriangleAlert className="size-5 text-destructive" />
             <p className="text-sm font-medium">{title}</p>
             <p className="text-xs text-muted-foreground">{hint}</p>
             <p

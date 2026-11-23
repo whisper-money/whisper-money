@@ -2,7 +2,10 @@ import { Shortcut } from '@/components/shortcuts/shortcut';
 import { ShortcutKbd } from '@/components/shortcuts/shortcut-kbd';
 import { BulkCategorySelect } from '@/components/transactions/bulk-category-select';
 import { BulkLabelSelect } from '@/components/transactions/bulk-label-select';
-import { MobileBulkActionsBar } from '@/components/transactions/mobile-bulk-actions-bar';
+import {
+    BAR_DESTRUCTIVE_CLASS,
+    MobileBulkActionsBar,
+} from '@/components/transactions/mobile-bulk-actions-bar';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -409,7 +412,7 @@ function DesktopBulkActionsBar({
                             compact={isCompact}
                             onClick={onDelete}
                             disabled={isUpdating}
-                            className="text-destructive-foreground hover:text-destructive-foreground/80"
+                            className={BAR_DESTRUCTIVE_CLASS}
                         />
                         <Shortcut
                             id="transaction-selection.delete-forward"

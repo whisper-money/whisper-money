@@ -99,7 +99,7 @@ export function StepDone({
     if (status.status === 'failed') {
         return (
             <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
-                <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive-foreground">
+                <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                     <TriangleAlert className="size-6" />
                 </span>
                 <h1 className="text-3xl font-semibold tracking-tight">

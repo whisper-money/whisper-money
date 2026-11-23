@@ -107,7 +107,7 @@ export function DeleteCategoryDialog({
                                     </RadioGroup>
                                 </div>
                             )}
-                            <p className="text-sm text-destructive-foreground">
+                            <p className="text-sm text-destructive">
                                 {hasChildren && strategy === 'cascade'
                                     ? __(
                                           'Transactions in the deleted categories will become uncategorized.',

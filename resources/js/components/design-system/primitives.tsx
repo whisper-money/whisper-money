@@ -174,6 +174,8 @@ const BADGE_VARIANTS = [
     'secondary',
     'outline',
     'destructive',
+    'success',
+    'warning',
 ] as const;
 
 function Badges() {
@@ -199,6 +201,13 @@ function Alerts() {
                 <AlertTitle>The bank connection expired</AlertTitle>
                 <AlertDescription>
                     Reconnect it to keep syncing.
+                </AlertDescription>
+            </Alert>
+            <Alert variant="warning">
+                <AlertTriangle />
+                <AlertTitle>Your connection expires in 3 days</AlertTitle>
+                <AlertDescription>
+                    Renew the consent before it stops syncing.
                 </AlertDescription>
             </Alert>
         </div>

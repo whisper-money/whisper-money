@@ -98,10 +98,10 @@ export function UserWidgetDetailsDialog({
                                 <div
                                     role="alert"
                                     data-slot="user-widget-last-error"
-                                    className="flex flex-col gap-2 rounded-lg border border-destructive-foreground/40 bg-destructive/10 p-3"
+                                    className="flex flex-col gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3"
                                 >
                                     <p className="flex items-center gap-2 text-sm font-medium">
-                                        <TriangleAlert className="size-4 shrink-0 text-destructive-foreground" />
+                                        <TriangleAlert className="size-4 shrink-0 text-destructive" />
                                         {error.phase === 'load'
                                             ? __('It did not load')
                                             : __('It stopped while drawing')}
