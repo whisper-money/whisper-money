@@ -1,7 +1,7 @@
 import { index, run } from '@/actions/App/Http/Controllers/AdminController';
-import Heading from '@/components/heading';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
+import { PageHeader } from '@/components/page-header';
 import { SettingsTable } from '@/components/shared/settings-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -378,8 +378,8 @@ export default function Admin({ commands, users, result }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Admin')} />
 
-            <div className="p-6">
-                <Heading
+            <div className="flex flex-col gap-8 p-6">
+                <PageHeader
                     title={__('Admin')}
                     description={__(
                         'Internal tools. Only the ADMIN_EMAIL account can open this page.',

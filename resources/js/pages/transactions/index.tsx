@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/page-header';
 import { AiConsentBanner } from '@/components/transactions/ai-consent-banner';
 import { TransactionTable } from '@/components/transactions/transaction-table';
 import { useAiCategorizationConsent } from '@/hooks/use-ai-categorization-consent';
@@ -159,11 +160,10 @@ export default function Transactions({
                         renderToolbar={({ labels, clearSelection }) => (
                             // The page's title heads the filters, its actions
                             // beside it: icon buttons on a phone.
-                            <div className="flex flex-wrap items-center gap-3">
-                                <h1 className="text-[26px] font-semibold tracking-tight md:text-xl">
-                                    {__('Transactions')}
-                                </h1>
-                                <div className="ml-auto">
+                            <PageHeader
+                                className="items-center"
+                                title={__('Transactions')}
+                                actions={
                                     <TransactionsHeaderActions
                                         transactions={allTransactions}
                                         hasTransactionalAccounts={
@@ -178,8 +178,8 @@ export default function Transactions({
                                         )}
                                         compact={isMobile}
                                     />
-                                </div>
-                            </div>
+                                }
+                            />
                         )}
                         aboveRows={
                             // Null is the server saying there is no filter

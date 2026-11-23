@@ -4,8 +4,8 @@ import { BudgetPeriodNavigation } from '@/components/budgets/budget-period-navig
 import { BudgetSpendingChart } from '@/components/budgets/budget-spending-chart';
 import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
 import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
-import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { PageHeader } from '@/components/page-header';
 import { CategoryBadge } from '@/components/shared/category-combobox';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
@@ -113,97 +113,92 @@ export default function BudgetShow({
             <Head title={budget.name} />
 
             <div className="space-y-6 p-6">
-                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-4">
-                        <HeadingSmall
-                            title={budget.name}
-                            description={
-                                <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
-                                    {archived && (
-                                        <Badge variant="secondary">
-                                            {__('Archived')}
-                                        </Badge>
-                                    )}
-                                    {budget.is_catch_all ? (
-                                        <Badge variant="secondary">
-                                            {__('All untracked expenses')}
-                                        </Badge>
-                                    ) : trackingCount > 0 ? (
-                                        <>
-                                            <span className="opacity-50">
-                                                {__('Tracking')}{' '}
-                                            </span>
-                                            {budget.categories?.map(
-                                                (category) => (
-                                                    <CategoryBadge
-                                                        key={category.id}
-                                                        category={category}
-                                                    />
-                                                ),
-                                            )}
-                                            {budget.labels?.map((label) => (
-                                                <LabelBadge
-                                                    key={label.id}
-                                                    label={label}
-                                                />
-                                            ))}
-                                        </>
-                                    ) : (
-                                        <span className="opacity-50">
-                                            {__('No tracking')}
-                                        </span>
-                                    )}
-                                </div>
-                            }
-                        />
-                    </div>
+                <PageHeader
+                    title={budget.name}
+                    description={
+                        <div className="flex flex-row flex-wrap items-center gap-1">
+                            {archived && (
+                                <Badge variant="secondary">
+                                    {__('Archived')}
+                                </Badge>
+                            )}
+                            {budget.is_catch_all ? (
+                                <Badge variant="secondary">
+                                    {__('All untracked expenses')}
+                                </Badge>
+                            ) : trackingCount > 0 ? (
+                                <>
+                                    <span>{__('Tracking')} </span>
+                                    {budget.categories?.map((category) => (
+                                        <CategoryBadge
+                                            key={category.id}
+                                            category={category}
+                                        />
+                                    ))}
+                                    {budget.labels?.map((label) => (
+                                        <LabelBadge
+                                            key={label.id}
+                                            label={label}
+                                        />
+                                    ))}
+                                </>
+                            ) : (
+                                <span>{__('No tracking')}</span>
+                            )}
+                        </div>
+                    }
+                    actions={
+                        <>
+                            <BudgetPeriodNavigation
+                                budget={budget}
+                                currentPeriod={currentPeriod}
+                                previousPeriod={previousPeriod}
+                                nextPeriod={nextPeriod}
+                            />
 
-                    <div className="flex items-center gap-2">
-                        <BudgetPeriodNavigation
-                            budget={budget}
-                            currentPeriod={currentPeriod}
-                            previousPeriod={previousPeriod}
-                            nextPeriod={nextPeriod}
-                        />
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    aria-label={__('More options')}
-                                >
-                                    <ChevronDown className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {/* An archived budget is read-only, so editing
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        aria-label={__('More options')}
+                                    >
+                                        <ChevronDown className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {/* An archived budget is read-only, so editing
                                     and archiving are both gone — only deleting
                                     it outright is still on offer. */}
-                                {!archived && (
-                                    <>
-                                        <DropdownMenuItem
-                                            onClick={() => setEditOpen(true)}
-                                        >
-                                            {__('Edit budget')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => setArchiveOpen(true)}
-                                        >
-                                            {__('Archive budget')}
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                                <DropdownMenuItem
-                                    onClick={() => setDeleteOpen(true)}
-                                    variant="destructive"
-                                >
-                                    {__('Delete budget')}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
+                                    {!archived && (
+                                        <>
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    setEditOpen(true)
+                                                }
+                                            >
+                                                {__('Edit budget')}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={() =>
+                                                    setArchiveOpen(true)
+                                                }
+                                            >
+                                                {__('Archive budget')}
+                                            </DropdownMenuItem>
+                                        </>
+                                    )}
+                                    <DropdownMenuItem
+                                        onClick={() => setDeleteOpen(true)}
+                                        variant="destructive"
+                                    >
+                                        {__('Delete budget')}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </>
+                    }
+                />
 
                 <BudgetSpendingChart
                     currentPeriod={currentPeriod}

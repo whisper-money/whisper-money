@@ -317,7 +317,8 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
   header with breadcrumbs, and the page content. Pass `breadcrumbs`. Wrap your
   content in `mx-auto flex w-full max-w-page flex-col gap-6 p-4`.
 - `SettingsLayout` (`layouts/settings/layout.tsx`): settings pages, inside
-  `AppLayout`. Each settings section starts with `HeadingSmall`.
+  `AppLayout`. It renders the one `PageHeader` ("Settings"); each settings
+  section starts with `HeadingSmall`.
 - `AuthLayout` (`layouts/auth-layout.tsx`, built on
   `layouts/auth/auth-simple-layout.tsx`): login, registration and the other
   auth pages. It is the only auth layout.
@@ -325,13 +326,50 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
   subscription screens.
 - Don't add a new layout for one page; extend one of these.
 
-### Headings
+### Page headers
 
-- `components/heading.tsx` (`Heading`): title and description at the top of a
-  settings area.
-- `components/heading-small.tsx` (`HeadingSmall`): a section inside a page.
-- There is no shared page header yet (debt item e); until there is, match the
-  `<h1>` of a sibling page.
+Every app page opens with `PageHeader` (`components/page-header.tsx`), the
+page's only `<h1>`:
+
+```tsx
+<PageHeader
+    title={__('Accounts')}
+    description={__('View and manage your bank accounts')}
+    actions={<CreateAccountDialog onSuccess={reload} />}
+/>
+```
+
+- `title`: the page's name. `text-[26px]` on the phone, `text-xl` from `md`,
+  semibold. The phone gets the bigger size because the header bar above
+  shows no breadcrumbs there, so the title is what names the page; on
+  desktop the breadcrumbs already do, so it stays modest. Not
+  `font-heading`: that serif is for editorial pages (onboarding, a monthly
+  summary), and no app page used it for its title.
+- `description` (optional): one line in `text-sm text-muted-foreground`. A
+  string becomes a `<p>`; a node (badges, "Tracking …", "Bank · type") is
+  rendered as is in the same muted text.
+- `media` (optional): something before the title, such as the account's
+  `BankLogo`.
+- `actions` (optional): the page's actions, on the right (the main one a
+  default `Button`, the rest `outline`, a period navigator, a "more" menu).
+  When the row is too narrow for both, they wrap under the title instead of
+  squeezing it: on a phone the title and description take the full width.
+  Controls that should fill the phone's width once they wrap (the cashflow
+  period navigation) pass `actionsClassName="w-full sm:w-auto"`.
+- Don't repeat what the header bar shows: no breadcrumbs or app name in it.
+  A back link on the phone goes in the bar (`mobileLeading` on
+  `AppSidebarLayout`), not in the page header.
+- Place it as the first child of the page container, which gives the
+  spacing with `gap-*`/`space-y-*`; don't add margins to it.
+- `HeadingSmall` (`components/heading-small.tsx`, an `<h3>`) titles a section
+  inside a page: the settings sections, "Run a command" on admin. It is not a
+  page title.
+- `lib/page-header-guard.test.ts` fails when a file under `pages/` writes a
+  raw `<h1>` (an `<h1>` given to `<EmptyStateTitle asChild>` is allowed).
+  Allowlisted with a reason: marketing and legal pages, auth and onboarding
+  (their layouts own the title), `/design-system` itself, the full-screen
+  categorize flow, and the monthly summary report, whose `<h1>` is the
+  month's headline, not the page's name.
 
 ### Empty states
 
@@ -424,7 +462,7 @@ stacked PR in the design-system stack. Counts were measured over
 | b   | ~~Components branching on the chart theme (`isColorful` in `useChartColors`)~~ **Resolved** | `useChartColors` is gone: charts draw with the [chart role tokens](#chart-role-tokens) through `lib/chart-colors.ts`, and `lib/chart-theme-guard.test.ts` fails if code reads `chartColorScheme` or compares against a theme | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
 | c   | ~~Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`~~ **Resolved** | Money renders through `AmountDisplay`, or `useFormatAmount()` where it must be a string, so privacy mode masks it everywhere (it leaked in the onboarding reveal, the split and merge dialogs, chart tooltips and axes, import previews…); `lib/amount-display-guard.test.ts` fails on `formatCurrency(`, `style: 'currency'` or `notation: 'compact'` outside its allowlist | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
 | d   | ~~No shared `EmptyState`~~ **Resolved** | `components/ui/empty-state.tsx` (shadcn's `Empty` API: `EmptyState`, `EmptyStateHeader`, `EmptyStateMedia`, `EmptyStateTitle`, `EmptyStateDescription`, `EmptyStateContent`; `size` `page` or `inline`) replaced 42 hand-rolled blocks across pages, cards, charts, drawers, pickers, `DataTable`, `SettingsTable` and the widget SDK's `EmptyState`; see [Empty states](#empty-states). `lib/empty-state-guard.test.ts` fails on a centred or dashed block around `__('No …')` / `emptyMessage` copy, allowlisting only the marketing pages | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
-| e   | No shared `PageHeader`                                                                                               | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx`                                                                                                                                                                               | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
+| e   | ~~No shared `PageHeader`~~ **Resolved** | `components/page-header.tsx` titles every app page (dashboard, transactions, cashflow, planning, budget and savings goal detail, accounts and account detail, notifications, progress, monthly summaries, admin, and settings through `SettingsLayout`), replacing four hand-written `<h1>` sizes and the `HeadingSmall` (`<h3>`) that left most pages with no `<h1>` at all; see [Page headers](#page-headers). `Heading` is deleted: its two page-level uses (settings, admin) are `PageHeader` now. `lib/page-header-guard.test.ts` fails on a raw `<h1>` under `pages/` outside its allowlist | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
 | f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
 | g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
 | h   | ~~`@headlessui/react` next to Radix~~ **Resolved**                                                                   | The "Saved" flash in `pages/settings/account.tsx` and `pages/settings/password.tsx` now uses a `tw-animate-css` fade; the package is gone and ESLint `no-restricted-imports` forbids `@headlessui/*`                                                                                                    | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |

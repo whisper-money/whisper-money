@@ -2,12 +2,14 @@ import {
     Specimen,
     type PreviewEntry,
 } from '@/components/design-system/showcase';
-import Heading from '@/components/heading';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
+import { PageHeader } from '@/components/page-header';
 import { AdaptivePopover } from '@/components/ui/adaptive-popover';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     EmptyState,
     EmptyStateContent,
@@ -25,10 +27,30 @@ import { useState } from 'react';
 function Headings() {
     return (
         <div className="flex w-full flex-col gap-6">
-            <Specimen label="Heading">
-                <Heading
-                    title="Profile information"
-                    description="Update your name and email address"
+            <Specimen label="PageHeader">
+                <PageHeader
+                    className="w-full"
+                    title="Accounts"
+                    description="View and manage your bank accounts"
+                    actions={<CreateButton>Create account</CreateButton>}
+                />
+            </Specimen>
+            <Specimen label="PageHeader with media and meta">
+                <PageHeader
+                    className="w-full"
+                    media={
+                        <div className="flex size-12 items-center justify-center rounded-full bg-muted font-medium">
+                            S
+                        </div>
+                    }
+                    title="Savings account"
+                    description={
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span>Sabadell · Savings</span>
+                            <Badge variant="secondary">Archived</Badge>
+                        </div>
+                    }
+                    actions={<Button variant="outline">Update balance</Button>}
                 />
             </Specimen>
             <Specimen label="HeadingSmall">

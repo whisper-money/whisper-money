@@ -4,7 +4,7 @@ import {
 } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountListCard } from '@/components/accounts/account-list-card';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
-import HeadingSmall from '@/components/heading-small';
+import { PageHeader } from '@/components/page-header';
 import { SortableGrid } from '@/components/sortable-grid';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
@@ -194,13 +194,13 @@ export default function AccountsIndex({
             <Head title={__('Accounts')} />
 
             <div className="space-y-8 p-6">
-                <div className="flex items-center justify-between gap-2">
-                    <HeadingSmall
-                        title={__('Accounts')}
-                        description={__('View and manage your bank accounts')}
-                    />
-                    <CreateAccountDialog onSuccess={handleAccountCreated} />
-                </div>
+                <PageHeader
+                    title={__('Accounts')}
+                    description={__('View and manage your bank accounts')}
+                    actions={
+                        <CreateAccountDialog onSuccess={handleAccountCreated} />
+                    }
+                />
 
                 <SortableGrid
                     className="grid gap-4 lg:grid-cols-2"

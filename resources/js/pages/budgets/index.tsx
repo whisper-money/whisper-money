@@ -4,7 +4,7 @@ import {
 } from '@/actions/App/Http/Controllers/BudgetController';
 import { BudgetListCard } from '@/components/budgets/budget-list-card';
 import { CreateBudgetDialog } from '@/components/budgets/create-budget-dialog';
-import HeadingSmall from '@/components/heading-small';
+import { PageHeader } from '@/components/page-header';
 import { CreateSavingsGoalDialog } from '@/components/savings-goals/create-savings-goal-dialog';
 import { MonthlySavingsGoalCard } from '@/components/savings-goals/monthly/monthly-savings-goal-card';
 import { MonthlySavingsSection } from '@/components/savings-goals/monthly/monthly-savings-section';
@@ -178,24 +178,24 @@ export default function BudgetsIndex({
             <Head title={__('Planning')} />
 
             <div className="space-y-8 p-6">
-                <div className="flex items-center justify-between gap-2">
-                    <HeadingSmall
-                        title={__('Planning')}
-                        description={__(
-                            'Track your spending and save toward your goals',
-                        )}
-                    />
-                    <CreateMenu
-                        onCreate={setCreateType}
-                        trigger={
-                            <Button>
-                                <Plus />
-                                {__('Create')}
-                                <ChevronDown className="ml-1 h-4 w-4" />
-                            </Button>
-                        }
-                    />
-                </div>
+                <PageHeader
+                    title={__('Planning')}
+                    description={__(
+                        'Track your spending and save toward your goals',
+                    )}
+                    actions={
+                        <CreateMenu
+                            onCreate={setCreateType}
+                            trigger={
+                                <Button>
+                                    <Plus />
+                                    {__('Create')}
+                                    <ChevronDown className="ml-1 h-4 w-4" />
+                                </Button>
+                            }
+                        />
+                    }
+                />
 
                 {/* The row wraps rather than shrinks: the filter is already as
                     narrow as its labels allow, so on a phone the reorder
