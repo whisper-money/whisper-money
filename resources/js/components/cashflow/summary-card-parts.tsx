@@ -8,7 +8,11 @@ import { type ComponentProps, type ReactNode } from 'react';
 
 // One color per side of what was contributed, shared by every place that draws
 // the split so savings and investments read the same across the page.
+// They paint a bar, so they are a data-viz palette, not a semantic color: they
+// move with the cashflow block tones (lib/cashflow-block.ts), not in #1358.
+// eslint-disable-next-line no-restricted-syntax
 export const SAVINGS_TONE = 'bg-green-300';
+// eslint-disable-next-line no-restricted-syntax
 export const INVESTMENTS_TONE = 'bg-green-700 dark:bg-green-600';
 
 type WholeAmountProps = Omit<
@@ -28,9 +32,7 @@ export function WholeAmount(props: WholeAmountProps) {
 }
 
 function trendColor(isFavorable: boolean): string {
-    return isFavorable
-        ? 'text-green-600 dark:text-green-400'
-        : 'text-red-600 dark:text-red-400';
+    return isFavorable ? 'text-success' : 'text-muted-foreground';
 }
 
 /**

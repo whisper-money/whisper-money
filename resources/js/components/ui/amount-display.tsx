@@ -71,7 +71,7 @@ export function AmountDisplay({
 
     const getBackgroundClass = () => {
         if (highlightPositive && variant === 'positive-highlight') {
-            return 'bg-green-100/70 dark:bg-green-900';
+            return 'bg-success/15 text-success';
         }
 
         return '';

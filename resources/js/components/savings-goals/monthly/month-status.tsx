@@ -7,14 +7,14 @@ import { ReactNode } from 'react';
 
 /**
  * The colour of a month, shared by the strip, the bar chart and the legend so
- * the three never disagree about what green means.
+ * the three never disagree about what a met month looks like.
  */
 export const MONTH_STATUS_FILL: Record<MonthStripStatus, string> = {
-    met: 'bg-emerald-600 dark:bg-emerald-500',
-    missed: 'bg-orange-300 dark:bg-orange-400/70',
+    met: 'bg-success',
+    missed: 'bg-warning/50',
     in_progress:
         'border-[1.5px] border-dashed border-foreground/80 bg-background',
-    partial: 'bg-emerald-600/30 dark:bg-emerald-500/30',
+    partial: 'bg-success/30',
     archived: 'bg-muted-foreground/30',
     none: 'bg-muted',
 };
@@ -24,7 +24,7 @@ export function MonthlyBadge({ children }: { children: ReactNode }) {
     return (
         <Badge
             variant="outline"
-            className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+            className="border-success/30 bg-success/10 text-success"
         >
             {children}
         </Badge>
@@ -80,13 +80,16 @@ export function noJudgedMonthYet(archived: boolean): string {
         : __('The first month is still in progress');
 }
 
-/** Text colour for a signed difference: ahead reads green, behind orange. */
+/**
+ * Text colour for a signed difference, a delta: ahead reads `success`, behind
+ * `muted-foreground` (the month's verdict, not this figure, carries the warning).
+ */
 export function differenceClassName(difference: number): string {
     if (difference > 0) {
-        return 'text-emerald-700 dark:text-emerald-400';
+        return 'text-success';
     }
 
-    return difference < 0 ? 'text-orange-700 dark:text-orange-400' : '';
+    return difference < 0 ? 'text-muted-foreground' : '';
 }
 
 export function MonthStatusBadge({ status }: { status: MonthlySavingsStatus }) {
@@ -94,10 +97,8 @@ export function MonthStatusBadge({ status }: { status: MonthlySavingsStatus }) {
         <span
             className={cn(
                 'inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-                status === 'met' &&
-                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-                status === 'missed' &&
-                    'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+                status === 'met' && 'bg-success/10 text-success',
+                status === 'missed' && 'bg-warning/10 text-warning',
                 (status === 'in_progress' || hasNoVerdict(status)) &&
                     'bg-muted text-muted-foreground',
             )}

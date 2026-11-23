@@ -206,7 +206,7 @@ export function LinkTransactionsDialog({
                                     className={cn(
                                         'shrink-0 tabular-nums',
                                         transaction.amount > 0 &&
-                                            'text-emerald-600 dark:text-emerald-400',
+                                            'text-success',
                                     )}
                                 />
                             </label>

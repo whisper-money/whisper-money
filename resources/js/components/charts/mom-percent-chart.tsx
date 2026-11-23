@@ -56,8 +56,10 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                 <span
                     className={cn(
                         'font-mono font-medium tabular-nums',
-                        percent !== null && percent > 0 && 'text-emerald-600',
-                        percent !== null && percent < 0 && 'text-red-600',
+                        percent !== null && percent > 0 && 'text-success',
+                        percent !== null &&
+                            percent < 0 &&
+                            'text-muted-foreground',
                     )}
                 >
                     {formatPercentValue(percent ?? null)}

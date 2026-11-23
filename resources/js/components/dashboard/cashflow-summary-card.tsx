@@ -117,9 +117,9 @@ export function CashflowSummaryCard({
                         </p>
                         <div className="flex items-center gap-1">
                             {isPositiveNet ? (
-                                <TrendingUp className="size-4 text-green-600 dark:text-green-400" />
+                                <TrendingUp className="size-4 text-success" />
                             ) : (
-                                <TrendingDown className="size-4 text-red-600 dark:text-red-400" />
+                                <TrendingDown className="size-4 text-muted-foreground" />
                             )}
                             <AmountDisplay
                                 amountInCents={Math.abs(current.net)}
@@ -142,10 +142,8 @@ export function CashflowSummaryCard({
                         className={cn(
                             'text-sm font-medium',
                             current.savings_rate >= 20
-                                ? 'text-green-600 dark:text-green-400'
-                                : current.savings_rate >= 0
-                                  ? 'text-yellow-600 dark:text-yellow-400'
-                                  : 'text-red-600 dark:text-red-400',
+                                ? 'text-success'
+                                : current.savings_rate < 0 && 'text-warning',
                         )}
                     >
                         {current.savings_rate.toFixed(1)}%

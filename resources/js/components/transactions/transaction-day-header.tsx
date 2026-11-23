@@ -73,7 +73,7 @@ const DAY_TOTAL_FADED =
 
 /** The income highlight the faded total gets back on hover. */
 const DAY_TOTAL_HOVER_HIGHLIGHT =
-    'group-hover/day:bg-green-100/70 dark:group-hover/day:bg-green-900';
+    'group-hover/day:bg-success/15 group-hover/day:text-success';
 
 export function DayTotal({
     total,

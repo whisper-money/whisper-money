@@ -114,7 +114,7 @@ function CustomTooltip({
                         maximumFractionDigits={0}
                         className={cn(
                             'font-mono font-medium tabular-nums',
-                            data.net >= 0 ? 'text-green-600' : 'text-red-600',
+                            data.net >= 0 && 'text-success',
                         )}
                     />
                 </div>

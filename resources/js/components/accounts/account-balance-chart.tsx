@@ -119,7 +119,7 @@ function InvestmentTooltipContent({
                                 {__('Gain/loss')}
                             </span>
                             <span
-                                className={`font-mono font-medium whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                className={`font-mono font-medium whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-success' : 'text-muted-foreground'}`}
                             >
                                 {gain >= 0 ? '+' : ''}
                                 {valueFormatter(gain)}
@@ -215,7 +215,7 @@ function RealEstateTooltipContent({
                                 {__('Equity')}
                             </span>
                             <span
-                                className={`font-mono font-medium whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                className={`font-mono font-medium whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-success' : ''}`}
                             >
                                 {valueFormatter(equity)}
                             </span>
@@ -823,7 +823,7 @@ export function AccountBalanceChart({
                                     {__('Equity')}
                                 </span>
                                 <span
-                                    className={`text-lg font-semibold tabular-nums ${currentEquity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                    className={`text-lg font-semibold tabular-nums ${currentEquity >= 0 ? 'text-success' : ''}`}
                                 >
                                     <AmountDisplay
                                         amountInCents={currentEquity}

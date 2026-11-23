@@ -15,6 +15,8 @@ export const BLOCK_TONES: Record<CashflowBlock | 'reserved' | 'free', string> =
     {
         ...CASHFLOW_BLOCK_TONES,
         reserved: 'bg-neutral-300 dark:bg-neutral-600',
+        // A data-viz tone, like CASHFLOW_BLOCK_TONES: not migrated in #1358.
+        // eslint-disable-next-line no-restricted-syntax
         free: 'bg-emerald-300 dark:bg-emerald-300',
     };
 

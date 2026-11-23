@@ -138,8 +138,8 @@ function usagePeriod(
     };
 }
 
-/** Over the limit, the figures that say so turn red. */
-const OVER_LIMIT_TEXT = 'text-red-600 dark:text-red-400';
+/** Over the limit, the figures that say so turn to the warning color. */
+const OVER_LIMIT_TEXT = 'text-warning';
 
 /**
  * Takes the place of the balance chart on a credit card: how much of the
@@ -318,9 +318,7 @@ function LimitUsage({
                         value={Math.min(100, usedPercent)}
                         className="h-2"
                         aria-label={__('Credit used')}
-                        indicatorClassName={
-                            isOverLimit ? 'bg-red-600 dark:bg-red-400' : ''
-                        }
+                        indicatorClassName={isOverLimit ? 'bg-warning' : ''}
                         indicatorColor={
                             isOverLimit ? undefined : 'var(--color-chart-2)'
                         }
@@ -440,7 +438,7 @@ function UsageChart({
                                         ?.map((payment, index) => (
                                             <span
                                                 key={`${payment.date}-${index}`}
-                                                className="font-normal text-emerald-700 dark:text-emerald-400"
+                                                className="font-normal text-success"
                                             >
                                                 {paymentNote(
                                                     payment,
@@ -485,7 +483,7 @@ function UsageChart({
                         x={date}
                         y={usedOn.get(date) ?? 0}
                         r={5}
-                        fill="var(--color-emerald-600)"
+                        fill="var(--color-chart-1)"
                         stroke="var(--background)"
                         strokeWidth={2}
                     />

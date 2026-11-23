@@ -44,7 +44,7 @@ interface SharePillProps {
 /** A side's share of what was contributed. */
 function SharePill({ share, tone }: SharePillProps) {
     return (
-        <span className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800 tabular-nums dark:bg-green-950 dark:text-green-200">
+        <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success tabular-nums">
             <span aria-hidden className={cn('size-1.5 rounded-full', tone)} />
             {share.toFixed(0)}%
         </span>
@@ -121,13 +121,7 @@ export function SavedInvestedCard({
 
     // Determine color based on how much of the net cashflow was set aside
     const rateColor =
-        rate >= 50
-            ? 'text-green-600 dark:text-green-400'
-            : rate >= 25
-              ? 'text-yellow-600 dark:text-yellow-400'
-              : rate >= 0
-                ? 'text-orange-600 dark:text-orange-400'
-                : 'text-red-600 dark:text-red-400';
+        rate >= 50 ? 'text-success' : rate < 0 ? 'text-warning' : '';
 
     return (
         <Card>

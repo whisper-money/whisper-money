@@ -36,9 +36,7 @@ export function PercentageTrendIndicator({
     const isPositive = trend >= 0;
     const isGood = invertColors ? !isPositive : isPositive;
     const Icon = isPositive ? TrendingUp : TrendingDown;
-    const iconColorClass = isGood
-        ? 'text-green-600/70 dark:text-green-400/70'
-        : 'text-red-600/70 dark:text-red-400/70';
+    const iconColorClass = isGood ? 'text-success/70' : 'text-muted-foreground';
 
     const amountDiff =
         previousAmount !== undefined && currentAmount !== undefined

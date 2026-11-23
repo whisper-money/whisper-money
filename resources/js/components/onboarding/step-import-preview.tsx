@@ -136,7 +136,7 @@ export function StepImportPreview({
                             <span
                                 className={cn(
                                     'shrink-0 text-base font-medium tabular-nums',
-                                    row.amount > 0 && 'text-emerald-600',
+                                    row.amount > 0 && 'text-success',
                                 )}
                             >
                                 {row.amount > 0 && '+'}

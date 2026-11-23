@@ -576,8 +576,8 @@ export function PortfolioSummaryTiles({
                     <span
                         className={cn(
                             gain >= 0
-                                ? 'text-green-700 dark:text-green-400'
-                                : 'text-red-700 dark:text-red-400',
+                                ? 'text-success'
+                                : 'text-muted-foreground',
                         )}
                     >
                         <AmountDisplay

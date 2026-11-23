@@ -52,9 +52,7 @@ export function CreditCardUsageSummary({
                         value={usedPercentage}
                         aria-label={__('Credit limit in use')}
                         className="h-1.5 w-32"
-                        indicatorClassName={cn(
-                            isOverLimit && 'bg-red-600 dark:bg-red-400',
-                        )}
+                        indicatorClassName={cn(isOverLimit && 'bg-warning')}
                     />
                 </>
             )}

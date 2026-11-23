@@ -54,7 +54,7 @@ describe('AmountComparison', () => {
 
         expect(screen.getByText('3600')).toBeTruthy();
         expect(screen.getByTestId('trend-up').getAttribute('class')).toContain(
-            'text-green-600',
+            'text-success',
         );
     });
 
@@ -64,7 +64,7 @@ describe('AmountComparison', () => {
         );
 
         expect(screen.getByTestId('trend-up').getAttribute('class')).toContain(
-            'text-red-600',
+            'text-muted-foreground',
         );
     });
 });
