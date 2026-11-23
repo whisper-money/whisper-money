@@ -276,8 +276,10 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
   content in `mx-auto flex w-full max-w-page flex-col gap-6 p-4`.
 - `SettingsLayout` (`layouts/settings/layout.tsx`): settings pages, inside
   `AppLayout`. Each settings section starts with `HeadingSmall`.
-- `AuthLayout` (`layouts/auth-layout.tsx`, the simple variant): login,
-  registration and the other auth pages.
+- `AuthLayout` (`layouts/auth-layout.tsx`, built on
+  `layouts/auth/auth-simple-layout.tsx`): login, registration and the other
+  auth pages. It is the only auth layout; the unused split and card variants
+  were removed ([#1366](https://github.com/whisper-money/whisper-money/issues/1366)).
 - `OnboardingLayout`, `SubscriptionLayout`: the onboarding flow and the
   subscription screens.
 - Don't add a new layout for one page; extend one of these.
@@ -350,4 +352,4 @@ stacked PR in the design-system stack. Counts were measured over
 | f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
 | g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |
 | h   | ~~`@headlessui/react` next to Radix~~ **Resolved**                                                                   | The "Saved" flash in `pages/settings/account.tsx` and `pages/settings/password.tsx` now uses a `tw-animate-css` fade; the package is gone and ESLint `no-restricted-imports` forbids `@headlessui/*`                                                                                                    | [#1365](https://github.com/whisper-money/whisper-money/issues/1365) |
-| i   | Unused auth layouts                                                                                                  | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are imported nowhere; `auth-simple-layout.tsx` is used through `AuthLayout`                                                                                                                                                             | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |
+| i   | ~~Unused auth layouts~~ **Resolved**                                                                                 | `layouts/auth/auth-split-layout.tsx` and `auth-card-layout.tsx` are deleted, with the `quote` shared prop only the split one read; `auth-simple-layout.tsx` stays, used through `AuthLayout`                                                                                                            | [#1366](https://github.com/whisper-money/whisper-money/issues/1366) |

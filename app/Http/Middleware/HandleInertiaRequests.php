@@ -20,7 +20,6 @@ use App\Services\UserCollectionVersions;
 use App\Support\PriceTiers;
 use App\Support\PricingRegion;
 use Closure;
-use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
@@ -89,7 +88,6 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'appUrl' => config('app.url'),
             'version' => config('app.version'),
-            'quote' => fn (): array => $this->inspiringQuote(),
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
@@ -621,17 +619,5 @@ class HandleInertiaRequests extends Middleware
         }
 
         return json_decode(file_get_contents($translationFile), true) ?? [];
-    }
-
-    /**
-     * A random inspiring quote for the split auth layout.
-     *
-     * @return array{message: string, author: string}
-     */
-    private function inspiringQuote(): array
-    {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
-
-        return ['message' => trim($message), 'author' => trim($author)];
     }
 }
