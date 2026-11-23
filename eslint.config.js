@@ -36,6 +36,18 @@ export default [
             'react-hooks/static-components': 'off',
             'react-hooks/refs': 'off',
             'react-hooks/incompatible-library': 'off',
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            group: ['@headlessui/*'],
+                            message:
+                                'Headless UI was dropped (#1365): use the Radix primitives in components/ui, or tw-animate-css / motion for transitions.',
+                        },
+                    ],
+                },
+            ],
         },
     },
     {

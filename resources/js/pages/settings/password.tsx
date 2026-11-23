@@ -4,7 +4,6 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Transition } from '@headlessui/react';
 import { Form, Head, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 
@@ -139,17 +138,11 @@ export default function Password() {
                                         {__('Save password')}
                                     </Button>
 
-                                    <Transition
-                                        show={recentlySuccessful}
-                                        enter="transition ease-in-out"
-                                        enterFrom="opacity-0"
-                                        leave="transition ease-in-out"
-                                        leaveTo="opacity-0"
-                                    >
-                                        <p className="text-sm text-neutral-600">
+                                    {recentlySuccessful && (
+                                        <p className="animate-in text-sm text-neutral-600 fade-in">
                                             {__('Saved')}
                                         </p>
-                                    </Transition>
+                                    )}
                                 </div>
                             </>
                         )}

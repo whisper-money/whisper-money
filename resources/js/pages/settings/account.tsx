@@ -28,7 +28,6 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { LANGUAGE_OPTIONS } from '@/types/language';
 import { formatLocaleOptions } from '@/utils/format-locale';
 import { __ } from '@/utils/i18n';
-import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
@@ -258,17 +257,11 @@ export default function Account({
                                         {__('Save')}
                                     </Button>
 
-                                    <Transition
-                                        show={recentlySuccessful}
-                                        enter="transition ease-in-out"
-                                        enterFrom="opacity-0"
-                                        leave="transition ease-in-out"
-                                        leaveTo="opacity-0"
-                                    >
-                                        <p className="text-sm text-neutral-600">
+                                    {recentlySuccessful && (
+                                        <p className="animate-in text-sm text-neutral-600 fade-in">
                                             {__('Saved')}
                                         </p>
-                                    </Transition>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -371,17 +364,11 @@ export default function Account({
                                         {__('Save password')}
                                     </Button>
 
-                                    <Transition
-                                        show={recentlySuccessful}
-                                        enter="transition ease-in-out"
-                                        enterFrom="opacity-0"
-                                        leave="transition ease-in-out"
-                                        leaveTo="opacity-0"
-                                    >
-                                        <p className="text-sm text-neutral-600">
+                                    {recentlySuccessful && (
+                                        <p className="animate-in text-sm text-neutral-600 fade-in">
                                             {__('Saved')}
                                         </p>
-                                    </Transition>
+                                    )}
                                 </div>
                             </>
                         )}
