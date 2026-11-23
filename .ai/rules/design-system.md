@@ -8,7 +8,7 @@ paths:
 
 ## Read docs/design-system.md before building or restyling UI
 
-The rules for tokens, primitives, amounts, charts and page patterns live in `docs/design-system.md`; `/design-system` previews the real components. The code (`resources/css/app.css`, `resources/css/theme.css`, `resources/js/components/ui`) is the source of truth. Its debt catalog lists the patterns still in the code that break the rules (hand-rolled page headers, raw bordered divs…): don't copy them. Marketing and legal pages (`welcome`, `terms`, `privacy`, `comparison`, `roadmap`, `integrations`, `documentation/*`) are out of scope.
+The rules for tokens, primitives, amounts, charts and page patterns live in `docs/design-system.md`; `/design-system` previews the real components. The code (`resources/css/app.css`, `resources/css/theme.css`, `resources/js/components/ui`) is the source of truth. Its debt catalog lists the patterns still in the code that break the rules (raw bordered divs, per-feature stat cards…): don't copy them. Marketing and legal pages (`welcome`, `terms`, `privacy`, `comparison`, `roadmap`, `integrations`, `documentation/*`) are out of scope.
 
 ## Color policy
 

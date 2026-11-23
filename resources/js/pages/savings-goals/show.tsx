@@ -105,7 +105,7 @@ export default function SavingsGoalShow({
                 <PageHeader
                     title={savingsGoal.name}
                     description={
-                        <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                        <div className="flex flex-row flex-wrap items-center gap-1">
                             {archived && (
                                 <Badge variant="secondary">
                                     {__('Archived')}

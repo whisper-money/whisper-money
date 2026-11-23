@@ -53,8 +53,8 @@ interface Props {
 
 /**
  * The dashboard page with the user's own dashboards: a picker in the page
- * header's actions, and the selected dashboard drawn on the 12-column grid. The system
- * dashboard keeps its fixed, read-only layout.
+ * header's actions, and the selected dashboard drawn on the 12-column grid.
+ * The system dashboard keeps its fixed, read-only layout.
  */
 export function CustomDashboardsView({
     data,
