@@ -132,7 +132,7 @@ móvil), lleva a:
   el [Conector de IA](/documentation/ai-connector), y tu perfil, notificaciones
   y plan.
 - **Documentación**: estas páginas.
-- **Soporte**, junto a los enlaces a la comunidad, sugerencias y hoja de ruta.
+- **Soporte**, junto a los enlaces a la comunidad y sugerencias.
 
 La campana junto al menú de tu cuenta reúne las notificaciones: un resumen
 mensual nuevo, una medalla o el cierre de un mes en un objetivo de ahorro

@@ -131,7 +131,7 @@ Your account menu, at the bottom of the sidebar (top right on a phone), leads to
   [AI Connector](/documentation/ai-connector), and your profile, notifications
   and plan.
 - **Documentation**: these pages.
-- **Support**, along with the community, feedback and roadmap links.
+- **Support**, along with the community and feedback links.
 
 The bell next to the account menu collects notifications: a new monthly summary,
 a medal, or a month closed on a monthly savings goal.

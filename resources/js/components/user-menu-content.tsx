@@ -27,7 +27,6 @@ import {
     Landmark,
     LifeBuoy,
     LogOut,
-    Map,
     MessageSquare,
     Monitor,
     Settings,
@@ -196,18 +195,6 @@ export function UserMenuContent({
                     >
                         <MessageSquare className="mr-2" />
                         {__('Feedback')}
-                    </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <a
-                        className="block w-full cursor-pointer"
-                        href="https://whispermoney.userjot.com/roadmap"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={cleanup}
-                    >
-                        <Map className="mr-2" />
-                        {__('Roadmap')}
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem
