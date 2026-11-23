@@ -18,6 +18,10 @@ The rules for tokens, primitives, amounts, charts and page patterns live in `doc
 - Charts use only `--chart-1..10` from the user's chart theme; income always takes the same slot; never `--success` in a chart series.
 - Tokens, not palette classes: no `text-green-*`, `text-red-*`, `text-emerald-*`, `text-rose-*`, `text-amber-*` in app UI.
 
+## No serif in the app
+
+The app uses IBM Plex Sans (`font-sans`) and Google Sans Code (`font-mono`) only. IBM Plex Serif (`font-marketing-serif`) is for the landing and the documentation diagrams; never use it, `font-serif` or the old `font-heading` in the app (`lib/marketing-serif-guard.test.ts`).
+
 ## Reuse components/ui before writing a component
 
 Look in `resources/js/components/ui` (and the feature folders) before writing a new component, and extend a primitive with a variant rather than copying its markup. Money goes through `AmountDisplay`, which handles privacy mode, or `useFormatAmount()` where it must be a string (a translated sentence, an `aria-label`, a chart tick); never `formatCurrency` or `Intl.NumberFormat({ style: 'currency' })` from a component (`lib/amount-display-guard.test.ts`). A bordered group is a `Card`. An app page opens with `PageHeader` (`components/page-header.tsx`: `title`, `description`, `media`, `actions`), its only `<h1>`; `HeadingSmall` is for sections inside a page, never the page title (`lib/page-header-guard.test.ts`). A list, table, chart or page with nothing to show renders `EmptyState` (`components/ui/empty-state.tsx`, `size="inline"` inside a card, cell, drawer or picker), never a hand-rolled centred `<p>` (`lib/empty-state-guard.test.ts`). A label and the figure it names is a `StatTile` (`components/ui/stat-tile.tsx`: `StatTileLabel`, `StatTileValue`, `StatTileTrend`, `StatTileDescription`; `size` `sm`/`md`/`lg`, `variant="muted"`), with the `AmountDisplay` inside `StatTileValue` given no `size` or `weight` so it inherits the tile's (`lib/stat-tile-guard.test.ts`).

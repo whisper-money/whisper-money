@@ -158,10 +158,6 @@ function ChartPalettes() {
 const FONT_SPECIMENS = [
     { label: 'font-sans · IBM Plex Sans', className: 'font-sans text-2xl' },
     { label: 'font-mono · Google Sans Code', className: 'font-mono text-2xl' },
-    {
-        label: 'font-heading · IBM Plex Serif italic',
-        className: 'font-heading text-3xl',
-    },
 ];
 
 const TEXT_SIZES = [

@@ -137,7 +137,7 @@ export function ShowcaseSection({
             <div className="flex items-baseline justify-between gap-4 border-b pb-2">
                 <h2
                     id={`${id}-title`}
-                    className="font-heading text-3xl tracking-tight"
+                    className="text-xl font-semibold tracking-tight"
                 >
                     {title}
                 </h2>

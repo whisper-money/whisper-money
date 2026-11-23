@@ -115,11 +115,15 @@ is on.
 
 ### Typography
 
-| Class                 | Font                   | Use it for                                                                                                                                                                   |
-| --------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `font-sans` (default) | IBM Plex Sans          | Everything.                                                                                                                                                                  |
-| `font-mono`           | Google Sans Code       | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`).                                                                                        |
-| `font-heading`        | IBM Plex Serif, italic | Display headings: page titles in onboarding and summaries, section titles on `/design-system`. A plain CSS class in `app.css` (base layer), not a theme token. |
+| Class                 | Font             | Use it for                                                                            |
+| --------------------- | ---------------- | ------------------------------------------------------------------------------------- |
+| `font-sans` (default) | IBM Plex Sans    | Everything.                                                                           |
+| `font-mono`           | Google Sans Code | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`). |
+
+The serif (IBM Plex Serif italic) exists only for marketing pages, as
+`font-marketing-serif` (the landing hero) and `.dg-aside` (the documentation
+diagrams), and is not part of the design system: never use it in the app
+(`lib/marketing-serif-guard.test.ts`).
 
 Sizes are Tailwind's default scale (`text-xs` … `text-4xl`). Body text is
 `text-sm` in dense UI (tables, cards, forms) and `text-base` in reading
@@ -393,9 +397,8 @@ page's only `<h1>`:
 - `title`: the page's name. `text-[26px]` on the phone, `text-xl` from `md`,
   semibold. The phone gets the bigger size because the header bar above
   shows no breadcrumbs there, so the title is what names the page; on
-  desktop the breadcrumbs already do, so it stays modest. Not
-  `font-heading`: that serif is for editorial pages (onboarding, a monthly
-  summary), and no app page used it for its title.
+  desktop the breadcrumbs already do, so it stays modest. Never a
+  serif: that font is for marketing pages only (see [Typography](#typography)).
 - `description` (optional): one line in `text-sm text-muted-foreground`. A
   string becomes a `<p>`; a node (badges, "Tracking …", "Bank · type") is
   rendered as is in the same muted text.
