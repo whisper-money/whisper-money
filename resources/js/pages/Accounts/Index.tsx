@@ -7,6 +7,7 @@ import { CreateAccountDialog } from '@/components/accounts/create-account-dialog
 import HeadingSmall from '@/components/heading-small';
 import { SortableGrid } from '@/components/sortable-grid';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     AccountWithMetrics,
     withCreditCardUsage,
@@ -234,11 +235,13 @@ export default function AccountsIndex({
                 />
 
                 {accounts.length === 0 && !isLoading && (
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        {__(
-                            'No accounts found. Add your first account in Settings.',
-                        )}
-                    </div>
+                    <EmptyState size="inline" className="h-[300px]">
+                        <EmptyStateDescription>
+                            {__(
+                                'No accounts found. Add your first account in Settings.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 )}
             </div>
         </AppSidebarLayout>

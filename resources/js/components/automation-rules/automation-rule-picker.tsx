@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { searchAutomationRules } from '@/lib/automation-rule-search';
@@ -55,9 +56,11 @@ export function AutomationRulePicker({
             </div>
             <div className="max-h-80 space-y-2 overflow-y-auto">
                 {visibleRules.length === 0 && (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                        {__('No rules found.')}
-                    </div>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__('No rules found.')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 )}
                 {visibleRules.map((rule) => (
                     <Button

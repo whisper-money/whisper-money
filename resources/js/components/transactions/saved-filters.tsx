@@ -31,6 +31,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import {
     deserializeFilters,
@@ -318,9 +319,11 @@ export function SavedFiltersMenu({
                 <DropdownMenuSeparator />
 
                 {savedFilters.length === 0 ? (
-                    <div className="px-2 py-2 text-sm text-muted-foreground">
-                        {__('No saved filters yet')}
-                    </div>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__('No saved filters yet')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     savedFilters.map((savedFilter) => (
                         <DropdownMenuItem

@@ -16,6 +16,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Progress } from '@/components/ui/progress';
 import {
     useFormatAmount,
@@ -403,9 +404,11 @@ function UsageChart({
 
     if (usage.daily.length === 0) {
         return (
-            <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
-                {__('No spending recorded in this period yet')}
-            </div>
+            <EmptyState size="inline" className="h-[240px]">
+                <EmptyStateDescription>
+                    {__('No spending recorded in this period yet')}
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 

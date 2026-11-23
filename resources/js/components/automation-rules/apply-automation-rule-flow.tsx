@@ -7,6 +7,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useLocale } from '@/hooks/use-locale';
 import type { AutomationRule } from '@/types/automation-rule';
 import { assignableLabels } from '@/types/label';
@@ -350,11 +351,13 @@ export function ApplyAutomationRuleFlow({
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                 ) : transactions.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                        {__(
-                            'No matching transactions. Future transactions will still be categorized automatically.',
-                        )}
-                    </div>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__(
+                                'No matching transactions. Future transactions will still be categorized automatically.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <ul className="divide-y">
                         {transactions.map((tx) => (

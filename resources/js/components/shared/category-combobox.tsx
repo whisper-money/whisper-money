@@ -11,6 +11,7 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     buildCategoryTree,
     flattenCategoryTree,
@@ -194,9 +195,11 @@ export function CategoryCombobox({
 
                 <CommandList ref={listRef}>
                     {!hasResults && (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                            {__('No category found.')}
-                        </div>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__('No category found.')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
                     {showNone && (
                         <CommandItem

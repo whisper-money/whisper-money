@@ -2,6 +2,7 @@ import { index } from '@/actions/App/Http/Controllers/NotificationController';
 import { NotificationList } from '@/components/notifications/notification-list';
 import { useMarkAllRead } from '@/components/notifications/use-mark-all-read';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type NotificationItem } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -54,11 +55,13 @@ export default function NotificationsIndex({ notifications }: Props) {
                 </div>
 
                 {items.length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                        {__(
-                            'Nothing here yet. Updates about your money show up here as they happen.',
-                        )}
-                    </p>
+                    <EmptyState>
+                        <EmptyStateDescription>
+                            {__(
+                                'Nothing here yet. Updates about your money show up here as they happen.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <div className="overflow-hidden rounded-lg border">
                         <NotificationList items={items} roomy />

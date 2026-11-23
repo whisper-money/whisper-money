@@ -5,6 +5,14 @@ import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save
 import { CategorizerCard } from '@/components/transactions/categorizer-card';
 import { CategorizerCommand } from '@/components/transactions/categorizer-command';
 import { Button } from '@/components/ui/button';
+import {
+    EmptyState,
+    EmptyStateContent,
+    EmptyStateDescription,
+    EmptyStateHeader,
+    EmptyStateMedia,
+    EmptyStateTitle,
+} from '@/components/ui/empty-state';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategorizeTransactions } from '@/hooks/use-categorize-transactions';
@@ -195,27 +203,32 @@ export default function CategorizeTransactions({
             <>
                 <Head title={__('Categorize Transactions')} />
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
-                    <div className="flex flex-col items-center gap-6 text-center">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-success/10">
-                            <CheckCircle2 className="h-10 w-10 text-success" />
-                        </div>
-                        <div className="space-y-2">
-                            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                {__('No Uncategorized Transactions')}
-                            </h1>
-                            <p className="text-zinc-600 dark:text-zinc-400">
+                    <EmptyState className="w-full max-w-lg">
+                        <EmptyStateHeader>
+                            <EmptyStateMedia className="text-success">
+                                <CheckCircle2 />
+                            </EmptyStateMedia>
+                            <EmptyStateTitle asChild>
+                                <h1>{__('No Uncategorized Transactions')}</h1>
+                            </EmptyStateTitle>
+                            <EmptyStateDescription>
                                 {__(
                                     'All your transactions are already categorized.',
                                 )}
-                            </p>
-                        </div>
-                        <Link href={backHref} onClick={() => trigger('light')}>
-                            <Button>
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                {__('Back to Transactions')}
+                            </EmptyStateDescription>
+                        </EmptyStateHeader>
+                        <EmptyStateContent>
+                            <Button asChild>
+                                <Link
+                                    href={backHref}
+                                    onClick={() => trigger('light')}
+                                >
+                                    <ArrowLeft />
+                                    {__('Back to Transactions')}
+                                </Link>
                             </Button>
-                        </Link>
-                    </div>
+                        </EmptyStateContent>
+                    </EmptyState>
                 </div>
                 {automateDialog}
             </>

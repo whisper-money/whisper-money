@@ -7,6 +7,7 @@ import {
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -252,9 +253,11 @@ export function IntegrationRequestsBoard({
                     <Spinner />
                 </div>
             ) : requests.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">
-                    {__('No integrations requested yet. Be the first!')}
-                </p>
+                <EmptyState size="inline">
+                    <EmptyStateDescription>
+                        {__('No integrations requested yet. Be the first!')}
+                    </EmptyStateDescription>
+                </EmptyState>
             ) : (
                 <ul className="space-y-2">
                     {requests.map((item) => (

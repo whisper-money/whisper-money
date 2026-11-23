@@ -1,3 +1,4 @@
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { usePage } from '@inertiajs/react';
 import {
     Cell,
@@ -346,9 +347,15 @@ export function AutomationRulesDialog({
                                     <TableRow>
                                         <TableCell
                                             colSpan={columns.length}
-                                            className="h-24 text-center"
+                                            className="p-0 whitespace-normal"
                                         >
-                                            {__('No automation rules found.')}
+                                            <EmptyState size="inline">
+                                                <EmptyStateDescription>
+                                                    {__(
+                                                        'No automation rules found.',
+                                                    )}
+                                                </EmptyStateDescription>
+                                            </EmptyState>
                                         </TableCell>
                                     </TableRow>
                                 )}

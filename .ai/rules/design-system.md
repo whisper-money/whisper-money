@@ -8,7 +8,7 @@ paths:
 
 ## Read docs/design-system.md before building or restyling UI
 
-The rules for tokens, primitives, amounts, charts and page patterns live in `docs/design-system.md`; `/design-system` previews the real components. The code (`resources/css/app.css`, `resources/css/theme.css`, `resources/js/components/ui`) is the source of truth. Its debt catalog lists the patterns still in the code that break the rules (hand-rolled empty states and page headers, raw bordered divs…): don't copy them. Marketing and legal pages (`welcome`, `terms`, `privacy`, `comparison`, `roadmap`, `integrations`, `documentation/*`) are out of scope.
+The rules for tokens, primitives, amounts, charts and page patterns live in `docs/design-system.md`; `/design-system` previews the real components. The code (`resources/css/app.css`, `resources/css/theme.css`, `resources/js/components/ui`) is the source of truth. Its debt catalog lists the patterns still in the code that break the rules (hand-rolled page headers, raw bordered divs…): don't copy them. Marketing and legal pages (`welcome`, `terms`, `privacy`, `comparison`, `roadmap`, `integrations`, `documentation/*`) are out of scope.
 
 ## Color policy
 
@@ -20,7 +20,7 @@ The rules for tokens, primitives, amounts, charts and page patterns live in `doc
 
 ## Reuse components/ui before writing a component
 
-Look in `resources/js/components/ui` (and the feature folders) before writing a new component, and extend a primitive with a variant rather than copying its markup. Money goes through `AmountDisplay`, which handles privacy mode, or `useFormatAmount()` where it must be a string (a translated sentence, an `aria-label`, a chart tick); never `formatCurrency` or `Intl.NumberFormat({ style: 'currency' })` from a component (`lib/amount-display-guard.test.ts`). A bordered group is a `Card`.
+Look in `resources/js/components/ui` (and the feature folders) before writing a new component, and extend a primitive with a variant rather than copying its markup. Money goes through `AmountDisplay`, which handles privacy mode, or `useFormatAmount()` where it must be a string (a translated sentence, an `aria-label`, a chart tick); never `formatCurrency` or `Intl.NumberFormat({ style: 'currency' })` from a component (`lib/amount-display-guard.test.ts`). A bordered group is a `Card`. A list, table, chart or page with nothing to show renders `EmptyState` (`components/ui/empty-state.tsx`, `size="inline"` inside a card, cell, drawer or picker), never a hand-rolled centred `<p>` (`lib/empty-state-guard.test.ts`).
 
 ## No component branches on the chart theme
 

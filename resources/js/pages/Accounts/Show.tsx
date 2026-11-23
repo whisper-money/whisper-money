@@ -40,6 +40,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -1516,11 +1517,13 @@ function LoanDetailsCard({
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                        {__(
-                            'No loan details yet. Add interest rate, term, and amount to track amortization.',
-                        )}
-                    </p>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__(
+                                'No loan details yet. Add interest rate, term, and amount to track amortization.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 </CardContent>
             </Card>
         );

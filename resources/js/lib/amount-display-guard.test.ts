@@ -12,14 +12,13 @@
  * listed below with the reason it may.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative, resolve } from 'path';
 import { describe, expect, it } from 'vitest';
-
-const jsRoot = resolve(__dirname, '..');
-
-/** Wayfinder's generated (and git-ignored) route helpers. */
-const GENERATED_DIRS = ['actions', 'routes', 'wayfinder'];
+import {
+    findViolations,
+    MARKETING_PAGES,
+    missingPaths,
+    type ForbiddenPattern,
+} from './source-guard';
 
 /** Relative to resources/js. A trailing slash allows a whole folder. */
 const ALLOWED: readonly string[] = [
@@ -49,18 +48,10 @@ const ALLOWED: readonly string[] = [
     // (widgets/sdk/amount.tsx), from the host's privacy mode.
     'widgets/sdk/format-money.ts',
     // Marketing and legal pages have their own look and sample figures.
-    'components/landing/',
-    'components/documentation/',
-    'pages/documentation/',
-    'pages/welcome.tsx',
-    'pages/terms.tsx',
-    'pages/privacy.tsx',
-    'pages/comparison.tsx',
-    'pages/roadmap.tsx',
-    'pages/integrations.tsx',
+    ...MARKETING_PAGES,
 ];
 
-const FORBIDDEN: readonly { pattern: RegExp; what: string }[] = [
+const FORBIDDEN: readonly ForbiddenPattern[] = [
     { pattern: /\bformatCurrency\(/, what: 'calls formatCurrency(' },
     {
         pattern: /\bstyle\s*[:=]\s*['"`]currency['"`]/,
@@ -73,61 +64,15 @@ const FORBIDDEN: readonly { pattern: RegExp; what: string }[] = [
     },
 ];
 
-function collectSourceFiles(dir: string): string[] {
-    return readdirSync(dir).flatMap((entry) => {
-        const path = join(dir, entry);
-
-        if (dir === jsRoot && GENERATED_DIRS.includes(entry)) {
-            return [];
-        }
-
-        if (statSync(path).isDirectory()) {
-            return collectSourceFiles(path);
-        }
-
-        const isSource = /\.(ts|tsx)$/.test(entry);
-        const isTest = /\.test\.(ts|tsx)$/.test(entry);
-
-        return isSource && !isTest ? [path] : [];
-    });
-}
-
-function isAllowed(file: string): boolean {
-    return ALLOWED.some((allowed) =>
-        allowed.endsWith('/') ? file.startsWith(allowed) : file === allowed,
-    );
-}
-
 describe('amount display guard', () => {
     it('renders money through AmountDisplay or useFormatAmount', () => {
-        const violations = collectSourceFiles(jsRoot)
-            .map((path) => relative(jsRoot, path))
-            .filter((file) => !isAllowed(file))
-            .flatMap((file) => {
-                const source = readFileSync(join(jsRoot, file), 'utf8');
-
-                return FORBIDDEN.filter(({ pattern }) =>
-                    pattern.test(source),
-                ).map(({ what }) => `${file} ${what}`);
-            });
-
         expect(
-            violations,
+            findViolations(FORBIDDEN, ALLOWED),
             'Render money with <AmountDisplay>, or useFormatAmount() where it must be a string, so privacy mode masks it',
         ).toEqual([]);
     });
 
     it('allows only files that exist', () => {
-        const missing = ALLOWED.filter((allowed) => {
-            try {
-                statSync(join(jsRoot, allowed));
-
-                return false;
-            } catch {
-                return true;
-            }
-        });
-
-        expect(missing).toEqual([]);
+        expect(missingPaths(ALLOWED)).toEqual([]);
     });
 });

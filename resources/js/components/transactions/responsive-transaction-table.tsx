@@ -9,6 +9,7 @@ import {
     type DataTableRowGroup,
     useGroupedRowVirtualizer,
 } from '@/components/ui/data-table';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
     type RowSelectionMode,
@@ -252,15 +253,15 @@ function TransactionCompactList({
                 }
             >
                 {rows.length === 0 ? (
-                    <div
-                        className={cn(
-                            'p-6 text-center text-sm text-muted-foreground',
-                            // No row draws the closing hairline here.
-                            !framedOnPhone && 'max-md:border-b',
-                        )}
+                    <EmptyState
+                        size="inline"
+                        // No row draws the closing hairline here.
+                        className={cn(!framedOnPhone && 'max-md:border-b')}
                     >
-                        {emptyMessage}
-                    </div>
+                        <EmptyStateDescription>
+                            {emptyMessage}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <div style={{ paddingTop, paddingBottom }}>
                         {virtualRows.map((virtualRow) => {

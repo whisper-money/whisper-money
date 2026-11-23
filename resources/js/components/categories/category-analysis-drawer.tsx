@@ -10,6 +10,7 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -232,9 +233,11 @@ export function CategoryAnalysisDrawer({
                     )}
 
                     {!isLoading && !error && categoryId && !hasData && (
-                        <p className="py-12 text-center text-sm text-muted-foreground">
-                            {__('No spending in the last 12 months.')}
-                        </p>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__('No spending in the last 12 months.')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
 
                     {!isLoading && !error && hasData && (

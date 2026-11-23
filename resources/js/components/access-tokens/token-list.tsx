@@ -5,6 +5,7 @@ import {
 } from '@/components/access-tokens/confirm-action';
 import { type TokenScope } from '@/components/access-tokens/create-token-form';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { RefreshCw, Trash2 } from 'lucide-react';
@@ -41,9 +42,11 @@ export function TokenList({
 }) {
     if (tokens.length === 0) {
         return (
-            <p className="text-sm text-muted-foreground">
-                {__('You have no tokens yet.')}
-            </p>
+            <EmptyState size="inline">
+                <EmptyStateDescription>
+                    {__('You have no tokens yet.')}
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 

@@ -11,6 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { BadgeCheck, Trash2 } from 'lucide-react';
@@ -53,9 +54,11 @@ export function ConnectedAppList({
             </CardHeader>
             <CardContent>
                 {apps.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        {__('No apps are connected.')}
-                    </p>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__('No apps are connected.')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <ul className="divide-y">
                         {apps.map((app) => (

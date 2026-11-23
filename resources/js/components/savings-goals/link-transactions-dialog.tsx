@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
@@ -170,9 +171,11 @@ export function LinkTransactionsDialog({
                 <div className="-mx-2 max-h-[50vh] overflow-y-auto px-2">
                     {recentTransactions !== undefined &&
                         candidates.length === 0 && (
-                            <p className="py-6 text-center text-sm text-muted-foreground">
-                                {__('No transactions found.')}
-                            </p>
+                            <EmptyState size="inline">
+                                <EmptyStateDescription>
+                                    {__('No transactions found.')}
+                                </EmptyStateDescription>
+                            </EmptyState>
                         )}
 
                     <div className="divide-y">
