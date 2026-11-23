@@ -20,7 +20,7 @@ The rules for tokens, primitives, amounts, charts and page patterns live in `doc
 
 ## No serif in the app
 
-The app uses IBM Plex Sans (`font-sans`) and Google Sans Code (`font-mono`) only. IBM Plex Serif (`font-marketing-serif`) is for the landing and the documentation diagrams; never use it, `font-serif` or the old `font-heading` in the app (`lib/marketing-serif-guard.test.ts`).
+The app uses IBM Plex Sans (`font-sans`) and Google Sans Code (`font-mono`) only. Fraunces (`font-marketing-serif`) is for the landing and the documentation diagrams; never use it, `font-serif` or the old `font-heading` in the app (`lib/marketing-serif-guard.test.ts`).
 
 ## Reuse components/ui before writing a component
 
