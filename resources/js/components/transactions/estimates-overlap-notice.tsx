@@ -1,8 +1,8 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useLocale } from '@/hooks/use-locale';
 import { useOverlappingEstimates } from '@/hooks/use-overlapping-estimates';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { CircleAlert, CircleCheck } from 'lucide-react';
@@ -82,13 +82,11 @@ export function EstimatesOverlapNotice({
                                 locale,
                             )}
                         </span>
-                        <span className="shrink-0 tabular-nums">
-                            {formatCurrency(
-                                estimate.amount,
-                                estimate.currency_code,
-                                locale,
-                            )}
-                        </span>
+                        <AmountDisplay
+                            amountInCents={estimate.amount}
+                            currencyCode={estimate.currency_code}
+                            className="shrink-0 tabular-nums"
+                        />
                     </li>
                 ))}
             </ul>

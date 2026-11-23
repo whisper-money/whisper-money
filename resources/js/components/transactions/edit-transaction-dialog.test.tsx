@@ -12,6 +12,10 @@ import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 vi.mock('@/components/shared/label-combobox', () => ({
     LabelCombobox: () => <div />,
 }));

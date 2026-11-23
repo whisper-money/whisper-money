@@ -10,8 +10,12 @@ import {
     StepFilled,
     StepScreen,
 } from '@/components/onboarding/step-screen';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocale } from '@/hooks/use-locale';
+import {
+    useFormatAmount,
+    type AmountFormatter,
+} from '@/hooks/use-format-amount';
 import { clearStoredOnboardingStep } from '@/hooks/use-onboarding-state';
 import {
     useOnboardingSummary,
@@ -20,7 +24,6 @@ import {
 import { captureEvent } from '@/lib/posthog';
 import type { SharedData } from '@/types';
 import { type SignupPlan } from '@/types/pricing';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -57,7 +60,7 @@ export function StepComplete({
     spendingGuess,
 }: StepCompleteProps) {
     const summary = useOnboardingSummary();
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     const handleComplete = () => {
@@ -119,7 +122,7 @@ export function StepComplete({
                 summary !== null && (
                     <div className="flex flex-col gap-6">
                         <StepList>
-                            {inventory(summary, locale).map((line) => (
+                            {inventory(summary, formatAmount).map((line) => (
                                 <StepRow
                                     key={line}
                                     title={line}
@@ -131,7 +134,6 @@ export function StepComplete({
                         <Closing
                             summary={summary}
                             spendingGuess={spendingGuess}
-                            locale={locale}
                         />
                     </div>
                 )
@@ -158,13 +160,16 @@ function InventorySkeleton() {
  * out true: a file import with no bank and no target produces three lines, and
  * all three of them are things the user can go and look at.
  */
-function inventory(summary: OnboardingSummary, locale: string): string[] {
+function inventory(
+    summary: OnboardingSummary,
+    formatAmount: AmountFormatter['formatAmount'],
+): string[] {
     return [
         history(summary.months),
         movements(summary.transactions, summary.rules),
         accounts(summary.accounts, summary.connected_accounts),
         summary.rules > 0 ? __('Everything new sorted from now on') : null,
-        putAside(summary.target, summary.currency_code, locale),
+        putAside(summary.target, summary.currency_code, formatAmount),
     ].filter((line): line is string => line !== null);
 }
 
@@ -227,14 +232,14 @@ function accounts(total: number, connected: number): string | null {
 function putAside(
     target: number | null,
     currency: string,
-    locale: string,
+    formatAmount: AmountFormatter['formatAmount'],
 ): string | null {
     if (target === null) {
         return null;
     }
 
     return __(':amount a month put aside', {
-        amount: formatCurrency(target, currency, locale, 0, 0),
+        amount: formatAmount(target, currency, { fractionDigits: 0 }),
     });
 }
 
@@ -248,19 +253,15 @@ function putAside(
 function Closing({
     summary,
     spendingGuess,
-    locale,
 }: {
     summary: OnboardingSummary;
     spendingGuess?: number;
-    locale: string;
 }) {
     if (summary.transactions === 0) {
         return <NothingInYet />;
     }
 
-    return (
-        <Gap summary={summary} spendingGuess={spendingGuess} locale={locale} />
-    );
+    return <Gap summary={summary} spendingGuess={spendingGuess} />;
 }
 
 /** The one way in left to name, which is not the same on every install. */
@@ -288,11 +289,9 @@ function NothingInYet() {
 function Gap({
     summary,
     spendingGuess,
-    locale,
 }: {
     summary: OnboardingSummary;
     spendingGuess?: number;
-    locale: string;
 }) {
     const spent = summary.monthly_spending;
 
@@ -304,10 +303,15 @@ function Gap({
         return null;
     }
 
-    const money = (amount: number) =>
-        formatCurrency(amount, summary.currency_code, locale, 0, 0);
     const strong = (amount: number) => (
-        <span className="font-medium text-foreground">{money(amount)}</span>
+        <AmountDisplay
+            amountInCents={amount}
+            currencyCode={summary.currency_code}
+            minimumFractionDigits={0}
+            maximumFractionDigits={0}
+            className="text-foreground"
+            weight="medium"
+        />
     );
 
     return (

@@ -15,6 +15,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
+    useFormatAmount,
+    type AmountFormatter,
+} from '@/hooks/use-format-amount';
+import {
     countLabel,
     formatCount,
     formatMonthRange,
@@ -31,7 +35,7 @@ import {
     type ImportAccountAction,
     type ImportAccountType,
 } from '@/types/full-import';
-import { formatCurrency, toMinorUnits } from '@/utils/currency';
+import { toMinorUnits } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Archive, Lock } from 'lucide-react';
@@ -85,6 +89,7 @@ function balanceLine(
     account: FileAccount,
     currency: string,
     locale: string,
+    formatAmount: AmountFormatter['formatAmount'],
 ): string {
     if (!account.lastBalance) {
         return __('no balances in the file');
@@ -92,10 +97,9 @@ function balanceLine(
 
     const values = {
         count: formatCount(account.balanceCount, locale),
-        amount: formatCurrency(
+        amount: formatAmount(
             toMinorUnits(account.lastBalance.amount, currency),
             currency,
-            locale,
         ),
         date: formatDateMedium(account.lastBalance.date, locale),
     };
@@ -289,6 +293,7 @@ function AccountCard({
     banksVersion: string;
     locale: string;
 }) {
+    const { formatAmount } = useFormatAmount();
     const id = `full-import-account-${account.key}`;
     const mapTarget =
         entry.action === 'map'
@@ -347,7 +352,12 @@ function AccountCard({
                         {[
                             transactionCount(account.count, locale),
                             formatMonthRange(account.from, account.to, locale),
-                            balanceLine(account, entry.currencyCode, locale),
+                            balanceLine(
+                                account,
+                                entry.currencyCode,
+                                locale,
+                                formatAmount,
+                            ),
                         ].join(' · ')}
                     </div>
                 </div>

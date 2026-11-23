@@ -44,6 +44,17 @@ vi.mock('@/actions/App/Http/Controllers/TransactionController', () => ({
 
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 
+/**
+ * A node's amount and share as one line: the amount is its own element
+ * (AmountDisplay), so the line is matched on the text it reads as.
+ */
+function nodeLine(text: string) {
+    return (_content: string, element: Element | null) =>
+        element?.tagName === 'SPAN' &&
+        element.textContent === text &&
+        ![...element.children].some((child) => child.textContent === text);
+}
+
 function category(id: string, name: string, color = '#ccc'): Category {
     return { id, name, color } as Category;
 }
@@ -427,7 +438,7 @@ describe('SankeyChart', () => {
         // endpoint only takes a uuid and would reject the sentinel id.
         expect(global.fetch).not.toHaveBeenCalled();
         // 1000 of the 2500 grouped into "Other", not of the 92500 spent.
-        expect(screen.getByText('$10 · 40%')).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$10 · 40%'))).toBeInTheDocument();
         // The rest of the chart stays in place.
         expect(screen.getByText('Expense 0')).toBeInTheDocument();
         expect(screen.getByText('Net')).toBeInTheDocument();
@@ -500,9 +511,9 @@ describe('SankeyChart', () => {
 
         // Expenses divide by total_expense (810), not by income.
         // Amounts are minor units, so 500 renders as $5.
-        expect(screen.getByText('$5 · 62%')).toBeInTheDocument();
-        expect(screen.getByText('$3 · 38%')).toBeInTheDocument();
-        expect(screen.getByText('$10 · 100%')).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$5 · 62%'))).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$3 · 38%'))).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$10 · 100%'))).toBeInTheDocument();
     });
 
     it('shows the savings rate on the net node', () => {
@@ -579,8 +590,8 @@ describe('SankeyChart', () => {
         });
 
         // 200 of Food's 310, not 200 of the 810 spent overall.
-        expect(screen.getByText('$2 · 65%')).toBeInTheDocument();
-        expect(screen.getByText('$1 · 35%')).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$2 · 65%'))).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$1 · 35%'))).toBeInTheDocument();
     });
 
     describe('a child that nets to the other side', () => {
@@ -627,9 +638,15 @@ describe('SankeyChart', () => {
 
             // 1238 + 284 - 28 = 1494 and 83% + 19% - 2% = 100%: the children
             // add up to the parent they were netted into.
-            expect(screen.getByText('$1,238 · 83%')).toBeInTheDocument();
-            expect(screen.getByText('$284 · 19%')).toBeInTheDocument();
-            expect(screen.getByText('-$28 · -2%')).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('$1,238 · 83%')),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('$284 · 19%')),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('-$28 · -2%')),
+            ).toBeInTheDocument();
 
             // A sankey cannot draw a negative flow: salary -> net, net -> bank
             // and one flow per subcategory, while the offset only gets a thin
@@ -652,11 +669,17 @@ describe('SankeyChart', () => {
             );
 
             // 3000 - 200 - 50 = 2750 and 109% - 7% - 2% = 100%.
-            expect(screen.getByText('$3,000 · 109%')).toBeInTheDocument();
-            expect(screen.getByText('-$200 · -7%')).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('$3,000 · 109%')),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('-$200 · -7%')),
+            ).toBeInTheDocument();
             // Money taken straight off the parent is an offset too.
             expect(screen.getByText('Parent')).toBeInTheDocument();
-            expect(screen.getByText('-$50 · -2%')).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('-$50 · -2%')),
+            ).toBeInTheDocument();
 
             // base pay -> work, work -> net and net -> rent, plus a connector
             // per offset.
@@ -712,7 +735,9 @@ describe('SankeyChart', () => {
             });
             await expand(bankData, bankChildren, 'Bank', 'Interest');
 
-            expect(screen.getByText('-$** · -2%')).toBeInTheDocument();
+            expect(
+                screen.getByText(nodeLine('-$** · -2%')),
+            ).toBeInTheDocument();
         });
     });
 
@@ -746,7 +771,7 @@ describe('SankeyChart', () => {
             />,
         );
 
-        expect(screen.getByText('$1 · <1%')).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$1 · <1%'))).toBeInTheDocument();
     });
 
     it('omits the percentage when the total is zero', () => {
@@ -789,7 +814,7 @@ describe('SankeyChart', () => {
 
         // The share gives no amount away, and it is what keeps the chart
         // worth looking at with the numbers masked.
-        expect(screen.getByText('$* · 62%')).toBeInTheDocument();
+        expect(screen.getByText(nodeLine('$* · 62%'))).toBeInTheDocument();
         expect(screen.getByText('19% of income')).toBeInTheDocument();
     });
 });

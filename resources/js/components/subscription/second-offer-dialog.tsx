@@ -1,11 +1,10 @@
 import { StepBadge, StepSectionLabel } from '@/components/onboarding/step-list';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
-import { useLocale } from '@/hooks/use-locale';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { useOfferedPriceTier } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
 import { shown } from '@/routes/subscribe/second-offer';
 import { type SecondOfferBacklog, type SharedData } from '@/types';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -83,8 +82,6 @@ function WaitingForACategory({
 }: {
     movements: SecondOfferBacklog['recent'];
 }) {
-    const locale = useLocale();
-
     return (
         <div className="flex flex-col">
             <StepSectionLabel>{__('Waiting for a category')}</StepSectionLabel>
@@ -98,13 +95,11 @@ function WaitingForACategory({
                             <span className="truncate text-sm font-medium">
                                 {movement.description}
                             </span>
-                            <span className="text-[13px] text-muted-foreground">
-                                {formatCurrency(
-                                    movement.amount,
-                                    movement.currency_code,
-                                    locale,
-                                )}
-                            </span>
+                            <AmountDisplay
+                                amountInCents={movement.amount}
+                                currencyCode={movement.currency_code}
+                                className="text-[13px] text-muted-foreground"
+                            />
                         </span>
                         <StepBadge>{__('Needs a category')}</StepBadge>
                     </li>

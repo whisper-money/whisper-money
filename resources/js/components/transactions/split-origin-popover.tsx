@@ -5,10 +5,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useLocale } from '@/hooks/use-locale';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { type Category } from '@/types/category';
 import { type ServerTransaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Merge, Split } from 'lucide-react';
 
@@ -28,7 +27,7 @@ export function SplitOriginPopover({
     categories,
     onUnsplit,
 }: SplitOriginPopoverProps) {
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const siblings = transaction.split_siblings ?? [];
     const others = siblings.filter((sibling) => sibling.id !== transaction.id);
     const originalAmount = siblings.reduce(
@@ -52,10 +51,9 @@ export function SplitOriginPopover({
                 <p className="text-xs text-muted-foreground">
                     {__('One of :count splits of :amount', {
                         count: siblings.length,
-                        amount: formatCurrency(
+                        amount: formatAmount(
                             originalAmount,
                             transaction.currency_code,
-                            locale,
                         ),
                     })}
                 </p>

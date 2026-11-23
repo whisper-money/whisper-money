@@ -3,6 +3,7 @@ import {
     matches as matchesRoute,
     status as statusRoute,
 } from '@/actions/App/Http/Controllers/Settings/AutomationRuleApplicationController';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,7 +11,6 @@ import { useLocale } from '@/hooks/use-locale';
 import type { AutomationRule } from '@/types/automation-rule';
 import { assignableLabels } from '@/types/label';
 import type { ServerTransaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
@@ -448,13 +448,11 @@ function PreviewRow({
                 <span className="line-clamp-1 font-medium">
                     {transaction.description}
                 </span>
-                <span className="shrink-0 tabular-nums">
-                    {formatCurrency(
-                        transaction.amount,
-                        transaction.currency_code,
-                        locale,
-                    )}
-                </span>
+                <AmountDisplay
+                    amountInCents={transaction.amount}
+                    currencyCode={transaction.currency_code}
+                    className="shrink-0 tabular-nums"
+                />
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span>{date}</span>

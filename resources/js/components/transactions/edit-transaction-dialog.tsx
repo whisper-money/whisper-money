@@ -5,6 +5,7 @@ import { Shortcut } from '@/components/shortcuts/shortcut';
 import { ShortcutKbd } from '@/components/shortcuts/shortcut-kbd';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { TransactionRowDropdownMenuContent } from '@/components/transactions/transaction-row-dropdown-menu';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { ownsBalanceUpdates } from '@/hooks/use-owns-balance-updates';
 import { useShortcutHint } from '@/hooks/use-shortcut';
@@ -65,7 +67,7 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { isArchivedLabel, type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
-import { formatCurrency, toMajorUnits, toMinorUnits } from '@/utils/currency';
+import { toMajorUnits, toMinorUnits } from '@/utils/currency';
 import { formatDate, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -245,6 +247,7 @@ export function EditTransactionDialog({
     onRequestEdit,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const { auth, currencies } = usePage<SharedData>().props;
     const userCurrencyCode = auth.user.currency_code;
 
@@ -1001,7 +1004,7 @@ export function EditTransactionDialog({
             : null;
 
     const formattedAmount = transaction
-        ? formatCurrency(transaction.amount, transaction.currency_code, locale)
+        ? formatAmount(transaction.amount, transaction.currency_code)
         : '';
 
     // The editable branch mirrors the input, which is unsigned - the toggle owns
@@ -1015,11 +1018,7 @@ export function EditTransactionDialog({
     const formattedConvertedAmount =
         convertedAmount === null || !selectedAccount
             ? null
-            : formatCurrency(
-                  convertedAmount,
-                  selectedAccount.currency_code,
-                  locale,
-              );
+            : formatAmount(convertedAmount, selectedAccount.currency_code);
 
     const detailRows = transaction
         ? [
@@ -1555,9 +1554,17 @@ export function EditTransactionDialog({
                                                     ? ` · ${accountName}`
                                                     : ''}
                                             </div>
-                                            <div className="shrink-0 text-2xl font-semibold tabular-nums">
-                                                {formattedAmount}
-                                            </div>
+                                            <AmountDisplay
+                                                amountInCents={
+                                                    transaction.amount
+                                                }
+                                                currencyCode={
+                                                    transaction.currency_code
+                                                }
+                                                className="shrink-0 tabular-nums"
+                                                size="2xl"
+                                                weight="semibold"
+                                            />
                                         </div>
                                     </div>
 

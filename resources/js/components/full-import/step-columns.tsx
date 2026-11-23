@@ -4,6 +4,7 @@ import {
     ColumnSelect,
     DateFormatSelect,
 } from '@/components/transactions/import-step-mapping';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +33,7 @@ import {
     type NormalizedFile,
 } from '@/types/full-import';
 import { type ColumnOption } from '@/types/import';
-import { formatCurrency, toMinorUnits } from '@/utils/currency';
+import { toMinorUnits } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { type ReactNode } from 'react';
@@ -588,11 +589,13 @@ function ColumnsPreview({
                                         {row.categoryPath.join(' › ') || '—'}
                                     </td>
                                     <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">
-                                        {formatCurrency(
-                                            toMinorUnits(row.amount, currency),
-                                            currency,
-                                            locale,
-                                        )}
+                                        <AmountDisplay
+                                            amountInCents={toMinorUnits(
+                                                row.amount,
+                                                currency,
+                                            )}
+                                            currencyCode={currency}
+                                        />
                                     </td>
                                 </tr>
                             );

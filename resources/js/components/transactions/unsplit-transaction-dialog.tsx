@@ -9,11 +9,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useLocale } from '@/hooks/use-locale';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Category } from '@/types/category';
 import { type ServerTransaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Merge } from 'lucide-react';
 import { useState } from 'react';
@@ -36,7 +35,7 @@ export function UnsplitTransactionDialog({
     onOpenChange,
     onSuccess,
 }: UnsplitTransactionDialogProps) {
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const [isMerging, setIsMerging] = useState(false);
 
     const siblings = transaction?.split_siblings ?? [];
@@ -88,10 +87,9 @@ export function UnsplitTransactionDialog({
                                   ':description goes back to being a single transaction of :amount.',
                                   {
                                       description: transaction.description,
-                                      amount: formatCurrency(
+                                      amount: formatAmount(
                                           originalAmount,
                                           transaction.currency_code,
-                                          locale,
                                       ),
                                   },
                               )}

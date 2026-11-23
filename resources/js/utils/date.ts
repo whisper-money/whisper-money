@@ -126,29 +126,6 @@ export function formatMonthYear(date: Date, locale: string = 'en-US'): string {
 }
 
 /**
- * Format a compact number (for charts, etc.)
- */
-export function formatCompactNumber(
-    value: number,
-    locale: string = 'en-US',
-    currency?: string,
-): string {
-    const options: Intl.NumberFormatOptions = {
-        notation: 'compact',
-        compactDisplay: 'short',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    };
-
-    if (currency) {
-        options.style = 'currency';
-        options.currency = currency;
-    }
-
-    return new Intl.NumberFormat(locale, options).format(value);
-}
-
-/**
  * Format a date with day, month, and year (e.g., "Jan 23, 2025" or "23 ene 2025")
  * Capitalizes the first letter
  */

@@ -12,6 +12,10 @@ import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FullImportWizard } from './full-import-wizard';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const api = vi.hoisted(() => ({
     checkExistingTransactions: vi.fn(),
     fetchImportContext: vi.fn(),

@@ -11,16 +11,14 @@ import {
     StepFilled,
     StepScreen,
 } from '@/components/onboarding/step-screen';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { captureEvent } from '@/lib/posthog';
 import { reveal } from '@/routes/onboarding';
 import { type UUID } from '@/types/uuid';
-import {
-    formatCurrency,
-    getCurrencySymbol,
-    toMajorUnits,
-} from '@/utils/currency';
+import { getCurrencySymbol } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
@@ -282,9 +280,10 @@ function RevealSpending({
     onContinue: () => void;
 }) {
     const locale = useLocale();
+    const { formatAmount, formatAmountNumber } = useFormatAmount();
     const { currency_code: currency } = data;
     const money = (amount: number) =>
-        formatCurrency(amount, currency, locale, 0, 0);
+        formatAmount(amount, currency, { fractionDigits: 0 });
 
     const biggest = data.merchants[0]?.amount ?? 0;
 
@@ -312,9 +311,9 @@ function RevealSpending({
                             {getCurrencySymbol(currency)}
                         </span>
                         <span className="text-[62px] leading-none font-semibold tracking-[-0.04em] tabular-nums">
-                            {new Intl.NumberFormat(locale, {
-                                maximumFractionDigits: 0,
-                            }).format(toMajorUnits(data.spent, currency))}
+                            {formatAmountNumber(data.spent, currency, {
+                                fractionDigits: 0,
+                            })}
                         </span>
                     </h1>
 
@@ -345,9 +344,13 @@ function RevealSpending({
                                         <span className="truncate text-[15px] font-medium">
                                             {merchant.name}
                                         </span>
-                                        <span className="text-[15px] font-semibold tabular-nums">
-                                            {money(merchant.amount)}
-                                        </span>
+                                        <AmountDisplay
+                                            amountInCents={merchant.amount}
+                                            currencyCode={currency}
+                                            minimumFractionDigits={0}
+                                            maximumFractionDigits={0}
+                                            className="text-[15px] font-semibold tabular-nums"
+                                        />
                                     </div>
                                     <div className="h-1.5 rounded-full bg-muted">
                                         <div
@@ -496,8 +499,9 @@ function RevealEstimate({
     onContinue: () => void;
 }) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const money = (amount: number) =>
-        formatCurrency(amount, data.currency_code, locale, 0, 0);
+        formatAmount(amount, data.currency_code, { fractionDigits: 0 });
     const estimates = data.estimates ?? [];
     // What the basics leave of the guess, when they leave anything.
     const shortfall =
@@ -556,9 +560,13 @@ function RevealEstimate({
                                 <span className="truncate text-[15px] font-medium">
                                     {estimate.name}
                                 </span>
-                                <span className="text-[15px] font-semibold tabular-nums">
-                                    {money(estimate.amount)}
-                                </span>
+                                <AmountDisplay
+                                    amountInCents={estimate.amount}
+                                    currencyCode={data.currency_code}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                    className="text-[15px] font-semibold tabular-nums"
+                                />
                             </div>
                         ))}
                     </StepList>
@@ -651,7 +659,7 @@ function RevealAssets({
     /** Type last month in, for the reader with a hand-kept account to put it in. */
     onAddExpenses: () => void;
 }) {
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const awaitingMovements = data.has_spending_accounts;
     // The second chance: a month typed in by hand lands the spending reveal
     // this reader came for. Only where there is an account to type it into.
@@ -666,13 +674,9 @@ function RevealAssets({
     return (
         <StepScreen
             title={__('You’re worth :amount', {
-                amount: formatCurrency(
-                    data.net_worth,
-                    data.currency_code,
-                    locale,
-                    0,
-                    0,
-                ),
+                amount: formatAmount(data.net_worth, data.currency_code, {
+                    fractionDigits: 0,
+                }),
             })}
             description={
                 offerAccount
@@ -729,15 +733,13 @@ function RevealAssets({
                                     : __('Added by hand')
                             }
                             trailing={
-                                <span className="text-[15px] font-semibold tabular-nums">
-                                    {formatCurrency(
-                                        account.balance,
-                                        data.currency_code,
-                                        locale,
-                                        0,
-                                        0,
-                                    )}
-                                </span>
+                                <AmountDisplay
+                                    amountInCents={account.balance}
+                                    currencyCode={data.currency_code}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                    className="text-[15px] font-semibold tabular-nums"
+                                />
                             }
                         />
                     ))}
@@ -752,12 +754,10 @@ function RevealAssets({
                             <StepFilled
                                 sentence={__(':guess a month')}
                                 values={{
-                                    guess: formatCurrency(
+                                    guess: formatAmount(
                                         guess,
                                         data.currency_code,
-                                        locale,
-                                        0,
-                                        0,
+                                        { fractionDigits: 0 },
                                     ),
                                 }}
                             />

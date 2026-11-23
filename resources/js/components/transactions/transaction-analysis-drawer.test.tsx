@@ -15,6 +15,10 @@ import {
     TransactionAnalysisDrawer,
 } from './transaction-analysis-drawer';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const axiosGet = vi.fn();
 const axiosPatch = vi.fn();
 

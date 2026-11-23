@@ -5,8 +5,7 @@ import {
     StepRow,
 } from '@/components/onboarding/step-list';
 import { StepNote, StepScreen } from '@/components/onboarding/step-screen';
-import { useLocale } from '@/hooks/use-locale';
-import { formatCurrency } from '@/utils/currency';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { __ } from '@/utils/i18n';
 import { type ReactNode } from 'react';
 
@@ -39,7 +38,7 @@ export function StepPlan({
     isFreePlan = false,
     onContinue,
 }: StepPlanProps) {
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
 
     return (
         <StepScreen
@@ -48,13 +47,9 @@ export function StepPlan({
                 goal !== undefined && spendingGuess !== undefined
                     ? readBack({
                           goal,
-                          amount: formatCurrency(
-                              spendingGuess,
-                              currencyCode,
-                              locale,
-                              0,
-                              0,
-                          ),
+                          amount: formatAmount(spendingGuess, currencyCode, {
+                              fractionDigits: 0,
+                          }),
                       })
                     : __('Three steps, and the real number at the end of them.')
             }

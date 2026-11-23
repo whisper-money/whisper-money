@@ -8,11 +8,11 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { CashflowPeriodType, TrendDataPoint } from '@/hooks/use-cashflow-data';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { chartRoleColors } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
-import { toMajorUnits } from '@/utils/currency';
-import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
+import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
 import {
@@ -131,6 +131,7 @@ export function CashflowTrendChart({
     periodType = 'month',
 }: CashflowTrendChartProps) {
     const locale = useLocale();
+    const { formatCompactAmount } = useFormatAmount();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
     const { cashflowIncomeColor, cashflowExpenseColor } = chartRoleColors;
@@ -217,11 +218,9 @@ export function CashflowTrendChart({
                                 tickLine={false}
                                 axisLine={false}
                                 tickFormatter={(value: number) =>
-                                    formatCompactNumber(
-                                        toMajorUnits(value, currency),
-                                        locale,
-                                        currency,
-                                    )
+                                    formatCompactAmount(value, currency, {
+                                        withSymbol: true,
+                                    })
                                 }
                                 width={60}
                             />

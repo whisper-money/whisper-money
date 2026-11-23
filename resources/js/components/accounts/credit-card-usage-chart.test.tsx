@@ -3,6 +3,7 @@ import type {
     CreditCardPayment,
     CreditCardUsage,
 } from '@/types/account';
+import { formatCurrency } from '@/utils/currency';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -129,7 +130,17 @@ describe('paymentsByDay', () => {
     });
 
     it('names the statement a payment pays', () => {
-        expect(paymentNote(payment('2026-10-01', 96335), 'MXN', 'en-US')).toBe(
+        const formatAmount = (amount: number, currencyCode: string) =>
+            formatCurrency(amount, currencyCode, 'en-US');
+
+        expect(
+            paymentNote(
+                payment('2026-10-01', 96335),
+                'MXN',
+                'en-US',
+                formatAmount,
+            ),
+        ).toBe(
             'Payment of MX$963.35 for the statement Sep 7, 2026 – Oct 6, 2026',
         );
     });

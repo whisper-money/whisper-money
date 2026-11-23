@@ -1,5 +1,6 @@
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import {
     isSplitBalanced,
@@ -21,7 +23,6 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type ServerTransaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
@@ -60,6 +61,7 @@ export function SplitTransactionDialog({
     onLabelCreated,
 }: SplitTransactionDialogProps) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const [drafts, setDrafts] = useState<SplitDraft[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -179,13 +181,13 @@ export function SplitTransactionDialog({
                             <span className="truncate font-medium">
                                 {transaction.description}
                             </span>
-                            <span className="shrink-0 font-mono font-medium tabular-nums">
-                                {formatCurrency(
-                                    totalCents,
-                                    currencyCode,
-                                    locale,
-                                )}
-                            </span>
+                            <AmountDisplay
+                                amountInCents={totalCents}
+                                currencyCode={currencyCode}
+                                className="shrink-0"
+                                weight="medium"
+                                monospace
+                            />
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                             {formatDate(
@@ -330,17 +332,15 @@ export function SplitTransactionDialog({
                                     ? __('Every split needs an amount')
                                     : remaining > 0
                                       ? __('Still to share out: :amount', {
-                                            amount: formatCurrency(
+                                            amount: formatAmount(
                                                 remaining,
                                                 currencyCode,
-                                                locale,
                                             ),
                                         })
                                       : __('Over by :amount', {
-                                            amount: formatCurrency(
+                                            amount: formatAmount(
                                                 -remaining,
                                                 currencyCode,
-                                                locale,
                                             ),
                                         })}
                             </span>
