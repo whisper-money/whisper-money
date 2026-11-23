@@ -57,15 +57,20 @@ export function reloadPage(): void {
  * Inertia fires `location` right before it navigates. The one time it then stays
  * put is a version change answering an async visit (a poll, a background reload):
  * it skips the reload and lets the next regular visit take it. So a version change
- * only counts as a departure while a regular visit is in flight; a poll and a
+ * only counts as a departure while a regular GET visit is in flight; a poll and a
  * click can both be out when the deploy lands, and the click's own 409 reloads.
  */
 export function trackInertiaLocationDepartures(): void {
+    // Keyed by identity: Inertia hands `start` and `finish` the same params object.
     const regularVisitsInFlight = new Set<unknown>();
 
     router.on('start', (event) => {
-        if (!event.detail.visit.async) {
-            regularVisitsInFlight.add(event.detail.visit);
+        const { visit } = event.detail;
+
+        // The server answers a stale version with a 409 on GETs only, so a form
+        // submit in flight never brings the reload a poll's 409 put off.
+        if (!visit.async && visit.method === 'get') {
+            regularVisitsInFlight.add(visit);
         }
     });
 
@@ -87,8 +92,15 @@ function recordDeparture(): void {
     forgetDepartureIfWeStayed();
 }
 
+let departureTimeout: number | undefined;
+
+/**
+ * Only the latest departure's clock counts: an earlier one must not clear the flag
+ * while a later departure is still in progress.
+ */
 function forgetDepartureIfWeStayed(): void {
-    window.setTimeout(() => {
+    window.clearTimeout(departureTimeout);
+    departureTimeout = window.setTimeout(() => {
         leaving = false;
     }, DEPARTURE_TIMEOUT_MS);
 }

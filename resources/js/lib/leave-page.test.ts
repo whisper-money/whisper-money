@@ -155,7 +155,7 @@ describe('leave-page', () => {
             const { trackInertiaLocationDepartures, isLeavingPage } =
                 await freshModule();
             trackInertiaLocationDepartures();
-            const visit = { async: false };
+            const visit = { async: false, method: 'get' };
 
             fire('start', { visit });
             location(true);
@@ -184,17 +184,62 @@ describe('leave-page', () => {
             expect(isLeavingPage()).toBe(false);
         });
 
+        it('records the reload when a poll and a click are both out as the deploy lands', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+            const poll = { async: true };
+
+            fire('start', { visit: poll });
+            fire('start', { visit: { async: false, method: 'get' } });
+            fire('finish', { visit: poll });
+            location(true);
+
+            expect(isLeavingPage()).toBe(true);
+        });
+
+        it('stays put when only a form submit is out, which the server never answers with a version 409', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+
+            fire('start', { visit: { async: false, method: 'post' } });
+            fire('start', { visit: { async: true, method: 'get' } });
+            location(true);
+
+            expect(isLeavingPage()).toBe(false);
+        });
+
         it('forgets regular visits once they finish', async () => {
             const { trackInertiaLocationDepartures, isLeavingPage } =
                 await freshModule();
             trackInertiaLocationDepartures();
-            const visit = { async: false };
+            const visit = { async: false, method: 'get' };
 
             fire('start', { visit });
             fire('finish', { visit });
             location(true);
 
             expect(isLeavingPage()).toBe(false);
+        });
+
+        it('keeps leaving while a later departure is still in progress', async () => {
+            vi.useFakeTimers();
+
+            try {
+                const { trackInertiaLocationDepartures, isLeavingPage } =
+                    await freshModule();
+                trackInertiaLocationDepartures();
+
+                location(false);
+                vi.advanceTimersByTime(6_000);
+                location(false);
+                vi.advanceTimersByTime(6_000);
+
+                expect(isLeavingPage()).toBe(true);
+            } finally {
+                vi.useRealTimers();
+            }
         });
 
         it('stops leaving when the forced reload never happened', async () => {
