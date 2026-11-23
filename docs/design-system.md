@@ -15,7 +15,7 @@ the few decisions that were never written down. It is not a redesign.
   renders the real components with light/dark, privacy mode and chart-theme
   toggles. It holds no rules; this document does.
 - **Out of scope**: the marketing and legal pages (`welcome`, `terms`,
-  `privacy`, `comparison`, `roadmap`, `integrations`, `documentation/*` and
+  `privacy`, `comparison`, `integrations`, `documentation/*` and
   `components/landing`) have their own look. These rules don't apply to them.
 - **Known gaps**: where the code does not follow a rule yet, the
   [debt catalog](#debt-catalog) says so and links the issue that fixes it.

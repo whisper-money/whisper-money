@@ -59,7 +59,7 @@ export default [
             // Tests assert on class names, including the ones the guard bans.
             '**/*.test.{ts,tsx}',
             // Marketing and legal pages have their own look (docs/design-system.md).
-            'resources/js/pages/{welcome,terms,privacy,comparison,roadmap,integrations}.tsx',
+            'resources/js/pages/{welcome,terms,privacy,comparison,integrations}.tsx',
             'resources/js/pages/documentation/**',
             'resources/js/components/{landing,documentation}/**',
             'resources/js/components/marketing-page.tsx',

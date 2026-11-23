@@ -30,7 +30,6 @@ export const MARKETING_PAGES: readonly string[] = [
     'pages/terms.tsx',
     'pages/privacy.tsx',
     'pages/comparison.tsx',
-    'pages/roadmap.tsx',
     'pages/integrations.tsx',
 ];
 

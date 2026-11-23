@@ -126,7 +126,7 @@ describe('UserMenuContent', () => {
         );
     });
 
-    it('links feedback and roadmap to UserJot', () => {
+    it('links feedback to UserJot, and nowhere to the roadmap', () => {
         render(
             <UserMenuContent
                 user={user}
@@ -140,9 +140,7 @@ describe('UserMenuContent', () => {
                 .getByRole('link', { name: /feedback/i })
                 .getAttribute('href'),
         ).toBe('https://whispermoney.userjot.com/');
-        expect(
-            screen.getByRole('link', { name: /roadmap/i }).getAttribute('href'),
-        ).toBe('https://whispermoney.userjot.com/roadmap');
+        expect(screen.queryByRole('link', { name: /roadmap/i })).toBeNull();
     });
 
     it('triggers the support callback when the support item is clicked', () => {

@@ -21,7 +21,7 @@ import { isInstalledPwa } from '@/lib/pwa';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { riseStyle, stepProgress } from '@/lib/scroll-reveal';
 import { cn } from '@/lib/utils';
-import { dashboard, roadmap } from '@/routes';
+import { dashboard } from '@/routes';
 import documentation from '@/routes/documentation';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
@@ -3703,14 +3703,6 @@ export default function Welcome({
                                     className={FOOTER_LINK_CLASSES}
                                 >
                                     {__('Compatible banks and apps')}
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    href={roadmap()}
-                                    className={FOOTER_LINK_CLASSES}
-                                >
-                                    {__('Roadmap')}
                                 </Link>
                             </li>
                             <li>

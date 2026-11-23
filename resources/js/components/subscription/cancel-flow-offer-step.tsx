@@ -7,7 +7,6 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { roadmap } from '@/routes';
 import { index as connections } from '@/routes/settings/connections';
 import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
@@ -15,7 +14,6 @@ import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import {
     LifeBuoyIcon,
-    MapIcon,
     PauseIcon,
     PercentIcon,
     RepeatIcon,
@@ -50,7 +48,6 @@ export type CancellationOffer =
           price: number;
           options: PauseOption[];
       }
-    | { offer: 'roadmap' }
     | { offer: 'support' };
 
 /**
@@ -167,27 +164,6 @@ export function OfferStep({
                               },
                           ),
                     action: savingOfferButton(__('Switch to yearly')),
-                };
-            case 'roadmap':
-                return {
-                    icon: MapIcon,
-                    title: __('Thanks, we read every answer'),
-                    body: __(
-                        'See what we are building next on the roadmap, and vote for what you need most.',
-                    ),
-                    action: (
-                        <Button variant="outline" asChild>
-                            <a
-                                href={roadmap.url()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={accept}
-                                data-testid="cancel-flow-accept"
-                            >
-                                {__('Open the roadmap')}
-                            </a>
-                        </Button>
-                    ),
                 };
             case 'support':
                 return {

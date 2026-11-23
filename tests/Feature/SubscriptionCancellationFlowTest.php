@@ -177,7 +177,7 @@ describe('the survey', function () {
             ->assertJsonPath('offers', fn (array $sent) => array_column($sent, 'offer') === $offers);
     })->with([
         'too expensive' => ['too_expensive', ['retention_coupon', 'switch_to_yearly']],
-        'missing a feature' => ['missing_feature', ['roadmap']],
+        'missing a feature' => ['missing_feature', ['support']],
         'bank problems' => ['bank_connection_problems', ['support']],
         'too complex' => ['too_complex', ['support']],
         'not using it enough' => ['not_using_enough', []],
@@ -186,6 +186,18 @@ describe('the survey', function () {
         'does not trust the bank' => ['dont_trust_bank', []],
         'other' => ['other', []],
     ]);
+
+    test('still reads answers recorded when the roadmap was offered', function () {
+        $answer = CancellationSurveyResponse::factory()->create([
+            'reason' => CancellationReason::MissingFeature,
+            'offer_shown' => 'roadmap',
+            'offer_accepted' => 'roadmap',
+        ]);
+
+        expect($answer->fresh())
+            ->offer_shown->toBe(CancellationOffer::Roadmap)
+            ->offer_accepted->toBe(CancellationOffer::Roadmap);
+    });
 
     test('quotes a trial its end date, a paid plan the end of its period', function () {
         $trial = cancellableSubscriber();
