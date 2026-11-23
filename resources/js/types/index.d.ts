@@ -268,7 +268,6 @@ export interface SharedData {
     name: string;
     appUrl: string;
     version: string;
-    quote: { message: string; author: string };
     auth: Auth;
     flash: Flash;
     chartColorScheme: ChartColorScheme;
