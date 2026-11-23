@@ -19,6 +19,11 @@ import {
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Progress } from '@/components/ui/progress';
 import {
+    StatTile,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
+import {
     useFormatAmount,
     type AmountFormatter,
 } from '@/hooks/use-format-amount';
@@ -202,12 +207,14 @@ function PeriodExplanation({ period }: { period: UsagePeriod }) {
 
 function Figure({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="flex flex-col gap-1">
-            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-            </dt>
-            <dd>{children}</dd>
-        </div>
+        <StatTile size="lg">
+            <StatTileLabel asChild>
+                <dt>{label}</dt>
+            </StatTileLabel>
+            <StatTileValue asChild>
+                <dd>{children}</dd>
+            </StatTileValue>
+        </StatTile>
     );
 }
 
@@ -288,8 +295,6 @@ function LimitUsage({
                         <AmountDisplay
                             amountInCents={usage.used}
                             currencyCode={currencyCode}
-                            size="2xl"
-                            weight="semibold"
                         />
                     </Figure>
                     <Figure label={__('Available')}>
@@ -301,8 +306,6 @@ function LimitUsage({
                             <AmountDisplay
                                 amountInCents={available}
                                 currencyCode={currencyCode}
-                                size="2xl"
-                                weight="semibold"
                             />
                         </span>
                     </Figure>
@@ -310,8 +313,6 @@ function LimitUsage({
                         <AmountDisplay
                             amountInCents={limit}
                             currencyCode={currencyCode}
-                            size="2xl"
-                            weight="semibold"
                         />
                     </Figure>
                 </dl>

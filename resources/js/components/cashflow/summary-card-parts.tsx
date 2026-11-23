@@ -1,5 +1,13 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    StatTile,
+    StatTileDescription,
+    StatTileHeader,
+    StatTileLabel,
+    StatTileTrend,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -198,7 +206,6 @@ interface SummaryFigureProps {
     currency: string;
     /** Omitted when there is no previous period to compare against. */
     comparison?: { diff: number; isFavorable?: boolean } | null;
-    highlightPositive?: boolean;
     caption?: string;
 }
 
@@ -209,36 +216,32 @@ export function SummaryFigure({
     amount,
     currency,
     comparison,
-    highlightPositive = false,
     caption,
 }: SummaryFigureProps) {
     return (
-        <div>
+        <StatTile size="sm">
             {badge ? (
-                <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">{label}</p>
+                <StatTileHeader>
+                    <StatTileLabel>{label}</StatTileLabel>
                     {badge}
-                </div>
+                </StatTileHeader>
             ) : (
-                <p className="text-xs text-muted-foreground">{label}</p>
+                <StatTileLabel>{label}</StatTileLabel>
             )}
-            <WholeAmount
-                amountInCents={amount}
-                currencyCode={currency}
-                weight="medium"
-                highlightPositive={highlightPositive}
-            />
-            {caption && (
-                <p className="text-xs text-muted-foreground">{caption}</p>
-            )}
+            <StatTileValue>
+                <WholeAmount amountInCents={amount} currencyCode={currency} />
+            </StatTileValue>
+            {caption && <StatTileDescription>{caption}</StatTileDescription>}
             {comparison && (
-                <AmountComparison
-                    diff={comparison.diff}
-                    isFavorable={comparison.isFavorable}
-                    currency={currency}
-                />
+                <StatTileTrend>
+                    <AmountComparison
+                        diff={comparison.diff}
+                        isFavorable={comparison.isFavorable}
+                        currency={currency}
+                    />
+                </StatTileTrend>
             )}
-        </div>
+        </StatTile>
     );
 }
 
@@ -261,7 +264,6 @@ export function IncomeFigure({
             label={__('Income')}
             amount={current.income}
             currency={currency}
-            highlightPositive
             comparison={
                 hasPreviousData
                     ? { diff: current.income - previous.income }

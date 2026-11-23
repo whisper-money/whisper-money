@@ -7,6 +7,11 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    StatTile,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { useLocale } from '@/hooks/use-locale';
 import type {
     CreditCardDetail,
@@ -116,32 +121,30 @@ function StatementSummary({
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <StatTile size="lg">
+                <StatTileLabel>
                     {nextPayment.is_final
                         ? __('Estimated amount')
                         : __('Estimated amount so far')}
-                </span>
+                </StatTileLabel>
                 {nextPayment.amount > 0 ? (
-                    <AmountDisplay
-                        amountInCents={nextPayment.amount}
-                        currencyCode={currencyCode}
-                        size="2xl"
-                        weight="semibold"
-                        monospace
-                    />
+                    <StatTileValue>
+                        <AmountDisplay
+                            amountInCents={nextPayment.amount}
+                            currencyCode={currencyCode}
+                            monospace
+                        />
+                    </StatTileValue>
                 ) : (
-                    <span className="flex flex-wrap items-baseline gap-2">
-                        <span className="text-2xl font-semibold">
-                            {__('Nothing to pay')}
-                        </span>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                        <StatTileValue>{__('Nothing to pay')}</StatTileValue>
                         {nextPayment.amount < 0 && (
                             <CreditNote
                                 amount={nextPayment.amount}
                                 currencyCode={currencyCode}
                             />
                         )}
-                    </span>
+                    </div>
                 )}
                 {nextPayment.amount > 0 && (
                     <span className="text-sm">
@@ -171,7 +174,7 @@ function StatementSummary({
                               { date: formatDay(nextPayment.closing_date) },
                           )}
                 </span>
-            </div>
+            </StatTile>
 
             <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 p-3 text-sm dark:bg-muted/20">
                 <span className="flex items-baseline justify-between gap-2">

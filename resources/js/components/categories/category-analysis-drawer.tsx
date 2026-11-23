@@ -12,6 +12,11 @@ import {
 } from '@/components/ui/drawer';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import {
+    StatTile,
+    StatTileLabel,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -287,46 +292,49 @@ function SummaryCards({
     return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card className="gap-0 py-4">
-                <CardContent className="flex flex-col gap-1">
-                    <p className="text-xs text-muted-foreground">
-                        {__('Monthly average')}
-                    </p>
-                    <AmountDisplay
-                        amountInCents={summary.average_per_month}
-                        currencyCode={currency}
-                        className="text-lg font-semibold tabular-nums"
-                    />
+                <CardContent>
+                    <StatTile>
+                        <StatTileLabel>{__('Monthly average')}</StatTileLabel>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={summary.average_per_month}
+                                currencyCode={currency}
+                            />
+                        </StatTileValue>
+                    </StatTile>
                 </CardContent>
             </Card>
 
             <Card className="gap-0 py-4">
-                <CardContent className="flex flex-col gap-1">
-                    <p className="text-xs text-muted-foreground">
-                        {__('Trend')}
-                    </p>
-                    {trend === null ? (
-                        <p className="text-lg font-semibold text-muted-foreground">
-                            {__('Not enough history')}
-                        </p>
-                    ) : (
-                        <div className="flex items-center gap-1.5">
-                            <TrendIcon
-                                className={cn(
-                                    'size-4',
-                                    trend > 0 && 'text-muted-foreground',
-                                    trend < 0 && 'text-success',
-                                    trend === 0 && 'text-muted-foreground',
-                                )}
-                            />
-                            <span className="text-lg font-semibold tabular-nums">
-                                {trend > 0 ? '+' : ''}
-                                {trend}%
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {__('vs. previous 6 months')}
-                            </span>
-                        </div>
-                    )}
+                <CardContent>
+                    <StatTile>
+                        <StatTileLabel>{__('Trend')}</StatTileLabel>
+                        {trend === null ? (
+                            <StatTileValue className="text-muted-foreground">
+                                {__('Not enough history')}
+                            </StatTileValue>
+                        ) : (
+                            <div className="flex flex-wrap items-center gap-x-1.5">
+                                <StatTileValue className="flex items-center gap-1.5">
+                                    <TrendIcon
+                                        className={cn(
+                                            'size-4',
+                                            trend > 0 &&
+                                                'text-muted-foreground',
+                                            trend < 0 && 'text-success',
+                                            trend === 0 &&
+                                                'text-muted-foreground',
+                                        )}
+                                    />
+                                    {trend > 0 ? '+' : ''}
+                                    {trend}%
+                                </StatTileValue>
+                                <span className="text-xs text-muted-foreground">
+                                    {__('vs. previous 6 months')}
+                                </span>
+                            </div>
+                        )}
+                    </StatTile>
                 </CardContent>
             </Card>
         </div>

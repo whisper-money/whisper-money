@@ -5,10 +5,21 @@ import {
     type PreviewEntry,
 } from '@/components/design-system/showcase';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { Badge } from '@/components/ui/badge';
 import { type ChartConfig } from '@/components/ui/chart';
 import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import {
+    StatTile,
+    StatTileDescription,
+    StatTileHeader,
+    StatTileLabel,
+    StatTileSkeleton,
+    StatTileTrend,
+    StatTileValue,
+} from '@/components/ui/stat-tile';
 import { useFormatAmount } from '@/hooks/use-format-amount';
+import { Wallet } from 'lucide-react';
 
 /** The string form, for a sentence or an aria-label; privacy mode masks it too. */
 function FormattedAmountSentence() {
@@ -99,6 +110,121 @@ function TrendIndicators() {
     );
 }
 
+function StatTiles() {
+    return (
+        <div className="grid w-full gap-6 lg:grid-cols-2">
+            <Specimen label="size=lg · value, trend, description">
+                <StatTile size="lg">
+                    <StatTileHeader>
+                        <StatTileLabel>Brokerage</StatTileLabel>
+                        <Wallet className="size-4 text-muted-foreground" />
+                    </StatTileHeader>
+                    <StatTileValue>
+                        <AmountDisplay
+                            amountInCents={12450000}
+                            currencyCode="EUR"
+                        />
+                    </StatTileValue>
+                    <StatTileTrend>
+                        <AmountTrendIndicator
+                            trend={22815}
+                            isPositive
+                            label="vs last month"
+                            currencyCode="EUR"
+                        />
+                    </StatTileTrend>
+                    <StatTileDescription>
+                        +12.4% of invested
+                    </StatTileDescription>
+                </StatTile>
+            </Specimen>
+            <Specimen label="size=lg · percentage, unfavourable trend">
+                <StatTile size="lg">
+                    <StatTileLabel>Savings rate</StatTileLabel>
+                    <StatTileValue>18.2%</StatTileValue>
+                    <StatTileTrend>
+                        <PercentageTrendIndicator
+                            trend={-3.1}
+                            label="vs last month"
+                        />
+                    </StatTileTrend>
+                </StatTile>
+            </Specimen>
+            <Specimen label="size=sm · a row of figures in a card">
+                <div className="grid grid-cols-3 gap-4">
+                    <StatTile size="sm">
+                        <StatTileLabel>Income</StatTileLabel>
+                        <StatTileValue className="text-success">
+                            <AmountDisplay
+                                amountInCents={511600}
+                                currencyCode="EUR"
+                                showSign
+                            />
+                        </StatTileValue>
+                    </StatTile>
+                    <StatTile size="sm">
+                        <StatTileLabel>Expenses</StatTileLabel>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={-391350}
+                                currencyCode="EUR"
+                            />
+                        </StatTileValue>
+                    </StatTile>
+                    <StatTile size="sm">
+                        <StatTileHeader>
+                            <StatTileLabel>Saved</StatTileLabel>
+                            <Badge variant="success">23%</Badge>
+                        </StatTileHeader>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={120250}
+                                currencyCode="EUR"
+                            />
+                        </StatTileValue>
+                    </StatTile>
+                </div>
+            </Specimen>
+            <Specimen label="variant=muted · a grid of tiles">
+                <div className="grid grid-cols-2 gap-3">
+                    <StatTile variant="muted">
+                        <StatTileLabel>Available</StatTileLabel>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={198250}
+                                currencyCode="EUR"
+                            />
+                        </StatTileValue>
+                    </StatTile>
+                    <StatTile variant="muted">
+                        <StatTileLabel>Free</StatTileLabel>
+                        <StatTileValue>
+                            <AmountDisplay
+                                amountInCents={84000}
+                                currencyCode="EUR"
+                            />
+                        </StatTileValue>
+                        <StatTileDescription>
+                            <AmountDisplay
+                                amountInCents={114250}
+                                currencyCode="EUR"
+                            />{' '}
+                            reserved
+                        </StatTileDescription>
+                    </StatTile>
+                </div>
+            </Specimen>
+            <Specimen label="StatTileSkeleton · sm, md, lg withTrend">
+                <div className="flex flex-wrap items-start gap-8">
+                    <StatTileSkeleton size="sm" />
+                    <StatTileSkeleton size="md" />
+                    <StatTileSkeleton size="lg" withTrend />
+                </div>
+            </Specimen>
+        </div>
+    );
+}
+
 const MONTHLY_SPENDING = [
     {
         month: 'Jun',
@@ -181,5 +307,6 @@ export const FINANCE_PREVIEWS: PreviewEntry[] = [
         title: 'Trend indicators',
         Component: TrendIndicators,
     },
+    { id: 'stat-tiles', title: 'Stat tiles', Component: StatTiles },
     { id: 'charts', title: 'Charts', Component: Charts },
 ];
