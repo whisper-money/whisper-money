@@ -278,8 +278,7 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
   `AppLayout`. Each settings section starts with `HeadingSmall`.
 - `AuthLayout` (`layouts/auth-layout.tsx`, built on
   `layouts/auth/auth-simple-layout.tsx`): login, registration and the other
-  auth pages. It is the only auth layout; the unused split and card variants
-  were removed ([#1366](https://github.com/whisper-money/whisper-money/issues/1366)).
+  auth pages. It is the only auth layout.
 - `OnboardingLayout`, `SubscriptionLayout`: the onboarding flow and the
   subscription screens.
 - Don't add a new layout for one page; extend one of these.
