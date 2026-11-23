@@ -179,7 +179,7 @@ function StatTileSkeleton({
       className={className}
       {...props}
     >
-      <Skeleton className="h-3 w-16" />
+      <Skeleton className="h-4 w-16" />
       <Skeleton className={valueSkeletonSizes[resolvedSize]} />
       {withTrend && <Skeleton className="h-4 w-28" />}
     </StatTile>

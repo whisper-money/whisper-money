@@ -314,23 +314,25 @@ function SummaryCards({
                                 {__('Not enough history')}
                             </StatTileValue>
                         ) : (
-                            <StatTileValue className="flex items-center gap-1.5">
-                                <TrendIcon
-                                    className={cn(
-                                        'size-4',
-                                        trend > 0 && 'text-muted-foreground',
-                                        trend < 0 && 'text-success',
-                                        trend === 0 && 'text-muted-foreground',
-                                    )}
-                                />
-                                <span>
+                            <div className="flex flex-wrap items-center gap-x-1.5">
+                                <StatTileValue className="flex items-center gap-1.5">
+                                    <TrendIcon
+                                        className={cn(
+                                            'size-4',
+                                            trend > 0 &&
+                                                'text-muted-foreground',
+                                            trend < 0 && 'text-success',
+                                            trend === 0 &&
+                                                'text-muted-foreground',
+                                        )}
+                                    />
                                     {trend > 0 ? '+' : ''}
                                     {trend}%
-                                </span>
-                                <span className="text-xs font-normal text-muted-foreground">
+                                </StatTileValue>
+                                <span className="text-xs text-muted-foreground">
                                     {__('vs. previous 6 months')}
                                 </span>
-                            </StatTileValue>
+                            </div>
                         )}
                     </StatTile>
                 </CardContent>
