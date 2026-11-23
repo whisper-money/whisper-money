@@ -21,6 +21,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import {
     Sheet,
@@ -703,9 +704,11 @@ function CheckOptions<Id extends string>({
 
     if (options.length === 0) {
         return (
-            <p className="px-6 pb-4 text-sm text-muted-foreground">
-                {__('Nothing to pick yet.')}
-            </p>
+            <EmptyState size="inline">
+                <EmptyStateDescription>
+                    {__('Nothing to pick yet.')}
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 

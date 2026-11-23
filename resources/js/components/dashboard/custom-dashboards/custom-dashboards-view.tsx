@@ -4,6 +4,14 @@ import {
     type SystemWidgetId,
 } from '@/components/dashboard/widgets/registry';
 import { Button } from '@/components/ui/button';
+import {
+    EmptyState,
+    EmptyStateContent,
+    EmptyStateDescription,
+    EmptyStateHeader,
+    EmptyStateMedia,
+    EmptyStateTitle,
+} from '@/components/ui/empty-state';
 import { subscribe } from '@/routes';
 import {
     type DashboardProps,
@@ -284,38 +292,39 @@ function EmptyDashboard({
     onAddUserWidget: (definitionId: string) => void;
 }) {
     return (
-        <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-16 text-center">
-            <LayoutGrid className="size-8 text-muted-foreground" />
-            <div className="flex flex-col gap-1">
-                <p className="font-medium">{__('This dashboard is empty')}</p>
+        <EmptyState>
+            <EmptyStateHeader>
+                <EmptyStateMedia>
+                    <LayoutGrid />
+                </EmptyStateMedia>
+                <EmptyStateTitle>
+                    {__('This dashboard is empty')}
+                </EmptyStateTitle>
                 {canEdit && (
-                    <p className="text-sm text-muted-foreground">
+                    <EmptyStateDescription>
                         {__(
                             'Add the widgets you want to see here, then drag them into place.',
                         )}
-                    </p>
+                    </EmptyStateDescription>
                 )}
                 {!canEdit && !isSharedAccount && (
-                    <p className="text-sm text-muted-foreground">
+                    <EmptyStateDescription>
                         {__('Custom dashboards are part of the Standard plan.')}{' '}
-                        <Link
-                            href={subscribe().url}
-                            className="font-medium text-foreground underline underline-offset-4"
-                        >
-                            {__('See plans')}
-                        </Link>
-                    </p>
+                        <Link href={subscribe().url}>{__('See plans')}</Link>
+                    </EmptyStateDescription>
                 )}
-            </div>
+            </EmptyStateHeader>
             {canEdit && (
-                <AddWidgetMenu
-                    variant="default"
-                    available={missingSystemWidgets([])}
-                    onAdd={onAdd}
-                    userWidgets={userWidgets}
-                    onAddUserWidget={onAddUserWidget}
-                />
+                <EmptyStateContent>
+                    <AddWidgetMenu
+                        variant="default"
+                        available={missingSystemWidgets([])}
+                        onAdd={onAdd}
+                        userWidgets={userWidgets}
+                        onAddUserWidget={onAddUserWidget}
+                    />
+                </EmptyStateContent>
             )}
-        </div>
+        </EmptyState>
     );
 }

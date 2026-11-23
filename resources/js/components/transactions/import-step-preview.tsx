@@ -9,6 +9,7 @@ import { TransactionDescription } from '@/components/transactions/transaction-de
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useLocale } from '@/hooks/use-locale';
 import { type ParsedTransaction } from '@/types/import';
 import { type Transaction } from '@/types/transaction';
@@ -261,9 +262,11 @@ export function ImportStepPreview({
 
                 <div className="max-h-[45vh] overflow-auto">
                     {importable.length === 0 ? (
-                        <p className="border-t px-4 py-6 text-center text-sm text-muted-foreground">
-                            {__('No valid transactions found')}
-                        </p>
+                        <EmptyState size="inline" className="border-t">
+                            <EmptyStateDescription>
+                                {__('No valid transactions found')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     ) : (
                         importable.map(({ transaction, index }) => (
                             <div

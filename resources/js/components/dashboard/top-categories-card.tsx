@@ -13,6 +13,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { useLast30Days } from '@/hooks/use-last-30-days';
 import { categoryChartColor } from '@/lib/chart-colors';
@@ -181,9 +182,11 @@ export function TopCategoriesCard({
                         />
                     ))}
                     {categories.length === 0 && (
-                        <div className="py-8 text-center text-muted-foreground">
-                            {__('No spending data this month')}
-                        </div>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__('No spending data this month')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
                 </div>
             </CardContent>

@@ -11,6 +11,7 @@ import { RarityTag } from '@/components/achievements/rarity-tag';
 import { ShareMedalDialog } from '@/components/achievements/share-medal-dialog';
 import { TrackMedals } from '@/components/achievements/track-medals';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
@@ -159,9 +160,11 @@ function Timeline({ tracks }: { tracks: AchievementTrack[] }) {
 
     if (earned.length === 0) {
         return (
-            <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                {__('Nothing unlocked yet.')}
-            </p>
+            <EmptyState>
+                <EmptyStateDescription>
+                    {__('Nothing unlocked yet.')}
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 
@@ -299,11 +302,13 @@ export default function AchievementsIndex({ overview, tracks }: Props) {
                     </div>
 
                     {overview.unlocked === 0 && (
-                        <p className="mx-auto max-w-160 rounded-lg border border-dashed px-8 py-7 text-center text-sm text-pretty text-muted-foreground">
-                            {__(
-                                'Nothing unlocked yet. Visit streaks unlock the moment you earn them; the rest are checked once a day, and anything you crossed before today unlocks with its real date.',
-                            )}
-                        </p>
+                        <EmptyState className="mx-auto max-w-160">
+                            <EmptyStateDescription>
+                                {__(
+                                    'Nothing unlocked yet. Visit streaks unlock the moment you earn them; the rest are checked once a day, and anything you crossed before today unlocks with its real date.',
+                                )}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
 
                     {view === 'tracks' ? (

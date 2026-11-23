@@ -2,6 +2,7 @@ import {
     index,
     show,
 } from '@/actions/App/Http/Controllers/MonthlySummaryController';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { useLocale } from '@/hooks/use-locale';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -66,11 +67,13 @@ export default function MonthlySummariesIndex({ summaries }: Props) {
                 </div>
 
                 {summaries.length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                        {__(
-                            'Nothing here yet. Your first summary arrives a few days after your first full month.',
-                        )}
-                    </p>
+                    <EmptyState>
+                        <EmptyStateDescription>
+                            {__(
+                                'Nothing here yet. Your first summary arrives a few days after your first full month.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <ul className="divide-y rounded-lg border">
                         {summaries.map((summary) => (

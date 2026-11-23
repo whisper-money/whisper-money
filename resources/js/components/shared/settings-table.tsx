@@ -1,3 +1,4 @@
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     Table,
     TableBody,
@@ -91,9 +92,13 @@ export function SettingsTable<TData>({
                         <TableRow>
                             <TableCell
                                 colSpan={table.getAllColumns().length}
-                                className="h-24 text-center align-middle"
+                                className="p-0 whitespace-normal"
                             >
-                                {emptyMessage}
+                                <EmptyState size="inline">
+                                    <EmptyStateDescription>
+                                        {emptyMessage}
+                                    </EmptyStateDescription>
+                                </EmptyState>
                             </TableCell>
                         </TableRow>
                     )}

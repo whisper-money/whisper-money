@@ -1,3 +1,4 @@
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import * as Icons from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -125,9 +126,11 @@ export function CategoryFacetList({
             />
             <CommandList>
                 {!hasResults && (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                        {__('No category found.')}
-                    </div>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__('No category found.')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 )}
                 {showUncategorizedRow && (
                     <CommandItem

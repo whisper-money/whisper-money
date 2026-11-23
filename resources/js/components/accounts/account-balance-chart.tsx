@@ -28,6 +28,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     convertSingleAccountData,
     useChartViews,
@@ -785,9 +786,11 @@ export function AccountBalanceChart({
                     <CardTitle>{chartTitle}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        {emptyMessage}
-                    </div>
+                    <EmptyState size="inline" className="h-[300px]">
+                        <EmptyStateDescription>
+                            {emptyMessage}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 </CardContent>
             </Card>
         );

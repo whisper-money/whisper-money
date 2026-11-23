@@ -7,9 +7,19 @@ import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { AdaptivePopover } from '@/components/ui/adaptive-popover';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    EmptyState,
+    EmptyStateContent,
+    EmptyStateDescription,
+    EmptyStateHeader,
+    EmptyStateMedia,
+    EmptyStateTitle,
+} from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { LayoutGrid, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 function Headings() {
@@ -77,6 +87,70 @@ function Forms() {
     );
 }
 
+function EmptyStates() {
+    return (
+        <div className="grid w-full gap-6 md:grid-cols-2">
+            <Specimen label="EmptyState: page, with icon, title and action">
+                <EmptyState>
+                    <EmptyStateHeader>
+                        <EmptyStateMedia>
+                            <LayoutGrid />
+                        </EmptyStateMedia>
+                        <EmptyStateTitle>
+                            This dashboard is empty
+                        </EmptyStateTitle>
+                        <EmptyStateDescription>
+                            Add the widgets you want to see here, then drag them
+                            into place.
+                        </EmptyStateDescription>
+                    </EmptyStateHeader>
+                    <EmptyStateContent>
+                        <Button>
+                            <Plus />
+                            Add widget
+                        </Button>
+                    </EmptyStateContent>
+                </EmptyState>
+            </Specimen>
+            <Specimen label="EmptyState: page, one line">
+                <EmptyState>
+                    <EmptyStateDescription>
+                        Nothing here yet. Updates about your money show up here
+                        as they happen.
+                    </EmptyStateDescription>
+                </EmptyState>
+            </Specimen>
+            <Specimen label='EmptyState size="inline", in a Card'>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Top spending categories</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                No spending data this month
+                            </EmptyStateDescription>
+                        </EmptyState>
+                    </CardContent>
+                </Card>
+            </Specimen>
+            <Specimen label='EmptyState size="inline", title and icon tile'>
+                <EmptyState size="inline">
+                    <EmptyStateHeader>
+                        <EmptyStateMedia variant="icon">
+                            <LayoutGrid />
+                        </EmptyStateMedia>
+                        <EmptyStateTitle>No transactions</EmptyStateTitle>
+                        <EmptyStateDescription>
+                            Nothing matches the current filters.
+                        </EmptyStateDescription>
+                    </EmptyStateHeader>
+                </EmptyState>
+            </Specimen>
+        </div>
+    );
+}
+
 function AdaptivePopoverPreview() {
     const [open, setOpen] = useState(false);
 
@@ -95,6 +169,7 @@ function AdaptivePopoverPreview() {
 
 export const PAGE_PATTERN_PREVIEWS: PreviewEntry[] = [
     { id: 'headings', title: 'Headings', Component: Headings },
+    { id: 'empty-states', title: 'Empty states', Component: EmptyStates },
     { id: 'skeletons', title: 'Skeletons', Component: Skeletons },
     { id: 'forms', title: 'Forms', Component: Forms },
     {

@@ -1,6 +1,12 @@
 import { Badge as AppBadge } from '@/components/ui/badge';
 import { Button as AppButton } from '@/components/ui/button';
 import * as AppCard from '@/components/ui/card';
+import {
+    EmptyState as AppEmptyState,
+    EmptyStateDescription as AppEmptyStateDescription,
+    EmptyStateHeader as AppEmptyStateHeader,
+    EmptyStateTitle as AppEmptyStateTitle,
+} from '@/components/ui/empty-state';
 import { Progress as AppProgress } from '@/components/ui/progress';
 import { Separator as AppSeparator } from '@/components/ui/separator';
 import { Skeleton as AppSkeleton } from '@/components/ui/skeleton';
@@ -212,19 +218,21 @@ export function EmptyState({
     description?: unknown;
 }) {
     return (
-        <div
+        <AppEmptyState
             data-slot="widget-empty-state"
-            className={cn(
-                'flex h-full flex-col items-center justify-center gap-1 p-4 text-center',
-                classNameOf(className),
-            )}
+            size="inline"
+            className={cn('h-full gap-1 p-4', classNameOf(className))}
         >
-            {typeof title === 'string' && (
-                <p className="text-sm font-medium">{title}</p>
-            )}
-            {typeof description === 'string' && (
-                <p className="text-sm text-muted-foreground">{description}</p>
-            )}
-        </div>
+            <AppEmptyStateHeader>
+                {typeof title === 'string' && (
+                    <AppEmptyStateTitle>{title}</AppEmptyStateTitle>
+                )}
+                {typeof description === 'string' && (
+                    <AppEmptyStateDescription>
+                        {description}
+                    </AppEmptyStateDescription>
+                )}
+            </AppEmptyStateHeader>
+        </AppEmptyState>
     );
 }

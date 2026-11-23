@@ -24,6 +24,7 @@ import {
 } from '@/components/open-banking/connect-broker-inline';
 import { usePwaConnectNotice } from '@/components/open-banking/pwa-bank-redirect-notice';
 import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import {
     rememberConnectCountry,
@@ -339,9 +340,11 @@ export function ConnectAccountInline({
                             ))}
                         </StepList>
                     ) : (
-                        <p className="py-6 text-center text-sm text-muted-foreground">
-                            {__('No countries found.')}
-                        </p>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__('No countries found.')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
                 </div>
             </StepScreen>
@@ -521,11 +524,13 @@ export function ConnectAccountInline({
                         ))}
                     </StepList>
                 ) : (
-                    <p className="py-6 text-center text-sm text-muted-foreground">
-                        {isLoading
-                            ? __('Loading banks...')
-                            : __('No banks found.')}
-                    </p>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {isLoading
+                                ? __('Loading banks...')
+                                : __('No banks found.')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 )}
 
                 {brokers.length > 0 && (

@@ -2,6 +2,7 @@ import { TransactionList } from '@/components/transactions/transaction-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     Table,
     TableBody,
@@ -429,9 +430,13 @@ function Contributions({
             </CardHeader>
             <CardContent>
                 {inMonth.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-muted-foreground">
-                        {__('Nothing tagged with this goal in this month yet.')}
-                    </p>
+                    <EmptyState size="inline">
+                        <EmptyStateDescription>
+                            {__(
+                                'Nothing tagged with this goal in this month yet.',
+                            )}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 ) : (
                     <TransactionList
                         categories={categories}

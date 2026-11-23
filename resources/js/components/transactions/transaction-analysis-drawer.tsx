@@ -15,6 +15,7 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import {
     Popover,
@@ -684,9 +685,13 @@ export function TransactionAnalysisDrawer({
                     )}
 
                     {!isLoading && !error && !hasTransactions && (
-                        <p className="py-12 text-center text-sm text-muted-foreground">
-                            {__('No transactions match the current filters.')}
-                        </p>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__(
+                                    'No transactions match the current filters.',
+                                )}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
 
                     {!isLoading && !error && data && hasTransactions && (

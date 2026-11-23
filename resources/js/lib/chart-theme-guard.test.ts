@@ -11,14 +11,12 @@
  * Only the files that store or set the theme are allowed to.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
-import { join, relative, resolve } from 'path';
 import { describe, expect, it } from 'vitest';
-
-const jsRoot = resolve(__dirname, '..');
-
-/** Wayfinder's generated (and git-ignored) route helpers. */
-const GENERATED_DIRS = ['actions', 'routes', 'wayfinder'];
+import {
+    findViolations,
+    missingPaths,
+    type ForbiddenPattern,
+} from './source-guard';
 
 /** Relative to resources/js. A trailing slash allows a whole folder. */
 const ALLOWED: readonly string[] = [
@@ -35,7 +33,7 @@ const ALLOWED: readonly string[] = [
     'types/index.d.ts',
 ];
 
-const FORBIDDEN: readonly { pattern: RegExp; what: string }[] = [
+const FORBIDDEN: readonly ForbiddenPattern[] = [
     { pattern: /\bchartColorScheme\b/, what: 'reads chartColorScheme' },
     { pattern: /\bisColorful\b/, what: 'uses an isColorful flag' },
     {
@@ -48,61 +46,15 @@ const FORBIDDEN: readonly { pattern: RegExp; what: string }[] = [
     },
 ];
 
-function collectSourceFiles(dir: string): string[] {
-    return readdirSync(dir).flatMap((entry) => {
-        const path = join(dir, entry);
-
-        if (dir === jsRoot && GENERATED_DIRS.includes(entry)) {
-            return [];
-        }
-
-        if (statSync(path).isDirectory()) {
-            return collectSourceFiles(path);
-        }
-
-        const isSource = /\.(ts|tsx)$/.test(entry);
-        const isTest = /\.test\.(ts|tsx)$/.test(entry);
-
-        return isSource && !isTest ? [path] : [];
-    });
-}
-
-function isAllowed(file: string): boolean {
-    return ALLOWED.some((allowed) =>
-        allowed.endsWith('/') ? file.startsWith(allowed) : file === allowed,
-    );
-}
-
 describe('chart theme guard', () => {
     it('keeps the chart theme decision in CSS', () => {
-        const violations = collectSourceFiles(jsRoot)
-            .map((path) => relative(jsRoot, path))
-            .filter((file) => !isAllowed(file))
-            .flatMap((file) => {
-                const source = readFileSync(join(jsRoot, file), 'utf8');
-
-                return FORBIDDEN.filter(({ pattern }) =>
-                    pattern.test(source),
-                ).map(({ what }) => `${file} ${what}`);
-            });
-
         expect(
-            violations,
+            findViolations(FORBIDDEN, ALLOWED),
             'Use the chart role tokens (lib/chart-colors.ts) instead of reading the chart theme',
         ).toEqual([]);
     });
 
     it('allows only files that exist', () => {
-        const missing = ALLOWED.filter((allowed) => {
-            try {
-                statSync(join(jsRoot, allowed));
-
-                return false;
-            } catch {
-                return true;
-            }
-        });
-
-        expect(missing).toEqual([]);
+        expect(missingPaths(ALLOWED)).toEqual([]);
     });
 });

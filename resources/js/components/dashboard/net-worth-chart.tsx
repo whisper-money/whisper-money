@@ -18,6 +18,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { ChartConfig } from '@/components/ui/chart';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
@@ -514,9 +515,11 @@ export function NetWorthChart({
                     <CardTitle>{__('Net Worth Evolution')}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        {__('No account data available')}
-                    </div>
+                    <EmptyState size="inline" className="h-[300px]">
+                        <EmptyStateDescription>
+                            {__('No account data available')}
+                        </EmptyStateDescription>
+                    </EmptyState>
                 </CardContent>
             </Card>
         );

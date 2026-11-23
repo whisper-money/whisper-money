@@ -6,6 +6,7 @@ import {
 } from '@/actions/App/Http/Controllers/Settings/NotificationPreferenceController';
 import HeadingSmall from '@/components/heading-small';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import {
     Table,
@@ -316,9 +317,15 @@ export default function Notifications({
                                                 colSpan={
                                                     BUDGET_COLUMNS.length + 1
                                                 }
-                                                className="text-center text-sm text-muted-foreground"
+                                                className="p-0 whitespace-normal"
                                             >
-                                                {__('You have no budgets yet.')}
+                                                <EmptyState size="inline">
+                                                    <EmptyStateDescription>
+                                                        {__(
+                                                            'You have no budgets yet.',
+                                                        )}
+                                                    </EmptyStateDescription>
+                                                </EmptyState>
                                             </TableCell>
                                         </TableRow>
                                     )}

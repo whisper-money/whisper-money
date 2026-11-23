@@ -13,6 +13,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { BreakdownData, BreakdownItem } from '@/hooks/use-cashflow-data';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { categoryChartColor } from '@/lib/chart-colors';
@@ -206,9 +207,11 @@ export function BreakdownCard({
                         />
                     ))}
                     {data.data.length === 0 && (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                            {emptyMessage}
-                        </div>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {emptyMessage}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
                 </div>
             </CardContent>

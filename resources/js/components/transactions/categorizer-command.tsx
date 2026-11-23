@@ -6,6 +6,7 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Kbd } from '@/components/ui/kbd';
 import { type AnimationState } from '@/hooks/use-categorize-transactions';
 import {
@@ -95,9 +96,11 @@ export function CategorizerCommand({
 
                 <CommandList className="max-h-64">
                     {visibleCategories.length === 0 && (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                            {__('No categories found.')}
-                        </div>
+                        <EmptyState size="inline">
+                            <EmptyStateDescription>
+                                {__('No categories found.')}
+                            </EmptyStateDescription>
+                        </EmptyState>
                     )}
                     <CommandGroup>
                         {visibleCategories.map((category) => {

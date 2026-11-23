@@ -23,6 +23,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     Select,
     SelectContent,
@@ -167,11 +168,11 @@ export default function ManageAccountsPage({
 
                     <div className="space-y-3">
                         {syncedAccounts.length === 0 ? (
-                            <Card>
-                                <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                            <EmptyState>
+                                <EmptyStateDescription>
                                     {__('No accounts are syncing yet.')}
-                                </CardContent>
-                            </Card>
+                                </EmptyStateDescription>
+                            </EmptyState>
                         ) : (
                             syncedAccounts.map((account) => (
                                 <SyncedAccountCard
@@ -240,9 +241,13 @@ export default function ManageAccountsPage({
                         {hasRefreshed &&
                             !refreshing &&
                             discovered.length === 0 && (
-                                <p className="mt-4 text-sm text-muted-foreground">
-                                    {__('No new accounts available to add.')}
-                                </p>
+                                <EmptyState size="inline" className="mt-4">
+                                    <EmptyStateDescription>
+                                        {__(
+                                            'No new accounts available to add.',
+                                        )}
+                                    </EmptyStateDescription>
+                                </EmptyState>
                             )}
                     </div>
                 </div>

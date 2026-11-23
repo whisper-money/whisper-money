@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     Command,
     CommandEmpty,
@@ -119,9 +120,11 @@ export function MultiSelect({
                         <CommandList>
                             {isTree ? (
                                 visibleOptions.length === 0 && (
-                                    <div className="py-6 text-center text-sm text-muted-foreground">
-                                        {emptyText}
-                                    </div>
+                                    <EmptyState size="inline">
+                                        <EmptyStateDescription>
+                                            {emptyText}
+                                        </EmptyStateDescription>
+                                    </EmptyState>
                                 )
                             ) : (
                                 <CommandEmpty>{emptyText}</CommandEmpty>

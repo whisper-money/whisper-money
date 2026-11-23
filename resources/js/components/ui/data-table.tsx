@@ -23,6 +23,7 @@ import {
 } from '@tanstack/react-virtual';
 
 import { cn } from '@/lib/utils';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import {
     Table,
     TableBody,
@@ -372,7 +373,7 @@ export function DataTable<TData, TValue>({
                             <TableRow>
                                 <TableCell
                                     colSpan={visibleColumnCount}
-                                    className="h-24 text-center align-middle"
+                                    className="p-0 whitespace-normal"
                                     style={
                                         maxHeight
                                             ? {
@@ -381,7 +382,11 @@ export function DataTable<TData, TValue>({
                                             : undefined
                                     }
                                 >
-                                    {emptyMessage}
+                                    <EmptyState size="inline">
+                                        <EmptyStateDescription>
+                                            {emptyMessage}
+                                        </EmptyStateDescription>
+                                    </EmptyState>
                                 </TableCell>
                             </TableRow>
                         )}

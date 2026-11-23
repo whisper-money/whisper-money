@@ -19,6 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -264,9 +265,11 @@ export function ConnectAccountDialog({
                                     },
                                 )}
                                 {filteredInstitutions.length === 0 && (
-                                    <p className="py-4 text-center text-sm text-muted-foreground">
-                                        {__('No banks found.')}
-                                    </p>
+                                    <EmptyState size="inline">
+                                        <EmptyStateDescription>
+                                            {__('No banks found.')}
+                                        </EmptyStateDescription>
+                                    </EmptyState>
                                 )}
                             </div>
 

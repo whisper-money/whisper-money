@@ -205,9 +205,11 @@ describe('ResponsiveTransactionTable', () => {
     it('closes an empty inset list with its own hairline on a phone', () => {
         render(<TransactionsList data={[]} />);
 
-        expect(screen.getByText('No transactions found.').className).toContain(
-            'max-md:border-b',
-        );
+        expect(
+            screen
+                .getByText('No transactions found.')
+                .closest('[data-slot="empty-state"]')?.className,
+        ).toContain('max-md:border-b');
     });
 
     it('lets the inset list grow with the page on a phone instead of scrolling a box', () => {

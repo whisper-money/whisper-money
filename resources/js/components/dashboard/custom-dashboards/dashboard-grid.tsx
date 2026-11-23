@@ -5,6 +5,7 @@ import {
 import { type WidgetSize } from '@/components/dashboard/widgets/types';
 import { SortableGrid } from '@/components/sortable-grid';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { type DashboardProps } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
@@ -199,9 +200,14 @@ export function EditableDashboardGrid({
                                     data={data}
                                     className="peer empty:hidden"
                                 />
-                                <p className="hidden flex-1 items-center justify-center text-center text-sm text-muted-foreground peer-empty:flex">
-                                    {__('Nothing to show here yet.')}
-                                </p>
+                                <EmptyState
+                                    size="inline"
+                                    className="hidden flex-1 peer-empty:flex"
+                                >
+                                    <EmptyStateDescription>
+                                        {__('Nothing to show here yet.')}
+                                    </EmptyStateDescription>
+                                </EmptyState>
                             </>
                         ) : (
                             <div className="min-h-0 flex-1">

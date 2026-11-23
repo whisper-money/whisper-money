@@ -119,7 +119,7 @@ is on.
 | --------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `font-sans` (default) | IBM Plex Sans          | Everything.                                                                                                                                                                  |
 | `font-mono`           | Google Sans Code       | Codes, IDs, the app name in the sidebar, aligned figures (`AmountDisplay monospace`).                                                                                        |
-| `font-heading`        | IBM Plex Serif, italic | Display headings: page titles in onboarding, summaries and empty states, section titles on `/design-system`. A plain CSS class in `app.css` (base layer), not a theme token. |
+| `font-heading`        | IBM Plex Serif, italic | Display headings: page titles in onboarding and summaries, section titles on `/design-system`. A plain CSS class in `app.css` (base layer), not a theme token. |
 
 Sizes are Tailwind's default scale (`text-xs` … `text-4xl`). Body text is
 `text-sm` in dense UI (tables, cards, forms) and `text-base` in reading
@@ -333,6 +333,39 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
 - There is no shared page header yet (debt item e); until there is, match the
   `<h1>` of a sibling page.
 
+### Empty states
+
+A list, table, chart or page with nothing to show renders `EmptyState`
+(`components/ui/empty-state.tsx`), never its own centred `<p>`. Its API
+mirrors shadcn's `Empty`, so compose only the parts you need:
+
+```tsx
+<EmptyState size="inline">
+    <EmptyStateDescription>{__('No labels found.')}</EmptyStateDescription>
+</EmptyState>
+```
+
+- `size="page"` (the default): the state stands alone on a page or in a
+  dashboard slot, inside a dashed frame (notifications, summaries,
+  achievements, an empty custom dashboard).
+- `size="inline"`: it sits inside something that already frames it: a
+  `Card`, a table cell, a drawer, a dialog, a popover or a picker's list. No
+  frame, less padding.
+- Parts: `EmptyStateHeader` groups `EmptyStateMedia` (a lucide icon, muted;
+  `variant="icon"` puts it on a tile), `EmptyStateTitle` (`asChild` to make it
+  the page's `<h1>`) and `EmptyStateDescription` (links inside it are styled).
+  `EmptyStateContent` holds the actions.
+- Size and place it with `className`/`style` (a chart's height, `border-t`
+  in a list, tighter padding in a menu); don't restyle its colors. A title
+  that is the page's `<h1>` may take the page heading size.
+- Keep the copy short and say what fills the space. Search pickers built on
+  cmdk keep `CommandEmpty`.
+- `lib/empty-state-guard.test.ts` fails on the old shape: a centred
+  (`text-center`, `justify-center`) or dashed element whose first child is
+  `__('No …')`, `__('Nothing …')`, `__('You have no …')`, `emptyMessage` or
+  `emptyText`. It reads markup, so it can't see every variant: the rule is
+  the rule even where the guard is blind.
+
 ### Skeletons
 
 Loading states (deferred props, lazy data) use `Skeleton` blocks shaped like
@@ -375,6 +408,7 @@ switch the comboboxes use. Use these instead of writing the switch again.
 | `gap-*` between siblings                              | Margins between siblings                                          |
 | `mx-auto max-w-page` for page width                   | A one-off `max-w-[…]`                                             |
 | `Skeleton` shaped like the content                    | A centred spinner for page content                                |
+| `<EmptyState>` for "nothing here yet"                 | A hand-rolled `<p className="py-8 text-center text-muted-foreground">` |
 | Check light and dark                                  | Tokens with a `dark:` duplicate, or palette classes without one   |
 | Let the ESLint guard catch a stray palette class      | `text-green-*`, `bg-red-*`, `border-amber-*`… anywhere in `resources/js`: `bun run lint` fails on them (`no-restricted-syntax` in `eslint.config.js`) |
 
@@ -389,7 +423,7 @@ stacked PR in the design-system stack. Counts were measured over
 | a   | ~~Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground`~~ **Resolved** by t5a ([#1372](https://github.com/whisper-money/whisper-money/pull/1372), financial meaning) and t5b (feedback and status) | Money, trends, budgets and goals use `success` / `warning` / `muted-foreground`; form errors, alerts, destructive buttons and menu items, billing and connection badges, import and onboarding states use `destructive` / `warning` / `success`, through the `Badge` `success`/`warning` and `Alert` `warning` variants where they fit. The ESLint `no-restricted-syntax` guard in `eslint.config.js` fails on any `-(green\|red\|emerald\|rose\|amber)-<digit>` class across `resources/js`. Allowlisted: tests, the marketing and legal pages and their components, and the user-chosen category and label palettes (`types/category*`, `types/label*`). Disabled inline with a reason: the cashflow block tones (`lib/cashflow-block.ts`, `SAVINGS_TONE` / `INVESTMENTS_TONE`, the `free` segment), a data-viz palette that belongs on chart tokens, the `user-info.tsx` avatar tints, an identity color, and the decorative AI gradient of `ai-consent-banner.tsx`. The dark `--destructive` was raised to a readable red so `text-destructive` works in both themes | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
 | b   | ~~Components branching on the chart theme (`isColorful` in `useChartColors`)~~ **Resolved** | `useChartColors` is gone: charts draw with the [chart role tokens](#chart-role-tokens) through `lib/chart-colors.ts`, and `lib/chart-theme-guard.test.ts` fails if code reads `chartColorScheme` or compares against a theme | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
 | c   | ~~Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`~~ **Resolved** | Money renders through `AmountDisplay`, or `useFormatAmount()` where it must be a string, so privacy mode masks it everywhere (it leaked in the onboarding reveal, the split and merge dialogs, chart tooltips and axes, import previews…); `lib/amount-display-guard.test.ts` fails on `formatCurrency(`, `style: 'currency'` or `notation: 'compact'` outside its allowlist | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
-| d   | No shared `EmptyState`                                                                                               | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx`                                                                                                                                                                   | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
+| d   | ~~No shared `EmptyState`~~ **Resolved** | `components/ui/empty-state.tsx` (shadcn's `Empty` API: `EmptyState`, `EmptyStateHeader`, `EmptyStateMedia`, `EmptyStateTitle`, `EmptyStateDescription`, `EmptyStateContent`; `size` `page` or `inline`) replaced 42 hand-rolled blocks across pages, cards, charts, drawers, pickers, `DataTable`, `SettingsTable` and the widget SDK's `EmptyState`; see [Empty states](#empty-states). `lib/empty-state-guard.test.ts` fails on a centred or dashed block around `__('No …')` / `emptyMessage` copy, allowlisting only the marketing pages | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
 | e   | No shared `PageHeader`                                                                                               | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx`                                                                                                                                                                               | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
 | f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |
 | g   | Raw `rounded-xl border` / `rounded-lg border` divs instead of `<Card>`                                               | 71 files vs 39 importing `Card`. E.g. `pages/budgets/show.tsx`, `pages/notifications/index.tsx`                                                                                                                                                                                                         | [#1364](https://github.com/whisper-money/whisper-money/issues/1364) |

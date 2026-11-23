@@ -7,6 +7,7 @@ import {
     type PopoverSide,
 } from '@/components/ui/adaptive-popover';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { type NotificationItem, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -85,11 +86,13 @@ export function NotificationBell({
                 )}
             </div>
             {items.length === 0 ? (
-                <p className="m-3 rounded-lg border border-dashed px-5 py-7 text-center text-[13px] text-pretty text-muted-foreground">
-                    {__(
-                        'Nothing here yet. Updates about your money show up here as they happen.',
-                    )}
-                </p>
+                <EmptyState size="inline">
+                    <EmptyStateDescription>
+                        {__(
+                            'Nothing here yet. Updates about your money show up here as they happen.',
+                        )}
+                    </EmptyStateDescription>
+                </EmptyState>
             ) : (
                 <>
                     <NotificationList

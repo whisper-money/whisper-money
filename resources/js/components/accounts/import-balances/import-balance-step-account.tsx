@@ -1,5 +1,6 @@
 import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { type Account } from '@/types/account';
@@ -21,11 +22,11 @@ export function ImportBalanceStepAccount({
 }: ImportBalanceStepAccountProps) {
     if (accounts.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-                <p className="text-sm text-muted-foreground">
+            <EmptyState size="inline">
+                <EmptyStateDescription>
                     {__('No accounts found. Please create an account first.')}
-                </p>
-            </div>
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 

@@ -1,5 +1,6 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
 import { categoryChartColor, chartRoleColors } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
@@ -467,15 +468,11 @@ export function SankeyChart({
 
     if (isEmpty) {
         return (
-            <div
-                className={cn(
-                    'flex items-center justify-center text-muted-foreground',
-                    className,
-                )}
-                style={{ height }}
-            >
-                {__('No cashflow data for this period')}
-            </div>
+            <EmptyState size="inline" className={className} style={{ height }}>
+                <EmptyStateDescription>
+                    {__('No cashflow data for this period')}
+                </EmptyStateDescription>
+            </EmptyState>
         );
     }
 
