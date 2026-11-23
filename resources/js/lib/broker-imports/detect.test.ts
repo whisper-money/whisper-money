@@ -1,4 +1,5 @@
 import { detectBrokerFile } from '@/lib/broker-imports/detect';
+import { isMyInvestorOrdersList } from '@/lib/broker-imports/myinvestor-orders';
 import { fixtureGrid } from '@/lib/broker-imports/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -146,5 +147,35 @@ describe('detectBrokerFile', () => {
                 ['COMPRA', 'IE0000000101', 'FONDO DEMO', '100,00'],
             ]),
         ).toBeNull();
+    });
+});
+
+describe('isMyInvestorOrdersList', () => {
+    it('recognises the orders list, which no importer reads', async () => {
+        const grid = await fixtureGrid('myinvestor-orders.xlsx');
+
+        expect(isMyInvestorOrdersList(grid)).toBe(true);
+        expect(detectBrokerFile(grid)).toBeNull();
+    });
+
+    it.each([
+        'myinvestor-salida.xls',
+        'myinvestor-cash.xlsx',
+        'trade-republic-sample.csv',
+        'banktrack-sample.csv',
+    ])('does not take %s for it', async (name) => {
+        expect(isMyInvestorOrdersList(await fixtureGrid(name))).toBe(false);
+    });
+
+    it('needs the order date, ISIN and estimated amount columns', () => {
+        expect(
+            isMyInvestorOrdersList([
+                ['Fecha de la orden', 'ISIN', 'Importe estimado'],
+            ]),
+        ).toBe(true);
+        expect(isMyInvestorOrdersList([['Fecha', 'ISIN', 'Importe']])).toBe(
+            false,
+        );
+        expect(isMyInvestorOrdersList([])).toBe(false);
     });
 });

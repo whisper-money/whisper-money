@@ -107,6 +107,12 @@ Es la exportación de las órdenes de tu cartera de valores y fondos, que MyInve
 descarga como `salida.xls` (o `salida.xlsx`). Súbela tal cual, aunque al abrirla
 las cabeceras no cuadren con las columnas: se lee igual.
 
+El listado de **Órdenes** de MyInvestor no es este archivo y no sirve. Su
+exportación trae las columnas **Fecha de la orden**, **ISIN**, **Importe
+estimado**, **Nº de participaciones** y **Estado**, pero no el tipo de cada
+orden, así que no se distingue una compra de un reembolso. Si lo subes, el panel
+te avisa de que necesitas `salida.xls`.
+
 Qué se lee de cada operación:
 
 - **Compras y suscripciones** suman a lo invertido; **ventas y reembolsos**
@@ -253,6 +259,12 @@ Los dos, si tienes cuenta y cartera. El **Resumen de movimientos** trae el
 efectivo de la cuenta remunerada, y el archivo de operaciones de valores trae lo
 invertido en fondos, acciones y planes de pensiones. Si solo usas la cuenta, basta
 con el primero.
+
+### ¿Puedo importar el listado de Órdenes de MyInvestor?
+
+No. Ese listado no dice si cada orden es una compra o un reembolso, así que no se
+puede saber cuánto invertiste. Descarga el archivo de operaciones de valores
+(`salida.xls`) y súbelo en su lugar.
 
 ### ¿Por qué la cartera vale lo mismo que lo invertido?
 

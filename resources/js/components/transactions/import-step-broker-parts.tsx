@@ -440,6 +440,30 @@ export function BrokerWarning({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Says the file picked is MyInvestor's orders list, which carries no order
+ * type, so the securities operations export has to be uploaded instead.
+ */
+export function MyInvestorOrdersWarning() {
+    return (
+        <BrokerWarning>
+            <span className="flex flex-col gap-1">
+                <span>
+                    {__(
+                        "This is MyInvestor's orders list. It doesn't say whether each order is a buy or a redemption, so it can't be imported. Download the securities operations export (salida.xls) and upload that instead.",
+                    )}
+                </span>
+                <BrokerGuideLink
+                    kind="myinvestor_securities"
+                    className="self-start"
+                >
+                    {__('Which MyInvestor file to download')}
+                </BrokerGuideLink>
+            </span>
+        </BrokerWarning>
+    );
+}
+
+/**
  * Says the account the cash goes to is connected to the bank, whose sync
  * brings its movements and balance, so the file's are left out.
  */

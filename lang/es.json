@@ -4059,5 +4059,7 @@
     "Connect here anyway": "Conectar aquí igualmente",
     "Reconnect :bank": "Reconectar :bank",
     "We'll take you to your bank to renew access.": "Te llevamos a tu banco para renovar el permiso.",
-    "Reconnect here anyway": "Reconectar aquí igualmente"
+    "Reconnect here anyway": "Reconectar aquí igualmente",
+    "This is MyInvestor's orders list. It doesn't say whether each order is a buy or a redemption, so it can't be imported. Download the securities operations export (salida.xls) and upload that instead.": "Este es el listado de órdenes de MyInvestor. No indica si cada orden es una compra o un reembolso, así que no se puede importar. Descarga la exportación de operaciones de valores y fondos (salida.xls) y súbela en su lugar.",
+    "Which MyInvestor file to download": "Qué archivo de MyInvestor descargar"
 }

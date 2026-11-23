@@ -2,6 +2,7 @@ import { SyncedBalanceNotice } from '@/components/accounts/synced-balance-notice
 import { AiColumnDetection } from '@/components/ai-column-detection';
 import AlertError from '@/components/alert-error';
 import { ImportStepUpload } from '@/components/import-step-upload';
+import { MyInvestorOrdersWarning } from '@/components/transactions/import-step-broker-parts';
 import {
     Drawer,
     DrawerContent,
@@ -16,6 +17,7 @@ import {
     BALANCE_FIELDS,
     suggestedBalanceMapping,
 } from '@/lib/ai-import-mapping';
+import { isMyInvestorOrdersFile } from '@/lib/broker-imports/myinvestor-orders';
 import { describeColumns } from '@/lib/column-shape';
 import {
     detectDateFormat,
@@ -96,8 +98,13 @@ export function ImportBalancesDrawer({
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
-    const { locale } = usePage<SharedData>().props;
+    const { locale, features } = usePage<SharedData>().props;
+    const brokerImportsEnabled = features?.brokerImports === true;
     const [isImporting, setIsImporting] = useState(false);
+    // MyInvestor's orders list was picked: it holds orders, not balances, and
+    // the broker import cannot read it either, so the upload step says which
+    // file to download instead of mapping its columns.
+    const [pickedOrdersList, setPickedOrdersList] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -161,6 +168,7 @@ export function ImportBalancesDrawer({
             });
             setIsImporting(false);
             setError(null);
+            setPickedOrdersList(false);
             setSelectedAccount(null);
             setImportProgress(0);
             setImportTotal(0);
@@ -295,6 +303,7 @@ export function ImportBalancesDrawer({
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
+        setPickedOrdersList(false);
         const token = ai.begin();
 
         if (!file) {
@@ -305,6 +314,12 @@ export function ImportBalancesDrawer({
                 columnHeaders: [],
                 columnOptions: [],
             }));
+            return;
+        }
+
+        if (brokerImportsEnabled && (await isMyInvestorOrdersFile(file))) {
+            setPickedOrdersList(true);
+
             return;
         }
 
@@ -754,6 +769,12 @@ export function ImportBalancesDrawer({
                             <AlertError errors={[error]} />
                         </div>
                     )}
+                    {pickedOrdersList &&
+                        state.step === BalanceImportStep.UploadFile && (
+                            <div className="mt-4">
+                                <MyInvestorOrdersWarning />
+                            </div>
+                        )}
                     {/* empty:hidden keeps the margin off the steps that
                         render no notice: a manual account, and the import
                         itself. */}

@@ -573,6 +573,66 @@ describe('ImportTransactionsDrawer with broker imports on', () => {
             expect(checkDuplicates).not.toHaveBeenCalled();
         });
 
+        describe("the orders list, which isn't the securities export", () => {
+            const warning = /This is MyInvestor's orders list/;
+
+            function expectGuideLink() {
+                expect(
+                    screen
+                        .getByRole('link', {
+                            name: 'Which MyInvestor file to download',
+                        })
+                        .getAttribute('href'),
+                ).toBe(
+                    `${documentation.show.url('transactions/import-from-a-broker')}#myinvestor`,
+                );
+            }
+
+            it('says which file to download instead of asking for an account', async () => {
+                renderDrawer([checking]);
+
+                fireEvent.click(
+                    await screen.findByText(
+                        "Upload the file and we'll create it",
+                    ),
+                );
+                upload('myinvestor-orders.xlsx');
+
+                expect(await screen.findByText(warning)).not.toBeNull();
+                expectGuideLink();
+                expect(
+                    screen.queryByText(/Pick the account this file belongs to/),
+                ).toBeNull();
+                expect(screen.queryByRole('radio')).toBeNull();
+                expect(
+                    (
+                        screen.getByRole('button', {
+                            name: 'Next',
+                        }) as HTMLButtonElement
+                    ).disabled,
+                ).toBe(true);
+            });
+
+            it('says so instead of mapping its columns when an account was picked', async () => {
+                renderDrawer([checking]);
+
+                fireEvent.click(await screen.findByRole('radio'));
+                fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+                upload('myinvestor-orders.xlsx');
+
+                expect(await screen.findByText(warning)).not.toBeNull();
+                expectGuideLink();
+                expect(screen.queryByText('Map Columns')).toBeNull();
+                expect(
+                    (
+                        screen.getByRole('button', {
+                            name: 'Next',
+                        }) as HTMLButtonElement
+                    ).disabled,
+                ).toBe(true);
+            });
+        });
+
         it('picks the portfolio account of the last import again', async () => {
             const portfolio: Account = {
                 ...checking,

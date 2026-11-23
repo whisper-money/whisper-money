@@ -108,6 +108,12 @@ MyInvestor downloads as `salida.xls` (or `salida.xlsx`). Upload it as it is, eve
 if its headers don't line up with the columns when you open it: it is read just
 the same.
 
+MyInvestor's **Órdenes** (orders) list isn't this file and won't work. Its export
+has the columns **Fecha de la orden**, **ISIN**, **Importe estimado**, **Nº de
+participaciones** and **Estado**, but not the type of each order, so a buy can't
+be told from a redemption. If you upload it, the drawer tells you that you need
+`salida.xls` instead.
+
 What is read from each operation:
 
 - **Buys and subscriptions** add to what was invested; **sells and redemptions**
@@ -256,6 +262,12 @@ Both, if you have an account and a portfolio. **Resumen de movimientos** brings
 the current account's cash, and the securities operations file brings what you
 invested in funds, stocks and pension plans. If you only use the account, the
 first one is enough.
+
+### Can I import MyInvestor's Órdenes list?
+
+No. That list doesn't say whether each order is a buy or a redemption, so what
+you invested can't be worked out. Download the securities operations file
+(`salida.xls`) and upload that instead.
 
 ### Why is the portfolio worth exactly what I invested?
 
