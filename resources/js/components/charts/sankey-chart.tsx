@@ -1,7 +1,6 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import { usePrivacyMode } from '@/contexts/privacy-mode-context';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
-import { useLocale } from '@/hooks/use-locale';
 import { categoryChartColor, chartRoleColors } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
 import {
@@ -10,7 +9,6 @@ import {
     groupSmallCategories,
 } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
@@ -118,18 +116,11 @@ export function SankeyChart({
         Record<string, SankeyData>
     >({});
     const containerRef = useRef<HTMLDivElement>(null);
-    const locale = useLocale();
-    const { isPrivacyModeEnabled } = usePrivacyMode();
     const { cashflowIncomeColor, cashflowExpenseColor } = chartRoleColors;
 
     const periodKey = period
         ? `${period.from.getTime()}-${period.to.getTime()}`
         : '';
-
-    const maskIfPrivate = (value: number): string => {
-        const formatted = formatCurrency(value, currency, locale, 0, 0);
-        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
-    };
 
     const expandedId = expanded?.id ?? null;
     const expandedKind = expanded?.kind ?? null;
@@ -677,7 +668,12 @@ export function SankeyChart({
                             )}
                         </div>
                         <span className="text-[11px] text-muted-foreground">
-                            {maskIfPrivate(node.amount)}
+                            <AmountDisplay
+                                amountInCents={node.amount}
+                                currencyCode={currency}
+                                minimumFractionDigits={0}
+                                maximumFractionDigits={0}
+                            />
                             {/* A share gives no amount away, so privacy mode
                                 leaves it readable — it is what keeps the chart
                                 useful with the numbers masked. */}

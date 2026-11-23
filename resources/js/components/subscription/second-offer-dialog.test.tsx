@@ -2,6 +2,10 @@ import { pricingFixture as pricing } from '@/lib/pricing-fixture';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const mocks = vi.hoisted(() => ({
     captureEvent: vi.fn(),
     post: vi.fn(() => Promise.resolve({})),

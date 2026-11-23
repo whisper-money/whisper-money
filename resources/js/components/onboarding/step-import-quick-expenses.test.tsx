@@ -2,6 +2,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepImportQuickExpenses } from './step-import-quick-expenses';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const { post, captureEvent, isMobile } = vi.hoisted(() => ({
     post: vi.fn(),
     captureEvent: vi.fn(),

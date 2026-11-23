@@ -14,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import {
     buildMappingReport,
@@ -31,11 +32,7 @@ import {
     type RowProblem,
     type TypeValueCount,
 } from '@/types/import';
-import {
-    currencyDecimals,
-    formatCurrency,
-    toMajorUnits,
-} from '@/utils/currency';
+import { currencyDecimals, toMajorUnits } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, Check, XCircle } from 'lucide-react';
@@ -396,6 +393,7 @@ export function ImportStepMapping({
     aiDetection,
 }: ImportStepMappingProps) {
     const locale = useLocale();
+    const { formatAmount, maskAmount } = useFormatAmount();
     const [optionalOpen, setOptionalOpen] = useState(false);
     const [problemsOpen, setProblemsOpen] = useState(false);
 
@@ -491,11 +489,13 @@ export function ImportStepMapping({
     // range is shown as bare numbers rather than claiming the account's.
     const formatRangeAmount = (cents: number) =>
         columnMapping.currency
-            ? new Intl.NumberFormat(locale, {
-                  minimumFractionDigits: currencyDecimals(currencyCode),
-                  maximumFractionDigits: currencyDecimals(currencyCode),
-              }).format(toMajorUnits(cents, currencyCode))
-            : formatCurrency(cents, currencyCode, locale);
+            ? maskAmount(
+                  new Intl.NumberFormat(locale, {
+                      minimumFractionDigits: currencyDecimals(currencyCode),
+                      maximumFractionDigits: currencyDecimals(currencyCode),
+                  }).format(toMajorUnits(cents, currencyCode)),
+              )
+            : formatAmount(cents, currencyCode);
 
     const amountRangeSample = report?.amountRange
         ? `${formatRangeAmount(report.amountRange.min)} → ${formatRangeAmount(report.amountRange.max)}`

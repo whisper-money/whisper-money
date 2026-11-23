@@ -12,14 +12,14 @@ import {
     StepFilled,
     StepScreen,
 } from '@/components/onboarding/step-screen';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Progress } from '@/components/ui/progress';
-import { useLocale } from '@/hooks/use-locale';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { captureEvent } from '@/lib/posthog';
 import { type SharedData } from '@/types';
 import { type UUID } from '@/types/uuid';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import axios from 'axios';
@@ -295,13 +295,18 @@ function GuessCounter({
     guess: number;
     currencyCode: string;
 }) {
-    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const money = (amount: number) =>
-        formatCurrency(amount, currencyCode, locale, 0, 0);
+        formatAmount(amount, currencyCode, { fractionDigits: 0 });
     const strong = (
-        <span className="font-semibold text-foreground tabular-nums">
-            {money(total)}
-        </span>
+        <AmountDisplay
+            amountInCents={total}
+            currencyCode={currencyCode}
+            minimumFractionDigits={0}
+            maximumFractionDigits={0}
+            className="text-foreground tabular-nums"
+            weight="semibold"
+        />
     );
     const past = total >= guess;
     const percentage = Math.min(100, Math.round((total / guess) * 100));

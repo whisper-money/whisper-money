@@ -4,6 +4,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StepAccounts } from './step-accounts';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
+vi.mock('@/hooks/use-locale', () => ({
+    useLocale: () => 'en-US',
+}));
+
 vi.mock('@/components/accounts/bank-combobox', () => ({
     BankCombobox: () => null,
 }));

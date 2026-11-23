@@ -5,6 +5,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepImportTransactions } from './step-import-transactions';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const {
     captureEvent,
     checkDuplicates,

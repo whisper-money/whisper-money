@@ -22,6 +22,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { categoryChartColor } from '@/lib/chart-colors';
 import {
@@ -1264,6 +1265,7 @@ function OverTimeChart({
     locale: string;
     mode: BoundedMode;
 }) {
+    const { maskAmount } = useFormatAmount();
     const cumulativeKey =
         mode === 'income' ? 'cumulative_net' : 'cumulative_expense';
     const cumulativeLabel =
@@ -1294,7 +1296,7 @@ function OverTimeChart({
                         axisLine={false}
                         width={48}
                         tickFormatter={(value) =>
-                            compactAmount(value, locale, currency)
+                            maskAmount(compactAmount(value, locale, currency))
                         }
                     />
                     <Tooltip
@@ -1441,6 +1443,7 @@ function MonthlyTrendChart({
     showsIncome: boolean;
     firstDate: string | null;
 }) {
+    const { maskAmount } = useFormatAmount();
     const config: ChartConfig = {
         expense: { label: __('Expenses'), color: 'var(--color-chart-5)' },
         ...(showsIncome
@@ -1470,7 +1473,7 @@ function MonthlyTrendChart({
                         axisLine={false}
                         width={48}
                         tickFormatter={(value) =>
-                            compactAmount(value, locale, currency)
+                            maskAmount(compactAmount(value, locale, currency))
                         }
                     />
                     <Tooltip
@@ -1832,6 +1835,7 @@ function HorizontalBarBreakdown({
     locale: string;
     color: string;
 }) {
+    const { maskAmount } = useFormatAmount();
     const config: ChartConfig = {
         amount: { label: __('Spent'), color },
     };
@@ -1853,7 +1857,9 @@ function HorizontalBarBreakdown({
                             type="number"
                             hide
                             tickFormatter={(value) =>
-                                compactAmount(value, locale, currency)
+                                maskAmount(
+                                    compactAmount(value, locale, currency),
+                                )
                             }
                         />
                         <YAxis

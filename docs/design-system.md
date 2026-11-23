@@ -253,10 +253,19 @@ renders; don't add it again).
   currency's **minor units**, which are not always cents (1 for JPY/COP, 1000
   for KWD, 10⁸ for BTC): `formatCurrency` resolves the scale from the code.
 - `AmountDisplay` masks digits when privacy mode is on (`usePrivacyMode`), so
-  you get masking for free. When you must produce a string yourself (a chart
-  axis, a tooltip, an `aria-label`), format with `formatCurrency` and pass it
-  through `maskDigits` when `isPrivacyModeEnabled` is true.
-  `PrivacyRevealScope` lets one block reveal its amounts while privacy mode
+  you get masking for free. Anything that renders a node (a list row, a
+  tooltip row, a `StepFilled` value) uses it.
+- When the amount has to be a string (a translated sentence, an `aria-label`,
+  a `title`, a chart tick or `valueFormatter`), use `hooks/use-format-amount.ts`:
+  `const { formatAmount, maskAmount } = useFormatAmount()`.
+  `formatAmount(amount, currencyCode, { fractionDigits })` formats and masks
+  like `AmountDisplay`; `maskAmount(text)` masks a number you formatted
+  yourself (a compact axis tick from `formatCompactCurrency`). Never call
+  `formatCurrency` or `Intl.NumberFormat({ style: 'currency' })` from a
+  component: `lib/amount-display-guard.test.ts` fails on it outside an
+  allowlist that gives each exception its reason (Whisper Money's own prices,
+  the amount input, the onboarding guess slider, marketing pages).
+- `PrivacyRevealScope` lets one block reveal its amounts while privacy mode
   stays on.
 - **Color policy for amounts**: income in `text-success` with a `+` sign
   (`showSign`); expenses in the default foreground color with their `−` sign.
@@ -378,7 +387,7 @@ stacked PR in the design-system stack. Counts were measured over
 | --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | a   | ~~Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground`~~ **Resolved** by t5a ([#1372](https://github.com/whisper-money/whisper-money/pull/1372), financial meaning) and t5b (feedback and status) | Money, trends, budgets and goals use `success` / `warning` / `muted-foreground`; form errors, alerts, destructive buttons and menu items, billing and connection badges, import and onboarding states use `destructive` / `warning` / `success`, through the `Badge` `success`/`warning` and `Alert` `warning` variants where they fit. The ESLint `no-restricted-syntax` guard in `eslint.config.js` fails on any `-(green\|red\|emerald\|rose\|amber)-<digit>` class across `resources/js`. Allowlisted: tests, the marketing and legal pages and their components, and the user-chosen category and label palettes (`types/category*`, `types/label*`). Disabled inline with a reason: the cashflow block tones (`lib/cashflow-block.ts`, `SAVINGS_TONE` / `INVESTMENTS_TONE`, the `free` segment), a data-viz palette that belongs on chart tokens, the `user-info.tsx` avatar tints, an identity color, and the decorative AI gradient of `ai-consent-banner.tsx`. The dark `--destructive` was raised to a readable red so `text-destructive` works in both themes | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
 | b   | ~~Components branching on the chart theme (`isColorful` in `useChartColors`)~~ **Resolved** | `useChartColors` is gone: charts draw with the [chart role tokens](#chart-role-tokens) through `lib/chart-colors.ts`, and `lib/chart-theme-guard.test.ts` fails if code reads `chartColorScheme` or compares against a theme | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
-| c   | Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`                                      | 42 `.tsx` files (vs 41 using `AmountDisplay`). E.g. `components/onboarding/step-reveal.tsx`, `components/transactions/split-transaction-dialog.tsx`, `pages/savings-goals/show.tsx`                                                                                                                     | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
+| c   | ~~Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`~~ **Resolved** | Money renders through `AmountDisplay`, or `useFormatAmount()` where it must be a string, so privacy mode masks it everywhere (it leaked in the onboarding reveal, the split and merge dialogs, chart tooltips and axes, import previews…); `lib/amount-display-guard.test.ts` fails on `formatCurrency(` or `style: 'currency'` outside its allowlist | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
 | d   | No shared `EmptyState`                                                                                               | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx`                                                                                                                                                                   | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
 | e   | No shared `PageHeader`                                                                                               | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx`                                                                                                                                                                               | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |
 | f   | No generic `StatTile`                                                                                                | Per-feature cards: `components/dashboard/cashflow-summary-card.tsx`, `account-balance-card.tsx`, `monthly-savings-dashboard-card.tsx`                                                                                                                                                                   | [#1363](https://github.com/whisper-money/whisper-money/issues/1363) |

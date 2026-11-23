@@ -14,6 +14,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +42,6 @@ import {
     balanceTermCapitalized,
     supportsInvestedAmount,
 } from '@/types/account';
-import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -89,8 +89,12 @@ export function BalancesModal({
         useState<AccountBalance | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const formatBalance = (valueInCents: number) =>
-        formatCurrency(valueInCents, account.currency_code, locale);
+    const formatBalance = (valueInCents: number) => (
+        <AmountDisplay
+            amountInCents={valueInCents}
+            currencyCode={account.currency_code}
+        />
+    );
 
     const showInvestedAmount = supportsInvestedAmount(account);
     const isLoan = account.type === 'loan';

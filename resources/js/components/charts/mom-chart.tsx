@@ -1,5 +1,6 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { ChangeDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,7 @@ export function MoMChart({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * minBarWidth;
     const locale = useLocale();
+    const { maskAmount } = useFormatAmount();
 
     useEffect(() => {
         if (scrollContainerRef.current) {
@@ -122,12 +124,14 @@ export function MoMChart({
                     <YAxis
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value: number) => {
-                            return new Intl.NumberFormat(locale, {
-                                notation: 'compact',
-                                compactDisplay: 'short',
-                            }).format(toMajorUnits(value, currencyCode));
-                        }}
+                        tickFormatter={(value: number) =>
+                            maskAmount(
+                                new Intl.NumberFormat(locale, {
+                                    notation: 'compact',
+                                    compactDisplay: 'short',
+                                }).format(toMajorUnits(value, currencyCode)),
+                            )
+                        }
                         width={50}
                     />
 

@@ -12,6 +12,7 @@ import {
 } from '@/components/onboarding/step-screen';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import {
     useOnboardingSummary,
@@ -20,7 +21,6 @@ import {
 import { captureEvent } from '@/lib/posthog';
 import { target as targetRoute } from '@/routes/onboarding';
 import {
-    formatCurrency,
     getCurrencySymbol,
     toMajorUnits,
     toMinorUnits,
@@ -171,6 +171,7 @@ function Target({
     onContinue: () => void;
 }) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const currency = summary.currency_code;
     const spendingMajor = toMajorUnits(spending, currency);
     const ceiling = Math.max(STEP, Math.floor(spendingMajor / STEP) * STEP);
@@ -183,7 +184,7 @@ function Target({
     const [failed, setFailed] = useState(false);
 
     const money = (minor: number) =>
-        formatCurrency(minor, currency, locale, 0, 0);
+        formatAmount(minor, currency, { fractionDigits: 0 });
     const monthly = toMinorUnits(amount, currency);
 
     const handleSet = () => {

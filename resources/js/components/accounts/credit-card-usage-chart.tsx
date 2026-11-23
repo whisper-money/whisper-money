@@ -17,6 +17,10 @@ import {
     ChartTooltipContent,
 } from '@/components/ui/chart';
 import { Progress } from '@/components/ui/progress';
+import {
+    useFormatAmount,
+    type AmountFormatter,
+} from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import type {
     CreditCardDetail,
@@ -24,7 +28,6 @@ import type {
     CreditCardUsage,
     CurrencyCode,
 } from '@/types/account';
-import { formatCurrency } from '@/utils/currency';
 import {
     formatDateMedium,
     formatDayFromDate,
@@ -366,9 +369,10 @@ export function paymentNote(
     payment: CreditCardPayment,
     currencyCode: CurrencyCode,
     locale: string,
+    formatAmount: AmountFormatter['formatAmount'],
 ): string {
     return __('Payment of :amount for the statement :from – :to', {
-        amount: formatCurrency(payment.amount, currencyCode, locale),
+        amount: formatAmount(payment.amount, currencyCode),
         from: formatDateMedium(payment.period_from, locale),
         to: formatDateMedium(payment.closing_date, locale),
     });
@@ -386,6 +390,7 @@ function UsageChart({
     payments: CreditCardPayment[];
 }) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const data = useMemo(() => usageChartData(usage), [usage]);
     const paymentDays = useMemo(
         () => paymentsByDay(payments, data),
@@ -444,13 +449,14 @@ function UsageChart({
                                                     payment,
                                                     currencyCode,
                                                     locale,
+                                                    formatAmount,
                                                 )}
                                             </span>
                                         ))}
                                 </span>
                             )}
                             valueFormatter={(value: number) =>
-                                formatCurrency(value, currencyCode, locale)
+                                formatAmount(value, currencyCode)
                             }
                         />
                     }

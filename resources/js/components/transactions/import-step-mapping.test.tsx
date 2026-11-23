@@ -3,6 +3,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ImportStepMapping } from './import-step-mapping';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 vi.mock('@/hooks/use-locale', () => ({
     useLocale: () => 'en-US',
 }));

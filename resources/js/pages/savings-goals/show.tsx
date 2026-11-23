@@ -23,6 +23,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
@@ -37,7 +38,6 @@ import {
     SavingsGoalStats,
 } from '@/types/savings-goal';
 import { ServerTransaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
@@ -306,6 +306,7 @@ function OneOffGoalBody({
     currencyCode: string;
 }) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const statusColor = stats.status
         ? getSavingsGoalStatusColor(stats.status)
         : 'text-muted-foreground';
@@ -339,10 +340,9 @@ function OneOffGoalBody({
                     {savingsGoal.initial_amount > 0 && (
                         <p className="text-sm text-muted-foreground">
                             {__('Includes :amount you had already saved.', {
-                                amount: formatCurrency(
+                                amount: formatAmount(
                                     savingsGoal.initial_amount,
                                     currencyCode,
-                                    locale,
                                 ),
                             })}
                         </p>

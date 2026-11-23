@@ -3,10 +3,9 @@ import { createPortal } from 'react-dom';
 import * as RechartsPrimitive from 'recharts';
 
 import { computeTooltipPosition } from '@/lib/chart-tooltip-position';
-import { usePrivacyMode } from '@/contexts/privacy-mode-context';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 
 const THEMES = { light: '', dark: '.dark' } as const;
@@ -287,14 +286,6 @@ function getTooltipItemValue(
     );
 }
 
-function formatCurrencyWithCode(
-    value: number,
-    currencyCode: string,
-    locale: string,
-): string {
-    return formatCurrency(value, currencyCode, locale);
-}
-
 const ChartTooltipContent = React.forwardRef<
     HTMLDivElement,
     ChartTooltipContentProps
@@ -323,7 +314,6 @@ const ChartTooltipContent = React.forwardRef<
     ) => {
         const { config } = useChart();
         const locale = useLocale();
-        const { isPrivacyModeEnabled } = usePrivacyMode();
 
         const tooltipLabel = React.useMemo(() => {
             if (hideLabel || !payload?.length) {
@@ -513,7 +503,7 @@ const ChartTooltipContent = React.forwardRef<
                                                             if (original) {
                                                                 return (
                                                                     <span className="text-muted-foreground mr-1 text-[10px]">
-                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code, locale)})
+                                                                        (<AmountDisplay amountInCents={original.amount} currencyCode={original.currency_code} />)
                                                                     </span>
                                                                 );
                                                             }
@@ -566,9 +556,7 @@ const ChartTooltipContent = React.forwardRef<
                                             </span>
                                         </div>
                                         <span className="text-foreground font-mono font-medium tabular-nums shrink-0 whitespace-nowrap">
-                                            {isPrivacyModeEnabled
-                                                ? formatCurrencyWithCode(-liability.amount, displayCurrency, locale).replace(/\d/g, '*')
-                                                : formatCurrencyWithCode(-liability.amount, displayCurrency, locale)}
+                                            <AmountDisplay amountInCents={-liability.amount} currencyCode={displayCurrency} />
                                         </span>
                                     </div>
                                 ))}
@@ -582,9 +570,7 @@ const ChartTooltipContent = React.forwardRef<
                                                 {totalLabel} {currency}
                                             </span>
                                             <span className="text-foreground font-mono font-medium tabular-nums">
-                                                {isPrivacyModeEnabled
-                                                    ? formatCurrencyWithCode(total, currency, locale).replace(/\d/g, '*')
-                                                    : formatCurrencyWithCode(total, currency, locale)}
+                                                <AmountDisplay amountInCents={total} currencyCode={currency} />
                                             </span>
                                         </div>
                                     ))
@@ -595,9 +581,7 @@ const ChartTooltipContent = React.forwardRef<
                                         </span>
                                         <span className="text-foreground font-mono font-medium tabular-nums">
                                             {currencyTotals && currencyTotals[0]
-                                                ? isPrivacyModeEnabled
-                                                    ? formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale).replace(/\d/g, '*')
-                                                    : formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale)
+                                                ? <AmountDisplay amountInCents={currencyTotals[0][1]} currencyCode={currencyTotals[0][0]} />
                                                 : payload
                                                     .reduce(
                                                         (

@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { parseAmount, parseDate } from '@/lib/file-parser';
 import { balanceTermCapitalized } from '@/types/account';
@@ -17,6 +18,7 @@ import type {
     ParsedRow,
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
+import { toMinorUnits } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { type ReactNode } from 'react';
 
@@ -54,14 +56,11 @@ export function ImportBalanceStepMapping({
 }: ImportBalanceStepMappingProps) {
     const isValid = columnMapping.balance_date && columnMapping.balance;
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
 
+    /** The file holds major units, so they become the stored scale first. */
     const formatRawAmount = (value: number) =>
-        new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: currencyCode,
-        })
-            .format(value)
-            .replace(/\s/g, '\u202F');
+        formatAmount(toMinorUnits(value, currencyCode), currencyCode);
 
     const previewBalances = parsedData.slice(0, 3).map((row) => {
         const date = columnMapping.balance_date

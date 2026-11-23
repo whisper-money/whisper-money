@@ -3,6 +3,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StepComplete } from './step-complete';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const post = vi.fn();
 
 const { get, captureEvent } = vi.hoisted(() => ({

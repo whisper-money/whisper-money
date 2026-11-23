@@ -32,6 +32,7 @@ import {
     convertSingleAccountData,
     useChartViews,
 } from '@/hooks/use-chart-views';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { chartRoleColors } from '@/lib/chart-colors';
@@ -40,7 +41,6 @@ import {
     isRealEstateAccount,
     supportsInvestedAmount,
 } from '@/types/account';
-import { formatCurrency } from '@/utils/currency';
 import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
@@ -349,14 +349,6 @@ function createXAxisFormatter(locale: string, granularity: ChartGranularity) {
     };
 }
 
-function formatChartCurrency(
-    value: number,
-    currencyCode: string,
-    locale: string,
-): string {
-    return formatCurrency(value, currencyCode, locale);
-}
-
 function calculateTrend(
     data: Array<{ value: number }>,
     periodsBack: number,
@@ -406,6 +398,7 @@ export function AccountBalanceChart({
     onDataLoaded,
 }: AccountBalanceChartProps) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const isMobile = useIsMobile();
     const isLoan = account.type === 'loan';
     const isRealEstate = isRealEstateAccount(account);
@@ -733,9 +726,8 @@ export function AccountBalanceChart({
             : format(now, 'yyyy-MM');
     }, [granularity]);
 
-    const valueFormatter = (value: number): string => {
-        return formatChartCurrency(value, activeCurrencyCode, locale);
-    };
+    const valueFormatter = (value: number): string =>
+        formatAmount(value, activeCurrencyCode);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minBarWidth = granularity === 'daily' ? 20 : 50;

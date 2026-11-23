@@ -98,6 +98,25 @@ export function formatCurrency(
         .replace(/\s/g, '\u202F');
 }
 
+/**
+ * An amount as a short label with no decimals ("€12K"), for chart axis ticks.
+ * Like `formatCurrency`, it never masks: go through `useFormatAmount()`.
+ */
+export function formatCompactCurrency(
+    valueInMinorUnits: number,
+    currencyCode: string,
+    locale: string,
+): string {
+    return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currencyCode,
+        notation: 'compact',
+        compactDisplay: 'short',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(toMajorUnits(valueInMinorUnits, currencyCode));
+}
+
 /** A formatted amount with its figures hidden, as privacy mode shows it. */
 export function maskDigits(formatted: string): string {
     return formatted.replace(/\d/g, '*');

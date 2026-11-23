@@ -3,6 +3,10 @@ import type React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BreakdownCard } from './breakdown-card';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 vi.mock('@/components/ui/amount-display', () => ({
     AmountDisplay: ({ amountInCents }: { amountInCents: number }) => (
         <span>{amountInCents}</span>

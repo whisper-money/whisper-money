@@ -8,6 +8,18 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { type ChartConfig } from '@/components/ui/chart';
 import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import { useFormatAmount } from '@/hooks/use-format-amount';
+
+/** The string form, for a sentence or an aria-label; privacy mode masks it too. */
+function FormattedAmountSentence() {
+    const { formatAmount } = useFormatAmount();
+
+    return (
+        <p className="text-sm">
+            Still to share out: {formatAmount(4250, 'EUR')}
+        </p>
+    );
+}
 
 function Amounts() {
     return (
@@ -48,6 +60,9 @@ function Amounts() {
                     currencyCode="JPY"
                     monospace
                 />
+            </Specimen>
+            <Specimen label="useFormatAmount() · a string, masked too">
+                <FormattedAmountSentence />
             </Specimen>
         </>
     );

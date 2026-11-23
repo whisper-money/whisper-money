@@ -6,9 +6,9 @@ import {
     StepScreen,
 } from '@/components/onboarding/step-screen';
 import { EstimatesOverlapNotice } from '@/components/transactions/estimates-overlap-notice';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { cn } from '@/lib/utils';
 import { type ParsedTransaction } from '@/types/import';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
@@ -133,19 +133,17 @@ export function StepImportPreview({
                                     )}
                                 </span>
                             </span>
-                            <span
+                            <AmountDisplay
+                                amountInCents={row.amount}
+                                currencyCode={row.currency_code ?? currencyCode}
                                 className={cn(
-                                    'shrink-0 text-base font-medium tabular-nums',
+                                    'shrink-0 tabular-nums',
                                     row.amount > 0 && 'text-success',
                                 )}
-                            >
-                                {row.amount > 0 && '+'}
-                                {formatCurrency(
-                                    row.amount,
-                                    row.currency_code ?? currencyCode,
-                                    locale,
-                                )}
-                            </span>
+                                size="base"
+                                weight="medium"
+                                showSign
+                            />
                         </div>
                     ))}
 

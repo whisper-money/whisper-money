@@ -2,6 +2,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EstimatesOverlapNotice } from './estimates-overlap-notice';
 
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
+}));
+
 const { get, deleteOne } = vi.hoisted(() => ({
     get: vi.fn(),
     deleteOne: vi.fn(),

@@ -11,11 +11,11 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { type Category } from '@/types/category';
-import { formatCurrency } from '@/utils/currency';
 import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
@@ -88,6 +88,7 @@ export function CategoryAnalysisDrawer({
     firstCategoryId,
 }: CategoryAnalysisDrawerProps) {
     const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
     const { categories = [] } = usePage<
         SharedData & { categories: Category[] }
     >().props;
@@ -180,8 +181,8 @@ export function CategoryAnalysisDrawer({
     );
 
     const valueFormatter = useCallback(
-        (value: number) => formatCurrency(value, currency, locale, 0, 0),
-        [currency, locale],
+        (value: number) => formatAmount(value, currency, { fractionDigits: 0 }),
+        [currency, formatAmount],
     );
 
     const xAxisFormatter = useCallback(

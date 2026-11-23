@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -10,12 +11,10 @@ import {
     ChartTooltip,
     type ChartConfig,
 } from '@/components/ui/chart';
-import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { savingsContributionAmount } from '@/types/account';
 import { SavingsGoal, SavingsGoalStats } from '@/types/savings-goal';
 import { Transaction } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import {
@@ -61,17 +60,14 @@ function CustomTooltip({
     locale,
     target,
 }: CustomTooltipProps) {
-    const { isPrivacyModeEnabled } = usePrivacyMode();
-
     if (!active || !payload || !payload.length) {
         return null;
     }
 
     const data = payload[0].payload;
-    const mask = (value: number) => {
-        const formatted = formatCurrency(value, currencyCode, locale);
-        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
-    };
+    const amount = (value: number) => (
+        <AmountDisplay amountInCents={value} currencyCode={currencyCode} />
+    );
 
     const value = data.saved ?? data.projected;
 
@@ -87,7 +83,7 @@ function CustomTooltip({
                     </span>
                     <span className="font-medium">
                         {value !== null && value !== undefined
-                            ? mask(value)
+                            ? amount(value)
                             : '—'}
                     </span>
                 </div>
@@ -97,14 +93,14 @@ function CustomTooltip({
                             {__('On-pace:')}
                         </span>
                         <span className="font-medium text-muted-foreground">
-                            {mask(data.ideal)}
+                            {amount(data.ideal)}
                         </span>
                     </div>
                 )}
                 <div className="border-t pt-1">
                     <div className="flex items-center justify-between gap-8">
                         <span className="font-medium">{__('Target:')}</span>
-                        <span className="font-semibold">{mask(target)}</span>
+                        <span className="font-semibold">{amount(target)}</span>
                     </div>
                 </div>
             </div>

@@ -1,9 +1,8 @@
 import { CategoryBadge } from '@/components/shared/category-combobox';
-import { useLocale } from '@/hooks/use-locale';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { cn } from '@/lib/utils';
 import { type Category } from '@/types/category';
 import { type TransactionSplitSibling } from '@/types/transaction';
-import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 
 interface SplitPartsListProps {
@@ -21,8 +20,6 @@ export function SplitPartsList({
     currencyCode,
     rowClassName,
 }: SplitPartsListProps) {
-    const locale = useLocale();
-
     return (
         <div className="flex flex-col gap-2">
             {parts.map((part) => {
@@ -45,9 +42,12 @@ export function SplitPartsList({
                                 {__('Uncategorized')}
                             </span>
                         )}
-                        <span className="shrink-0 font-mono tabular-nums">
-                            {formatCurrency(part.amount, currencyCode, locale)}
-                        </span>
+                        <AmountDisplay
+                            amountInCents={part.amount}
+                            currencyCode={currencyCode}
+                            className="shrink-0"
+                            monospace
+                        />
                     </div>
                 );
             })}
