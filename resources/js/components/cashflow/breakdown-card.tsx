@@ -14,8 +14,8 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { BreakdownData, BreakdownItem } from '@/hooks/use-cashflow-data';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useExpandableCategories } from '@/hooks/use-expandable-categories';
+import { categoryChartColor } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
 import { cn } from '@/lib/utils';
 import {
@@ -54,8 +54,6 @@ export function BreakdownCard({
     currency = 'USD',
     period,
 }: BreakdownCardProps) {
-    const { categoryBarColor } = useChartColors();
-
     const title =
         type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
@@ -104,7 +102,10 @@ export function BreakdownCard({
         getAmount: (item) => item.amount,
         getPercentage: (item) => item.percentage,
         getBarColor: (item, index) =>
-            categoryBarColor((item.category ?? fallbackCategory).color, index),
+            categoryChartColor(
+                (item.category ?? fallbackCategory).color,
+                index,
+            ),
         renderLeading: (item) => {
             const category = item.category ?? fallbackCategory;
             const color = getCategoryColorClasses(category.color);

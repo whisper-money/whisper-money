@@ -34,14 +34,6 @@ vi.mock('@/hooks/use-locale', () => ({
     useLocale: () => 'en',
 }));
 
-vi.mock('@/hooks/use-chart-color-scheme', () => ({
-    useChartColors: () => ({
-        cashflowIncomeColor: '#22c55e',
-        cashflowExpenseColor: '#ef4444',
-        categoryBarColor: (color: string) => color || '#999',
-    }),
-}));
-
 vi.mock('@inertiajs/react', () => ({
     router: { visit: vi.fn() },
 }));

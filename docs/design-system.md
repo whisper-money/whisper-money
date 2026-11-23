@@ -88,6 +88,31 @@ choice.
 
 The rules for using them are in [Charts](#charts).
 
+#### Chart role tokens
+
+Charts that draw a fixed role use a role token, never a theme name. Each theme
+block in `app.css` declares all of them (a nested `[data-chart-color]` block,
+like the /design-system palettes, gets its own values), and colorful overrides
+them in its block. `lib/chart-colors.ts` exposes them to components.
+
+| Token                  | Role                                             | `colorful`                    | `neutral`, `blue`, `pink` |
+| ---------------------- | ------------------------------------------------ | ----------------------------- | ------------------------- |
+| `--chart-account-line` | Main balance line of an account                  | `--account-line` (zinc)       | `--chart-2`               |
+| `--chart-account-gain` | Invested / gain line of an account               | emerald-500                   | `--chart-6`               |
+| `--chart-mortgage`     | Mortgage owed line of a real estate account      | amber-500                     | `--chart-5`               |
+| `--chart-equity`       | Equity line of a real estate account             | emerald-500                   | `--chart-4`               |
+| `--chart-income`       | Income series (cashflow trend, sankey links)     | `--cashflow-income` (emerald) | `--chart-2`               |
+| `--chart-expense`      | Expense series (cashflow trend, sankey links)    | `--cashflow-expense` (red)    | `--chart-5`               |
+| `--chart-liability`    | Liability marker in net worth tooltips           | `--destructive`               | `--chart-5`               |
+| `--chart-category-mix` | Share of a category's own color in its series    | `100%`                        | `0%`                      |
+
+Category series (breakdown bars, top categories and labels, sankey nodes) take
+the category's own color in colorful and cycle `--chart-1..8` by index in the
+other themes. `categoryChartColor(color, index)` returns
+`color-mix(in oklch, <category color> var(--chart-category-mix), var(--chart-N))`,
+so the theme picks between the two without the component knowing which theme
+is on.
+
 ### Typography
 
 | Class                 | Font                   | Use it for                                                                                                                                                                   |
@@ -260,8 +285,12 @@ Existing components: `components/dashboard/percentage-trend-indicator.tsx` and
 - **Never use `--success` (or `--destructive`) in a chart series.** Those are
   for text; in a chart they would ignore the user's theme.
 - **No component branches on the active chart theme.** A chart never reads
-  `chartColorScheme` to pick colors; what a slot looks like is decided in CSS,
-  per theme. (`useChartColors` and its `isColorful` branches are debt item b.)
+  `chartColorScheme` to pick colors; what a role or slot looks like is decided
+  in CSS, per theme. Draw a chart role (an account line, income, expenses…)
+  with its [role token](#chart-role-tokens) from `lib/chart-colors.ts`
+  (`chartRoleColors`, `categoryChartColor`); a theme that needs a role to look
+  different gets a new value in `app.css`, not a branch.
+  `lib/chart-theme-guard.test.ts` enforces it.
 - Build charts on `components/ui/chart.tsx` (`ChartContainer`,
   `ChartTooltip`, `ChartLegend`), and reuse `StackedBarChart` /
   `StackedAreaChart` where they fit. Tooltips format amounts through the
@@ -327,7 +356,7 @@ switch the comboboxes use. Use these instead of writing the switch again.
 | `text-warning` for warnings                           | `text-amber-600`, `bg-yellow-50`                                  |
 | `text-destructive` for errors and destructive actions | Red for expenses or unfavourable trends                           |
 | `<AmountDisplay>` for money                           | `formatCurrency()` straight into JSX                              |
-| `var(--color-chart-N)` in charts                      | `--success`, palette colors, or an `isColorful` branch in a chart |
+| `var(--color-chart-N)` or a role token in charts      | `--success`, palette colors, or an `isColorful` branch in a chart |
 | `<Card>` for a bordered group                         | `<div className="rounded-xl border">`                             |
 | A primitive from `components/ui`                      | A copy of its markup, or a new library for the same thing         |
 | `gap-*` between siblings                              | Margins between siblings                                          |
@@ -344,7 +373,7 @@ stacked PR in the design-system stack. Counts were measured over
 |     | Debt                                                                                                                 | Evidence                                                                                                                                                                                                                                                                                                | Issue                                                               |
 | --- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | a   | Hardcoded green/red/emerald/rose/amber classes instead of `success` / `warning` / `destructive` / `muted-foreground` | 72 files (red 35, emerald 28, amber 25, green 24, rose 5). E.g. `pages/settings/billing.tsx`, `components/transactions/transaction-analysis-drawer.tsx`, `components/dashboard/percentage-trend-indicator.tsx`, `components/ui/amount-display.tsx` (`positive-highlight`), `components/input-error.tsx` | [#1358](https://github.com/whisper-money/whisper-money/issues/1358) |
-| b   | Components branching on the chart theme (`isColorful` in `useChartColors`)                                           | `hooks/use-chart-color-scheme.tsx` and 11 consumers, e.g. `components/dashboard/net-worth-chart.tsx`, `components/charts/cashflow-trend-chart.tsx`, `components/charts/sankey-chart.tsx`                                                                                                                | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
+| b   | ~~Components branching on the chart theme (`isColorful` in `useChartColors`)~~ **Resolved** | `useChartColors` is gone: charts draw with the [chart role tokens](#chart-role-tokens) through `lib/chart-colors.ts`, and `lib/chart-theme-guard.test.ts` fails if code reads `chartColorScheme` or compares against a theme | [#1359](https://github.com/whisper-money/whisper-money/issues/1359) |
 | c   | Ad-hoc `formatCurrency` / `Intl.NumberFormat` in JSX instead of `AmountDisplay`                                      | 42 `.tsx` files (vs 41 using `AmountDisplay`). E.g. `components/onboarding/step-reveal.tsx`, `components/transactions/split-transaction-dialog.tsx`, `pages/savings-goals/show.tsx`                                                                                                                     | [#1360](https://github.com/whisper-money/whisper-money/issues/1360) |
 | d   | No shared `EmptyState`                                                                                               | ~15 hand-rolled, e.g. `pages/notifications/index.tsx`, `pages/achievements/index.tsx`, `components/dashboard/top-categories-card.tsx`                                                                                                                                                                   | [#1361](https://github.com/whisper-money/whisper-money/issues/1361) |
 | e   | No shared `PageHeader`                                                                                               | `Heading` in 2 files; hand-written `<h1>` in 13, e.g. `pages/transactions/index.tsx`, `pages/monthly-summaries/index.tsx`                                                                                                                                                                               | [#1362](https://github.com/whisper-money/whisper-money/issues/1362) |

@@ -10,7 +10,7 @@ import AccountShow from './Show';
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
     router: { reload: vi.fn(), patch: vi.fn() },
-    usePage: () => ({ props: { chartColorScheme: 'default' } }),
+    usePage: () => ({ props: {} }),
     Deferred: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 

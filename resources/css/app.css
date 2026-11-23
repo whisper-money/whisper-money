@@ -146,6 +146,36 @@
     --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Chart role tokens: the color each chart role takes, per chart theme. Charts
+   draw with these and never with a theme name, so the theme decision stays
+   here. Every theme block declares all of them: a token's var() resolves where
+   it is declared, so a nested `[data-chart-color]` block (the /design-system
+   palettes) must restate them to get its own slots. Colorful overrides them in
+   its block below.
+   - --chart-account-line   main balance line of an account
+   - --chart-account-gain   invested / gain line of an account
+   - --chart-mortgage       mortgage owed line of a real estate account
+   - --chart-equity         equity line of a real estate account
+   - --chart-income         income series (cashflow trend, sankey links)
+   - --chart-expense        expense series (cashflow trend, sankey links)
+   - --chart-liability      liability marker in net worth tooltips
+   - --chart-category-mix   how much of a category's own color a category
+                            series takes over its `--chart-N` slot: 100% in
+                            colorful, 0% elsewhere (see lib/chart-colors.ts) */
+:root,
+[data-chart-color='neutral'],
+[data-chart-color='blue'],
+[data-chart-color='pink'] {
+    --chart-account-line: var(--chart-2);
+    --chart-account-gain: var(--chart-6);
+    --chart-mortgage: var(--chart-5);
+    --chart-equity: var(--chart-4);
+    --chart-income: var(--chart-2);
+    --chart-expense: var(--chart-5);
+    --chart-liability: var(--chart-5);
+    --chart-category-mix: 0%;
+}
+
 /* Colorful chart color scheme */
 [data-chart-color='colorful'] {
     --chart-1: var(--color-blue-600);
@@ -164,6 +194,14 @@
     --account-line: var(--color-zinc-800);
     --cashflow-income: var(--color-emerald-500);
     --cashflow-expense: var(--color-red-500);
+    --chart-account-line: var(--account-line);
+    --chart-account-gain: var(--color-emerald-500);
+    --chart-mortgage: var(--color-amber-500);
+    --chart-equity: var(--color-emerald-500);
+    --chart-income: var(--cashflow-income);
+    --chart-expense: var(--cashflow-expense);
+    --chart-liability: var(--destructive);
+    --chart-category-mix: 100%;
 }
 
 .dark[data-chart-color='colorful'] {

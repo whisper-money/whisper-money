@@ -28,13 +28,13 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import {
     convertSingleAccountData,
     useChartViews,
 } from '@/hooks/use-chart-views';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { chartRoleColors } from '@/lib/chart-colors';
 import {
     Account,
     isRealEstateAccount,
@@ -147,7 +147,7 @@ function RealEstateTooltipContent({
     }>;
     valueFormatter: (value: number) => string;
 }) {
-    const { accountMainLineColor, mortgageLineColor } = useChartColors();
+    const { accountMainLineColor, mortgageLineColor } = chartRoleColors;
 
     if (!active || !payload?.length) return null;
 
@@ -677,7 +677,7 @@ export function AccountBalanceChart({
         hasStackedView: true,
     });
 
-    const { accountMainLineColor, mortgageLineColor } = useChartColors();
+    const { accountMainLineColor, mortgageLineColor } = chartRoleColors;
 
     const chartConfig: ChartConfig = {
         value: {

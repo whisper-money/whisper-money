@@ -50,8 +50,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { chartRoleColors } from '@/lib/chart-colors';
 import { BreadcrumbItem } from '@/types';
 import {
     Account,
@@ -662,7 +662,7 @@ function EquitySummaryCards({
     currencyCode,
 }: EquitySummaryCardsProps) {
     const { accountMainLineColor, mortgageLineColor, equityLineColor } =
-        useChartColors();
+        chartRoleColors;
 
     const { valueHistory, companionHistory, remainderHistory } = useMemo(
         () => splitHistories(chartData, (point) => point.mortgage_balance),
@@ -718,7 +718,7 @@ function InvestmentSummaryCards({
     currencyCode,
 }: InvestmentSummaryCardsProps) {
     const { accountMainLineColor, accountGainLineColor, equityLineColor } =
-        useChartColors();
+        chartRoleColors;
 
     const { valueHistory, companionHistory, remainderHistory } = useMemo(
         () => splitHistories(chartData, (point) => point.invested_amount),
