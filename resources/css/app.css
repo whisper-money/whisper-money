@@ -327,7 +327,11 @@
         }
     }
 
-    .font-heading {
+    /*
+     * Marketing pages only (the landing hero). Not part of the
+     * design system: never use it in the app (lib/marketing-serif-guard.test.ts).
+     */
+    .font-marketing-serif {
         font-family: 'IBM Plex Serif', ui-serif, Georgia, serif;
         font-style: italic;
     }

@@ -174,7 +174,7 @@ export default function DesignSystem() {
                             <div className="mx-auto flex max-w-page flex-col gap-3 px-4 py-3 sm:px-6">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div className="flex items-baseline gap-3">
-                                        <h1 className="font-heading text-2xl">
+                                        <h1 className="text-xl font-semibold tracking-tight">
                                             Whisper Money design system
                                         </h1>
                                         <a

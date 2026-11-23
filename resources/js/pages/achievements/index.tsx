@@ -132,7 +132,7 @@ function Tracks({ tracks }: { tracks: AchievementTrack[] }) {
                             </span>
                         </div>
                         {track.note && (
-                            <p className="font-heading mt-1 text-xs text-pretty text-muted-foreground">
+                            <p className="mt-1 text-xs text-pretty text-muted-foreground">
                                 {track.note}
                             </p>
                         )}

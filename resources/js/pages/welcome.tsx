@@ -2931,7 +2931,7 @@ export default function Welcome({
                                         {__('Private & Secure')}
                                     </span>
                                 </span>
-                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-[2.75rem] lg:leading-tight xl:text-[3.5rem] xl:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
+                                <h1 className="font-marketing-serif max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-[2.75rem] lg:leading-tight xl:text-[3.5rem] xl:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
                                         'All your money in one place. No spreadsheets. Private.',
                                     )}
