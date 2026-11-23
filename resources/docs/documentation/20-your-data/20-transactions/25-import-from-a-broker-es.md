@@ -107,9 +107,21 @@ sumando los movimientos y puedes corregirlo.
 
 ### Operaciones de valores y fondos
 
-Es la exportación de las órdenes de tu cartera de valores y fondos, que MyInvestor
-descarga como `salida.xls` (o `salida.xlsx`). Súbela tal cual, aunque al abrirla
-las cabeceras no cuadren con las columnas: se lee igual.
+Es la exportación de las operaciones de tu cartera de valores y fondos, que se
+descarga como `salida.xls` (o `salida.xlsx`). No se descarga desde la app ni la
+web de MyInvestor, sino desde el portal de Inversis, donde MyInvestor custodia la
+cartera:
+
+1. Entra en [inversis.com/cbmyinvestor](https://www.inversis.com/cbmyinvestor)
+   con el mismo usuario y contraseña de MyInvestor. Mejor desde el ordenador: si
+   te cuesta entrar, prueba en una ventana privada del navegador.
+2. Ve a **Inversiones** → **Fondos** (o **Valores** / **ETF**) → **Consulta de
+   operaciones**.
+3. Pon como fecha de inicio una anterior a cuando abriste la cuenta, para traer
+   todo el historial, y descarga el Excel (`salida.xls`).
+
+Súbelo tal cual, aunque al abrirlo las cabeceras no cuadren con las columnas: se
+lee igual.
 
 El listado de **Órdenes** de MyInvestor no es este archivo y no sirve. Su
 exportación trae las columnas **Fecha de la orden**, **ISIN**, **Importe
@@ -264,11 +276,15 @@ efectivo de la cuenta remunerada, y el archivo de operaciones de valores trae lo
 invertido en fondos, acciones y planes de pensiones. Si solo usas la cuenta, basta
 con el primero.
 
+El archivo de operaciones de valores (`salida.xls`) no se descarga desde
+MyInvestor, sino desde el portal de Inversis: mira cómo en
+[Operaciones de valores y fondos](#operaciones-de-valores-y-fondos).
+
 ### ¿Puedo importar el listado de Órdenes de MyInvestor?
 
 No. Ese listado no dice si cada orden es una compra o un reembolso, así que no se
 puede saber cuánto invertiste. Descarga el archivo de operaciones de valores
-(`salida.xls`) y súbelo en su lugar.
+(`salida.xls`) desde el portal de Inversis y súbelo en su lugar.
 
 ### ¿Por qué la cartera vale lo mismo que lo invertido?
 
