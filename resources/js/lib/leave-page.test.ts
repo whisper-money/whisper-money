@@ -130,4 +130,88 @@ describe('leave-page', () => {
 
         expect(isLeavingPage()).toBe(false);
     });
+
+    describe('Inertia location visits', () => {
+        // The real router listens on `document` for `inertia:<event>`, so firing the
+        // events Inertia fires exercises the actual wiring.
+        function fire(name: string, detail: object, cancelable = false): void {
+            document.dispatchEvent(
+                new CustomEvent(`inertia:${name}`, { detail, cancelable }),
+            );
+        }
+
+        function location(versionChange: boolean): void {
+            fire(
+                'location',
+                {
+                    url: new URL('https://whisper.money/dashboard'),
+                    versionChange,
+                },
+                true,
+            );
+        }
+
+        it('records the reload a deploy forces on a regular visit', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+            const visit = { async: false };
+
+            fire('start', { visit });
+            location(true);
+
+            expect(isLeavingPage()).toBe(true);
+        });
+
+        it('records an external redirect', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+
+            location(false);
+
+            expect(isLeavingPage()).toBe(true);
+        });
+
+        it('stays put when a deploy answers only an async visit, which Inertia does not reload for', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+
+            fire('start', { visit: { async: true } });
+            location(true);
+
+            expect(isLeavingPage()).toBe(false);
+        });
+
+        it('forgets regular visits once they finish', async () => {
+            const { trackInertiaLocationDepartures, isLeavingPage } =
+                await freshModule();
+            trackInertiaLocationDepartures();
+            const visit = { async: false };
+
+            fire('start', { visit });
+            fire('finish', { visit });
+            location(true);
+
+            expect(isLeavingPage()).toBe(false);
+        });
+
+        it('stops leaving when the forced reload never happened', async () => {
+            vi.useFakeTimers();
+
+            try {
+                const { trackInertiaLocationDepartures, isLeavingPage } =
+                    await freshModule();
+                trackInertiaLocationDepartures();
+
+                location(false);
+                vi.advanceTimersByTime(10_000);
+
+                expect(isLeavingPage()).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
 });

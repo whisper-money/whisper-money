@@ -1,3 +1,5 @@
+import { router } from '@inertiajs/react';
+
 /**
  * Navigates out of the SPA with a full page load.
  *
@@ -32,14 +34,56 @@ let leaving = false;
 const DEPARTURE_TIMEOUT_MS = 10_000;
 
 export function leavePage(url: string): void {
-    leaving = true;
+    recordDeparture();
     window.location.href = url;
-    forgetDepartureIfWeStayed();
 }
 
 export function reloadPage(): void {
-    leaving = true;
+    recordDeparture();
     window.location.reload();
+}
+
+/**
+ * Records the hard visits Inertia makes on its own.
+ *
+ * A `409` with `X-Inertia-Location` makes Inertia assign `window.location` itself:
+ * an external redirect, or - far more often - the asset-version mismatch every
+ * deploy causes, which reloads the page. That aborts whatever is in flight, plus
+ * the navigation the user clicks while the reload is still loading, and WebKit
+ * reports those aborts as `HttpNetworkError` (Sentry PHP-LARAVEL-84) and as our
+ * "could not reach the server" toast. `pagehide` only fires once the new document
+ * answers, which is too late.
+ *
+ * Inertia fires `location` right before it navigates. The one time it then stays
+ * put is a version change answering an async visit (a poll, a background reload):
+ * it skips the reload and lets the next regular visit take it. So a version change
+ * only counts as a departure while a regular visit is in flight; a poll and a
+ * click can both be out when the deploy lands, and the click's own 409 reloads.
+ */
+export function trackInertiaLocationDepartures(): void {
+    const regularVisitsInFlight = new Set<unknown>();
+
+    router.on('start', (event) => {
+        if (!event.detail.visit.async) {
+            regularVisitsInFlight.add(event.detail.visit);
+        }
+    });
+
+    router.on('finish', (event) => {
+        regularVisitsInFlight.delete(event.detail.visit);
+    });
+
+    router.on('location', (event) => {
+        if (event.detail.versionChange && regularVisitsInFlight.size === 0) {
+            return;
+        }
+
+        recordDeparture();
+    });
+}
+
+function recordDeparture(): void {
+    leaving = true;
     forgetDepartureIfWeStayed();
 }
 

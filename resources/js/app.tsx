@@ -22,6 +22,7 @@ import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { installDeferredPropsRecovery } from './lib/deferred-props-recovery';
 import { installFailedNavigationToast } from './lib/failed-navigation-toast';
+import { trackInertiaLocationDepartures } from './lib/leave-page';
 import { seedPageState } from './lib/page-state';
 import {
     initializePostHog,
@@ -46,6 +47,7 @@ installChunkLoadRecovery();
 installDeferredPropsRecovery();
 installSessionExpiryRecovery();
 trackUnattendedRequests();
+trackInertiaLocationDepartures();
 installFailedNavigationToast();
 
 Sentry.init({
