@@ -4,6 +4,7 @@ import * as RechartsPrimitive from 'recharts';
 
 import { computeTooltipPosition } from '@/lib/chart-tooltip-position';
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -314,6 +315,7 @@ const ChartTooltipContent = React.forwardRef<
     ) => {
         const { config } = useChart();
         const locale = useLocale();
+        const { maskAmount } = useFormatAmount();
 
         const tooltipLabel = React.useMemo(() => {
             if (hideLabel || !payload?.length) {
@@ -516,7 +518,7 @@ const ChartTooltipContent = React.forwardRef<
                                                             )
                                                             : typeof displayValue ===
                                                                 'number'
-                                                                ? displayValue.toLocaleString(locale)
+                                                                ? maskAmount(displayValue.toLocaleString(locale))
                                                                 : displayValue}
                                                     </span>
                                                 )}
@@ -582,7 +584,7 @@ const ChartTooltipContent = React.forwardRef<
                                         <span className="text-foreground font-mono font-medium tabular-nums">
                                             {currencyTotals && currencyTotals[0]
                                                 ? <AmountDisplay amountInCents={currencyTotals[0][1]} currencyCode={currencyTotals[0][0]} />
-                                                : payload
+                                                : maskAmount(payload
                                                     .reduce(
                                                         (
                                                             sum: number,
@@ -600,7 +602,7 @@ const ChartTooltipContent = React.forwardRef<
                                                         },
                                                         0,
                                                     )
-                                                    .toLocaleString(locale)}
+                                                    .toLocaleString(locale))}
                                         </span>
                                     </div>
                                 )}

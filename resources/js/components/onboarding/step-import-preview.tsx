@@ -133,17 +133,20 @@ export function StepImportPreview({
                                     )}
                                 </span>
                             </span>
-                            <AmountDisplay
-                                amountInCents={row.amount}
-                                currencyCode={row.currency_code ?? currencyCode}
+                            <span
                                 className={cn(
-                                    'shrink-0 tabular-nums',
+                                    'shrink-0 text-base font-medium tabular-nums',
                                     row.amount > 0 && 'text-success',
                                 )}
-                                size="base"
-                                weight="medium"
-                                showSign
-                            />
+                            >
+                                {row.amount > 0 && '+'}
+                                <AmountDisplay
+                                    amountInCents={row.amount}
+                                    currencyCode={
+                                        row.currency_code ?? currencyCode
+                                    }
+                                />
+                            </span>
                         </div>
                     ))}
 

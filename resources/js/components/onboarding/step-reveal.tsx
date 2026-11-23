@@ -18,7 +18,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { captureEvent } from '@/lib/posthog';
 import { reveal } from '@/routes/onboarding';
 import { type UUID } from '@/types/uuid';
-import { getCurrencySymbol, toMajorUnits } from '@/utils/currency';
+import { getCurrencySymbol } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
@@ -280,7 +280,7 @@ function RevealSpending({
     onContinue: () => void;
 }) {
     const locale = useLocale();
-    const { formatAmount, maskAmount } = useFormatAmount();
+    const { formatAmount, formatAmountNumber } = useFormatAmount();
     const { currency_code: currency } = data;
     const money = (amount: number) =>
         formatAmount(amount, currency, { fractionDigits: 0 });
@@ -311,11 +311,9 @@ function RevealSpending({
                             {getCurrencySymbol(currency)}
                         </span>
                         <span className="text-[62px] leading-none font-semibold tracking-[-0.04em] tabular-nums">
-                            {maskAmount(
-                                new Intl.NumberFormat(locale, {
-                                    maximumFractionDigits: 0,
-                                }).format(toMajorUnits(data.spent, currency)),
-                            )}
+                            {formatAmountNumber(data.spent, currency, {
+                                fractionDigits: 0,
+                            })}
                         </span>
                     </h1>
 

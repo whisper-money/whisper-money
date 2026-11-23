@@ -3,6 +3,7 @@ import {
     currencyDecimals,
     formatCurrency,
     getCurrencySymbol,
+    maskDigits,
     setCurrencyDecimals,
     toMajorUnits,
     toMinorUnits,
@@ -193,5 +194,18 @@ describe('getCurrencySymbol', () => {
     it('falls back to the code when there is no symbol to give', () => {
         expect(getCurrencySymbol('PYG')).toBe('PYG');
         expect(getCurrencySymbol('not-a-code')).toBe('not-a-code');
+    });
+});
+
+describe('maskDigits', () => {
+    it('hides every figure and keeps the symbol and separators', () => {
+        expect(maskDigits('€1,234.56')).toBe('€*,***.**');
+    });
+
+    // A locale that writes its own digits must not slip past privacy mode.
+    it('hides non-ASCII digits too', () => {
+        const formatted = formatCurrency(123456, 'EGP', 'ar-EG');
+
+        expect(maskDigits(formatted)).not.toMatch(/\p{Nd}/u);
     });
 });

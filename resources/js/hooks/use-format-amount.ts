@@ -1,6 +1,11 @@
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
-import { formatCurrency, maskDigits } from '@/utils/currency';
+import {
+    formatAmountNumber,
+    formatCompactAmount,
+    formatCurrency,
+    maskDigits,
+} from '@/utils/currency';
 import { useMemo } from 'react';
 
 export interface FormatAmountOptions {
@@ -11,11 +16,12 @@ export interface FormatAmountOptions {
     fractionDigits?: number;
 }
 
+/** Every method masks the figures when privacy mode is on. */
 export interface AmountFormatter {
     /**
-     * An amount in its currency's minor units as a string, masked when privacy
-     * mode is on. For the places a node cannot go: a translated sentence, an
-     * `aria-label`, a `title`, a chart tick or tooltip string.
+     * An amount in its currency's minor units as a string ("€1,234.56"). For
+     * the places a node cannot go: a translated sentence, an `aria-label`, a
+     * `title`, a chart tooltip string.
      */
     formatAmount: (
         amountInMinorUnits: number,
@@ -23,9 +29,21 @@ export interface AmountFormatter {
         options?: FormatAmountOptions,
     ) => string;
     /**
-     * Masks the figures of a number the caller formatted itself (a compact
-     * chart tick, a bare number in an import preview) when privacy mode is on.
+     * The same amount without its symbol ("1,234.56"), for a layout that sets
+     * the symbol apart or a column whose rows mix currencies.
      */
+    formatAmountNumber: (
+        amountInMinorUnits: number,
+        currencyCode: string,
+        options?: FormatAmountOptions,
+    ) => string;
+    /** A short chart-axis label: "12K", or "€12K" with `withSymbol`. */
+    formatCompactAmount: (
+        amountInMinorUnits: number,
+        currencyCode: string,
+        options?: { withSymbol?: boolean },
+    ) => string;
+    /** Masks a figure that is already a string (a chart's own fallback). */
     maskAmount: (formatted: string) => string;
 }
 
@@ -52,6 +70,32 @@ export function useFormatAmount(): AmountFormatter {
                         locale,
                         options.fractionDigits,
                         options.fractionDigits,
+                    ),
+                ),
+            formatAmountNumber: (
+                amountInMinorUnits,
+                currencyCode,
+                options = {},
+            ) =>
+                maskAmount(
+                    formatAmountNumber(
+                        amountInMinorUnits,
+                        currencyCode,
+                        locale,
+                        options.fractionDigits,
+                    ),
+                ),
+            formatCompactAmount: (
+                amountInMinorUnits,
+                currencyCode,
+                options = {},
+            ) =>
+                maskAmount(
+                    formatCompactAmount(
+                        amountInMinorUnits,
+                        currencyCode,
+                        locale,
+                        options.withSymbol,
                     ),
                 ),
         };

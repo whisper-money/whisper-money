@@ -8,8 +8,8 @@
  * the masking, which is how amounts leaked with privacy mode on.
  *
  * So this test fails when a file under resources/js calls `formatCurrency(`
- * or formats with `style: 'currency'`, unless it is listed below with the
- * reason it may.
+ * or formats with `style: 'currency'` or `notation: 'compact'`, unless it is
+ * listed below with the reason it may.
  */
 
 import { readFileSync, readdirSync, statSync } from 'fs';
@@ -45,8 +45,9 @@ const ALLOWED: readonly string[] = [
     'components/subscription/plan-picker.tsx',
     'components/subscription/trial-ending-banner.tsx',
     'pages/settings/billing.tsx',
-    // The widget SDK formats and masks money its own way (widgets/sdk/amount.tsx).
-    'widgets/',
+    // The widget SDK's money formatter; the SDK masks it its own way
+    // (widgets/sdk/amount.tsx), from the host's privacy mode.
+    'widgets/sdk/format-money.ts',
     // Marketing and legal pages have their own look and sample figures.
     'components/landing/',
     'components/documentation/',
@@ -64,6 +65,11 @@ const FORBIDDEN: readonly { pattern: RegExp; what: string }[] = [
     {
         pattern: /\bstyle\s*[:=]\s*['"`]currency['"`]/,
         what: "formats with style: 'currency'",
+    },
+    {
+        // Compact chart ticks: useFormatAmount().formatCompactAmount masks them.
+        pattern: /\bnotation\s*:\s*['"`]compact['"`]/,
+        what: "formats with notation: 'compact'",
     },
 ];
 

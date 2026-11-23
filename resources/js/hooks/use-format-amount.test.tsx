@@ -40,6 +40,33 @@ describe('useFormatAmount', () => {
         expect(result.current.maskAmount('1.2K')).toBe('*.*K');
     });
 
+    it('formats the bare number and the compact tick at the currency scale', () => {
+        const { result } = renderHook(() => useFormatAmount());
+
+        expect(result.current.formatAmountNumber(123456, 'EUR')).toBe(
+            '1,234.56',
+        );
+        expect(result.current.formatAmountNumber(123456, 'COP')).toBe(
+            '123,456',
+        );
+        expect(result.current.formatCompactAmount(1234500, 'EUR')).toBe('12K');
+        expect(
+            result.current.formatCompactAmount(1234500, 'EUR', {
+                withSymbol: true,
+            }),
+        ).toBe('€12K');
+    });
+
+    it('masks the bare number and the compact tick too', () => {
+        isPrivacyModeEnabled = true;
+        const { result } = renderHook(() => useFormatAmount());
+
+        expect(result.current.formatAmountNumber(123456, 'EUR')).toBe(
+            '*,***.**',
+        );
+        expect(result.current.formatCompactAmount(1234500, 'EUR')).toBe('**K');
+    });
+
     it('leaves a caller-formatted number alone when privacy mode is off', () => {
         const { result } = renderHook(() => useFormatAmount());
 

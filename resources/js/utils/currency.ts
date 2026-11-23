@@ -99,27 +99,54 @@ export function formatCurrency(
 }
 
 /**
- * An amount as a short label with no decimals ("€12K"), for chart axis ticks.
- * Like `formatCurrency`, it never masks: go through `useFormatAmount()`.
+ * An amount as a bare number at its currency's scale ("1,234.56"), for a
+ * layout that sets the symbol apart or a column whose rows mix currencies.
  */
-export function formatCompactCurrency(
+export function formatAmountNumber(
     valueInMinorUnits: number,
     currencyCode: string,
     locale: string,
+    fractionDigits?: number,
 ): string {
+    const decimals = fractionDigits ?? currencyDecimals(currencyCode);
+
     return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currencyCode,
-        notation: 'compact',
-        compactDisplay: 'short',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
     }).format(toMajorUnits(valueInMinorUnits, currencyCode));
 }
 
-/** A formatted amount with its figures hidden, as privacy mode shows it. */
+/**
+ * An amount as a short chart-axis label ("12K", or "€12K" with the symbol).
+ */
+export function formatCompactAmount(
+    valueInMinorUnits: number,
+    currencyCode: string,
+    locale: string,
+    withSymbol = false,
+): string {
+    const symbol: Intl.NumberFormatOptions = withSymbol
+        ? {
+              style: 'currency',
+              currency: currencyCode,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+          }
+        : {};
+
+    return new Intl.NumberFormat(locale, {
+        notation: 'compact',
+        compactDisplay: 'short',
+        ...symbol,
+    }).format(toMajorUnits(valueInMinorUnits, currencyCode));
+}
+
+/**
+ * A formatted amount with its figures hidden, as privacy mode shows it. Any
+ * decimal digit, not only ASCII: a locale such as `ar-EG` writes ٠١٢.
+ */
 export function maskDigits(formatted: string): string {
-    return formatted.replace(/\d/g, '*');
+    return formatted.replace(/\p{Nd}/gu, '*');
 }
 
 export function getCurrencySymbol(currencyCode: string): string {

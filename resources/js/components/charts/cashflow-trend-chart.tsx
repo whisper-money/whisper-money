@@ -12,7 +12,6 @@ import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { chartRoleColors } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
-import { formatCompactCurrency } from '@/utils/currency';
 import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
@@ -132,7 +131,7 @@ export function CashflowTrendChart({
     periodType = 'month',
 }: CashflowTrendChartProps) {
     const locale = useLocale();
-    const { maskAmount } = useFormatAmount();
+    const { formatCompactAmount } = useFormatAmount();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
     const { cashflowIncomeColor, cashflowExpenseColor } = chartRoleColors;
@@ -219,13 +218,9 @@ export function CashflowTrendChart({
                                 tickLine={false}
                                 axisLine={false}
                                 tickFormatter={(value: number) =>
-                                    maskAmount(
-                                        formatCompactCurrency(
-                                            value,
-                                            currency,
-                                            locale,
-                                        ),
-                                    )
+                                    formatCompactAmount(value, currency, {
+                                        withSymbol: true,
+                                    })
                                 }
                                 width={60}
                             />

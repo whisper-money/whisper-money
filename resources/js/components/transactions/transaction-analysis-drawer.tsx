@@ -39,7 +39,6 @@ import {
 import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { type UUID } from '@/types/uuid';
-import { toMajorUnits } from '@/utils/currency';
 import { formatDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
@@ -116,18 +115,6 @@ function detectMode(
     }
 
     return hasSignificantIncome(income, expense) ? 'income' : 'expense';
-}
-
-/** Compact axis ticks: an amount in minor units in, "1.2K" out. */
-function compactAmount(
-    value: number,
-    locale: string,
-    currencyCode: string,
-): string {
-    return new Intl.NumberFormat(locale, {
-        notation: 'compact',
-        compactDisplay: 'short',
-    }).format(toMajorUnits(value, currencyCode));
 }
 
 function modeLabel(mode: AnalysisMode): string {
@@ -734,7 +721,6 @@ export function TransactionAnalysisDrawer({
                                     months={monthlyPoints}
                                     average={trendRates.average}
                                     currency={currency}
-                                    locale={locale}
                                     showsIncome={showsIncome}
                                     firstDate={data.summary.first_date ?? null}
                                 />
@@ -742,7 +728,6 @@ export function TransactionAnalysisDrawer({
                                 <OverTimeChart
                                     points={data.over_time.points}
                                     currency={currency}
-                                    locale={locale}
                                     mode={boundedMode}
                                 />
                             )}
@@ -767,7 +752,6 @@ export function TransactionAnalysisDrawer({
                                 <PayeeBreakdown
                                     slices={data.by_payee}
                                     currency={currency}
-                                    locale={locale}
                                 />
                             )}
 
@@ -1257,15 +1241,13 @@ function DayEditorPopover({
 function OverTimeChart({
     points,
     currency,
-    locale,
     mode,
 }: {
     points: OverTimePoint[];
     currency: string;
-    locale: string;
     mode: BoundedMode;
 }) {
-    const { maskAmount } = useFormatAmount();
+    const { formatCompactAmount } = useFormatAmount();
     const cumulativeKey =
         mode === 'income' ? 'cumulative_net' : 'cumulative_expense';
     const cumulativeLabel =
@@ -1296,7 +1278,7 @@ function OverTimeChart({
                         axisLine={false}
                         width={48}
                         tickFormatter={(value) =>
-                            maskAmount(compactAmount(value, locale, currency))
+                            formatCompactAmount(value, currency)
                         }
                     />
                     <Tooltip
@@ -1432,18 +1414,16 @@ function MonthlyTrendChart({
     months,
     average,
     currency,
-    locale,
     showsIncome,
     firstDate,
 }: {
     months: MonthlyPoint[];
     average: number;
     currency: string;
-    locale: string;
     showsIncome: boolean;
     firstDate: string | null;
 }) {
-    const { maskAmount } = useFormatAmount();
+    const { formatCompactAmount } = useFormatAmount();
     const config: ChartConfig = {
         expense: { label: __('Expenses'), color: 'var(--color-chart-5)' },
         ...(showsIncome
@@ -1473,7 +1453,7 @@ function MonthlyTrendChart({
                         axisLine={false}
                         width={48}
                         tickFormatter={(value) =>
-                            maskAmount(compactAmount(value, locale, currency))
+                            formatCompactAmount(value, currency)
                         }
                     />
                     <Tooltip
@@ -1826,16 +1806,14 @@ function HorizontalBarBreakdown({
     title,
     data,
     currency,
-    locale,
     color,
 }: {
     title: string;
     data: { name: string; amount: number }[];
     currency: string;
-    locale: string;
     color: string;
 }) {
-    const { maskAmount } = useFormatAmount();
+    const { formatCompactAmount } = useFormatAmount();
     const config: ChartConfig = {
         amount: { label: __('Spent'), color },
     };
@@ -1857,9 +1835,7 @@ function HorizontalBarBreakdown({
                             type="number"
                             hide
                             tickFormatter={(value) =>
-                                maskAmount(
-                                    compactAmount(value, locale, currency),
-                                )
+                                formatCompactAmount(value, currency)
                             }
                         />
                         <YAxis
@@ -1938,18 +1914,15 @@ function TagBreakdown({
 function PayeeBreakdown({
     slices,
     currency,
-    locale,
 }: {
     slices: PayeeSlice[];
     currency: string;
-    locale: string;
 }) {
     return (
         <HorizontalBarBreakdown
             title={__('Spending by payee')}
             data={slices.slice(0, 8)}
             currency={currency}
-            locale={locale}
             color="var(--color-chart-3)"
         />
     );
