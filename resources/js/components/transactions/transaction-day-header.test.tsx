@@ -186,11 +186,11 @@ describe('TransactionDayHeader', () => {
                 'opacity-30',
                 'group-hover/day:opacity-100',
             );
-            expect(total).not.toHaveClass('bg-green-100/70');
+            expect(total).not.toHaveClass('bg-success/15');
         }
 
-        expect(income).toHaveClass('group-hover/day:bg-green-100/70');
-        expect(spending).not.toHaveClass('group-hover/day:bg-green-100/70');
+        expect(income).toHaveClass('group-hover/day:bg-success/15');
+        expect(spending).not.toHaveClass('group-hover/day:bg-success/15');
     });
 
     it('spans one column less once the Date column is hidden', () => {

@@ -151,7 +151,7 @@ function StatementSummary({
                     </span>
                 )}
                 {nextPayment.paid > 0 && (
-                    <span className="flex flex-wrap items-baseline gap-1 text-sm text-emerald-700 dark:text-emerald-400">
+                    <span className="flex flex-wrap items-baseline gap-1 text-sm text-success">
                         {__('Already paid')}
                         <AmountDisplay
                             amountInCents={nextPayment.paid}
@@ -297,7 +297,7 @@ function CreditNote({
     currencyCode: CurrencyCode;
 }) {
     return (
-        <span className="text-sm text-emerald-700 dark:text-emerald-400">
+        <span className="text-sm text-success">
             {__('Credit of')}{' '}
             <AmountDisplay
                 amountInCents={-amount}

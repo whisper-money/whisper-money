@@ -61,8 +61,10 @@ function CustomTooltip({ active, payload, currencyCode }: CustomTooltipProps) {
                 <span
                     className={cn(
                         'font-mono font-medium tabular-nums',
-                        change !== null && change > 0 && 'text-emerald-600',
-                        change !== null && change < 0 && 'text-red-600',
+                        change !== null && change > 0 && 'text-success',
+                        change !== null &&
+                            change < 0 &&
+                            'text-muted-foreground',
                     )}
                 >
                     <AmountDisplay

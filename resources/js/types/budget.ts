@@ -184,9 +184,9 @@ export function budgetSeverity(budget: Budget): BudgetSeverity {
 
 export function getBudgetSeverityColor(severity: BudgetSeverity): string {
     const colors: Record<BudgetSeverity, string> = {
-        over: 'text-red-600 dark:text-red-400',
-        near: 'text-yellow-600 dark:text-yellow-400',
-        ok: 'text-green-600 dark:text-green-400',
+        over: 'text-warning',
+        near: 'text-warning',
+        ok: 'text-success',
     };
 
     return colors[severity];

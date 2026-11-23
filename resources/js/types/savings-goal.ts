@@ -142,10 +142,10 @@ export function getSavingsGoalStatusLabel(status: SavingsGoalStatus): string {
 
 export function getSavingsGoalStatusColor(status: SavingsGoalStatus): string {
     const colors: Record<SavingsGoalStatus, string> = {
-        ahead: 'text-green-600 dark:text-green-400',
-        on_track: 'text-green-600 dark:text-green-400',
-        behind: 'text-yellow-600 dark:text-yellow-400',
-        completed: 'text-green-600 dark:text-green-400',
+        ahead: 'text-success',
+        on_track: 'text-success',
+        behind: 'text-warning',
+        completed: 'text-success',
     };
     return colors[status];
 }

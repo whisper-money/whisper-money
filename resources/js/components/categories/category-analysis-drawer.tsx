@@ -309,8 +309,8 @@ function SummaryCards({
                             <TrendIcon
                                 className={cn(
                                     'size-4',
-                                    trend > 0 && 'text-amber-500',
-                                    trend < 0 && 'text-emerald-500',
+                                    trend > 0 && 'text-muted-foreground',
+                                    trend < 0 && 'text-success',
                                     trend === 0 && 'text-muted-foreground',
                                 )}
                             />

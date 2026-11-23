@@ -314,7 +314,7 @@ export function AccountBalanceCard({
                                                                 {__('Equity')}
                                                             </span>
                                                             <span
-                                                                className={`text-right font-mono whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                className={`text-right font-mono whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-success' : ''}`}
                                                             >
                                                                 <AmountDisplay
                                                                     amountInCents={
@@ -380,7 +380,7 @@ export function AccountBalanceCard({
                                                                         )}
                                                                     </span>
                                                                     <span
-                                                                        className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                        className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-success' : 'text-muted-foreground'}`}
                                                                     >
                                                                         {gain >=
                                                                         0

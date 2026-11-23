@@ -218,7 +218,7 @@ function RemainingLine({
 
     if (current.remaining <= 0) {
         return (
-            <span className="text-sm text-emerald-700 dark:text-emerald-400">
+            <span className="text-sm text-success">
                 {__('Target met for this month')} ·{' '}
                 {daysLeftLabel(current.days_left)}
             </span>
@@ -283,7 +283,7 @@ export function MonthlyGoalProgress({
         <Progress
             value={empty ? 0 : progressPercent(saved, target)}
             className={className}
-            indicatorClassName="bg-emerald-600 dark:bg-emerald-500"
+            indicatorClassName="bg-success"
         />
     );
 }

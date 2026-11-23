@@ -878,7 +878,7 @@ function SummaryCards({
                         <p
                             className={cn(
                                 'mt-1 text-lg font-semibold tabular-nums',
-                                net >= 0 ? 'text-emerald-600' : 'text-red-600',
+                                net >= 0 && 'text-success',
                             )}
                         >
                             {margin}%
@@ -908,7 +908,7 @@ function SummaryCards({
                         <AmountDisplay
                             amountInCents={averagePerDay}
                             currencyCode={currency}
-                            className="mt-1 text-lg font-semibold text-red-600 tabular-nums"
+                            className="mt-1 text-lg font-semibold tabular-nums"
                         />
                     </div>
                 </div>
@@ -949,8 +949,7 @@ function SummaryCard({
                     currencyCode={currency}
                     className={cn(
                         'text-lg font-semibold tabular-nums',
-                        tone === 'income' && 'text-emerald-600',
-                        tone === 'expense' && 'text-red-600',
+                        tone === 'income' && 'text-success',
                     )}
                 />
                 {badge}
@@ -1055,10 +1054,11 @@ function TrendCards({
                                             'flex items-center gap-0.5 font-medium tabular-nums',
                                             change === 0 &&
                                                 'text-muted-foreground',
-                                            isAdverse && 'text-amber-500',
+                                            isAdverse &&
+                                                'text-muted-foreground',
                                             change !== 0 &&
                                                 !isAdverse &&
-                                                'text-emerald-500',
+                                                'text-success',
                                         )}
                                     >
                                         <ChangeIcon className="size-3.5" />
@@ -1695,7 +1695,7 @@ function LargestTransactions({
                                     <AmountDisplay
                                         amountInCents={-item.amount}
                                         currencyCode={currency}
-                                        className="font-mono text-red-600 tabular-nums"
+                                        className="font-mono tabular-nums"
                                     />
                                 </td>
                             </tr>

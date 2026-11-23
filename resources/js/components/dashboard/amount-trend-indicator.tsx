@@ -41,8 +41,8 @@ export function AmountTrendIndicator({
 
     const Icon = isPositive ? TrendingUp : TrendingDown;
     const iconColorClass = isPositive
-        ? 'text-green-600/70 dark:text-green-400/70'
-        : 'text-red-600/70 dark:text-red-400/70';
+        ? 'text-success/70'
+        : 'text-muted-foreground';
 
     const percentageChange =
         previousAmount !== undefined && currentAmount !== undefined

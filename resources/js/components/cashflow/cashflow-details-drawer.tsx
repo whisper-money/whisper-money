@@ -145,7 +145,7 @@ function IncomeBar({
                 </p>
             )}
             {hasIncome && available < 0 && (
-                <p className="text-xs text-red-600 dark:text-red-400">
+                <p className="text-xs text-warning">
                     {__('You allocated more than you earned:')}{' '}
                     <WholeAmount
                         amountInCents={-available}
@@ -190,9 +190,7 @@ function PreviousChange({
             <Icon
                 className={cn(
                     'size-3',
-                    isFavorable
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400',
+                    isFavorable ? 'text-success' : 'text-muted-foreground',
                 )}
             />
             <span className="whitespace-nowrap">
