@@ -167,7 +167,7 @@ describe('CancelSubscriptionFlow', () => {
 
     it.each<[CancellationReason, CancellationOffer, RegExp]>([
         ['too_expensive', COUPON, /30% off for the next 3 months/],
-        ['missing_feature', { offer: 'roadmap' }, /we read every answer/],
+        ['missing_feature', { offer: 'support' }, /help you sort it out/],
         [
             'bank_connection_problems',
             { offer: 'support' },

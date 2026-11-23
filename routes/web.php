@@ -39,7 +39,6 @@ use App\Http\Controllers\OpenBanking\KrakenController;
 use App\Http\Controllers\OpenBanking\WiseController;
 use App\Http\Controllers\RealEstateDetailController;
 use App\Http\Controllers\ReEvaluateTransactionRulesController;
-use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SavingsGoalController;
 use App\Http\Controllers\SecondOfferController;
@@ -152,8 +151,6 @@ Route::get('documentation', [DocumentationController::class, 'show'])->name('doc
 Route::get('documentation/{slug}', [DocumentationController::class, 'show'])
     ->where('slug', '[A-Za-z0-9_/-]+')
     ->name('documentation.show');
-
-Route::get('roadmap', [RoadmapController::class, 'index'])->name('roadmap');
 
 Route::get('llms.txt', [AgentDocsController::class, 'llms'])->name('llms');
 

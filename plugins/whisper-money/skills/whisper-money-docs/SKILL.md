@@ -53,7 +53,7 @@ request or response fields.
 ## Anything else
 
 `https://whisper.money/llms.txt` indexes everything public beyond the docs — the
-product summary, roadmap, privacy policy, terms, the banks and apps that can be
+product summary, privacy policy, terms, the banks and apps that can be
 connected, and the comparison pages.
 
 ## How to answer
@@ -61,5 +61,4 @@ connected, and the comparison pages.
 - Read the page before answering. These pages change; memory does not.
 - Answer from what the page says, and link it (the human URL, without `.md`) so
   the user can read the rest.
-- If the docs do not cover it, say so rather than inferring. The roadmap page
-  is where "not yet" lives.
+- If the docs do not cover it, say so rather than inferring.

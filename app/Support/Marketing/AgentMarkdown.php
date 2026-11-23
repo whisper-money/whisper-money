@@ -253,7 +253,6 @@ final class AgentMarkdown
             '',
             '- [Product summary]('.$baseUrl.'/index.md): what Whisper Money does, what it does not do, pricing and platforms.',
             '- [Whisper Money]('.$baseUrl.'/): the landing page.',
-            '- [Roadmap]('.$baseUrl.'/roadmap): what is planned, in progress and shipped.',
             '- [Privacy policy]('.$baseUrl.'/privacy)',
             '- [Terms of service]('.$baseUrl.'/terms)',
         ];

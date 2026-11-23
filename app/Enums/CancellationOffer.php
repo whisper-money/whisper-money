@@ -8,7 +8,7 @@ namespace App\Enums;
  *
  * The first three keep the subscription on different terms (a discount, the
  * yearly price, a few months' pause), and taking one ends the flow as saved.
- * The last two only point at help: the user may still go on and cancel.
+ * Support only points at help: the user may still go on and cancel.
  */
 enum CancellationOffer: string
 {
@@ -18,6 +18,11 @@ enum CancellationOffer: string
 
     case Pause = 'pause';
 
+    /**
+     * No longer offered: the in-app roadmap page is gone. Kept because
+     * `CancellationSurveyResponse` casts `offer_shown` and `offer_accepted`
+     * to this enum, and answers recorded before then hold 'roadmap'.
+     */
     case Roadmap = 'roadmap';
 
     case Support = 'support';

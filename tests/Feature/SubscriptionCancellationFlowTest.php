@@ -177,7 +177,7 @@ describe('the survey', function () {
             ->assertJsonPath('offers', fn (array $sent) => array_column($sent, 'offer') === $offers);
     })->with([
         'too expensive' => ['too_expensive', ['retention_coupon', 'switch_to_yearly']],
-        'missing a feature' => ['missing_feature', ['roadmap']],
+        'missing a feature' => ['missing_feature', ['support']],
         'bank problems' => ['bank_connection_problems', ['support']],
         'too complex' => ['too_complex', ['support']],
         'not using it enough' => ['not_using_enough', []],

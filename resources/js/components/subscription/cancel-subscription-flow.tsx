@@ -263,8 +263,6 @@ export function CancelSubscriptionFlow({
                 end();
 
                 return setSupportOpen(action === 'contact');
-            case 'roadmap':
-                return reportAccepted();
         }
     };
 

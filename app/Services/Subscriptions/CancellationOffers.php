@@ -80,7 +80,7 @@ class CancellationOffers
                 $this->retentionCoupon($user, $subscription),
                 $this->switchToYearly($user, $subscription),
             ],
-            CancellationReason::MissingFeature => [['offer' => CancellationOffer::Roadmap]],
+            CancellationReason::MissingFeature,
             CancellationReason::BankConnectionProblems,
             CancellationReason::TooComplex => [['offer' => CancellationOffer::Support]],
             // No fallback after it: the free plan cannot be offered to someone

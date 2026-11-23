@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Header from './header';
 
 const mocks = vi.hoisted(() => ({
-    url: '/roadmap',
+    url: '/integrations',
     pageProps: {
         auth: {
             user: {
@@ -30,7 +30,7 @@ vi.mock('@inertiajs/react', () => ({
 
 describe('Header', () => {
     beforeEach(() => {
-        mocks.url = '/roadmap';
+        mocks.url = '/integrations';
         vi.stubGlobal(
             'fetch',
             vi.fn(() => new Promise(() => {})),
