@@ -4,7 +4,7 @@ import {
     useDesignSystemDisplay,
     type PreviewEntry,
 } from '@/components/design-system/showcase';
-import { categoryChartColor, chartRoleColors } from '@/lib/chart-colors';
+import { categoryChartColor, chartRoleTokens } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
 import { type CategoryColor } from '@/types/category';
 
@@ -41,10 +41,7 @@ const STREAK_TOKENS = [
 
 const CHART_SLOTS = Array.from({ length: 10 }, (_, index) => index + 1);
 
-/** The role tokens' CSS variables, e.g. `--chart-income`. */
-const CHART_ROLE_TOKENS = Object.values(chartRoleColors).map((color) =>
-    color.slice('var('.length, -1),
-);
+const CHART_ROLE_TOKENS = Object.values(chartRoleTokens);
 
 /** A few category colors, to show how category series follow the theme. */
 const SAMPLE_CATEGORY_COLORS: CategoryColor[] = [

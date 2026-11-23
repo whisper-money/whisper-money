@@ -146,22 +146,12 @@
     --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* Chart role tokens: the color each chart role takes, per chart theme. Charts
-   draw with these and never with a theme name, so the theme decision stays
-   here. Every theme block declares all of them: a token's var() resolves where
-   it is declared, so a nested `[data-chart-color]` block (the /design-system
-   palettes) must restate them to get its own slots. Colorful overrides them in
-   its block below.
-   - --chart-account-line   main balance line of an account
-   - --chart-account-gain   invested / gain line of an account
-   - --chart-mortgage       mortgage owed line of a real estate account
-   - --chart-equity         equity line of a real estate account
-   - --chart-income         income series (cashflow trend, sankey links)
-   - --chart-expense        expense series (cashflow trend, sankey links)
-   - --chart-liability      liability marker in net worth tooltips
-   - --chart-category-mix   how much of a category's own color a category
-                            series takes over its `--chart-N` slot: 100% in
-                            colorful, 0% elsewhere (see lib/chart-colors.ts) */
+/* Chart role tokens: the color each chart role takes (account lines, income,
+   expenses…), per chart theme; docs/design-system.md lists them. Charts draw
+   with these through lib/chart-colors.ts and never with a theme name. Every
+   theme block declares all of them: a var() resolves where it is declared, so
+   a nested `[data-chart-color]` block (the /design-system palettes) must
+   restate them to get its own slots. Colorful overrides them in its block. */
 :root,
 [data-chart-color='neutral'],
 [data-chart-color='blue'],
