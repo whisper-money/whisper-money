@@ -41,17 +41,18 @@ function supervisorPriority(array $program): int
 test('nginx and php-fpm stop gracefully', function () {
     $programs = supervisorPrograms();
 
-    expect($programs['nginx']['stopsignal'] ?? null)->toBe('QUIT')
-        ->and($programs['php-fpm']['stopsignal'] ?? null)->toBe('QUIT');
+    expect($programs['nginx'])->toHaveKey('stopsignal', 'QUIT')
+        ->and($programs['php-fpm'])->toHaveKey('stopsignal', 'QUIT');
 });
 
 test('the web stack stops after every other program', function () {
     $webStack = ['nginx', 'php-fpm', 'redis', 'memcached'];
     $programs = supervisorPrograms();
 
-    $lowestOtherPriority = $programs->except($webStack)->map(supervisorPriority(...))->min();
+    expect($programs->keys()->all())->toContain(...$webStack)
+        ->and($programs->except($webStack))->not->toBeEmpty();
 
-    expect($programs->except($webStack))->not->toBeEmpty();
+    $lowestOtherPriority = $programs->except($webStack)->map(supervisorPriority(...))->min();
 
     foreach ($webStack as $name) {
         expect(supervisorPriority($programs[$name]))->toBeLessThan($lowestOtherPriority, "{$name} must stop after the workers");
