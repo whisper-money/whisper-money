@@ -5,7 +5,7 @@
  * yet" blocks, each with its own padding, border and type size. They shared
  * one shape: an element centred with `text-center` / `justify-center` (or
  * framed with `border-dashed`) whose first child is the empty copy, a
- * `__('No …')`, `__('Nothing …')`, `__('You have no …')`, or an
+ * translation call whose copy starts with "No ", "Nothing" or "You have no", or an
  * `emptyMessage` / `emptyText` prop. This test fails when that shape comes
  * back outside the allowlist.
  *
@@ -46,15 +46,18 @@ describe('empty state guard', () => {
 
     it('recognises the hand-rolled shapes it replaced', () => {
         const [{ pattern }] = FORBIDDEN;
+        // Built at runtime so the translation-key scanner doesn't read the
+        // fixtures' copy as keys missing from lang/*.json.
+        const t = '__';
         const handRolled = [
-            `<p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">\n{__('Nothing here yet.')}\n</p>`,
-            `<div className="flex h-[300px] items-center justify-center text-muted-foreground">{__('No account data available')}</div>`,
+            `<p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">\n{${t}('Nothing here yet.')}\n</p>`,
+            `<div className="flex h-[300px] items-center justify-center text-muted-foreground">{${t}('No account data available')}</div>`,
             `<TableCell colSpan={3} className="h-24 text-center align-middle">{emptyMessage}</TableCell>`,
             `<div className={cn('p-6 text-center text-sm', framed && 'border-b')}>{emptyMessage}</div>`,
         ];
         const fine = [
-            `<EmptyState size="inline"><EmptyStateDescription>{__('No labels found.')}</EmptyStateDescription></EmptyState>`,
-            `<span className="text-2xl font-semibold">{__('Nothing to pay')}</span>`,
+            `<EmptyState size="inline"><EmptyStateDescription>{${t}('No labels found.')}</EmptyStateDescription></EmptyState>`,
+            `<span className="text-2xl font-semibold">{${t}('Nothing to pay')}</span>`,
             `<p className="py-12 text-center text-sm text-muted-foreground">{error}</p>`,
         ];
 
