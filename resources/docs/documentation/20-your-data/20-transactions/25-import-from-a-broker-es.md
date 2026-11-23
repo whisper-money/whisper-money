@@ -74,6 +74,10 @@ se importa por separado y va a su propia cuenta.
 | Movimientos de la cuenta remunerada | «MyInvestor», de tipo **Ahorros**               | Una transacción por movimiento y el saldo de cada día.                   |
 | Operaciones de valores y fondos     | «MyInvestor · Portfolio», de tipo **Inversión** | El importe invertido de cada día y el valor de hoy. Ninguna transacción. |
 
+El listado de **Órdenes** de MyInvestor no es ninguno de los dos y no se puede
+importar: para la cartera hace falta el archivo de operaciones de valores,
+`salida.xls` (más abajo, en [Operaciones de valores y fondos](#operaciones-de-valores-y-fondos)).
+
 Si tienes las dos cosas, importa los dos archivos: no se pisan. El de valores no
 trae efectivo, así que no duplica nada de la cuenta remunerada. El dinero que
 pasas de la cuenta a la cartera y las suscripciones de fondos que se pagan desde
@@ -103,9 +107,28 @@ sumando los movimientos y puedes corregirlo.
 
 ### Operaciones de valores y fondos
 
-Es la exportación de las órdenes de tu cartera de valores y fondos, que MyInvestor
-descarga como `salida.xls` (o `salida.xlsx`). Súbela tal cual, aunque al abrirla
-las cabeceras no cuadren con las columnas: se lee igual.
+Es la exportación de las operaciones de tu cartera de valores y fondos, que se
+descarga como `salida.xls` (o `salida.xlsx`). No se descarga desde la app ni la
+web de MyInvestor, sino desde el portal de Inversis, donde MyInvestor custodia la
+cartera:
+
+1. Entra en [inversis.com/cbmyinvestor](https://www.inversis.com/cbmyinvestor)
+   con el mismo usuario y contraseña de MyInvestor. Mejor desde el ordenador: si
+   te cuesta entrar, prueba en una ventana privada del navegador.
+2. Ve a **Inversiones** → **Fondos** → **Operaciones y consultas** →
+   **Consultar operaciones**. Ahí salen todas las operaciones y se descarga el
+   Excel.
+3. Pon como fecha de inicio una anterior a cuando abriste la cuenta, para traer
+   todo el historial, y descarga el Excel (`salida.xls`).
+
+Súbelo tal cual, aunque al abrirlo las cabeceras no cuadren con las columnas: se
+lee igual.
+
+El listado de **Órdenes** de MyInvestor no es este archivo y no sirve. Su
+exportación trae las columnas **Fecha de la orden**, **ISIN**, **Importe
+estimado**, **Nº de participaciones** y **Estado**, pero no el tipo de cada
+orden, así que no se distingue una compra de un reembolso. Si lo subes, el panel
+te avisa de que necesitas `salida.xls`.
 
 Qué se lee de cada operación:
 
@@ -253,6 +276,16 @@ Los dos, si tienes cuenta y cartera. El **Resumen de movimientos** trae el
 efectivo de la cuenta remunerada, y el archivo de operaciones de valores trae lo
 invertido en fondos, acciones y planes de pensiones. Si solo usas la cuenta, basta
 con el primero.
+
+El archivo de operaciones de valores (`salida.xls`) no se descarga desde
+MyInvestor, sino desde el portal de Inversis: mira cómo en
+[Operaciones de valores y fondos](#operaciones-de-valores-y-fondos).
+
+### ¿Puedo importar el listado de Órdenes de MyInvestor?
+
+No. Ese listado no dice si cada orden es una compra o un reembolso, así que no se
+puede saber cuánto invertiste. Descarga el archivo de operaciones de valores
+(`salida.xls`) desde el portal de Inversis y súbelo en su lugar.
 
 ### ¿Por qué la cartera vale lo mismo que lo invertido?
 

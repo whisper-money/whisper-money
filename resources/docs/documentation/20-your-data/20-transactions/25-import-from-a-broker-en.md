@@ -74,6 +74,10 @@ portfolio. Each is imported on its own and goes to its own account.
 | Current-account movements       | “MyInvestor”, a **Savings** account                 | One transaction per movement, and each day's balance.          |
 | Securities and funds operations | “MyInvestor · Portfolio”, an **Investment** account | What was invested each day and today's value. No transactions. |
 
+MyInvestor's **Órdenes** (orders) list is neither of them and can't be
+imported: the portfolio needs the securities operations file, `salida.xls` (see
+[Securities and funds operations](#securities-and-funds-operations) below).
+
 If you have both, import both files: they don't overlap. The securities file
 holds no cash, so it duplicates nothing from the current account. The money you
 move from the account to the portfolio, and fund subscriptions paid from the
@@ -103,10 +107,28 @@ adding up the movements, and you can correct it.
 
 ### Securities and funds operations
 
-This is the export of the orders in your securities and funds portfolio, which
-MyInvestor downloads as `salida.xls` (or `salida.xlsx`). Upload it as it is, even
-if its headers don't line up with the columns when you open it: it is read just
-the same.
+This is the export of the operations in your securities and funds portfolio,
+which downloads as `salida.xls` (or `salida.xlsx`). It isn't downloaded from
+MyInvestor's app or website, but from the Inversis portal, where MyInvestor holds
+the portfolio:
+
+1. Sign in at [inversis.com/cbmyinvestor](https://www.inversis.com/cbmyinvestor)
+   with your MyInvestor username and password. A computer works best: if you
+   have trouble signing in, try a private browser window.
+2. Go to **Inversiones** → **Fondos** → **Operaciones y consultas** →
+   **Consultar operaciones**. All the operations are listed there, and that is
+   where the Excel file is downloaded.
+3. Set a start date before you opened the account, to bring your whole history,
+   and download the Excel file (`salida.xls`).
+
+Upload it as it is, even if its headers don't line up with the columns when you
+open it: it is read just the same.
+
+MyInvestor's **Órdenes** (orders) list isn't this file and won't work. Its export
+has the columns **Fecha de la orden**, **ISIN**, **Importe estimado**, **Nº de
+participaciones** and **Estado**, but not the type of each order, so a buy can't
+be told from a redemption. If you upload it, the drawer tells you that you need
+`salida.xls` instead.
 
 What is read from each operation:
 
@@ -256,6 +278,16 @@ Both, if you have an account and a portfolio. **Resumen de movimientos** brings
 the current account's cash, and the securities operations file brings what you
 invested in funds, stocks and pension plans. If you only use the account, the
 first one is enough.
+
+The securities operations file (`salida.xls`) isn't downloaded from MyInvestor
+but from the Inversis portal: see how in
+[Securities and funds operations](#securities-and-funds-operations).
+
+### Can I import MyInvestor's Órdenes list?
+
+No. That list doesn't say whether each order is a buy or a redemption, so what
+you invested can't be worked out. Download the securities operations file
+(`salida.xls`) from the Inversis portal and upload that instead.
 
 ### Why is the portfolio worth exactly what I invested?
 

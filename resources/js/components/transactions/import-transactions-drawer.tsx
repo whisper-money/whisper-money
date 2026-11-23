@@ -29,6 +29,7 @@ import {
     type BrokerImport,
 } from '@/lib/broker-imports/broker-import';
 import { rememberBrokerImport } from '@/lib/broker-imports/broker-memory';
+import { isMyInvestorOrdersFile } from '@/lib/broker-imports/myinvestor-orders';
 import { describeColumns } from '@/lib/column-shape';
 import {
     convertRowsToTransactions,
@@ -72,6 +73,7 @@ import {
     brokerStepInfo,
     ImportStepBroker,
 } from './import-step-broker';
+import { MyInvestorOrdersWarning } from './import-step-broker-parts';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
 
@@ -138,6 +140,18 @@ interface ImportError {
     error: string;
 }
 
+/** The import with no file picked, nothing read from one. */
+function withoutFile(state: ImportState): ImportState {
+    return {
+        ...state,
+        file: null,
+        parsedData: [],
+        rowNumbers: [],
+        columnHeaders: [],
+        columnOptions: [],
+    };
+}
+
 export function ImportTransactionsDrawer({
     accounts = [],
     categories = [],
@@ -168,6 +182,9 @@ export function ImportTransactionsDrawer({
     // A recognised broker file, imported through its own step. Only ever set
     // with the broker imports flag on.
     const [broker, setBroker] = useState<BrokerImport | null>(null);
+    // MyInvestor's orders list was picked: it cannot be imported, so the
+    // upload step says which file to download instead.
+    const [pickedOrdersList, setPickedOrdersList] = useState(false);
     // Accounts this import made, kept so a retry reuses them.
     const [createdAccounts, setCreatedAccounts] = useState<Account[]>([]);
     const knownAccounts = useMemo(
@@ -214,6 +231,7 @@ export function ImportTransactionsDrawer({
             setError(null);
             setSelectedAccount(null);
             setBroker(null);
+            setPickedOrdersList(false);
             setCreatedAccounts([]);
             resetAi();
         }
@@ -230,6 +248,7 @@ export function ImportTransactionsDrawer({
         setSelectedAccount(null);
         // A file read for the account picked before is read again without it.
         setBroker(null);
+        setPickedOrdersList(false);
         brokerRead.current++;
         setState((prev) => ({
             ...prev,
@@ -241,9 +260,10 @@ export function ImportTransactionsDrawer({
 
     /**
      * Take the file through its broker's step when it is a broker export.
-     * True when the file is dealt with here: a broker file, or any other file
-     * picked with no account to import it into, which sends the user back to
-     * pick one.
+     * True when the file is dealt with here: a broker file, MyInvestor's
+     * orders list, which is turned away with the file to use instead, or any
+     * other file picked with no account to import it into, which sends the
+     * user back to pick one.
      */
     const handleBrokerFile = async (file: File): Promise<boolean> => {
         const read = brokerRead.current;
@@ -270,6 +290,16 @@ export function ImportTransactionsDrawer({
             // Not a file the broker reader understands: the column mapping
             // reads it, or says why it cannot.
             console.warn('Broker file detection failed:', err);
+        }
+
+        if (await isMyInvestorOrdersFile(file)) {
+            if (read === brokerRead.current) {
+                setPickedOrdersList(true);
+                // A file picked before it would otherwise stay on to import.
+                setState(withoutFile);
+            }
+
+            return true;
         }
 
         if (state.selectedAccountId) {
@@ -351,18 +381,12 @@ export function ImportTransactionsDrawer({
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
         setBroker(null);
+        setPickedOrdersList(false);
         brokerRead.current++;
         const token = ai.begin();
 
         if (!file) {
-            setState((prev) => ({
-                ...prev,
-                file: null,
-                parsedData: [],
-                rowNumbers: [],
-                columnHeaders: [],
-                columnOptions: [],
-            }));
+            setState(withoutFile);
             return;
         }
 
@@ -1044,6 +1068,12 @@ export function ImportTransactionsDrawer({
                             <AlertError errors={[error]} />
                         </div>
                     )}
+                    {pickedOrdersList &&
+                        state.step === ImportStep.UploadFile && (
+                            <div className="mt-4">
+                                <MyInvestorOrdersWarning />
+                            </div>
+                        )}
                     <div className="mt-4">
                         {isImporting ? renderImportProgress() : renderStep()}
                     </div>

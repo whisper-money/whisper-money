@@ -2,6 +2,7 @@ import { SyncedBalanceNotice } from '@/components/accounts/synced-balance-notice
 import { AiColumnDetection } from '@/components/ai-column-detection';
 import AlertError from '@/components/alert-error';
 import { ImportStepUpload } from '@/components/import-step-upload';
+import { MyInvestorOrdersWarning } from '@/components/transactions/import-step-broker-parts';
 import {
     Drawer,
     DrawerContent,
@@ -16,6 +17,7 @@ import {
     BALANCE_FIELDS,
     suggestedBalanceMapping,
 } from '@/lib/ai-import-mapping';
+import { isMyInvestorOrdersFile } from '@/lib/broker-imports/myinvestor-orders';
 import { describeColumns } from '@/lib/column-shape';
 import {
     detectDateFormat,
@@ -49,7 +51,7 @@ import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { isAxiosError } from 'axios';
 import { Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportBalanceStepAccount } from './import-balances/import-balance-step-account';
 import { ImportBalanceStepMapping } from './import-balances/import-balance-step-mapping';
@@ -88,6 +90,17 @@ function importErrorMessage(error: unknown, fallback: string): string {
         : `${__('Row')} ${Number(index) + 1}: ${message}`;
 }
 
+/** The import with no file picked, nothing read from one. */
+function withoutFile(state: BalanceImportState): BalanceImportState {
+    return {
+        ...state,
+        file: null,
+        parsedData: [],
+        columnHeaders: [],
+        columnOptions: [],
+    };
+}
+
 export function ImportBalancesDrawer({
     open,
     onOpenChange,
@@ -96,8 +109,16 @@ export function ImportBalancesDrawer({
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
-    const { locale } = usePage<SharedData>().props;
+    const { locale, features } = usePage<SharedData>().props;
+    const brokerImportsEnabled = features?.brokerImports === true;
     const [isImporting, setIsImporting] = useState(false);
+    // MyInvestor's orders list was picked: it holds orders, not balances, and
+    // the broker import cannot read it either, so the upload step says which
+    // file to download instead of mapping its columns.
+    const [pickedOrdersList, setPickedOrdersList] = useState(false);
+    // Bumped on every file change, so a slow read cannot land over a file
+    // picked (or removed) after it.
+    const fileRead = useRef(0);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -161,6 +182,7 @@ export function ImportBalancesDrawer({
             });
             setIsImporting(false);
             setError(null);
+            setPickedOrdersList(false);
             setSelectedAccount(null);
             setImportProgress(0);
             setImportTotal(0);
@@ -295,16 +317,26 @@ export function ImportBalancesDrawer({
     const handleFileSelect = async (file: File) => {
         // Whatever the last file failed on no longer applies to this one.
         setError(null);
+        setPickedOrdersList(false);
+        const read = ++fileRead.current;
         const token = ai.begin();
 
         if (!file) {
-            setState((prev) => ({
-                ...prev,
-                file: null,
-                parsedData: [],
-                columnHeaders: [],
-                columnOptions: [],
-            }));
+            setState(withoutFile);
+            return;
+        }
+
+        if (brokerImportsEnabled && (await isMyInvestorOrdersFile(file))) {
+            if (read === fileRead.current) {
+                setPickedOrdersList(true);
+                // A file picked before it would otherwise stay on to import.
+                setState(withoutFile);
+            }
+
+            return;
+        }
+
+        if (read !== fileRead.current) {
             return;
         }
 
@@ -754,6 +786,12 @@ export function ImportBalancesDrawer({
                             <AlertError errors={[error]} />
                         </div>
                     )}
+                    {pickedOrdersList &&
+                        state.step === BalanceImportStep.UploadFile && (
+                            <div className="mt-4">
+                                <MyInvestorOrdersWarning />
+                            </div>
+                        )}
                     {/* empty:hidden keeps the margin off the steps that
                         render no notice: a manual account, and the import
                         itself. */}
