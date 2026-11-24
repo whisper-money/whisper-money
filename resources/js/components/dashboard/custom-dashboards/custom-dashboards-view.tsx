@@ -1,3 +1,4 @@
+import { SetupChecklistCard } from '@/components/dashboard/setup-checklist-card';
 import { DashboardLayoutView } from '@/components/dashboard/widgets/dashboard-layout-view';
 import {
     SYSTEM_DASHBOARD_LAYOUT,
@@ -155,10 +156,20 @@ export function CustomDashboardsView({
             {notice}
 
             {selected === null ? (
-                <DashboardLayoutView
-                    layout={SYSTEM_DASHBOARD_LAYOUT}
-                    data={data}
-                />
+                <>
+                    {/* Nothing while it loads: most users have no card, and a
+                        placeholder would flash for them on every visit. */}
+                    {data.setupChecklist && (
+                        <SetupChecklistCard
+                            checklist={data.setupChecklist}
+                            canDismiss={!auth.isSharedAccount}
+                        />
+                    )}
+                    <DashboardLayoutView
+                        layout={SYSTEM_DASHBOARD_LAYOUT}
+                        data={data}
+                    />
+                </>
             ) : isLocked(data, selected) ? (
                 <LockedDashboard dashboard={selected} />
             ) : (

@@ -6,6 +6,7 @@ use App\Models\Achievement;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Dashboards\SetupChecklist;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
 
@@ -39,6 +40,9 @@ beforeEach(function (): void {
 function challenged(array $attributes = []): User
 {
     return User::factory()->onboarded()->create([
+        // Past the dashboard's "Finish setting up" days, which keep the
+        // categorize prompt quiet: the tests below are about the prompt itself.
+        'onboarded_at' => now()->subDays(SetupChecklist::WINDOW_DAYS + 1),
         'currency_code' => 'EUR',
         'locale' => 'en',
         'last_active_at' => now(),
@@ -205,6 +209,31 @@ it('stops asking for three days once the reader says not now', function (): void
     expect($user->fresh()->uncategorized_prompt_snoozed_until->toDateString())
         ->toBe(now()->addDays(3)->toDateString())
         ->and(challengesFor($user)['uncategorized'])->toBeNull();
+});
+
+it('leaves the pile to the setup card while the dashboard shows it', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect(challengesFor($user)['uncategorized'])->toBeNull();
+});
+
+it('asks again once the setup card is hidden', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    $this->actingAs($user)
+        ->post(route('dashboard.setup.dismiss'))
+        ->assertNoContent();
+
+    expect(challengesFor($user->fresh())['uncategorized']['count'])->toBe(2);
+});
+
+it('asks again once the setup card\'s days are over', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDays(SetupChecklist::WINDOW_DAYS + 1)]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect(challengesFor($user)['uncategorized']['count'])->toBe(2);
 });
 
 it('asks again once the snooze has run out', function (): void {

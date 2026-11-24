@@ -3,6 +3,7 @@
 namespace App\Services\Achievements;
 
 use App\Models\User;
+use App\Services\Dashboards\SetupChecklist;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,6 +26,7 @@ class Challenges
         private Catalog $catalog,
         private Presenter $presenter,
         private Standing $standing,
+        private SetupChecklist $setupChecklist,
     ) {}
 
     /**
@@ -138,7 +140,10 @@ class Challenges
             ->where('transaction_date', '<', now()->startOfMonth()->addMonth())
             ->count();
 
-        if ($count === 0) {
+        // One nudge at a time: while the dashboard's "Finish setting up" card
+        // asks for the same work, the toast stays quiet. It is back once the
+        // card is done, hidden, or past its window.
+        if ($count === 0 || $this->setupChecklist->takesOverUncategorizedPrompt($user)) {
             return null;
         }
 

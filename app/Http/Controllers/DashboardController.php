@@ -12,6 +12,7 @@ use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\CreditCards\CreditCardStatementService;
+use App\Services\Dashboards\SetupChecklist;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
 use App\Services\OnboardingSummaryService;
@@ -35,6 +36,7 @@ class DashboardController extends Controller
         private CreditCardStatementService $creditCardStatementService,
         private CurrentMonthSavings $currentMonthSavings,
         private OnboardingSummaryService $onboardingSummary,
+        private SetupChecklist $setupChecklist,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -84,6 +86,7 @@ class DashboardController extends Controller
             // drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
             'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
+            'setupChecklist' => Inertia::defer(fn () => $this->getSetupChecklist($request), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
@@ -224,6 +227,17 @@ class DashboardController extends Controller
             'monthLabel' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
             'headline' => $this->presenter->headline($summary, $locale),
         ];
+    }
+
+    /**
+     * The "Finish setting up" card the system dashboard opens with in the
+     * first days after onboarding, or null when there is none to draw.
+     *
+     * @return array{steps: list<array<string, mixed>>}|null
+     */
+    private function getSetupChecklist(Request $request): ?array
+    {
+        return $this->setupChecklist->for($request->user());
     }
 
     /**
