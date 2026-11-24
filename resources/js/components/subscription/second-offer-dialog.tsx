@@ -4,6 +4,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card } from '@/components/ui/card';
 import { useOfferedPriceTier } from '@/hooks/use-price-tier';
 import { captureEvent } from '@/lib/posthog';
+import { readOwnedValue, writeOwnedValue } from '@/lib/safe-storage';
 import { shown } from '@/routes/subscribe/second-offer';
 import { type SecondOfferBacklog, type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
@@ -19,6 +20,18 @@ import { useEffect, useState } from 'react';
 let openedThisSession = false;
 
 /**
+ * Remembers, per user on this browser, that the dialog was already opened.
+ * The server stops offering it only once the "shown" stamp lands, and that
+ * POST can be lost: offline, a session that died under the tab, a reload or a
+ * navigation that cancels it. Each loss used to mean another full show on the
+ * next page load, and some users met it on five different days. With this
+ * note, the next load that still gets the prop only sends the stamp again.
+ * It holds per browser: another device, or a browser that blocks storage, still
+ * relies on the stamp landing.
+ */
+const OPENED_STORAGE_KEY = 'second-offer-shown';
+
+/**
  * The plan, offered once more to a free user whose first transactions just
  * landed: they met the paywall before the app had anything of theirs to show.
  * Drawn by the app shell, so it opens wherever they land after the import; the
@@ -26,7 +39,9 @@ let openedThisSession = false;
  * down the uncategorized backlog the copy points at.
  */
 export function SecondOfferDialog() {
-    const { showSecondOffer, secondOfferBacklog } = usePage<SharedData>().props;
+    const { showSecondOffer, secondOfferBacklog, auth } =
+        usePage<SharedData>().props;
+    const userId = auth.user.id;
     const tier = useOfferedPriceTier();
     const [open, setOpen] = useState(false);
     // Kept as it was when the dialog opened: the "shown" stamp makes the user
@@ -40,14 +55,23 @@ export function SecondOfferDialog() {
         }
 
         openedThisSession = true;
-        setBacklog(secondOfferBacklog);
-        setOpen(true);
-        captureEvent('second_offer_shown', { price_tier: tier });
-        // Nothing to do with the answer: if it never lands, the offer simply
-        // comes back on the next page load.
+
+        if (readOwnedValue(OPENED_STORAGE_KEY, userId) === null) {
+            writeOwnedValue(
+                OPENED_STORAGE_KEY,
+                userId,
+                new Date().toISOString(),
+            );
+            setBacklog(secondOfferBacklog);
+            setOpen(true);
+            captureEvent('second_offer_shown', { price_tier: tier });
+        }
+
+        // Nothing to do with the answer: if it never lands, the next page
+        // load that still gets the prop sends it again, without the dialog.
         void axios.post(shown.url()).catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showSecondOffer, tier]);
+    }, [showSecondOffer, tier, userId]);
 
     function handleOpenChange(next: boolean): void {
         if (!next) {
