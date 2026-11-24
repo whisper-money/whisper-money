@@ -32,7 +32,7 @@ export function PostSaveApplyRulePrompt({
 }: {
     /** Called once the rule has been applied, to refresh what it changed. */
     onApplied?: () => void;
-} = {}) {
+}) {
     const { automationRules, flash } = usePage<{
         automationRules: AutomationRule[];
         flash?: SavedAutomationRuleFlash;

@@ -43,7 +43,9 @@ export interface TransactionTableSource {
      * Fetches the rows again after a server-side bulk change, when the source
      * can do that without reloading the whole page. The server source sets it
      * to its own `reload`; the in-memory one leaves it out, so its rows keep
-     * those changes until the next visit rather than reloading the page.
+     * those changes until the next visit rather than reloading the page. A
+     * rule applied to existing transactions changes rows the table never
+     * touched, so it falls back to `reload` when this is left out.
      */
     refreshRows?: () => void;
     /**
