@@ -219,12 +219,13 @@ export function computeMoMPercent(
  */
 export function formatPercentValue(
     value: number | null,
-    options?: { decimals?: number; locale?: string },
+    locale: string,
+    options?: { fractionDigits?: number },
 ): string {
     if (value === null) return '—';
 
-    return formatPercent(value, options?.locale ?? 'en-US', {
-        fractionDigits: options?.decimals ?? 1,
+    return formatPercent(value, locale, {
+        fractionDigits: options?.fractionDigits ?? 1,
         signed: true,
     });
 }

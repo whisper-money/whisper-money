@@ -399,22 +399,28 @@ describe('edge cases for slice(1) in useChartViews hook', () => {
 
 describe('formatPercentValue', () => {
     it('returns dash for null values', () => {
-        expect(formatPercentValue(null)).toBe('—');
+        expect(formatPercentValue(null, 'en-US')).toBe('—');
     });
 
     it('adds plus sign for positive values', () => {
-        expect(formatPercentValue(10.5)).toBe('+10.5%');
+        expect(formatPercentValue(10.5, 'en-US')).toBe('+10.5%');
     });
 
     it('does not add sign for negative values', () => {
-        expect(formatPercentValue(-5.3)).toBe('-5.3%');
+        expect(formatPercentValue(-5.3, 'en-US')).toBe('-5.3%');
     });
 
     it('formats zero without sign', () => {
-        expect(formatPercentValue(0)).toBe('0.0%');
+        expect(formatPercentValue(0, 'en-US')).toBe('0.0%');
+    });
+
+    it('writes the separators of the locale', () => {
+        expect(formatPercentValue(-5.3, 'es-ES')).toMatch(/^-5,3\s%$/);
     });
 
     it('respects custom decimal places', () => {
-        expect(formatPercentValue(10.567, { decimals: 2 })).toBe('+10.57%');
+        expect(formatPercentValue(10.567, 'en-US', { fractionDigits: 2 })).toBe(
+            '+10.57%',
+        );
     });
 });

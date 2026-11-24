@@ -5,7 +5,7 @@ import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'es-ES' }));
 
-// es-ES puts a no-break space before the sign; getByText normalises it to a
+// es-ES puts a no-break space before `%`; getByText normalises it to a
 // plain space, so the expectations below use one.
 
 describe('PercentageTrendIndicator', () => {

@@ -65,7 +65,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                             'text-muted-foreground',
                     )}
                 >
-                    {formatPercentValue(percent ?? null, { locale })}
+                    {formatPercentValue(percent ?? null, locale)}
                 </span>
             </div>
         </div>
