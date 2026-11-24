@@ -76,12 +76,12 @@ export function StepPlan({
                             : __('A year of your spending, from a file')
                     }
                     description={
-                        !bankOffered
+                        bankOffered
                             ? __(
-                                  'The export your bank already offers, read in one go.',
+                                  "Forty seconds at your bank's own login, read-only.",
                               )
                             : __(
-                                  "Forty seconds at your bank's own login, read-only.",
+                                  'The export your bank already offers, read in one go.',
                               )
                     }
                 />
