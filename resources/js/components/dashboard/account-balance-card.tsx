@@ -25,6 +25,8 @@ import { AccountTypeIcon } from './account-type-icon';
 interface LinkedLoanMetrics {
     currentBalance: number;
     previousBalance: number;
+    /** False when the loan has no figure for last month. */
+    hasPreviousBalance?: boolean;
     diff: number;
     history: Array<{
         date: string;
@@ -46,21 +48,21 @@ interface AccountBalanceCardProps {
 
 /**
  * What stands in for "vs last month" on an account that has no figure for
- * last month: when its balance started being known.
+ * last month: when its first balance was recorded.
  */
 function addedNote(
-    trackedSince: string | null | undefined,
+    balanceSince: string | null | undefined,
     locale: string,
 ): string | undefined {
-    if (!trackedSince) {
+    if (!balanceSince) {
         return undefined;
     }
 
-    if (trackedSince === todayDateString()) {
+    if (balanceSince === todayDateString()) {
         return __('Added today');
     }
 
-    return __('Added :date', { date: formatDayFromDate(trackedSince, locale) });
+    return __('Added :date', { date: formatDayFromDate(balanceSince, locale) });
 }
 
 export function AccountBalanceCard({
@@ -170,7 +172,8 @@ export function AccountBalanceCard({
         ? equityData.equity
         : account.currentBalance;
     const displayPreviousBalance =
-        account.hasPreviousBalance === false
+        account.hasPreviousBalance === false ||
+        linkedLoanMetrics?.hasPreviousBalance === false
             ? null
             : equityData
               ? equityData.prevEquity
@@ -229,26 +232,14 @@ export function AccountBalanceCard({
             </CardHeader>
             <CardContent>
                 {hasNoBalance ? (
-                    <div className="flex flex-col items-start gap-3">
-                        <p className="text-base text-muted-foreground">
-                            {__('No balance yet')}
-                        </p>
-                        {isConnected ? (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={show.url(account.id)}>
-                                    {addBalanceLabel(account.type)}
-                                </Link>
-                            </Button>
-                        ) : (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setUpdateBalanceOpen(true)}
-                            >
-                                {addBalanceLabel(account.type)}
-                            </Button>
-                        )}
-                    </div>
+                    <NoBalanceYet
+                        account={account}
+                        onAddBalance={
+                            isConnected
+                                ? undefined
+                                : () => setUpdateBalanceOpen(true)
+                        }
+                    />
                 ) : (
                     <div className="flex items-center justify-between gap-6">
                         {creditCardUsage ? (
@@ -261,7 +252,7 @@ export function AccountBalanceCard({
                                 balance={displayBalance}
                                 previousBalance={displayPreviousBalance}
                                 noComparisonNote={addedNote(
-                                    account.trackedSince,
+                                    account.balanceSince,
                                     locale,
                                 )}
                                 currencyCode={currencyCode}
@@ -501,7 +492,40 @@ export function AccountBalanceCard({
     );
 }
 
-/** A loan is asked for what is still owed on it, everything else for a balance. */
-function addBalanceLabel(type: AccountWithMetrics['type']): string {
-    return type === 'loan' ? __('Add what you still owe') : __('Add balance');
+/**
+ * An account nobody gave a balance yet: a zero there would be made up, so the
+ * card asks for the figure instead. A connected account's balance comes from
+ * the bank, so it is sent to its page rather than to the editor.
+ */
+function NoBalanceYet({
+    account,
+    onAddBalance,
+}: {
+    account: Pick<AccountWithMetrics, 'id' | 'type'>;
+    onAddBalance?: () => void;
+}) {
+    const label =
+        account.type === 'loan'
+            ? __('Add what you still owe')
+            : __('Add balance');
+
+    return (
+        <div className="flex flex-col items-start gap-3">
+            <p className="text-base text-muted-foreground">
+                {__('No balance yet')}
+            </p>
+            <Button
+                variant="outline"
+                size="sm"
+                asChild={!onAddBalance}
+                onClick={onAddBalance}
+            >
+                {onAddBalance ? (
+                    label
+                ) : (
+                    <Link href={show.url(account.id)}>{label}</Link>
+                )}
+            </Button>
+        </div>
+    );
 }

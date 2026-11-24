@@ -258,7 +258,11 @@ class DashboardController extends Controller
         $evolution = $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today, unknownAsNull: true);
         $accountsById = $accounts->keyBy('id');
         $evolution['accounts'] = collect($evolution['accounts'])
-            ->map(fn (array $config, string $id): array => [...$config, 'tracked_since' => $this->trackedSince($accountsById->get($id))]);
+            ->map(fn (array $config, string $id): array => [
+                ...$config,
+                'balance_since' => $this->dayOf($accountsById->get($id)?->balances_min_balance_date),
+                'tracked_since' => $this->trackedSince($accountsById->get($id)),
+            ]);
 
         return $evolution;
     }
@@ -271,16 +275,22 @@ class DashboardController extends Controller
      */
     private function trackedSince(?Account $account): ?string
     {
-        $firstBalance = $account?->balances_min_balance_date;
+        $firstBalance = $this->dayOf($account?->balances_min_balance_date);
+        $firstMovement = $this->dayOf($account?->transactions_min_transaction_date);
 
         if ($firstBalance === null) {
             return null;
         }
 
-        $firstMovement = $account->transactions_min_transaction_date;
-        $firstDay = $firstMovement !== null && $firstMovement < $firstBalance ? $firstMovement : $firstBalance;
+        return $firstMovement !== null ? min($firstBalance, $firstMovement) : $firstBalance;
+    }
 
-        return substr((string) $firstDay, 0, 10);
+    /**
+     * A `withMin()` date as `YYYY-MM-DD`, whatever the driver returned it as.
+     */
+    private function dayOf(mixed $value): ?string
+    {
+        return $value === null ? null : substr((string) $value, 0, 10);
     }
 
     /**

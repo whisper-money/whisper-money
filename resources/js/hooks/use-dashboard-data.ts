@@ -23,6 +23,8 @@ export interface NetWorthEvolutionAccount {
      * null when no balance was ever recorded for it.
      */
     tracked_since?: string | null;
+    /** The day the first balance was recorded (`YYYY-MM-DD`), or null. */
+    balance_since?: string | null;
 }
 
 export interface OriginalAmount {
@@ -58,8 +60,8 @@ export interface AccountWithMetrics extends Account {
      * is nothing honest to compare the balance against. Unset reads as true.
      */
     hasPreviousBalance?: boolean;
-    /** The first day the balance is known for, when the server said so. */
-    trackedSince?: string | null;
+    /** The day the first balance was recorded, when the server said so. */
+    balanceSince?: string | null;
     /** Set on a credit card once its usage has loaded. */
     creditCardUsage?: CreditCardUsage;
 }
@@ -121,13 +123,13 @@ export function deriveAccountMetrics(
         const trackedSinceMonth = account.tracked_since?.slice(0, 7);
         // Only the months the account has a figure for: a month before its
         // first balance is not a zero, it is a month nobody knows about.
-        const known = data.filter(
+        const knownMonths = data.filter(
             (point) =>
                 typeof point[account.id] === 'number' &&
                 (trackedSinceMonth === undefined ||
                     (point.month as string) >= trackedSinceMonth),
         );
-        const history = known.map((point) => ({
+        const history = knownMonths.map((point) => ({
             date: formatMonthFromYearMonth(point.month as string, locale),
             // `|| 0` folds the -0 a zero loan turns into back into a plain 0.
             value:
@@ -147,8 +149,8 @@ export function deriveAccountMetrics(
         const hasPreviousBalance =
             hasBalance &&
             previousMonth !== undefined &&
-            known[known.length - 1]?.month === lastMonth &&
-            known[known.length - 2]?.month === previousMonth;
+            knownMonths[knownMonths.length - 1]?.month === lastMonth &&
+            knownMonths[knownMonths.length - 2]?.month === previousMonth;
 
         const currentBalance = history[history.length - 1]?.value ?? 0;
         const previousBalance = hasPreviousBalance
@@ -169,7 +171,7 @@ export function deriveAccountMetrics(
             history,
             hasBalance,
             hasPreviousBalance,
-            trackedSince: account.tracked_since ?? null,
+            balanceSince: account.balance_since ?? null,
             investedAmount: account.invested_amount ?? null,
             hidden_on_dashboard: account.hidden_on_dashboard ?? false,
             archived_at: account.archived_at ?? null,

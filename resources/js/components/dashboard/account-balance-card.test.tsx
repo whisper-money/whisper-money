@@ -44,7 +44,7 @@ function account(
         history: [{ date: 'Nov', value: 800000 }],
         hasBalance: true,
         hasPreviousBalance: false,
-        trackedSince: '2026-11-24',
+        balanceSince: '2026-11-24',
         investedAmount: null,
         hidden_on_dashboard: false,
         archived_at: null,
@@ -75,7 +75,7 @@ describe('AccountBalanceCard', () => {
     it('says when the balance started being known when that was earlier this month', () => {
         render(
             <AccountBalanceCard
-                account={account({ trackedSince: '2026-11-03' })}
+                account={account({ balanceSince: '2026-11-03' })}
             />,
         );
 
@@ -91,7 +91,7 @@ describe('AccountBalanceCard', () => {
                     previousBalance: 299000,
                     diff: 21000,
                     hasPreviousBalance: true,
-                    trackedSince: '2026-06-01',
+                    balanceSince: '2026-06-01',
                 })}
             />,
         );
@@ -111,7 +111,7 @@ describe('AccountBalanceCard', () => {
                     previousBalance: 0,
                     history: [],
                     hasBalance: false,
-                    trackedSince: null,
+                    balanceSince: null,
                 })}
             />,
         );
@@ -136,7 +136,7 @@ describe('AccountBalanceCard', () => {
                 account={account({
                     banking_connection_id: 'conn-1',
                     hasBalance: false,
-                    trackedSince: null,
+                    balanceSince: null,
                     currentBalance: 0,
                     history: [],
                 })}
@@ -146,5 +146,31 @@ describe('AccountBalanceCard', () => {
         expect(
             screen.getByRole('link', { name: 'Add balance' }),
         ).toHaveAttribute('href', '/accounts/acc-1');
+    });
+
+    it('does not compare equity when the linked mortgage has no figure for last month', () => {
+        render(
+            <AccountBalanceCard
+                account={account({
+                    type: 'real_estate',
+                    currentBalance: 30000000,
+                    previousBalance: 30000000,
+                    hasPreviousBalance: true,
+                    balanceSince: '2026-01-01',
+                })}
+                linkedLoanMetrics={{
+                    currentBalance: 20000000,
+                    previousBalance: 20000000,
+                    hasPreviousBalance: false,
+                    diff: 0,
+                    history: [],
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: '€100,000.00' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('vs last month')).not.toBeInTheDocument();
     });
 });

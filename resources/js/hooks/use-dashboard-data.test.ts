@@ -178,6 +178,7 @@ describe('deriveAccountMetrics', () => {
                         bank,
                         banking_connection_id: null,
                         tracked_since: trackedSince,
+                        balance_since: trackedSince,
                     },
                 },
                 data: months.map((month, i) => ({
@@ -198,7 +199,7 @@ describe('deriveAccountMetrics', () => {
             expect(account.hasPreviousBalance).toBe(false);
             expect(account.currentBalance).toBe(800000);
             expect(account.diff).toBe(0);
-            expect(account.trackedSince).toBe('2025-11-24');
+            expect(account.balanceSince).toBe('2025-11-24');
             // The months before it are not zeros: they are not drawn at all.
             expect(account.history).toEqual([
                 expect.objectContaining({ value: 800000 }),

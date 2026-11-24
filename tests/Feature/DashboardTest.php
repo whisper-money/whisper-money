@@ -241,7 +241,7 @@ test('an account hidden on the dashboard still counts towards net worth', functi
     expect(collect($evolution['data'])->keyBy('month')[now()->format('Y-m')][$account->id])->toBe(5000);
 });
 
-test('each account says since when its balance is known, so cards only compare against months with figures', function () {
+test('each account says since when its balance is known and since when one was recorded', function () {
     fakeCurrencyApi();
 
     $user = User::factory()->onboarded()->create();
@@ -278,6 +278,9 @@ test('each account says since when its balance is known, so cards only compare a
     ])->assertOk()->json('props.netWorthEvolution.accounts');
 
     expect($accounts[$withoutBalance->id]['tracked_since'])->toBeNull();
+    expect($accounts[$withoutBalance->id]['balance_since'])->toBeNull();
     expect($accounts[$addedToday->id]['tracked_since'])->toBe(now()->toDateString());
     expect($accounts[$imported->id]['tracked_since'])->toBe(now()->subMonthsNoOverflow(3)->toDateString());
+    // Its balance was only given today, whatever its movements go back to.
+    expect($accounts[$imported->id]['balance_since'])->toBe(now()->toDateString());
 });
