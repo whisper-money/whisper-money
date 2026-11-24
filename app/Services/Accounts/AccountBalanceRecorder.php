@@ -64,8 +64,9 @@ class AccountBalanceRecorder
     }
 
     /**
-     * Write the snapshot for $date (the owner's today when null), replacing the one
-     * already there. A null $investedAmount leaves the stored one alone.
+     * Write the snapshot for $date (the owner's today when null), replacing
+     * the one already there. A null $investedAmount leaves the stored one
+     * alone.
      */
     public function record(Account $account, int $balance, ?string $date, ?int $investedAmount): AccountBalance
     {
