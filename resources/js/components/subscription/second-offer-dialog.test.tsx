@@ -346,6 +346,7 @@ describe('SecondOfferDialog', () => {
         ).toBeInTheDocument();
         expect(mocks.captureEvent).toHaveBeenCalledWith('second_offer_shown', {
             price_tier: 'standard',
+            discount_percent: null,
         });
     });
 });
