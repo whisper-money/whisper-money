@@ -27,6 +27,8 @@ vi.mock('posthog-js', () => {
             identify: vi.fn(explode),
             reset: vi.fn(explode),
             capture: vi.fn(explode),
+            // The one call that answers, so reset gets as far as the SDK's.
+            get_property: vi.fn(() => 'identified'),
             register: vi.fn(explode),
             unregister: vi.fn(explode),
         },

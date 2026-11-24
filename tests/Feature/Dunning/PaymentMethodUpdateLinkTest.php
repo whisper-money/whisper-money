@@ -56,7 +56,7 @@ test('a portal configuration that refuses the flow falls back to the portal home
 test('a logged-out reader is asked to log in, not to sign up, and lands back on the flow', function () {
     $url = route('settings.billing.portal', ['flow' => 'payment_method_update', 'utm_content' => 'first']);
 
-    $this->get($url)->assertRedirect(route('login'));
+    $this->get($url)->assertRedirect(route('login', ['utm_content' => 'first']));
 
     expect(session('url.intended'))->toBe($url);
 });

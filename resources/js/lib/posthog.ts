@@ -338,8 +338,23 @@ export function identifyUser(
     withPostHog(() => posthog.identify(userId, properties));
 }
 
+/**
+ * Forgets the signed-in user, once they have signed out: the next visitor on
+ * this browser starts as a new anonymous person.
+ *
+ * Only when there is a user to forget. The guest pages call this on every load
+ * (the login and sign-up pages included), and resetting an anonymous visitor
+ * throws away the very id the `identify` on sign-in would have merged into
+ * the user. The `$pageview` of `/login?utm_campaign=…`, the only full page load
+ * an emailed link opened without a session gets, would then belong to nobody,
+ * and the campaign would never reach the person who clicked it.
+ */
 export function resetPostHog(): void {
-    withPostHog(() => posthog.reset());
+    withPostHog(() => {
+        if (posthog.get_property('$user_state') === 'identified') {
+            posthog.reset();
+        }
+    });
 }
 
 export function captureEvent(

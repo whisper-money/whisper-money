@@ -22,10 +22,20 @@ class AuthEntryPointService
     private const OFF_SITE_DESTINATIONS = ['passport.authorizations.authorize', 'settings.billing.portal'];
 
     /**
+     * The campaign parameters PostHog reads off the URL a page loads on.
+     */
+    private const CAMPAIGN_PARAMETERS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+    /**
      * @api Invoked dynamically via the container in bootstrap/app.php's
      *      redirectGuestsTo callback.
      */
     public function guestRedirectRoute(Request $request): string
+    {
+        return route($this->guestEntryRouteName($request), $this->campaignParameters($request));
+    }
+
+    private function guestEntryRouteName(Request $request): string
     {
         // Connecting ChatGPT or Claude needs an account that already exists on
         // the Standard plan, so an OAuth authorization lands on the login form rather
@@ -38,10 +48,28 @@ class AuthEntryPointService
             || ! config('auth.registration_enabled')
             || $request->routeIs('passport.authorizations.authorize', 'onboarding.import-link.show', 'settings.billing', 'settings.billing.portal')
         ) {
-            return route('login');
+            return 'login';
         }
 
-        return route('register');
+        return 'register';
+    }
+
+    /**
+     * The UTM parameters of the link a guest followed, carried on to the login
+     * or sign-up page. That page is the only full page load the visit gets:
+     * after signing in, Inertia reaches the intended URL over XHR and PostHog,
+     * which records a `$pageview` on full page loads only, never sees it. So
+     * without them an emailed link that lands a signed-out user here would be
+     * a visit no campaign is credited with.
+     *
+     * @return array<string, string>
+     */
+    private function campaignParameters(Request $request): array
+    {
+        return collect($request->query())
+            ->only(self::CAMPAIGN_PARAMETERS)
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->all();
     }
 
     /**
