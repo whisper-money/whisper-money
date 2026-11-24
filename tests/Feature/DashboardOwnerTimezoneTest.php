@@ -69,18 +69,23 @@ it('compares the owner\'s current month with the one before it on the cashflow c
         ->and($summary['previous']['expense'])->toBe($previous);
 })->with('dashboard owner clocks');
 
-it('ranks the 30 days ending on the owner\'s today on the top categories card', function (?string $timezone, string $now, string $today) {
+it('ranks the owner\'s current month on the top categories card, the cashflow card\'s period', function (?string $timezone, string $now, string $today) {
     $user = dashboardOwnerAt($timezone, $now);
-    $firstDay = Carbon::parse($today)->subDays(29)->toDateString();
-    $inside = dashboardExpense($user, $today, 1000);
-    $oldest = dashboardExpense($user, $firstDay, 2000);
-    dashboardExpense($user, Carbon::parse($firstDay)->subDay()->toDateString(), 3000);
-    dashboardExpense($user, Carbon::parse($today)->addDay()->toDateString(), 4000);
+    $month = Carbon::parse($today);
+    $first = dashboardExpense($user, $month->copy()->startOfMonth()->toDateString(), 1000);
+    $last = dashboardExpense($user, $month->copy()->endOfMonth()->toDateString(), 2000);
+    dashboardExpense($user, $month->copy()->startOfMonth()->subDay()->toDateString(), 3000);
+    dashboardExpense($user, $month->copy()->endOfMonth()->addDay()->toDateString(), 4000);
 
-    $categories = collect(dashboardCard($user, 'topCategories'));
+    $card = dashboardCard($user, 'topCategories');
 
-    expect($categories->pluck('category_id')->all())->toBe([$oldest->category_id, $inside->category_id])
-        ->and($categories->first()['previous_amount'])->toBe(0);
+    expect(collect($card['categories'])->pluck('category_id')->all())->toBe([$last->category_id, $first->category_id])
+        ->and($card['total'])->toBe(3000)
+        ->and($card['period'])->toBe([
+            'from' => $month->copy()->startOfMonth()->toDateString(),
+            'to' => $month->copy()->endOfMonth()->toDateString(),
+            'through' => $today,
+        ]);
 })->with('dashboard owner clocks');
 
 it('ranks the 30 days ending on the owner\'s today on the top labels card', function (?string $timezone, string $now, string $today) {
