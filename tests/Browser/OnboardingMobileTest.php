@@ -62,7 +62,8 @@ it('moves past categorizing on a phone when nothing came in', function () {
         // around it.
         ->assertSee('Your target can wait')
         ->click('Continue')
-        ->assertSee('Your dashboard isn’t empty')
+        // Nothing came in, so the closing screen says it is ready, not full.
+        ->assertSee('Your dashboard is ready')
         ->assertNoJavascriptErrors();
 });
 
@@ -79,7 +80,7 @@ it('offers the header back arrow only where going back is safe', function () {
     // ...but the terminal step must not offer it.
     visit('/onboarding?step=complete')
         ->resize(430, 932)
-        ->assertSee('Your dashboard isn’t empty')
+        ->assertSee('Your dashboard is ready')
         ->assertMissing('[aria-label="Back"]')
         ->assertNoJavascriptErrors();
 });

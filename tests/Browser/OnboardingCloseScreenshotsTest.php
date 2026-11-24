@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetService;
 
 use function Pest\Laravel\actingAs;
 
@@ -106,6 +109,14 @@ it('closes on everything the user who did all of it has', function () {
 
     AutomationRule::factory()->count(28)->for($user)->create();
     $user->update(['onboarding_answers' => [...$user->onboarding_answers, 'target' => 20000]]);
+    // The budget the target became: €1,847 spent, less the €200 target.
+    app(BudgetService::class)->create($user, [
+        'name' => 'Monthly spending',
+        'period_type' => BudgetPeriodType::Monthly,
+        'period_start_day' => 1,
+        'rollover_type' => RolloverType::Reset,
+        'is_catch_all' => true,
+    ], 164700);
 
     actingAs($user);
 
@@ -116,7 +127,7 @@ it('closes on everything the user who did all of it has', function () {
         ->assertSee('903 movements, 28 rules filing them')
         ->assertSee('4 accounts, syncing daily')
         ->assertSee('Everything new sorted from now on')
-        ->assertSee('€200 a month put aside')
+        ->assertSee('A €1,647 monthly spending limit')
         ->assertSee('You came in guessing')
         ->assertScript(ANIMATIONS_SETTLED)
         ->screenshot(filename: 'ready-full')
