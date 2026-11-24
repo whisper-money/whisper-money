@@ -2915,5 +2915,16 @@
     "Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.": "Gratuit :days jours, puis :discounted par mois pendant :months mois (:percent % de réduction) et :total par mois ensuite. Annulez avant et vous n'êtes pas débité.",
     "Start now and get :percent% off when your free trial ends.": "Commencez maintenant et profitez de :percent % de réduction à la fin de l'essai gratuit.",
     "Sort them — :percent% off your first year": "Classez-les — :percent % de réduction la première année",
-    "Sort them — :percent% off for :months months": "Classez-les — :percent % de réduction pendant :months mois"
+    "Sort them — :percent% off for :months months": "Classez-les — :percent % de réduction pendant :months mois",
+    "Your bank already lets you export it. We read the file in one go.": "Votre banque vous permet déjà de l'exporter. Nous lisons le fichier d'un seul coup.",
+    "Add the rest by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.": "Ajoutez le reste à la main ou depuis un fichier. Les crédits immobiliers et les plans d'épargne retraite sont ceux que l'on oublie — or c'est là qu'est l'essentiel de votre argent.",
+    "Brokers connect with their own key; the rest you add by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.": "Les courtiers se connectent avec leur propre clé ; le reste, vous l'ajoutez à la main ou depuis un fichier. Les crédits immobiliers et les plans d'épargne retraite sont ceux que l'on oublie — or c'est là qu'est l'essentiel de votre argent.",
+    "Add a current account with its movements — the export your bank offers will do — and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.": "Ajoutez un compte courant avec ses opérations — l'export que propose votre banque suffit — et cette page change de forme : vous aurez aussi le côté dépenses, et nous pourrons vous dire si ce nombre monte ou descend chaque mois.",
+    "Connect your broker free for :days days": "Connectez votre courtier gratuitement pendant :days jours",
+    "Your positions update on their own, every day. Everything you’ve done so far stays free.": "Vos positions se mettent à jour toutes seules, chaque jour. Tout ce que vous avez fait jusqu'ici reste gratuit.",
+    "Unlimited accounts, positions updated every day": "Comptes illimités, positions mises à jour chaque jour",
+    "Free and unlimited, for as long as you like": "Gratuit et illimité, aussi longtemps que vous le souhaitez",
+    "Connecting a broker needs Standard": "Connecter un courtier nécessite Standard",
+    "A year of your spending, from a file": "Une année de vos dépenses, depuis un fichier",
+    "The export your bank already offers, read in one go.": "L'export que votre banque propose déjà, lu d'un seul coup."
 }

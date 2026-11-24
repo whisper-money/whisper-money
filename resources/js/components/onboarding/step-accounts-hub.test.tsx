@@ -228,6 +228,47 @@ describe('StepAccountsHub', () => {
         expect(screen.getByTestId('account-form')).toBeInTheDocument();
     });
 
+    // The free card gets neither a bank nor a broker key, so the line under
+    // the title must name only the hand-made and file ways in.
+    it('tells a free signup where the rest comes from without a bank or a key', () => {
+        renderHub({
+            signupPlan: 'free',
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        expect(
+            screen.getByText(
+                'Add the rest by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/come from the bank/),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/their own key/)).not.toBeInTheDocument();
+    });
+
+    it('says cards come from the bank when a bank is offered', () => {
+        renderHub({
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        expect(
+            screen.getByText(/^Current accounts and cards come from the bank/),
+        ).toBeInTheDocument();
+    });
+
+    it('drops the bank from the line when open banking is off', () => {
+        pageProps.openBankingEnabled = false;
+
+        renderHub({
+            existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
+        });
+
+        expect(
+            screen.getByText(/^Brokers connect with their own key/),
+        ).toBeInTheDocument();
+    });
+
     it('comes back to the hub from the manual form rather than out of the step', () => {
         renderHub({
             existingAccounts: [existingAccount({ id: 'a1', name: 'Savings' })],
@@ -361,7 +402,7 @@ describe('StepAccountsHub bank gate', () => {
         fireEvent.click(screen.getByText('A pension or a broker'));
 
         expect(
-            screen.getByText('Connecting an account needs Standard'),
+            screen.getByText('Connecting a broker needs Standard'),
         ).toBeInTheDocument();
         expect(screen.queryByText('Indexa Capital')).not.toBeInTheDocument();
     });

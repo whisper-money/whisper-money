@@ -159,9 +159,7 @@ export function StepGate({
             }
             description={
                 trialPlan
-                    ? __(
-                          'Your movements arrive on their own, every day. Everything you’ve done so far stays free.',
-                      )
+                    ? trialDescription(kind)
                     : isAi
                       ? __(
                             'It reads all :count movements and writes the rules that file them. Every run costs us money, so it sits on the paid plan.',
@@ -213,11 +211,7 @@ export function StepGate({
                             ? __('Or keep sorting by hand')
                             : __('And the rest of Standard')
                     }
-                    description={
-                        isAi
-                            ? __('Free, unlimited, and your rules still work')
-                            : __('Bank sync, unlimited accounts, daily updates')
-                    }
+                    description={restOfPlan(kind)}
                 />
             </StepList>
         </StepScreen>
@@ -258,15 +252,44 @@ export function AiDisclosure({ kind }: { kind: GateKind }) {
 /** The trial-framed headline: what they reached for, and that it starts free. */
 function trialTitle(kind: GateKind, days: number): string {
     return kind === 'broker'
-        ? __('Connect your account free for :days days', { days })
+        ? __('Connect your broker free for :days days', { days })
         : __('Connect your bank free for :days days', { days });
+}
+
+/**
+ * The trial-framed line under the headline. A broker hands over positions, not
+ * movements — six of the seven in its list say so — so promising its
+ * movements "arrive on their own" promised something it never sends.
+ */
+function trialDescription(kind: GateKind): string {
+    return kind === 'broker'
+        ? __(
+              'Your positions update on their own, every day. Everything you’ve done so far stays free.',
+          )
+        : __(
+              'Your movements arrive on their own, every day. Everything you’ve done so far stays free.',
+          );
+}
+
+/**
+ * The last row: the free way past on the AI gate, the rest of the plan on the
+ * other two. The broker gate leaves bank sync out, since it is mostly reached
+ * by users no bank of ours reaches. The AI one makes no claim about rules:
+ * most people reach it before they have written any.
+ */
+function restOfPlan(kind: GateKind): string {
+    return {
+        bank: __('Bank sync, unlimited accounts, daily updates'),
+        broker: __('Unlimited accounts, positions updated every day'),
+        ai: __('Free and unlimited, for as long as you like'),
+    }[kind];
 }
 
 /** The thing the user reached for, named as they named it. */
 function connectTitle(kind: GateKind): string {
     return {
         bank: __('Connecting a bank needs Standard'),
-        broker: __('Connecting an account needs Standard'),
+        broker: __('Connecting a broker needs Standard'),
         ai: __('AI sorting needs Standard'),
     }[kind];
 }

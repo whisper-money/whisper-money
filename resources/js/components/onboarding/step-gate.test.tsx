@@ -131,8 +131,60 @@ describe('StepGate copy experiment', () => {
         renderGate('trial_yearly', { kind: 'broker' });
 
         expect(
-            screen.getByText('Connect your account free for 14 days'),
+            screen.getByText('Connect your broker free for 14 days'),
         ).toBeTruthy();
+    });
+
+    it('talks about positions, not movements, on the broker gate', () => {
+        for (const arm of ['trial_yearly', 'trial_monthly'] as const) {
+            const { unmount } = renderGate(arm, { kind: 'broker' });
+
+            expect(
+                screen.getByText(
+                    'Your positions update on their own, every day. Everything you’ve done so far stays free.',
+                ),
+            ).toBeTruthy();
+            expect(
+                screen.queryByText(/Your movements arrive on their own/),
+            ).toBeNull();
+            expect(
+                screen.getByText(
+                    'Unlimited accounts, positions updated every day',
+                ),
+            ).toBeTruthy();
+            expect(screen.queryByText(/Bank sync/)).toBeNull();
+            unmount();
+        }
+    });
+
+    it('names a broker on the plain broker gate', () => {
+        renderGate(null, { kind: 'broker' });
+
+        expect(
+            screen.getByText('Connecting a broker needs Standard'),
+        ).toBeTruthy();
+    });
+
+    it('keeps the bank copy on the bank gate', () => {
+        renderGate('trial_monthly');
+
+        expect(
+            screen.getByText(
+                'Your movements arrive on their own, every day. Everything you’ve done so far stays free.',
+            ),
+        ).toBeTruthy();
+        expect(
+            screen.getByText('Bank sync, unlimited accounts, daily updates'),
+        ).toBeTruthy();
+    });
+
+    it('claims no rules on the AI gate', () => {
+        renderGate(null, { kind: 'ai' });
+
+        expect(
+            screen.getByText('Free and unlimited, for as long as you like'),
+        ).toBeTruthy();
+        expect(screen.queryByText(/your rules/i)).toBeNull();
     });
 
     it('reports the arm on decline and on the way to checkout', () => {

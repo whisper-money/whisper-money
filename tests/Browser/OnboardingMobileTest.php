@@ -128,7 +128,7 @@ it('lets the last line clear the pinned footer at 390px', function () {
             window.scrollTo(0, document.documentElement.scrollHeight);
             await new Promise((resolve) => setTimeout(resolve, 300));
 
-            const label = 'Free, unlimited, and your rules still work';
+            const label = 'Free and unlimited, for as long as you like';
             const last = Array.from(document.querySelectorAll('*'))
                 .filter((el) => el.children.length === 0 && el.textContent.trim() === label)
                 .pop();

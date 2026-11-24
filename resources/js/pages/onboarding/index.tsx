@@ -17,6 +17,7 @@ import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepTarget } from '@/components/onboarding/step-target';
 import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useBankOffer } from '@/hooks/use-bank-offer';
 import { useImportLinkLanding } from '@/hooks/use-import-link-landing';
 import {
     BACKABLE_STEPS,
@@ -121,6 +122,14 @@ export default function Onboarding({
         initialAnswers: onboardingAnswers,
     });
 
+    // Read again on every step: a country picked by hand in the hub's bank
+    // picker puts the bank back on offer for the screens after it.
+    const { bankOffered } = useBankOffer(
+        signupPlan,
+        timezoneCountry,
+        currentStep,
+    );
+
     // While on the connections step, poll for connections finalized elsewhere
     // (e.g. an iOS PWA hands the bank redirect to Safari, which completes the
     // connection server-side in a different browser without a session here).
@@ -187,7 +196,12 @@ export default function Onboarding({
 
         switch (currentStep) {
             case 'promise':
-                return <StepPromise onContinue={goNext} />;
+                return (
+                    <StepPromise
+                        bankOffered={bankOffered}
+                        onContinue={goNext}
+                    />
+                );
 
             case 'goal':
                 return (
@@ -228,6 +242,7 @@ export default function Onboarding({
                         spendingGuess={answers.spending_guess}
                         currencyCode={auth.user.currency_code}
                         isFreePlan={isFreePlan}
+                        bankOffered={bankOffered}
                         onContinue={goNext}
                     />
                 );
@@ -263,6 +278,7 @@ export default function Onboarding({
                         spendingGuess={answers.spending_guess}
                         onContinue={goNext}
                         onAddAccount={() => goToStep('create-account')}
+                        bankOffered={bankOffered}
                     />
                 );
 

@@ -21,6 +21,12 @@ interface StepPlanProps {
      * things the next four steps then refuse to hand over.
      */
     isFreePlan?: boolean;
+    /**
+     * Whether the accounts hub will offer a bank connection, which the free
+     * plan, an install without open banking and a country no bank of ours
+     * reaches all rule out. Without one, the year comes from a file.
+     */
+    bankOffered: boolean;
     onContinue: () => void;
 }
 
@@ -36,6 +42,7 @@ export function StepPlan({
     spendingGuess,
     currencyCode,
     isFreePlan = false,
+    bankOffered,
     onContinue,
 }: StepPlanProps) {
     const { formatAmount } = useFormatAmount();
@@ -64,17 +71,17 @@ export function StepPlan({
                 <StepRow
                     leading={<StepNumber>1</StepNumber>}
                     title={
-                        isFreePlan
-                            ? __('A year of your spending, from a file')
-                            : __('A year of your spending, without typing it')
+                        bankOffered
+                            ? __('A year of your spending, without typing it')
+                            : __('A year of your spending, from a file')
                     }
                     description={
-                        isFreePlan
+                        bankOffered
                             ? __(
-                                  'The export your bank already offers, read in one go.',
+                                  "Forty seconds at your bank's own login, read-only.",
                               )
                             : __(
-                                  "Forty seconds at your bank's own login, read-only.",
+                                  'The export your bank already offers, read in one go.',
                               )
                     }
                 />

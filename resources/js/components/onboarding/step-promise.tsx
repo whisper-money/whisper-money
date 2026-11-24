@@ -5,6 +5,12 @@ import { __ } from '@/utils/i18n';
 import { ChartColumn, DollarSign, Lock } from 'lucide-react';
 
 interface StepPromiseProps {
+    /**
+     * Whether the accounts hub will offer a bank connection. Without one the
+     * year of history comes from the export the bank already offers, and
+     * saying "we just read it" from the bank promised a login that never came.
+     */
+    bankOffered: boolean;
     onContinue: () => void;
 }
 
@@ -12,7 +18,7 @@ interface StepPromiseProps {
  * The first screen, and a claim rather than a welcome: it says what the user
  * walks away with, and what the three questions after it are for.
  */
-export function StepPromise({ onContinue }: StepPromiseProps) {
+export function StepPromise({ bankOffered, onContinue }: StepPromiseProps) {
     return (
         <StepScreen
             title={__('Find out where your money actually went')}
@@ -32,9 +38,13 @@ export function StepPromise({ onContinue }: StepPromiseProps) {
                 <StepRow
                     icon={DollarSign}
                     title={__('A year of history, not a blank page')}
-                    description={__(
-                        'Your bank already has it. We just read it.',
-                    )}
+                    description={
+                        bankOffered
+                            ? __('Your bank already has it. We just read it.')
+                            : __(
+                                  'Your bank already lets you export it. We read the file in one go.',
+                              )
+                    }
                 />
                 <StepRow
                     icon={ChartColumn}
