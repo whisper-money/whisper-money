@@ -32,10 +32,10 @@ class AuthEntryPointService
      */
     public function guestRedirectRoute(Request $request): string
     {
-        return route($this->guestEntryPoint($request), $this->campaignParameters($request));
+        return route($this->guestEntryRouteName($request), $this->campaignParameters($request));
     }
 
-    private function guestEntryPoint(Request $request): string
+    private function guestEntryRouteName(Request $request): string
     {
         // Connecting ChatGPT or Claude needs an account that already exists on
         // the Standard plan, so an OAuth authorization lands on the login form rather
