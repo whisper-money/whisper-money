@@ -26,7 +26,7 @@ interface StepPlanProps {
      * plan, an install without open banking and a country no bank of ours
      * reaches all rule out. Without one, the year comes from a file.
      */
-    bankOffered?: boolean;
+    bankOffered: boolean;
     onContinue: () => void;
 }
 
@@ -42,7 +42,7 @@ export function StepPlan({
     spendingGuess,
     currencyCode,
     isFreePlan = false,
-    bankOffered = !isFreePlan,
+    bankOffered,
     onContinue,
 }: StepPlanProps) {
     const { formatAmount } = useFormatAmount();

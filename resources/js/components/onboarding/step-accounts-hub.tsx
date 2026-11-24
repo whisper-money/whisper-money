@@ -264,17 +264,15 @@ export function StepAccountsHub({
     // lead to billing; the brokers their plan includes are offered up front.
     const bankLocked = useBankAggregatorLocked();
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
+    // With no bank to offer, the "Another bank" row would promise a bank
+    // picker that never comes, so it opens the manual form and says so. The
+    // reasons part ways over the broker, which is an API key rather than open
+    // banking: the free plan still cannot have one, the other two keep the "A
+    // pension or a broker" suggestion once an account is in.
     const { isFreePlan, bankHiddenByCountry, bankOffered } = useBankOffer(
         signupPlan,
         timezoneCountry,
     );
-    // No bank connection to offer (see `useBankOffer` for the three reasons):
-    // the "Another bank" row would promise a bank picker that never comes, so
-    // it opens the manual form and says so. The reasons part ways over the
-    // broker, which is an API key rather than open banking: the free plan
-    // still cannot have one, the other two keep the "A pension or a broker"
-    // suggestion once an account is in.
-    const noBankToOffer = !bankOffered;
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
     const [failedBank] = useState(readFailedBank);
@@ -484,21 +482,21 @@ export function StepAccountsHub({
                 // the manual form, and a row titled "Another bank" was
                 // promising a bank picker that never came.
                 icon: Landmark,
-                title: noBankToOffer
-                    ? __('Another bank, by hand')
-                    : __('Another bank'),
+                title: bankOffered
+                    ? __('Another bank')
+                    : __('Another bank, by hand'),
                 description:
-                    bankLocked && !noBankToOffer
+                    bankLocked && bankOffered
                         ? __('Available on the standard plan')
                         : __('A second account, a joint one, one abroad'),
-                route: noBankToOffer ? 'manual' : 'connected',
+                route: bankOffered ? 'connected' : 'manual',
             },
         ];
 
         return all.filter(
             (suggestion) => !isFreePlan || suggestion.route === 'manual',
         );
-    }, [isFreePlan, noBankToOffer, bankLocked]);
+    }, [isFreePlan, bankOffered, bankLocked]);
 
     /** The plan disclosure belongs above the first commitment, and only there. */
     const firstConnectKey = suggestions.find(

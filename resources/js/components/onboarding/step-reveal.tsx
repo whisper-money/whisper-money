@@ -119,7 +119,7 @@ interface StepRevealProps {
      * current account's movements come in from a file, so the screen asks
      * for that rather than for a connection the hub never shows.
      */
-    bankOffered?: boolean;
+    bankOffered: boolean;
 }
 
 /**
@@ -135,7 +135,7 @@ export function StepReveal({
     spendingGuess,
     onContinue,
     onAddAccount,
-    bankOffered = true,
+    bankOffered,
 }: StepRevealProps) {
     const [data, setData] = useState<RevealData | null>(null);
     // Typing last month in from the assets variant swaps the screen for the

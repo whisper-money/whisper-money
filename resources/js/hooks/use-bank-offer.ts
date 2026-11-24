@@ -5,7 +5,7 @@ import {
 import { type SharedData } from '@/types';
 import { type SignupPlan } from '@/types/pricing';
 import { usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo } from 'react';
 
 /**
  * Whether the user sits in a country no bank of ours reaches, so the bank row
@@ -43,20 +43,28 @@ export interface BankOffer {
  * Whether the user will be offered a bank connection during onboarding. The
  * accounts hub decides which rows to show with it, and the screens before and
  * after it decide what to promise with the same answer.
+ *
+ * The country half looks at localStorage, so it is read once per `readKey`
+ * rather than on every render. The hub reads it once per mount — it remounts
+ * after every account, which is when a country picked by hand could change it
+ * — and the onboarding page passes the current step, so a country picked in
+ * the hub's bank picker reaches the screens after it.
  */
 export function useBankOffer(
     signupPlan: SignupPlan | null,
     timezoneCountry: string | null,
+    readKey?: unknown,
 ): BankOffer {
     const { openBankingEnabled } = usePage<SharedData>().props;
     const isFreePlan = signupPlan === 'free';
-    // Read once: it looks at localStorage, and the hub remounts after every
-    // account anyway, which is when a country picked by hand could change it.
-    const [bankHiddenByCountry] = useState(
+    const bankHiddenByCountry = useMemo(
         () =>
             openBankingEnabled &&
             !isFreePlan &&
             bankCountryOutOfReach(timezoneCountry),
+        // `readKey` only forces a fresh read of localStorage.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [openBankingEnabled, isFreePlan, timezoneCountry, readKey],
     );
 
     return {

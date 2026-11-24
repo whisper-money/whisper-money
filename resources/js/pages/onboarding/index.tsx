@@ -64,7 +64,6 @@ export default function Onboarding({
     const { auth, currencies } = usePage<SharedData>().props;
     const hasSyncedRef = useRef(false);
     const isFreePlan = signupPlan === 'free';
-    const { bankOffered } = useBankOffer(signupPlan, timezoneCountry);
     const linkedAccountId = useImportLinkLanding('onboarding');
 
     // Prefer the server-validated step; fall back to ?step= from the URL so
@@ -122,6 +121,14 @@ export default function Onboarding({
         signupPlan,
         initialAnswers: onboardingAnswers,
     });
+
+    // Read again on every step: a country picked by hand in the hub's bank
+    // picker puts the bank back on offer for the screens after it.
+    const { bankOffered } = useBankOffer(
+        signupPlan,
+        timezoneCountry,
+        currentStep,
+    );
 
     // While on the connections step, poll for connections finalized elsewhere
     // (e.g. an iOS PWA hands the bank redirect to Safari, which completes the

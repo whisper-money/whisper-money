@@ -104,6 +104,7 @@ async function renderReveal(props: Record<string, unknown> = {}) {
         <StepReveal
             onContinue={vi.fn()}
             onAddAccount={vi.fn()}
+            bankOffered
             {...(props as { onContinue: () => void; onAddAccount: () => void })}
         />,
     );

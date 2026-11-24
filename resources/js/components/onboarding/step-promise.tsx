@@ -10,7 +10,7 @@ interface StepPromiseProps {
      * year of history comes from the export the bank already offers, and
      * saying "we just read it" from the bank promised a login that never came.
      */
-    bankOffered?: boolean;
+    bankOffered: boolean;
     onContinue: () => void;
 }
 
@@ -18,10 +18,7 @@ interface StepPromiseProps {
  * The first screen, and a claim rather than a welcome: it says what the user
  * walks away with, and what the three questions after it are for.
  */
-export function StepPromise({
-    bankOffered = true,
-    onContinue,
-}: StepPromiseProps) {
+export function StepPromise({ bankOffered, onContinue }: StepPromiseProps) {
     return (
         <StepScreen
             title={__('Find out where your money actually went')}

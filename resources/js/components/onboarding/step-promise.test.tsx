@@ -4,7 +4,7 @@ import { StepPromise } from './step-promise';
 
 describe('StepPromise', () => {
     it('promises the bank read when a bank is offered', () => {
-        render(<StepPromise onContinue={vi.fn()} />);
+        render(<StepPromise bankOffered onContinue={vi.fn()} />);
 
         expect(
             screen.getByText('Your bank already has it. We just read it.'),

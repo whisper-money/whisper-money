@@ -57,4 +57,22 @@ describe('useBankOffer', () => {
 
         expect(bankOffered(null, 'MX')).toBe(true);
     });
+
+    // The hub's bank picker remembers a country picked by hand; the screens
+    // after the hub must see the bank back on offer.
+    it('reads the country again when the read key changes', () => {
+        const { result, rerender } = renderHook(
+            ({ step }) => useBankOffer(null, 'MX', step),
+            { initialProps: { step: 'create-account' } },
+        );
+
+        expect(result.current.bankOffered).toBe(false);
+
+        rememberConnectCountry('ES');
+        rerender({ step: 'create-account' });
+        expect(result.current.bankOffered).toBe(false);
+
+        rerender({ step: 'reveal' });
+        expect(result.current.bankOffered).toBe(true);
+    });
 });
