@@ -26,8 +26,10 @@ let openedThisSession = false;
  * navigation that cancels it. Each loss used to mean another full show on the
  * next page load, and some users met it on five different days. With this
  * note, the next load that still gets the prop only sends the stamp again.
+ * It holds per browser: another device, or a browser that blocks storage, still
+ * relies on the stamp landing.
  */
-const SHOWN_KEY = 'second-offer-shown';
+const OPENED_STORAGE_KEY = 'second-offer-shown';
 
 /**
  * The plan, offered once more to a free user whose first transactions just
@@ -54,8 +56,12 @@ export function SecondOfferDialog() {
 
         openedThisSession = true;
 
-        if (readOwnedValue(SHOWN_KEY, userId) === null) {
-            writeOwnedValue(SHOWN_KEY, userId, new Date().toISOString());
+        if (readOwnedValue(OPENED_STORAGE_KEY, userId) === null) {
+            writeOwnedValue(
+                OPENED_STORAGE_KEY,
+                userId,
+                new Date().toISOString(),
+            );
             setBacklog(secondOfferBacklog);
             setOpen(true);
             captureEvent('second_offer_shown', { price_tier: tier });
