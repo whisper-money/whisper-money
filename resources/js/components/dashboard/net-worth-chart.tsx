@@ -647,7 +647,7 @@ export function NetWorthChart({
                         {unknownPeriods.length > 0 && (
                             <div
                                 data-testid="net-worth-no-data"
-                                className="flex min-w-28 basis-0 items-center justify-center rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground"
+                                className="flex max-w-1/3 min-w-20 basis-0 items-center justify-center rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground sm:max-w-none sm:min-w-28"
                                 style={{ flexGrow: unknownPeriods.length }}
                             >
                                 {__(
