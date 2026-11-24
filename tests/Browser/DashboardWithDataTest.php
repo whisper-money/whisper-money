@@ -42,7 +42,8 @@ beforeEach(function (): void {
  *   nothing from the day it was archived (WM-60CF).
  * - this month: income $3,000, expenses $1,890, net $1,110 — the archived
  *   account's $500 of fees counts towards none of it.
- * - top category over the last 30 days: Rent, $1,200.
+ * - spending this month: Rent, $1,200 the top category, adding up to the
+ *   same $1,890 as the cashflow card.
  *
  * @return array{checking: Account, savings: Account, loan: Account, archived: Account}
  */
@@ -101,8 +102,8 @@ function seedDashboardReader(User $user): array
         ]);
     }
 
-    // Today, so every row lands in this month and inside the 30-day window the
-    // top-categories card reads, whichever day of the month the suite runs on.
+    // Today, so every row lands in this month, the period the cashflow and
+    // spending cards read, whichever day of the month the suite runs on.
     foreach ([
         'Rent' => -120000,
         'Groceries' => -42000,
@@ -173,9 +174,10 @@ it('shows the seeded balances, spending and cashflow', function (): void {
         ->assertSee('-$5,000.00')
         // The archived account keeps its history in the chart but is off the page.
         ->assertDontSee('Closed Account')
-        // Top categories over the last 30 days, with nothing the archived
-        // account spent among them.
-        ->assertSee('Top spending categories')
+        // This month's spending, with nothing the archived account spent
+        // among it, adding up to the cashflow expense.
+        ->assertSee('Spending this month')
+        ->assertSee('so the rows add up to $1,890')
         ->assertSee('Rent')
         ->assertSee('$1,200')
         ->assertDontSee('Closed Account Fees')
