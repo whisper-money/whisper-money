@@ -32,6 +32,24 @@ class BalanceLookup
     private array $accountsWithMovements = [];
 
     /**
+     * The first day of the range something is known about each walked-back
+     * account: its first balance or its first movement inside the range,
+     * whichever came first. Before that day its history is known only if it
+     * moved before the range (see `hasHistoryOn()`).
+     *
+     * @var array<string, string>
+     */
+    private array $firstKnownDayInRange = [];
+
+    /**
+     * The walked-back accounts that moved before the range start, keyed by
+     * account ID; read on the first `hasHistoryOn()` call that needs it.
+     *
+     * @var array<string, true>|null
+     */
+    private ?array $movedBeforeRange = null;
+
+    /**
      * The first day the lookup was loaded for; no movement before it is read.
      */
     private string $rangeStart = '';
@@ -64,6 +82,11 @@ class BalanceLookup
      *    whose balance may have to be walked back (see `dailyNetFor()`).
      * 6. Whether those that moved nothing inside the range moved anything before
      *    it (see `walkBackAccountsThatMoved()`).
+     *
+     * Onboarding estimates (see {@see Transaction::scopeEstimates()}) are
+     * never walked through: they are round guesses at last month's spending,
+     * not movements, and never touched the balance they would be walked back
+     * from.
      *
      * Every date asked about must fall on or after the range start: movements
      * before it are never read, so a balance cannot be walked back past it, and
@@ -175,6 +198,13 @@ class BalanceLookup
             $instance->runningNetByAccount[$accountId] = self::runningNet($dailyNet[$accountId] ?? [], $share);
         }
 
+        foreach ($walkBackAccountIds as $accountId) {
+            $instance->firstKnownDayInRange[$accountId] = min([
+                (string) $instance->balancesByAccount[$accountId]->firstDate(),
+                ...array_map('strval', array_keys($dailyNet[$accountId] ?? [])),
+            ]);
+        }
+
         return $instance;
     }
 
@@ -253,6 +283,7 @@ class BalanceLookup
      *
      * Read as plain rows through the model's query, so its scopes (soft
      * deletes) still apply, and returned per account as a date-keyed map.
+     * Onboarding estimates are left out: they never moved the balance.
      *
      * @param  list<string>  $accountIds
      * @return array<string, array<string, int>>
@@ -266,6 +297,7 @@ class BalanceLookup
         $rows = Transaction::query()
             ->whereIn('account_id', $accountIds)
             ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->withoutEstimates()
             ->selectRaw('account_id, transaction_date, SUM(amount) as amount')
             ->groupBy('account_id', 'transaction_date')
             ->toBase()
@@ -283,10 +315,7 @@ class BalanceLookup
     /**
      * The walked-back accounts with any movement on or before the range end. One
      * that moved inside the range is already known from its grouped rows; one
-     * that did not is asked whether it moved before the range. That is an
-     * EXISTS correlated on the account, which stops at the first row it finds —
-     * going through `Account` is what makes it one, where a DISTINCT over
-     * `transactions` would read every row the account has.
+     * that did not is asked whether it moved before the range.
      *
      * @param  list<string>  $accountIds
      * @param  array<string, array<string, int>>  $dailyNet
@@ -297,13 +326,32 @@ class BalanceLookup
         $movedInRange = array_map('strval', array_keys($dailyNet));
         $quietInRange = array_values(array_diff($accountIds, $movedInRange));
 
-        $movedBeforeRange = $quietInRange === [] ? [] : Account::withTrashed()
-            ->whereIn('id', $quietInRange)
-            ->whereHas('transactions', fn ($query) => $query->where('transaction_date', '<', $startDate))
-            ->pluck('id')
-            ->all();
+        return array_fill_keys([...$movedInRange, ...self::accountsThatMovedBefore($quietInRange, $startDate)], true);
+    }
 
-        return array_fill_keys([...$movedInRange, ...$movedBeforeRange], true);
+    /**
+     * The accounts with any movement, onboarding estimates aside, before the
+     * range start. An EXISTS correlated on the account, which stops at the
+     * first row it finds — going through `Account` is what makes it one, where
+     * a DISTINCT over `transactions` would read every row the account has.
+     *
+     * @param  list<string>  $accountIds
+     * @return list<string>
+     */
+    private static function accountsThatMovedBefore(array $accountIds, string $startDate): array
+    {
+        if ($accountIds === []) {
+            return [];
+        }
+
+        return Account::withTrashed()
+            ->whereIn('id', $accountIds)
+            ->whereHas('transactions', fn ($query) => $query
+                ->where('transaction_date', '<', $startDate)
+                ->withoutEstimates())
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
     }
 
     /**
@@ -390,6 +438,35 @@ class BalanceLookup
         }
 
         return $balances->firstValue() - $this->netAfter($accountId, $dateStr, $balances->firstDate());
+    }
+
+    /**
+     * Whether anything is known about the account's balance on that day: it is
+     * on or after the account's first balance or first movement. Before that
+     * day `getBalanceAt()` would only repeat the earliest figure across months
+     * nobody has any record of, so a chart should draw nothing there.
+     *
+     * An account with no balance at all, or one seeded before the range, is
+     * reported as known: the first has nothing to walk back from and reads as
+     * zero throughout, as it always has; the second has a balance on file for
+     * every day of the range.
+     */
+    public function hasHistoryOn(string $accountId, Carbon $date): bool
+    {
+        $firstKnownDay = $this->firstKnownDayInRange[$accountId] ?? null;
+
+        if ($firstKnownDay === null || $date->toDateString() >= $firstKnownDay) {
+            return true;
+        }
+
+        // Only asked here, for the few readers that tell "no data" apart, so
+        // every other lookup keeps skipping the query.
+        $this->movedBeforeRange ??= array_fill_keys(
+            self::accountsThatMovedBefore(array_keys($this->firstKnownDayInRange), $this->rangeStart),
+            true,
+        );
+
+        return isset($this->movedBeforeRange[$accountId]);
     }
 
     /**

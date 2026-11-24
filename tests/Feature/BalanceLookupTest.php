@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\LabelSource;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BalanceLookup;
@@ -499,7 +501,7 @@ test('getBalanceAt walks back through movements inside the range only', function
     });
 
     expect($queries)->toHaveCount(1)
-        ->and($queries[0])->toBe([$this->account->id, '2026-02-01', '2026-03-31'])
+        ->and($queries[0])->toBe([$this->account->id, '2026-02-01', '2026-03-31', LabelSource::Estimate->value])
         // The range start's own movement is already inside its closing balance.
         ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-01')))->toBe(50000)
         ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-28')))->toBe(50000)
@@ -663,7 +665,7 @@ test('getBalanceAt mixes seeded and walked-back accounts in one lookup', functio
     });
 
     // Only the connected account's movements, and no EXISTS: it moved in range.
-    expect($queries)->toBe([[$connected->id, '2026-02-01', '2026-03-31']])
+    expect($queries)->toBe([[$connected->id, '2026-02-01', '2026-03-31', LabelSource::Estimate->value]])
         ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-28')))->toBe(300000)
         ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-03-31')))->toBe(300000)
         ->and($lookup->getBalanceAt($connected->id, Carbon::parse('2026-02-28')))->toBe(50000)
@@ -728,4 +730,163 @@ test('getInvestedAmountAt scales a shared account and carries it over null days'
         ->and($lookup->getInvestedAmountAt($this->account->id, Carbon::parse('2026-01-12')))->toBe(501)
         ->and($lookup->getInvestedAmountAt($this->account->id, Carbon::parse('2026-01-25')))->toBe(1500)
         ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-01-12')))->toBe(2500);
+});
+
+/**
+ * The onboarding quick-expenses step stores last month's spending as round
+ * figures that never touched the balance, so walking the balance back through
+ * them would invent a richer past (QA: 2,500 today drawn as 4,195 in June).
+ */
+test('getBalanceAt does not walk a balance back through onboarding estimates', function () {
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-03-31',
+        'balance' => 250000,
+    ]);
+
+    Transaction::factory()->for($this->user)->create([
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-03-10',
+        'amount' => -10000,
+    ]);
+    Transaction::factory()->for($this->user)->create([
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-02-01',
+        'amount' => -169500,
+    ])->labels()->attach(Label::factory()->for($this->user)->estimate()->create());
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    expect($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-01-31')))->toBe(260000)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-28')))->toBe(260000)
+        ->and($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-03-31')))->toBe(250000);
+});
+
+test('an account with only onboarding estimates has no movements to walk back through', function () {
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-03-31',
+        'balance' => 250000,
+    ]);
+
+    Transaction::factory()->for($this->user)->create([
+        'account_id' => $this->account->id,
+        'transaction_date' => '2025-12-01',
+        'amount' => -169500,
+    ])->labels()->attach(Label::factory()->for($this->user)->estimate()->create());
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    expect($lookup->getBalanceAt($this->account->id, Carbon::parse('2026-02-28')))->toBe(0)
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-02-28')))->toBeFalse()
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-03-31')))->toBeTrue();
+});
+
+/**
+ * Before an account's first balance or movement nothing is known about it: a
+ * walk back would only repeat the earliest figure across those days.
+ */
+test('hasHistoryOn starts at the first movement of an account connected inside the range', function () {
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-03-31',
+        'balance' => 100000,
+    ]);
+
+    Transaction::factory()->for($this->user)->create([
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-02-15',
+        'amount' => -10000,
+    ]);
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    expect($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeFalse()
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-02-14')))->toBeFalse()
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-02-15')))->toBeTrue()
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-03-31')))->toBeTrue();
+});
+
+test('hasHistoryOn starts at the first balance when it comes before any movement', function () {
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-02-10',
+        'balance' => 100000,
+    ]);
+
+    Transaction::factory()->for($this->user)->create([
+        'account_id' => $this->account->id,
+        'transaction_date' => '2026-03-15',
+        'amount' => -10000,
+    ]);
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    expect($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeFalse()
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-02-10')))->toBeTrue();
+});
+
+test('hasHistoryOn covers the whole range for an account that moved before it', function () {
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2026-03-31',
+        'balance' => 100000,
+    ]);
+
+    foreach (['2025-11-20', '2026-03-10'] as $day) {
+        Transaction::factory()->for($this->user)->create([
+            'account_id' => $this->account->id,
+            'transaction_date' => $day,
+            'amount' => -10000,
+        ]);
+    }
+
+    $lookup = null;
+    $queries = transactionQueriesWhile(function () use (&$lookup): void {
+        $lookup = BalanceLookup::forAccounts(
+            [$this->account->id],
+            Carbon::parse('2026-01-01'),
+            Carbon::parse('2026-03-31'),
+        );
+    });
+
+    // Building the lookup still skips the EXISTS for an account that moved in
+    // range; only asking about its history before the range runs it.
+    expect($queries)->toHaveCount(1)
+        ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeTrue();
+});
+
+test('hasHistoryOn covers the whole range for seeded accounts and ones with no balance', function () {
+    $empty = Account::factory()->create(['user_id' => $this->user->id]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $this->account->id,
+        'balance_date' => '2025-12-15',
+        'balance' => 100000,
+    ]);
+
+    $lookup = BalanceLookup::forAccounts(
+        [$this->account->id, $empty->id],
+        Carbon::parse('2026-01-01'),
+        Carbon::parse('2026-03-31'),
+    );
+
+    expect($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeTrue()
+        ->and($lookup->hasHistoryOn($empty->id, Carbon::parse('2026-01-31')))->toBeTrue();
 });

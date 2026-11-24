@@ -36,8 +36,17 @@ import {
 } from '@/lib/chart-calculations';
 import { chartRoleColors } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
+import {
+    calculateNetWorthTrend,
+    firstKnownIndex,
+} from '@/lib/net-worth-history';
+import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
-import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
+import {
+    formatDate,
+    formatDayFromDate,
+    formatMonthFromYearMonth,
+} from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
@@ -59,12 +68,6 @@ const DAILY_DAYS = 30;
  */
 const NET_WORTH_DEFICIT_KEY = '__net_worth_deficit';
 
-interface TrendData {
-    percentage: number;
-    previousAmount: number;
-    currentAmount: number;
-}
-
 /**
  * The monthly branch used to be a hand-rolled copy of
  * {@see formatMonthFromYearMonth}, which is how this chart alone kept printing
@@ -80,50 +83,23 @@ function formatXAxisLabel(
         : formatMonthFromYearMonth(value, locale);
 }
 
-function calculateTrend(
-    data: Array<Record<string, string | number | OriginalAmount>>,
-    accounts: Record<string, AccountInfo>,
-    periodsBack: number,
-): TrendData | null {
-    if (data.length < 2) return null;
+/**
+ * The months (or days) the chart shows before the first one with data, as
+ * "Dec – May", for the dashed placeholder drawn in their place.
+ */
+function formatUnknownRange(
+    periods: string[],
+    locale: string,
+    granularity: ChartGranularity,
+): string {
+    const first = formatXAxisLabel(periods[0], locale, granularity);
+    const last = formatXAxisLabel(
+        periods[periods.length - 1],
+        locale,
+        granularity,
+    );
 
-    const currentIndex = data.length - 1;
-    const previousIndex = Math.max(0, data.length - 1 - periodsBack);
-
-    if (currentIndex === previousIndex) return null;
-
-    const accountIds = Object.keys(accounts);
-
-    const currentTotal = accountIds.reduce((sum, id) => {
-        const value = data[currentIndex][id];
-        if (typeof value !== 'number') {
-            return sum;
-        }
-
-        const account = accounts[id];
-
-        return sum + netWorthContribution(account.type, value);
-    }, 0);
-
-    const previousTotal = accountIds.reduce((sum, id) => {
-        const value = data[previousIndex][id];
-        if (typeof value !== 'number') {
-            return sum;
-        }
-
-        const account = accounts[id];
-
-        return sum + netWorthContribution(account.type, value);
-    }, 0);
-
-    if (previousTotal === 0) return null;
-
-    return {
-        percentage:
-            ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100,
-        previousAmount: previousTotal,
-        currentAmount: currentTotal,
-    };
+    return periods.length === 1 ? first : `${first} – ${last}`;
 }
 
 export function NetWorthChart({
@@ -199,6 +175,7 @@ export function NetWorthChart({
         accountCurrencies,
         accountsForHook,
         hasLiabilities,
+        firstKnown,
     } = useMemo(() => {
         const accounts = activeData.accounts || {};
         const chartDataArray = activeData.data || [];
@@ -398,12 +375,17 @@ export function NetWorthChart({
             rawChartData: chartDataArray,
             dataKeys: chartAccountIds,
             chartConfig: config,
-            shortTrend: calculateTrend(chartDataArray, allHookAccounts, 1),
-            longTrend: calculateTrend(
+            shortTrend: calculateNetWorthTrend(
+                chartDataArray,
+                allHookAccounts,
+                1,
+            ),
+            longTrend: calculateNetWorthTrend(
                 chartDataArray,
                 allHookAccounts,
                 chartDataArray.length - 1,
             ),
+            firstKnown: firstKnownIndex(chartDataArray, allIncludedIds),
             totalAmount: total,
             accountCurrencies: currencies,
             accountsForHook: allHookAccounts,
@@ -415,8 +397,20 @@ export function NetWorthChart({
         includeRealEstateInNetWorthChart,
     ]);
 
+    // The first period is only there to compare the second with, so the
+    // chart starts at the second one, or at the first with data when that is
+    // later: the periods before it are "no data" and are not drawn.
+    const displayStart = Math.max(1, firstKnown);
+    const unknownPeriods = rawChartData
+        .slice(1, displayStart)
+        .map((point) => point.month as string);
+
     const chartViews = useChartViews({
-        data: rawChartData as Array<Record<string, string | number>>,
+        // The month-over-month views start at the first period with data, so
+        // the change into it is not read as growth from nothing.
+        data: rawChartData.slice(Math.max(0, firstKnown)) as Array<
+            Record<string, string | number>
+        >,
         accounts: accountsForHook,
         initialView: 'stacked',
         hasStackedView: true,
@@ -485,10 +479,23 @@ export function NetWorthChart({
 
     const shortTrendLabel =
         granularity === 'daily' ? __('today') : __('this month');
+    // A history shorter than the range is measured from its first period
+    // with data, and says so.
+    const historyStart = rawChartData[firstKnown]?.month as string | undefined;
     const longTrendLabel =
-        granularity === 'daily'
-            ? __('for the last 30 days')
-            : __('for the last 12 months');
+        firstKnown > 0 && historyStart
+            ? __('since :date', {
+                  date: formatDate(
+                      granularity === 'daily'
+                          ? historyStart
+                          : `${historyStart}-01`,
+                      granularity === 'daily' ? 'MMM d, yyyy' : 'MMM yyyy',
+                      locale,
+                  ),
+              })
+            : granularity === 'daily'
+              ? __('for the last 30 days')
+              : __('for the last 12 months');
 
     if (loading || (granularity === 'daily' && isDailyLoading)) {
         return (
@@ -527,6 +534,28 @@ export function NetWorthChart({
 
     const xAxisFormatter = (value: string) =>
         formatXAxisLabel(value, locale, granularity);
+
+    const knownChartData = scaledChartData.slice(displayStart);
+    const stackedChartProps = {
+        data: knownChartData,
+        dataKeys,
+        config: chartConfig,
+        xAxisKey: 'month',
+        xAxisFormatter,
+        valueFormatter,
+        accountCurrencies,
+        displayCurrency: userCurrency,
+        className: 'h-full w-full',
+        showLegend,
+        netWorthMode: hasLiabilities
+            ? {
+                  liabilityTypeLabel: __('Loan'),
+                  liabilityDotColor,
+                  deficitKey: NET_WORTH_DEFICIT_KEY,
+              }
+            : undefined,
+        hideZeroValues: true,
+    };
 
     return (
         <Card className="group">
@@ -609,56 +638,49 @@ export function NetWorthChart({
                 className="relative min-w-0 overflow-hidden"
                 data-testid="net-worth-chart"
             >
-                {chartViews.currentView === 'stacked' &&
-                    (granularity === 'daily' ? (
-                        <StackedAreaChart
-                            key={dataKeys.join(',')}
-                            data={scaledChartData.slice(1)}
-                            dataKeys={dataKeys}
-                            config={chartConfig}
-                            xAxisKey="month"
-                            xAxisFormatter={xAxisFormatter}
-                            valueFormatter={valueFormatter}
-                            accountCurrencies={accountCurrencies}
-                            displayCurrency={userCurrency}
-                            className="h-[300px] w-full"
-                            showLegend={showLegend}
-                            netWorthMode={
-                                hasLiabilities
-                                    ? {
-                                          liabilityTypeLabel: __('Loan'),
-                                          liabilityDotColor,
-                                          deficitKey: NET_WORTH_DEFICIT_KEY,
-                                      }
-                                    : undefined
-                            }
-                            hideZeroValues
-                        />
-                    ) : (
-                        <StackedBarChart
-                            key={dataKeys.join(',')}
-                            data={scaledChartData.slice(1)}
-                            dataKeys={dataKeys}
-                            config={chartConfig}
-                            xAxisKey="month"
-                            xAxisFormatter={xAxisFormatter}
-                            valueFormatter={valueFormatter}
-                            accountCurrencies={accountCurrencies}
-                            displayCurrency={userCurrency}
-                            className="h-[300px] w-full"
-                            showLegend={showLegend}
-                            netWorthMode={
-                                hasLiabilities
-                                    ? {
-                                          liabilityTypeLabel: __('Loan'),
-                                          liabilityDotColor,
-                                          deficitKey: NET_WORTH_DEFICIT_KEY,
-                                      }
-                                    : undefined
-                            }
-                            hideZeroValues
-                        />
-                    ))}
+                {chartViews.currentView === 'stacked' && (
+                    <div className="flex h-[300px] w-full gap-3">
+                        {unknownPeriods.length > 0 && (
+                            <div
+                                data-testid="net-worth-no-data"
+                                className="flex min-w-28 basis-0 items-center justify-center rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground"
+                                style={{ flexGrow: unknownPeriods.length }}
+                            >
+                                {__(
+                                    ':months: before your first movement. Nothing to show here, and nothing counted in the change.',
+                                    {
+                                        months: formatUnknownRange(
+                                            unknownPeriods,
+                                            locale,
+                                            granularity,
+                                        ),
+                                    },
+                                )}
+                            </div>
+                        )}
+                        <div
+                            className={cn(
+                                'h-full min-w-0',
+                                unknownPeriods.length > 0
+                                    ? 'basis-0'
+                                    : 'w-full',
+                            )}
+                            style={{ flexGrow: knownChartData.length }}
+                        >
+                            {granularity === 'daily' ? (
+                                <StackedAreaChart
+                                    key={dataKeys.join(',')}
+                                    {...stackedChartProps}
+                                />
+                            ) : (
+                                <StackedBarChart
+                                    key={dataKeys.join(',')}
+                                    {...stackedChartProps}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
                 {chartViews.currentView === 'mom' && (
                     <MoMChart
                         data={chartViews.deltaSeries}

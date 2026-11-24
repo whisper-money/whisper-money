@@ -227,6 +227,9 @@ class DashboardController extends Controller
      * The last 12 months up to the user's own current month, not the server's
      * UTC one: at 21:00 on 31 October in Buenos Aires the server is already in
      * November, and the chart would end on a November that repeats October.
+     *
+     * Months before an account's first balance or movement read null, so the
+     * chart leaves them empty instead of repeating its first figure.
      */
     private function getNetWorthEvolution(Request $request): array
     {
@@ -242,7 +245,7 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today);
+        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today, unknownMonthsAsNull: true);
     }
 
     /**
