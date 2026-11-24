@@ -304,7 +304,7 @@ function UncategorizedRow({
     href: string;
 }) {
     return (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
             <div className="flex items-center">
                 <span
                     aria-hidden="true"
@@ -324,12 +324,6 @@ function UncategorizedRow({
                                 : __(':count movements', { count })}
                         </span>
                     </span>
-                    <Link
-                        href={href}
-                        className="shrink-0 text-xs font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                        {__('Categorize these')}
-                    </Link>
                     <AmountDisplay
                         amountInCents={amount}
                         currencyCode={currencyCode}
@@ -353,6 +347,12 @@ function UncategorizedRow({
                     }}
                 />
             </div>
+            <Link
+                href={href}
+                className="self-start text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+                {__('Categorize these')}
+            </Link>
         </div>
     );
 }
