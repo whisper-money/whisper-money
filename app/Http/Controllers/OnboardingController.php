@@ -106,6 +106,12 @@ class OnboardingController extends Controller
             'accounts' => $accounts,
             'categories' => $categories,
             'transactions' => $transactions,
+            // The categorize step is skipped when nothing real came in: the
+            // estimates typed during onboarding arrive already sorted.
+            'hasRealTransactions' => $user->transactions()->withoutEstimates()->exists(),
+            // Whether a rule filed anything, so the categorize step only
+            // credits the rules when they actually ran.
+            'rulesFiledTransactions' => $user->transactions()->whereNotNull('categorized_by_rule_id')->exists(),
             'initialStep' => $initialStep,
             'onboardingAnswers' => $user->onboarding_answers ?? [],
             'signupPlan' => $signupPlan?->value,

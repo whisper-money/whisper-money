@@ -2666,7 +2666,7 @@
     "The free plan has no bank sync, so dropping to it cuts your :banks connections.": "El plan gratis no tiene sincronización bancaria, así que pasar a él corta tus conexiones de :banks.",
     "The permission you grant cannot move money, even by accident.": "El permiso que concedes no puede mover dinero, ni siquiera por accidente.",
     "The rest can wait — they’ll be on your transactions screen.": "El resto puede esperar: estarán en tu pantalla de movimientos.",
-    "The rules couldn’t place these on their own. File :count of them and we carry on — each one you file is one we never ask about again.": "Las reglas no supieron colocar estos. Clasifica :count y seguimos: cada uno que clasificas es uno que no volvemos a preguntarte.",
+    "Every movement you brought already has a category.": "Todos los movimientos que trajiste ya tienen categoría.",
     "Their page, their login, the same one you always use. Then you land straight back here.": "Su página, su acceso, el de siempre. Después vuelves directo aquí.",
     "There is nothing for you to do. I just did not want you seeing the new price on the site and wondering what it meant for you.": "No tienes que hacer nada. Solo no quería que vieras el precio nuevo en la web y te quedaras con la duda de qué significaba para ti.",
     "After 30 September at 23:59 CEST the old price is gone, and I will not be able to bring it back for you.": "Después del 30 de septiembre a las 23:59 (hora peninsular española) ese precio desaparece, y ya no voy a poder recuperarlo para ti.",
@@ -2709,7 +2709,7 @@
     "What leaves your account": "Qué sale de tu cuenta",
     "Where do you bank?": "¿Dónde tienes tu banco?",
     "Which country is the account in?": "¿En qué país está la cuenta?",
-    "Without this you sort :count by hand. With it you approve a handful of rules and the rest happens on its own.": "Sin esto ordenas :count a mano. Con esto apruebas un puñado de reglas y el resto pasa solo.",
+    "The rules couldn’t place these on their own. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.": "Las reglas no supieron clasificar estos por sí solas. Clasifica :count y seguimos; cuando uno se repita, te ofreceremos convertirlo en una regla.",
     "You are exactly where you were.": "Estás exactamente donde estabas.",
     "You are not stuck either way: any transaction can become a rule from the app itself, whenever you like.": "En cualquier caso no te quedas atascado: cualquier movimiento puede convertirse en una regla desde la propia app, cuando quieras.",
     "You can bring the rest in later from Settings. Nothing is lost by leaving them out now.": "Puedes añadir el resto más tarde desde Ajustes. No se pierde nada por dejarlas fuera ahora.",
@@ -4072,5 +4072,12 @@
     "Your positions update on their own, every day. Everything you’ve done so far stays free.": "Tus posiciones se actualizan solas, cada día. Todo lo que has hecho hasta ahora sigue siendo gratis.",
     "Unlimited accounts, positions updated every day": "Cuentas ilimitadas, posiciones actualizadas cada día",
     "Free and unlimited, for as long as you like": "Gratis y sin límite, todo el tiempo que quieras",
-    "Connecting a broker needs Standard": "Conectar un bróker necesita Standard"
+    "Connecting a broker needs Standard": "Conectar un bróker necesita Standard",
+    "These still need a category. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.": "Estos aún no tienen categoría. Clasifica :count y seguimos; cuando uno se repita, te ofreceremos convertirlo en una regla.",
+    "Without this you file :what by hand. With it you approve a handful of rules and the rest happens on its own.": "Sin esto clasificas :what a mano. Con esto apruebas un puñado de reglas y el resto pasa solo.",
+    "each new movement": "cada movimiento nuevo",
+    "The AI couldn’t run": "La IA no pudo funcionar",
+    "Nothing was changed: your movements are exactly as they were. Try again later, or sort them by hand.": "No se ha cambiado nada: tus movimientos están exactamente como estaban. Inténtalo más tarde o clasifícalos a mano.",
+    "You have :count real movements — your :estimates estimates are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.": "Tienes :count movimientos reales; tus :estimates estimaciones ya están clasificadas y no cuentan. Los patrones empiezan a verse a partir de :min; por debajo estaríamos adivinando, y una regla equivocada es peor que ninguna regla.",
+    "Import another file": "Importa otro fichero"
 }

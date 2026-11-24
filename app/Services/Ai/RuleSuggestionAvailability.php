@@ -22,6 +22,15 @@ class RuleSuggestionAvailability
         return $user->transactions()->withoutEstimates()->count();
     }
 
+    /**
+     * The estimates left out of {@see self::transactionCount()}, so a user who
+     * just typed some in is told why they do not count rather than "you have 0".
+     */
+    public function estimateCount(User $user): int
+    {
+        return $user->transactions()->estimates()->count();
+    }
+
     public function minTransactions(): int
     {
         return (int) config('ai_suggestions.eligibility_min_transactions');

@@ -19,13 +19,20 @@ import { type Category } from '@/types/category';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Check, Settings2, SkipForward } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface StepCategorizeTransactionsProps {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
     transactions: Transaction[];
+    /**
+     * Anything came in besides the onboarding estimates, which arrive already
+     * sorted. Without it there is nothing to file and the step moves on.
+     */
+    hasRealTransactions?: boolean;
+    /** A rule filed something, so the rules may take the credit for it. */
+    rulesFiledTransactions?: boolean;
     onComplete: () => void;
 }
 
@@ -34,6 +41,8 @@ export function StepCategorizeTransactions({
     accounts,
     banks,
     transactions,
+    hasRealTransactions = true,
+    rulesFiledTransactions = false,
     onComplete,
 }: StepCategorizeTransactionsProps) {
     const [showRulesHint, setShowRulesHint] = useState(false);
@@ -80,6 +89,19 @@ export function StepCategorizeTransactions({
         // Nothing to file them under is not the user's fault, and the gate
         // could never be met.
         categories.length === 0;
+
+    // A balances-only user, or one who only typed estimates, has nothing to
+    // file: the step moves on the way the target does when it has nothing to
+    // say, rather than congratulating them on sorting nothing.
+    const nothingToFile = totalAvailable === 0 && !hasRealTransactions;
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+
+    useEffect(() => {
+        if (!isLoading && nothingToFile) {
+            onCompleteRef.current();
+        }
+    }, [isLoading, nothingToFile]);
 
     // Show rules hint after first categorization, only once
     useEffect(() => {
@@ -133,7 +155,7 @@ export function StepCategorizeTransactions({
         showRulesHint,
     ]);
 
-    if (isLoading) {
+    if (isLoading || nothingToFile) {
         return (
             <StepScreen width="xl">
                 <div className="flex flex-col gap-5">
@@ -155,9 +177,15 @@ export function StepCategorizeTransactions({
             <StepScreen
                 align="center"
                 title={__('Nothing left to teach us')}
-                description={__(
-                    'Every movement you brought already has a category. The rules did their job.',
-                )}
+                description={
+                    rulesFiledTransactions
+                        ? __(
+                              'Every movement you brought already has a category. The rules did their job.',
+                          )
+                        : __(
+                              'Every movement you brought already has a category.',
+                          )
+                }
                 footer={
                     <StepButton text={__('Continue')} onClick={onComplete} />
                 }
@@ -169,10 +197,17 @@ export function StepCategorizeTransactions({
         <StepScreen
             width="xl"
             title={__('Teach us your habits')}
-            description={__(
-                'The rules couldn’t place these on their own. File :count of them and we carry on — each one you file is one we never ask about again.',
-                { count: minimumRequired },
-            )}
+            description={
+                rulesFiledTransactions
+                    ? __(
+                          'The rules couldn’t place these on their own. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.',
+                          { count: minimumRequired },
+                      )
+                    : __(
+                          'These still need a category. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.',
+                          { count: minimumRequired },
+                      )
+            }
             footer={
                 <>
                     <div className="grid grid-cols-2 gap-2.5">

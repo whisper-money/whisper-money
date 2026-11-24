@@ -76,13 +76,22 @@ const categories = [
     { id: 'category-1', name: 'Food' },
 ] as unknown as Category[];
 
-function renderStep(onComplete = vi.fn(), queue = transactions) {
+function renderStep(
+    onComplete = vi.fn(),
+    queue = transactions,
+    {
+        hasRealTransactions = true,
+        rulesFiledTransactions = false,
+    }: { hasRealTransactions?: boolean; rulesFiledTransactions?: boolean } = {},
+) {
     render(
         <StepCategorizeTransactions
             categories={categories}
             accounts={[]}
             banks={[]}
             transactions={queue}
+            hasRealTransactions={hasRealTransactions}
+            rulesFiledTransactions={rulesFiledTransactions}
             onComplete={onComplete}
         />,
     );
@@ -193,5 +202,74 @@ describe('StepCategorizeTransactions gate', () => {
         cleanup();
 
         expect(toast.dismiss).toHaveBeenCalledWith(ids[0]);
+    });
+});
+
+describe('StepCategorizeTransactions copy', () => {
+    afterEach(() => {
+        cleanup();
+    });
+
+    it('does not credit the rules when none ran', async () => {
+        renderStep();
+        await act(async () => {});
+
+        expect(screen.queryByText(/The rules couldn’t place/)).toBeNull();
+        expect(
+            screen.getByText(
+                'These still need a category. File 5 of them and we carry on — when one repeats, we offer to turn it into a rule.',
+            ),
+        ).toBeTruthy();
+    });
+
+    it('says the rules could not place these when rules did run', async () => {
+        renderStep(vi.fn(), transactions, { rulesFiledTransactions: true });
+        await act(async () => {});
+
+        expect(
+            screen.getByText(
+                'The rules couldn’t place these on their own. File 5 of them and we carry on — when one repeats, we offer to turn it into a rule.',
+            ),
+        ).toBeTruthy();
+    });
+
+    it('never promises a filed movement is never asked about again', async () => {
+        renderStep();
+        await act(async () => {});
+
+        expect(screen.queryByText(/never ask about again/)).toBeNull();
+    });
+
+    it('moves on by itself when nothing real came in', async () => {
+        const onComplete = renderStep(vi.fn(), [], {
+            hasRealTransactions: false,
+        });
+        await act(async () => {});
+
+        expect(onComplete).toHaveBeenCalledOnce();
+        expect(screen.queryByText('Nothing left to teach us')).toBeNull();
+    });
+
+    it('does not credit the rules when everything arrived with a category', async () => {
+        const onComplete = renderStep(vi.fn(), []);
+        await act(async () => {});
+
+        expect(onComplete).not.toHaveBeenCalled();
+        expect(
+            screen.getByText(
+                'Every movement you brought already has a category.',
+            ),
+        ).toBeTruthy();
+    });
+
+    it('credits the rules when they filed everything', async () => {
+        renderStep(vi.fn(), [], { rulesFiledTransactions: true });
+        await act(async () => {});
+
+        expect(
+            screen.getByText(
+                'Every movement you brought already has a category. The rules did their job.',
+            ),
+        ).toBeTruthy();
     });
 });

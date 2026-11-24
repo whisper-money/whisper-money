@@ -42,6 +42,10 @@ interface OnboardingProps {
     accounts: ExistingAccount[];
     categories: Category[];
     transactions: Transaction[];
+    /** Anything came in that is not an onboarding estimate. */
+    hasRealTransactions?: boolean;
+    /** A rule has filed at least one movement. */
+    rulesFiledTransactions?: boolean;
     initialStep?: OnboardingStep | null;
     onboardingAnswers?: OnboardingAnswers;
     signupPlan?: SignupPlan | null;
@@ -54,6 +58,8 @@ export default function Onboarding({
     accounts,
     categories,
     transactions,
+    hasRealTransactions = true,
+    rulesFiledTransactions = false,
     initialStep: initialStepProp,
     onboardingAnswers = {},
     signupPlan = null,
@@ -287,6 +293,7 @@ export default function Onboarding({
                     <StepAiSuggestions
                         categories={categories}
                         hasConnectedAccount={hasConnectedAccount}
+                        canConnectBank={bankOffered}
                         onAddAccount={() => goToStep('create-account')}
                         onComplete={goNext}
                     />
@@ -318,6 +325,8 @@ export default function Onboarding({
                         accounts={accounts as unknown as Account[]}
                         banks={banks}
                         transactions={transactions}
+                        hasRealTransactions={hasRealTransactions}
+                        rulesFiledTransactions={rulesFiledTransactions}
                         onComplete={goNext}
                     />
                 );

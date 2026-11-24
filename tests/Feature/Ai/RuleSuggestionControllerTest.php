@@ -95,6 +95,16 @@ it('leaves onboarding estimates out of the transaction count', function () {
         ->assertJson(['transaction_count' => 0]);
 });
 
+it('reports the onboarding estimates apart, so the screen can say why they do not count', function () {
+    seedTransactions($this->user, $this->account, mercadona: 1, filler: 2);
+    seedEstimates($this->user, $this->account, 4);
+
+    $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk()
+        ->assertJson(['transaction_count' => 3, 'estimate_count' => 4]);
+});
+
 it('does not count onboarding estimates toward eligibility', function () {
     $this->user->recordAiConsent();
     seedTransactions($this->user, $this->account, mercadona: 6, filler: 40); // 46 real

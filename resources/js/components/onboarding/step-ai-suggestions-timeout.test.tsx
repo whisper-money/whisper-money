@@ -70,6 +70,10 @@ describe('StepAiSuggestions polling timeout', () => {
         });
 
         expect(screen.getByText('That didn’t finish')).toBeInTheDocument();
+        expect(
+            screen.getByText('Usually works on the second run'),
+        ).toBeInTheDocument();
+        expect(screen.getAllByText('Try again')).toHaveLength(1);
         expect(screen.queryByText('Merchants found')).not.toBeInTheDocument();
     });
 });

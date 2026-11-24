@@ -58,13 +58,17 @@ const stateWith = (overrides: Record<string, unknown>) => ({
 
 const onAddAccount = vi.fn();
 
-async function renderStep(overrides: Record<string, unknown>) {
+async function renderStep(
+    overrides: Record<string, unknown>,
+    { canConnectBank = false }: { canConnectBank?: boolean } = {},
+) {
     get.mockResolvedValue({ data: stateWith(overrides) });
 
     render(
         <StepAiSuggestions
             categories={[]}
             hasConnectedAccount={false}
+            canConnectBank={canConnectBank}
             onAddAccount={onAddAccount}
             onComplete={vi.fn()}
         />,
@@ -136,15 +140,85 @@ describe('StepAiSuggestions screens', () => {
         expect(onAddAccount).toHaveBeenCalledOnce();
     });
 
-    it('promises nothing was half-done when the run failed', async () => {
+    it('says the AI could not run when the run failed, not that it ran too long', async () => {
         await renderStep({
             run: { ...completedRun(0), status: 'failed' },
         });
 
-        expect(screen.getByText('That didn’t finish')).toBeInTheDocument();
+        expect(screen.getByText('The AI couldn’t run')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Nothing was changed: your movements are exactly as they were. Try again later, or sort them by hand.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('That didn’t finish'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Usually works on the second run'),
+        ).not.toBeInTheDocument();
+        expect(screen.getAllByText('Try again')).toHaveLength(1);
         expect(
             screen.getByText('903 movements, at your own pace, whenever'),
         ).toBeInTheDocument();
+    });
+
+    it('does not ask for consent when there is too little for the AI to read', async () => {
+        await renderStep({
+            consented: false,
+            previously_consented: false,
+            eligible: false,
+            transaction_count: 0,
+            estimate_count: 4,
+        });
+
+        expect(
+            screen.queryByText('Let AI draft your rules?'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText('Not enough to learn from yet'),
+        ).toBeInTheDocument();
+    });
+
+    it('names typed estimates apart instead of saying there are no movements', async () => {
+        await renderStep({
+            eligible: false,
+            transaction_count: 0,
+            estimate_count: 4,
+        });
+
+        expect(
+            screen.getByText(
+                'You have 0 real movements — your 4 estimates are already sorted and don’t count. Patterns start showing up around 50 — below that we would be guessing, and a wrong rule is worse than no rule.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('only mentions the bank when a bank connection is on offer', async () => {
+        await renderStep({ eligible: false, transaction_count: 31 });
+
+        expect(screen.getByText('Import another file')).toBeInTheDocument();
+        expect(
+            screen.queryByText('Another file, or connect the bank'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('offers the bank alongside a file when one can be connected', async () => {
+        await renderStep(
+            { eligible: false, transaction_count: 31 },
+            { canConnectBank: true },
+        );
+
+        expect(
+            screen.getByText('Another file, or connect the bank'),
+        ).toBeInTheDocument();
+    });
+
+    it('does not promise to sort every movement by hand on the consent screen', async () => {
+        await renderStep({ consented: false, previously_consented: false });
+
+        expect(screen.queryByText(/903/)).not.toBeInTheDocument();
+        expect(screen.getByText('each new movement')).toBeInTheDocument();
     });
 
     it('does not claim anything was sorted when no rule was worth it', async () => {
