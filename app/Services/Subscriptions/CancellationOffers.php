@@ -2,6 +2,7 @@
 
 namespace App\Services\Subscriptions;
 
+use App\Actions\Subscription\ExtendTrial;
 use App\Enums\CancellationOffer;
 use App\Enums\CancellationReason;
 use App\Models\Subscription;
@@ -37,7 +38,10 @@ class CancellationOffers
     /** @var array<string, ?StripeSubscription> */
     private array $stripeSubscriptions = [];
 
-    public function __construct(private SubscribedPlan $subscribedPlan) {}
+    public function __construct(
+        private SubscribedPlan $subscribedPlan,
+        private ExtendTrial $extendTrial,
+    ) {}
 
     /**
      * The subscription the cancel flow works on: the user's own `default` one,
@@ -83,9 +87,14 @@ class CancellationOffers
             CancellationReason::MissingFeature,
             CancellationReason::BankConnectionProblems,
             CancellationReason::TooComplex => [['offer' => CancellationOffer::Support]],
-            // No fallback after it: the free plan cannot be offered to someone
-            // still paying, and the confirm step already says their data stays.
-            CancellationReason::NotUsingEnough => [$this->pause($user, $subscription)],
+            // A trial gets more time, a paid plan a pause: at most one of the
+            // two applies. No fallback after it: the free plan cannot be
+            // offered to someone still paying, and the confirm step already
+            // says their data stays.
+            CancellationReason::NotUsingEnough => [
+                $this->extendTrial($user, $subscription),
+                $this->pause($user, $subscription),
+            ],
             // Not something an offer answers: straight on to the confirmation.
             default => [],
         };
@@ -132,6 +141,36 @@ class CancellationOffers
             'percentOff' => $percentOff,
             'months' => $months,
             'savedAmount' => round($plan['price'] * $percentOff / 100 * $invoices, 2),
+        ];
+    }
+
+    /**
+     * Two more weeks of trial, for someone on a trial who has not used the
+     * app enough to judge it, with the day the trial would then end.
+     *
+     * Null once the user has had an extension, outside a trial, with a pause
+     * set (here or in Stripe), and when the subscription carries a discount:
+     * a repeating coupon's months run from the day it was applied, so a later
+     * first charge would spend them on nothing. Unknown counts as a discount.
+     *
+     * @return array{offer: CancellationOffer, days: int, trialEndsAt: string}|null
+     */
+    public function extendTrial(User $user, Subscription $subscription): ?array
+    {
+        if (! $this->extendTrial->isAvailable($user, $subscription)) {
+            return null;
+        }
+
+        $stripeSubscription = $this->stripeSubscription($subscription);
+
+        if ($stripeSubscription === null || ! empty($stripeSubscription->pause_collection) || $this->hasDiscount($subscription)) {
+            return null;
+        }
+
+        return [
+            'offer' => CancellationOffer::ExtendTrial,
+            'days' => ExtendTrial::DAYS,
+            'trialEndsAt' => $this->extendTrial->extendedTrialEndsAt($subscription)->toIso8601String(),
         ];
     }
 

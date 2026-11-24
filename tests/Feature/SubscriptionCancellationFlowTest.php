@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Subscription\ExtendTrial;
 use App\Actions\Subscription\SwitchToYearly;
 use App\Enums\CancellationOffer;
 use App\Enums\CancellationOutcome;
@@ -180,7 +181,7 @@ describe('the survey', function () {
         'missing a feature' => ['missing_feature', ['support']],
         'bank problems' => ['bank_connection_problems', ['support']],
         'too complex' => ['too_complex', ['support']],
-        'not using it enough' => ['not_using_enough', []],
+        'not using it enough' => ['not_using_enough', ['extend_trial']],
         'just trying' => ['just_trying', []],
         'switching' => ['switching_app', []],
         'does not trust the bank' => ['dont_trust_bank', []],
@@ -346,6 +347,143 @@ describe('the retention discount', function () {
 
         expect($user->fresh()->retention_coupon_redeemed_at)->toBeNull()
             ->and($response->fresh()->outcome)->toBeNull();
+    });
+});
+
+describe('the trial extension', function () {
+    test('is what "not using it enough" gets on a trial, with the day it would end', function () {
+        $this->freezeTime();
+        $user = cancellableSubscriber();
+        fakeStripeForCancellation();
+        $trialEndsAt = $user->subscription('default')->trial_ends_at->toImmutable()->addDays(14)->endOfDay()->startOfSecond();
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'not_using_enough'])
+            ->assertCreated()
+            ->assertJsonCount(1, 'offers')
+            ->assertJsonPath('offers.0.offer', 'extend_trial')
+            ->assertJsonPath('offers.0.days', 14)
+            ->assertJsonPath('offers.0.trialEndsAt', $trialEndsAt->toIso8601String());
+
+        expect($user->cancellationSurveyResponses()->sole()->offer_shown)->toBe(CancellationOffer::ExtendTrial);
+    });
+
+    test('is not offered when it does not apply', function (array $attributes, array $userAttributes, array $discounts) {
+        $user = cancellableSubscriber($attributes, $userAttributes);
+        fakeStripeForCancellation(discounts: $discounts);
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'not_using_enough'])
+            ->assertCreated()
+            ->assertJsonPath('offers', fn (array $offers) => ! in_array('extend_trial', array_column($offers, 'offer'), true));
+    })->with([
+        'already extended once' => [[], ['trial_extended_at' => now()->subMonth()], []],
+        'a paid plan' => [paidSubscriberAttributes(), [], []],
+        'a discount on the subscription' => [[], [], [['id' => 'di_lead', 'coupon' => ['id' => 'lead_50']]]],
+    ]);
+
+    test('is not offered for another reason', function () {
+        $user = cancellableSubscriber();
+        fakeStripeForCancellation();
+
+        $this->actingAs($user)
+            ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'just_trying'])
+            ->assertJsonPath('offers', []);
+    });
+
+    test('moves the trial end in Stripe and here, and records the save', function () {
+        $this->freezeTime();
+        $user = cancellableSubscriber();
+        $sent = fakeStripeForCancellation();
+        $response = pendingResponse($user, CancellationReason::NotUsingEnough);
+        $trialEndsAt = $user->subscription('default')->trial_ends_at->toImmutable()->addDays(14)->endOfDay()->startOfSecond();
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.cancellation.extend-trial', $response))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Done: your trial now ends on '.$trialEndsAt->setTimezone($user->localTimezone())->isoFormat('LL').'.')
+            ->assertRedirect(route('settings.billing'));
+
+        $subscription = $user->subscription('default')->fresh();
+
+        expect($sent['updates'])->toBe([['trial_end' => $trialEndsAt->getTimestamp(), 'proration_behavior' => 'none']])
+            ->and($subscription->trial_ends_at->equalTo($trialEndsAt))->toBeTrue()
+            ->and($subscription->ends_at)->toBeNull()
+            ->and($user->fresh()->trial_extended_at)->not->toBeNull()
+            ->and($response->fresh()->offer_accepted)->toBe(CancellationOffer::ExtendTrial)
+            ->and($response->fresh()->outcome)->toBe(CancellationOutcome::Saved);
+    });
+
+    test('is given only once per user', function () {
+        $user = cancellableSubscriber();
+        $sent = fakeStripeForCancellation();
+
+        $this->actingAs($user)->post(route('settings.billing.cancellation.extend-trial', pendingResponse($user, CancellationReason::NotUsingEnough)));
+
+        $second = pendingResponse($user, CancellationReason::NotUsingEnough);
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.cancellation.extend-trial', $second))
+            ->assertSessionHasErrors('cancellation');
+
+        expect($sent['updates'])->toHaveCount(1)
+            ->and($second->fresh()->outcome)->toBeNull();
+    });
+
+    test('is refused on a paid plan', function () {
+        $user = cancellableSubscriber(paidSubscriberAttributes());
+        $sent = fakeStripeForCancellation();
+        $response = pendingResponse($user, CancellationReason::NotUsingEnough);
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.cancellation.extend-trial', $response))
+            ->assertSessionHasErrors('cancellation');
+
+        expect($sent['updates'])->toBe([])
+            ->and($user->fresh()->trial_extended_at)->toBeNull()
+            ->and($response->fresh()->outcome)->toBeNull();
+    });
+
+    test('a Stripe failure gives the extension back to the user', function () {
+        $user = cancellableSubscriber();
+        $trialEndsAt = $user->subscription('default')->trial_ends_at;
+        fakeStripeForCancellation(updateFailure: ApiConnectionException::factory('Stripe is down'));
+        $response = pendingResponse($user, CancellationReason::NotUsingEnough);
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.cancellation.extend-trial', $response))
+            ->assertSessionHasErrors('cancellation');
+
+        expect($user->fresh()->trial_extended_at)->toBeNull()
+            ->and($user->subscription('default')->fresh()->trial_ends_at->equalTo($trialEndsAt))->toBeTrue()
+            ->and($response->fresh()->outcome)->toBeNull();
+    });
+
+    test('the action leaves the user\'s one extension untouched outside a trial', function () {
+        $user = cancellableSubscriber(paidSubscriberAttributes());
+        $sent = fakeStripeForCancellation();
+
+        expect(app(ExtendTrial::class)->handle($user, $user->subscription('default')))->toBeNull()
+            ->and($sent['updates'])->toBe([])
+            ->and($user->fresh()->trial_extended_at)->toBeNull();
+    });
+
+    test('can also take back a cancellation set for the trial end', function () {
+        $this->freezeTime();
+        $user = cancellableSubscriber();
+        $subscription = $user->subscription('default');
+        $subscription->update(['ends_at' => $subscription->trial_ends_at]);
+        $sent = fakeStripeForCancellation();
+        $trialEndsAt = $subscription->trial_ends_at->toImmutable()->addDays(14)->endOfDay()->startOfSecond();
+
+        expect(app(ExtendTrial::class)->handle($user, $subscription->fresh(), reactivate: true)?->equalTo($trialEndsAt))->toBeTrue()
+            ->and($sent['updates'])->toBe([[
+                'trial_end' => $trialEndsAt->getTimestamp(),
+                'proration_behavior' => 'none',
+                'cancel_at_period_end' => false,
+            ]])
+            ->and($subscription->fresh()->ends_at)->toBeNull()
+            ->and($subscription->fresh()->trial_ends_at->equalTo($trialEndsAt))->toBeTrue();
     });
 });
 
@@ -525,6 +663,7 @@ test('another user\'s flow is unreachable', function (string $route) {
 })->with([
     'settings.billing.cancellation.retention-coupon',
     'settings.billing.cancellation.switch-to-yearly',
+    'settings.billing.cancellation.extend-trial',
     'settings.billing.cancellation.cancel',
 ]);
 

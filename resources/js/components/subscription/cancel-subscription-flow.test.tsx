@@ -65,6 +65,11 @@ const PAUSE: CancellationOffer = {
         { months: 3, resumesAt: '2027-02-25T09:00:00+00:00' },
     ],
 };
+const EXTEND_TRIAL: CancellationOffer = {
+    offer: 'extend_trial',
+    days: 14,
+    trialEndsAt: '2026-12-09T23:59:59+00:00',
+};
 
 function answerWith(
     offers: CancellationOffer[],
@@ -242,6 +247,7 @@ describe('CancelSubscriptionFlow', () => {
     it.each<[CancellationOffer, string]>([
         [COUPON, '/settings/billing/cancellation/answer-1/retention-coupon'],
         [YEARLY, '/settings/billing/cancellation/answer-1/switch-to-yearly'],
+        [EXTEND_TRIAL, '/settings/billing/cancellation/answer-1/extend-trial'],
     ])('takes a saving offer and closes', async (offer, url) => {
         mocks.post.mockResolvedValue(answerWith([offer]));
         const onOpenChange = renderFlow();
@@ -259,6 +265,33 @@ describe('CancelSubscriptionFlow', () => {
         ]);
         expect(onOpenChange).toHaveBeenCalledWith(false);
         expect(eventsNamed('cancel_flow_abandoned')).toEqual([]);
+    });
+
+    it('offers a trial two more weeks, with the day it would end', async () => {
+        mocks.post.mockResolvedValue(answerWith([EXTEND_TRIAL]));
+        renderFlow();
+
+        await answer('not_using_enough');
+
+        expect(
+            screen.getByText('14 more days of free trial'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Your trial would end on Dec 9, 2026 instead/),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('cancel-flow-accept')).toHaveTextContent(
+            'Extend my trial',
+        );
+        expect(eventsNamed('cancel_flow_offer_shown')).toEqual([
+            { on_trial: false, offer: 'extend_trial' },
+        ]);
+
+        fireEvent.click(screen.getByTestId('cancel-flow-decline'));
+
+        expect(screen.getByTestId('cancel-flow-confirm')).toBeInTheDocument();
+        expect(eventsNamed('cancel_flow_offer_declined')).toEqual([
+            { on_trial: false, offer: 'extend_trial' },
+        ]);
     });
 
     it('offers a month of pause by default, with the day it resumes and the price', async () => {

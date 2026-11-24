@@ -201,7 +201,8 @@ describe('the pause offer', function () {
         $this->actingAs($user)
             ->postJson(route('settings.billing.cancellation.store'), ['reason' => 'not_using_enough'])
             ->assertCreated()
-            ->assertJsonPath('offers', []);
+            // A trial gets more trial instead (see SubscriptionCancellationFlowTest).
+            ->assertJsonPath('offers', fn (array $offers) => ! in_array('pause', array_column($offers, 'offer'), true));
     })->with([
         'a trial' => [fn () => pausableSubscriber(['stripe_status' => 'trialing', 'trial_ends_at' => now()->addDays(5)]), null],
         'a yearly plan' => [fn () => pausableSubscriber(['stripe_price' => 'price_high_yearly']), null],

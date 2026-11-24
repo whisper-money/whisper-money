@@ -13,6 +13,7 @@ import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import {
+    CalendarPlusIcon,
     LifeBuoyIcon,
     PauseIcon,
     PercentIcon,
@@ -47,6 +48,13 @@ export type CancellationOffer =
           /** The monthly price the plan resumes at. */
           price: number;
           options: PauseOption[];
+      }
+    | {
+          offer: 'extend_trial';
+          /** How many days the trial grows by. */
+          days: number;
+          /** The day the extended trial would end. */
+          trialEndsAt: string;
       }
     | { offer: 'support' };
 
@@ -164,6 +172,18 @@ export function OfferStep({
                               },
                           ),
                     action: savingOfferButton(__('Switch to yearly')),
+                };
+            case 'extend_trial':
+                return {
+                    icon: CalendarPlusIcon,
+                    title: __(':days more days of free trial', {
+                        days: String(offer.days),
+                    }),
+                    body: __(
+                        'Take more time to see if it fits you. Your trial would end on :date instead, and your first charge moves to that day. Everything else stays as it is.',
+                        { date: formatDateMedium(offer.trialEndsAt, locale) },
+                    ),
+                    action: savingOfferButton(__('Extend my trial')),
                 };
             case 'support':
                 return {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Subscription\ApplyRetentionCoupon;
 use App\Actions\Subscription\CancelAtPeriodEnd;
+use App\Actions\Subscription\ExtendTrial;
 use App\Actions\Subscription\PauseSubscription;
 use App\Actions\Subscription\SwitchToYearly;
 use App\Enums\CancellationOffer;
@@ -175,6 +176,40 @@ class SubscriptionCancellationController extends Controller
             return $this->backToBilling(success: __('Done: Standard stays on until :start, then pauses until :end.', [
                 'start' => $this->localDate($user, $startsAt),
                 'end' => $this->localDate($user, $resumesAt),
+            ]));
+        });
+    }
+
+    /**
+     * Two more weeks of trial instead of cancelling, once per user. The plan
+     * carries on as it was, and the first charge moves to the new trial end.
+     */
+    public function extendTrial(ContinueCancellationFlowRequest $request, ExtendTrial $extendTrial): SymfonyResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        return $this->takeStep($request, function (CancellationSurveyResponse $response, Subscription $subscription) use ($user, $extendTrial): SymfonyResponse {
+            if ($this->offers->extendTrial($user, $subscription) === null) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
+
+            try {
+                $trialEndsAt = $extendTrial->handle($user, $subscription);
+            } catch (ApiErrorException $exception) {
+                report($exception);
+
+                return $this->backToBilling(error: __('We could not update your plan. Please try again in a few minutes.'));
+            }
+
+            if ($trialEndsAt === null) {
+                return $this->backToBilling(error: __('This offer is no longer available on your plan.'));
+            }
+
+            $response->markSaved(CancellationOffer::ExtendTrial);
+
+            return $this->backToBilling(success: __('Done: your trial now ends on :date.', [
+                'date' => $this->localDate($user, $trialEndsAt),
             ]));
         });
     }

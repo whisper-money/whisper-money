@@ -167,6 +167,9 @@ Route::middleware('auth')->group(function () {
             Route::post('{cancellationSurveyResponse}/pause', [SubscriptionCancellationController::class, 'pause'])
                 ->whereUuid('cancellationSurveyResponse')
                 ->name('pause');
+            Route::post('{cancellationSurveyResponse}/extend-trial', [SubscriptionCancellationController::class, 'extendTrial'])
+                ->whereUuid('cancellationSurveyResponse')
+                ->name('extend-trial');
             Route::post('{cancellationSurveyResponse}/cancel', [SubscriptionCancellationController::class, 'cancel'])
                 ->whereUuid('cancellationSurveyResponse')
                 ->name('cancel');
