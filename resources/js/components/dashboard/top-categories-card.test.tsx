@@ -64,6 +64,7 @@ function data(overrides: Partial<TopCategoriesData> = {}): TopCategoriesData {
             category('food', 'Food', 31200, 164100),
         ],
         uncategorized: { amount: 47900, count: 31 },
+        leaves_out_estimates: false,
         ...overrides,
     };
 }
@@ -90,6 +91,7 @@ describe('TopCategoriesCard', () => {
         expect(params.get('category_ids')).toBe('uncategorized');
         expect(params.get('date_from')).toBe('2026-11-01');
         expect(params.get('date_to')).toBe('2026-11-30');
+        expect(params.get('amount_max')).toBe('0');
     });
 
     it('says the rows add up to the total only when they do', () => {
@@ -102,6 +104,12 @@ describe('TopCategoriesCard', () => {
         ).toBeInTheDocument();
 
         rerender(<TopCategoriesCard data={data({ total: 200000 })} />);
+
+        expect(screen.queryByText(/rows add up/)).not.toBeInTheDocument();
+
+        rerender(
+            <TopCategoriesCard data={data({ leaves_out_estimates: true })} />,
+        );
 
         expect(screen.queryByText(/rows add up/)).not.toBeInTheDocument();
     });

@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 class CategorySpendingService
 {
+    /** How many categories {@see self::comparedExpense()} ranks. */
+    private const TOP_CATEGORIES = 10;
+
     public function __construct(
         private CategoryTree $tree,
         private CashflowAggregateQuery $aggregates,
@@ -63,8 +66,9 @@ class CategorySpendingService
      * Categories are ranked and compared with the period before. Spending with
      * no category is its own figure, so the rows and `uncategorized` add up to
      * `total`, the cashflow expense, unless a category nets below zero or falls
-     * outside the top $limit. When drilling into a parent, `total` is what its
-     * subtree spent and `uncategorized` is 0.
+     * outside the top ten. When drilling into a parent, `total` is what its
+     * subtree spent and `uncategorized` is 0: a parent has no uncategorized
+     * children.
      *
      * @return array{
      *     categories: list<array{category: mixed, category_id: ?string, amount: int, previous_amount: int, total_amount: int, has_children: bool, is_direct: bool}>,
@@ -72,7 +76,7 @@ class CategorySpendingService
      *     total: int,
      * }
      */
-    public function comparedExpense(User $user, PeriodComparator $period, ?string $drillParentId = null, int $limit = 10): array
+    public function comparedExpense(User $user, PeriodComparator $period, ?string $drillParentId = null): array
     {
         $previousPeriod = $period->previous();
 
@@ -87,15 +91,14 @@ class CategorySpendingService
         $categories = $this->spentCategories($this->perCategory($current), $user->id, $drillParentId);
         $previous = $this->spentCategories($this->perCategory($this->expenseSide($aggregates['previous'])), $user->id, $drillParentId);
 
-        $uncategorized = $drillParentId === null
-            ? -CashflowAggregate::total($current->filter(fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->category_id === null))
-            : 0;
-        $total = $drillParentId === null ? -CashflowAggregate::total($current) : (int) $categories->sum('amount');
+        [$uncategorized, $total] = $drillParentId === null
+            ? [-CashflowAggregate::total($current->filter(fn (CashflowAggregate $aggregate): bool => $aggregate->transaction->category_id === null)), -CashflowAggregate::total($current)]
+            : [0, (int) $categories->sum('amount')];
 
         return [
             'categories' => $categories
                 ->sortByDesc('amount')
-                ->take($limit)
+                ->take(self::TOP_CATEGORIES)
                 ->map(fn (array $item): array => [
                     'category' => $item['category'],
                     'category_id' => $item['category_id'],
@@ -114,8 +117,8 @@ class CategorySpendingService
 
     /**
      * How many movements make up {@see self::comparedExpense()}'s
-     * `uncategorized` figure: outflows with no category, counted by the same
-     * rules.
+     * `uncategorized` figure: outflows with no category, the uncategorized
+     * half of {@see Transaction::isExpenseSide()}, counted by the same rules.
      */
     public function uncategorizedExpenseCount(User $user, PeriodComparator $period): int
     {
@@ -125,6 +128,20 @@ class CategorySpendingService
             ->whereNull('transactions.category_id')
             ->where('transactions.amount', '<', 0)
             ->count();
+    }
+
+    /**
+     * Whether the period holds onboarding estimates, which
+     * {@see self::comparedExpense()} leaves out and the cashflow card counts:
+     * while it does, the two totals differ.
+     */
+    public function hasEstimates(User $user, PeriodComparator $period): bool
+    {
+        return Transaction::query()
+            ->where('transactions.user_id', $user->id)
+            ->whereBetween('transactions.transaction_date', [$period->from, $period->to])
+            ->estimates()
+            ->exists();
     }
 
     /**

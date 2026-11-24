@@ -117,21 +117,25 @@ it('compares each category with the month before', function () {
         ->and($rows[$travel->id]['previous_amount'])->toBe(0);
 });
 
-it('ranks root categories by what they took and keeps only the top ones', function () {
-    $small = spendingCategory($this->user);
-    $big = spendingCategory($this->user);
-    $child = Category::factory()->childOf($small)->create(['user_id' => $this->user->id]);
+it('ranks the ten root categories that took the most', function () {
+    $parent = spendingCategory($this->user);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $this->user->id]);
     $refunded = spendingCategory($this->user);
-
-    spendingMovement($this->user, $this->account, $small, -1000);
-    spendingMovement($this->user, $this->account, $child, -1500);
-    spendingMovement($this->user, $this->account, $big, -6000);
+    spendingMovement($this->user, $this->account, $parent, -500);
+    spendingMovement($this->user, $this->account, $child, -10000);
     spendingMovement($this->user, $this->account, $refunded, 2000);
 
-    $spending = app(CategorySpendingService::class)->comparedExpense($this->user, $this->november, limit: 1);
+    foreach (range(1, 10) as $amount) {
+        spendingMovement($this->user, $this->account, spendingCategory($this->user), -$amount * 100);
+    }
 
-    expect(collect($spending['categories'])->pluck('category_id')->all())->toBe([$big->id])
-        ->and($spending['total'])->toBe(6500);
+    $spending = app(CategorySpendingService::class)->comparedExpense($this->user, $this->november);
+
+    expect($spending['categories'])->toHaveCount(10)
+        ->and($spending['categories'][0]['category_id'])->toBe($parent->id)
+        ->and($spending['categories'][0]['amount'])->toBe(10500)
+        ->and(collect($spending['categories'])->pluck('amount')->last())->toBe(200)
+        ->and($spending['total'])->toBe(10500 + 5500 - 2000);
 });
 
 it('drills into a parent without the uncategorized spending', function () {
@@ -147,6 +151,20 @@ it('drills into a parent without the uncategorized spending', function () {
     expect(collect($spending['categories'])->pluck('amount')->all())->toBe([3000, 1000])
         ->and($spending['uncategorized'])->toBe(0)
         ->and($spending['total'])->toBe(4000);
+});
+
+it('tells whether the period holds onboarding estimates', function () {
+    $estimate = Label::factory()->estimate()->create(['user_id' => $this->user->id]);
+    $service = app(CategorySpendingService::class);
+
+    spendingMovement($this->user, $this->account, null, -1000, '2026-10-31')->labels()->attach($estimate->id);
+    spendingMovement($this->user, $this->account, null, -1000);
+
+    expect($service->hasEstimates($this->user, $this->november))->toBeFalse();
+
+    spendingMovement($this->user, $this->account, null, -1000)->labels()->attach($estimate->id);
+
+    expect($service->hasEstimates($this->user, $this->november))->toBeTrue();
 });
 
 it('counts the uncategorized outflows of the period by the cashflow rules', function () {

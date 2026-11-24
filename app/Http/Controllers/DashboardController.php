@@ -269,9 +269,10 @@ class DashboardController extends Controller
      * rules as the cashflow card beside it, so its rows add up to that card's
      * expense: the categories, then what has no category yet. Compared with
      * the month before. `through` is the owner's today, for the card's
-     * "1 – 24 Nov" label.
+     * "1 – 24 Nov" label. Onboarding estimates are left out, so while the
+     * month holds any the two cards' totals differ, which the card is told.
      *
-     * @return array{period: array{from: string, to: string, through: string}, total: int, categories: list<array<string, mixed>>, uncategorized: array{amount: int, count: int}}
+     * @return array{period: array{from: string, to: string, through: string}, total: int, categories: list<array<string, mixed>>, uncategorized: array{amount: int, count: int}, leaves_out_estimates: bool}
      */
     private function getTopCategories(Request $request): array
     {
@@ -289,6 +290,7 @@ class DashboardController extends Controller
                 'amount' => $spending['uncategorized'],
                 'count' => $this->categorySpendingService->uncategorizedExpenseCount($user, $period),
             ],
+            'leaves_out_estimates' => $this->categorySpendingService->hasEstimates($user, $period),
         ];
     }
 

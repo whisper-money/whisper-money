@@ -97,7 +97,8 @@ test('dashboard top categories show the month\'s uncategorized spending so the r
         ->and($card['categories'])->toHaveCount(1)
         ->and($card['categories'][0]['amount'])->toBe(3000)
         ->and($card['categories'][0]['previous_amount'])->toBe(1000)
-        ->and($card['period']['from'])->toBe(today()->startOfMonth()->toDateString());
+        ->and($card['period']['from'])->toBe(today()->startOfMonth()->toDateString())
+        ->and($card['leaves_out_estimates'])->toBeTrue();
 });
 
 function labelledTransaction(User $user, Label $label, array $attributes = []): Transaction

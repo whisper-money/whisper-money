@@ -31,7 +31,7 @@ import { toLocalDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { LucideIcon, Minus } from 'lucide-react';
+import { HelpCircle, LucideIcon, Minus } from 'lucide-react';
 import { useCallback } from 'react';
 
 export interface CategoryData {
@@ -54,7 +54,12 @@ export interface TopCategoriesData {
     total: number;
     categories: CategoryData[];
     uncategorized: { amount: number; count: number };
+    /** Onboarding estimates in the month: the cashflow card counts them, this one does not. */
+    leaves_out_estimates: boolean;
 }
+
+/** The transactions filter's id for "no category". */
+const UNCATEGORIZED = 'uncategorized';
 
 interface TopCategoriesCardProps {
     data?: TopCategoriesData | null;
@@ -62,22 +67,25 @@ interface TopCategoriesCardProps {
 }
 
 function rowKey(item: CategoryData): string {
-    return `${item.category?.id ?? item.category_id ?? 'uncategorized'}:${item.is_direct ? 'direct' : 'node'}`;
+    return `${item.category?.id ?? item.category_id ?? UNCATEGORIZED}:${item.is_direct ? 'direct' : 'node'}`;
 }
 
 /**
  * The transactions list over the card's month, filtered to one category or to
- * the ones with none: the same days the card summed.
+ * the ones with none: the same days the card summed. With none, only money
+ * going out, which is what the uncategorized row counts; uncategorized income
+ * is not spending.
  */
 function transactionsHref(
-    categoryIds: string,
+    categoryId: string,
     period: TopCategoriesData['period'],
 ): string {
     return transactionsIndex({
         query: {
-            category_ids: categoryIds,
+            category_ids: categoryId,
             date_from: period.from,
             date_to: period.to,
+            ...(categoryId === UNCATEGORIZED && { amount_max: 0 }),
         },
     }).url;
 }
@@ -118,8 +126,7 @@ export function TopCategoriesCard({ data, loading }: TopCategoriesCardProps) {
     );
 
     const adapter: CategoryBreakdownAdapter<CategoryData> = {
-        getId: (item) =>
-            item.category?.id ?? item.category_id ?? 'uncategorized',
+        getId: (item) => item.category?.id ?? item.category_id ?? UNCATEGORIZED,
         getKey: (item) => rowKey(item),
         getName: (item) => item.category?.name ?? __('Uncategorized'),
         getAmount: (item) => item.amount,
@@ -152,7 +159,7 @@ export function TopCategoriesCard({ data, loading }: TopCategoriesCardProps) {
         getHref: (item) =>
             data
                 ? transactionsHref(
-                      item.category?.id ?? item.category_id ?? 'uncategorized',
+                      item.category?.id ?? item.category_id ?? UNCATEGORIZED,
                       data.period,
                   )
                 : null,
@@ -185,14 +192,17 @@ export function TopCategoriesCard({ data, loading }: TopCategoriesCardProps) {
         );
     }
 
-    const { categories, uncategorized, total, period } = data;
+    const { categories, uncategorized, total, period, leaves_out_estimates } =
+        data;
     const currencyCode = auth.user.currency_code;
     const showsUncategorized =
         uncategorized.count > 0 && uncategorized.amount > 0;
     // Only claimed when it holds: a category a refund netted below zero, or
-    // one past the top ten, is in the total but not on a row.
+    // one past the top ten, is in the total but not on a row; and the
+    // cashflow card counts the onboarding estimates this card leaves out.
     const rowsAddUp =
         total > 0 &&
+        !leaves_out_estimates &&
         categories.reduce((sum, item) => sum + item.amount, 0) +
             (showsUncategorized ? uncategorized.amount : 0) ===
             total;
@@ -247,7 +257,7 @@ export function TopCategoriesCard({ data, loading }: TopCategoriesCardProps) {
                                     : 0
                             }
                             currencyCode={currencyCode}
-                            href={transactionsHref('uncategorized', period)}
+                            href={transactionsHref(UNCATEGORIZED, period)}
                         />
                     )}
                     {categories.length === 0 && !showsUncategorized && (
@@ -304,7 +314,7 @@ function UncategorizedRow({
                 </span>
                 <div className="flex min-w-0 grow items-center gap-2 px-1.5 py-1">
                     <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                        <Icons.HelpCircle className="size-4" />
+                        <HelpCircle className="size-4" />
                     </div>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {__('Uncategorized')} ·{' '}
