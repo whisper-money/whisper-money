@@ -7,7 +7,7 @@ import { categorizeHref } from '@/lib/categorize-href';
 import { cn } from '@/lib/utils';
 import { index as budgetsIndex } from '@/routes/budgets';
 import { dismiss } from '@/routes/dashboard/setup';
-import { type Account } from '@/types/account';
+import { type BalanceDialogAccount } from '@/types/account';
 import {
     type SetupChecklist,
     type SetupChecklistStep,
@@ -60,7 +60,8 @@ export function SetupChecklistCard({
     canDismiss: boolean;
 }) {
     const [dismissed, setDismissed] = useState(false);
-    const [balanceAccount, setBalanceAccount] = useState<Account | null>(null);
+    const [balanceAccount, setBalanceAccount] =
+        useState<BalanceDialogAccount | null>(null);
     const { post } = useHttp();
     const steps = useStepViews(checklist.steps, setBalanceAccount);
 
@@ -257,7 +258,7 @@ function StepActionButton({
  */
 function useStepViews(
     steps: SetupChecklistStep[],
-    openBalance: (account: Account) => void,
+    openBalance: (account: BalanceDialogAccount) => void,
 ): StepView[] {
     const { formatAmount } = useFormatAmount();
     const locale = useLocale();
@@ -285,9 +286,12 @@ function useStepViews(
                 return {
                     key: step.key,
                     status,
-                    title: __(':count transactions imported', {
-                        count: step.count,
-                    }),
+                    title:
+                        step.count === 1
+                            ? __('1 transaction imported')
+                            : __(':count transactions imported', {
+                                  count: step.count,
+                              }),
                     detail: step.account_name
                         ? __(':months, :account', {
                               months,
@@ -318,9 +322,11 @@ function useStepViews(
                     status,
                     title: step.done
                         ? __('Transactions categorized')
-                        : __('Categorize :count transactions', {
-                              count: step.count,
-                          }),
+                        : step.count === 1
+                          ? __('Categorize 1 transaction')
+                          : __('Categorize :count transactions', {
+                                count: step.count,
+                            }),
                     detail: null,
                     action: step.done
                         ? null
@@ -338,12 +344,7 @@ function useStepViews(
                             : __('Add a balance to :account', {
                                   account: step.account.name,
                               }),
-                    detail:
-                        step.others_count > 0
-                            ? __('And :count more accounts without one', {
-                                  count: step.others_count,
-                              })
-                            : null,
+                    detail: othersWithoutBalance(step.others_count),
                     action: {
                         label: __('Add balance'),
                         onClick: () => openBalance(step.account),
@@ -351,6 +352,16 @@ function useStepViews(
                 };
         }
     });
+}
+
+function othersWithoutBalance(count: number): string | null {
+    if (count === 0) {
+        return null;
+    }
+
+    return count === 1
+        ? __('And 1 more account without one')
+        : __('And :count more accounts without one', { count });
 }
 
 function spendingLimitDetail(
@@ -361,18 +372,13 @@ function spendingLimitDetail(
         return null;
     }
 
-    const limit = formatAmount(step.limit, step.currency_code, {
-        fractionDigits: 0,
-    });
+    const whole = (amount: number) =>
+        formatAmount(amount, step.currency_code, { fractionDigits: 0 });
 
-    if (step.under_last_month === null) {
-        return __(':limit a month', { limit });
-    }
-
-    return __(':limit — :under under last month', {
-        limit,
-        under: formatAmount(step.under_last_month, step.currency_code, {
-            fractionDigits: 0,
-        }),
-    });
+    return step.under_last_month === null
+        ? __(':limit a month', { limit: whole(step.limit) })
+        : __(':limit — :under under last month', {
+              limit: whole(step.limit),
+              under: whole(step.under_last_month),
+          });
 }

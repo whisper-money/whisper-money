@@ -86,7 +86,9 @@ class DashboardController extends Controller
             // drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
             'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
-            'setupChecklist' => Inertia::defer(fn () => $this->getSetupChecklist($request), 'dashboard'),
+            // The "Finish setting up" card the system dashboard opens with in the
+            // first days after onboarding, or null when there is none to draw.
+            'setupChecklist' => Inertia::defer(fn () => $this->setupChecklist->for($request->user()), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
@@ -227,17 +229,6 @@ class DashboardController extends Controller
             'monthLabel' => $summary->periodStart()->locale($locale)->isoFormat('MMMM'),
             'headline' => $this->presenter->headline($summary, $locale),
         ];
-    }
-
-    /**
-     * The "Finish setting up" card the system dashboard opens with in the
-     * first days after onboarding, or null when there is none to draw.
-     *
-     * @return array{steps: list<array<string, mixed>>}|null
-     */
-    private function getSetupChecklist(Request $request): ?array
-    {
-        return $this->setupChecklist->for($request->user());
     }
 
     /**

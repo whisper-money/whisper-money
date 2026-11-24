@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getCsrfToken } from '@/lib/csrf';
 import {
-    type Account,
     type AccountBalance,
+    type BalanceDialogAccount,
     balanceTermCapitalized,
     supportsInvestedAmount,
 } from '@/types/account';
@@ -27,7 +27,7 @@ import { __ } from '@/utils/i18n';
 import { useEffect, useRef, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
-    account: Account;
+    account: BalanceDialogAccount;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;

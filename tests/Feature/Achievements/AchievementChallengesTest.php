@@ -4,6 +4,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Achievement;
 use App\Models\Category;
+use App\Models\Dashboard;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Dashboards\SetupChecklist;
@@ -216,6 +217,16 @@ it('leaves the pile to the setup card while the dashboard shows it', function ()
     recordFor($user, 2, monthsAgo: 0);
 
     expect(challengesFor($user)['uncategorized'])->toBeNull();
+});
+
+it('keeps asking when Overview opens one of the reader\'s own dashboards, which has no setup card', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    $dashboard = Dashboard::factory()->for($user)->create();
+    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect($user->can('create', Dashboard::class))->toBeTrue()
+        ->and(challengesFor($user)['uncategorized']['count'])->toBe(2);
 });
 
 it('asks again once the setup card is hidden', function (): void {

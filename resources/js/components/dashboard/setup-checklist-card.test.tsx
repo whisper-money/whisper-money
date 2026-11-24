@@ -1,5 +1,5 @@
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
-import { type Account } from '@/types/account';
+import { type BalanceDialogAccount } from '@/types/account';
 import { type SetupChecklistStep } from '@/types/dashboard';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type React from 'react';
@@ -23,7 +23,7 @@ vi.mock('@/lib/categorize-href', () => ({
 }));
 
 vi.mock('@/components/accounts/update-balance-dialog', () => ({
-    UpdateBalanceDialog: ({ account }: { account: Account }) => (
+    UpdateBalanceDialog: ({ account }: { account: BalanceDialogAccount }) => (
         <div role="dialog">{`Balance for ${account.name}`}</div>
     ),
 }));
@@ -68,10 +68,7 @@ const balance: SetupChecklistStep = {
         name: 'Hipoteca piso',
         type: 'loan',
         currency_code: 'EUR',
-        bank: null,
         banking_connection_id: null,
-        external_account_id: null,
-        linked_at: null,
     },
     others_count: 0,
 };
@@ -167,6 +164,18 @@ describe('SetupChecklistCard', () => {
         expect(
             screen.getByText('Then: Add what you still owe on Hipoteca piso'),
         ).toBeTruthy();
+    });
+
+    it('says one in the singular', () => {
+        renderCard([
+            { ...imported, count: 1 },
+            { ...categorize, count: 1 },
+            { ...balance, others_count: 1 },
+        ]);
+
+        expect(screen.getByText('1 transaction imported')).toBeTruthy();
+        expect(tile('Categorize 1 transaction')).toBeTruthy();
+        expect(screen.getByText('And 1 more account without one')).toBeTruthy();
     });
 
     it('hides itself and records it when dismissed', () => {

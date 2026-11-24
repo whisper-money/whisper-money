@@ -7,7 +7,10 @@ import {
 } from '@/components/dashboard/widgets/types';
 import { type NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { type SharedData } from '@/types';
-import { type Account, type CreditCardUsage } from '@/types/account';
+import {
+    type BalanceDialogAccount,
+    type CreditCardUsage,
+} from '@/types/account';
 import {
     type DashboardMonthlyGoal,
     type MonthlyVerdicts,
@@ -47,7 +50,7 @@ export type SetupChecklistStep =
           key: 'balance';
           done: false;
           /** The first account that never got a balance. */
-          account: Account;
+          account: BalanceDialogAccount;
           /** How many more accounts are like it. */
           others_count: number;
       };

@@ -3,7 +3,9 @@
 namespace App\Services\Dashboards;
 
 use App\Enums\AccountType;
+use App\Http\Controllers\DashboardController;
 use App\Models\Account;
+use App\Models\Dashboard;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\OnboardingSummaryService;
@@ -72,13 +74,16 @@ class SetupChecklist
 
     /**
      * Whether the card has the uncategorized movements in hand, so the toast
-     * asking for them stays quiet: the card is still offered and there is
-     * something left to categorize. Columns on the user's row first, so the
-     * query only runs in the first days after onboarding.
+     * asking for them stays quiet: the card is still offered, the dashboard
+     * the user opens is the system one that draws it, and there is something
+     * left to categorize. Columns on the user's row first, so the query only
+     * runs in the first days after onboarding.
      */
     public function takesOverUncategorizedPrompt(User $user): bool
     {
-        return $this->isOpenFor($user) && $this->uncategorized($user)->exists();
+        return $this->isOpenFor($user)
+            && $this->opensOnSystemDashboard($user)
+            && $this->uncategorized($user)->exists();
     }
 
     public function dismiss(User $user): void
@@ -92,6 +97,16 @@ class SetupChecklist
         return $user->onboarded_at !== null
             && $user->onboarded_at->gt(now()->subDays(self::WINDOW_DAYS))
             && $user->dashboard_setup_dismissed_at === null;
+    }
+
+    /**
+     * Whether Overview opens the system dashboard, the only one that draws the
+     * card: as {@see DashboardController}, a default
+     * of the user's own only counts on the plan that has custom dashboards.
+     */
+    private function opensOnSystemDashboard(User $user): bool
+    {
+        return $user->default_dashboard_id === null || ! $user->can('create', Dashboard::class);
     }
 
     /**
@@ -212,10 +227,7 @@ class SetupChecklist
                 'name' => $account->name,
                 'type' => $account->type->value,
                 'currency_code' => $account->currency_code,
-                'bank' => null,
                 'banking_connection_id' => null,
-                'external_account_id' => null,
-                'linked_at' => null,
                 'ownership_percentage' => $account->ownership_percentage,
                 'ownership_applies_to_balance' => $account->ownership_applies_to_balance,
             ],

@@ -2991,5 +2991,8 @@
     "And :count more accounts without one": "Et :count autres comptes sans solde",
     "Add balance": "Ajouter un solde",
     ":limit a month": ":limit par mois",
-    ":limit — :under under last month": ":limit, :under de moins que le mois dernier"
+    ":limit — :under under last month": ":limit, :under de moins que le mois dernier",
+    "1 transaction imported": "1 transaction importée",
+    "Categorize 1 transaction": "Catégorisez 1 transaction",
+    "And 1 more account without one": "Et 1 autre compte sans solde"
 }

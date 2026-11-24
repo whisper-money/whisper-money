@@ -55,6 +55,18 @@ export interface Account {
     ownership_applies_to_balance?: boolean;
 }
 
+/** What the balance dialog reads off an account: enough to open it from a summary. */
+export type BalanceDialogAccount = Pick<
+    Account,
+    | 'id'
+    | 'name'
+    | 'type'
+    | 'currency_code'
+    | 'banking_connection_id'
+    | 'ownership_percentage'
+    | 'ownership_applies_to_balance'
+>;
+
 export interface AccountBalance {
     id: UUID;
     account_id: UUID;
