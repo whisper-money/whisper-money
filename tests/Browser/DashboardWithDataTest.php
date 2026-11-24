@@ -231,7 +231,10 @@ it('draws the net worth chart on a phone-sized screen', function (): void {
 });
 
 it('hides an account from the dashboard and brings it back', function (): void {
-    $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
+    // Onboarded past the 14 days of the "Finish setting up" card: the card
+    // pushes the net worth chart under the spot where the dialog's toggle was,
+    // and the chart's tooltip there lists every account by name.
+    $user = User::factory()->onboarded()->create(['currency_code' => 'USD', 'onboarded_at' => now()->subDays(15)]);
     $accounts = seedDashboardReader($user);
     $savings = $accounts['savings'];
 
@@ -245,9 +248,6 @@ it('hides an account from the dashboard and brings it back', function (): void {
         ->click("[data-testid=\"account-visibility-toggle\"][data-account-id=\"{$savings->id}\"]")
         ->assertPresent("[data-testid=\"account-visibility-toggle\"][data-account-id=\"{$savings->id}\"][aria-pressed=\"false\"]")
         ->keys('[data-slot="dialog-content"]', 'Escape')
-        // Off the net worth chart: the pointer is left where the dialog's toggle
-        // was, and the chart's tooltip there lists every account by name.
-        ->hover('h1')
         ->assertDontSee('Rainy Day Savings')
         ->assertSee('Everyday Checking')
         ->assertNoJavascriptErrors();
