@@ -22,7 +22,11 @@ import { captureEvent } from '@/lib/posthog';
 import { type PriceTier } from '@/lib/price-tier';
 import { billing } from '@/routes/settings';
 import { type SharedData } from '@/types';
-import { type Plan } from '@/types/pricing';
+import {
+    type Plan,
+    type PricingConfig,
+    type SecondOfferDiscount,
+} from '@/types/pricing';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -61,6 +65,7 @@ function upsellCopy(
     source: UpsellSource,
     offeredTier: PriceTier,
     uncategorizedCount: number,
+    discount: SecondOfferDiscount | null,
 ): UpsellCopy {
     switch (source) {
         case 'ai_categorization':
@@ -93,8 +98,42 @@ function upsellCopy(
                 ),
             };
         case 'second_offer':
-            return secondOfferCopy(offeredTier, uncategorizedCount);
+            return withDiscount(
+                secondOfferCopy(offeredTier, uncategorizedCount),
+                discount,
+            );
     }
+}
+
+/**
+ * The discount the second offer carries on the price quoted, or null: only
+ * on the standard price (the latam one is a regional discount already), and
+ * only while a coupon is configured. The checkout decides on its own whether
+ * to apply it (`SecondOfferDiscount::couponFor()`), from the same config.
+ */
+export function secondOfferDiscountFor(
+    pricing: PricingConfig,
+    tier: PriceTier,
+): SecondOfferDiscount | null {
+    return tier === 'standard' ? (pricing.secondOfferDiscount ?? null) : null;
+}
+
+/** The second offer's copy, with the discount said after the benefit. */
+function withDiscount(
+    copy: UpsellCopy,
+    discount: SecondOfferDiscount | null,
+): UpsellCopy {
+    if (!discount) {
+        return copy;
+    }
+
+    return {
+        ...copy,
+        description: `${copy.description} ${__(
+            'Start now and get :percent% off your first payments, on top of the free trial.',
+            { percent: discount.percentOff },
+        )}`,
+    };
 }
 
 function secondOfferCopy(
@@ -135,12 +174,24 @@ function secondOfferCopy(
     };
 }
 
-/** The checkout button's label: what it starts, and that it starts free. */
-function ctaLabel(source: UpsellSource, plan: Plan | undefined): string {
+/**
+ * The checkout button's label: what it starts, that it starts free, and the
+ * discount after the trial when there is one.
+ */
+function ctaLabel(
+    source: UpsellSource,
+    plan: Plan | undefined,
+    discount: SecondOfferDiscount | null,
+): string {
     if (source === 'second_offer' && plan) {
-        return __('Sort them — free for :days days', {
-            days: plan.trial_days,
-        });
+        return discount
+            ? __('Sort them — free for :days days, then :percent% off', {
+                  days: plan.trial_days,
+                  percent: discount.percentOff,
+              })
+            : __('Sort them — free for :days days', {
+                  days: plan.trial_days,
+              });
     }
 
     return checkoutLabel(plan);
@@ -186,8 +237,12 @@ export function UpgradeDialog({
     const [preselectedPlan] = useState(pricing.defaultPlan);
     const [selectedPlan, setSelectedPlan] = useState(preselectedPlan);
     const plan = tierChoice.plans[selectedPlan];
-    const terms = planTerms(plan, pricing.currency, locale);
-    const copy = upsellCopy(source, offeredTier, uncategorizedCount);
+    const discount =
+        source === 'second_offer'
+            ? secondOfferDiscountFor(pricing, tierChoice.tier)
+            : null;
+    const terms = planTerms(plan, pricing.currency, locale, discount);
+    const copy = upsellCopy(source, offeredTier, uncategorizedCount, discount);
     // The sources whose checkout switches the AI consent on with the plan
     // (`UpsellSource::grantsAiConsent()`), so they have to say what leaves.
     const discloses =
@@ -243,7 +298,7 @@ export function UpgradeDialog({
 
                 <div className="flex flex-col gap-2.5">
                     <StepButton
-                        text={ctaLabel(source, plan)}
+                        text={ctaLabel(source, plan, discount)}
                         href={checkoutHref(
                             selectedPlan,
                             preselectedPlan,
@@ -256,6 +311,10 @@ export function UpgradeDialog({
                                 plan: selectedPlan,
                                 preselected_plan: preselectedPlan,
                                 price_tier: tierChoice.tier,
+                                ...(source === 'second_offer' && {
+                                    discount_percent:
+                                        discount?.percentOff ?? null,
+                                }),
                             })
                         }
                     />

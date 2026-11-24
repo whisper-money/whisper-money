@@ -46,7 +46,7 @@ function fakeStripeCoupons(array $existingCoupons): ArrayObject
     return $created;
 }
 
-test('creates the cancel flow retention coupon from the config', function () {
+test('creates the retention and second offer coupons from the config', function () {
     $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly']);
 
     $this->artisan('stripe:ensure-launch-coupons')->assertSuccessful();
@@ -59,11 +59,18 @@ test('creates the cancel flow retention coupon from the config', function () {
             'duration' => 'repeating',
             'duration_in_months' => 3,
         ],
+        'wm_second_offer_30_3m' => [
+            'id' => 'wm_second_offer_30_3m',
+            'name' => 'WM Second Offer – 30% off for 3 months',
+            'percent_off' => 30,
+            'duration' => 'repeating',
+            'duration_in_months' => 3,
+        ],
     ]);
 });
 
-test('leaves the retention coupon alone once it exists', function () {
-    $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly', 'wm_retention_30_3m']);
+test('leaves the coupons alone once they exist', function () {
+    $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly', 'wm_retention_30_3m', 'wm_second_offer_30_3m']);
 
     $this->artisan('stripe:ensure-launch-coupons')->assertSuccessful();
 

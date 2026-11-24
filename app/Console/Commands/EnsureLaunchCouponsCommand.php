@@ -62,18 +62,10 @@ class EnsureLaunchCouponsCommand extends Command
             ],
             // Offered by the cancel flow to a subscriber who finds the plan too
             // expensive (`subscriptions.retention_coupon`).
-            [
-                'id' => (string) config('subscriptions.retention_coupon.id'),
-                'name' => sprintf(
-                    'WM Retention – %d%% off for %d months',
-                    config('subscriptions.retention_coupon.percent_off'),
-                    config('subscriptions.retention_coupon.duration_in_months'),
-                ),
-                'percent_off' => (int) config('subscriptions.retention_coupon.percent_off'),
-                'duration' => 'repeating',
-                'duration_in_months' => (int) config('subscriptions.retention_coupon.duration_in_months'),
-                'applies_to' => null,
-            ],
+            $this->repeatingCoupon('subscriptions.retention_coupon', 'WM Retention'),
+            // Applied by the checkout started from the second offer
+            // (`subscriptions.second_offer_coupon`).
+            $this->repeatingCoupon('subscriptions.second_offer_coupon', 'WM Second Offer'),
         ];
 
         foreach ($coupons as $config) {
@@ -112,6 +104,27 @@ class EnsureLaunchCouponsCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A percentage-off coupon for a number of months, read from its config
+     * entry so what Stripe charges is what the app quotes.
+     *
+     * @return array{id: string, name: string, percent_off: int, duration: string, duration_in_months: int, applies_to: null}
+     */
+    private function repeatingCoupon(string $configKey, string $label): array
+    {
+        $percentOff = (int) config("{$configKey}.percent_off");
+        $months = (int) config("{$configKey}.duration_in_months");
+
+        return [
+            'id' => (string) config("{$configKey}.id"),
+            'name' => sprintf('%s – %d%% off for %d months', $label, $percentOff, $months),
+            'percent_off' => $percentOff,
+            'duration' => 'repeating',
+            'duration_in_months' => $months,
+            'applies_to' => null,
+        ];
     }
 
     private function findCoupon(string $id): ?Coupon

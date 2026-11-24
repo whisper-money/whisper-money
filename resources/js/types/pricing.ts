@@ -22,6 +22,13 @@ export interface PricingConfig {
     promo: PromoConfig;
     currency: string;
     /**
+     * The first-period discount the second offer carries on top of its trial
+     * (`subscriptions.second_offer_coupon`), for the dialog to quote. Null when
+     * no coupon is configured. Who actually gets it is decided by the checkout
+     * (`SecondOfferDiscount::couponFor()`), never by the browser.
+     */
+    secondOfferDiscount?: SecondOfferDiscount | null;
+    /**
      * The regional latam price, present only while it is offered
      * (`SUBSCRIPTION_LATAM_PRICING`). Pick the tier to show through
      * `offeredPriceTier()`, never by reading this directly.
@@ -33,6 +40,12 @@ export interface PricingConfig {
      * latam price is not offered.
      */
     offeredTier?: string | null;
+}
+
+export interface SecondOfferDiscount {
+    percentOff: number;
+    /** How many months of invoices it covers, counted from the checkout. */
+    months: number;
 }
 
 export interface LatamPricing {

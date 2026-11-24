@@ -14,6 +14,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use App\Models\UserLead;
 use App\Services\Subscriptions\CancellationOffers;
+use App\Services\Subscriptions\SecondOfferDiscount;
 use App\Services\Subscriptions\StripePriceIds;
 use App\Services\Subscriptions\SubscribedPlan;
 use App\Services\Subscriptions\SubscriptionPauseDetails;
@@ -29,6 +30,7 @@ use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Checkout;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Laravel\Cashier\Subscription;
+use Laravel\Cashier\SubscriptionBuilder;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\InvalidRequestException;
 
@@ -44,6 +46,7 @@ class SubscriptionController extends Controller
         private UserSetupStats $setupStats,
         private CancellationOffers $cancellationOffers,
         private SubscriptionPauseDetails $pauseDetails,
+        private SecondOfferDiscount $secondOfferDiscount,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -219,17 +222,6 @@ class SubscriptionController extends Controller
         $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId);
 
-        // A lead's code was issued against the standard price, and Stripe
-        // refuses to open a checkout with a code that does not apply to the
-        // price being bought — the latam price only takes one typed by hand.
-        $promotionCodeId = $isLatam ? null : $this->resolveLeadPromotionCodeId($request->user(), $planKey);
-
-        if ($promotionCodeId !== null) {
-            $subscriptionBuilder->withPromotionCode($promotionCodeId);
-        } else {
-            $subscriptionBuilder->allowPromotionCodes();
-        }
-
         $trialDays = (int) ($plan['trial_days'] ?? 0);
         if ($trialDays > 0) {
             // End of day, not `trialDays()`. Cashier turns that call into an
@@ -258,10 +250,61 @@ class SubscriptionController extends Controller
             $subscriptionBuilder->withMetadata($metadata);
         }
 
-        return $subscriptionBuilder->checkout([
+        return $this->checkoutWithDiscount($subscriptionBuilder, $request, $planKey, $isLatam);
+    }
+
+    /**
+     * Open the Stripe checkout with the one discount it carries. Stripe takes
+     * a single discount, so they never stack: the second offer's coupon, for a
+     * user it is really meant for, replaces both the lead's code and the box
+     * to type one in.
+     */
+    private function checkoutWithDiscount(SubscriptionBuilder $subscriptionBuilder, Request $request, string $planKey, bool $isLatam): Checkout
+    {
+        $source = UpsellSource::tryFrom((string) $request->query('source', ''));
+        $couponId = $this->secondOfferDiscount->couponFor($request->user(), $source, $isLatam);
+        $sessionOptions = [
             'success_url' => route('subscribe.success'),
             'cancel_url' => route('subscribe.cancel'),
-        ]);
+        ];
+
+        if ($couponId === null) {
+            $this->applyPromotionCode($subscriptionBuilder, $request->user(), $planKey, $isLatam);
+
+            return $subscriptionBuilder->checkout($sessionOptions);
+        }
+
+        try {
+            return $subscriptionBuilder->withCoupon($couponId)->checkout($sessionOptions);
+        } catch (InvalidRequestException $exception) {
+            // The coupon is missing from Stripe (`stripe:ensure-launch-coupons`
+            // has not run there): a discount that cannot be applied must never
+            // cost the sale, so the user checks out at the normal price, which
+            // is what Stripe's own page then shows them.
+            report($exception);
+
+            $subscriptionBuilder->withCoupon(null);
+            $this->applyPromotionCode($subscriptionBuilder, $request->user(), $planKey, $isLatam);
+
+            return $subscriptionBuilder->checkout($sessionOptions);
+        }
+    }
+
+    /**
+     * A lead's own promotion code applied for them, or the box to type one in.
+     */
+    private function applyPromotionCode(SubscriptionBuilder $subscriptionBuilder, User $user, string $planKey, bool $isLatam): void
+    {
+        // A lead's code was issued against the standard price, and Stripe
+        // refuses to open a checkout with a code that does not apply to the
+        // price being bought — the latam price only takes one typed by hand.
+        $promotionCodeId = $isLatam ? null : $this->resolveLeadPromotionCodeId($user, $planKey);
+
+        if ($promotionCodeId !== null) {
+            $subscriptionBuilder->withPromotionCode($promotionCodeId);
+        } else {
+            $subscriptionBuilder->allowPromotionCodes();
+        }
     }
 
     /**

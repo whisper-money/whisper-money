@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
     post: vi.fn(() => Promise.resolve({})),
     showSecondOffer: { current: true },
     latam: { current: false },
+    discount: {
+        current: null as null | { percentOff: number; months: number },
+    },
     backlog: {
         current: null as null | {
             count: number;
@@ -35,6 +38,7 @@ vi.mock('@inertiajs/react', () => ({
             secondOfferBacklog: mocks.backlog.current,
             pricing: {
                 ...pricing,
+                secondOfferDiscount: mocks.discount.current,
                 ...(mocks.latam.current
                     ? {
                           latam: {
@@ -68,6 +72,7 @@ describe('SecondOfferDialog', () => {
         window.localStorage.clear();
         mocks.showSecondOffer.current = true;
         mocks.latam.current = false;
+        mocks.discount.current = null;
         mocks.backlog.current = {
             count: 214,
             recent: [
@@ -104,6 +109,7 @@ describe('SecondOfferDialog', () => {
         );
         expect(mocks.captureEvent).toHaveBeenCalledWith('second_offer_shown', {
             price_tier: 'standard',
+            discount_percent: null,
         });
     });
 
@@ -205,6 +211,67 @@ describe('SecondOfferDialog', () => {
         ).toBeInTheDocument();
         expect(mocks.captureEvent).toHaveBeenCalledWith('second_offer_shown', {
             price_tier: 'latam',
+            discount_percent: null,
+        });
+    });
+
+    describe('with a first-period discount', () => {
+        beforeEach(() => {
+            mocks.discount.current = { percentOff: 30, months: 3 };
+        });
+
+        it('says it in the copy, the button and the price, and tracks it', async () => {
+            await renderDialog();
+
+            expect(
+                screen.getByText(
+                    /Start now and get 30% off your first payments, on top of the free trial\./,
+                ),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    'Free for 14 days, then €37.76 for the first year (30% off) and €53.94 a year after that. Cancel before then and you are not charged.',
+                ),
+            ).toBeInTheDocument();
+            expect(mocks.captureEvent).toHaveBeenCalledWith(
+                'second_offer_shown',
+                { price_tier: 'standard', discount_percent: 30 },
+            );
+
+            fireEvent.click(screen.getByText('Monthly'));
+            expect(
+                screen.getByText(
+                    'Free for 7 days, then €6.29 a month for 3 months (30% off) and €8.99 a month after that. Cancel before then and you are not charged.',
+                ),
+            ).toBeInTheDocument();
+
+            const link = screen.getByRole('link', {
+                name: 'Sort them — free for 7 days, then 30% off',
+            });
+            // The browser only names the upsell point: the checkout decides
+            // on its own whether the coupon applies.
+            expect(link.getAttribute('href')).not.toContain('coupon');
+
+            fireEvent.click(link);
+            expect(mocks.captureEvent).toHaveBeenCalledWith(
+                'upgrade_checkout_started',
+                expect.objectContaining({
+                    source: 'second_offer',
+                    plan: 'monthly',
+                    discount_percent: 30,
+                }),
+            );
+        });
+
+        it('quotes no discount on the latam price', async () => {
+            mocks.latam.current = true;
+            await renderDialog();
+
+            expect(screen.queryByText(/30% off/)).toBeNull();
+            expect(mocks.captureEvent).toHaveBeenCalledWith(
+                'second_offer_shown',
+                { price_tier: 'latam', discount_percent: null },
+            );
         });
     });
 
