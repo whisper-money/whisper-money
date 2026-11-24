@@ -4,6 +4,7 @@ namespace App\Mail\Drip;
 
 use App\Mail\Concerns\LocalisesTrialEnd;
 use App\Models\User;
+use App\Services\Subscriptions\CanceledTrialExtension;
 use App\Services\Subscriptions\UserSetupStats;
 use Carbon\CarbonImmutable;
 
@@ -12,6 +13,10 @@ use Carbon\CarbonImmutable;
  * nothing will be charged, so there is no amount to quote. What it says
  * instead is what stops on the day and what they have built that stays, with
  * one button to keep the plan. No discount: they have not paid anything yet.
+ *
+ * While the user may still have their trial extended, a second button offers
+ * two more weeks with the plan back on. It leads to a page that confirms it
+ * (`TrialExtensionController`): the link alone changes nothing.
  */
 class TrialEndingCanceledEmail extends DripMail
 {
@@ -44,6 +49,7 @@ class TrialEndingCanceledEmail extends DripMail
      * so the numbers are the ones the reader finds if they open the app.
      *
      * `trialEndsAtLocal`, not `trialEndsAt`: see {@see TrialEndingEmail::contentData()}.
+     * Whether the extension is offered is decided here for the same reason.
      *
      * @return array<string, mixed>
      */
@@ -52,6 +58,7 @@ class TrialEndingCanceledEmail extends DripMail
         return [
             'trialEndsAtLocal' => $this->localTrialEnd(),
             'stats' => app(UserSetupStats::class)->for($this->user),
+            'offersTrialExtension' => app(CanceledTrialExtension::class)->subscriptionFor($this->user) !== null,
         ];
     }
 }

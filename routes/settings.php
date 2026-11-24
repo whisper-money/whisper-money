@@ -21,6 +21,7 @@ use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SubscriptionCancellationController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SubscriptionPauseController;
+use App\Http\Controllers\TrialExtensionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -151,6 +152,14 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/billing/swap-to-standard', [SubscriptionController::class, 'swapToStandard'])
         ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
         ->name('settings.billing.swap-to-standard');
+
+    // Where the trial-ending email for a cancelled trial offers two more weeks
+    // and the plan back on: the page says what that does, the POST does it.
+    Route::get('settings/billing/extend-trial', [TrialExtensionController::class, 'show'])
+        ->name('settings.billing.extend-trial');
+    Route::post('settings/billing/extend-trial', [TrialExtensionController::class, 'store'])
+        ->middleware(['throttle:6,1', 'block-demo', 'block-shared'])
+        ->name('settings.billing.extend-trial.store');
 
     // The in-app cancel flow: the survey first, then an offer or the cancellation.
     Route::middleware(['throttle:10,1', 'block-demo', 'block-shared'])

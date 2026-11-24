@@ -44,6 +44,7 @@ const ALLOWED: readonly string[] = [
     'components/subscription/plan-picker.tsx',
     'components/subscription/trial-ending-banner.tsx',
     'pages/settings/billing.tsx',
+    'pages/subscription/extend-trial.tsx',
     // The widget SDK's money formatter; the SDK masks it its own way
     // (widgets/sdk/amount.tsx), from the host's privacy mode.
     'widgets/sdk/format-money.ts',
