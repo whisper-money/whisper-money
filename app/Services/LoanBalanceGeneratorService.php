@@ -39,7 +39,7 @@ class LoanBalanceGeneratorService
         ?Carbon $from = null,
         ?Carbon $to = null,
     ): void {
-        $today = Carbon::today();
+        $today = $account->ownerToday();
 
         if ($startDate->isAfter($today)) {
             return;

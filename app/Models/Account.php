@@ -183,6 +183,20 @@ class Account extends Model
             : substr($this->iban, -4));
     }
 
+    /**
+     * The date it is for this account's owner: the day a balance written
+     * "today" belongs to.
+     *
+     * The app's `today()` is UTC, which is already tomorrow for an American
+     * user every evening, and the balances read for "today" stop at the end
+     * of the owner's day ({@see User::localToday()}). Falls back to the app's
+     * today for an account without an existing owner.
+     */
+    public function ownerToday(): Carbon
+    {
+        return $this->user?->localToday() ?? today();
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

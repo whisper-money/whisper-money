@@ -56,6 +56,8 @@ class AccountWriteService
             ...$spaceId !== null ? ['space_id' => $spaceId] : [],
         ]);
 
+        $account->setRelation('user', $user);
+
         $balance = $account->type->hasBalance()
             ? $data['balance'] ?? null
             : null;
@@ -66,7 +68,7 @@ class AccountWriteService
 
         if ($balance !== null || $investedAmount !== null) {
             $account->balances()->create([
-                'balance_date' => now()->toDateString(),
+                'balance_date' => $user->localToday()->toDateString(),
                 // Told only what went in, read it as what the account is worth
                 // for now: a gain of zero beats dropping the figure because a
                 // balance column cannot be left empty.
@@ -231,6 +233,7 @@ class AccountWriteService
         }
 
         $this->backfillHistoricalBalances(
+            $account,
             Carbon::parse($data['purchase_date']),
             fn (Carbon $from) => $this->realEstateBalanceGenerator->generateHistoricalBalances(
                 $account,
@@ -261,7 +264,7 @@ class AccountWriteService
             return;
         }
 
-        $loanData['start_date'] ??= now()->toDateString();
+        $loanData['start_date'] ??= $account->ownerToday()->toDateString();
 
         $loanDetail = $account->loanDetail()->create($loanData);
 
@@ -272,6 +275,7 @@ class AccountWriteService
         $startDate = Carbon::parse($loanDetail->start_date);
 
         $this->backfillHistoricalBalances(
+            $account,
             $startDate,
             fn (Carbon $from) => $this->loanBalanceGenerator->generateHistoricalBalances(
                 $account,
@@ -299,9 +303,9 @@ class AccountWriteService
      * @param  callable(Carbon): mixed  $generateRecent  receives the month to start from
      * @param  callable(Carbon): mixed  $queueOlder  receives the day the recent window starts
      */
-    private function backfillHistoricalBalances(Carbon $startDate, callable $generateRecent, callable $queueOlder): void
+    private function backfillHistoricalBalances(Account $account, Carbon $startDate, callable $generateRecent, callable $queueOlder): void
     {
-        $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+        $twelveMonthsAgo = $account->ownerToday()->subMonths(12)->startOfMonth();
 
         $generateRecent($twelveMonthsAgo);
 
@@ -353,7 +357,7 @@ class AccountWriteService
         }
 
         if (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
-            $loanData['start_date'] ??= now()->toDateString();
+            $loanData['start_date'] ??= $account->ownerToday()->toDateString();
             $account->loanDetail()->create($loanData);
 
             return [];

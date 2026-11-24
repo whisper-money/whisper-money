@@ -37,7 +37,7 @@ class RealEstateBalanceGeneratorService
         ?Carbon $from = null,
         ?Carbon $to = null,
     ): void {
-        $today = Carbon::today();
+        $today = $account->ownerToday();
 
         if ($purchaseDate->isAfter($today)) {
             return;

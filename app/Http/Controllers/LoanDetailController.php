@@ -43,7 +43,7 @@ class LoanDetailController extends Controller
 
             if ($latestBalance !== null) {
                 $startDate = Carbon::parse($loanDetail->start_date);
-                $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+                $twelveMonthsAgo = $account->ownerToday()->subMonths(12)->startOfMonth();
                 $currentBalance = (int) $latestBalance->balance;
 
                 $loanBalanceGenerator->generateHistoricalBalances(
