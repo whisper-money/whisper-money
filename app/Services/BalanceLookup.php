@@ -346,7 +346,8 @@ class BalanceLookup
 
         return Account::withTrashed()
             ->whereIn('id', $accountIds)
-            ->whereHas('transactions', fn ($query) => $query
+            ->whereExists(Transaction::query()
+                ->whereColumn('transactions.account_id', 'accounts.id')
                 ->where('transaction_date', '<', $startDate)
                 ->withoutEstimates())
             ->pluck('id')

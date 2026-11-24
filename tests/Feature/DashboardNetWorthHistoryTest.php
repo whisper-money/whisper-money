@@ -16,6 +16,7 @@ use Carbon\Carbon;
 
 beforeEach(function () {
     fakeCurrencyApi();
+    $this->withoutVite();
     Carbon::setTestNow(Carbon::parse('2026-11-24 12:00:00'));
 
     $this->user = User::factory()->onboarded()->create(['timezone' => 'UTC']);
