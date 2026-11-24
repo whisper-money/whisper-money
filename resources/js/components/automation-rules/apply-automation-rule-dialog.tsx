@@ -14,6 +14,8 @@ interface ApplyAutomationRuleDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     initialStep?: 'prompt' | 'preview';
+    /** Called once the rule has been applied, to refresh what it changed. */
+    onApplied?: () => void;
 }
 
 export function ApplyAutomationRuleDialog({
@@ -21,6 +23,7 @@ export function ApplyAutomationRuleDialog({
     open,
     onOpenChange,
     initialStep = 'preview',
+    onApplied,
 }: ApplyAutomationRuleDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,6 +45,7 @@ export function ApplyAutomationRuleDialog({
                 <ApplyAutomationRuleFlow
                     rule={rule}
                     initialStep={initialStep}
+                    onApplied={onApplied}
                     onClose={() => onOpenChange(false)}
                 />
             </DialogContent>

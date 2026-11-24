@@ -515,6 +515,7 @@ export default function AccountShow({
                             hideColumns={['bank', 'account']}
                             headerActions={addTransactionButton}
                             statementPayments={statementPayments}
+                            reload={handleTransactionCreated}
                             onBalanceUpdated={() =>
                                 setChartRefreshKey((key) => key + 1)
                             }

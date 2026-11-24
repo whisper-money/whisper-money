@@ -50,6 +50,11 @@ export interface TransactionListProps {
     hiddenLabelId?: UUID;
     /** Credit card repayments by transaction id, with the statement each pays. */
     statementPayments?: Map<string, CreditCardPayment>;
+    /**
+     * Brings in the rows again after a change made on the server (a duplicate,
+     * a rule applied to existing transactions); the page reloads by default.
+     */
+    reload?: () => void;
 }
 
 export function TransactionList({
@@ -71,12 +76,14 @@ export function TransactionList({
     onTransactionsChanged,
     hiddenLabelId,
     statementPayments,
+    reload,
 }: TransactionListProps) {
     const source = useInMemoryTransactionSource({
         transactions,
         categories,
         accountId,
         pageSize,
+        reload,
     });
 
     return (

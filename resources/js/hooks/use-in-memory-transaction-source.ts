@@ -195,7 +195,7 @@ export function useInMemoryTransactionSource({
     /** Keeps the list to one account, the filter for it hidden. */
     accountId?: UUID;
     pageSize?: number;
-    /** Brings in what a duplicate or split changed; the page reloads by default. */
+    /** Brings in what a duplicate or an applied rule changed; the page reloads by default. */
     reload?: () => void;
 }): TransactionTableSource {
     const [transactions, setTransactions] = useState<ServerTransaction[]>(() =>

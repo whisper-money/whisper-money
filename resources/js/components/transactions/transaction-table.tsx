@@ -437,6 +437,7 @@ export function TransactionTable({
                 automationRules={automationRules}
                 onDuplicated={source.reload}
                 onSplitChanged={onSplitChanged}
+                onRuleApplied={source.refreshRows ?? source.reload}
             />
 
             <TransactionDeleteDialogs

@@ -19,6 +19,8 @@ interface TransactionRowDialogsProps {
     onDuplicated: () => void;
     /** Brings the parts in once a split is made or merged back; the page reloads by default. */
     onSplitChanged?: () => void;
+    /** Brings in what a rule just applied to existing transactions changed. */
+    onRuleApplied: () => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export function TransactionRowDialogs({
     automationRules,
     onDuplicated,
     onSplitChanged = reloadPage,
+    onRuleApplied,
 }: TransactionRowDialogsProps) {
     return (
         <>
@@ -102,7 +105,7 @@ export function TransactionRowDialogs({
                 onOpenChange={editing.setAutomateDialogOpen}
             />
 
-            <PostSaveApplyRulePrompt />
+            <PostSaveApplyRulePrompt onApplied={onRuleApplied} />
         </>
     );
 }
