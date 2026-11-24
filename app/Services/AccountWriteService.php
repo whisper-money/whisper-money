@@ -56,6 +56,8 @@ class AccountWriteService
             ...$spaceId !== null ? ['space_id' => $spaceId] : [],
         ]);
 
+        $account->setRelation('user', $user);
+
         $balance = $account->type->hasBalance()
             ? $data['balance'] ?? null
             : null;

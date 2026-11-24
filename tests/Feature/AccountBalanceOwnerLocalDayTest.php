@@ -104,3 +104,22 @@ it('dates a balance recorded through the API without a date by the owner\'s day'
     expect(AccountBalance::query()->where('account_id', $account->id)->sole()->balance_date->toDateString())
         ->toBe('2026-11-24');
 });
+
+it('writes the current balance on the owner\'s day when it is ahead of the server\'s', function () {
+    // 07:00 on 25 November in Tokyo is still 24 November in UTC.
+    Carbon::setTestNow(Carbon::parse('2026-11-25 07:00', 'Asia/Tokyo'));
+    $this->user->update(['timezone' => 'Asia/Tokyo']);
+
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+    ]);
+
+    $this->actingAs($this->user)
+        ->putJson("/api/accounts/{$account->id}/balance/current", ['balance' => 99000])
+        ->assertSuccessful();
+
+    expect(AccountBalance::query()->where('account_id', $account->id)->sole()->balance_date->toDateString())
+        ->toBe('2026-11-25');
+});
