@@ -64,13 +64,13 @@ class AccountBalanceRecorder
     }
 
     /**
-     * Write the snapshot for $date (today when null), replacing the one
+     * Write the snapshot for $date (the owner's today when null), replacing the one
      * already there. A null $investedAmount leaves the stored one alone.
      */
     public function record(Account $account, int $balance, ?string $date, ?int $investedAmount): AccountBalance
     {
         return AccountBalance::updateOrCreate(
-            ['account_id' => $account->id, 'balance_date' => $date ?? now()->toDateString()],
+            ['account_id' => $account->id, 'balance_date' => $date ?? $account->ownerToday()->toDateString()],
             [
                 'balance' => $balance,
                 // The caller's own figure, so the backwards balance walk stops

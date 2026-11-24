@@ -80,7 +80,7 @@ class AccountBalanceController extends Controller
     {
         $this->authorize('update', $account);
 
-        $today = now()->toDateString();
+        $today = $account->ownerToday()->toDateString();
         $validated = $request->validated();
 
         $balance = AccountBalance::updateOrCreate(
