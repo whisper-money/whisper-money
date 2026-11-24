@@ -522,26 +522,33 @@ describe('the trial extension from the email', function () {
                 ->where('extension.trialEndsAt', $trialEndsAt->toIso8601String())
                 ->where('extension.plan.price', fn ($price) => (float) $price === 8.99)
                 ->where('extension.plan.billing_period', 'month')
-                ->where('canKeepPlan', true));
+                ->where('canKeepPlan', true)
+                ->where('planIsOn', false));
 
         expect($user->fresh()->trial_extended_at)->toBeNull()
             ->and($user->subscription('default')->fresh()->ends_at)->not->toBeNull();
     });
 
-    test('the page says when it no longer applies, and offers to keep the plan while it is set to cancel', function (array $userAttributes, bool $canceled, bool $canKeepPlan) {
-        $user = $canceled ? canceledTrialSubscriber($userAttributes) : cancellableSubscriber([], $userAttributes);
-
-        $this->actingAs($user)
+    test('the page says when it no longer applies, and offers to keep the plan while it is set to cancel', function (Closure $makeUser, bool $canKeepPlan, bool $planIsOn) {
+        $this->actingAs($makeUser())
             ->get(route('settings.billing.extend-trial'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('subscription/extend-trial')
                 ->where('extension', null)
-                ->where('canKeepPlan', $canKeepPlan));
+                ->where('canKeepPlan', $canKeepPlan)
+                ->where('planIsOn', $planIsOn));
     })->with([
-        'already extended once' => [['trial_extended_at' => now()->subWeek()], true, true],
-        'the plan is back on already' => [[], false, false],
+        'already extended once' => [fn () => canceledTrialSubscriber(['trial_extended_at' => now()->subWeek()]), true, false],
+        'the plan is back on already' => [fn () => cancellableSubscriber(), false, true],
+        'the trial is over' => [fn () => tap(cancellableSubscriber(), fn (User $user) => $user->subscription('default')->update(['stripe_status' => 'canceled', 'trial_ends_at' => now()->subDay(), 'ends_at' => now()->subDay()])), false, false],
     ]);
+
+    test('brings a signed-out reader back to the page once signed in', function () {
+        $this->get(route('settings.billing.extend-trial', ['utm_content' => 'extend-trial']))->assertRedirect();
+
+        expect(session('url.intended'))->toBe(route('settings.billing.extend-trial', ['utm_content' => 'extend-trial']));
+    });
 
     test('extends the trial and takes back the cancellation in one Stripe update', function () {
         $this->freezeTime();

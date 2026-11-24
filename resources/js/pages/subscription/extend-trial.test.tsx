@@ -40,6 +40,7 @@ function renderPage(props: Record<string, unknown>) {
         locale: 'en',
         errors: {},
         canKeepPlan: true,
+        planIsOn: false,
         ...props,
     };
 
@@ -105,6 +106,29 @@ describe('ExtendTrial', () => {
         );
     });
 
+    it('lets the plan be kept without the extra days too', () => {
+        renderPage({ extension: EXTENSION });
+
+        fireEvent.click(screen.getByTestId('keep-plan'));
+
+        expect(mocks.routerPost).toHaveBeenCalledWith(
+            '/settings/billing/resume',
+            {},
+            expect.any(Object),
+        );
+    });
+
+    it('tells someone whose plan is already on that there is nothing to take back', () => {
+        renderPage({ extension: null, canKeepPlan: false, planIsOn: true });
+
+        expect(
+            screen.getByRole('heading', { name: 'Your plan is already on' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(/Nothing is set to cancel/),
+        ).toBeInTheDocument();
+    });
+
     it('leaves the price out when it is unknown', () => {
         renderPage({ extension: { ...EXTENSION, plan: null } });
 
@@ -149,6 +173,7 @@ describe('ExtendTrial', () => {
         renderPage({ extension: null, canKeepPlan: false });
 
         expect(screen.queryByTestId('keep-plan')).not.toBeInTheDocument();
+        expect(screen.getByText(/Your trial is over/)).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'See my plan' }));
 

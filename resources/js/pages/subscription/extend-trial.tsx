@@ -34,6 +34,8 @@ interface ExtendTrialPageProps extends SharedData {
     extension: TrialExtension | null;
     /** The plan is still set to cancel, so it can be kept as it is. */
     canKeepPlan: boolean;
+    /** The plan runs and is not set to cancel: nothing to take back. */
+    planIsOn: boolean;
     errors: Record<string, string>;
 }
 
@@ -61,13 +63,32 @@ function firstChargeTerms(
         : __(':price a month, unless you cancel before then.', { price });
 }
 
+function unavailableDescription(
+    canKeepPlan: boolean,
+    planIsOn: boolean,
+): string {
+    if (canKeepPlan) {
+        return __(
+            'Your trial cannot be extended any more, but you can still keep your plan. Your first charge would then be on the day your trial ends.',
+        );
+    }
+
+    return planIsOn
+        ? __(
+              'Nothing is set to cancel, so there is nothing to take back. Your billing page shows when your first charge is.',
+          )
+        : __(
+              'Your trial is over, so it can no longer be extended. Your billing page shows where your plan stands.',
+          );
+}
+
 /**
  * Where the trial-ending email for a cancelled trial leads: two more weeks of
  * trial and the plan back on, confirmed here with one button. Opening the
  * link changes nothing; the button does.
  */
 export default function ExtendTrial() {
-    const { extension, canKeepPlan, errors, pricing } =
+    const { extension, canKeepPlan, planIsOn, errors, pricing } =
         usePage<ExtendTrialPageProps>().props;
     const locale = useLocale();
     const [processing, setProcessing] = useState(false);
@@ -81,14 +102,19 @@ export default function ExtendTrial() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const extendTrial = () => {
+    /** POSTs, then reports the event and shows the flash once it landed. */
+    const submit = (
+        url: string,
+        event: string,
+        properties: Record<string, unknown>,
+    ) => {
         setProcessing(true);
         router.post(
-            store.url(),
+            url,
             {},
             {
                 onSuccess: (page) => {
-                    captureEvent('trial_extended', ANALYTICS);
+                    captureEvent(event, properties);
                     showFlash(page);
                 },
                 onFinish: () => setProcessing(false),
@@ -96,23 +122,19 @@ export default function ExtendTrial() {
         );
     };
 
-    const keepPlan = () => {
-        setProcessing(true);
-        router.post(
-            resume.url(),
-            {},
-            {
-                onSuccess: (page) => {
-                    captureEvent('subscription_resumed', {
-                        ...ANALYTICS,
-                        on_trial: true,
-                    });
-                    showFlash(page);
-                },
-                onFinish: () => setProcessing(false),
-            },
-        );
-    };
+    const extendTrial = () => submit(store.url(), 'trial_extended', ANALYTICS);
+
+    const keepPlan = () =>
+        submit(resume.url(), 'subscription_resumed', {
+            ...ANALYTICS,
+            on_trial: true,
+        });
+
+    const error = errors.trial_extension && (
+        <p role="alert" className="text-center text-sm text-destructive">
+            {errors.trial_extension}
+        </p>
+    );
 
     const seeMyPlan = (
         <StepButton
@@ -122,41 +144,33 @@ export default function ExtendTrial() {
         />
     );
 
+    const keepPlanButton = canKeepPlan && (
+        <StepButton
+            text={__('Keep my plan')}
+            variant={extension === null ? 'default' : 'outline'}
+            onClick={keepPlan}
+            loading={processing}
+            disabled={processing}
+            data-testid="keep-plan"
+        />
+    );
+
     if (extension === null) {
+        const title = planIsOn
+            ? __('Your plan is already on')
+            : __('This offer is no longer available');
+
         return (
             <SubscriptionLayout withAccountLinks>
-                <Head title={__('This offer is no longer available')} />
+                <Head title={title} />
 
                 <StepScreen
-                    title={__('This offer is no longer available')}
-                    description={
-                        canKeepPlan
-                            ? __(
-                                  'Your trial cannot be extended any more, but you can still keep your plan. Your first charge would then be on the day your trial ends.',
-                              )
-                            : __(
-                                  'Your trial has been extended already, or it is over. Your billing page shows where your plan stands.',
-                              )
-                    }
+                    title={title}
+                    description={unavailableDescription(canKeepPlan, planIsOn)}
                     footer={
                         <>
-                            {canKeepPlan && (
-                                <StepButton
-                                    text={__('Keep my plan')}
-                                    onClick={keepPlan}
-                                    loading={processing}
-                                    disabled={processing}
-                                    data-testid="keep-plan"
-                                />
-                            )}
-                            {errors.trial_extension && (
-                                <p
-                                    role="alert"
-                                    className="text-center text-sm text-destructive"
-                                >
-                                    {errors.trial_extension}
-                                </p>
-                            )}
+                            {keepPlanButton}
+                            {error}
                             {seeMyPlan}
                         </>
                     }
@@ -187,14 +201,8 @@ export default function ExtendTrial() {
                             disabled={processing}
                             data-testid="extend-trial"
                         />
-                        {errors.trial_extension && (
-                            <p
-                                role="alert"
-                                className="text-center text-sm text-destructive"
-                            >
-                                {errors.trial_extension}
-                            </p>
-                        )}
+                        {error}
+                        {keepPlanButton}
                         {seeMyPlan}
                     </>
                 }

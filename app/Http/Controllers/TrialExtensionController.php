@@ -31,7 +31,9 @@ class TrialExtensionController extends Controller
      * Never asks Stripe: only what is stored here decides whether it is shown
      * (`CanceledTrialExtension`). When it no longer applies (taken already,
      * the trial over, the plan back on) the page says so, and still offers to
-     * keep the plan while it is set to cancel.
+     * keep the plan while it is set to cancel. While it does apply, keeping
+     * the plan without the extra days is offered too: Stripe may still refuse
+     * the extension on confirm (a discount, a pause set there).
      */
     public function show(Request $request, SubscribedPlan $subscribedPlan): Response|RedirectResponse
     {
@@ -51,6 +53,7 @@ class TrialExtensionController extends Controller
                 'plan' => $subscribedPlan->for($user, $subscription),
             ],
             'canKeepPlan' => $current !== null && $current->onGracePeriod() && ! $user->cannotUseStripe(),
+            'planIsOn' => $current !== null && $current->valid() && ! $current->onGracePeriod(),
         ]);
     }
 
