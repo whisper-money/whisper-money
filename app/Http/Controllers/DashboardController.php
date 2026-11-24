@@ -249,11 +249,38 @@ class DashboardController extends Controller
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
+            ->withMin('balances', 'balance_date')
+            ->withMin('transactions', 'transaction_date')
             ->orderBy('position')
             ->orderBy('name')
             ->get();
 
-        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today, unknownAsNull: true);
+        $evolution = $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $today, unknownAsNull: true);
+        $accountsById = $accounts->keyBy('id');
+        $evolution['accounts'] = collect($evolution['accounts'])
+            ->map(fn (array $config, string $id): array => [...$config, 'tracked_since' => $this->trackedSince($accountsById->get($id))]);
+
+        return $evolution;
+    }
+
+    /**
+     * The first day the account's balance is known for, so a card only
+     * compares against a month it has figures for. A recorded balance is what
+     * makes it known; movements older than it carry it further back. Null when
+     * no balance was ever recorded: the card asks for one instead of showing 0.
+     */
+    private function trackedSince(?Account $account): ?string
+    {
+        $firstBalance = $account?->balances_min_balance_date;
+
+        if ($firstBalance === null) {
+            return null;
+        }
+
+        $firstMovement = $account->transactions_min_transaction_date;
+        $firstDay = $firstMovement !== null && $firstMovement < $firstBalance ? $firstMovement : $firstBalance;
+
+        return substr((string) $firstDay, 0, 10);
     }
 
     /**

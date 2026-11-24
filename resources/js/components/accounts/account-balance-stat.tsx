@@ -10,7 +10,13 @@ import { __ } from '@/utils/i18n';
 
 interface AccountBalanceStatProps {
     balance: number;
-    previousBalance: number;
+    /**
+     * Last month's balance, or null when the account has no figure for it:
+     * then `noComparisonNote` stands in for the trend.
+     */
+    previousBalance: number | null;
+    /** What to say under the balance when there is nothing to compare. */
+    noComparisonNote?: string;
     currencyCode: string;
     /**
      * Opens the balance editor when the balance is typed in by hand. A
@@ -25,11 +31,11 @@ interface AccountBalanceStatProps {
 export function AccountBalanceStat({
     balance,
     previousBalance,
+    noComparisonNote,
     currencyCode,
     onEditBalance,
     alignEnd = false,
 }: AccountBalanceStatProps) {
-    const diff = balance - previousBalance;
     const amount = (
         <AmountDisplay amountInCents={balance} currencyCode={currencyCode} />
     );
@@ -56,17 +62,25 @@ export function AccountBalanceStat({
                     <div className={offset}>{amount}</div>
                 )}
             </StatTileValue>
-            <StatTileTrend>
-                <AmountTrendIndicator
-                    isPositive={diff >= 0}
-                    trend={Math.abs(diff)}
-                    label={__('vs last month')}
-                    previousAmount={previousBalance}
-                    currentAmount={balance}
-                    tooltipSide="bottom"
-                    currencyCode={currencyCode}
-                />
-            </StatTileTrend>
+            {previousBalance !== null ? (
+                <StatTileTrend>
+                    <AmountTrendIndicator
+                        isPositive={balance >= previousBalance}
+                        trend={Math.abs(balance - previousBalance)}
+                        label={__('vs last month')}
+                        previousAmount={previousBalance}
+                        currentAmount={balance}
+                        tooltipSide="bottom"
+                        currencyCode={currencyCode}
+                    />
+                </StatTileTrend>
+            ) : (
+                noComparisonNote && (
+                    <StatTileTrend className="text-muted-foreground">
+                        {noComparisonNote}
+                    </StatTileTrend>
+                )
+            )}
         </StatTile>
     );
 }
