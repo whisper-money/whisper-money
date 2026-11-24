@@ -27,11 +27,8 @@ import {
 } from '@/components/open-banking/connect-account-inline';
 import { ConnectBrokerInline } from '@/components/open-banking/connect-broker-inline';
 import { useBankAggregatorLocked } from '@/components/subscription/standard-plan-notice';
+import { useBankOffer } from '@/hooks/use-bank-offer';
 import { useCheapestMonthlyPrice } from '@/hooks/use-cheapest-monthly-price';
-import {
-    isConnectCountry,
-    rememberedConnectCountry,
-} from '@/hooks/use-connect-flow';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { captureEvent } from '@/lib/posthog';
 import { billing } from '@/routes/settings';
@@ -110,21 +107,30 @@ function cameBackToConnect(): HubMode | null {
 }
 
 /**
- * Whether the user sits in a country no bank of ours reaches, so the bank row
- * and the plan gate in front of it would sell them something they cannot use.
- * Most of the bank gate's views came from Colombia, the US, Mexico and
- * Argentina, where the connections were zero.
- *
- * Only a known country counts against them: with no timezone to go by, the
- * bank stays on offer. And a country they once picked by hand in the bank
- * picker beats where they are — a Spaniard abroad still banks in Spain.
+ * The line under the hub's title once accounts are in: where each of the
+ * missing kinds comes from, naming only the ways in this user is offered. A
+ * free signup who typed their accounts in was being told cards "come from the
+ * bank" and brokers "need their own key", neither of which they can have.
  */
-function bankCountryOutOfReach(timezoneCountry: string | null): boolean {
-    if (!timezoneCountry || rememberedConnectCountry()) {
-        return false;
+function missingAccountsHint(
+    bankOffered: boolean,
+    isFreePlan: boolean,
+): string {
+    if (bankOffered) {
+        return __(
+            'Current accounts and cards come from the bank. Pensions and brokers need their own key, and mortgages nobody shares at all — but that is where most of your money sits.',
+        );
     }
 
-    return !isConnectCountry(timezoneCountry);
+    if (isFreePlan) {
+        return __(
+            'Add the rest by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.',
+        );
+    }
+
+    return __(
+        'Brokers connect with their own key; the rest you add by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.',
+    );
 }
 
 /** Drop a dealt-with parameter off the URL so a reload does not replay it. */
@@ -258,25 +264,17 @@ export function StepAccountsHub({
     // lead to billing; the brokers their plan includes are offered up front.
     const bankLocked = useBankAggregatorLocked();
     const cheapestMonthlyPrice = useCheapestMonthlyPrice();
-    const isFreePlan = signupPlan === 'free';
-    // Read once: it looks at localStorage, and the hub remounts after every
-    // account anyway, which is when a country picked by hand could change it.
-    const [bankHiddenByCountry] = useState(
-        () =>
-            openBankingEnabled &&
-            !isFreePlan &&
-            bankCountryOutOfReach(timezoneCountry),
+    const { isFreePlan, bankHiddenByCountry, bankOffered } = useBankOffer(
+        signupPlan,
+        timezoneCountry,
     );
-    // No bank connection to offer, for any of the three reasons there are: the
-    // free card buys none, a self-hosted install may carry no open-banking
-    // credentials at all, and no bank of ours reaches the user's country.
-    // Either way the "Another bank" row would promise a bank picker that never
-    // comes, so it opens the manual form and says so. They part ways over the
+    // No bank connection to offer (see `useBankOffer` for the three reasons):
+    // the "Another bank" row would promise a bank picker that never comes, so
+    // it opens the manual form and says so. The reasons part ways over the
     // broker, which is an API key rather than open banking: the free plan
     // still cannot have one, the other two keep the "A pension or a broker"
     // suggestion once an account is in.
-    const noBankToOffer =
-        isFreePlan || !openBankingEnabled || bankHiddenByCountry;
+    const noBankToOffer = !bankOffered;
     const hasAccounts =
         createdAccounts.length > 0 || existingAccounts.length > 0;
     const [failedBank] = useState(readFailedBank);
@@ -723,9 +721,7 @@ export function StepAccountsHub({
     return (
         <StepScreen
             title={__(":count in. What's missing?", { count: accountCount })}
-            description={__(
-                'Current accounts and cards come from the bank. Pensions and brokers need their own key, and mortgages nobody shares at all — but that is where most of your money sits.',
-            )}
+            description={missingAccountsHint(bankOffered, isFreePlan)}
             footer={
                 <>
                     <StepButton

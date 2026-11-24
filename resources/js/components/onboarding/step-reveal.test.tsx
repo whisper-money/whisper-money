@@ -248,6 +248,38 @@ describe('StepReveal', () => {
         expect(screen.getByText('Add a current account')).toBeInTheDocument();
     });
 
+    it.each([
+        [true, /^Connect a current account and this page changes shape/],
+        [false, /^Add a current account with its movements/],
+    ])(
+        'asks for a current account the way the hub offers one (bank offered: %s)',
+        async (bankOffered, callout) => {
+            get.mockResolvedValue({
+                data: {
+                    variant: 'assets',
+                    currency_code: 'EUR',
+                    has_spending_accounts: false,
+                    net_worth: 1840000,
+                    accounts: [
+                        {
+                            id: 'a1',
+                            name: 'Plan de pensiones',
+                            connected: false,
+                            balance: 1840000,
+                        },
+                    ],
+                },
+            });
+
+            await renderReveal({ bankOffered });
+
+            expect(screen.getByText(callout)).toBeInTheDocument();
+            expect(
+                screen.getByText('Add a current account'),
+            ).toBeInTheDocument();
+        },
+    );
+
     it('moves on rather than showing a screen with nothing on it', async () => {
         get.mockResolvedValue({
             data: {

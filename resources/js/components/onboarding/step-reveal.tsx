@@ -114,6 +114,12 @@ interface StepRevealProps {
     onContinue: () => void;
     /** Back to the accounts hub, for the user with no spending to show. */
     onAddAccount: () => void;
+    /**
+     * Whether the accounts hub offers a bank connection. Without one, a
+     * current account's movements come in from a file, so the screen asks
+     * for that rather than for a connection the hub never shows.
+     */
+    bankOffered?: boolean;
 }
 
 /**
@@ -129,6 +135,7 @@ export function StepReveal({
     spendingGuess,
     onContinue,
     onAddAccount,
+    bankOffered = true,
 }: StepRevealProps) {
     const [data, setData] = useState<RevealData | null>(null);
     // Typing last month in from the assets variant swaps the screen for the
@@ -242,6 +249,7 @@ export function StepReveal({
             spendingGuess={spendingGuess}
             onContinue={onContinue}
             onAddAccount={onAddAccount}
+            bankOffered={bankOffered}
             onAddExpenses={() => setAddingExpenses(true)}
         />
     );
@@ -651,12 +659,14 @@ function RevealAssets({
     spendingGuess,
     onContinue,
     onAddAccount,
+    bankOffered,
     onAddExpenses,
 }: {
     data: AssetsReveal;
     spendingGuess?: number;
     onContinue: () => void;
     onAddAccount: () => void;
+    bankOffered: boolean;
     /** Type last month in, for the reader with a hand-kept account to put it in. */
     onAddExpenses: () => void;
 }) {
@@ -778,9 +788,13 @@ function RevealAssets({
                             ? __(
                                   'Once a month of movements is in, this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
                               )
-                            : __(
-                                  'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
-                              )}
+                            : bankOffered
+                              ? __(
+                                    'Connect a current account and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                                )
+                              : __(
+                                    'Add a current account with its movements — the export your bank offers will do — and this page changes shape: you get the spending side too, and we can tell you whether that number is going up or down each month.',
+                                )}
                     </StepCallout>
                 )}
             </div>

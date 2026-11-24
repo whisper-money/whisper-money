@@ -135,6 +135,23 @@ describe('StepAccountsHub in a country with no connectable banks', () => {
         expect(captureEvent).not.toHaveBeenCalled();
     });
 
+    it('does not say cards come from the bank once accounts are in', () => {
+        renderHub({
+            timezoneCountry: 'MX',
+            isFirstAccount: false,
+            existingAccounts: [EXISTING_ACCOUNT],
+        });
+
+        expect(
+            screen.getByText(
+                'Brokers connect with their own key; the rest you add by hand or from a file. Mortgages and pensions are the ones people skip — and that is where most of your money sits.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/come from the bank/),
+        ).not.toBeInTheDocument();
+    });
+
     it('keeps the bank for a country picked by hand before', () => {
         rememberConnectCountry('ES');
 

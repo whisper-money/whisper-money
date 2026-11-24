@@ -17,6 +17,7 @@ import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepTarget } from '@/components/onboarding/step-target';
 import { StepToday } from '@/components/onboarding/step-today';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useBankOffer } from '@/hooks/use-bank-offer';
 import { useImportLinkLanding } from '@/hooks/use-import-link-landing';
 import {
     BACKABLE_STEPS,
@@ -63,6 +64,7 @@ export default function Onboarding({
     const { auth, currencies } = usePage<SharedData>().props;
     const hasSyncedRef = useRef(false);
     const isFreePlan = signupPlan === 'free';
+    const { bankOffered } = useBankOffer(signupPlan, timezoneCountry);
     const linkedAccountId = useImportLinkLanding('onboarding');
 
     // Prefer the server-validated step; fall back to ?step= from the URL so
@@ -187,7 +189,12 @@ export default function Onboarding({
 
         switch (currentStep) {
             case 'promise':
-                return <StepPromise onContinue={goNext} />;
+                return (
+                    <StepPromise
+                        bankOffered={bankOffered}
+                        onContinue={goNext}
+                    />
+                );
 
             case 'goal':
                 return (
@@ -228,6 +235,7 @@ export default function Onboarding({
                         spendingGuess={answers.spending_guess}
                         currencyCode={auth.user.currency_code}
                         isFreePlan={isFreePlan}
+                        bankOffered={bankOffered}
                         onContinue={goNext}
                     />
                 );
@@ -263,6 +271,7 @@ export default function Onboarding({
                         spendingGuess={answers.spending_guess}
                         onContinue={goNext}
                         onAddAccount={() => goToStep('create-account')}
+                        bankOffered={bankOffered}
                     />
                 );
 

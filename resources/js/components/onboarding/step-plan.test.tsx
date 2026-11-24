@@ -56,6 +56,34 @@ describe('StepPlan', () => {
         ).not.toBeInTheDocument();
     });
 
+    // A paid signup the hub offers no bank to — a country no bank of ours
+    // reaches, or an install without open banking — reads about a file, and
+    // still gets the AI pass.
+    it('promises a file when no bank is offered, even on a paid plan', () => {
+        render(
+            <StepPlan
+                currencyCode="EUR"
+                bankOffered={false}
+                onContinue={vi.fn()}
+            />,
+        );
+
+        expect(
+            screen.getByText('A year of your spending, from a file'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'The export your bank already offers, read in one go.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/at your bank's own login/),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText('Every movement already filed when you arrive'),
+        ).toBeInTheDocument();
+    });
+
     it('still promises the paid signup the bank and the AI pass', () => {
         render(<StepPlan currencyCode="EUR" onContinue={vi.fn()} />);
 
