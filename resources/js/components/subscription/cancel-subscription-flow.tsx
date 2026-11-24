@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { captureEvent } from '@/lib/posthog';
 import {
     cancel as cancelRoute,
+    extendTrial as extendTrialRoute,
     pause as pauseRoute,
     retentionCoupon as retentionCouponRoute,
     store as storeRoute,
@@ -245,6 +246,8 @@ export function CancelSubscriptionFlow({
                 return takeSavingOffer(retentionCouponRoute.url(answer.id));
             case 'switch_to_yearly':
                 return takeSavingOffer(switchToYearlyRoute.url(answer.id));
+            case 'extend_trial':
+                return takeSavingOffer(extendTrialRoute.url(answer.id));
             case 'pause': {
                 const length = months ?? offer.options[0]?.months ?? 1;
 
