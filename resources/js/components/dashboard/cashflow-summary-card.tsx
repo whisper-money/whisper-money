@@ -20,7 +20,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
-import { BudgetSeverity, usageSeverity } from '@/types/budget';
+import { BudgetSeverity, percentUsed, usageSeverity } from '@/types/budget';
 import { type SpendingLimit } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
 import { formatPercent } from '@/utils/percent';
@@ -183,11 +183,14 @@ function SpendingLimitRow({
     currencyCode: string;
 }) {
     const { formatAmount } = useFormatAmount();
-    const used =
-        limit.allocated > 0 ? (limit.spent / limit.allocated) * 100 : 100;
+    const used = percentUsed(limit.spent, limit.allocated);
     const remaining = limit.allocated - limit.spent;
-    const amount = (cents: number) =>
-        formatAmount(Math.abs(cents), currencyCode, { fractionDigits: 0 });
+    // Whole units like the figures above, except under one, where rounding
+    // would print "€0 left" when €0.40 is.
+    const formatRemaining = (cents: number) =>
+        formatAmount(Math.abs(cents), currencyCode, {
+            fractionDigits: Math.abs(cents) < 100 ? undefined : 0,
+        });
 
     return (
         <Link
@@ -211,7 +214,7 @@ function SpendingLimitRow({
                 </span>
             </div>
             <Progress
-                value={Math.min(used, 100)}
+                value={Math.min(Math.max(used, 0), 100)}
                 className="h-2"
                 indicatorClassName={LIMIT_BAR_COLORS[usageSeverity(used)]}
                 aria-label={__('Monthly spending limit')}
@@ -219,10 +222,10 @@ function SpendingLimitRow({
             <span className="text-xs text-muted-foreground">
                 {remaining < 0
                     ? __(':amount over the limit', {
-                          amount: amount(remaining),
+                          amount: formatRemaining(remaining),
                       })
                     : spendingLimitLeftLabel(
-                          amount(remaining),
+                          formatRemaining(remaining),
                           limit.days_left,
                       )}
             </span>

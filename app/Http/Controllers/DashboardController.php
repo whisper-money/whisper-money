@@ -327,21 +327,14 @@ class DashboardController extends Controller
     private function getSpendingLimit(Request $request): ?array
     {
         $user = $request->user();
-        $budget = $this->onboardingSummary->catchAll($user);
-
-        if ($budget === null) {
-            return null;
-        }
-
-        $budget->setRelation('user', $user);
-        $period = $budget->getCurrentPeriod();
+        $period = $this->onboardingSummary->catchAllPeriod($user);
 
         if ($period === null) {
             return null;
         }
 
         return [
-            'budget_id' => $budget->id,
+            'budget_id' => $period->budget_id,
             'allocated' => $period->allocated_amount,
             'spent' => $period->spentAmount(),
             // Whole days after today, so the period's last day reads as none left.

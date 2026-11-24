@@ -124,6 +124,31 @@ describe('CashflowSummaryCard spending limit', () => {
         ).toBeInTheDocument();
     });
 
+    it('keeps the cents when less than one euro is left or over', () => {
+        const { rerender } = renderCard(
+            limit({ allocated: 100000, spent: 99960 }),
+        );
+
+        expect(
+            screen.getByText('€0.40 left with 6 days to go'),
+        ).toBeInTheDocument();
+
+        rerender(
+            <CashflowSummaryCard
+                data={{ current: summary, previous: summary }}
+                spendingLimit={limit({ allocated: 100000, spent: 100040 })}
+            />,
+        );
+
+        expect(screen.getByText('€0.40 over the limit')).toBeInTheDocument();
+    });
+
+    it('keeps the bar neutral when a zero limit has nothing spent', () => {
+        renderCard(limit({ allocated: 0, spent: 0 }));
+
+        expect(bar()).not.toHaveClass('bg-destructive');
+    });
+
     it('has no row without a spending limit', () => {
         renderCard(null);
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Account;
 use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
@@ -140,7 +141,21 @@ class OnboardingSummaryService
      */
     private function spendingLimit(User $user): ?int
     {
-        return $this->catchAll($user)?->getCurrentPeriod()?->allocated_amount;
+        return $this->catchAllPeriod($user)?->allocated_amount;
+    }
+
+    /**
+     * The catch-all budget's period in progress on the user's own today, which
+     * the closing screen and the dashboard's spending limit row both read.
+     */
+    public function catchAllPeriod(User $user): ?BudgetPeriod
+    {
+        $budget = $this->catchAll($user);
+
+        // The owner is already at hand: the period lookup needs their today.
+        $budget?->setRelation('user', $user);
+
+        return $budget?->getCurrentPeriod();
     }
 
     /**
@@ -149,7 +164,8 @@ class OnboardingSummaryService
      */
     public function catchAll(User $user): ?Budget
     {
-        return $user->budgets()->notArchived()->where('is_catch_all', true)->first();
+        // Oldest first, so a second catch-all created by hand never swaps in.
+        return $user->budgets()->notArchived()->where('is_catch_all', true)->oldest()->first();
     }
 
     /**
