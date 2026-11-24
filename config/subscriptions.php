@@ -123,6 +123,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Second Offer Coupon
+    |--------------------------------------------------------------------------
+    |
+    | The discount the second offer (the dialog a free user meets after their
+    | first import, see "Second Offer") puts on top of the free trial. Applied
+    | by the checkout itself, never by the browser, and only to a user who was
+    | shown the dialog in the last `eligible_days` days, has never subscribed
+    | and is buying the standard price
+    | (`App\Services\Subscriptions\SecondOfferDiscount`). Its own coupon, not
+    | the retention one, which the cancel flow hands out once per user.
+    | `stripe:ensure-launch-coupons` creates it in Stripe from these values,
+    | and the dialog quotes the saving from them, so the two always agree.
+    |
+    | Repeating, so its months count from the checkout: with the trial in
+    | front, it covers the first three monthly invoices, or the first yearly
+    | one.
+    |
+    */
+
+    'second_offer_coupon' => [
+        'id' => env('STRIPE_SECOND_OFFER_COUPON_ID', 'wm_second_offer_30_3m'),
+        'percent_off' => 30,
+        'duration_in_months' => 3,
+        'eligible_days' => 7,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Stripe Product IDs
     |--------------------------------------------------------------------------
     |

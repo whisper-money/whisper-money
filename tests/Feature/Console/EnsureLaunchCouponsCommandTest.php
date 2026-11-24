@@ -10,9 +10,10 @@ use Stripe\StripeClient;
 
 /**
  * A Stripe client with the two plan prices and the coupons that already exist,
- * recording every coupon the command creates.
+ * recording every coupon the command creates. An existing coupon is an id, or
+ * an id with the terms Stripe holds for it.
  *
- * @param  list<string>  $existingCoupons
+ * @param  array<int|string, string|array<string, mixed>>  $existingCoupons
  */
 function fakeStripeCoupons(array $existingCoupons): ArrayObject
 {
@@ -26,6 +27,10 @@ function fakeStripeCoupons(array $existingCoupons): ArrayObject
 
     $coupons = Mockery::mock(CouponService::class);
     $coupons->shouldReceive('retrieve')->andReturnUsing(function (string $id) use ($existingCoupons): Coupon {
+        if (isset($existingCoupons[$id])) {
+            return Coupon::constructFrom(['id' => $id, ...$existingCoupons[$id]]);
+        }
+
         if (! in_array($id, $existingCoupons, true)) {
             throw InvalidRequestException::factory('No such coupon');
         }
@@ -46,7 +51,7 @@ function fakeStripeCoupons(array $existingCoupons): ArrayObject
     return $created;
 }
 
-test('creates the cancel flow retention coupon from the config', function () {
+test('creates the retention and second offer coupons from the config', function () {
     $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly']);
 
     $this->artisan('stripe:ensure-launch-coupons')->assertSuccessful();
@@ -59,11 +64,47 @@ test('creates the cancel flow retention coupon from the config', function () {
             'duration' => 'repeating',
             'duration_in_months' => 3,
         ],
+        'wm_second_offer_30_3m' => [
+            'id' => 'wm_second_offer_30_3m',
+            'name' => 'WM Second Offer – 30% off for 3 months',
+            'percent_off' => 30,
+            'duration' => 'repeating',
+            'duration_in_months' => 3,
+        ],
     ]);
 });
 
-test('leaves the retention coupon alone once it exists', function () {
-    $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly', 'wm_retention_30_3m']);
+const THIRTY_OFF_FOR_THREE_MONTHS = ['percent_off' => 30, 'duration' => 'repeating', 'duration_in_months' => 3];
+
+test('leaves the coupons alone once they exist', function () {
+    $created = fakeStripeCoupons([
+        'wm_founder_forever',
+        'wm_earlybird_monthly',
+        'wm_earlybird_yearly',
+        'wm_retention_30_3m' => THIRTY_OFF_FOR_THREE_MONTHS,
+        'wm_second_offer_30_3m' => THIRTY_OFF_FOR_THREE_MONTHS,
+    ]);
+
+    $this->artisan('stripe:ensure-launch-coupons')->assertSuccessful();
+
+    expect($created->getArrayCopy())->toBe([]);
+});
+
+test('fails when a quoted coupon exists in Stripe with other terms', function () {
+    fakeStripeCoupons([
+        'wm_founder_forever',
+        'wm_earlybird_monthly',
+        'wm_earlybird_yearly',
+        'wm_retention_30_3m' => THIRTY_OFF_FOR_THREE_MONTHS,
+        'wm_second_offer_30_3m' => ['percent_off' => 20, 'duration' => 'repeating', 'duration_in_months' => 3],
+    ]);
+
+    $this->artisan('stripe:ensure-launch-coupons')->assertFailed();
+});
+
+test('skips a coupon whose id is cleared in config', function () {
+    config(['subscriptions.second_offer_coupon.id' => '']);
+    $created = fakeStripeCoupons(['wm_founder_forever', 'wm_earlybird_monthly', 'wm_earlybird_yearly', 'wm_retention_30_3m' => THIRTY_OFF_FOR_THREE_MONTHS]);
 
     $this->artisan('stripe:ensure-launch-coupons')->assertSuccessful();
 

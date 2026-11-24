@@ -15,6 +15,7 @@ use App\Services\Ai\AiImportMappingGate;
 use App\Services\CurrencyOptions;
 use App\Services\FormatLocaleOptions;
 use App\Services\Notifications\NotificationFeed;
+use App\Services\Subscriptions\SecondOfferDiscount;
 use App\Services\Subscriptions\TrialEndingBanner;
 use App\Services\UserCollectionVersions;
 use App\Support\PriceTiers;
@@ -116,6 +117,7 @@ class HandleInertiaRequests extends Middleware
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
                 'currency' => strtoupper(config('cashier.currency', 'eur')),
+                'secondOfferDiscount' => app(SecondOfferDiscount::class)->quote(),
                 ...$this->latamPricing($user),
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',

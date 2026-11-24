@@ -7,7 +7,7 @@ import {
 import { useLocale } from '@/hooks/use-locale';
 import { type PriceTierChoice } from '@/hooks/use-price-tier';
 import { cn } from '@/lib/utils';
-import { Plan } from '@/types/pricing';
+import { Plan, type SecondOfferDiscount } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 
@@ -221,12 +221,17 @@ export function planTerms(
     plan: Plan | undefined,
     currency: string,
     locale: string,
+    discount: SecondOfferDiscount | null = null,
 ): string | null {
     if (!plan) {
         return null;
     }
 
     const total = formatCurrency(plan.price * 100, currency, locale);
+
+    if (discount) {
+        return discountedPlanTerms(plan, total, currency, locale, discount);
+    }
 
     if (plan.billing_period === 'year') {
         return __(
@@ -238,5 +243,46 @@ export function planTerms(
     return __(
         'Free for :days days, then :total a month. Cancel before then and you are not charged.',
         { days: plan.trial_days, total },
+    );
+}
+
+/**
+ * The commitment line for a checkout that carries a first-period coupon. The
+ * coupon's months count from the checkout, so with the trial in front it
+ * covers that many monthly invoices, or the first yearly one: the line names
+ * the discounted amount and how long it lasts, then the full price after.
+ * Rounded to the cent the way Stripe rounds the discount.
+ */
+function discountedPlanTerms(
+    plan: Plan,
+    total: string,
+    currency: string,
+    locale: string,
+    discount: SecondOfferDiscount,
+): string {
+    const priceInCents = Math.round(plan.price * 100);
+    const discounted = formatCurrency(
+        priceInCents - Math.round((priceInCents * discount.percentOff) / 100),
+        currency,
+        locale,
+    );
+    const params = {
+        days: plan.trial_days,
+        discounted,
+        total,
+        percent: discount.percentOff,
+        months: discount.months,
+    };
+
+    if (plan.billing_period === 'year') {
+        return __(
+            'Free for :days days, then :discounted for the first year (:percent% off) and :total a year after that. Cancel before then and you are not charged.',
+            params,
+        );
+    }
+
+    return __(
+        'Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.',
+        params,
     );
 }

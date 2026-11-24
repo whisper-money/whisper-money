@@ -62,22 +62,23 @@ class EnsureLaunchCouponsCommand extends Command
             ],
             // Offered by the cancel flow to a subscriber who finds the plan too
             // expensive (`subscriptions.retention_coupon`).
-            [
-                'id' => (string) config('subscriptions.retention_coupon.id'),
-                'name' => sprintf(
-                    'WM Retention – %d%% off for %d months',
-                    config('subscriptions.retention_coupon.percent_off'),
-                    config('subscriptions.retention_coupon.duration_in_months'),
-                ),
-                'percent_off' => (int) config('subscriptions.retention_coupon.percent_off'),
-                'duration' => 'repeating',
-                'duration_in_months' => (int) config('subscriptions.retention_coupon.duration_in_months'),
-                'applies_to' => null,
-            ],
+            $this->repeatingCoupon('subscriptions.retention_coupon', 'WM Retention'),
+            // Applied by the checkout started from the second offer
+            // (`subscriptions.second_offer_coupon`).
+            $this->repeatingCoupon('subscriptions.second_offer_coupon', 'WM Second Offer'),
         ];
+
+        // A coupon whose id is cleared in config is switched off, not created.
+        $coupons = array_filter($coupons, fn (array $config): bool => $config['id'] !== '');
 
         foreach ($coupons as $config) {
             $existing = $this->findCoupon($config['id']);
+
+            if ($existing !== null && ($config['quoted'] ?? false) && $this->drifted($existing, $config)) {
+                $this->error("Coupon `{$config['id']}` exists in Stripe with other terms than the config. Coupons cannot be edited: create one under a new id and point the config at it.");
+
+                return self::FAILURE;
+            }
 
             if ($existing !== null) {
                 $this->info("✔ Coupon `{$config['id']}` already exists.");
@@ -112,6 +113,45 @@ class EnsureLaunchCouponsCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A percentage-off coupon for a number of months, read from its config
+     * entry so what Stripe charges is what the app quotes.
+     *
+     * Marked `quoted`: the app prints its terms from the same config, so an
+     * existing one that differs is an error, not something to skip.
+     *
+     * @return array{id: string, name: string, percent_off: int, duration: string, duration_in_months: int, applies_to: null, quoted: true}
+     */
+    private function repeatingCoupon(string $configKey, string $label): array
+    {
+        $percentOff = (int) config("{$configKey}.percent_off");
+        $months = (int) config("{$configKey}.duration_in_months");
+
+        return [
+            'id' => (string) config("{$configKey}.id"),
+            'name' => sprintf('%s – %d%% off for %d months', $label, $percentOff, $months),
+            'percent_off' => $percentOff,
+            'duration' => 'repeating',
+            'duration_in_months' => $months,
+            'applies_to' => null,
+            'quoted' => true,
+        ];
+    }
+
+    /**
+     * Whether a coupon the app quotes from config already exists in Stripe
+     * with other terms, so the screen would promise what Stripe does not
+     * charge.
+     *
+     * @param  array{percent_off: int, duration: string, duration_in_months?: int}  $config
+     */
+    private function drifted(Coupon $coupon, array $config): bool
+    {
+        return (int) $coupon->percent_off !== $config['percent_off']
+            || $coupon->duration !== $config['duration']
+            || ($config['duration_in_months'] ?? null) !== $coupon->duration_in_months;
     }
 
     private function findCoupon(string $id): ?Coupon

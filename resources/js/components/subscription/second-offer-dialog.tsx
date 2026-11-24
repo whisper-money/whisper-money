@@ -1,5 +1,8 @@
 import { StepBadge, StepSectionLabel } from '@/components/onboarding/step-list';
-import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
+import {
+    secondOfferDiscountFor,
+    UpgradeDialog,
+} from '@/components/subscription/upgrade-dialog';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card } from '@/components/ui/card';
 import { useOfferedPriceTier } from '@/hooks/use-price-tier';
@@ -39,7 +42,7 @@ const OPENED_STORAGE_KEY = 'second-offer-shown';
  * down the uncategorized backlog the copy points at.
  */
 export function SecondOfferDialog() {
-    const { showSecondOffer, secondOfferBacklog, auth } =
+    const { showSecondOffer, secondOfferBacklog, auth, pricing } =
         usePage<SharedData>().props;
     const userId = auth.user.id;
     const tier = useOfferedPriceTier();
@@ -64,7 +67,11 @@ export function SecondOfferDialog() {
             );
             setBacklog(secondOfferBacklog);
             setOpen(true);
-            captureEvent('second_offer_shown', { price_tier: tier });
+            captureEvent('second_offer_shown', {
+                price_tier: tier,
+                discount_percent:
+                    secondOfferDiscountFor(pricing, tier)?.percentOff ?? null,
+            });
         }
 
         // Nothing to do with the answer: if it never lands, the next page
