@@ -117,9 +117,6 @@ class OnboardingRevealService
             'merchants' => $this->topMerchants($byMonth[$month], $currency),
             'merchant_count' => $this->merchantCount($user),
             'recurring_count' => $this->recurringMerchants($recurring),
-            // What the repeat charges come to in a month, which is the figure
-            // step 10 sets a first target against.
-            'recurring_amount' => -$this->sumConvertedAmounts($recurring->values(), $currency),
             // A month made only of the round figures the user typed in is their
             // own answer read back to them, and the screen says so rather than
             // presenting it as what the bank saw.
