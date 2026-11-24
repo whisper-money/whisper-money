@@ -27,7 +27,12 @@ export function savedAutomationRuleFlashKey(
  * Mount this once at the page level (NOT inside per-row dialogs that may
  * remount during Inertia visits).
  */
-export function PostSaveApplyRulePrompt() {
+export function PostSaveApplyRulePrompt({
+    onApplied,
+}: {
+    /** Called once the rule has been applied, to refresh what it changed. */
+    onApplied?: () => void;
+} = {}) {
     const { automationRules, flash } = usePage<{
         automationRules: AutomationRule[];
         flash?: SavedAutomationRuleFlash;
@@ -68,6 +73,7 @@ export function PostSaveApplyRulePrompt() {
             rule={activeRule}
             open={open}
             initialStep="prompt"
+            onApplied={onApplied}
             onOpenChange={(next) => {
                 setOpen(next);
                 if (!next) {

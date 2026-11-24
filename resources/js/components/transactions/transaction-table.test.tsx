@@ -50,7 +50,11 @@ vi.mock('@/components/transactions/transaction-filters', () => ({
     ),
 }));
 vi.mock('@/components/transactions/transaction-row-dialogs', () => ({
-    TransactionRowDialogs: () => null,
+    TransactionRowDialogs: ({
+        onRuleApplied,
+    }: {
+        onRuleApplied: () => void;
+    }) => <button onClick={onRuleApplied}>rule applied</button>,
 }));
 vi.mock('@/components/transactions/transaction-delete-dialogs', () => ({
     TransactionDeleteDialogs: () => null,
@@ -269,5 +273,25 @@ describe('TransactionTable', () => {
 
         fireEvent.click(screen.getByText('Load more'));
         expect(loadMore).toHaveBeenCalledOnce();
+    });
+
+    it('fetches the rows again once a rule is applied to existing transactions', () => {
+        const refreshRows = vi.fn();
+        const reload = vi.fn();
+        renderTable(source({ refreshRows, reload }));
+
+        fireEvent.click(screen.getByText('rule applied'));
+
+        expect(refreshRows).toHaveBeenCalledOnce();
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('reloads the rows a source holds in memory once a rule is applied', () => {
+        const reload = vi.fn();
+        renderTable(source({ reload }));
+
+        fireEvent.click(screen.getByText('rule applied'));
+
+        expect(reload).toHaveBeenCalledOnce();
     });
 });
