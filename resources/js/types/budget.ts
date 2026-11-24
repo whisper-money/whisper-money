@@ -173,8 +173,11 @@ export type BudgetSeverity = 'over' | 'near' | 'ok';
  * list can never disagree with the colour the user is looking at.
  */
 export function budgetSeverity(budget: Budget): BudgetSeverity {
-    const used = budgetPercentageUsed(budget);
+    return usageSeverity(budgetPercentageUsed(budget));
+}
 
+/** Where a share of a limit, as a percentage, sits against that limit. */
+export function usageSeverity(used: number): BudgetSeverity {
     if (used >= 100) {
         return 'over';
     }

@@ -1,3 +1,4 @@
+import { show as showBudget } from '@/actions/App/Http/Controllers/BudgetController';
 import { WholeAmount } from '@/components/cashflow/summary-card-parts';
 import { PrivacyRevealButton } from '@/components/privacy-reveal-button';
 import {
@@ -7,16 +8,20 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
     StatTile,
     StatTileLabel,
     StatTileSkeleton,
     StatTileValue,
 } from '@/components/ui/stat-tile';
+import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
+import { BudgetSeverity, usageSeverity } from '@/types/budget';
+import { type SpendingLimit } from '@/types/dashboard';
 import { __ } from '@/utils/i18n';
 import { formatPercent } from '@/utils/percent';
 import { Link, usePage } from '@inertiajs/react';
@@ -34,11 +39,14 @@ interface CashflowSummaryCardProps {
         current: CashflowSummary;
         previous: CashflowSummary;
     } | null;
+    /** The onboarding's monthly spending limit; null when there is none. */
+    spendingLimit?: SpendingLimit | null;
     loading?: boolean;
 }
 
 export function CashflowSummaryCard({
     data,
+    spendingLimit,
     loading,
 }: CashflowSummaryCardProps) {
     const { auth } = usePage<SharedData>().props;
@@ -123,6 +131,13 @@ export function CashflowSummaryCard({
                     </StatTile>
                 </div>
 
+                {spendingLimit && (
+                    <SpendingLimitRow
+                        limit={spendingLimit}
+                        currencyCode={auth.user.currency_code}
+                    />
+                )}
+
                 {/* Savings rate footer */}
                 <div className="mt-4 flex items-center justify-between border-t pt-3">
                     <span className="text-xs text-muted-foreground">
@@ -142,4 +157,88 @@ export function CashflowSummaryCard({
             </CardContent>
         </Card>
     );
+}
+
+/**
+ * Neutral while there is room, amber near the limit and red past it: the bar
+ * is the one place on the card that warns, so it reads at a glance.
+ */
+const LIMIT_BAR_COLORS: Record<BudgetSeverity, string | undefined> = {
+    ok: undefined,
+    near: 'bg-warning',
+    over: 'bg-destructive',
+};
+
+/**
+ * The monthly spending limit the user set as their first target in the
+ * onboarding, against what its budget has counted this period. Spent is the
+ * budget's own figure, so it matches the budget page rather than the card's
+ * expense total, which also covers what other budgets track.
+ */
+function SpendingLimitRow({
+    limit,
+    currencyCode,
+}: {
+    limit: SpendingLimit;
+    currencyCode: string;
+}) {
+    const { formatAmount } = useFormatAmount();
+    const used =
+        limit.allocated > 0 ? (limit.spent / limit.allocated) * 100 : 100;
+    const remaining = limit.allocated - limit.spent;
+    const amount = (cents: number) =>
+        formatAmount(Math.abs(cents), currencyCode, { fractionDigits: 0 });
+
+    return (
+        <Link
+            href={showBudget({ budget: limit.budget_id }).url}
+            className="group mt-4 flex flex-col gap-2 border-t pt-3"
+        >
+            <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="font-medium group-hover:underline">
+                    {__('Monthly spending limit')}
+                </span>
+                <span className="tabular-nums">
+                    <WholeAmount
+                        amountInCents={limit.spent}
+                        currencyCode={currencyCode}
+                    />{' '}
+                    {__('of')}{' '}
+                    <WholeAmount
+                        amountInCents={limit.allocated}
+                        currencyCode={currencyCode}
+                    />
+                </span>
+            </div>
+            <Progress
+                value={Math.min(used, 100)}
+                className="h-2"
+                indicatorClassName={LIMIT_BAR_COLORS[usageSeverity(used)]}
+                aria-label={__('Monthly spending limit')}
+            />
+            <span className="text-xs text-muted-foreground">
+                {remaining < 0
+                    ? __(':amount over the limit', {
+                          amount: amount(remaining),
+                      })
+                    : spendingLimitLeftLabel(
+                          amount(remaining),
+                          limit.days_left,
+                      )}
+            </span>
+        </Link>
+    );
+}
+
+function spendingLimitLeftLabel(amount: string, daysLeft: number): string {
+    if (daysLeft <= 0) {
+        return __(':amount left on the last day', { amount });
+    }
+
+    return daysLeft === 1
+        ? __(':amount left with 1 day to go', { amount })
+        : __(':amount left with :count days to go', {
+              amount,
+              count: daysLeft,
+          });
 }

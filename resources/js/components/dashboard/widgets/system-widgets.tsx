@@ -80,7 +80,10 @@ export function CashflowWidget({ data }: SystemWidgetProps) {
             fallback={<CashflowSummaryCard loading={true} />}
         >
             <PrivacyRevealScope>
-                <CashflowSummaryCard data={data.cashflowSummary ?? null} />
+                <CashflowSummaryCard
+                    data={data.cashflowSummary ?? null}
+                    spendingLimit={data.spendingLimit ?? null}
+                />
             </PrivacyRevealScope>
         </Deferred>
     );

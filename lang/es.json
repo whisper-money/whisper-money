@@ -4109,5 +4109,9 @@
     "The AI couldn’t run": "La IA no pudo funcionar",
     "Nothing was changed: your movements are exactly as they were. Try again later, or sort them by hand.": "No se ha cambiado nada: tus movimientos están exactamente como estaban. Inténtalo más tarde o clasifícalos a mano.",
     "You have :count real movements — the estimates you typed are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.": "Tienes :count movimientos reales; las estimaciones que escribiste ya están clasificadas y no cuentan. Los patrones empiezan a verse a partir de :min; por debajo estaríamos adivinando, y una regla equivocada es peor que ninguna regla.",
-    "Import another file": "Importa otro fichero"
+    "Import another file": "Importa otro fichero",
+    ":amount over the limit": ":amount por encima del límite",
+    ":amount left on the last day": "Te quedan :amount y hoy es el último día",
+    ":amount left with 1 day to go": "Te quedan :amount y falta 1 día",
+    ":amount left with :count days to go": "Te quedan :amount y faltan :count días"
 }
