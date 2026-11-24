@@ -5,6 +5,7 @@ use App\Features\OnboardingGateCopy;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\BankingConnection;
+use App\Models\Transaction;
 use App\Models\User;
 use Laravel\Pennant\Feature;
 
@@ -485,11 +486,14 @@ it('activates AI directly without a consent prompt when a bank is connected', fu
 
 it('asks for consent before activating AI when the plan was bought without a bank', function () {
     config(['subscriptions.enabled' => true]);
+    config(['ai_suggestions.eligibility_min_transactions' => 3]);
 
     // Paid, but with nothing connected — the bank gate's checkout came back and
     // the authorization never happened, or the plan was bought from the paywall.
     // Nothing has taken their consent yet, so the prompt is still theirs to answer.
     $user = User::factory()->subscribed()->create(['onboarded_at' => null]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->count(3)->create(['user_id' => $user->id, 'account_id' => $account->id]);
 
     $this->actingAs($user);
 
@@ -498,18 +502,27 @@ it('asks for consent before activating AI when the plan was bought without a ban
     $page = visit('/onboarding?step=ai-suggestions');
 
     $page->assertSee('Let AI draft your rules?')
-        ->assertSee('Without this you sort')
+        ->assertSee('Without this you file')
         ->assertSee('Turn it on')
         ->assertNoJavascriptErrors();
 
     // Nothing is activated until they explicitly accept.
     expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
+});
 
-    $page->click('Turn it on')
+it('does not ask for AI consent when there is too little for it to read', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->subscribed()->create(['onboarded_at' => null]);
+
+    $this->actingAs($user);
+
+    visit('/onboarding?step=ai-suggestions')
         ->assertSee('Not enough to learn from yet')
+        ->assertDontSee('Let AI draft your rules?')
         ->assertNoJavascriptErrors();
 
-    expect($user->refresh()->hasActiveAiConsent())->toBeTrue();
+    expect($user->refresh()->hasActiveAiConsent())->toBeFalse();
 });
 
 // =============================================================================
