@@ -47,6 +47,7 @@ const stateWith = (overrides: Record<string, unknown>) => ({
     requires_upgrade: false,
     eligible: true,
     transaction_count: 903,
+    estimate_count: 0,
     min_transactions: 50,
     auto_select_confidence: 0.8,
     throttled: false,
@@ -189,7 +190,7 @@ describe('StepAiSuggestions screens', () => {
 
         expect(
             screen.getByText(
-                'You have 0 real movements — your 4 estimates are already sorted and don’t count. Patterns start showing up around 50 — below that we would be guessing, and a wrong rule is worse than no rule.',
+                'You have 0 real movements — the estimates you typed are already sorted and don’t count. Patterns start showing up around 50 — below that we would be guessing, and a wrong rule is worse than no rule.',
             ),
         ).toBeInTheDocument();
     });

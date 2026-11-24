@@ -51,7 +51,7 @@ interface SuggestionState {
     /** Real movements: the onboarding estimates are left out. */
     transaction_count: number;
     /** The onboarding estimates, already sorted and of no use to the AI. */
-    estimate_count?: number;
+    estimate_count: number;
     min_transactions: number;
     auto_select_confidence: number;
     throttled: boolean;
@@ -753,18 +753,15 @@ function NotEnoughToLearnFrom({
     onAddAccount: () => void;
     onContinue: () => void;
 }) {
-    const estimateCount = state.estimate_count ?? 0;
-
     return (
         <StepScreen
             title={__('Not enough to learn from yet')}
             description={
-                estimateCount > 0
+                state.estimate_count > 0
                     ? __(
-                          'You have :count real movements — your :estimates estimates are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
+                          'You have :count real movements — the estimates you typed are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
                           {
                               count: state.transaction_count,
-                              estimates: estimateCount,
                               min: state.min_transactions,
                           },
                       )
