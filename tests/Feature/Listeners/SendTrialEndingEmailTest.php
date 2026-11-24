@@ -193,6 +193,34 @@ test('the keep-your-plan email states the end date, what was set up and links to
         ->not->toContain('€');
 });
 
+test('the keep-your-plan email offers two more weeks of trial with the plan back on', function () {
+    $user = User::factory()->create(['stripe_id' => 'cus_123']);
+    canceledTrialSubscription($user);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
+
+    expect(Mail::queued(TrialEndingCanceledEmail::class)->first()->render())
+        ->toContain('Give me 14 more days and keep my plan')
+        ->toContain('/settings/billing/extend-trial?')
+        ->toContain('utm_content=extend-trial')
+        ->toContain('utm_content=keep-plan');
+});
+
+test('the keep-your-plan email leaves the extension out once it no longer applies', function (array $userAttributes, array $subscriptionAttributes) {
+    $user = User::factory()->create(['stripe_id' => 'cus_123', ...$userAttributes]);
+    canceledTrialSubscription($user)->update($subscriptionAttributes);
+
+    handleTrialWillEnd(trialWillEndPayload(['cancel_at_period_end' => true]));
+
+    expect(Mail::queued(TrialEndingCanceledEmail::class)->first()->render())
+        ->toContain('Keep my plan')
+        ->not->toContain('more days and keep my plan')
+        ->not->toContain('/settings/billing/extend-trial');
+})->with([
+    'already extended once' => [['trial_extended_at' => now()->subMonth()], []],
+    'a pause set' => [[], ['pause_starts_at' => now()->addDays(3), 'pause_resumes_at' => now()->addMonths(2)]],
+]);
+
 test('the keep-your-plan email leaves onboarding estimates out of what was set up', function () {
     $user = User::factory()->create(['stripe_id' => 'cus_123']);
     canceledTrialSubscription($user);

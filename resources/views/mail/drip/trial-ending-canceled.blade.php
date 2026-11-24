@@ -22,6 +22,14 @@
 {{ __('Keep my plan') }}
 </x-mail::button>
 
+@if ($offersTrialExtension)
+{{ __('Need more time to try it? We can give you :days more days of trial and keep your plan: your first charge would then move to the end of those days. You can still cancel before then.', ['days' => \App\Actions\Subscription\ExtendTrial::DAYS]) }}
+
+<x-mail::button :url="route('settings.billing.extend-trial', $emailUtm + ['utm_content' => 'extend-trial'])">
+{{ __('Give me :days more days and keep my plan', ['days' => \App\Actions\Subscription\ExtendTrial::DAYS]) }}
+</x-mail::button>
+@endif
+
 {{ __("If something didn't work for you, reply to this email and tell us. We read every reply ourselves.") }}
 
 {{ __('Best,') }}<br>

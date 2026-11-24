@@ -13,6 +13,7 @@ use App\Services\FormatLocaleOptions;
 use App\Services\Subscriptions\SubscribedPlan;
 use App\Support\PriceTiers;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use DateTimeZone;
 use Exception;
@@ -1118,6 +1119,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function localTimezone(): string
     {
         return $this->validTimezone() ?? (string) config('app.timezone');
+    }
+
+    /**
+     * A day as this user's calendar has it, written out in the app's locale
+     * ("December 9, 2026"), for a sentence that names it.
+     */
+    public function localDate(CarbonInterface $date): string
+    {
+        return $date->toImmutable()
+            ->setTimezone($this->localTimezone())
+            ->locale(app()->getLocale())
+            ->isoFormat('LL');
     }
 
     /**

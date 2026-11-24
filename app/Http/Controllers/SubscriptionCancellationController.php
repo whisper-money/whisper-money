@@ -15,7 +15,6 @@ use App\Models\CancellationSurveyResponse;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Subscriptions\CancellationOffers;
-use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -174,8 +173,8 @@ class SubscriptionCancellationController extends Controller
             $response->markSaved(CancellationOffer::Pause);
 
             return $this->backToBilling(success: __('Done: Standard stays on until :start, then pauses until :end.', [
-                'start' => $this->localDate($user, $startsAt),
-                'end' => $this->localDate($user, $resumesAt),
+                'start' => $user->localDate($startsAt),
+                'end' => $user->localDate($resumesAt),
             ]));
         });
     }
@@ -209,7 +208,7 @@ class SubscriptionCancellationController extends Controller
             $response->markSaved(CancellationOffer::ExtendTrial);
 
             return $this->backToBilling(success: __('Done: your trial now ends on :date.', [
-                'date' => $this->localDate($user, $trialEndsAt),
+                'date' => $user->localDate($trialEndsAt),
             ]));
         });
     }
@@ -271,14 +270,6 @@ class SubscriptionCancellationController extends Controller
         } finally {
             $lock->release();
         }
-    }
-
-    private function localDate(User $user, CarbonInterface $date): string
-    {
-        return $date->toImmutable()
-            ->setTimezone($user->localTimezone())
-            ->locale(app()->getLocale())
-            ->isoFormat('LL');
     }
 
     private function backToBilling(?string $error = null, ?string $success = null): RedirectResponse

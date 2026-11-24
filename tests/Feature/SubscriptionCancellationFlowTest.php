@@ -487,6 +487,138 @@ describe('the trial extension', function () {
     });
 });
 
+/**
+ * A trial the user already set to cancel at its end, as Cashier keeps it:
+ * the grace period runs until the trial ends.
+ *
+ * @param  array<string, mixed>  $userAttributes
+ */
+function canceledTrialSubscriber(array $userAttributes = []): User
+{
+    $user = cancellableSubscriber([], $userAttributes);
+    $subscription = $user->subscription('default');
+    $subscription->update(['ends_at' => $subscription->trial_ends_at]);
+
+    return $user;
+}
+
+describe('the trial extension from the email', function () {
+    test('the page shows the new trial end and the first charge without asking Stripe', function () {
+        $this->freezeTime();
+        $user = canceledTrialSubscriber();
+        $subscriptions = Mockery::mock(SubscriptionService::class);
+        $subscriptions->shouldNotReceive('retrieve', 'update');
+        $stripeClient = Mockery::mock(StripeClient::class);
+        $stripeClient->subscriptions = $subscriptions;
+        app()->bind(StripeClient::class, fn () => $stripeClient);
+        $trialEndsAt = $user->subscription('default')->trial_ends_at->toImmutable()->addDays(14)->endOfDay()->startOfSecond();
+
+        $this->actingAs($user)
+            ->get(route('settings.billing.extend-trial', ['utm_source' => 'drip', 'utm_content' => 'extend-trial']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('subscription/extend-trial')
+                ->where('extension.days', 14)
+                ->where('extension.trialEndsAt', $trialEndsAt->toIso8601String())
+                ->where('extension.plan.price', fn ($price) => (float) $price === 8.99)
+                ->where('extension.plan.billing_period', 'month')
+                ->where('canKeepPlan', true)
+                ->where('planIsOn', false));
+
+        expect($user->fresh()->trial_extended_at)->toBeNull()
+            ->and($user->subscription('default')->fresh()->ends_at)->not->toBeNull();
+    });
+
+    test('the page says when it no longer applies, and offers to keep the plan while it is set to cancel', function (Closure $makeUser, bool $canKeepPlan, bool $planIsOn) {
+        $this->actingAs($makeUser())
+            ->get(route('settings.billing.extend-trial'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('subscription/extend-trial')
+                ->where('extension', null)
+                ->where('canKeepPlan', $canKeepPlan)
+                ->where('planIsOn', $planIsOn));
+    })->with([
+        'already extended once' => [fn () => canceledTrialSubscriber(['trial_extended_at' => now()->subWeek()]), true, false],
+        'the plan is back on already' => [fn () => cancellableSubscriber(), false, true],
+        'the trial is over' => [fn () => tap(cancellableSubscriber(), fn (User $user) => $user->subscription('default')->update(['stripe_status' => 'canceled', 'trial_ends_at' => now()->subDay(), 'ends_at' => now()->subDay()])), false, false],
+    ]);
+
+    test('brings a signed-out reader back to the page once signed in', function () {
+        $this->get(route('settings.billing.extend-trial', ['utm_content' => 'extend-trial']))->assertRedirect();
+
+        expect(session('url.intended'))->toBe(route('settings.billing.extend-trial', ['utm_content' => 'extend-trial']));
+    });
+
+    test('extends the trial and takes back the cancellation in one Stripe update', function () {
+        $this->freezeTime();
+        $user = canceledTrialSubscriber(['timezone' => 'America/Mexico_City']);
+        $sent = fakeStripeForCancellation();
+        $trialEndsAt = $user->subscription('default')->trial_ends_at->toImmutable()->addDays(14)->endOfDay()->startOfSecond();
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.extend-trial.store'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Done: your trial now ends on '.$trialEndsAt->setTimezone('America/Mexico_City')->isoFormat('LL').' and your plan is back on.')
+            ->assertRedirect(route('settings.billing'));
+
+        $subscription = $user->subscription('default')->fresh();
+
+        expect($sent['updates'])->toBe([[
+            'trial_end' => $trialEndsAt->getTimestamp(),
+            'proration_behavior' => 'none',
+            'cancel_at_period_end' => false,
+        ]])
+            ->and($subscription->trial_ends_at->equalTo($trialEndsAt))->toBeTrue()
+            ->and($subscription->ends_at)->toBeNull()
+            ->and($subscription->onGracePeriod())->toBeFalse()
+            ->and($user->fresh()->trial_extended_at)->not->toBeNull();
+    });
+
+    test('is refused when it no longer applies, without reaching Stripe', function (User $user) {
+        $sent = fakeStripeForCancellation();
+        $trialExtendedAt = $user->trial_extended_at;
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.extend-trial.store'))
+            ->assertRedirect(route('settings.billing.extend-trial'))
+            ->assertSessionHasErrors(['trial_extension' => 'This offer is no longer available on your plan.']);
+
+        expect($sent['updates'])->toBe([])
+            ->and($user->fresh()->trial_extended_at?->toIso8601String())->toBe($trialExtendedAt?->toIso8601String());
+    })->with([
+        'already extended once' => fn () => canceledTrialSubscriber(['trial_extended_at' => now()->subWeek()->startOfSecond()]),
+        'not on a trial' => fn () => tap(cancellableSubscriber(paidSubscriberAttributes()), fn (User $user) => $user->subscription('default')->update(['ends_at' => now()->addDays(10)])),
+        'not cancelled' => fn () => cancellableSubscriber(),
+        'a seeded subscription' => fn () => tap(canceledTrialSubscriber(), fn (User $user) => $user->subscription('default')->update(['stripe_id' => 'sub_demo_'.$user->id])),
+    ]);
+
+    test('is refused when Stripe shows a discount on the subscription', function () {
+        $user = canceledTrialSubscriber();
+        $sent = fakeStripeForCancellation(discounts: [['id' => 'di_lead', 'coupon' => ['id' => 'lead_50']]]);
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.extend-trial.store'))
+            ->assertSessionHasErrors('trial_extension');
+
+        expect($sent['updates'])->toBe([])
+            ->and($user->fresh()->trial_extended_at)->toBeNull();
+    });
+
+    test('a Stripe failure leaves the cancellation and the extension as they were', function () {
+        $user = canceledTrialSubscriber();
+        $endsAt = $user->subscription('default')->ends_at;
+        fakeStripeForCancellation(updateFailure: ApiConnectionException::factory('Stripe is down'));
+
+        $this->actingAs($user)
+            ->post(route('settings.billing.extend-trial.store'))
+            ->assertSessionHasErrors(['trial_extension' => 'We could not update your plan. Please try again in a few minutes.']);
+
+        expect($user->fresh()->trial_extended_at)->toBeNull()
+            ->and($user->subscription('default')->fresh()->ends_at->equalTo($endsAt))->toBeTrue();
+    });
+});
+
 describe('the yearly switch', function () {
     test('moves a monthly subscriber onto the yearly price of their tier', function (string $monthly, string $yearly) {
         $user = cancellableSubscriber(paidSubscriberAttributes($monthly));
