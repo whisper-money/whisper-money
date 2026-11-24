@@ -39,7 +39,7 @@ class SetupChecklist
      * to the dashboard a few times, short enough that it never becomes part
      * of the furniture.
      */
-    public const WINDOW_DAYS = 14;
+    private const WINDOW_DAYS = 14;
 
     public function __construct(private OnboardingSummaryService $onboarding) {}
 

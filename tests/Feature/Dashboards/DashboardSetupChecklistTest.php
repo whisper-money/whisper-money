@@ -11,7 +11,6 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetService;
-use App\Services\Dashboards\SetupChecklist;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -235,7 +234,7 @@ it('draws no card once every step is done', function (): void {
 });
 
 it('draws no card once the first days after onboarding are over', function (): void {
-    $user = setupUser(['onboarded_at' => now()->subDays(SetupChecklist::WINDOW_DAYS + 1)]);
+    $user = setupUser(['onboarded_at' => now()->subDays(15)]);
     $account = setupAccount($user);
     setupMovements($user, $account, 2);
 

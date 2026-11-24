@@ -7,7 +7,6 @@ use App\Models\Category;
 use App\Models\Dashboard;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Dashboards\SetupChecklist;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
 
@@ -41,9 +40,9 @@ beforeEach(function (): void {
 function challenged(array $attributes = []): User
 {
     return User::factory()->onboarded()->create([
-        // Past the dashboard's "Finish setting up" days, which keep the
+        // Past the dashboard's 14 "Finish setting up" days, which keep the
         // categorize prompt quiet: the tests below are about the prompt itself.
-        'onboarded_at' => now()->subDays(SetupChecklist::WINDOW_DAYS + 1),
+        'onboarded_at' => now()->subDays(15),
         'currency_code' => 'EUR',
         'locale' => 'en',
         'last_active_at' => now(),
@@ -241,7 +240,7 @@ it('asks again once the setup card is hidden', function (): void {
 });
 
 it('asks again once the setup card\'s days are over', function (): void {
-    $user = challenged(['onboarded_at' => now()->subDays(SetupChecklist::WINDOW_DAYS + 1)]);
+    $user = challenged(['onboarded_at' => now()->subDays(15)]);
     recordFor($user, 2, monthsAgo: 0);
 
     expect(challengesFor($user)['uncategorized']['count'])->toBe(2);
