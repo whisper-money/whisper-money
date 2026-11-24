@@ -225,7 +225,7 @@ describe('SecondOfferDialog', () => {
 
             expect(
                 screen.getByText(
-                    /Start now and get 30% off your first payments, on top of the free trial\./,
+                    /Start now and get 30% off when your free trial ends\./,
                 ),
             ).toBeInTheDocument();
             expect(
@@ -237,6 +237,11 @@ describe('SecondOfferDialog', () => {
                 'second_offer_shown',
                 { price_tier: 'standard', discount_percent: 30 },
             );
+            expect(
+                screen.getByRole('link', {
+                    name: 'Sort them — 30% off your first year',
+                }),
+            ).toBeInTheDocument();
 
             fireEvent.click(screen.getByText('Monthly'));
             expect(
@@ -246,7 +251,7 @@ describe('SecondOfferDialog', () => {
             ).toBeInTheDocument();
 
             const link = screen.getByRole('link', {
-                name: 'Sort them — free for 7 days, then 30% off',
+                name: 'Sort them — 30% off for 3 months',
             });
             // The browser only names the upsell point: the checkout decides
             // on its own whether the coupon applies.

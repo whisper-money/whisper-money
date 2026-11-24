@@ -2911,8 +2911,9 @@
     "Reconnect :bank": "Reconnecter :bank",
     "We'll take you to your bank to renew access.": "Nous vous emmenons à votre banque pour renouveler l'accès.",
     "Reconnect here anyway": "Reconnecter ici quand même",
-    "Start now and get :percent% off your first payments, on top of the free trial.": "Commencez maintenant et profitez de :percent % de réduction sur vos premiers paiements, en plus de l'essai gratuit.",
-    "Sort them — free for :days days, then :percent% off": "Classez-les — gratuit :days jours, puis :percent % de réduction",
     "Free for :days days, then :discounted for the first year (:percent% off) and :total a year after that. Cancel before then and you are not charged.": "Gratuit :days jours, puis :discounted la première année (:percent % de réduction) et :total par an ensuite. Annulez avant et vous n'êtes pas débité.",
-    "Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.": "Gratuit :days jours, puis :discounted par mois pendant :months mois (:percent % de réduction) et :total par mois ensuite. Annulez avant et vous n'êtes pas débité."
+    "Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.": "Gratuit :days jours, puis :discounted par mois pendant :months mois (:percent % de réduction) et :total par mois ensuite. Annulez avant et vous n'êtes pas débité.",
+    "Start now and get :percent% off when your free trial ends.": "Commencez maintenant et profitez de :percent % de réduction à la fin de l'essai gratuit.",
+    "Sort them — :percent% off your first year": "Classez-les — :percent % de réduction la première année",
+    "Sort them — :percent% off for :months months": "Classez-les — :percent % de réduction pendant :months mois"
 }

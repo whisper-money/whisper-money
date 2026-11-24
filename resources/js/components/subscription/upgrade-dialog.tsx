@@ -130,7 +130,7 @@ function withDiscount(
     return {
         ...copy,
         description: `${copy.description} ${__(
-            'Start now and get :percent% off your first payments, on top of the free trial.',
+            'Start now and get :percent% off when your free trial ends.',
             { percent: discount.percentOff },
         )}`,
     };
@@ -175,8 +175,9 @@ function secondOfferCopy(
 }
 
 /**
- * The checkout button's label: what it starts, that it starts free, and the
- * discount after the trial when there is one.
+ * The checkout button's label: what it starts, and that it starts free, or,
+ * with a discount, how long the discount lasts on the selected plan (the
+ * terms line under it still says the trial is free).
  */
 function ctaLabel(
     source: UpsellSource,
@@ -184,14 +185,20 @@ function ctaLabel(
     discount: SecondOfferDiscount | null,
 ): string {
     if (source === 'second_offer' && plan) {
-        return discount
-            ? __('Sort them — free for :days days, then :percent% off', {
-                  days: plan.trial_days,
-                  percent: discount.percentOff,
-              })
-            : __('Sort them — free for :days days', {
-                  days: plan.trial_days,
-              });
+        if (discount) {
+            return plan.billing_period === 'year'
+                ? __('Sort them — :percent% off your first year', {
+                      percent: discount.percentOff,
+                  })
+                : __('Sort them — :percent% off for :months months', {
+                      percent: discount.percentOff,
+                      months: discount.months,
+                  });
+        }
+
+        return __('Sort them — free for :days days', {
+            days: plan.trial_days,
+        });
     }
 
     return checkoutLabel(plan);

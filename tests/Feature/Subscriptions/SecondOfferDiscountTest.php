@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Models\UserLead;
 use App\Support\PriceTiers;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Cashier\Checkout;
@@ -66,11 +67,16 @@ function secondOfferCheckout(?int $shownDaysAgo = 1, ?string $priceArm = null, i
 
         return $builder;
     });
+    $builder->shouldReceive('withMetadata')->andReturnUsing(function (array $metadata) use ($discount, &$builder) {
+        $discount['metadata'] = $metadata;
+
+        return $builder;
+    });
     $builder->shouldReceive('checkout')->times($checkouts)->andReturnUsing(function () use ($discount, $checkout) {
         // A coupon Stripe does not have, as it answers when the command that
         // creates it has not run there.
         if (isset($discount['coupon']) && $discount['coupon'] === 'wm_missing_coupon') {
-            throw InvalidRequestException::factory('No such coupon: wm_missing_coupon');
+            throw InvalidRequestException::factory('No such coupon: wm_missing_coupon', stripeCode: 'resource_missing');
         }
 
         return $checkout;
@@ -98,7 +104,8 @@ test('a user shown the second offer this week gets its coupon at checkout', func
 
     startCheckout($user, ['plan' => $plan, 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['coupon' => 'wm_second_offer_30_3m']);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['coupon' => 'wm_second_offer_30_3m'])
+        ->and($discount['metadata'])->toBe(['upsell_source' => 'second_offer', 'second_offer_coupon' => 'wm_second_offer_30_3m']);
 })->with(['monthly', 'yearly']);
 
 test('the coupon id comes from the config', function () {
@@ -107,7 +114,7 @@ test('the coupon id comes from the config', function () {
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['coupon' => 'wm_custom_second_offer']);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['coupon' => 'wm_custom_second_offer']);
 });
 
 test('a checkout the coupon is not meant for is the normal checkout', function (?int $shownDaysAgo, array $query) {
@@ -115,7 +122,7 @@ test('a checkout the coupon is not meant for is the normal checkout', function (
 
     startCheckout($user, $query);
 
-    expect($discount->getArrayCopy())->toBe(['allows_promotion_codes' => true]);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['allows_promotion_codes' => true]);
 })->with([
     'shown more than a week ago' => [8, ['plan' => 'yearly', 'source' => 'second_offer']],
     'never shown' => [null, ['plan' => 'yearly', 'source' => 'second_offer']],
@@ -135,7 +142,7 @@ test('a former subscriber does not get the coupon', function () {
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['allows_promotion_codes' => true]);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['allows_promotion_codes' => true]);
 });
 
 test('the latam price does not get the coupon', function () {
@@ -143,7 +150,7 @@ test('the latam price does not get the coupon', function () {
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer', 'tier' => 'latam']);
 
-    expect($discount->getArrayCopy())->toBe(['allows_promotion_codes' => true]);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['allows_promotion_codes' => true]);
 });
 
 test('a user offered latam who buys the standard price gets the coupon', function () {
@@ -151,7 +158,7 @@ test('a user offered latam who buys the standard price gets the coupon', functio
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['coupon' => 'wm_second_offer_30_3m']);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['coupon' => 'wm_second_offer_30_3m']);
 });
 
 test('a coupon missing from Stripe never costs the sale', function () {
@@ -160,7 +167,8 @@ test('a coupon missing from Stripe never costs the sale', function () {
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['allows_promotion_codes' => true]);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['allows_promotion_codes' => true])
+        ->and($discount['metadata'])->toBe(['upsell_source' => 'second_offer']);
 });
 
 test('no coupon is applied once its id is cleared', function () {
@@ -169,7 +177,7 @@ test('no coupon is applied once its id is cleared', function () {
 
     startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-    expect($discount->getArrayCopy())->toBe(['allows_promotion_codes' => true]);
+    expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['allows_promotion_codes' => true]);
 });
 
 describe('a lead with a promotion code', function () {
@@ -190,7 +198,7 @@ describe('a lead with a promotion code', function () {
 
         startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-        expect($discount->getArrayCopy())->toBe(['coupon' => 'wm_second_offer_30_3m']);
+        expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['coupon' => 'wm_second_offer_30_3m']);
     });
 
     test('keeps the code when the coupon is not meant for them', function () {
@@ -199,7 +207,7 @@ describe('a lead with a promotion code', function () {
 
         startCheckout($user, ['plan' => 'yearly', 'source' => 'second_offer']);
 
-        expect($discount->getArrayCopy())->toBe(['promotion_code' => 'promo_lead_yearly']);
+        expect(Arr::except($discount->getArrayCopy(), 'metadata'))->toBe(['promotion_code' => 'promo_lead_yearly']);
     });
 });
 

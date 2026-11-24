@@ -4062,8 +4062,9 @@
     "Reconnect here anyway": "Reconectar aquí igualmente",
     "This is MyInvestor's orders list. It doesn't say whether each order is a buy or a redemption, so it can't be imported. Download the securities operations export (salida.xls) and upload that instead.": "Este es el listado de órdenes de MyInvestor. No indica si cada orden es una compra o un reembolso, así que no se puede importar. Descarga la exportación de operaciones de valores y fondos (salida.xls) y súbela en su lugar.",
     "Which MyInvestor file to download": "Qué archivo de MyInvestor descargar",
-    "Start now and get :percent% off your first payments, on top of the free trial.": "Empieza ahora y llévate un :percent % de descuento en tus primeros pagos, además de la prueba gratis.",
-    "Sort them — free for :days days, then :percent% off": "Ordénalos: gratis :days días y luego un :percent % de descuento",
     "Free for :days days, then :discounted for the first year (:percent% off) and :total a year after that. Cancel before then and you are not charged.": "Gratis :days días, después :discounted el primer año (un :percent % de descuento) y :total al año a partir de entonces. Si cancelas antes, no se te cobra nada.",
-    "Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.": "Gratis :days días, después :discounted al mes durante :months meses (un :percent % de descuento) y :total al mes a partir de entonces. Si cancelas antes, no se te cobra nada."
+    "Free for :days days, then :discounted a month for :months months (:percent% off) and :total a month after that. Cancel before then and you are not charged.": "Gratis :days días, después :discounted al mes durante :months meses (un :percent % de descuento) y :total al mes a partir de entonces. Si cancelas antes, no se te cobra nada.",
+    "Start now and get :percent% off when your free trial ends.": "Empieza ahora y llévate un :percent % de descuento cuando acabe la prueba gratis.",
+    "Sort them — :percent% off your first year": "Ordénalos: :percent % de descuento el primer año",
+    "Sort them — :percent% off for :months months": "Ordénalos: :percent % de descuento durante :months meses"
 }

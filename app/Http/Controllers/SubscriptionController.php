@@ -246,48 +246,61 @@ class SubscriptionController extends Controller
         // PersistCheckoutAttributionFromStripe).
         $metadata = $this->checkoutMetadata($request, $isLatam);
 
-        if ($metadata !== []) {
-            $subscriptionBuilder->withMetadata($metadata);
-        }
-
-        return $this->checkoutWithDiscount($subscriptionBuilder, $request, $planKey, $isLatam);
+        return $this->checkoutWithDiscount($subscriptionBuilder, $metadata, $request->user(), $planKey, $isLatam);
     }
 
     /**
      * Open the Stripe checkout with the one discount it carries. Stripe takes
      * a single discount, so they never stack: the second offer's coupon, for a
      * user it is really meant for, replaces both the lead's code and the box
-     * to type one in.
+     * to type one in. The subscription is tagged with the coupon only when it
+     * is applied, so the offer's conversion can be read from what was charged.
+     *
+     * @param  array<string, string>  $metadata
      */
-    private function checkoutWithDiscount(SubscriptionBuilder $subscriptionBuilder, Request $request, string $planKey, bool $isLatam): Checkout
+    private function checkoutWithDiscount(SubscriptionBuilder $subscriptionBuilder, array $metadata, User $user, string $planKey, bool $isLatam): Checkout
     {
-        $source = UpsellSource::tryFrom((string) $request->query('source', ''));
-        $couponId = $this->secondOfferDiscount->couponFor($request->user(), $source, $isLatam);
-        $sessionOptions = [
+        $source = UpsellSource::tryFrom($metadata['upsell_source'] ?? '');
+        $couponId = $this->secondOfferDiscount->couponFor($user, $source, $isLatam);
+
+        if ($couponId !== null) {
+            try {
+                return $subscriptionBuilder
+                    ->withCoupon($couponId)
+                    ->withMetadata([...$metadata, 'second_offer_coupon' => $couponId])
+                    ->checkout($this->checkoutSessionOptions());
+            } catch (InvalidRequestException $exception) {
+                if ($exception->getStripeCode() !== 'resource_missing') {
+                    throw $exception;
+                }
+
+                // The coupon is missing from Stripe (`stripe:ensure-launch-coupons`
+                // has not run there): a discount that cannot be applied must
+                // never cost the sale, so the user checks out at the normal
+                // price, which is what Stripe's own page then shows them.
+                report($exception);
+                $subscriptionBuilder->withCoupon(null);
+            }
+        }
+
+        $this->applyPromotionCode($subscriptionBuilder, $user, $planKey, $isLatam);
+
+        if ($metadata !== []) {
+            $subscriptionBuilder->withMetadata($metadata);
+        }
+
+        return $subscriptionBuilder->checkout($this->checkoutSessionOptions());
+    }
+
+    /**
+     * @return array{success_url: string, cancel_url: string}
+     */
+    private function checkoutSessionOptions(): array
+    {
+        return [
             'success_url' => route('subscribe.success'),
             'cancel_url' => route('subscribe.cancel'),
         ];
-
-        if ($couponId === null) {
-            $this->applyPromotionCode($subscriptionBuilder, $request->user(), $planKey, $isLatam);
-
-            return $subscriptionBuilder->checkout($sessionOptions);
-        }
-
-        try {
-            return $subscriptionBuilder->withCoupon($couponId)->checkout($sessionOptions);
-        } catch (InvalidRequestException $exception) {
-            // The coupon is missing from Stripe (`stripe:ensure-launch-coupons`
-            // has not run there): a discount that cannot be applied must never
-            // cost the sale, so the user checks out at the normal price, which
-            // is what Stripe's own page then shows them.
-            report($exception);
-
-            $subscriptionBuilder->withCoupon(null);
-            $this->applyPromotionCode($subscriptionBuilder, $request->user(), $planKey, $isLatam);
-
-            return $subscriptionBuilder->checkout($sessionOptions);
-        }
     }
 
     /**
