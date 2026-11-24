@@ -446,13 +446,16 @@ class BalanceLookup
      * day `getBalanceAt()` would only repeat the earliest figure across months
      * nobody has any record of, so a chart should draw nothing there.
      *
-     * An account with no balance at all, or one seeded before the range, is
-     * reported as known: the first has nothing to walk back from and reads as
-     * zero throughout, as it always has; the second has a balance on file for
-     * every day of the range.
+     * An account seeded before the range has a balance on file for every day
+     * of it. One with no balance at all is known on none: `getBalanceAt()`
+     * reads it as zero, but nothing says that is what it holds.
      */
     public function hasHistoryOn(string $accountId, Carbon $date): bool
     {
+        if (($this->balancesByAccount[$accountId] ?? new DatedSeries)->isEmpty()) {
+            return false;
+        }
+
         $firstKnownDay = $this->firstKnownDayInRange[$accountId] ?? null;
 
         if ($firstKnownDay === null || $date->toDateString() >= $firstKnownDay) {

@@ -22,16 +22,18 @@ class NetWorthAnalyticsService
 
     /**
      * The net worth against the previous period and every account's balance
-     * over the period, monthly or, when $daily, daily.
+     * over the period, monthly or, when $daily, daily. With $unknownAsNull, a
+     * period an account has no figure for reads null, as the dashboard chart
+     * draws it ({@see self::evolution()}).
      *
      * @return array{granularity: 'daily'|'monthly', current: array{current: int, previous: int, currency_code: string}, evolution: array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}}
      */
-    public function forRange(User $user, PeriodComparator $period, bool $daily): array
+    public function forRange(User $user, PeriodComparator $period, bool $daily, bool $unknownAsNull = false): array
     {
         return [
             'granularity' => $daily ? 'daily' : 'monthly',
             'current' => $this->totals($user, $period),
-            'evolution' => $this->evolution($user, $period->from, $period->to, $daily),
+            'evolution' => $this->evolution($user, $period->from, $period->to, $daily, $unknownAsNull),
         ];
     }
 
@@ -102,17 +104,19 @@ class NetWorthAnalyticsService
 
     /**
      * Every account's balance at the end of each month (or day, when $daily)
-     * between the two dates, converted to the user's currency.
+     * between the two dates, converted to the user's currency. With
+     * $unknownAsNull, a period an account has no figure for reads null
+     * ({@see AccountMetricsService::getNetWorthEvolution()}).
      *
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function evolution(User $user, Carbon $start, Carbon $end, bool $daily = false): array
+    public function evolution(User $user, Carbon $start, Carbon $end, bool $daily = false, bool $unknownAsNull = false): array
     {
         $accounts = $this->accountsWithBank($user);
 
         return $daily
-            ? $this->accountMetrics->getNetWorthDailyEvolution($user->currency_code, $accounts, $start, $end)
-            : $this->accountMetrics->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $user->localToday());
+            ? $this->accountMetrics->getNetWorthDailyEvolution($user->currency_code, $accounts, $start, $end, $unknownAsNull)
+            : $this->accountMetrics->getNetWorthEvolution($user->currency_code, $accounts, $start, $end, $user->localToday(), $unknownAsNull);
     }
 
     /**

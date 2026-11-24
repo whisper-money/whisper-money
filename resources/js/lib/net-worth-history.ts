@@ -81,3 +81,46 @@ export function calculateNetWorthTrend(
         currentAmount,
     };
 }
+
+export interface NetWorthHistorySpan {
+    /**
+     * The first period the stacked chart draws. Period 0 is only there to
+     * compare period 1 with, so it is 1, or the first period with data when
+     * that comes later.
+     */
+    chartStart: number;
+    /**
+     * The first period the month-over-month series are computed from: the
+     * first with data, so the change into it is not read as growth from
+     * nothing.
+     */
+    seriesStart: number;
+    /** The periods in the chart's range before the first one with data. */
+    unknownPeriods: string[];
+    /**
+     * The first period with data when the history is shorter than the range,
+     * or null when it covers the whole range (or nothing is known).
+     */
+    historyStart: string | null;
+}
+
+/**
+ * Where the known history starts in a chart's range of periods, keyed by
+ * `month` (a month, or a day in the daily view).
+ */
+export function netWorthHistorySpan(
+    data: NetWorthHistoryPoint[],
+    accountIds: string[],
+): NetWorthHistorySpan {
+    const firstKnown = firstKnownIndex(data, accountIds);
+    const chartStart = Math.max(1, firstKnown);
+
+    return {
+        chartStart,
+        seriesStart: Math.max(0, firstKnown),
+        unknownPeriods: data
+            .slice(1, chartStart)
+            .map((point) => String(point.month)),
+        historyStart: firstKnown > 0 ? String(data[firstKnown].month) : null,
+    };
+}

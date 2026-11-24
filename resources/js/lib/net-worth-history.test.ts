@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { calculateNetWorthTrend, firstKnownIndex } from './net-worth-history';
+import {
+    calculateNetWorthTrend,
+    firstKnownIndex,
+    netWorthHistorySpan,
+} from './net-worth-history';
 
 const accounts = {
     checking: {
@@ -77,5 +81,58 @@ describe('calculateNetWorthTrend', () => {
         expect(
             calculateNetWorthTrend(months([[null, null]]), accounts, 1),
         ).toBeNull();
+    });
+});
+
+describe('netWorthHistorySpan', () => {
+    const ids = ['checking', 'savings'];
+
+    it('draws from the second period when the history covers the range', () => {
+        const data = months([
+            [100, 0],
+            [100, 0],
+            [100, 0],
+        ]);
+
+        expect(netWorthHistorySpan(data, ids)).toEqual({
+            chartStart: 1,
+            seriesStart: 0,
+            unknownPeriods: [],
+            historyStart: null,
+        });
+    });
+
+    it('leaves out the periods before the first one with data', () => {
+        const data = months([
+            [null, null],
+            [null, null],
+            [null, null],
+            [100, null],
+            [120, 10],
+        ]);
+
+        expect(netWorthHistorySpan(data, ids)).toEqual({
+            chartStart: 3,
+            seriesStart: 3,
+            unknownPeriods: ['2026-02', '2026-03'],
+            historyStart: '2026-04',
+        });
+    });
+
+    it('draws the whole range when nothing is known', () => {
+        expect(
+            netWorthHistorySpan(
+                months([
+                    [null, null],
+                    [null, null],
+                ]),
+                ids,
+            ),
+        ).toEqual({
+            chartStart: 1,
+            seriesStart: 0,
+            unknownPeriods: [],
+            historyStart: null,
+        });
     });
 });

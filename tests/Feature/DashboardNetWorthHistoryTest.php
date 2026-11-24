@@ -5,6 +5,7 @@ use App\Models\AccountBalance;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\NetWorthAnalyticsService;
 use Carbon\Carbon;
 
 /*
@@ -102,13 +103,54 @@ it('keeps every month known for an account whose history reaches past the chart'
         ->and($byMonth['2025-11'])->toBe(150000);
 });
 
-it('keeps the net worth evolution API free of nulls', function () {
-    givenMovement($this->user, $this->account, '2026-06-10', 100000);
+it('leaves an account with no balance empty instead of reading it as zero', function () {
+    givenMovement($this->user, $this->account, '2025-01-10', 50000);
+    $mortgage = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => $this->user->currency_code]);
 
-    $data = $this->actingAs($this->user)->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
-        'from' => '2025-11-01',
+    $byMonth = dashboardNetWorthByMonth($this->user, $mortgage);
+
+    expect($byMonth)->each->toBeNull();
+});
+
+it('leaves an account empty once it is archived', function () {
+    givenMovement($this->user, $this->account, '2025-01-10', 50000);
+    $this->account->forceFill(['archived_at' => '2026-09-15 10:00:00'])->save();
+
+    $byMonth = dashboardNetWorthByMonth($this->user, $this->account);
+
+    expect($byMonth['2026-08'])->toBe(250000)
+        ->and($byMonth['2026-09'])->toBeNull()
+        ->and($byMonth['2026-11'])->toBeNull();
+});
+
+it('leaves the days before the first movement empty in the dashboard daily chart', function () {
+    givenMovement($this->user, $this->account, '2026-11-20', -10000);
+
+    $data = $this->actingAs($this->user)->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
+        'from' => '2026-11-18',
         'to' => '2026-11-24',
     ]))->assertOk()->json('data');
 
-    expect(collect($data)->pluck($this->account->id)->all())->each->toBeInt();
+    expect(collect($data)->pluck($this->account->id, 'date')->all())->toBe([
+        '2026-11-18' => null,
+        '2026-11-19' => null,
+        '2026-11-20' => 250000,
+        '2026-11-21' => 250000,
+        '2026-11-22' => 250000,
+        '2026-11-23' => 250000,
+        '2026-11-24' => 250000,
+    ]);
 });
+
+it('keeps every period an integer for the API and MCP readers', function (bool $daily) {
+    givenMovement($this->user, $this->account, '2026-06-10', 100000);
+
+    $evolution = app(NetWorthAnalyticsService::class)->evolution(
+        $this->user,
+        Carbon::parse('2025-11-01'),
+        Carbon::parse('2026-11-24'),
+        $daily,
+    );
+
+    expect(collect($evolution['data'])->pluck($this->account->id)->all())->each->toBeInt();
+})->with(['monthly' => false, 'daily' => true]);

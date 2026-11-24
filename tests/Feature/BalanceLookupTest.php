@@ -872,7 +872,7 @@ test('hasHistoryOn covers the whole range for an account that moved before it', 
         ->and($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeTrue();
 });
 
-test('hasHistoryOn covers the whole range for seeded accounts and ones with no balance', function () {
+test('hasHistoryOn covers the whole range for a seeded account and none of it for one with no balance', function () {
     $empty = Account::factory()->create(['user_id' => $this->user->id]);
 
     AccountBalance::factory()->create([
@@ -888,5 +888,6 @@ test('hasHistoryOn covers the whole range for seeded accounts and ones with no b
     );
 
     expect($lookup->hasHistoryOn($this->account->id, Carbon::parse('2026-01-31')))->toBeTrue()
-        ->and($lookup->hasHistoryOn($empty->id, Carbon::parse('2026-01-31')))->toBeTrue();
+        ->and($lookup->hasHistoryOn($empty->id, Carbon::parse('2026-01-31')))->toBeFalse()
+        ->and($lookup->getBalanceAt($empty->id, Carbon::parse('2026-01-31')))->toBe(0);
 });

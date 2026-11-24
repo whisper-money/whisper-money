@@ -116,7 +116,7 @@ describe('NetWorthChart', () => {
             '2026-11',
         ]);
         expect(screen.getByTestId('net-worth-no-data').textContent).toContain(
-            'Dec 2025 – May: before your first movement',
+            'Dec 2025 – May: before your first balance or movement',
         );
     });
 

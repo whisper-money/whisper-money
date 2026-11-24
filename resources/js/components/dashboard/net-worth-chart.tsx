@@ -38,7 +38,7 @@ import { chartRoleColors } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
 import {
     calculateNetWorthTrend,
-    firstKnownIndex,
+    netWorthHistorySpan,
 } from '@/lib/net-worth-history';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
@@ -81,6 +81,29 @@ function formatXAxisLabel(
     return granularity === 'daily'
         ? formatDayFromDate(value, locale)
         : formatMonthFromYearMonth(value, locale);
+}
+
+/**
+ * What the long trend covers: the whole range, or, when the history is
+ * shorter than that, the time since its first period with data.
+ */
+function formatLongTrendLabel(
+    historyStart: string | null,
+    locale: string,
+    granularity: ChartGranularity,
+): string {
+    if (historyStart === null) {
+        return granularity === 'daily'
+            ? __('for the last 30 days')
+            : __('for the last 12 months');
+    }
+
+    return __('since :date', {
+        date:
+            granularity === 'daily'
+                ? formatDate(historyStart, 'MMM d, yyyy', locale)
+                : formatDate(`${historyStart}-01`, 'MMM yyyy', locale),
+    });
 }
 
 /**
@@ -175,7 +198,7 @@ export function NetWorthChart({
         accountCurrencies,
         accountsForHook,
         hasLiabilities,
-        firstKnown,
+        historySpan,
     } = useMemo(() => {
         const accounts = activeData.accounts || {};
         const chartDataArray = activeData.data || [];
@@ -385,7 +408,7 @@ export function NetWorthChart({
                 allHookAccounts,
                 chartDataArray.length - 1,
             ),
-            firstKnown: firstKnownIndex(chartDataArray, allIncludedIds),
+            historySpan: netWorthHistorySpan(chartDataArray, allIncludedIds),
             totalAmount: total,
             accountCurrencies: currencies,
             accountsForHook: allHookAccounts,
@@ -397,18 +420,11 @@ export function NetWorthChart({
         includeRealEstateInNetWorthChart,
     ]);
 
-    // The first period is only there to compare the second with, so the
-    // chart starts at the second one, or at the first with data when that is
-    // later: the periods before it are "no data" and are not drawn.
-    const displayStart = Math.max(1, firstKnown);
-    const unknownPeriods = rawChartData
-        .slice(1, displayStart)
-        .map((point) => point.month as string);
+    const { chartStart, seriesStart, unknownPeriods, historyStart } =
+        historySpan;
 
     const chartViews = useChartViews({
-        // The month-over-month views start at the first period with data, so
-        // the change into it is not read as growth from nothing.
-        data: rawChartData.slice(Math.max(0, firstKnown)) as Array<
+        data: rawChartData.slice(seriesStart) as Array<
             Record<string, string | number>
         >,
         accounts: accountsForHook,
@@ -479,23 +495,11 @@ export function NetWorthChart({
 
     const shortTrendLabel =
         granularity === 'daily' ? __('today') : __('this month');
-    // A history shorter than the range is measured from its first period
-    // with data, and says so.
-    const historyStart = rawChartData[firstKnown]?.month as string | undefined;
-    const longTrendLabel =
-        firstKnown > 0 && historyStart
-            ? __('since :date', {
-                  date: formatDate(
-                      granularity === 'daily'
-                          ? historyStart
-                          : `${historyStart}-01`,
-                      granularity === 'daily' ? 'MMM d, yyyy' : 'MMM yyyy',
-                      locale,
-                  ),
-              })
-            : granularity === 'daily'
-              ? __('for the last 30 days')
-              : __('for the last 12 months');
+    const longTrendLabel = formatLongTrendLabel(
+        historyStart,
+        locale,
+        granularity,
+    );
 
     if (loading || (granularity === 'daily' && isDailyLoading)) {
         return (
@@ -535,7 +539,7 @@ export function NetWorthChart({
     const xAxisFormatter = (value: string) =>
         formatXAxisLabel(value, locale, granularity);
 
-    const knownChartData = scaledChartData.slice(displayStart);
+    const knownChartData = scaledChartData.slice(chartStart);
     const stackedChartProps = {
         data: knownChartData,
         dataKeys,
@@ -647,7 +651,7 @@ export function NetWorthChart({
                                 style={{ flexGrow: unknownPeriods.length }}
                             >
                                 {__(
-                                    ':months: before your first movement. Nothing to show here, and nothing counted in the change.',
+                                    ':months: before your first balance or movement. Nothing to show here, and nothing counted in the change.',
                                     {
                                         months: formatUnknownRange(
                                             unknownPeriods,

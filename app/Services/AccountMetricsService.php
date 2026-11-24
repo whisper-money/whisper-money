@@ -90,16 +90,16 @@ class AccountMetricsService
      * amount is read at the end of the owner's $today
      * ({@see User::localToday()}), not at the server's UTC instant.
      *
-     * With $unknownMonthsAsNull, a month that ends before an account's first
-     * balance or movement reads null for it instead of a balance walked back
-     * across months nobody has any record of ({@see BalanceLookup::hasHistoryOn()}),
-     * so a chart can tell "no data" apart from a real figure. Off by default,
-     * which keeps every point an integer for the API and MCP readers.
+     * With $unknownAsNull, a month the account has no figure for reads null
+     * (see `isUnknownOn()`) instead of a balance walked back across months
+     * nobody has any record of, so a chart can tell "no data" apart from a
+     * real figure. Off by default, which keeps every point an integer for the
+     * API and MCP readers.
      *
      * @param  Collection<int, Account>  $accounts
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, Carbon $today, bool $unknownMonthsAsNull = false): array
+    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, Carbon $today, bool $unknownAsNull = false): array
     {
         $accountIds = $accounts->pluck('id');
         $endOfToday = $today->copy()->endOfDay();
@@ -120,9 +120,13 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $point += $unknownMonthsAsNull && $this->isUnknownOn($lookup, $account, $date)
-                    ? $this->unknownMonthEntries($account)
-                    : $this->monthEntries($lookup, $account, $date, $userCurrency);
+                $point += $this->balanceEntries($lookup, $account, $date, $userCurrency, $unknownAsNull);
+
+                if ($account->type->supportsInvestedAmount()) {
+                    $point[$account->id.'_invested'] = $point[$account->id] === null
+                        ? null
+                        : $this->investedAmountAt($lookup, $account, $date);
+                }
             }
 
             $points[] = $point;
@@ -160,14 +164,19 @@ class AccountMetricsService
     }
 
     /**
-     * One account's entries in a month's net worth point: its balance in the
-     * user's currency, the original amount when it is kept in another one, and
-     * the invested amount for the types that track it.
+     * One account's entries in a net worth point: its balance in the user's
+     * currency and, when it is kept in another one, the original amount. With
+     * $unknownAsNull, a day the account has no figure for reads a null balance
+     * and no original amount.
      *
      * @return array<string, mixed>
      */
-    private function monthEntries(BalanceLookup $lookup, Account $account, Carbon $date, string $userCurrency): array
+    private function balanceEntries(BalanceLookup $lookup, Account $account, Carbon $date, string $userCurrency, bool $unknownAsNull): array
     {
+        if ($unknownAsNull && $this->isUnknownOn($lookup, $account, $date)) {
+            return [$account->id => null];
+        }
+
         $originalBalance = $this->balanceAt($lookup, $account, $date);
         $entries = [
             $account->id => $this->convertBalance($originalBalance, $account->currency_code, $userCurrency, $date->toDateString()),
@@ -180,38 +189,16 @@ class AccountMetricsService
             ];
         }
 
-        if ($account->type->supportsInvestedAmount()) {
-            $entries[$account->id.'_invested'] = $this->investedAmountAt($lookup, $account, $date);
-        }
-
         return $entries;
     }
 
     /**
-     * One account's entries in a month before its history starts: nothing is
-     * known, so the balance and invested amount are null and no original
-     * amount is given.
-     *
-     * @return array<string, null>
-     */
-    private function unknownMonthEntries(Account $account): array
-    {
-        $entries = [$account->id => null];
-
-        if ($account->type->supportsInvestedAmount()) {
-            $entries[$account->id.'_invested'] = null;
-        }
-
-        return $entries;
-    }
-
-    /**
-     * Whether nothing is known yet about the account on that date. An archived
-     * account is known to be out (it reads zero), never unknown.
+     * Whether the account has no figure on that date: it is archived by then,
+     * or nothing is known about its balance yet ({@see BalanceLookup::hasHistoryOn()}).
      */
     private function isUnknownOn(BalanceLookup $lookup, Account $account, Carbon $date): bool
     {
-        return ! $account->isArchivedOn($date) && ! $lookup->hasHistoryOn($account->id, $date);
+        return $account->isArchivedOn($date) || ! $lookup->hasHistoryOn($account->id, $date);
     }
 
     /**
@@ -219,11 +206,12 @@ class AccountMetricsService
      *
      * Each point contains the date, timestamp, and per-account converted balances.
      * Accounts with a different currency than the user also get `_original` entries.
+     * $unknownAsNull works as in {@see self::getNetWorthEvolution()}.
      *
      * @param  Collection<int, Account>  $accounts
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function getNetWorthDailyEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end): array
+    public function getNetWorthDailyEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, bool $unknownAsNull = false): array
     {
         $accountIds = $accounts->pluck('id');
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
@@ -240,22 +228,7 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $this->balanceAt($lookup, $account, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
+                $point += $this->balanceEntries($lookup, $account, $date, $userCurrency, $unknownAsNull);
             }
 
             $points[] = $point;
