@@ -18,12 +18,12 @@ export interface OnboardingSummary {
     rules: number;
     /** Minor units, positive. Null for someone with no spending to read. */
     monthly_spending: number | null;
-    /** Merchants that billed the same amount three months running. */
-    recurring_count: number;
-    /** Minor units, positive: what those repeat charges come to in a month. */
-    recurring_amount: number;
+    /** True when that month is only the figures typed in quick expenses. */
+    spending_is_estimate: boolean;
     /** Minor units. The monthly target, once the user has actually set one. */
     target: number | null;
+    /** Minor units. The catch-all budget's limit the target became, if any. */
+    spending_limit: number | null;
 }
 
 /**

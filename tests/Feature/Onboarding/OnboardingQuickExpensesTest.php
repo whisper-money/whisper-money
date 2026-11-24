@@ -426,3 +426,26 @@ it('offers a current account before an older savings one', function () {
         ->assertOk()
         ->assertJsonPath('quick_expenses_account.id', $checking->id);
 });
+
+// Step 10 and 11 call this month "what you typed", not "what left the account".
+it('marks the summary spending as an estimate when it is only typed figures', function () {
+    Carbon::setTestNow('2026-11-06 12:00:00');
+    $user = quickExpensesUser();
+    $account = manualAccount($user);
+
+    $this->actingAs($user)->postJson('/onboarding/quick-expenses', [
+        'account_id' => $account->id,
+        'expenses' => [
+            ['kind' => 'rent', 'amount' => 90000],
+            ['kind' => 'groceries', 'amount' => 35000],
+        ],
+    ])->assertCreated();
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/summary')
+        ->assertOk()
+        ->assertJson([
+            'monthly_spending' => 125000,
+            'spending_is_estimate' => true,
+        ]);
+});

@@ -98,12 +98,17 @@ export function StepComplete({
         );
     };
 
+    const lines =
+        summary === undefined || summary === null
+            ? []
+            : inventory(summary, formatAmount);
+    const heading =
+        summary === undefined ? undefined : headline(summary, lines);
+
     return (
         <StepScreen
-            title={__('Your dashboard isn’t empty')}
-            description={__(
-                'Most finance apps hand you a blank page and a homework assignment. Here’s what’s already in yours.',
-            )}
+            title={heading?.title}
+            description={heading?.description}
             footer={
                 <StepButton
                     text={__('Open my dashboard')}
@@ -122,7 +127,7 @@ export function StepComplete({
                 summary !== null && (
                     <div className="flex flex-col gap-6">
                         <StepList>
-                            {inventory(summary, formatAmount).map((line) => (
+                            {lines.map((line) => (
                                 <StepRow
                                     key={line}
                                     title={line}
@@ -142,15 +147,54 @@ export function StepComplete({
     );
 }
 
-/** The shape of the list, while what goes in it is counted. */
+/**
+ * The shape of the screen, while what goes in it is counted. The title waits
+ * too: which one is true depends on what the count finds.
+ */
 function InventorySkeleton() {
     return (
-        <div className="flex flex-col gap-4 border-t pt-4">
-            {[0, 1, 2, 3].map((row) => (
-                <Skeleton key={row} className="h-5 w-3/4" />
-            ))}
+        <div className="flex flex-col gap-7">
+            <div className="flex flex-col gap-2.5">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-full" />
+            </div>
+            <div className="flex flex-col gap-4 border-t pt-4">
+                {[0, 1, 2, 3].map((row) => (
+                    <Skeleton key={row} className="h-5 w-3/4" />
+                ))}
+            </div>
         </div>
     );
+}
+
+/**
+ * The title the inventory can back up. "Isn't empty" is a claim about
+ * movements: a dashboard with one balance on it, or nothing that could be
+ * read, is still close to the blank page that line contrasts itself with, so
+ * it gets a plainer one.
+ */
+function headline(
+    summary: OnboardingSummary | null,
+    lines: string[],
+): { title: string; description: string } {
+    if (summary !== null && summary.transactions > 0) {
+        return {
+            title: __('Your dashboard isn’t empty'),
+            description: __(
+                'Most finance apps hand you a blank page and a homework assignment. Here’s what’s already in yours.',
+            ),
+        };
+    }
+
+    return {
+        title: __('Your dashboard is ready'),
+        description:
+            lines.length > 0
+                ? __(
+                      'It fills in as your movements come in. Here’s what’s in it so far.',
+                  )
+                : __('It fills in as your movements come in.'),
+    };
 }
 
 /**
@@ -169,7 +213,11 @@ function inventory(
         movements(summary.transactions, summary.rules),
         accounts(summary.accounts, summary.connected_accounts),
         summary.rules > 0 ? __('Everything new sorted from now on') : null,
-        putAside(summary.target, summary.currency_code, formatAmount),
+        spendingLimit(
+            summary.spending_limit,
+            summary.currency_code,
+            formatAmount,
+        ),
     ].filter((line): line is string => line !== null);
 }
 
@@ -228,18 +276,22 @@ function accounts(total: number, connected: number): string | null {
         : counted;
 }
 
-/** The target, only for someone who set one. */
-function putAside(
-    target: number | null,
+/**
+ * The limit the target became, only for someone who set one. Nothing is put
+ * aside by step 10: it caps the month's spending, and the line says so with the
+ * budget's own figure.
+ */
+function spendingLimit(
+    limit: number | null,
     currency: string,
     formatAmount: AmountFormatter['formatAmount'],
 ): string | null {
-    if (target === null) {
+    if (limit === null) {
         return null;
     }
 
-    return __(':amount a month put aside', {
-        amount: formatAmount(target, currency, { fractionDigits: 0 }),
+    return __('A :amount monthly spending limit', {
+        amount: formatAmount(limit, currency, { fractionDigits: 0 }),
     });
 }
 
@@ -317,9 +369,17 @@ function Gap({
     return (
         <StepCallout>
             <StepFilled
-                sentence={__(
-                    'You came in guessing :guess. :spent left the account, and now you can see where each part of it went.',
-                )}
+                sentence={
+                    // Typed-in estimates never left any account: they are the
+                    // user's own figures, added up line by line.
+                    summary.spending_is_estimate
+                        ? __(
+                              'You came in guessing :guess. Line by line, you typed :spent, and now you can see where each part of it went.',
+                          )
+                        : __(
+                              'You came in guessing :guess. :spent left the account, and now you can see where each part of it went.',
+                          )
+                }
                 values={{ guess: strong(spendingGuess), spent: strong(spent) }}
             />
         </StepCallout>

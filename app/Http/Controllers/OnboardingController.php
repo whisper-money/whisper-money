@@ -339,7 +339,7 @@ class OnboardingController extends Controller
             return response()->json(['message' => __('No spending to build a target on.')], 422);
         }
 
-        $budget = $this->catchAll($user) ?? $budgets->create($user, [
+        $budget = $summary->catchAll($user) ?? $budgets->create($user, [
             'name' => __('Monthly spending'),
             'period_type' => BudgetPeriodType::Monthly,
             'period_start_day' => 1,
@@ -359,12 +359,6 @@ class OnboardingController extends Controller
         $this->remember($user, ['target' => $target]);
 
         return response()->json(['target' => $target, 'budget_id' => $budget->id]);
-    }
-
-    /** The budget that absorbs everything not claimed by another one. */
-    private function catchAll(User $user): ?Budget
-    {
-        return $user->budgets()->notArchived()->where('is_catch_all', true)->first();
     }
 
     /**

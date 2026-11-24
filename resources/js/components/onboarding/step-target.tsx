@@ -36,12 +36,6 @@ const STEP = 50;
 /** Where the stepper opens: a tenth of the month, which most people keep. */
 const DEFAULT_SHARE = 0.1;
 
-/** What a month is worth said as a year, which is the point of saying it. */
-const MONTHS_IN_YEAR = 12;
-
-/** Under two, the sentence about repeat charges has no plural to stand on. */
-const MIN_RECURRING = 2;
-
 interface StepTargetProps {
     /** The goal picked in step 2, which decides how the target is framed. */
     goal?: string;
@@ -186,6 +180,9 @@ function Target({
     const money = (minor: number) =>
         formatAmount(minor, currency, { fractionDigits: 0 });
     const monthly = toMinorUnits(amount, currency);
+    // What POST /onboarding/target turns the number into: a catch-all
+    // budget whose limit is the month just read, less the target.
+    const limit = Math.max(0, spending - monthly);
 
     const handleSet = () => {
         setIsSaving(true);
@@ -223,6 +220,7 @@ function Target({
                             ? undefined
                             : money(spendingGuess)
                     }
+                    isEstimate={summary.spending_is_estimate}
                     goal={goal}
                 />
             }
@@ -261,15 +259,18 @@ function Target({
 
                 <StepList>
                     <StepRow
-                        title={__('In a year')}
+                        title={__('Monthly spending limit')}
+                        description={__(
+                            'A budget that counts everything you spend',
+                        )}
                         trailing={
                             <span className="text-[17px] font-semibold tabular-nums">
-                                {money(monthly * MONTHS_IN_YEAR)}
+                                {money(limit)}
                             </span>
                         }
                     />
                     <StepRow
-                        title={__('Warn me before I overspend')}
+                        title={__('Warn me before I go over it')}
                         description={__("Not after, when it's a receipt")}
                         pressed={warn}
                         onClick={() => setWarn(!warn)}
@@ -279,9 +280,10 @@ function Target({
 
                 <StepCallout>
                     <Comparison
-                        summary={summary}
+                        spending={spending}
                         monthly={monthly}
-                        money={money}
+                        limit={money(limit)}
+                        warn={warn}
                     />
                 </StepCallout>
             </div>
@@ -314,16 +316,21 @@ function opening(
  * nothing is categorized this early, so the figure carries the user's own
  * transfers with it, and the reveal two steps back says as much.
  *
+ * A month made only of the figures typed in quick expenses never left any
+ * account, so it is called what it is: the user's own numbers.
+ *
  * Without a guess on file — a resumed run, mostly — the second half has nothing
  * to compare and is dropped.
  */
 function Built({
     spending,
     guess,
+    isEstimate,
     goal,
 }: {
     spending: string;
     guess?: string;
+    isEstimate: boolean;
     goal?: string;
 }) {
     const strong = (amount: string) => (
@@ -334,16 +341,28 @@ function Built({
         <>
             {guess === undefined ? (
                 <StepFilled
-                    sentence={__(
-                        'Built on the :spending that left the account last month.',
-                    )}
+                    sentence={
+                        isEstimate
+                            ? __(
+                                  'Built on the :spending you typed for last month.',
+                              )
+                            : __(
+                                  'Built on the :spending that left the account last month.',
+                              )
+                    }
                     values={{ spending: strong(spending) }}
                 />
             ) : (
                 <StepFilled
-                    sentence={__(
-                        'Built on the :spending that left the account last month, not the :guess you thought.',
-                    )}
+                    sentence={
+                        isEstimate
+                            ? __(
+                                  'Built on the :spending you typed for last month, not the :guess you thought.',
+                              )
+                            : __(
+                                  'Built on the :spending that left the account last month, not the :guess you thought.',
+                              )
+                    }
                     values={{
                         spending: strong(spending),
                         guess: strong(guess),
@@ -375,50 +394,44 @@ function framing(goal: string | undefined): string {
 }
 
 /**
- * What the target is worth in the user's own spending, and what the app will do
- * about it. The comparison is only drawn when there are repeat charges to draw
- * it against — a made-up equivalence would be exactly the kind of thing this
- * screen exists to avoid.
+ * What the target is worth against the month it was built on, and what the app
+ * will do about it. Measured against the whole month rather than any slice of
+ * it: the limit covers every movement, so that is the only base the share is
+ * true of.
  */
 function Comparison({
-    summary,
+    spending,
     monthly,
-    money,
+    limit,
+    warn,
 }: {
-    summary: OnboardingSummary;
+    spending: number;
     monthly: number;
-    money: (amount: number) => string;
+    limit: string;
+    warn: boolean;
 }) {
-    const promise = __("We'll tell you the day you drift off it.");
-
-    if (
-        summary.recurring_count < MIN_RECURRING ||
-        summary.recurring_amount <= 0
-    ) {
-        return promise;
-    }
+    const strong = (text: string) => (
+        <span className="font-medium text-foreground">{text}</span>
+    );
 
     return (
         <>
             <StepFilled
-                sentence={__(
-                    "That's :share of the :amount that :count merchants bill you every month, unchanged.",
-                )}
+                sentence={__("That's :share less than last month.")}
                 values={{
-                    share: (
-                        <span className="font-medium text-foreground">
-                            {`${Math.round((monthly / summary.recurring_amount) * 100)}%`}
-                        </span>
-                    ),
-                    amount: (
-                        <span className="font-medium text-foreground">
-                            {money(summary.recurring_amount)}
-                        </span>
-                    ),
-                    count: summary.recurring_count,
+                    share: strong(`${Math.round((monthly / spending) * 100)}%`),
                 }}
             />{' '}
-            {promise}
+            {warn ? (
+                <StepFilled
+                    sentence={__(
+                        "We'll warn you before your spending goes over :limit.",
+                    )}
+                    values={{ limit: strong(limit) }}
+                />
+            ) : (
+                __('You can follow it, and change it, from your budgets.')
+            )}
         </>
     );
 }
@@ -469,13 +482,11 @@ function Stepper({
                         }).format(amount)}
                     </span>
                 </div>
-                {/* The number is money kept back, not money allowed out, and
-                    nothing else on the screen says so — "Warn me before I
-                    overspend" sits right under it and reads as a ceiling. The
-                    closing step already calls it "put aside"; the step that
-                    asks for it has to call it the same thing. */}
+                {/* The number is the cut, not the limit: nothing is moved or
+                    put aside, the month's spending is capped this much lower.
+                    The limit it produces is named in the row underneath. */}
                 <span className="text-[13px] text-muted-foreground">
-                    {__('a month put aside')}
+                    {__('less spending a month')}
                 </span>
             </div>
 

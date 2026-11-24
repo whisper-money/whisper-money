@@ -77,10 +77,9 @@ it('reports what the user has to show for the flow', function () {
             'months' => 3,
             'rules' => 2,
             'monthly_spending' => 100000,
-            // Every one of them billed the same amount three months running.
-            'recurring_count' => 5,
-            'recurring_amount' => 100000,
+            'spending_is_estimate' => false,
             'target' => null,
+            'spending_limit' => null,
         ]);
 });
 
@@ -168,7 +167,9 @@ it('reports the target back once it is set', function () {
     $this->actingAs($user)
         ->getJson('/onboarding/summary')
         ->assertOk()
-        ->assertJson(['target' => 20000]);
+        // The limit the budget holds, which is what step 11 reports: nothing
+        // is put aside, the month's spending is capped.
+        ->assertJson(['target' => 20000, 'spending_limit' => 80000]);
 });
 
 it('rejects a target that is not a positive amount', function (mixed $amount) {

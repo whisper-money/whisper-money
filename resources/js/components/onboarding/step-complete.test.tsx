@@ -99,7 +99,14 @@ describe('StepComplete', () => {
         expect(
             screen.getByText('Everything new sorted from now on'),
         ).toBeInTheDocument();
-        expect(screen.getByText('€200 a month put aside')).toBeInTheDocument();
+        // The limit the target became, not money "put aside": nothing is.
+        expect(
+            screen.getByText('A €1,647 monthly spending limit'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/put aside/)).toBeNull();
+        expect(
+            screen.getByText('Your dashboard isn’t empty'),
+        ).toBeInTheDocument();
     });
 
     /**
@@ -112,6 +119,7 @@ describe('StepComplete', () => {
                 connected_accounts: 0,
                 accounts: 2,
                 target: null,
+                spending_limit: null,
             }),
         );
 
@@ -119,7 +127,7 @@ describe('StepComplete', () => {
 
         expect(screen.getByText('2 accounts')).toBeInTheDocument();
         expect(screen.queryByText(/syncing daily/)).toBeNull();
-        expect(screen.queryByText(/put aside/)).toBeNull();
+        expect(screen.queryByText(/spending limit/)).toBeNull();
     });
 
     /**
@@ -135,17 +143,24 @@ describe('StepComplete', () => {
                 months: 0,
                 rules: 0,
                 monthly_spending: null,
-                recurring_count: 0,
-                recurring_amount: 0,
                 target: null,
+                spending_limit: null,
             }),
         );
 
         await renderStep();
 
         expect(screen.getByText('1 account')).toBeInTheDocument();
+        // One balance is not a dashboard worth boasting about.
+        expect(screen.queryByText('Your dashboard isn’t empty')).toBeNull();
+        expect(screen.getByText('Your dashboard is ready')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'It fills in as your movements come in. Here’s what’s in it so far.',
+            ),
+        ).toBeInTheDocument();
         expect(screen.queryByText(/months of history/)).toBeNull();
-        expect(screen.queryByText(/movements/)).toBeNull();
+        expect(screen.queryByText(/\d+ movements?/)).toBeNull();
         expect(screen.queryByText(/sorted from now on/)).toBeNull();
         // No guess to set against a month that was never read; what they get
         // instead is the one thing that would fill the rest of the list.
@@ -183,6 +198,19 @@ describe('StepComplete', () => {
 
         expect(screen.getByText('€1,200')).toBeInTheDocument();
         expect(screen.getByText('€1,847')).toBeInTheDocument();
+        expect(screen.getByText(/left the account/)).toBeInTheDocument();
+    });
+
+    // Quick-expense estimates never left any account.
+    it('calls typed estimates the user own figures', async () => {
+        get.mockResolvedValue(
+            onboardingSummaryResponse({ spending_is_estimate: true }),
+        );
+
+        await renderStep({ spendingGuess: 120000 });
+
+        expect(screen.getByText(/Line by line, you typed/)).toBeInTheDocument();
+        expect(screen.queryByText(/left the account/)).toBeNull();
     });
 
     // Someone who guessed right gets no consolation paragraph.
@@ -201,6 +229,12 @@ describe('StepComplete', () => {
         await renderStep();
 
         expect(screen.queryByText(/months of history/)).toBeNull();
+        // Deep-linked to ?step=complete with nothing behind it: an empty list
+        // under "isn't empty" would contradict itself.
+        expect(screen.queryByText('Your dashboard isn’t empty')).toBeNull();
+        expect(
+            screen.getByText('It fills in as your movements come in.'),
+        ).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Open my dashboard' }),
         ).toBeEnabled();
