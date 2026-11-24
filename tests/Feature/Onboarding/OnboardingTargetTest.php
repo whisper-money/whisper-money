@@ -4,6 +4,7 @@ use App\Enums\BudgetPeriodType;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
@@ -77,10 +78,9 @@ it('reports what the user has to show for the flow', function () {
             'months' => 3,
             'rules' => 2,
             'monthly_spending' => 100000,
-            // Every one of them billed the same amount three months running.
-            'recurring_count' => 5,
-            'recurring_amount' => 100000,
+            'spending_is_estimate' => false,
             'target' => null,
+            'spending_limit' => null,
         ]);
 });
 
@@ -134,14 +134,21 @@ it('keeps the catch-all the user already has', function () {
 
     $user = closingUser();
     spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
-    $existing = Budget::factory()->for($user)->create(['is_catch_all' => true]);
+    $existing = Budget::factory()->for($user)->monthly()->create(['is_catch_all' => true, 'period_start_day' => 1]);
+    BudgetPeriod::factory()->for($existing)->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 50000,
+    ]);
 
     $this->actingAs($user)
         ->postJson('/onboarding/target', ['amount' => 20000, 'warn' => true])
         ->assertOk()
         ->assertJson(['budget_id' => $existing->id]);
 
-    expect($user->budgets()->count())->toBe(1);
+    expect($user->budgets()->count())->toBe(1)
+        // The limit the step named, not the one the budget had before.
+        ->and($existing->fresh()->getCurrentPeriod()->allocated_amount)->toBe(80000);
 });
 
 // Nothing was read to build a limit on, so nothing is written at all.
@@ -168,8 +175,42 @@ it('reports the target back once it is set', function () {
     $this->actingAs($user)
         ->getJson('/onboarding/summary')
         ->assertOk()
-        ->assertJson(['target' => 20000]);
+        // The limit the budget holds, which is what step 11 reports: nothing
+        // is put aside, the month's spending is capped.
+        ->assertJson(['target' => 20000, 'spending_limit' => 80000]);
 });
+
+// A budget archived after the target was set no longer limits anything, so
+// step 11 may not report a limit for it.
+it('reports no limit once the budget behind the target is gone', function () {
+    Queue::fake();
+
+    $user = closingUser();
+    spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
+
+    $this->actingAs($user)->postJson('/onboarding/target', ['amount' => 20000, 'warn' => true]);
+    $user->budgets()->sole()->update(['archived_at' => now()]);
+
+    $this->actingAs($user)
+        ->getJson('/onboarding/summary')
+        ->assertOk()
+        ->assertJson(['target' => 20000, 'spending_limit' => null]);
+});
+
+// A target that reaches the month it is built on would leave a limit of zero.
+it('refuses a target that leaves nothing to spend', function (int $amount) {
+    $user = closingUser();
+    spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/target', ['amount' => $amount, 'warn' => true])
+        ->assertStatus(422);
+
+    expect($user->budgets()->count())->toBe(0);
+})->with([
+    'the whole month' => 100000,
+    'more than the month' => 150000,
+]);
 
 it('rejects a target that is not a positive amount', function (mixed $amount) {
     $user = closingUser();

@@ -348,14 +348,16 @@ it('stores the target the stepper landed on and closes with it', function () {
         // Built on the month that was read, against the month they guessed.
         ->assertSee('€1,000')
         ->assertSee('€1,300')
-        // The stepper opens on a tenth of the month, which is €1,200 a year.
-        ->assertSee('€1,200')
+        // The stepper opens on a tenth of the month, and names the limit it
+        // leaves: €1,000 less €100.
+        ->assertSee('Monthly spending limit')
+        ->assertSee('€900')
         ->click('[aria-label="Raise the target"]')
         ->assertSee('150')
-        ->assertSee('€1,800')
+        ->assertSee('€850')
         ->click('Set my target')
         ->assertSee('Your dashboard isn’t empty')
-        ->assertSee('€150 a month put aside')
+        ->assertSee('A €850 monthly spending limit')
         ->assertNoJavascriptErrors();
 
     $budget = $user->budgets()->sole();

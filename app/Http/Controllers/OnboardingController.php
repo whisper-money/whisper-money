@@ -322,7 +322,8 @@ class OnboardingController extends Controller
      * having to assign categories to a budget on their way out of onboarding.
      *
      * A user who already has a catch-all keeps it — a reload, or a second run
-     * through the step, must not leave two budgets claiming the same movements.
+     * through the step, must not leave two budgets claiming the same movements
+     * — but its limit moves to the one the step just showed.
      */
     public function target(
         StoreOnboardingTargetRequest $request,
@@ -339,13 +340,26 @@ class OnboardingController extends Controller
             return response()->json(['message' => __('No spending to build a target on.')], 422);
         }
 
-        $budget = $this->catchAll($user) ?? $budgets->create($user, [
-            'name' => __('Monthly spending'),
-            'period_type' => BudgetPeriodType::Monthly,
-            'period_start_day' => 1,
-            'rollover_type' => RolloverType::Reset,
-            'is_catch_all' => true,
-        ], max(0, $spending - $target));
+        if ($target >= $spending) {
+            // A limit of nothing is not a limit: the step never offers a
+            // target that reaches the month it is built on.
+            return response()->json(['message' => __('A target has to leave something to spend.')], 422);
+        }
+
+        $limit = $spending - $target;
+        $existing = $summary->catchAll($user);
+
+        // The step showed this limit by name, so a catch-all that already
+        // exists takes it too rather than keeping a figure the user never saw.
+        $budget = $existing
+            ? $budgets->update($existing, [], $limit)
+            : $budgets->create($user, [
+                'name' => __('Monthly spending'),
+                'period_type' => BudgetPeriodType::Monthly,
+                'period_start_day' => 1,
+                'rollover_type' => RolloverType::Reset,
+                'is_catch_all' => true,
+            ], $limit);
 
         // Set from the toggle rather than left to the account default, so the
         // row that says "warn me before I overspend" is the row that decides it.
@@ -359,12 +373,6 @@ class OnboardingController extends Controller
         $this->remember($user, ['target' => $target]);
 
         return response()->json(['target' => $target, 'budget_id' => $budget->id]);
-    }
-
-    /** The budget that absorbs everything not claimed by another one. */
-    private function catchAll(User $user): ?Budget
-    {
-        return $user->budgets()->notArchived()->where('is_catch_all', true)->first();
     }
 
     /**

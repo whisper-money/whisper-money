@@ -412,7 +412,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue');
 
     $page->assertSee('Your dashboard isn’t empty')
-        ->assertDontSee('put aside')
+        ->assertDontSee('spending limit')
         ->click('Open my dashboard');
 
     // Since SUBSCRIPTIONS_ENABLED is true, user should end on /subscribe

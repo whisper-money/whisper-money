@@ -22,9 +22,9 @@ export function onboardingSummaryResponse(
             months: 12,
             rules: 28,
             monthly_spending: 184700,
-            recurring_count: 9,
-            recurring_amount: 21100,
+            spending_is_estimate: false,
             target: 20000,
+            spending_limit: 164700,
             ...overrides,
         },
     };

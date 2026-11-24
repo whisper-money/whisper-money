@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\Budget;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
@@ -28,9 +29,9 @@ class OnboardingSummaryService
      *     months: int,
      *     rules: int,
      *     monthly_spending: ?int,
-     *     recurring_count: int,
-     *     recurring_amount: int,
+     *     spending_is_estimate: bool,
      *     target: ?int,
+     *     spending_limit: ?int,
      * }
      */
     public function for(User $user): array
@@ -38,6 +39,7 @@ class OnboardingSummaryService
         $accounts = $user->accounts()->get(['id', 'banking_connection_id']);
         $ledger = $this->ledger($user, $accounts->pluck('id'));
         $spending = $this->spending($user);
+        $target = $this->target($user);
 
         return [
             'currency_code' => $user->currency_code,
@@ -51,9 +53,11 @@ class OnboardingSummaryService
             // reason the closing screen may claim that it does.
             'rules' => $user->automationRules()->count(),
             'monthly_spending' => $spending['spent'] ?? null,
-            'recurring_count' => $spending['recurring_count'] ?? 0,
-            'recurring_amount' => $spending['recurring_amount'] ?? 0,
-            'target' => $this->target($user),
+            // A month made only of the figures the user typed in, which the
+            // closing steps call theirs rather than what left the account.
+            'spending_is_estimate' => (bool) ($spending['is_estimate'] ?? false),
+            'target' => $target,
+            'spending_limit' => $target === null ? null : $this->spendingLimit($user),
         ];
     }
 
@@ -127,6 +131,25 @@ class OnboardingSummaryService
         $reveal = $this->reveal->for($user);
 
         return $reveal['variant'] === 'spending' ? $reveal : null;
+    }
+
+    /**
+     * The limit the target turned into: what the catch-all budget allows this
+     * month, read off the budget itself so the closing screen reports the
+     * number the app will actually warn against.
+     */
+    private function spendingLimit(User $user): ?int
+    {
+        return $this->catchAll($user)?->getCurrentPeriod()?->allocated_amount;
+    }
+
+    /**
+     * The budget that absorbs everything not claimed by another one, which is
+     * what a target set in step 10 becomes.
+     */
+    public function catchAll(User $user): ?Budget
+    {
+        return $user->budgets()->notArchived()->where('is_catch_all', true)->first();
     }
 
     /**

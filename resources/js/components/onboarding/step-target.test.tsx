@@ -55,16 +55,21 @@ describe('StepTarget', () => {
 
         // A tenth of €1,847, rounded to the stepper's own coarseness.
         expect(screen.getByText('200')).toBeInTheDocument();
-        expect(screen.getByText('€2,400')).toBeInTheDocument();
-        // Named where it is asked for, not only on the closing screen: read as
-        // a ceiling it is the opposite of what the step does.
-        expect(screen.getByText('a month put aside')).toBeInTheDocument();
+        // Nothing is put aside: the step caps the month's spending, and says
+        // so with the limit the budget will actually hold.
+        expect(screen.getByText('less spending a month')).toBeInTheDocument();
+        expect(screen.queryByText(/put aside/)).toBeNull();
+        expect(screen.getByText('Monthly spending limit')).toBeInTheDocument();
+        expect(screen.getAllByText('€1,647')).not.toHaveLength(0);
         // Built on the real month, set against the guess that opened the flow.
+        expect(
+            screen.getByText(/that left the account last month/),
+        ).toBeInTheDocument();
         expect(screen.getByText('€1,847')).toBeInTheDocument();
         expect(screen.getByText('€1,200')).toBeInTheDocument();
     });
 
-    it('moves the target in both directions and keeps the year with it', async () => {
+    it('moves the target in both directions and keeps the limit with it', async () => {
         get.mockResolvedValue(summary());
 
         await renderTarget();
@@ -74,7 +79,7 @@ describe('StepTarget', () => {
         );
 
         expect(screen.getByText('250')).toBeInTheDocument();
-        expect(screen.getByText('€3,000')).toBeInTheDocument();
+        expect(screen.getAllByText('€1,597')).not.toHaveLength(0);
 
         fireEvent.click(
             screen.getByRole('button', { name: 'Lower the target' }),
@@ -85,12 +90,15 @@ describe('StepTarget', () => {
 
     // The stepper may not walk past what the user has, in either direction.
     it('stops at the floor and at what the month can hold', async () => {
-        get.mockResolvedValue(summary({ monthly_spending: 5000 }));
+        get.mockResolvedValue(summary({ monthly_spending: 10000 }));
 
         await renderTarget();
 
-        // €50 spent: the floor and the ceiling are the same single step.
+        // €100 spent: the floor and the ceiling are the same single step,
+        // which leaves a €50 limit rather than none.
         expect(screen.getByText('50')).toBeInTheDocument();
+        expect(screen.getAllByText('€50')).not.toHaveLength(0);
+        expect(screen.getByText('50%')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Lower the target' }),
         ).toBeDisabled();
@@ -106,7 +114,7 @@ describe('StepTarget', () => {
         const onContinue = await renderTarget();
 
         fireEvent.click(
-            screen.getByRole('button', { name: /Warn me before I overspend/ }),
+            screen.getByRole('button', { name: /Warn me before I go over it/ }),
         );
         fireEvent.click(screen.getByRole('button', { name: 'Set my target' }));
 
@@ -188,6 +196,45 @@ describe('StepTarget', () => {
         expect(onContinue).toHaveBeenCalledOnce();
     });
 
+    // A target of €50 on a €50 month would leave a limit of nothing: "100%
+    // less", "goes over €0". No step fits, so no number is offered.
+    it.each([4000, 5000])(
+        'offers no target when the month is too small to cut a step from (%s)',
+        async (monthly_spending) => {
+            get.mockResolvedValue(summary({ monthly_spending }));
+
+            const onContinue = await renderTarget();
+
+            expect(screen.queryByText('Set my target')).toBeNull();
+            expect(
+                screen.getByText('Your target can wait'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/too little to set a limit below it/),
+            ).toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+            expect(onContinue).toHaveBeenCalledOnce();
+        },
+    );
+
+    // A target kept from a bigger month may not open on a limit of zero.
+    it('holds a returning target under the month it is set against', async () => {
+        get.mockResolvedValue(
+            summary({ monthly_spending: 30000, target: 50000 }),
+        );
+
+        await renderTarget();
+
+        // €300 spent: the most it may open on is €250, a €50 limit.
+        expect(screen.getByText('250')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Raise the target' }),
+        ).toBeDisabled();
+        expect(screen.queryByText('€0')).toBeNull();
+    });
+
     it('steps aside when the summary cannot be read at all', async () => {
         get.mockRejectedValue(new Error('down'));
 
@@ -216,29 +263,56 @@ describe('StepTarget', () => {
         },
     );
 
-    it('measures the target against the charges that repeat', async () => {
+    // Against the whole month, which is what the catch-all limit covers: a
+    // share of fixed charges like rent was a share nobody can cut.
+    it('measures the target against the month it was built on', async () => {
         get.mockResolvedValue(summary());
 
         await renderTarget();
 
-        expect(screen.getByText('95%')).toBeInTheDocument();
-        expect(screen.getByText('€211')).toBeInTheDocument();
+        // €200 of €1,847.
+        expect(screen.getByText('11%')).toBeInTheDocument();
+        expect(screen.queryByText(/merchants bill you/)).toBeNull();
+        expect(
+            screen.getByText(/We'll warn you before your spending goes over/),
+        ).toBeInTheDocument();
     });
 
-    // No repeat charges, no comparison: an invented equivalence is exactly what
-    // this screen exists to avoid.
-    it('drops the comparison when there is nothing that repeats', async () => {
-        get.mockResolvedValue(
-            summary({ recurring_count: 0, recurring_amount: 0 }),
-        );
+    it('promises no warning once the user turned it off', async () => {
+        get.mockResolvedValue(summary());
 
         await renderTarget();
 
-        expect(screen.queryByText(/bill you every month/)).toBeNull();
+        fireEvent.click(
+            screen.getByRole('button', { name: /Warn me before I go over it/ }),
+        );
+
+        expect(screen.queryByText(/We'll warn you/)).toBeNull();
         expect(
-            screen.getByText("We'll tell you the day you drift off it."),
+            screen.getByText(
+                /You can follow it, and change it, from your budgets\./,
+            ),
         ).toBeInTheDocument();
     });
+
+    // Quick-expense estimates never left any account: they are what the user
+    // typed in, and the sentence says so.
+    it.each([
+        [120000, 'you typed for last month, not the'],
+        [undefined, 'you typed for last month.'],
+    ])(
+        'calls typed estimates the user own figures (guess %s)',
+        async (spendingGuess, fragment) => {
+            get.mockResolvedValue(summary({ spending_is_estimate: true }));
+
+            await renderTarget({ spendingGuess });
+
+            expect(
+                screen.getByText(new RegExp(fragment.replace('.', '\\.'))),
+            ).toBeInTheDocument();
+            expect(screen.queryByText(/left the account/)).toBeNull();
+        },
+    );
 
     it('opens on the target already set when the step is returned to', async () => {
         get.mockResolvedValue(summary({ target: 35000 }));
