@@ -13,10 +13,12 @@ import {
     StatTileSkeleton,
     StatTileValue,
 } from '@/components/ui/stat-tile';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
+import { formatPercent } from '@/utils/percent';
 import { Link, usePage } from '@inertiajs/react';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -40,6 +42,7 @@ export function CashflowSummaryCard({
     loading,
 }: CashflowSummaryCardProps) {
     const { auth } = usePage<SharedData>().props;
+    const locale = useLocale();
 
     if (!auth?.user || loading || !data) {
         return (
@@ -133,7 +136,7 @@ export function CashflowSummaryCard({
                                 : current.savings_rate < 0 && 'text-warning',
                         )}
                     >
-                        {current.savings_rate.toFixed(1)}%
+                        {formatPercent(current.savings_rate, locale)}
                     </span>
                 </div>
             </CardContent>

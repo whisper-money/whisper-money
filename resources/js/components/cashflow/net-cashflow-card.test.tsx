@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { NetCashflowCard } from './net-cashflow-card';
 
+vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
+
 const summary = (
     income: number,
     expense: number,

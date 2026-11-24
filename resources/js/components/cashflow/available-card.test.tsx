@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AvailableCard } from './available-card';
 
+vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
+
 vi.mock('lucide-react', () => ({
     TrendingDown: () => <svg />,
     TrendingUp: () => <svg />,

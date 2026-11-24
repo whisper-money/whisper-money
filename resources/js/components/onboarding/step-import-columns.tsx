@@ -230,7 +230,7 @@ export function StepImportColumns({
                     ) : (
                         <StepEmphasis
                             sentence={__(
-                                'We got all three right this time. :next — the layout is remembered for this account.',
+                                'We got the columns right this time. :next — the layout is remembered for this account.',
                             )}
                             word={__("Next time we won't ask")}
                         />

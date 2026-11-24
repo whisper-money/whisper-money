@@ -34,6 +34,7 @@ import {
     CashflowPeriodType,
     CashflowSummary,
 } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import {
     allocatedOf,
     availableOf,
@@ -44,6 +45,7 @@ import { CASHFLOW_BLOCKS, isExpenseBlock } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import { formatPercent } from '@/utils/percent';
 import { Minus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 
@@ -118,6 +120,7 @@ function IncomeBar({
 }) {
     // With nothing coming in there is no income to split, so the bar stays
     // empty rather than filling up with what went out.
+    const locale = useLocale();
     const hasIncome = summary.income > 0;
     const segments = incomeSegments(summary);
     const available = availableOf(summary);
@@ -131,7 +134,7 @@ function IncomeBar({
                 ariaLabel={segments
                     .map(
                         (segment) =>
-                            `${segment.label} ${shareOf(Math.max(0, segment.amount), summary.income).toFixed(0)}%`,
+                            `${segment.label} ${formatPercent(shareOf(Math.max(0, segment.amount), summary.income), locale, { fractionDigits: 0 })}`,
                     )
                     .join(', ')}
             />
@@ -222,6 +225,7 @@ function BlocksTable({
     hrefs: CashflowBlockHrefs;
     onNavigate: () => void;
 }) {
+    const locale = useLocale();
     const amounts = blockAmountsOf(current);
     const previousAmounts = blockAmountsOf(previous);
     const hasPreviousData = hasPeriodData(previous);
@@ -260,11 +264,10 @@ function BlocksTable({
                                 </span>
                             </td>
                             <td className="py-2 text-right tabular-nums">
-                                {shareOf(
-                                    amounts[block],
-                                    current.income,
-                                ).toFixed(1)}
-                                %
+                                {formatPercent(
+                                    shareOf(amounts[block], current.income),
+                                    locale,
+                                )}
                             </td>
                             <td className="py-2 text-right">
                                 <WholeAmount

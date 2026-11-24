@@ -6,6 +6,8 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CashflowDetailsDrawer } from './cashflow-details-drawer';
 
+vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
+
 vi.mock('@/components/ui/amount-display', () => ({
     AmountDisplay: ({ amountInCents }: { amountInCents: number }) => (
         <span>{amountInCents}</span>

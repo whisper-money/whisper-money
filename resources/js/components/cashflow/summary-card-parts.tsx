@@ -9,8 +9,10 @@ import {
     StatTileValue,
 } from '@/components/ui/stat-tile';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
+import { formatPercent } from '@/utils/percent';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { type ComponentProps, type ReactNode } from 'react';
 
@@ -61,16 +63,14 @@ interface PercentageComparisonProps {
 }
 
 export function PercentageComparison({ diff }: PercentageComparisonProps) {
+    const locale = useLocale();
     const isIncrease = diff >= 0;
     const Icon = isIncrease ? TrendingUp : TrendingDown;
 
     return (
         <div className="mt-2 flex items-center gap-1 text-sm">
             <Icon className={cn('size-4', trendColor(isIncrease))} />
-            <span>
-                {isIncrease ? '+' : ''}
-                {diff.toFixed(1)}%
-            </span>
+            <span>{formatPercent(diff, locale, { signed: true })}</span>
             <span className="text-muted-foreground">
                 {__('vs last period')}
             </span>
@@ -176,6 +176,8 @@ export function SummaryHeadline({
     amountClassName,
     rateClassName = 'text-muted-foreground',
 }: SummaryHeadlineProps) {
+    const locale = useLocale();
+
     return (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <WholeAmount
@@ -192,7 +194,7 @@ export function SummaryHeadline({
                     rateClassName,
                 )}
             >
-                {rate.toFixed(1)}%
+                {formatPercent(rate, locale)}
             </span>
         </div>
     );

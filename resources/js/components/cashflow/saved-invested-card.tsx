@@ -21,8 +21,10 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
+import { formatPercent } from '@/utils/percent';
 import { HelpCircle } from 'lucide-react';
 
 interface SavedInvestedCardProps {
@@ -43,10 +45,12 @@ interface SharePillProps {
 
 /** A side's share of what was contributed. */
 function SharePill({ share, tone }: SharePillProps) {
+    const locale = useLocale();
+
     return (
         <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success tabular-nums">
             <span aria-hidden className={cn('size-1.5 rounded-full', tone)} />
-            {share.toFixed(0)}%
+            {formatPercent(share, locale, { fractionDigits: 0 })}
         </span>
     );
 }

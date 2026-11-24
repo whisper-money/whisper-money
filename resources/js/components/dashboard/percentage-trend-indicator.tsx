@@ -4,7 +4,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatPercent } from '@/utils/percent';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,6 +32,7 @@ export function PercentageTrendIndicator({
     tooltipSide = 'top',
 }: PercentageTrendIndicatorProps) {
     const [open, setOpen] = useState(false);
+    const locale = useLocale();
 
     if (trend === null) return null;
 
@@ -45,10 +48,7 @@ export function PercentageTrendIndicator({
 
     const content = (
         <div className={cn(['flex items-center gap-1', className])}>
-            <span>
-                {isPositive ? '+' : ''}
-                {trend.toFixed(1)}%
-            </span>
+            <span>{formatPercent(trend, locale, { signed: true })}</span>
             {label && <span className="text-muted-foreground">{label}</span>}
             <Icon className={`h-4 w-4 ${iconColorClass}`} />
         </div>
