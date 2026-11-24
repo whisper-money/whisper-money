@@ -95,9 +95,15 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
 
     const advance = useCallback(() => {
         // Always reload transactions so the categorize step sees the latest data,
-        // including transactions imported via CSV during onboarding.
+        // including transactions imported via CSV during onboarding, and what
+        // that step says about them: whether any are real, and whether a rule
+        // filed some on the way in.
         router.reload({
-            only: ['transactions'],
+            only: [
+                'transactions',
+                'hasRealTransactions',
+                'rulesFiledTransactions',
+            ],
             onFinish: () => onCompleteRef.current(),
         });
     }, []);

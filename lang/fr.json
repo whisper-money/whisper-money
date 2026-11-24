@@ -2167,7 +2167,7 @@
     "That’s enough to continue. Keep going if you’re enjoying it.": "C’est assez pour continuer. Poursuivez si cela vous plaît.",
     "The description and the amount — “MERCADONA 4412, €62.40”. Never your balance, your name or your account number.": "La description et le montant — « MERCADONA 4412, 62,40 € ». Jamais votre solde, votre nom ni votre numéro de compte.",
     "The rest can wait — they’ll be on your transactions screen.": "Le reste peut attendre : vous les retrouverez sur l’écran des mouvements.",
-    "The rules couldn’t place these on their own. File :count of them and we carry on — each one you file is one we never ask about again.": "Les règles n’ont pas su placer ceux-ci. Classez-en :count et nous continuons : chacun que vous classez est un de moins à vous redemander.",
+    "Every movement you brought already has a category.": "Tous les mouvements que vous avez apportés ont déjà une catégorie.",
     "This usually means one-off purchases dominate your history — a house move, a trip, a year abroad. Next month will look different.": "Cela veut souvent dire que les achats uniques dominent votre historique — un déménagement, un voyage, une année à l’étranger. Le mois prochain sera différent.",
     "Turn AI sorting back on?": "Réactiver le tri par IA ?",
     "Turn it off whenever": "Désactivez-le quand vous voulez",
@@ -2178,7 +2178,7 @@
     "We created :rules and filed :movements with them. From here they run on their own, on everything that arrives.": "Nous avons créé :rules et classé :movements avec elles. À partir d’ici, elles tournent seules, sur tout ce qui arrive.",
     "We read all :count and found no merchant that repeats often enough to be worth automating. That is unusual, and it is not a problem.": "Nous avons lu les :count et n’avons trouvé aucun marchand qui revienne assez souvent pour valoir une automatisation. C’est inhabituel, et ce n’est pas un problème.",
     "We send one line at a time to our AI provider so it can draft your rules. Here is exactly what that means.": "Nous envoyons une ligne à la fois à notre fournisseur d’IA pour qu’il rédige vos règles. Voici exactement ce que cela veut dire.",
-    "Without this you sort :count by hand. With it you approve a handful of rules and the rest happens on its own.": "Sans cela, vous triez :count à la main. Avec, vous approuvez une poignée de règles et le reste se fait tout seul.",
+    "The rules couldn’t place these on their own. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.": "Les règles n’ont pas su classer ceux-ci seules. Classez-en :count et nous continuons — quand l’un revient, nous vous proposons d’en faire une règle.",
     "You are not stuck either way: any transaction can become a rule from the app itself, whenever you like.": "Dans tous les cas vous n’êtes pas bloqué : n’importe quel mouvement peut devenir une règle depuis l’app, quand vous voulez.",
     "You file a few by hand next": "Vous en classez quelques-uns à la main ensuite",
     "You file a handful by hand in the next step": "Vous en classez une poignée à la main à l’étape suivante",
@@ -2946,5 +2946,12 @@
     "Free and unlimited, for as long as you like": "Gratuit et illimité, aussi longtemps que vous le souhaitez",
     "Connecting a broker needs Standard": "Connecter un courtier nécessite Standard",
     "A year of your spending, from a file": "Une année de vos dépenses, depuis un fichier",
-    "The export your bank already offers, read in one go.": "L'export que votre banque propose déjà, lu d'un seul coup."
+    "The export your bank already offers, read in one go.": "L'export que votre banque propose déjà, lu d'un seul coup.",
+    "These still need a category. File :count of them and we carry on — when one repeats, we offer to turn it into a rule.": "Ceux-ci n’ont pas encore de catégorie. Classez-en :count et nous continuons — quand l’un revient, nous vous proposons d’en faire une règle.",
+    "Without this you file :what by hand. With it you approve a handful of rules and the rest happens on its own.": "Sans cela, vous classez :what à la main. Avec, vous approuvez une poignée de règles et le reste se fait tout seul.",
+    "each new movement": "chaque nouveau mouvement",
+    "The AI couldn’t run": "L’IA n’a pas pu s’exécuter",
+    "Nothing was changed: your movements are exactly as they were. Try again later, or sort them by hand.": "Rien n’a été modifié : vos mouvements sont exactement comme avant. Réessayez plus tard, ou classez-les à la main.",
+    "You have :count real movements — the estimates you typed are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.": "Vous avez :count mouvements réels — les estimations que vous avez saisies sont déjà classées et ne comptent pas. Les motifs apparaissent vers :min — en dessous nous devinerions, et une mauvaise règle vaut moins que pas de règle du tout.",
+    "Import another file": "Importez un autre fichier"
 }

@@ -2,9 +2,11 @@
 
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
@@ -235,3 +237,31 @@ it('passes the country of the user timezone to the hub', function (?string $time
     'Colombia' => ['America/Bogota', 'CO'],
     'no timezone' => [null, null],
 ]);
+
+it('tells the categorize step whether anything real came in and whether a rule filed it', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $label = Label::factory()->for($user)->estimate()->create();
+
+    Transaction::factory()->count(2)->create(['user_id' => $user->id, 'account_id' => $account->id])
+        ->each(fn (Transaction $transaction) => $transaction->labels()->attach($label));
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn ($page) => $page
+            ->where('hasRealTransactions', false)
+            ->where('rulesFiledTransactions', false)
+        );
+
+    $rule = AutomationRule::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'categorized_by_rule_id' => $rule->id,
+    ]);
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn ($page) => $page
+            ->where('hasRealTransactions', true)
+            ->where('rulesFiledTransactions', true)
+        );
+});

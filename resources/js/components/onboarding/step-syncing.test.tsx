@@ -165,6 +165,29 @@ describe('StepSyncing', () => {
         ).not.toBeInTheDocument();
     });
 
+    // The categorize step words itself on these: whether anything real came
+    // in, and whether a rule filed some of it. Imports land after the page
+    // loaded, so they must come back with the transactions.
+    it('refreshes what the categorize step says about the movements', async () => {
+        get.mockResolvedValue(status());
+
+        render(<StepSyncing onComplete={vi.fn()} />);
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(0);
+        });
+
+        expect(reload).toHaveBeenCalledWith(
+            expect.objectContaining({
+                only: expect.arrayContaining([
+                    'transactions',
+                    'hasRealTransactions',
+                    'rulesFiledTransactions',
+                ]),
+            }),
+        );
+    });
+
     describe('analytics', () => {
         const outcomes = () =>
             captureEvent.mock.calls

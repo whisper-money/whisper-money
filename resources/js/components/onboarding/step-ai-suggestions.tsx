@@ -30,7 +30,6 @@ import axios from 'axios';
 import {
     ChartNoAxesColumnIncreasing,
     Check,
-    RotateCcw,
     Sparkles,
     Undo2,
 } from 'lucide-react';
@@ -49,7 +48,10 @@ interface SuggestionState {
     previously_consented: boolean;
     requires_upgrade: boolean;
     eligible: boolean;
+    /** Real movements: the onboarding estimates are left out. */
     transaction_count: number;
+    /** The onboarding estimates, already sorted and of no use to the AI. */
+    estimate_count: number;
     min_transactions: number;
     auto_select_confidence: number;
     throttled: boolean;
@@ -71,6 +73,8 @@ interface AcceptResponse {
 interface StepAiSuggestionsProps {
     categories: Category[];
     hasConnectedAccount: boolean;
+    /** Whether a bank connection is on offer, for the "more history" exit. */
+    canConnectBank?: boolean;
     /** Back to the accounts hub, for a user who arrived with too little to read. */
     onAddAccount: () => void;
     onComplete: () => void;
@@ -79,6 +83,7 @@ interface StepAiSuggestionsProps {
 export function StepAiSuggestions({
     categories,
     hasConnectedAccount,
+    canConnectBank = false,
     onAddAccount,
     onComplete,
 }: StepAiSuggestionsProps) {
@@ -332,7 +337,12 @@ export function StepAiSuggestions({
             // later onboarding steps rely on (newly created rules + categories,
             // and the transactions that just got categorized) before advancing.
             router.reload({
-                only: ['automationRules', 'categories', 'transactions'],
+                only: [
+                    'automationRules',
+                    'categories',
+                    'transactions',
+                    'rulesFiledTransactions',
+                ],
                 onFinish: () => {
                     setSummary(data.summary);
                     setSubmitting(false);
@@ -452,6 +462,19 @@ export function StepAiSuggestions({
         );
     }
 
+    // Asking to send movements that are too few to read would be a promise
+    // with nothing behind it, so a user below the minimum goes straight here.
+    if (!state.eligible) {
+        return (
+            <NotEnoughToLearnFrom
+                state={state}
+                canConnectBank={canConnectBank}
+                onAddAccount={onAddAccount}
+                onContinue={leaveStep}
+            />
+        );
+    }
+
     if (!state.consented) {
         return (
             <StepScreen
@@ -512,72 +535,34 @@ export function StepAiSuggestions({
                 <StepCallout>
                     <StepEmphasis
                         sentence={__(
-                            'Without this you sort :count by hand. With it you approve a handful of rules and the rest happens on its own.',
+                            'Without this you file :what by hand. With it you approve a handful of rules and the rest happens on its own.',
                         )}
-                        word={__(':count movements', {
-                            count: state.transaction_count,
-                        })}
+                        word={__('each new movement')}
                     />
-                </StepCallout>
-            </StepScreen>
-        );
-    }
-
-    if (!state.eligible) {
-        return (
-            <StepScreen
-                title={__('Not enough to learn from yet')}
-                description={__(
-                    'You have :count movements. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
-                    {
-                        count: state.transaction_count,
-                        min: state.min_transactions,
-                    },
-                )}
-                footer={
-                    <>
-                        <StepButton text={__('Continue')} onClick={leaveStep} />
-                        <StepButton
-                            text={__('Add more history first')}
-                            variant="outline"
-                            onClick={onAddAccount}
-                        />
-                    </>
-                }
-            >
-                <StepList>
-                    <StepRow
-                        icon={ChartNoAxesColumnIncreasing}
-                        title={__('Bring more history')}
-                        description={__('Another file, or connect the bank')}
-                        trailing={<StepChevron />}
-                        onClick={onAddAccount}
-                    />
-                    <StepRow
-                        icon={Check}
-                        title={__('Or carry on')}
-                        description={__(
-                            'You file a handful by hand in the next step',
-                        )}
-                    />
-                </StepList>
-
-                <StepCallout>
-                    {__(
-                        'Nothing is lost by waiting. Any transaction can become a rule from the app itself, one at a time.',
-                    )}
                 </StepCallout>
             </StepScreen>
         );
     }
 
     if (timedOut || state.run?.status === 'failed') {
+        // A run that timed out may well finish the second time; one the
+        // provider refused (a 403 within a second) is not a matter of time.
         return (
             <StepScreen
-                title={__('That didn’t finish')}
-                description={__(
-                    'It ran too long and we stopped it. Your movements are safe and untouched — nothing half-categorised.',
-                )}
+                title={
+                    timedOut
+                        ? __('That didn’t finish')
+                        : __('The AI couldn’t run')
+                }
+                description={
+                    timedOut
+                        ? __(
+                              'It ran too long and we stopped it. Your movements are safe and untouched — nothing half-categorised.',
+                          )
+                        : __(
+                              'Nothing was changed: your movements are exactly as they were. Try again later, or sort them by hand.',
+                          )
+                }
                 footer={
                     <>
                         <StepButton
@@ -585,6 +570,11 @@ export function StepAiSuggestions({
                             onClick={startGenerate}
                             loading={busy}
                         />
+                        {timedOut && (
+                            <StepNote>
+                                {__('Usually works on the second run')}
+                            </StepNote>
+                        )}
                         <StepButton
                             text={__('Skip for now')}
                             variant="ghost"
@@ -594,11 +584,6 @@ export function StepAiSuggestions({
                 }
             >
                 <StepList>
-                    <StepRow
-                        icon={RotateCcw}
-                        title={__('Try again')}
-                        description={__('Usually works on the second run')}
-                    />
                     <StepRow
                         icon={Undo2}
                         title={__('Or sort them yourself')}
@@ -749,5 +734,82 @@ function RunCounter({ label, value }: { label: string; value: number }) {
             <span className="text-[15px] text-muted-foreground">{label}</span>
             <span className="text-2xl font-semibold tabular-nums">{value}</span>
         </div>
+    );
+}
+
+/**
+ * The screen for a user with too few real movements to learn from. Typed
+ * estimates are named apart: "you have 0 movements" read as a contradiction to
+ * someone who had just entered four.
+ */
+function NotEnoughToLearnFrom({
+    state,
+    canConnectBank,
+    onAddAccount,
+    onContinue,
+}: {
+    state: SuggestionState;
+    canConnectBank: boolean;
+    onAddAccount: () => void;
+    onContinue: () => void;
+}) {
+    return (
+        <StepScreen
+            title={__('Not enough to learn from yet')}
+            description={
+                state.estimate_count > 0
+                    ? __(
+                          'You have :count real movements — the estimates you typed are already sorted and don’t count. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
+                          {
+                              count: state.transaction_count,
+                              min: state.min_transactions,
+                          },
+                      )
+                    : __(
+                          'You have :count movements. Patterns start showing up around :min — below that we would be guessing, and a wrong rule is worse than no rule.',
+                          {
+                              count: state.transaction_count,
+                              min: state.min_transactions,
+                          },
+                      )
+            }
+            footer={
+                <>
+                    <StepButton text={__('Continue')} onClick={onContinue} />
+                    <StepButton
+                        text={__('Add more history first')}
+                        variant="outline"
+                        onClick={onAddAccount}
+                    />
+                </>
+            }
+        >
+            <StepList>
+                <StepRow
+                    icon={ChartNoAxesColumnIncreasing}
+                    title={__('Bring more history')}
+                    description={
+                        canConnectBank
+                            ? __('Another file, or connect the bank')
+                            : __('Import another file')
+                    }
+                    trailing={<StepChevron />}
+                    onClick={onAddAccount}
+                />
+                <StepRow
+                    icon={Check}
+                    title={__('Or carry on')}
+                    description={__(
+                        'You file a handful by hand in the next step',
+                    )}
+                />
+            </StepList>
+
+            <StepCallout>
+                {__(
+                    'Nothing is lost by waiting. Any transaction can become a rule from the app itself, one at a time.',
+                )}
+            </StepCallout>
+        </StepScreen>
     );
 }

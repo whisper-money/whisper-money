@@ -48,14 +48,15 @@ it('walks the first steps on a phone with the action pinned to the footer', func
         ->assertNoJavascriptErrors();
 });
 
-it('categorizes on a phone with both footer actions reachable', function () {
+it('moves past categorizing on a phone when nothing came in', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
     $this->actingAs($user);
 
     visit('/onboarding?step=categorize-transactions')
         ->resize(430, 932)
-        ->assertSee('Nothing left to teach us')
-        ->click('Continue')
+        // Nothing to file, so the step moves on by itself instead of
+        // congratulating the user on sorting nothing.
+        ->assertDontSee('Nothing left to teach us')
         // No month was read, so the target step has nothing to build on. It
         // says so on a screen of its own rather than vanishing between the two
         // around it.
