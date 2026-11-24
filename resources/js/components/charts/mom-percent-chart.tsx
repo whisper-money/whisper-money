@@ -1,4 +1,5 @@
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
+import { useLocale } from '@/hooks/use-locale';
 import { formatPercentValue, PercentDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -41,6 +42,8 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
+    const locale = useLocale();
+
     if (!active || !payload?.length) return null;
 
     const data = payload[0].payload;
@@ -62,7 +65,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                             'text-muted-foreground',
                     )}
                 >
-                    {formatPercentValue(percent ?? null)}
+                    {formatPercentValue(percent ?? null, { locale })}
                 </span>
             </div>
         </div>

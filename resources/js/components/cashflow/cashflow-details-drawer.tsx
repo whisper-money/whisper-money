@@ -34,6 +34,7 @@ import {
     CashflowPeriodType,
     CashflowSummary,
 } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import {
     allocatedOf,
     availableOf,
@@ -44,6 +45,7 @@ import { CASHFLOW_BLOCKS, isExpenseBlock } from '@/lib/cashflow-block';
 import { cn } from '@/lib/utils';
 import { type CashflowBlock } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import { formatPercent } from '@/utils/percent';
 import { Minus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 
@@ -223,6 +225,7 @@ function BlocksTable({
     onNavigate: () => void;
 }) {
     const amounts = blockAmountsOf(current);
+    const locale = useLocale();
     const previousAmounts = blockAmountsOf(previous);
     const hasPreviousData = hasPeriodData(previous);
 
@@ -260,11 +263,10 @@ function BlocksTable({
                                 </span>
                             </td>
                             <td className="py-2 text-right tabular-nums">
-                                {shareOf(
-                                    amounts[block],
-                                    current.income,
-                                ).toFixed(1)}
-                                %
+                                {formatPercent(
+                                    shareOf(amounts[block], current.income),
+                                    locale,
+                                )}
                             </td>
                             <td className="py-2 text-right">
                                 <WholeAmount

@@ -4,7 +4,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatPercent } from '@/utils/percent';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
@@ -38,6 +40,7 @@ export function AmountTrendIndicator({
     currencyCode = 'USD',
 }: AmountTrendIndicatorProps) {
     const [open, setOpen] = useState(false);
+    const locale = useLocale();
 
     const Icon = isPositive ? TrendingUp : TrendingDown;
     const iconColorClass = isPositive
@@ -79,8 +82,8 @@ export function AmountTrendIndicator({
                     </div>
                 </TooltipTrigger>
                 <TooltipContent side={tooltipSide}>
-                    {percentageChange >= 0 ? '+' : ''}
-                    {percentageChange.toFixed(1)}% {label}
+                    {formatPercent(percentageChange, locale, { signed: true })}{' '}
+                    {label}
                 </TooltipContent>
             </Tooltip>
         );

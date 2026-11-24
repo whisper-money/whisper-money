@@ -1,4 +1,5 @@
 import { AccountType } from '@/types/account';
+import { formatPercent } from '@/utils/percent';
 
 /**
  * Account types that reduce net worth (liabilities).
@@ -218,13 +219,12 @@ export function computeMoMPercent(
  */
 export function formatPercentValue(
     value: number | null,
-    options?: { decimals?: number },
+    options?: { decimals?: number; locale?: string },
 ): string {
     if (value === null) return '—';
 
-    const decimals = options?.decimals ?? 1;
-    const formatted = value.toFixed(decimals);
-    const sign = value > 0 ? '+' : '';
-
-    return `${sign}${formatted}%`;
+    return formatPercent(value, options?.locale ?? 'en-US', {
+        fractionDigits: options?.decimals ?? 1,
+        signed: true,
+    });
 }

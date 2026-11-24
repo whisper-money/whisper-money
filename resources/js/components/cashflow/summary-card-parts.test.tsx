@@ -6,6 +6,8 @@ import {
     shareOf,
 } from './summary-card-parts';
 
+vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
+
 vi.mock('@/components/ui/amount-display', () => ({
     AmountDisplay: ({ amountInCents }: { amountInCents: number }) => (
         <span>{amountInCents}</span>
