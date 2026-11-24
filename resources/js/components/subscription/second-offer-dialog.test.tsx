@@ -65,6 +65,7 @@ async function renderDialog() {
 describe('SecondOfferDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        window.localStorage.clear();
         mocks.showSecondOffer.current = true;
         mocks.latam.current = false;
         mocks.backlog.current = {
@@ -236,5 +237,43 @@ describe('SecondOfferDialog', () => {
         render(<SecondOfferDialog />);
 
         expect(mocks.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not open again on a later page load whose stamp never landed, and sends the stamp again', async () => {
+        // The first load opens it, but its "shown" POST is lost.
+        mocks.post.mockRejectedValueOnce(new Error('Network Error'));
+        const { unmount } = await renderDialog();
+        expect(
+            screen.getByText('214 of your movements need a category'),
+        ).toBeInTheDocument();
+        unmount();
+        vi.clearAllMocks();
+
+        // A fresh page load: the server still offers it.
+        await renderDialog();
+
+        expect(
+            screen.queryByText('214 of your movements need a category'),
+        ).toBeNull();
+        expect(mocks.captureEvent).not.toHaveBeenCalled();
+        expect(mocks.post).toHaveBeenCalledWith(
+            '/subscribe/second-offer/shown',
+        );
+    });
+
+    it('still opens for a user when only another account on this browser has seen it', async () => {
+        window.localStorage.setItem(
+            'second-offer-shown',
+            'someone-else:2026-11-20T10:00:00.000Z',
+        );
+
+        await renderDialog();
+
+        expect(
+            screen.getByText('214 of your movements need a category'),
+        ).toBeInTheDocument();
+        expect(mocks.captureEvent).toHaveBeenCalledWith('second_offer_shown', {
+            price_tier: 'standard',
+        });
     });
 });
