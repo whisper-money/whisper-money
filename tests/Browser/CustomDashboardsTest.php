@@ -184,7 +184,7 @@ it('fits a phone: every widget full width, keeping its height', function () {
         // Measure the loaded widgets: a loading skeleton is as tall as its
         // placeholder rows, so measuring before the deferred props arrive
         // races the server.
-        ->assertSee('on the last 30 days');
+        ->assertPresent('[data-testid="dashboard-grid"][aria-busy="false"]');
 
     $layout = $page->script(<<<'JS'
         (() => {

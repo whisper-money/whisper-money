@@ -97,4 +97,43 @@ describe('DashboardGrid', () => {
         }
         expect(cellOf('top-labels').matches(':empty')).toBe(false);
     });
+
+    it('is busy until the deferred dashboard data has arrived', () => {
+        const widgets = [
+            {
+                kind: 'system' as const,
+                id: 'a',
+                widget: 'net-worth' as const,
+                size: { width: '1/1' as const, height: 'l' as const },
+            },
+        ];
+        const { rerender } = render(
+            <DashboardGrid data={{} as DashboardProps} widgets={widgets} />,
+        );
+
+        expect(screen.getByTestId('dashboard-grid')).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+
+        rerender(
+            <DashboardGrid
+                data={
+                    {
+                        netWorthEvolution: {
+                            data: [],
+                            accounts: {},
+                            currency_code: 'EUR',
+                        },
+                    } as unknown as DashboardProps
+                }
+                widgets={widgets}
+            />,
+        );
+
+        expect(screen.getByTestId('dashboard-grid')).toHaveAttribute(
+            'aria-busy',
+            'false',
+        );
+    });
 });
