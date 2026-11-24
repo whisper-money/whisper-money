@@ -2609,6 +2609,8 @@
     "No half-connected account left behind.": "No queda ninguna cuenta a medio conectar.",
     "No longer syncing": "Ya no se sincronizan",
     "No spending to build a target on.": "No hay gasto sobre el que construir un objetivo.",
+    "Last month came to :spending, too little to set a limit below it. Inventing a number here would only give you something to ignore.": "El mes pasado sumó :spending, demasiado poco para fijar un límite por debajo. Inventarte un número aquí solo te daría algo que ignorar.",
+    "A target has to leave something to spend.": "Un objetivo tiene que dejar algo para gastar.",
     "Not after, when it's a receipt": "No después, cuando ya es un recibo",
     "Not enough to learn from yet": "Todavía no hay suficiente para aprender",
     "Not now — I’ll add accounts by hand": "Ahora no — añadiré las cuentas a mano",

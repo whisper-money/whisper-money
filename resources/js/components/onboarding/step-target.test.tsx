@@ -90,12 +90,15 @@ describe('StepTarget', () => {
 
     // The stepper may not walk past what the user has, in either direction.
     it('stops at the floor and at what the month can hold', async () => {
-        get.mockResolvedValue(summary({ monthly_spending: 5000 }));
+        get.mockResolvedValue(summary({ monthly_spending: 10000 }));
 
         await renderTarget();
 
-        // €50 spent: the floor and the ceiling are the same single step.
+        // €100 spent: the floor and the ceiling are the same single step,
+        // which leaves a €50 limit rather than none.
         expect(screen.getByText('50')).toBeInTheDocument();
+        expect(screen.getAllByText('€50')).not.toHaveLength(0);
+        expect(screen.getByText('50%')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Lower the target' }),
         ).toBeDisabled();
@@ -191,6 +194,45 @@ describe('StepTarget', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
         expect(onContinue).toHaveBeenCalledOnce();
+    });
+
+    // A target of €50 on a €50 month would leave a limit of nothing: "100%
+    // less", "goes over €0". No step fits, so no number is offered.
+    it.each([4000, 5000])(
+        'offers no target when the month is too small to cut a step from (%s)',
+        async (monthly_spending) => {
+            get.mockResolvedValue(summary({ monthly_spending }));
+
+            const onContinue = await renderTarget();
+
+            expect(screen.queryByText('Set my target')).toBeNull();
+            expect(
+                screen.getByText('Your target can wait'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText(/too little to set a limit below it/),
+            ).toBeInTheDocument();
+
+            fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+            expect(onContinue).toHaveBeenCalledOnce();
+        },
+    );
+
+    // A target kept from a bigger month may not open on a limit of zero.
+    it('holds a returning target under the month it is set against', async () => {
+        get.mockResolvedValue(
+            summary({ monthly_spending: 30000, target: 50000 }),
+        );
+
+        await renderTarget();
+
+        // €300 spent: the most it may open on is €250, a €50 limit.
+        expect(screen.getByText('250')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Raise the target' }),
+        ).toBeDisabled();
+        expect(screen.queryByText('€0')).toBeNull();
     });
 
     it('steps aside when the summary cannot be read at all', async () => {

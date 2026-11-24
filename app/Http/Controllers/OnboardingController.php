@@ -340,7 +340,13 @@ class OnboardingController extends Controller
             return response()->json(['message' => __('No spending to build a target on.')], 422);
         }
 
-        $limit = max(0, $spending - $target);
+        if ($target >= $spending) {
+            // A limit of nothing is not a limit: the step never offers a
+            // target that reaches the month it is built on.
+            return response()->json(['message' => __('A target has to leave something to spend.')], 422);
+        }
+
+        $limit = $spending - $target;
         $existing = $summary->catchAll($user);
 
         // The step showed this limit by name, so a catch-all that already

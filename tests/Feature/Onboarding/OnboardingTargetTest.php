@@ -197,6 +197,21 @@ it('reports no limit once the budget behind the target is gone', function () {
         ->assertJson(['target' => 20000, 'spending_limit' => null]);
 });
 
+// A target that reaches the month it is built on would leave a limit of zero.
+it('refuses a target that leaves nothing to spend', function (int $amount) {
+    $user = closingUser();
+    spentEachMonth(spendingAccount($user), RECURRING_CHARGES);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/target', ['amount' => $amount, 'warn' => true])
+        ->assertStatus(422);
+
+    expect($user->budgets()->count())->toBe(0);
+})->with([
+    'the whole month' => 100000,
+    'more than the month' => 150000,
+]);
+
 it('rejects a target that is not a positive amount', function (mixed $amount) {
     $user = closingUser();
 

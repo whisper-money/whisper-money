@@ -2217,6 +2217,8 @@
     "Your First Target": "Votre Premier Objectif",
     "Monthly spending": "Dépenses mensuelles",
     "No spending to build a target on.": "Aucune dépense sur laquelle fonder un objectif.",
+    "Last month came to :spending, too little to set a limit below it. Inventing a number here would only give you something to ignore.": "Le mois dernier s’élevait à :spending, trop peu pour fixer un plafond en dessous. Inventer un chiffre ici ne vous donnerait qu’une chose à ignorer.",
+    "A target has to leave something to spend.": "Un objectif doit laisser de quoi dépenser.",
     "Your dashboard isn’t empty": "Votre tableau de bord n’est pas vide",
     "Most finance apps hand you a blank page and a homework assignment. Here’s what’s already in yours.": "La plupart des applis de finances vous tendent une page blanche et des devoirs. Voici ce qu’il y a déjà dans le vôtre.",
     "Open my dashboard": "Ouvrir mon tableau de bord",

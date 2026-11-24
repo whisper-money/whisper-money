@@ -60,6 +60,7 @@ export function StepTarget({
     onContinue,
 }: StepTargetProps) {
     const summary = useOnboardingSummary();
+    const { formatAmount } = useFormatAmount();
     const onContinueRef = useRef(onContinue);
     onContinueRef.current = onContinue;
 
@@ -85,10 +86,27 @@ export function StepTarget({
         return <NoSpendingToTarget onContinue={onContinue} />;
     }
 
+    const ceiling = targetCeiling(spending, summary.currency_code);
+
+    // A month smaller than one step of the stepper leaves no target that keeps
+    // a limit above zero, and a limit of nothing would make every sentence on
+    // the screen absurd. It gets the same honest no rather than a fake number.
+    if (ceiling < STEP) {
+        return (
+            <NoSpendingToTarget
+                onContinue={onContinue}
+                spending={formatAmount(spending, summary.currency_code, {
+                    fractionDigits: 0,
+                })}
+            />
+        );
+    }
+
     return (
         <Target
             summary={summary}
             spending={spending}
+            ceiling={ceiling}
             goal={goal}
             spendingGuess={spendingGuess}
             onContinue={onContinue}
@@ -114,20 +132,44 @@ function TargetSkeleton() {
 }
 
 /**
+ * The largest target, in major units, that still leaves a limit above zero:
+ * the last whole step strictly below the month's spending. Under one step
+ * there is none.
+ */
+function targetCeiling(spending: number, currency: string): number {
+    return Math.ceil(toMajorUnits(spending, currency) / STEP) * STEP - STEP;
+}
+
+/**
  * The step for a reader with balances but no spending behind them — a pension,
- * a mortgage, a broker, or a bank that has handed over nothing going out yet.
+ * a mortgage, a broker, or a bank that has handed over nothing going out yet —
+ * or with a month too small to cut a step out of.
  *
  * A target set on no spending would be a number the app invented, so none is
  * offered. What the screen owes them is the reason, because step 5 told them
  * this was coming and silence reads as a step that broke.
  */
-function NoSpendingToTarget({ onContinue }: { onContinue: () => void }) {
+function NoSpendingToTarget({
+    onContinue,
+    spending,
+}: {
+    onContinue: () => void;
+    /** Formatted: the month that was read, when there was one but too small. */
+    spending?: string;
+}) {
     return (
         <StepScreen
             title={__('Your target can wait')}
-            description={__(
-                'A target is built on a month of real spending, and there isn’t one to read yet. Inventing a number here would only give you something to ignore.',
-            )}
+            description={
+                spending === undefined
+                    ? __(
+                          'A target is built on a month of real spending, and there isn’t one to read yet. Inventing a number here would only give you something to ignore.',
+                      )
+                    : __(
+                          'Last month came to :spending, too little to set a limit below it. Inventing a number here would only give you something to ignore.',
+                          { spending },
+                      )
+            }
             footer={<StepButton text={__('Continue')} onClick={onContinue} />}
         >
             <StepList>
@@ -153,6 +195,7 @@ function NoSpendingToTarget({ onContinue }: { onContinue: () => void }) {
 function Target({
     summary,
     spending,
+    ceiling,
     goal,
     spendingGuess,
     onContinue,
@@ -160,6 +203,8 @@ function Target({
     summary: OnboardingSummary;
     /** Minor units, positive: the month the reveal was written about. */
     spending: number;
+    /** Major units: the largest target that leaves a limit above zero. */
+    ceiling: number;
     goal?: string;
     spendingGuess?: number;
     onContinue: () => void;
@@ -168,7 +213,6 @@ function Target({
     const { formatAmount } = useFormatAmount();
     const currency = summary.currency_code;
     const spendingMajor = toMajorUnits(spending, currency);
-    const ceiling = Math.max(STEP, Math.floor(spendingMajor / STEP) * STEP);
 
     const [amount, setAmount] = useState(() =>
         opening(summary.target, currency, spendingMajor, ceiling),
@@ -301,13 +345,14 @@ function opening(
     spendingMajor: number,
     ceiling: number,
 ): number {
-    if (existing !== null) {
-        return toMajorUnits(existing, currency);
-    }
+    // A target kept from an earlier, bigger month is held under this one's
+    // ceiling too, so the limit it opens on is never zero.
+    const wanted =
+        existing !== null
+            ? toMajorUnits(existing, currency)
+            : Math.round((spendingMajor * DEFAULT_SHARE) / STEP) * STEP;
 
-    const share = Math.round((spendingMajor * DEFAULT_SHARE) / STEP) * STEP;
-
-    return Math.min(Math.max(share, STEP), ceiling);
+    return Math.min(Math.max(wanted, STEP), ceiling);
 }
 
 /**
