@@ -143,6 +143,14 @@ describe('CashflowSummaryCard spending limit', () => {
         expect(screen.getByText('€0.40 over the limit')).toBeInTheDocument();
     });
 
+    it('shows nothing left in whole euros right at the limit', () => {
+        renderCard(limit({ allocated: 100000, spent: 100000 }));
+
+        expect(
+            screen.getByText('€0 left with 6 days to go'),
+        ).toBeInTheDocument();
+    });
+
     it('keeps the bar neutral when a zero limit has nothing spent', () => {
         renderCard(limit({ allocated: 0, spent: 0 }));
 

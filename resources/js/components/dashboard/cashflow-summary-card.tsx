@@ -187,10 +187,13 @@ function SpendingLimitRow({
     const remaining = limit.allocated - limit.spent;
     // Whole units like the figures above, except under one, where rounding
     // would print "€0 left" when €0.40 is.
-    const formatRemaining = (cents: number) =>
-        formatAmount(Math.abs(cents), currencyCode, {
-            fractionDigits: Math.abs(cents) < 100 ? undefined : 0,
+    const formatRemaining = (cents: number) => {
+        const amount = Math.abs(cents);
+
+        return formatAmount(amount, currencyCode, {
+            fractionDigits: amount > 0 && amount < 100 ? undefined : 0,
         });
+    };
 
     return (
         <Link
