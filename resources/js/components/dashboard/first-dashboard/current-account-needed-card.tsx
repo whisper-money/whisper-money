@@ -19,9 +19,15 @@ import { __ } from '@/utils/i18n';
 export function CurrentAccountNeededCard({
     spendingGuess,
     currencyCode,
+    canImport,
 }: {
     spendingGuess: number | null;
     currencyCode: string;
+    /**
+     * Whether an account can take a bank file. Without one the importer could
+     * only say to create the account first, so the account is the one action.
+     */
+    canImport: boolean;
 }) {
     const importer = useImportDialog();
     const { formatAmount } = useFormatAmount();
@@ -57,13 +63,17 @@ export function CurrentAccountNeededCard({
                               )}
                     </CardDescription>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <Button onClick={() => void importer.show(null)}>
-                            {__('Import a bank file')}
-                        </Button>
+                        {canImport && (
+                            <Button onClick={() => void importer.show(null)}>
+                                {__('Import a bank file')}
+                            </Button>
+                        )}
                         <CreateAccountDialog
                             initialMode="manual"
                             trigger={
-                                <Button variant="outline">
+                                <Button
+                                    variant={canImport ? 'outline' : 'default'}
+                                >
                                     {__('Add an account by hand')}
                                 </Button>
                             }

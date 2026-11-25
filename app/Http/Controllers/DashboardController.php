@@ -92,8 +92,13 @@ class DashboardController extends Controller
             // first days after onboarding, or null when there is none to draw.
             'setupChecklist' => Inertia::defer(fn () => $this->setupChecklist->for($request->user()), 'dashboard'),
             // What the system dashboard has instead of real movements: only the
-            // onboarding estimates, or only balances. Null once there is one.
-            'firstDashboardState' => Inertia::defer(fn () => $this->firstDashboardState->for($request->user()), 'dashboard'),
+            // onboarding estimates, or only balances. Null once there is one, and
+            // on a dashboard of the user's own. Not deferred: it decides the
+            // header and which cards are drawn, so it is there on the first
+            // paint rather than swapping them under the reader.
+            'firstDashboardState' => fn (): ?array => $this->selectedDashboard($request) === null
+                ? $this->firstDashboardState->for($request->user())
+                : null,
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),

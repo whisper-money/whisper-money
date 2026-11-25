@@ -114,6 +114,14 @@ export function formatMonthFromYearMonth(
     return formatDate(date, formatStr, locale);
 }
 
+/** The month before a `Y-m` month, as `Y-m`. */
+export function previousYearMonth(yearMonth: string): string {
+    const [year, month] = yearMonth.split('-').map(Number);
+    const previous = new Date(year, month - 2, 1);
+
+    return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`;
+}
+
 /**
  * The full name of a `Y-m` month as a sentence reads it, without the year:
  * "October", "octubre".

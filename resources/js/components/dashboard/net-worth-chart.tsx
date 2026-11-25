@@ -46,7 +46,6 @@ import {
     formatDate,
     formatDayFromDate,
     formatMonthFromYearMonth,
-    formatMonthName,
 } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
@@ -59,10 +58,11 @@ interface NetWorthChartProps {
     loading?: boolean;
     showLegend?: boolean;
     /**
-     * The user has no real movement yet (only balances, or only onboarding
-     * estimates): a chart of one month says how it becomes a line.
+     * The day the user started tracking, while they have no real movement yet
+     * (only balances, or only onboarding estimates): a chart of one month then
+     * says how it becomes a line.
      */
-    isFirstReading?: boolean;
+    firstReading?: { date: string; isToday: boolean } | null;
 }
 
 const DAILY_DAYS = 30;
@@ -135,7 +135,7 @@ export function NetWorthChart({
     data: monthlyData,
     loading,
     showLegend = false,
-    isFirstReading = false,
+    firstReading = null,
 }: NetWorthChartProps) {
     const { props } = usePage<SharedData>();
     const locale = useLocale();
@@ -582,21 +582,23 @@ export function NetWorthChart({
                                     variant="large"
                                 />
                             </div>
-                            {isFirstReading &&
+                            {firstReading &&
                                 granularity === 'monthly' &&
                                 knownChartData.length === 1 && (
                                     <span>
-                                        {__(
-                                            'First reading, :month. Update your balances once a month and this becomes a line.',
-                                            {
-                                                month: formatMonthName(
-                                                    String(
-                                                        knownChartData[0].month,
-                                                    ),
-                                                    locale,
-                                                ),
-                                            },
-                                        )}
+                                        {firstReading.isToday
+                                            ? __(
+                                                  'First reading, today. Update your balances once a month and this becomes a line.',
+                                              )
+                                            : __(
+                                                  'First reading, :date. Update your balances once a month and this becomes a line.',
+                                                  {
+                                                      date: formatDayFromDate(
+                                                          firstReading.date,
+                                                          locale,
+                                                      ),
+                                                  },
+                                              )}
                                     </span>
                                 )}
                             <PercentageTrendIndicator

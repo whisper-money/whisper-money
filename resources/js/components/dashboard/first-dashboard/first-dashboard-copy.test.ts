@@ -1,9 +1,10 @@
 import { type FirstDashboardState } from '@/types/dashboard';
-import { formatMonthName } from '@/utils/date';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatMonthName, previousYearMonth } from '@/utils/date';
+import { describe, expect, it } from 'vitest';
 import { firstDashboardDescription } from './first-dashboard-copy';
 
 const header = {
+    today: '2026-11-25',
     tracking_since: '2026-11-25',
     accounts_count: 1,
     spending_guess: null,
@@ -26,15 +27,6 @@ function estimates(month: string): FirstDashboardState {
 }
 
 describe('firstDashboardDescription', () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 10, 25, 12));
-    });
-
-    afterEach(() => {
-        vi.useRealTimers();
-    });
-
     it('says since today, one account and last month in round figures', () => {
         expect(firstDashboardDescription(estimates('2026-10'), 'en-US')).toBe(
             'Tracking since today · 1 account · last month in round figures',
@@ -52,6 +44,7 @@ describe('firstDashboardDescription', () => {
             firstDashboardDescription(
                 {
                     state: 'balances',
+                    can_import: false,
                     ...header,
                     tracking_since: '2026-11-20',
                     accounts_count: 2,
@@ -59,6 +52,13 @@ describe('firstDashboardDescription', () => {
                 'en-US',
             ),
         ).toBe('Tracking since Nov 20 · 2 accounts · no movements yet');
+    });
+});
+
+describe('previousYearMonth', () => {
+    it('steps back across a year', () => {
+        expect(previousYearMonth('2026-11')).toBe('2026-10');
+        expect(previousYearMonth('2027-01')).toBe('2026-12');
     });
 });
 

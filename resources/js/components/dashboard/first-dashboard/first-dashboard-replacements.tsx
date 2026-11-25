@@ -16,7 +16,7 @@ import { NoMovementsCashflowCard } from './no-movements-cashflow-card';
  * - Only balances: one card in place of both, saying they need a current
  *   account.
  */
-export function firstDashboardWidgets(
+export function firstDashboardReplacements(
     state: FirstDashboardState,
     showsCashflow: boolean,
 ): Partial<Record<SystemWidgetId, ReactNode>> {
@@ -27,6 +27,7 @@ export function firstDashboardWidgets(
                     <CurrentAccountNeededCard
                         spendingGuess={state.spending_guess}
                         currencyCode={state.currency_code}
+                        canImport={state.can_import}
                     />
                 </PrivacyRevealScope>
             ),
@@ -44,6 +45,8 @@ export function firstDashboardWidgets(
                 />
             </PrivacyRevealScope>
         ),
-        cashflow: showsCashflow ? <NoMovementsCashflowCard /> : null,
+        cashflow: showsCashflow ? (
+            <NoMovementsCashflowCard yearMonth={state.today.slice(0, 7)} />
+        ) : null,
     };
 }

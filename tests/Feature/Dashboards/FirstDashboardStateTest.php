@@ -4,6 +4,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
+use App\Models\Dashboard;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
@@ -104,6 +105,7 @@ it('tells an estimate-only dashboard the month typed in, its rows and the guess'
 
     expect($state)->toMatchArray([
         'state' => 'estimates',
+        'today' => '2026-11-24',
         'tracking_since' => '2026-11-24',
         'accounts_count' => 1,
         'spending_guess' => 120000,
@@ -147,11 +149,22 @@ it('tells a balance-only dashboard how many accounts it holds', function (): voi
 
     expect(dashboardPropFor($user, 'firstDashboardState'))->toBe([
         'state' => 'balances',
+        'today' => '2026-11-24',
         'tracking_since' => '2026-11-24',
         'accounts_count' => 2,
         'spending_guess' => 120000,
         'currency_code' => 'EUR',
+        'can_import' => false,
     ]);
+});
+
+it('says a bank file can go in when an account takes movements', function (): void {
+    $user = stateUser();
+    stateAccount($user, 'investment');
+    stateAccount($user, 'savings');
+
+    expect(dashboardPropFor($user, 'firstDashboardState'))
+        ->toMatchArray(['state' => 'balances', 'can_import' => true]);
 });
 
 it('reads the tracking day on the user\'s own calendar', function (): void {
@@ -159,7 +172,56 @@ it('reads the tracking day on the user\'s own calendar', function (): void {
     $user = stateUser(['timezone' => 'America/New_York']);
     stateAccount($user, 'investment');
 
-    expect(dashboardPropFor($user, 'firstDashboardState')['tracking_since'])->toBe('2026-11-23');
+    expect(dashboardPropFor($user, 'firstDashboardState'))
+        ->toMatchArray(['today' => '2026-11-23', 'tracking_since' => '2026-11-23']);
+});
+
+it('keeps to the account the newest estimates are in', function (): void {
+    $user = stateUser();
+    $older = stateAccount($user);
+    $newer = stateAccount($user, 'checking', ['currency_code' => 'USD']);
+    stateEstimate($user, $older, 50000, null, 'Rent')->update(['transaction_date' => '2026-09-01']);
+    stateEstimate($user, $newer, 40000, null, 'Groceries');
+
+    expect(dashboardPropFor($user, 'firstDashboardState')['estimates'])->toMatchArray([
+        'month' => '2026-10',
+        'count' => 1,
+        'total' => 40000,
+        'account_id' => $newer->id,
+        'rows' => [['name' => 'Groceries', 'amount' => 40000]],
+    ]);
+});
+
+it('keeps two categories of the same name apart', function (): void {
+    $user = stateUser();
+    $account = stateAccount($user);
+    stateEstimate($user, $account, 50000, stateCategory($user, 'Home'));
+    $nested = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Home',
+        'type' => CategoryType::Expense,
+        'parent_id' => stateCategory($user, 'Housing')->id,
+    ]);
+    stateEstimate($user, $account, 20000, $nested);
+
+    expect(dashboardPropFor($user, 'firstDashboardState')['estimates']['rows'])->toBe([
+        ['name' => 'Home', 'amount' => 50000],
+        ['name' => 'Home', 'amount' => 20000],
+    ]);
+});
+
+it('only describes the system dashboard', function (): void {
+    $user = stateUser();
+    stateAccount($user, 'investment');
+    $dashboard = Dashboard::factory()->create(['user_id' => $user->id]);
+
+    $state = test()->actingAs($user)->get(route('dashboard', ['dashboard' => $dashboard->id]), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'firstDashboardState',
+    ])->assertOk()->json('props.firstDashboardState');
+
+    expect($state)->toBeNull();
 });
 
 it('leaves the dashboard as it is for a user with real movements', function (): void {

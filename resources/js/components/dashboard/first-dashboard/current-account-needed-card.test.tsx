@@ -33,6 +33,7 @@ describe('CurrentAccountNeededCard', () => {
             <CurrentAccountNeededCard
                 spendingGuess={120000}
                 currencyCode="EUR"
+                canImport
             />,
         );
 
@@ -53,6 +54,7 @@ describe('CurrentAccountNeededCard', () => {
             <CurrentAccountNeededCard
                 spendingGuess={null}
                 currencyCode="EUR"
+                canImport
             />,
         );
 
@@ -68,6 +70,7 @@ describe('CurrentAccountNeededCard', () => {
             <CurrentAccountNeededCard
                 spendingGuess={null}
                 currencyCode="EUR"
+                canImport
             />,
         );
 
@@ -82,5 +85,22 @@ describe('CurrentAccountNeededCard', () => {
                 .closest('[data-mode]')
                 ?.getAttribute('data-mode'),
         ).toBe('manual');
+    });
+
+    it('only offers the account when no account can take a bank file', () => {
+        render(
+            <CurrentAccountNeededCard
+                spendingGuess={null}
+                currencyCode="EUR"
+                canImport={false}
+            />,
+        );
+
+        expect(
+            screen.queryByRole('button', { name: 'Import a bank file' }),
+        ).toBeNull();
+        expect(
+            screen.getByRole('button', { name: 'Add an account by hand' }),
+        ).toBeTruthy();
     });
 });

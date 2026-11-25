@@ -3020,5 +3020,6 @@
     "An investment moves as one number. Add the account your salary lands in and this space shows where the money goes each month, what's left over, and how it compares with your guess of :guess.": "Un placement évolue comme un seul chiffre. Ajoutez le compte sur lequel arrive votre salaire et cet espace montre où va l'argent chaque mois, ce qui reste et la comparaison avec votre estimation de :guess.",
     "Add an account by hand": "Ajouter un compte à la main",
     "Preview": "Aperçu",
-    "First reading, :month. Update your balances once a month and this becomes a line.": "Premier relevé, :month. Mettez à jour vos soldes une fois par mois et cela devient une courbe."
+    "First reading, today. Update your balances once a month and this becomes a line.": "Premier relevé, aujourd'hui. Mettez à jour vos soldes une fois par mois et cela devient une courbe.",
+    "First reading, :date. Update your balances once a month and this becomes a line.": "Premier relevé, le :date. Mettez à jour vos soldes une fois par mois et cela devient une courbe."
 }

@@ -1,6 +1,6 @@
 import { EstimatesSwapCard } from '@/components/dashboard/first-dashboard/estimates-swap-card';
 import { firstDashboardDescription } from '@/components/dashboard/first-dashboard/first-dashboard-copy';
-import { firstDashboardWidgets } from '@/components/dashboard/first-dashboard/first-dashboard-widgets';
+import { firstDashboardReplacements } from '@/components/dashboard/first-dashboard/first-dashboard-replacements';
 import { SetupChecklistCard } from '@/components/dashboard/setup-checklist-card';
 import { DashboardLayoutView } from '@/components/dashboard/widgets/dashboard-layout-view';
 import {
@@ -204,7 +204,7 @@ export function CustomDashboardsView({
                         data={data}
                         replacements={
                             firstState
-                                ? firstDashboardWidgets(
+                                ? firstDashboardReplacements(
                                       firstState,
                                       data.features.cashflow,
                                   )

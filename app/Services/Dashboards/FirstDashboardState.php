@@ -3,9 +3,9 @@
 namespace App\Services\Dashboards;
 
 use App\Enums\AccountType;
+use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -28,11 +28,11 @@ class FirstDashboardState
     private const SPENDING_ACCOUNT_TYPES = [AccountType::Checking, AccountType::CreditCard];
 
     /**
-     * @return array<string, mixed>|null
+     * @return array{state: 'estimates'|'balances', today: string, tracking_since: string, accounts_count: int, spending_guess: int|null, currency_code: string, estimates?: array<string, mixed>, can_import?: bool}|null
      */
     public function for(User $user): ?array
     {
-        if ($user->onboarded_at === null || $this->hasRealMovements($user)) {
+        if (! $this->isBeforeFirstMovement($user)) {
             return null;
         }
 
@@ -50,6 +50,10 @@ class FirstDashboardState
             return [
                 'state' => 'balances',
                 ...$this->header($user),
+                // Whether a bank file has an account to go into: without one
+                // the importer can only say to create it first, so the card
+                // offers the account instead.
+                'can_import' => $user->accounts()->get()->contains(fn (Account $account): bool => $account->acceptsManualMovements()),
             ];
         }
 
@@ -63,40 +67,49 @@ class FirstDashboardState
      */
     public function isEstimateOnly(User $user): bool
     {
-        return $user->onboarded_at !== null
-            && ! $this->hasRealMovements($user)
+        return $this->isBeforeFirstMovement($user)
             && $user->transactions()->estimates()->exists();
     }
 
-    private function hasRealMovements(User $user): bool
+    /**
+     * Onboarded, and nothing yet from a bank, a file or a manual entry.
+     */
+    private function isBeforeFirstMovement(User $user): bool
     {
-        return $user->transactions()->withoutEstimates()->exists();
+        return $user->onboarded_at !== null
+            && ! $user->transactions()->withoutEstimates()->exists();
     }
 
     /**
-     * Accounts, none of them one spending happens in, and no movement at all.
+     * Accounts, none of them one spending happens in, and no movement at all
+     * (estimates included: those are the other state).
      */
     private function isBalanceOnly(User $user): bool
     {
+        if ($user->transactions()->exists()) {
+            return false;
+        }
+
         $types = $user->accounts()->notArchived()->pluck('type');
 
         return $types->isNotEmpty()
-            && ! $types->contains(fn (AccountType $type): bool => in_array($type, self::SPENDING_ACCOUNT_TYPES, true))
-            && ! $user->transactions()->exists();
+            && ! $types->contains(fn (AccountType $type): bool => in_array($type, self::SPENDING_ACCOUNT_TYPES, true));
     }
 
     /**
      * What the page header says under the title in both states: since when
-     * the user is tracking (the day the onboarding ended, on their own
-     * calendar), how many accounts, and the spending guess they gave.
+     * the user is tracking (the day the onboarding ended), how many accounts,
+     * and the spending guess they gave. Days are on the user's own calendar,
+     * `today` included, so the page compares like with like.
      *
-     * @return array{tracking_since: string, accounts_count: int, spending_guess: int|null, currency_code: string}
+     * @return array{today: string, tracking_since: string, accounts_count: int, spending_guess: int|null, currency_code: string}
      */
     private function header(User $user): array
     {
         $guess = $user->onboarding_answers['spending_guess'] ?? null;
 
         return [
+            'today' => $user->localToday()->toDateString(),
             'tracking_since' => $user->onboarded_at->copy()->setTimezone($user->localTimezone())->toDateString(),
             'accounts_count' => $user->accounts()->notArchived()->count(),
             'spending_guess' => is_int($guess) ? $guess : null,
@@ -105,23 +118,26 @@ class FirstDashboardState
     }
 
     /**
-     * The estimates of the newest month that holds any: onboarding types in
-     * one month, and a second go at it replaces the first.
+     * The estimates of the newest month that holds any, in the account the
+     * newest of them is in: onboarding types one month into one account, and
+     * a second go at it replaces the first. Kept to that one account so the
+     * figures share its currency and the import link has one place to open.
      *
      * @return Collection<int, Transaction>
      */
     private function latestEstimates(User $user): Collection
     {
-        $latest = $user->transactions()->estimates()->max('transaction_date');
+        $newest = $user->transactions()->estimates()->latest('transaction_date')->first(['account_id', 'transaction_date']);
 
-        if ($latest === null) {
+        if ($newest === null) {
             return collect();
         }
 
-        $month = Carbon::parse($latest);
+        $month = $newest->transaction_date;
 
         return $user->transactions()
             ->estimates()
+            ->where('account_id', $newest->account_id)
             ->whereBetween('transaction_date', [$month->copy()->startOfMonth()->toDateString(), $month->copy()->endOfMonth()->toDateString()])
             ->with(['category:id,name', 'account:id,banking_connection_id,type,archived_at'])
             ->get();
@@ -138,24 +154,25 @@ class FirstDashboardState
     private function presentEstimates(Collection $estimates): array
     {
         $rows = $estimates
-            ->groupBy(fn (Transaction $estimate): string => $estimate->category?->name ?? $estimate->description)
-            ->map(fn (Collection $group, string $name): array => [
-                'name' => $name,
+            ->groupBy(fn (Transaction $estimate): string => $estimate->category_id ?? 'description:'.$estimate->description)
+            ->map(fn (Collection $group): array => [
+                'name' => (string) ($group->first()->category?->name ?? $group->first()->description),
                 'amount' => (int) -$group->sum('amount'),
             ])
             ->sortByDesc('amount')
             ->values()
             ->all();
 
-        $account = $estimates->first()->account;
+        $first = $estimates->first();
+        $account = $first->account;
 
         return [
-            'month' => $estimates->first()->transaction_date->format('Y-m'),
+            'month' => $first->transaction_date->format('Y-m'),
             'count' => $estimates->count(),
             'total' => (int) collect($rows)->sum('amount'),
-            'currency_code' => (string) $estimates->first()->currency_code,
-            // The account the emailed import link opens on, when it can take
-            // the file: the one the estimates were typed into.
+            'currency_code' => (string) $first->currency_code,
+            // The account the import opens on, and the emailed link names,
+            // when it can still take a file.
             'account_id' => $account?->acceptsManualMovements() ? $account->id : null,
             'rows' => $rows,
         ];

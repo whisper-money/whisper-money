@@ -15,17 +15,21 @@ import {
 import { useLocale } from '@/hooks/use-locale';
 import { formatMonthName } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { currentYearMonth } from './first-dashboard-copy';
 
 /**
  * The cashflow card of a dashboard with no movement in the month yet: dashes
  * where the figures go, rather than three zeros that read as a month with no
  * income, and the way to add the first one.
  */
-export function NoMovementsCashflowCard() {
+export function NoMovementsCashflowCard({
+    yearMonth,
+}: {
+    /** The month in progress, `Y-m`. */
+    yearMonth: string;
+}) {
     const locale = useLocale();
     const newTransaction = useNewTransactionDialog('full_dialog');
-    const month = formatMonthName(currentYearMonth(), locale);
+    const month = formatMonthName(yearMonth, locale);
 
     return (
         <Card className="h-full">

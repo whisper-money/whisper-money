@@ -151,15 +151,30 @@ describe('NetWorthChart', () => {
     it('says how one reading becomes a line, before the user has any movement', () => {
         const oneReading = evolution([...Array(12).fill(null), 800000]);
         const { unmount } = render(
-            <NetWorthChart data={oneReading} isFirstReading />,
+            <NetWorthChart
+                data={oneReading}
+                firstReading={{ date: '2026-11-25', isToday: true }}
+            />,
         );
 
         expect(
             screen.getByText(
-                'First reading, November. Update your balances once a month and this becomes a line.',
+                'First reading, today. Update your balances once a month and this becomes a line.',
             ),
         ).toBeTruthy();
         unmount();
+
+        const { unmount: unmountEarlier } = render(
+            <NetWorthChart
+                data={oneReading}
+                firstReading={{ date: '2026-11-20', isToday: false }}
+            />,
+        );
+
+        expect(
+            screen.getByText(/^First reading, Nov 20\. Update your balances/),
+        ).toBeTruthy();
+        unmountEarlier();
 
         render(<NetWorthChart data={oneReading} />);
 

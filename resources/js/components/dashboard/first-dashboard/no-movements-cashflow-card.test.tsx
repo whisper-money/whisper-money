@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NoMovementsCashflowCard } from './no-movements-cashflow-card';
 
 const { showNewTransaction } = vi.hoisted(() => ({
@@ -17,18 +17,12 @@ vi.mock('@/components/transactions/use-new-transaction-dialog', () => ({
 }));
 
 describe('NoMovementsCashflowCard', () => {
-    beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 10, 25, 12));
-    });
-
     afterEach(() => {
-        vi.useRealTimers();
         showNewTransaction.mockReset();
     });
 
     it("waits for the month's first movement with dashes, not zeros", () => {
-        render(<NoMovementsCashflowCard />);
+        render(<NoMovementsCashflowCard yearMonth="2026-11" />);
 
         expect(
             screen.getByText(
@@ -40,7 +34,7 @@ describe('NoMovementsCashflowCard', () => {
     });
 
     it('opens the new movement dialog', () => {
-        render(<NoMovementsCashflowCard />);
+        render(<NoMovementsCashflowCard yearMonth="2026-11" />);
 
         fireEvent.click(screen.getByRole('button', { name: 'Add a movement' }));
 

@@ -61,6 +61,8 @@ export interface SetupChecklist {
 
 /** What every first-dashboard state says in the page header. */
 interface FirstDashboardHeader {
+    /** Y-m-d, today on the user's calendar. */
+    today: string;
     /** Y-m-d, the day the onboarding ended on the user's calendar. */
     tracking_since: string;
     accounts_count: number;
@@ -99,7 +101,11 @@ export type FirstDashboardState =
           state: 'estimates';
           estimates: DashboardEstimates;
       } & FirstDashboardHeader)
-    | ({ state: 'balances' } & FirstDashboardHeader);
+    | ({
+          state: 'balances';
+          /** Whether an account can take a bank file. */
+          can_import: boolean;
+      } & FirstDashboardHeader);
 
 /** One of the user's own dashboards, as the picker lists it. */
 export interface DashboardSummary {

@@ -32,7 +32,7 @@ export function CreateAccountDialog({
 }: {
     onSuccess?: () => void;
     trigger?: React.ReactNode;
-    /** `manual` opens straight on the form, for an "add it by hand" action. */
+    /** `manual` opens straight on the form, for an "add it by hand" action; read on mount and on close. */
     initialMode?: Mode;
 }) {
     const {
