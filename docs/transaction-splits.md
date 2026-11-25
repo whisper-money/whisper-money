@@ -2,7 +2,23 @@
 
 New splits follow upstream's model: `TransactionSplitter` replaces a transaction with 2–20 child transactions (parts) that carry `split_parent_id`, and soft-deletes the original, which keeps its bank ids and fingerprint so a sync or a re-import does not bring it back. Merging any part soft-deletes every part and restores the original with the category it had. A part cannot be split again or deleted on its own, and its date, account, amount, currency, description and counterparties are locked; its category, labels and notes stay editable. Splitting is gated by the `TransactionSplitting` flag; merging never is.
 
+A split moves the original's rows in archived budgets to the parts, and a merge moves the parts' rows back, so an archived budget keeps exactly what it counted (`SplitBudgetRows`); live budgets are reassigned once the split or merge commits. Merging a split converted from lines also deletes those lines, so the original comes back as one uncategorized row that can be split again.
+
 The rest of this document describes the fork's earlier model, split lines in `transaction_splits`. Rows that still carry lines are read as before, but no path writes lines any more: such a row cannot be split, merged or recategorized until it is converted to parts.
+
+## Converting the old splits
+
+Run once after deploying the new model, while nobody is writing (it holds every split it converts in one database transaction):
+
+```bash
+php artisan transactions:convert-legacy-splits             # preview: converts, verifies, rolls back
+php artisan transactions:convert-legacy-splits --execute   # converts, verifies, commits only if it passes
+php artisan transactions:convert-legacy-splits --undo [--execute]
+```
+
+`--user=<id or email>` narrows any run to one user. Each live row whose lines add up to its amount (at least two) becomes one part per line, in line order: amount and category from the line (`category_source` manual), everything else from the original, its labels and `created_at` included; `updated_at` is now, so the offline sync sends the parts. The bank's ids, fingerprint and raw data stay on the trashed original, which also keeps its lines, recurring series link, corrections and labels. Every budget row of the original moves to the parts: shared as each budget explains it today, or by part amount (residue on the last part) when that does not add up, so no period total changes. No model event fires: no rule, AI, budget job, email or notification. Rows in the trash, parts, and rows with fewer than two lines or lines that do not add up are skipped and counted (`transactions:audit-splits` lists the last two). A second run finds nothing to convert. `--undo` puts back every original that still has its lines and live parts (never a split made the new way): the parts' budget rows return to it and the parts are deleted.
+
+Every run is verified inside its transaction, before and after, for the users it touches: posting totals per category and per label, what every budget period has spent, each month's cashflow summary in the user's currency plus a native-currency total per month and category type, and per account and day the live amounts a balance history adds up; for a conversion, each original's parts against its lines too. Anything that differs rolls the run back and exits non-zero with the differing buckets listed. The one difference accepted is FX rounding: lines convert with the residue on the last one, parts each on their own, so a month holding parts in another currency may move by one minor unit per such part, printed as "FX rounding". The output prints counts and the ids naming a failing bucket or split, never a description, note or amount; `-v` adds the ids of every row and the values of each difference.
 
 ## Data model
 

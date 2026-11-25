@@ -19,6 +19,7 @@ use App\Models\Space;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
+use App\Services\Transactions\LegacySplits\LegacySplitConverter;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\TransactionWriteRules;
 use App\Services\TransactionSplitter;
@@ -750,4 +751,80 @@ it('refuses a category or a label of the user\'s other space for a part', functi
         ->assertJsonValidationErrors(['splits.0.category_id', 'splits.1.label_ids.0']);
 
     expect(Transaction::query()->where('split_parent_id', $original->id)->exists())->toBeFalse();
+});
+
+it('keeps exactly what an archived budget counted across a split and a merge, on a shared account with an odd amount', function (string $tracking) {
+    $this->account->update(['ownership_percentage' => 33]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $elsewhere = Category::factory()->create(['user_id' => $this->user->id]);
+    $original = splittableTransaction(-1003);
+    $original->update(['transaction_date' => now()->toDateString(), 'category_id' => $this->category->id, 'category_source' => CategorySource::Manual]);
+    $original->labels()->attach($label);
+    $period = budgetTrackingAroundToday($tracking === 'label' ? $label : $this->category);
+    $period->budget->update(['archived_at' => now()]);
+
+    // A third of 1003, rounded once for the whole row.
+    expect((int) $period->budgetTransactions()->sole()->amount)->toBe(331);
+
+    $parts = app(TransactionSplitter::class)->split($original->fresh(), [
+        ['amount' => -501, 'category_id' => $this->category->id, 'label_ids' => [$label->id]],
+        ['amount' => -502, 'category_id' => $elsewhere->id],
+    ]);
+
+    // Archived budgets take no new rows: the original's row moves to the
+    // parts rather than going with the original, and the period keeps 331.
+    expect((int) $period->budgetTransactions()->sum('amount'))->toBe(331)
+        ->and($period->budgetTransactions()->pluck('transaction_id')->diff($parts->pluck('id')))->toBeEmpty();
+
+    app(TransactionSplitter::class)->merge($parts->first());
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id])
+        ->and((int) $period->budgetTransactions()->sole()->amount)->toBe(331);
+})->with(['category-tracked' => 'category', 'label-tracked' => 'label']);
+
+it('shares an archived row the way the budget explains it when it can, and by part amount when it cannot', function () {
+    $this->account->update(['ownership_percentage' => 33]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $elsewhere = Category::factory()->create(['user_id' => $this->user->id]);
+    $original = splittableTransaction(-1003);
+    $original->update(['transaction_date' => now()->toDateString(), 'category_id' => $this->category->id, 'category_source' => CategorySource::Manual]);
+    $original->labels()->attach($label);
+    $byLabel = budgetTrackingAroundToday($label);
+    $byCategory = budgetTrackingAroundToday($this->category);
+    Budget::query()->whereKey([$byLabel->budget_id, $byCategory->budget_id])->update(['archived_at' => now()]);
+
+    $parts = app(TransactionSplitter::class)->split($original->fresh(), [
+        ['amount' => -2, 'category_id' => $this->category->id],
+        ['amount' => -1001, 'category_id' => $elsewhere->id],
+    ]);
+    $held = fn (BudgetPeriod $period): array => $parts->map(fn (Transaction $part): ?int => $period->budgetTransactions()->where('transaction_id', $part->id)->value('amount'))->all();
+
+    // The label claims both parts whole, a third of each: 1 + 330 is the 331
+    // the row held. The category only claims the first part (1 of 331), so
+    // the row is shared by part amount instead (0.66 rounds down to nothing),
+    // the residue on the last part.
+    expect($held($byLabel))->toBe([1, 330])
+        ->and($held($byCategory))->toBe([null, 331]);
+});
+
+it('brings a converted split back as one uncategorized row without lines, which can be split again', function () {
+    $original = splittableTransaction(-1000);
+    fileUnderLegacyLines($original, [
+        ['category_id' => $this->category->id, 'amount' => -700],
+        ['category_id' => $this->category->id, 'amount' => -300],
+    ]);
+    app(LegacySplitConverter::class)->convert($original->fresh(['splits']));
+    $part = Transaction::query()->where('split_parent_id', $original->id)->firstOrFail();
+
+    app(TransactionSplitter::class)->merge($part);
+
+    $merged = Transaction::query()->findOrFail($original->id);
+
+    expect($merged->splits()->count())->toBe(0)
+        ->and($merged->category_id)->toBeNull()
+        ->and(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+
+    $parts = app(TransactionSplitter::class)->split($merged, [['amount' => -600], ['amount' => -400]]);
+
+    expect($parts)->toHaveCount(2);
 });

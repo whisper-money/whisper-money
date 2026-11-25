@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CategorySource;
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Transaction;
+use App\Services\Budgets\SplitBudgetRows;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,8 @@ class TransactionSplitter
     public const MAX_PARTS = 20;
 
     private const string NotASplitPart = 'That transaction is not part of a split, so there is nothing to merge.';
+
+    public function __construct(private readonly SplitBudgetRows $budgetRows) {}
 
     /**
      * The shape of a split request, shared by the `split_transaction` MCP tool
@@ -88,11 +91,19 @@ class TransactionSplitter
         }
 
         DB::transaction(function () use ($original): void {
+            // What archived budgets counted of the parts goes back to the
+            // original first: they take no new rows, so the reassignment
+            // below could not put it back.
+            $this->budgetRows->toOriginal($original, $original->splitParts, archivedOnly: true);
             // Soft-deleting each part fires the model event that takes it back
             // out of its budgets. The original comes back quietly and is put
             // back in its budgets below, once the merge has committed.
             $original->splitParts->each->delete();
             $original->restoreQuietly();
+            // A split converted from the old lines comes back as one row:
+            // lines left on it would count it a second way and keep it from
+            // being split again. Its category was null, as with lines.
+            $original->splits()->delete();
         });
 
         $this->assignToBudgets(collect([$original]));
@@ -204,6 +215,10 @@ class TransactionSplitter
             fn (array $part): Transaction => $this->createPart($original, $part)
         );
 
+        // Archived budgets take no new rows, so what they counted of the
+        // original moves to the parts before the original's delete takes its
+        // rows away. Live budgets are reassigned once this has committed.
+        $this->budgetRows->toParts($original, $created, archivedOnly: true);
         $original->delete();
 
         return $created;
@@ -213,13 +228,13 @@ class TransactionSplitter
      * One part of a split: the original in every respect except the amount, the
      * category and the labels. The bank's own identifiers stay behind on the
      * original — a part is our row, not something the bank sent us. The
-     * description and notes travel with their device-encryption IVs.
-     *
-     * @param  array<string, mixed>  $part
+     * description and notes travel with their device-encryption IVs. Not saved:
+     * a split saves it with its model events, the conversion of the old split
+     * lines without them.
      */
-    private function createPart(Transaction $original, array $part): Transaction
+    public static function newPart(Transaction $original, int $amount, ?string $categoryId): Transaction
     {
-        $created = $original->replicate([
+        $part = $original->replicate([
             'dedup_fingerprint',
             'external_transaction_id',
             'raw_data',
@@ -232,14 +247,21 @@ class TransactionSplitter
             'ai_model',
         ]);
 
-        $categoryId = $part['category_id'] ?? null;
-
-        $created->fill([
+        // A copy also carries the original's loaded relations (its lines, say).
+        return $part->unsetRelations()->fill([
             'split_parent_id' => $original->id,
-            'amount' => (int) $part['amount'],
+            'amount' => $amount,
             'category_id' => $categoryId,
             'category_source' => $categoryId === null ? null : CategorySource::Manual->value,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $part
+     */
+    private function createPart(Transaction $original, array $part): Transaction
+    {
+        $created = self::newPart($original, (int) $part['amount'], $part['category_id'] ?? null);
 
         $created->save();
         // On top of what an automation rule tagged it with while it was saved,
