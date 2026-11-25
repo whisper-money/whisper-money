@@ -22,15 +22,21 @@ it('leaves every cashflow figure of the equivalence household as pinned once its
     $world = CashflowEquivalenceWorld::build();
 
     $this->artisan('transactions:convert-legacy-splits', ['--execute' => true])
-        ->expectsOutputToContain('Legacy splits to convert: 4')
-        ->expectsOutputToContain('lines do not add up to the amount (transactions:audit-splits reports it): 2')
+        ->expectsOutputToContain('Legacy splits to convert: 2')
+        ->expectsOutputToContain('Skipped: 4')
+        ->expectsOutputToContain('flagged by transactions:audit-splits (category_type_invalid_or_mixed): 1')
+        ->expectsOutputToContain('flagged by transactions:audit-splits (category_type_invalid_or_mixed, split_sign_mismatch): 1')
+        ->expectsOutputToContain('flagged by transactions:audit-splits (parent_classification_present, split_sum_mismatch): 1')
+        ->expectsOutputToContain('flagged by transactions:audit-splits (split_sum_mismatch): 1')
         ->expectsOutputToContain('Verification passed')
         ->assertSuccessful();
 
-    // The four whose lines add up are parts now, the GBP one at 50% included;
-    // the two whose lines leave a residue to the parent stay as they were.
-    expect(Transaction::onlyTrashed()->whereHas('splitParts')->count())->toBe(4)
-        ->and(Transaction::query()->whereHas('splits')->count())->toBe(2);
+    // February's food split and the GBP one at 50% are parts now. The four
+    // the audit flags stay as they were: the two whose lines leave a residue
+    // to the parent, the rent split with a sublet income line and the
+    // groceries split with a savings line.
+    expect(Transaction::onlyTrashed()->whereHas('splitParts')->count())->toBe(2)
+        ->and(Transaction::query()->whereHas('splits')->count())->toBe(4);
 
     foreach (Transaction::query()->whereNotNull('split_parent_id')->orderBy('amount')->get() as $position => $part) {
         $world['names'][$part->id] = $world['names'][$part->split_parent_id]." part {$position}";
@@ -60,15 +66,20 @@ it('leaves every cashflow figure of the equivalence household as pinned once its
     }
 });
 
-it('answers every pinned analytics call byte for byte once the household\'s splits are parts', function () {
+it('answers every pinned analytics call byte for byte once the household\'s splits went through the conversion', function () {
     $world = AnalyticsPinWorld::build();
 
+    // Every split of this household is one the audit flags (lines of mixed
+    // category types, a line moving money the other way, a residue left to a
+    // categorized parent), so the conversion leaves all three alone.
     $this->artisan('transactions:convert-legacy-splits', ['--execute' => true])
-        ->expectsOutputToContain('Legacy splits to convert: 2')
-        ->expectsOutputToContain('Verification passed')
+        ->expectsOutputToContain('Legacy splits to convert: 0')
+        ->expectsOutputToContain('Skipped: 3')
+        ->expectsOutputToContain('Nothing to do.')
         ->assertSuccessful();
 
-    expect(Transaction::onlyTrashed()->whereHas('splitParts')->count())->toBe(2);
+    expect(Transaction::onlyTrashed()->whereHas('splitParts')->count())->toBe(0)
+        ->and(Transaction::query()->whereHas('splits')->count())->toBe(3);
 
     $outputs = AnalyticsPinWorld::outputs($world);
     $golden = json_decode((string) file_get_contents(AnalyticsPinWorld::GOLDEN), true, flags: JSON_THROW_ON_ERROR);

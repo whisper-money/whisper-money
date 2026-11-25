@@ -28,6 +28,9 @@ class LegacySplitVerifier
     /** The family whose figures are converted to the user's currency. */
     private const string CONVERTED_FAMILY = 'cashflow';
 
+    /** The free text a part copies from its original and the user may edit later. */
+    private const array COPIED_TEXT = ['description', 'description_iv', 'notes', 'notes_iv'];
+
     /**
      * @param  Figures  $before
      * @param  Figures  $after
@@ -56,10 +59,10 @@ class LegacySplitVerifier
 
     /**
      * Why each converted original does not match its lines, by original id:
-     * one part per line with the line's amount and category, adding up to the
-     * original, each on the original's date and account and carrying every
-     * label the original carries. Parts keep no position, so they are matched
-     * to the lines as a set.
+     * one live part per line with the line's amount and category, adding up
+     * to the original, each on the original's date and account, with its
+     * description and notes, and carrying every label the original carries.
+     * Parts keep no position, so they are matched to the lines as a set.
      *
      * @param  EloquentCollection<int, Transaction>  $originals
      * @return array<string, string>
@@ -137,6 +140,7 @@ class LegacySplitVerifier
             (int) $parts->sum('amount') !== $original->amount => 'parts do not add up to the original',
             $parts->contains(fn (Transaction $part): bool => ! $part->transaction_date->equalTo($original->transaction_date) || $part->account_id !== $original->account_id) => 'a part is not on the original\'s date and account',
             $parts->contains(fn (Transaction $part): bool => ($labels[$part->id] ?? []) !== $originalLabels) => 'a part does not carry the original\'s labels',
+            $parts->contains(fn (Transaction $part): bool => $part->only(self::COPIED_TEXT) !== $original->only(self::COPIED_TEXT)) => 'a part does not carry the original\'s description and notes',
             default => null,
         };
     }

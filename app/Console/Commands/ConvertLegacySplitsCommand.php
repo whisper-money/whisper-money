@@ -19,10 +19,10 @@ class ConvertLegacySplitsCommand extends Command
 {
     protected $signature = 'transactions:convert-legacy-splits
         {--execute : Write the changes; without it nothing is saved}
-        {--undo : Put converted splits back on their lines instead}
+        {--undo : Put converted splits back on their lines instead, but for those whose parts changed since}
         {--user= : Only the user with this id or email address}';
 
-    protected $description = 'Convert transactions still split into lines (transaction_splits) into split parts, as a split is made today: one part per line, the original soft-deleted, budget rows moved so every period keeps its total. Previews by default. The run is verified before and after (category, label, budget period, monthly cashflow and per-day account totals, and each split against its lines) and rolled back when anything differs beyond FX rounding. One database transaction: run it once after deploy, while nobody is writing.';
+    protected $description = 'Convert transactions still split into lines (transaction_splits) into split parts, as a split is made today: one part per line, the original soft-deleted, budget rows moved so every period keeps its total. Splits transactions:audit-splits flags are skipped. Previews by default. The run is verified before and after (category, label, budget period, monthly cashflow and per-day account totals, and each split against its lines) and rolled back when anything differs beyond FX rounding. One database transaction: run it once after deploy, while nobody is writing.';
 
     public function handle(LegacySplitConversion $conversion): int
     {
@@ -62,8 +62,7 @@ class ConvertLegacySplitsCommand extends Command
         });
 
         if ($report->undo) {
-            $this->line('Converted splits to put back on their lines: '.$report->plan->originals->count());
-            $this->line('Parts removed: '.$report->parts);
+            $this->printUndoPlan($report);
         } else {
             $this->printConversionPlan($report);
         }
@@ -85,11 +84,32 @@ class ConvertLegacySplitsCommand extends Command
         $this->line('Already converted: '.$plan->alreadyConverted);
         $this->line('Skipped: '.collect($plan->skipped)->flatten()->count());
 
-        foreach ([LegacySplitConverter::SKIP_TRASHED, LegacySplitConverter::SKIP_PART, LegacySplitConverter::SKIP_FEW_LINES, LegacySplitConverter::SKIP_UNBALANCED] as $reason) {
+        $reasons = array_keys($plan->skipped);
+        sort($reasons);
+        $reasons = array_unique([...LegacySplitConverter::FIXED_SKIP_REASONS, ...$reasons]);
+
+        foreach ($reasons as $reason) {
             $this->line("  {$reason}: ".count($plan->skipped[$reason] ?? []));
         }
 
         $this->line('Parts created: '.$report->parts);
+    }
+
+    /**
+     * The ids of the splits left on their parts are printed without -v: the
+     * owner has to look at each one.
+     */
+    private function printUndoPlan(LegacySplitReport $report): void
+    {
+        $changed = $report->plan->skipped[LegacySplitConverter::SKIP_CHANGED] ?? [];
+
+        $this->line('Converted splits to put back on their lines: '.$report->plan->originals->count());
+        $this->line('Parts removed: '.$report->parts);
+        $this->line('Skipped, '.LegacySplitConverter::SKIP_CHANGED.': '.count($changed));
+
+        foreach ($changed as $id) {
+            $this->line("  skipped: {$id}");
+        }
     }
 
     private function printIds(LegacySplitReport $report): void
@@ -97,7 +117,9 @@ class ConvertLegacySplitsCommand extends Command
         $verb = $report->undo ? 'put back' : 'converted';
 
         $report->plan->originals->each(fn ($original) => $this->line("  {$verb}: {$original->id}"));
-        collect($report->plan->skipped)->each(fn (array $ids, string $reason) => collect($ids)->each(fn (string $id) => $this->line("  skipped ({$reason}): {$id}")));
+        collect($report->plan->skipped)
+            ->except($report->undo ? [LegacySplitConverter::SKIP_CHANGED] : [])
+            ->each(fn (array $ids, string $reason) => collect($ids)->each(fn (string $id) => $this->line("  skipped ({$reason}): {$id}")));
         collect($report->fallback)->each(fn (array $row) => $this->line("  shared by part amount: transaction {$row['transaction_id']}, budget period {$row['budget_period_id']}"));
     }
 

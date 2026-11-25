@@ -9,6 +9,8 @@ use App\Services\CashflowAnalyticsService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,9 +35,10 @@ class LegacySplitSnapshot
 
     /**
      * @param  array<string, list<string>>  $monthsByUser  `Y-m` months by user id
+     * @param  list<string>  $budgetPeriodIds  periods to read on top of the users' own, see {@see self::budgetPeriodsHolding()}
      * @return Figures
      */
-    public function take(array $monthsByUser): array
+    public function take(array $monthsByUser, array $budgetPeriodIds = []): array
     {
         $userIds = array_keys($monthsByUser);
 
@@ -47,7 +50,7 @@ class LegacySplitSnapshot
                 fn (Builder $query) => $query->leftJoin('categories', 'categories.id', '=', DB::raw(Transaction::POSTING_CATEGORY_SQL)),
                 "date_format(transactions.transaction_date, '%Y-%m'), coalesce(categories.type, '-')",
             ),
-            'budget period' => $this->budgetPeriodTotals($userIds),
+            'budget period' => $this->budgetPeriodTotals($userIds, $budgetPeriodIds),
             'account day' => $this->accountDayTotals($userIds),
             'cashflow' => $this->monthlyCashflow($monthsByUser),
         ];
@@ -80,19 +83,38 @@ class LegacySplitSnapshot
     }
 
     /**
-     * What every period of the users' budgets has spent, archived budgets
-     * and deleted ones included: the plain sum of its rows, as the budget
-     * screens read it.
+     * Every budget period holding a row of these transactions, whoever owns
+     * its budget: a split moves every row of the transaction, not only the
+     * ones its owner's budgets hold.
+     *
+     * @param  list<string>  $transactionIds
+     * @return list<string>
+     */
+    public function budgetPeriodsHolding(array $transactionIds): array
+    {
+        return collect($transactionIds)
+            ->chunk(1000)
+            ->flatMap(fn (Collection $ids) => DB::table('budget_transactions')->whereIn('transaction_id', $ids->all())->distinct()->pluck('budget_period_id'))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * What every period of the users' budgets, and every period listed, has
+     * spent, archived budgets and deleted ones included: the plain sum of its
+     * rows, as the budget screens read it.
      *
      * @param  list<string>  $userIds
+     * @param  list<string>  $budgetPeriodIds
      * @return array<string, int>
      */
-    private function budgetPeriodTotals(array $userIds): array
+    private function budgetPeriodTotals(array $userIds, array $budgetPeriodIds): array
     {
         return DB::table('budget_periods')
             ->join('budgets', 'budgets.id', '=', 'budget_periods.budget_id')
             ->leftJoin('budget_transactions', 'budget_transactions.budget_period_id', '=', 'budget_periods.id')
-            ->whereIn('budgets.user_id', $userIds)
+            ->where(fn (QueryBuilder $query) => $query->whereIn('budgets.user_id', $userIds)->orWhereIn('budget_periods.id', $budgetPeriodIds))
             ->groupBy('budget_periods.id')
             ->selectRaw('budget_periods.id as bucket, coalesce(sum(budget_transactions.amount), 0) as spent')
             ->pluck('spent', 'bucket')

@@ -29,7 +29,7 @@ class LegacySplitConversion
      */
     public function run(?string $userId, bool $undo, bool $execute): LegacySplitReport
     {
-        $plan = $undo ? $this->converter->undoPlan($userId) : $this->converter->plan($userId);
+        $plan = $undo ? $this->undoable($this->converter->undoPlan($userId)) : $this->converter->plan($userId);
 
         if ($plan->originals->isEmpty()) {
             return new LegacySplitReport($plan, $undo);
@@ -56,15 +56,52 @@ class LegacySplitConversion
         return new LegacySplitReport($plan, $undo, $report->parts, $report->budgetRowsMoved, $report->fallback, $report->differences, $report->fxRounding, $report->originalFailures, written: true);
     }
 
+    /**
+     * The converted splits an undo can put back: those whose live parts still
+     * match their lines. A split whose parts were edited, relabelled or
+     * deleted since is left as it is and listed, so the rest can go back.
+     */
+    private function undoable(LegacySplitPlan $plan): LegacySplitPlan
+    {
+        $changed = $this->verifier->partsAgainstLines($plan->originals);
+
+        if ($changed === []) {
+            return $plan;
+        }
+
+        return new LegacySplitPlan(
+            $plan->originals->reject(fn (Transaction $original): bool => isset($changed[$original->id]))->values(),
+            [LegacySplitConverter::SKIP_CHANGED => array_map('strval', array_keys($changed))],
+        );
+    }
+
     private function verified(LegacySplitPlan $plan, bool $undo): LegacySplitReport
     {
         $months = $plan->monthsByUser();
-        $before = $this->snapshot->take($months);
+        // Fixed before anything moves: the periods holding a row of what the
+        // run takes rows off, whoever owns their budget.
+        $periods = $this->snapshot->budgetPeriodsHolding($this->budgetRowHolders($plan, $undo));
+        $before = $this->snapshot->take($months, $periods);
         [$parts, $moved, $fallback] = $undo ? $this->undoAll($plan) : $this->convertAll($plan);
-        $comparison = $this->verifier->compare($before, $this->snapshot->take($months), $plan->foreignCurrencyParts());
+        $comparison = $this->verifier->compare($before, $this->snapshot->take($months, $periods), $plan->foreignCurrencyParts());
         $failures = $undo ? $this->verifier->restored($plan->originals) : $this->verifier->partsAgainstLines($plan->originals);
 
         return new LegacySplitReport($plan, $undo, $parts, $moved, $fallback, $comparison['differences'], $comparison['fx_rounding'], $failures);
+    }
+
+    /**
+     * The transactions whose budget rows the run moves: the originals for a
+     * conversion, their live parts for an undo.
+     *
+     * @return list<string>
+     */
+    private function budgetRowHolders(LegacySplitPlan $plan, bool $undo): array
+    {
+        $originalIds = $plan->originals->modelKeys();
+
+        return $undo
+            ? Transaction::query()->whereIn('split_parent_id', $originalIds)->pluck('id')->all()
+            : array_values($originalIds);
     }
 
     /**

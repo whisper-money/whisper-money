@@ -2,6 +2,7 @@
 
 namespace App\Services\Transactions\LegacySplits;
 
+use App\Console\Commands\AuditTransactionSplitsCommand;
 use App\Enums\CategorySource;
 use App\Models\Transaction;
 use App\Models\TransactionSplit;
@@ -11,6 +12,7 @@ use App\Services\TransactionSplitter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -29,48 +31,60 @@ use Illuminate\Support\Facades\DB;
  */
 class LegacySplitConverter
 {
-    public const string SKIP_TRASHED = 'in the trash';
+    private const string SKIP_TRASHED = 'in the trash';
 
-    public const string SKIP_PART = 'a part of a split';
+    private const string SKIP_PART = 'a part of a split';
 
-    public const string SKIP_FEW_LINES = 'fewer than 2 lines (transactions:audit-splits reports it)';
+    private const string SKIP_LIVE_WITH_PARTS = 'live but already has live parts (restored after a conversion)';
 
-    public const string SKIP_UNBALANCED = 'lines do not add up to the amount (transactions:audit-splits reports it)';
+    public const string SKIP_CHANGED = 'parts were changed after conversion';
 
-    public function __construct(private readonly SplitBudgetRows $budgetRows) {}
+    /** The reasons a conversion always reports, even when nothing falls under them. */
+    public const array FIXED_SKIP_REASONS = [self::SKIP_TRASHED, self::SKIP_PART, self::SKIP_LIVE_WITH_PARTS];
+
+    public function __construct(
+        private readonly SplitBudgetRows $budgetRows,
+        private readonly AuditTransactionSplitsCommand $audit,
+    ) {}
 
     /**
      * Every transaction still carrying lines, live or trashed, sorted into
-     * the ones to convert and the ones left alone.
+     * the ones to convert and the ones left alone. A row
+     * `transactions:audit-splits` flags is left alone under the anomalies it
+     * reports: nothing it can flag changes a total, so the verification would
+     * pass, yet its parts would break what a split promises.
      */
     public function plan(?string $userId): LegacySplitPlan
     {
+        $flagged = $this->flaggedByAudit();
+        $transactions = $this->withLines($userId, Transaction::query()->withTrashed());
+        $withLiveParts = array_flip($this->withLiveParts($transactions->modelKeys()));
         $originals = new Collection;
         $skipped = [];
         $alreadyConverted = 0;
 
-        $this->withLines($userId, Transaction::query()->withTrashed())
-            ->each(function (Transaction $transaction) use (&$originals, &$skipped, &$alreadyConverted): void {
-                $verdict = self::verdict($transaction);
+        foreach ($transactions as $transaction) {
+            $verdict = self::verdict($transaction, isset($withLiveParts[$transaction->id])) ?? $flagged[$transaction->id] ?? null;
 
-                match ($verdict) {
-                    null => $originals->push($transaction),
-                    'converted' => $alreadyConverted++,
-                    default => $skipped[$verdict][] = $transaction->id,
-                };
-            });
+            match ($verdict) {
+                null => $originals->push($transaction),
+                'converted' => $alreadyConverted++,
+                default => $skipped[$verdict][] = $transaction->id,
+            };
+        }
 
         return new LegacySplitPlan($originals, $skipped, $alreadyConverted);
     }
 
     /**
      * Every split this conversion made: a trashed original that still has
-     * its lines and live parts. A split made the new way has no lines, so it
-     * is never here.
+     * its lines and parts, live or not. A split made the new way has no
+     * lines, so it is never here. Whether its parts still match its lines is
+     * for the caller to check.
      */
     public function undoPlan(?string $userId): LegacySplitPlan
     {
-        $originals = $this->withLines($userId, Transaction::query()->onlyTrashed()->whereHas('splitParts'));
+        $originals = $this->withLines($userId, Transaction::query()->onlyTrashed()->whereIn('id', Transaction::withTrashed()->whereNotNull('split_parent_id')->select('split_parent_id')));
 
         return new LegacySplitPlan($originals);
     }
@@ -89,6 +103,10 @@ class LegacySplitConverter
      * Put a converted original back on its lines: its parts' budget rows come
      * back to it and the parts go for good, with their labels.
      *
+     * Restoring stamps the original's `updated_at`, so the offline sync sends
+     * it as a live row again. The parts' removal is never announced: the sync
+     * reads live rows only and a client never drops a row it holds.
+     *
      * @return int the budget rows moved back
      */
     public function undo(Transaction $original): int
@@ -98,7 +116,6 @@ class LegacySplitConverter
             $moved = $this->budgetRows->toOriginal($original, $parts);
 
             $parts->each(fn (Transaction $part) => $part->forceDelete());
-            // Saved, so updated_at moves and the offline sync sends it.
             $original->restore();
 
             return $moved;
@@ -116,32 +133,56 @@ class LegacySplitConverter
         $parts = $original->splits->map(fn (TransactionSplit $line): Transaction => $this->createPart($original, $line, $labelIds, $now));
         $budgetRows = $this->budgetRows->toParts($original, $parts);
 
-        // Soft-deleting also stamps updated_at, so the offline sync picks the
-        // original up together with its parts.
+        // The offline sync reads live rows only, so this deletion never
+        // reaches a client that already holds the original.
         $original->delete();
 
         return ['parts' => $parts->count(), 'moved' => $budgetRows['moved'], 'fallback' => $budgetRows['fallback']];
     }
 
     /**
-     * Null when the row converts; 'converted' when an earlier run converted
-     * it; otherwise why it is left alone.
+     * The anomalies `transactions:audit-splits` reports, as one skip reason
+     * per transaction id.
+     *
+     * @return array<string, string>
      */
-    private static function verdict(Transaction $transaction): ?string
+    private function flaggedByAudit(): array
     {
-        if ($transaction->isSplitPart()) {
-            return self::SKIP_PART;
-        }
+        return collect($this->audit->audit()['anomalies'])
+            ->groupBy('id')
+            ->map(fn (SupportCollection $anomalies): string => 'flagged by transactions:audit-splits ('.$anomalies->pluck('code')->implode(', ').')')
+            ->all();
+    }
 
-        if ($transaction->trashed()) {
-            return $transaction->splitParts()->exists() ? 'converted' : self::SKIP_TRASHED;
-        }
+    /**
+     * 'converted' when an earlier run converted the row; why it is left
+     * alone when its shape alone says so; null otherwise.
+     */
+    private static function verdict(Transaction $transaction, bool $hasLiveParts): ?string
+    {
+        return match (true) {
+            $transaction->isSplitPart() => self::SKIP_PART,
+            $transaction->trashed() => $hasLiveParts ? 'converted' : self::SKIP_TRASHED,
+            // Only a manual restore leaves a row with lines and live parts:
+            // converting it again would count its money twice.
+            $hasLiveParts => self::SKIP_LIVE_WITH_PARTS,
+            default => null,
+        };
+    }
 
-        if ($transaction->splits->count() < 2) {
-            return self::SKIP_FEW_LINES;
-        }
-
-        return (int) $transaction->splits->sum('amount') === $transaction->amount ? null : self::SKIP_UNBALANCED;
+    /**
+     * Which of these transactions have a live part.
+     *
+     * @param  array<int, string>  $transactionIds
+     * @return list<string>
+     */
+    private function withLiveParts(array $transactionIds): array
+    {
+        return collect($transactionIds)
+            ->chunk(1000)
+            ->flatMap(fn (SupportCollection $ids) => Transaction::query()->whereIn('split_parent_id', $ids->all())->distinct()->pluck('split_parent_id'))
+            ->values()
+            ->all();
     }
 
     /**
@@ -163,7 +204,7 @@ class LegacySplitConverter
      * One line as a part. Saved quietly, so what the model events would fill
      * in (the space, the source date) is copied here, and `created_at` stays
      * the original's: the part is not new money. `updated_at` is now, so the
-     * offline sync sends it.
+     * offline sync sends the part as a new row.
      *
      * @param  list<string>  $labelIds  every label on the original, trashed ones included
      */

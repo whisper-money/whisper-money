@@ -8,17 +8,34 @@ The rest of this document describes the fork's earlier model, split lines in `tr
 
 ## Converting the old splits
 
-Run once after deploying the new model, while nobody is writing (it holds every split it converts in one database transaction):
+Run once after deploying the new model:
 
 ```bash
+php artisan transactions:audit-splits                      # first: what it flags is skipped
 php artisan transactions:convert-legacy-splits             # preview: converts, verifies, rolls back
 php artisan transactions:convert-legacy-splits --execute   # converts, verifies, commits only if it passes
 php artisan transactions:convert-legacy-splits --undo [--execute]
 ```
 
-`--user=<id or email>` narrows any run to one user. Each live row whose lines add up to its amount (at least two) becomes one part per line, in line order: amount and category from the line (`category_source` manual), everything else from the original, its labels and `created_at` included; `updated_at` is now, so the offline sync sends the parts. The bank's ids, fingerprint and raw data stay on the trashed original, which also keeps its lines, recurring series link, corrections and labels. Every budget row of the original moves to the parts: shared as each budget explains it today, or by part amount (residue on the last part) when that does not add up, so no period total changes. No model event fires: no rule, AI, budget job, email or notification. Rows in the trash, parts, and rows with fewer than two lines or lines that do not add up are skipped and counted (`transactions:audit-splits` lists the last two). A second run finds nothing to convert. `--undo` puts back every original that still has its lines and live parts (never a split made the new way): the parts' budget rows return to it and the parts are deleted.
+Runbook:
 
-Every run is verified inside its transaction, before and after, for the users it touches: posting totals per category and per label, what every budget period has spent, each month's cashflow summary in the user's currency plus a native-currency total per month and category type, and per account and day the live amounts a balance history adds up; for a conversion, each original's parts against its lines too. Anything that differs rolls the run back and exits non-zero with the differing buckets listed. The one difference accepted is FX rounding: lines convert with the residue on the last one, parts each on their own, so a month holding parts in another currency may move by one minor unit per such part, printed as "FX rounding". The output prints counts and the ids naming a failing bucket or split, never a description, note or amount; `-v` adds the ids of every row and the values of each difference.
+- Run `transactions:audit-splits` first and resolve or accept every split it flags. The conversion reuses that audit and never converts a split it flags (a zero or opposite-sign line, a deleted category or one of another user or space, mixed or non-expense/income category types, a category or AI/rule provenance left on the parent, lines that do not add up, gaps in positions): each is skipped and counted under the anomalies it has, `flagged by transactions:audit-splits (<codes>)`, and the rest still convert.
+- The preview and the run each hold one database transaction, with locks on `transactions`, `label_transaction` and `budget_transactions` rows, until they finish. Pause the queue worker and the scheduler while they run and keep users out of the app.
+- `-v` prints the id of every row, the values of each difference and the message of an exception, which can include descriptions and amounts. Do not paste `-v` output anywhere public.
+
+`--user=<id or email>` narrows any run to one user. Each live row the audit does not flag becomes one part per line, in line order: amount and category from the line (`category_source` manual), everything else from the original, its labels and `created_at` included. The bank's ids, fingerprint and raw data stay on the trashed original, which also keeps its lines, recurring series link, corrections and labels. Every budget row of the original moves to the parts, whoever owns the budget: shared as each budget explains it today, or by part amount (residue on the last part) when that does not add up, so no period total changes. No model event fires: no rule, AI, budget job, email or notification. Also skipped and counted: rows in the trash, parts, and a live row that has lines and already has live parts (only a manual restore after a conversion leaves one; converting it again would count its money twice). A second run finds nothing to convert.
+
+`--undo` works split by split. It takes every original the conversion made (trashed, with its lines and parts; never a split made the new way) and compares its live parts with its lines: count, amounts, categories, date, account, labels, description and notes. Those that still match are put back: the parts' budget rows return to the original, the parts are deleted for good and the original is live again. Those that do not (a part recategorized, relabelled, deleted or with edited notes since) are left converted and listed by id as `parts were changed after conversion`; the run exits 0 when what it put back verifies.
+
+Offline clients: the parts reach the browser cache through the incremental sync because their `updated_at` is new, and an undo's restored original does too. Deletions are never announced (the sync reads live rows only and the client never drops a row it holds), so a client that synced before keeps the trashed original, or an undo's removed parts, in its cache. No page reads that cache for display today.
+
+Every run is verified inside its transaction, before and after, for the users it touches: posting totals per category and per label, what every budget period of those users has spent plus every period holding a row the run moves, each month's cashflow summary in the user's currency plus a native-currency total per month and category type, and per account and day the live amounts a balance history adds up; for a conversion, each original's parts against its lines too. Anything that differs rolls the run back and exits non-zero with the differing buckets listed. The one difference accepted is FX rounding: lines convert with the residue on the last one, parts each on their own, so a month holding parts in another currency may move by one minor unit per such part, printed as "FX rounding". Without `-v` the output prints counts, the ids of splits an undo leaves and the ids naming a failing bucket or split, never a description, note or amount.
+
+After the conversion, until the old lines are dropped in a later release:
+
+- A category used by a converted split cannot be deleted or change type: the old guards still see the lines the trashed original keeps.
+- Merging a converted split deletes its lines, so `--undo` can no longer put it back, and brings the original back uncategorized.
+- Lists kept in first-seen (date, id) order may show a converted split's categories after other rows of the same day, since its parts have new ids. Figures are unchanged.
 
 ## Data model
 
