@@ -12,6 +12,7 @@ use App\Services\AccountMetricsService;
 use App\Services\CashflowSummaryService;
 use App\Services\CategorySpendingService;
 use App\Services\CreditCards\CreditCardStatementService;
+use App\Services\Dashboards\FirstDashboardState;
 use App\Services\Dashboards\SetupChecklist;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
@@ -37,6 +38,7 @@ class DashboardController extends Controller
         private CurrentMonthSavings $currentMonthSavings,
         private OnboardingSummaryService $onboardingSummary,
         private SetupChecklist $setupChecklist,
+        private FirstDashboardState $firstDashboardState,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -89,6 +91,14 @@ class DashboardController extends Controller
             // The "Finish setting up" card the system dashboard opens with in the
             // first days after onboarding, or null when there is none to draw.
             'setupChecklist' => Inertia::defer(fn () => $this->setupChecklist->for($request->user()), 'dashboard'),
+            // What the system dashboard has instead of real movements: only the
+            // onboarding estimates, or only balances. Null once there is one, and
+            // on a dashboard of the user's own. Not deferred: it decides the
+            // header and which cards are drawn, so it is there on the first
+            // paint rather than swapping them under the reader.
+            'firstDashboardState' => fn (): ?array => $this->selectedDashboard($request) === null
+                ? $this->firstDashboardState->for($request->user())
+                : null,
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),

@@ -56,4 +56,29 @@ describe('DashboardLayoutView', () => {
             screen.getAllByTestId('widget').map((el) => el.dataset.widget),
         ).toEqual(['cashflow']);
     });
+
+    it("draws a replacement in a widget's place, and leaves out one replaced by null", () => {
+        render(
+            <DashboardLayoutView
+                layout={SYSTEM_DASHBOARD_LAYOUT}
+                data={{} as DashboardProps}
+                replacements={{
+                    'top-categories': (
+                        <section data-testid="widget" data-widget="instead" />
+                    ),
+                    cashflow: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getAllByTestId('widget').map((el) => el.dataset.widget),
+        ).toEqual([
+            'net-worth',
+            'account-balances',
+            'monthly-savings',
+            'instead',
+            'top-labels',
+        ]);
+    });
 });

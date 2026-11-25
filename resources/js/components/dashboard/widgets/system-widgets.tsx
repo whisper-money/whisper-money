@@ -12,6 +12,8 @@ import {
 import { type SystemWidgetProps } from './types';
 
 export function NetWorthWidget({ data }: SystemWidgetProps) {
+    const firstState = data.firstDashboardState;
+
     return (
         <Deferred
             data="netWorthEvolution"
@@ -23,7 +25,19 @@ export function NetWorthWidget({ data }: SystemWidgetProps) {
             }
         >
             <PrivacyRevealScope>
-                <NetWorthChart data={netWorthEvolutionOf(data)} />
+                <NetWorthChart
+                    data={netWorthEvolutionOf(data)}
+                    firstReading={
+                        firstState
+                            ? {
+                                  date: firstState.tracking_since,
+                                  isToday:
+                                      firstState.tracking_since ===
+                                      firstState.today,
+                              }
+                            : null
+                    }
+                />
             </PrivacyRevealScope>
         </Deferred>
     );

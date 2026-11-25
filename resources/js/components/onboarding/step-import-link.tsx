@@ -1,15 +1,13 @@
-import { store as sendImportLink } from '@/actions/App/Http/Controllers/OnboardingImportLinkController';
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepChevron, StepRow } from '@/components/onboarding/step-list';
 import { StepCallout, StepScreen } from '@/components/onboarding/step-screen';
 import { Spinner } from '@/components/ui/spinner';
 import { captureEvent } from '@/lib/posthog';
+import { sendImportLink } from '@/lib/send-import-link';
 import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import axios from 'axios';
 import { Laptop } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 interface ImportLinkRowProps {
     accountId: UUID;
@@ -38,23 +36,14 @@ export function ImportLinkRow({
     const handleSend = () => {
         setIsSending(true);
 
-        axios
-            .post(sendImportLink().url, { account_id: accountId })
-            .then(() => {
+        void sendImportLink(accountId).then((sent) => {
+            if (sent) {
                 captureEvent('onboarding_import_link_sent');
                 onSent();
-            })
-            .catch((failure: unknown) => {
-                toast.error(
-                    axios.isAxiosError(failure) &&
-                        failure.response?.status === 429
-                        ? __(
-                              'We already sent you a few links. Check your inbox, or try again in an hour.',
-                          )
-                        : __("We couldn't send the link. Please try again."),
-                );
+            } else {
                 setIsSending(false);
-            });
+            }
+        });
     };
 
     return (

@@ -57,6 +57,12 @@ interface NetWorthChartProps {
     data: NetWorthEvolutionData;
     loading?: boolean;
     showLegend?: boolean;
+    /**
+     * The day the user started tracking, while they have no real movement yet
+     * (only balances, or only onboarding estimates): a chart of one month then
+     * says how it becomes a line.
+     */
+    firstReading?: { date: string; isToday: boolean } | null;
 }
 
 const DAILY_DAYS = 30;
@@ -129,6 +135,7 @@ export function NetWorthChart({
     data: monthlyData,
     loading,
     showLegend = false,
+    firstReading = null,
 }: NetWorthChartProps) {
     const { props } = usePage<SharedData>();
     const locale = useLocale();
@@ -575,6 +582,25 @@ export function NetWorthChart({
                                     variant="large"
                                 />
                             </div>
+                            {firstReading &&
+                                granularity === 'monthly' &&
+                                knownChartData.length === 1 && (
+                                    <span>
+                                        {firstReading.isToday
+                                            ? __(
+                                                  'First reading, today. Update your balances once a month and this becomes a line.',
+                                              )
+                                            : __(
+                                                  'First reading, :date. Update your balances once a month and this becomes a line.',
+                                                  {
+                                                      date: formatDayFromDate(
+                                                          firstReading.date,
+                                                          locale,
+                                                      ),
+                                                  },
+                                              )}
+                                    </span>
+                                )}
                             <PercentageTrendIndicator
                                 trend={shortTrend?.percentage ?? null}
                                 label={shortTrendLabel}
