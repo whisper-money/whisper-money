@@ -1817,6 +1817,8 @@
     "equals": "es igual a",
     "finance app, budgeting, expense tracking, secure finance, personal finance, money management, privacy, privacy-first finance app": "aplicación financiera, presupuesto, seguimiento de gastos, finanzas seguras, finanzas personales, gestión del dinero, privacidad, aplicación financiera centrada en la privacidad",
     "for the last 12 months": "en los últimos 12 meses",
+    "since :date": "desde :date",
+    ":months: before your first balance or movement. Nothing to show here, and nothing counted in the change.": ":months: antes de tu primer saldo o movimiento. Aquí no hay nada que mostrar y no cuenta en la variación.",
     "for the last 30 days": "en los últimos 30 días",
     "forever": "siempre",
     "ft²": "ft²",

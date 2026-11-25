@@ -23,7 +23,7 @@ class GetNetWorth extends McpTool
         return [
             'from' => $schema->string()->description('Start date, YYYY-MM-DD.')->required(),
             'to' => $schema->string()->description('End date, YYYY-MM-DD.')->required(),
-            'granularity' => $schema->string()->enum(['monthly', 'daily'])->description('Evolution granularity (default monthly).'),
+            'granularity' => $schema->string()->enum(['monthly', 'daily'])->description('Evolution granularity (default monthly). An account\'s balance in the evolution is null for a period it has no figure for: before its first balance or movement, or once it is archived.'),
         ];
     }
 
@@ -40,6 +40,7 @@ class GetNetWorth extends McpTool
                 $user,
                 PeriodComparator::fromRequest($validated),
                 ($validated['granularity'] ?? null) === 'daily',
+                unknownAsNull: true,
             ),
         ]);
     }

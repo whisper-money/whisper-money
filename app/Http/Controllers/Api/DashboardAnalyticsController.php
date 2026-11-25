@@ -149,6 +149,10 @@ class DashboardAnalyticsController extends Controller
         return response()->json($top);
     }
 
+    /**
+     * The dashboard's net worth chart, which leaves the periods an account has
+     * no figure for empty, so they read null rather than a repeated balance.
+     */
     private function netWorthEvolutionJson(Request $request, bool $daily): JsonResponse
     {
         $validated = $request->validate(PeriodComparator::rules());
@@ -158,6 +162,7 @@ class DashboardAnalyticsController extends Controller
             Carbon::parse($validated['from']),
             Carbon::parse($validated['to']),
             $daily,
+            unknownAsNull: true,
         ));
     }
 

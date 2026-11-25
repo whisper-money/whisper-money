@@ -172,9 +172,9 @@ test('an archived account keeps its history but stops counting from the day it w
     expect($evolution['accounts'])->toHaveKey($account->id);
     expect($points[$archivedOn->copy()->subMonthNoOverflow()->format('Y-m')][$account->id])->toBe(5000);
 
-    // ...and worth nothing from the month it was archived onwards.
-    expect($points[$archivedOn->format('Y-m')][$account->id])->toBe(0);
-    expect($points[now()->format('Y-m')][$account->id])->toBe(0);
+    // ...and no figure from the month it was archived onwards.
+    expect($points[$archivedOn->format('Y-m')][$account->id])->toBeNull();
+    expect($points[now()->format('Y-m')][$account->id])->toBeNull();
 });
 
 test('an account hidden on the dashboard still counts towards net worth', function () {

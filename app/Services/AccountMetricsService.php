@@ -90,10 +90,16 @@ class AccountMetricsService
      * amount is read at the end of the owner's $today
      * ({@see User::localToday()}), not at the server's UTC instant.
      *
+     * With $unknownAsNull, a month the account has no figure for reads null
+     * (see `isUnknownOn()`) instead of a balance walked back across months
+     * nobody has any record of, so a chart can tell "no data" apart from a
+     * real figure. Off by default, which keeps every point an integer for the
+     * API and MCP readers.
+     *
      * @param  Collection<int, Account>  $accounts
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, Carbon $today): array
+    public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, Carbon $today, bool $unknownAsNull = false): array
     {
         $accountIds = $accounts->pluck('id');
         $endOfToday = $today->copy()->endOfDay();
@@ -114,25 +120,12 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $this->balanceAt($lookup, $account, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
+                $point += $this->balanceEntries($lookup, $account, $date, $userCurrency, $unknownAsNull);
 
                 if ($account->type->supportsInvestedAmount()) {
-                    $point[$account->id.'_invested'] = $this->investedAmountAt($lookup, $account, $date);
+                    $point[$account->id.'_invested'] = $point[$account->id] === null
+                        ? null
+                        : $this->investedAmountAt($lookup, $account, $date);
                 }
             }
 
@@ -171,15 +164,54 @@ class AccountMetricsService
     }
 
     /**
+     * One account's entries in a net worth point: its balance in the user's
+     * currency and, when it is kept in another one, the original amount. With
+     * $unknownAsNull, a day the account has no figure for reads a null balance
+     * and no original amount.
+     *
+     * @return array<string, mixed>
+     */
+    private function balanceEntries(BalanceLookup $lookup, Account $account, Carbon $date, string $userCurrency, bool $unknownAsNull): array
+    {
+        if ($unknownAsNull && $this->isUnknownOn($lookup, $account, $date)) {
+            return [$account->id => null];
+        }
+
+        $originalBalance = $this->balanceAt($lookup, $account, $date);
+        $entries = [
+            $account->id => $this->convertBalance($originalBalance, $account->currency_code, $userCurrency, $date->toDateString()),
+        ];
+
+        if ($account->currency_code !== $userCurrency) {
+            $entries[$account->id.'_original'] = [
+                'amount' => $originalBalance,
+                'currency_code' => $account->currency_code,
+            ];
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Whether the account has no figure on that date: it is archived by then,
+     * or nothing is known about its balance yet ({@see BalanceLookup::hasHistoryOn()}).
+     */
+    private function isUnknownOn(BalanceLookup $lookup, Account $account, Carbon $date): bool
+    {
+        return $account->isArchivedOn($date) || ! $lookup->hasHistoryOn($account->id, $date);
+    }
+
+    /**
      * Build daily net worth evolution data points for all accounts.
      *
      * Each point contains the date, timestamp, and per-account converted balances.
      * Accounts with a different currency than the user also get `_original` entries.
+     * $unknownAsNull works as in {@see self::getNetWorthEvolution()}.
      *
      * @param  Collection<int, Account>  $accounts
      * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
-    public function getNetWorthDailyEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end): array
+    public function getNetWorthDailyEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end, bool $unknownAsNull = false): array
     {
         $accountIds = $accounts->pluck('id');
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
@@ -196,22 +228,7 @@ class AccountMetricsService
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $this->balanceAt($lookup, $account, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
+                $point += $this->balanceEntries($lookup, $account, $date, $userCurrency, $unknownAsNull);
             }
 
             $points[] = $point;
