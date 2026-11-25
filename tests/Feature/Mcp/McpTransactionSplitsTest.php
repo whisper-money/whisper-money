@@ -138,7 +138,22 @@ it('refuses an invalid split, writing nothing', function (array $splits) {
     'a part that moves money the other way' => [[['amount' => -11000], ['amount' => 1000]]],
     'a single part' => [[['amount' => -10000]]],
     'no parts' => [[]],
+    'a part with a field the tool does not take' => [[['amount' => -6000, 'category' => 'food'], ['amount' => -4000]]],
+    'a label twice on one part' => [[['amount' => -6000, 'label_ids' => ['a', 'A']], ['amount' => -4000]]],
 ]);
+
+it('puts the same label on several parts of a split', function () {
+    [$user, , $transaction] = splitMcpFixture();
+    $label = Label::factory()->create(['user_id' => $user->id, 'space_id' => $transaction->space_id]);
+
+    callMcpSplitTool($user, [
+        'transaction_id' => $transaction->id,
+        'splits' => [['amount' => -6000, 'label_ids' => [$label->id]], ['amount' => -4000, 'label_ids' => [$label->id]]],
+    ])->assertOk();
+
+    expect(mcpSplitParts($transaction)->map(fn (Transaction $part): array => $part->labels()->pluck('labels.id')->all())->all())
+        ->toBe([[$label->id], [$label->id]]);
+});
 
 it('refuses a category or label from outside the space, writing nothing', function () {
     [$user, , $transaction] = splitMcpFixture();

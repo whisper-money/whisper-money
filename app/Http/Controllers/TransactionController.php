@@ -232,7 +232,7 @@ class TransactionController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'splits' => 'Category or amount changes on a split transaction require an explicit split replacement or removal.',
+            'splits' => 'This transaction is still split into lines the old way, so its category and amount belong to those lines until it is converted to the new split model.',
         ]);
     }
 

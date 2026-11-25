@@ -1778,9 +1778,24 @@ describe('split', function () {
                 ['amount' => -2000, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
             ]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids.1' => 'duplicate']);
+            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids' => 'duplicate']);
 
         expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+    });
+
+    it('puts the same label on several parts of a split', function () {
+        $user = User::factory()->create();
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+        $label = Label::factory()->create(['user_id' => $user->id, 'space_id' => $original->space_id]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
+                ['amount' => -3000, 'label_ids' => [$label->id]],
+                ['amount' => -2000, 'label_ids' => [$label->id]],
+            ]])
+            ->assertCreated();
+
+        expect($label->transactions()->where('split_parent_id', $original->id)->count())->toBe(2);
     });
 
     it('refuses a transaction still split into the old lines until it is converted', function () {

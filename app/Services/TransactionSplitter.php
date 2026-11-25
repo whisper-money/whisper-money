@@ -6,6 +6,7 @@ use App\Enums\CategorySource;
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Transaction;
 use App\Services\Budgets\SplitBudgetRows;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -37,17 +38,34 @@ class TransactionSplitter
      * and `POST /api/v1/transactions/{id}/split`. Each caller adds its own
      * check that the category and label ids are in the space.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<mixed>>
      */
     public static function partRules(): array
     {
         return [
             'splits' => ['required', 'array', 'min:2', 'max:'.self::MAX_PARTS],
+            'splits.*' => ['array:amount,category_id,label_ids'],
             'splits.*.amount' => ['required', 'integer'],
             'splits.*.category_id' => ['nullable', 'string'],
-            'splits.*.label_ids' => ['nullable', 'array', 'max:100'],
-            'splits.*.label_ids.*' => ['required', 'string', 'distinct:ignore_case'],
+            'splits.*.label_ids' => ['nullable', 'array', 'max:100', self::noLabelTwiceInAPart()],
+            'splits.*.label_ids.*' => ['required', 'string'],
         ];
+    }
+
+    /**
+     * A label may sit on several parts of the same split, so it is only
+     * refused twice within one part. Laravel's `distinct` rule would compare
+     * across every part.
+     */
+    private static function noLabelTwiceInAPart(): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail): void {
+            $ids = array_map(static fn (mixed $id): string => mb_strtolower((string) $id), array_filter((array) $value, is_scalar(...)));
+
+            if (count($ids) !== count(array_unique($ids))) {
+                $fail('The '.$attribute.' field has a duplicate value.');
+            }
+        };
     }
 
     /**

@@ -609,7 +609,7 @@ it('counts in a label budget only the part that keeps the label, once its labels
         ->and((int) $period->budgetTransactions()->sole()->amount)->toBe(5000);
 
     // A split is not new spending: no budget email for its parts.
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('counts in a category budget only the part filed there, for an imported original too, and the original again on merge', function (bool $imported) {
@@ -712,7 +712,6 @@ it('keeps a merged original in its budgets when the unassignment the split queue
 });
 
 it('sends no budget email for a split or a merge, a rule filing a part included', function () {
-    Mail::fake();
     AutomationRule::factory()->create([
         'user_id' => $this->user->id,
         'priority' => 1,
@@ -725,6 +724,8 @@ it('sends no budget email for a split or a merge, a rule filing a part included'
     $original = splittableTransaction(-5000, 'MERCADONA S.A.');
     $original->update(['transaction_date' => now()->toDateString(), 'category_id' => $this->category->id, 'category_source' => CategorySource::Manual]);
     app(BudgetTransactionService::class)->assignTransaction($original->fresh(), notify: false);
+    // Faked from here on: filing the original above is an ordinary edit, which does email.
+    Mail::fake();
 
     $parts = app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000, 'category_id' => $this->category->id]]);
 
@@ -733,7 +734,7 @@ it('sends no budget email for a split or a merge, a rule filing a part included'
     app(TransactionSplitter::class)->merge($parts->first());
 
     expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id]);
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('refuses a category or a label of the user\'s other space for a part', function () {

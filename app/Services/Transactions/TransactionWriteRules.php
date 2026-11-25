@@ -174,7 +174,7 @@ class TransactionWriteRules
             return null;
         }
 
-        return 'Category or amount changes on a split transaction require an explicit split replacement or removal.';
+        return 'This transaction is still split into lines the old way, so its category and amount belong to those lines until it is converted to the new split model.';
     }
 
     /**
