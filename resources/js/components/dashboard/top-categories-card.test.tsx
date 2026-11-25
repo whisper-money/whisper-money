@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
     TopCategoriesCard,
@@ -34,34 +33,16 @@ vi.mock('@/actions/App/Http/Controllers/TransactionController', () => ({
     }),
 }));
 
-vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({
-        props: { auth: { user: { currency_code: 'EUR' } } },
-    }),
-    Link: ({
-        children,
-        href,
-        onClick,
-    }: {
-        children: React.ReactNode;
-        href: string;
-        onClick?: () => void;
-    }) => (
-        <a
-            href={href}
-            onClick={(event) => {
-                event.preventDefault();
-                onClick?.();
-            }}
-        >
-            {children}
-        </a>
-    ),
-}));
-
 const captureEvent = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
+
+vi.mock('@inertiajs/react', async () => ({
+    usePage: () => ({
+        props: { auth: { user: { currency_code: 'EUR' } } },
+    }),
+    Link: (await import('./link.fixture')).FixtureLink,
+}));
 
 function category(id: string, name: string, amount: number, total: number) {
     return {

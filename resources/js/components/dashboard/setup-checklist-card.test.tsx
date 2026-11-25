@@ -2,7 +2,6 @@ import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
 import { type BalanceDialogAccount } from '@/types/account';
 import { type SetupChecklistStep } from '@/types/dashboard';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SetupChecklistCard } from './setup-checklist-card';
 
@@ -32,26 +31,8 @@ const captureEvent = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
-vi.mock('@inertiajs/react', () => ({
-    Link: ({
-        children,
-        href,
-        onClick,
-    }: {
-        children: React.ReactNode;
-        href: string;
-        onClick?: () => void;
-    }) => (
-        <a
-            href={href}
-            onClick={(event) => {
-                event.preventDefault();
-                onClick?.();
-            }}
-        >
-            {children}
-        </a>
-    ),
+vi.mock('@inertiajs/react', async () => ({
+    Link: (await import('./link.fixture')).FixtureLink,
     router: { reload: vi.fn() },
     useHttp: () => ({ post }),
 }));

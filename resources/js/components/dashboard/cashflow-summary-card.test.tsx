@@ -1,36 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type SpendingLimit } from '@/types/dashboard';
 import { CashflowSummaryCard } from './cashflow-summary-card';
 
-vi.mock('@inertiajs/react', () => ({
+vi.mock('@inertiajs/react', async () => ({
     usePage: () => ({
         props: { locale: 'en-US', auth: { user: { currency_code: 'EUR' } } },
     }),
-    Link: ({
-        children,
-        href,
-        className,
-        onClick,
-    }: {
-        children: ReactNode;
-        href: string;
-        className?: string;
-        onClick?: () => void;
-    }) => (
-        <a
-            href={href}
-            className={className}
-            onClick={(event) => {
-                event.preventDefault();
-                onClick?.();
-            }}
-        >
-            {children}
-        </a>
-    ),
+    Link: (await import('./link.fixture')).FixtureLink,
 }));
 
 const captureEvent = vi.hoisted(() => vi.fn());
