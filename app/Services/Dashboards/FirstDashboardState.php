@@ -156,7 +156,7 @@ class FirstDashboardState
         $rows = $estimates
             ->groupBy(fn (Transaction $estimate): string => $estimate->category_id ?? 'description:'.$estimate->description)
             ->map(fn (Collection $group): array => [
-                'name' => (string) ($group->first()->category?->name ?? $group->first()->description),
+                'name' => (string) ($group->first()->category->name ?? $group->first()->description),
                 'amount' => (int) -$group->sum('amount'),
             ])
             ->sortByDesc('amount')

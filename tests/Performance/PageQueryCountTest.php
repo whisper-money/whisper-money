@@ -75,6 +75,13 @@ use App\Models\Transaction;
 | loaded ones: one grouped query over the days the page shows. A reader with
 | transactions in another currency pays one more, the rates of those days.
 |
+| And the dashboard went up by one, the client-side visit included, when the
+| system dashboard learned to tell a reader with no real movement yet (only
+| the onboarding estimates, or only balances) from everybody else. Everybody
+| else pays one `exists()` on their transactions; it is sent with the page
+| rather than deferred because it decides the header line and which cards are
+| drawn, which would otherwise swap under the reader on every visit.
+|
 | Run this suite in isolation:
 |   php artisan test --testsuite=Performance
 |
@@ -90,7 +97,7 @@ beforeEach(function () {
 // ──────────────────────────────────────────────────────────────────────────
 
 test('dashboard page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('dashboard'))->assertOk();
     }, 'Dashboard');
 });
@@ -206,7 +213,7 @@ test('dashboard query count does not scale with number of accounts', function ()
     }
 
     // Same threshold as 3 accounts — query count must not grow with data
-    assertMaxQueries(20, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('dashboard'))->assertOk();
     }, 'Dashboard with 10 accounts');
 });
@@ -239,7 +246,7 @@ test('a client-side visit holding the shared lists does not resolve them again',
     $headers = ['X-Inertia' => 'true'];
     $heldKeys = array_keys($this->get(route('dashboard'), $headers)->json('onceProps'));
 
-    assertMaxQueries(7, function () use ($headers, $heldKeys) {
+    assertMaxQueries(8, function () use ($headers, $heldKeys) {
         $this->get(route('dashboard'), $headers + [
             'X-Inertia-Except-Once-Props' => implode(',', $heldKeys),
         ])->assertOk()->assertJsonMissingPath('props.categories');
