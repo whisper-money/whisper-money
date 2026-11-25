@@ -21,16 +21,26 @@ export interface TransactionSplit {
     position: number;
 }
 
-export interface SplitLineInput {
-    category_id: UUID;
+/**
+ * One part of a split, as it arrives on every part of the same split (itself
+ * included). Enough to explain the split without reading the original, which is
+ * soft-deleted server-side.
+ */
+export interface TransactionSplitSibling {
+    id: UUID;
+    split_parent_id: UUID;
+    category_id: UUID | null;
     amount: number;
-    position: number;
 }
 
 export interface Transaction {
     id: UUID;
     user_id: UUID;
     account_id: UUID;
+    /** Set when this transaction is one part of a split. Absent on payloads the app sends. */
+    split_parent_id?: UUID | null;
+    /** Every part of the same split, this one included. Loaded where the table needs it. */
+    split_siblings?: TransactionSplitSibling[];
     category_id: UUID | null;
     description: string;
     description_iv: string | null;
@@ -50,6 +60,10 @@ export interface Transaction {
     label_ids?: UUID[];
     created_at: string;
     updated_at: string;
+    /**
+     * The lines of a transaction split the old way, read-only until the
+     * conversion turns them into parts (`split_parent_id`).
+     */
     splits?: TransactionSplit[];
     is_split?: boolean;
     split_count?: number;

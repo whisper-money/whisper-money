@@ -67,13 +67,14 @@ describe('mergeUpdatedTransaction', () => {
 
 const NO_LABELS: Label[] = [];
 
-function renderEditing(onRowUpdated?: () => void) {
+function renderEditing(onRowUpdated?: () => void, canStartSplits = true) {
     return renderHook(() => {
         const [rows, setRows] = useState([transaction()]);
         const editing = useTransactionRowEditing({
             initialLabels: NO_LABELS,
             setRows,
             onRowUpdated,
+            canStartSplits,
         });
 
         return { rows, editing };
@@ -87,17 +88,32 @@ describe('useTransactionRowEditing', () => {
 
         act(() => result.current.editing.rowActions.onEdit(row));
         act(() => result.current.editing.rowActions.onDuplicate(row));
+        act(() => result.current.editing.rowActions.onSplit?.(row));
+        act(() => result.current.editing.rowActions.onUnsplit(row));
         act(() => result.current.editing.rowActions.onDelete(row));
         act(() => result.current.editing.rowActions.onAutomate(row));
 
         expect(result.current.editing.editTransaction).toBe(row);
         expect(result.current.editing.duplicateTransaction).toBe(row);
+        expect(result.current.editing.splitTransaction).toBe(row);
+        expect(result.current.editing.unsplitTransaction).toBe(row);
         expect(result.current.editing.deleteTransaction).toBe(row);
         expect(result.current.editing.automateDialogOpen).toBe(true);
         expect(result.current.editing.automateCandidate).toEqual({
             transaction: row,
             category: null,
         });
+    });
+
+    it('offers no split while splitting is off, but still merging back', () => {
+        const { result } = renderEditing(undefined, false);
+
+        expect(result.current.editing.rowActions.onSplit).toBeUndefined();
+        expect(result.current.editing.dialogRowActions.onSplit).toBeUndefined();
+        expect(result.current.editing.canStartSplits).toBe(false);
+        expect(result.current.editing.rowActions.onUnsplit).toBeTypeOf(
+            'function',
+        );
     });
 
     it('edits the row in place and tells the page', () => {

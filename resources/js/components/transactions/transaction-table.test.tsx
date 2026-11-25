@@ -7,6 +7,11 @@ import { TransactionTable } from './transaction-table';
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
 
+vi.mock('@inertiajs/react', async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    usePage: () => ({ props: { features: { transactionSplitting: true } } }),
+}));
+
 const viewport = vi.hoisted(() => ({ isMobile: false }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => viewport.isMobile }));
 
@@ -61,8 +66,21 @@ vi.mock('@/components/transactions/transaction-filters', () => ({
         </div>
     ),
 }));
+const rowDialogs = vi.hoisted(() => ({
+    latest: null as {
+        onSplitChanged: () => void;
+        editing: { canStartSplits: boolean };
+    } | null,
+}));
 vi.mock('@/components/transactions/transaction-row-dialogs', () => ({
-    TransactionRowDialogs: () => null,
+    TransactionRowDialogs: (props: {
+        onSplitChanged: () => void;
+        editing: { canStartSplits: boolean };
+    }) => {
+        rowDialogs.latest = props;
+
+        return null;
+    },
 }));
 vi.mock('@/components/transactions/transaction-delete-dialogs', () => ({
     TransactionDeleteDialogs: () => null,
@@ -178,6 +196,32 @@ describe('TransactionTable', () => {
             }),
         ).toBeTruthy();
         expect(screen.getByTestId('filters-trailing').textContent).toBe('');
+    });
+
+    it("brings a split's parts in with the source's own reload, and offers splitting while the feature is on", () => {
+        const tableSource = source();
+        renderTable(tableSource);
+
+        expect(rowDialogs.latest?.onSplitChanged).toBe(tableSource.reload);
+        expect(rowDialogs.latest?.editing.canStartSplits).toBe(true);
+    });
+
+    it('lets the page say how a split brings its parts in', () => {
+        const onSplitChanged = vi.fn();
+
+        render(
+            <TransactionTable
+                source={source()}
+                categories={[]}
+                accounts={[]}
+                banks={[]}
+                labels={[]}
+                automationRules={[]}
+                onSplitChanged={onSplitChanged}
+            />,
+        );
+
+        expect(rowDialogs.latest?.onSplitChanged).toBe(onSplitChanged);
     });
 
     it('draws the skeleton while the source loads', () => {

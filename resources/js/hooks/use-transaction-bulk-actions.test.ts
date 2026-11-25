@@ -528,6 +528,18 @@ describe('useTransactionBulkActions', () => {
         expect(result.current.rowSelection).toEqual({ a: true });
     });
 
+    it('refuses a bulk delete that includes part of a split', () => {
+        const { result } = renderBulk(
+            [transaction('a'), transaction('b', { split_parent_id: 'p' })],
+            ['a', 'b'],
+        );
+
+        act(() => result.current.bulk.barProps.onDelete());
+
+        expect(toastMock.error).toHaveBeenCalledOnce();
+        expect(result.current.bulk.deleteDialog.transaction).toBeNull();
+    });
+
     it('takes a split transaction into a bulk delete: it is one row with its lines', () => {
         const { result } = renderBulk(
             [transaction('a'), transaction('b', { is_split: true })],

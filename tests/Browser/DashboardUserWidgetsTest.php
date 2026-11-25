@@ -770,10 +770,10 @@ it('ticks a widget\'s rows for the bulk actions bar, and opens the row menu on a
         ->click('[aria-label="Clear selection"]')
         ->assertMissing('[aria-label="Selection actions"]')
         ->rightClick('Motoclub')
+        // The same actions as the row menu on /transactions, splitting included.
         ->assertSee('Duplicate')
-        // No split action here: a split is edited in the edit dialog.
+        ->assertSee('Split')
         ->assertSee('Delete')
-        ->assertDontSee('Split')
         ->click('[role="menuitem"]:has-text("Edit")')
         ->waitForText('Edit Transaction', 10)
         // The dialog holds the transaction as the server does, not the

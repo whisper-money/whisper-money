@@ -1,4 +1,5 @@
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
+import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 
 /**
@@ -45,6 +46,15 @@ function getFakeDescription(seed: string): string {
  * the decrypt-migration runs, so the list never renders raw ciphertext.
  */
 export const ENCRYPTED_PLACEHOLDER = '••••••••••';
+
+/** A row's description as plain text, the placeholder while it is still encrypted. */
+export function readableDescription(
+    transaction: Pick<Transaction, 'description' | 'description_iv'>,
+): string {
+    return transaction.description_iv
+        ? ENCRYPTED_PLACEHOLDER
+        : transaction.description;
+}
 
 interface TransactionDescriptionProps {
     text: string;

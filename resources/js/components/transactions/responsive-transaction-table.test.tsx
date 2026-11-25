@@ -92,6 +92,7 @@ const rowActions = {
     onReEvaluateRules: vi.fn(),
     onAutomate: vi.fn(),
     onDelete: vi.fn(),
+    onUnsplit: vi.fn(),
 };
 
 function TransactionsList({
@@ -271,6 +272,48 @@ describe('ResponsiveTransactionTable', () => {
         fireEvent.click(within(listRows()[1]).getByText('Bakery'));
 
         expect(rowActions.onEdit).toHaveBeenCalledWith(TRANSACTIONS[1]);
+    });
+
+    it('merges a part back from its mark, without opening the row', () => {
+        const part = {
+            ...TRANSACTIONS[1],
+            split_parent_id: 'original-1',
+            split_siblings: [
+                {
+                    id: 'b',
+                    split_parent_id: 'original-1',
+                    category_id: null,
+                    amount: -750,
+                },
+                {
+                    id: 'b2',
+                    split_parent_id: 'original-1',
+                    category_id: null,
+                    amount: -250,
+                },
+            ],
+        } as DecryptedTransaction;
+
+        render(<TransactionsList data={[TRANSACTIONS[0], part]} />);
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'This transaction is part of a split',
+            }),
+        );
+
+        expect(
+            screen.getByText('One of 2 splits of -€10.00'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Merge the split back' }),
+        );
+
+        expect(rowActions.onUnsplit).toHaveBeenCalledWith(part);
+        expect(rowActions.onEdit).not.toHaveBeenCalled();
+        // The whole transaction beside it has no mark.
+        expect(screen.getAllByTestId('split-origin')).toHaveLength(1);
     });
 
     it('swaps the day total for selecting the whole day while selecting', () => {

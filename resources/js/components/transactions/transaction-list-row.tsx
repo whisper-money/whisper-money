@@ -5,6 +5,7 @@ import {
     buildSplitBreakdown,
     type SplitBreakdownLine,
 } from '@/components/transactions/split-breakdown';
+import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import {
     ENCRYPTED_PLACEHOLDER,
@@ -14,6 +15,7 @@ import {
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { COMPACT_LIST_MUTED_TEXT, LIST_ROW } from '@/lib/compact-list-style';
 import { resolveTransactionLabels } from '@/lib/transaction-labels';
+import { isSplitPart } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
@@ -40,6 +42,11 @@ interface TransactionListRowProps extends Omit<
      * is read-only: no pointer, no hover, nothing to focus.
      */
     onOpen?: (transaction: DecryptedTransaction) => void;
+    /**
+     * Merges back the split this row is a part of. Without it a part has no
+     * mark: a read-only list has nothing to offer from it.
+     */
+    onUnsplit?: (transaction: DecryptedTransaction) => void;
     /** It arrived since the last visit. */
     isNew?: boolean;
     /** A short tag after the description, e.g. a widget's "Purchase". */
@@ -56,8 +63,8 @@ interface TransactionListRowProps extends Omit<
 
 /**
  * One transaction as a line of the compact list, for widths too narrow for
- * the table. Read-only apart from its circle: the category and everything else
- * change in the edit dialog a tap opens, a split's lines included. Purely
+ * the table. Read-only apart from its circle and a split part's mark: the
+ * category and everything else change in the edit dialog a tap opens. Purely
  * presentational: selection and editing belong to whoever renders it.
  */
 export function TransactionListRow({
@@ -68,6 +75,7 @@ export function TransactionListRow({
     selectionActive,
     onToggleSelect,
     onOpen,
+    onUnsplit,
     isNew = false,
     isCategorizing,
     categoryFilterIds,
@@ -154,6 +162,20 @@ export function TransactionListRow({
                 )}
             >
                 <div className="flex items-baseline gap-2">
+                    {onUnsplit && isSplitPart(transaction) && (
+                        // Its popover renders in a portal, whose clicks still
+                        // bubble through React to the row.
+                        <span
+                            className="self-center"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <SplitOriginPopover
+                                transaction={transaction}
+                                categories={categories}
+                                onUnsplit={onUnsplit}
+                            />
+                        </span>
+                    )}
                     {onOpen ? (
                         // The row's keyboard entry point: the click bubbles
                         // to the row, which opens it.

@@ -6,6 +6,7 @@ import {
     buildSplitBreakdown,
     SplitBreakdown,
 } from '@/components/transactions/split-breakdown';
+import { SplitOriginPopover } from '@/components/transactions/split-origin-popover';
 import { StatementPaymentNote } from '@/components/transactions/statement-payment-note';
 import {
     ENCRYPTED_PLACEHOLDER,
@@ -14,6 +15,7 @@ import {
 } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { resolveTransactionLabels } from '@/lib/transaction-labels';
+import { isSplitPart, movementIdOf } from '@/lib/transaction-splits';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
@@ -94,19 +96,27 @@ export function accountColumn(
     };
 }
 
+const NO_CATEGORIES: Category[] = [];
+
 export interface DescriptionColumnOptions {
+    /** What a split part's mark lists its siblings under. */
+    categories?: Category[];
     labels: Label[];
     hiddenLabelId?: string;
     statementPayments?: Map<string, CreditCardPayment>;
+    /** Without it a split part has no mark: nothing to merge it back with. */
+    onUnsplit?: (transaction: DecryptedTransaction) => void;
     /** A short tag after a row's description, or nothing. */
     badgeOf?: (transaction: DecryptedTransaction) => string | null | undefined;
     displayRow?: DisplayRow;
 }
 
 export function descriptionColumn({
+    categories = NO_CATEGORIES,
     labels,
     hiddenLabelId,
     statementPayments,
+    onUnsplit,
     badgeOf,
     displayRow = asHeld,
 }: DescriptionColumnOptions): TransactionColumn {
@@ -133,37 +143,56 @@ export function descriptionColumn({
 
             const hasLabels = transactionLabels.length > 0;
             const hasNotes = !!transaction.notes;
-            const statementPayment = statementPayments?.get(transaction.id);
+            // A split repayment's payment points at the original, which the
+            // list shows as its parts.
+            const statementPayment = statementPayments?.get(
+                movementIdOf(transaction),
+            );
             const badge = badgeOf?.(row.original);
 
             return (
-                <div className="flex flex-col gap-0.5">
-                    <div className="flex flex-row justify-between gap-1">
-                        <div className="flex-grow truncate">
-                            <TransactionDescription
-                                text={transaction.description}
-                                encrypted={!!transaction.description_iv}
-                            />
+                // The split mark sits in its own gutter, so everything
+                // beside it — description, labels, notes — lines up exactly
+                // as it does on a row that was never split.
+                <div className="flex gap-1.5">
+                    {onUnsplit && isSplitPart(row.original) && (
+                        <SplitOriginPopover
+                            transaction={row.original}
+                            categories={categories}
+                            onUnsplit={onUnsplit}
+                        />
+                    )}
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <div className="flex flex-row justify-between gap-1">
+                            <div className="flex-grow truncate">
+                                <TransactionDescription
+                                    text={transaction.description}
+                                    encrypted={!!transaction.description_iv}
+                                />
+                            </div>
+                            {badge && <TransactionBadge text={badge} />}
+                            {showLabels && hasLabels && (
+                                <LabelBadges
+                                    labels={transactionLabels}
+                                    max={3}
+                                />
+                            )}
                         </div>
-                        {badge && <TransactionBadge text={badge} />}
-                        {showLabels && hasLabels && (
-                            <LabelBadges labels={transactionLabels} max={3} />
+                        {statementPayment && (
+                            <StatementPaymentNote payment={statementPayment} />
+                        )}
+                        {showNotes && hasNotes && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                <div className="truncate text-muted-foreground/80">
+                                    <span>
+                                        {transaction.notes_iv
+                                            ? ENCRYPTED_PLACEHOLDER
+                                            : transaction.notes}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    {statementPayment && (
-                        <StatementPaymentNote payment={statementPayment} />
-                    )}
-                    {showNotes && hasNotes && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                            <div className="truncate text-muted-foreground/80">
-                                <span>
-                                    {transaction.notes_iv
-                                        ? ENCRYPTED_PLACEHOLDER
-                                        : transaction.notes}
-                                </span>
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         },

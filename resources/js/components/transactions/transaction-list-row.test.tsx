@@ -293,4 +293,25 @@ describe('TransactionListRow', () => {
 
         expect(row()).toHaveTextContent('MercadonaCompra-€42.50');
     });
+
+    it('marks a part of a split, and a tap on the mark does not open the row', () => {
+        const onUnsplit = vi.fn();
+        const { onOpen } = renderRow({
+            transaction: buildTransaction({ split_parent_id: 'tx-0' }),
+            onUnsplit,
+        });
+
+        fireEvent.click(screen.getByTestId('split-origin'));
+
+        expect(onOpen).not.toHaveBeenCalled();
+    });
+
+    it('leaves a part unmarked in a list that is only read', () => {
+        renderRow({
+            transaction: buildTransaction({ split_parent_id: 'tx-0' }),
+            onUnsplit: undefined,
+        });
+
+        expect(screen.queryByTestId('split-origin')).not.toBeInTheDocument();
+    });
 });

@@ -18,6 +18,7 @@ import { useTransactionLayout } from '@/hooks/use-transaction-layout';
 import { PHONE_FRAME, PHONE_INSET } from '@/lib/compact-list-style';
 import { type DaySummaryOf } from '@/lib/transaction-day-groups';
 import { type TransactionRowActionHandlers } from '@/lib/transaction-row-actions';
+import { movementIdOf } from '@/lib/transaction-splits';
 import { cn } from '@/lib/utils';
 import { type CreditCardPayment } from '@/types/account';
 import { type Category } from '@/types/category';
@@ -344,6 +345,7 @@ function TransactionListRowItem({
                         selectionMode.toggleRow(transaction.id)
                     }
                     onOpen={() => rowActions.onEdit(transaction)}
+                    onUnsplit={() => rowActions.onUnsplit(transaction)}
                     isNew={listRow.isNewRow?.(transaction)}
                     badge={listRow.badgeOf?.(transaction) ?? undefined}
                     isCategorizing={listRow.categorizingIds?.has(
@@ -352,7 +354,7 @@ function TransactionListRowItem({
                     categoryFilterIds={listRow.categoryFilterIds}
                     hiddenLabelId={listRow.hiddenLabelId}
                     statementPayment={listRow.statementPayments?.get(
-                        transaction.id,
+                        movementIdOf(transaction),
                     )}
                     {...(selectionMode.isMobile && {
                         ...longPress.handlers,

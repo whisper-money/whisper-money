@@ -6,13 +6,17 @@ import {
     store as storeRoute,
     update as updateRoute,
 } from '@/actions/App/Http/Controllers/TransactionController';
+import {
+    store as splitRoute,
+    destroy as unsplitRoute,
+} from '@/actions/App/Http/Controllers/TransactionSplitController';
 import { db, withDb } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import { serializeFilters } from '@/lib/transaction-filter-serialization';
+import type { SplitInput } from '@/lib/transaction-splits';
 import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type {
     ServerTransaction,
-    SplitLineInput,
     Transaction,
     TransactionFilters,
 } from '@/types/transaction';
@@ -24,12 +28,15 @@ export type UpdatedTransaction = ServerTransaction & {
     learned_rule?: LearnedRuleNotice | null;
 };
 
+/**
+ * A split is made and undone through split() and unsplit(), never through an
+ * update, so the lines of the old model are not part of it.
+ */
 export interface TransactionUpdateData extends Omit<
     Partial<Transaction>,
-    'splits'
+    'splits' | 'split_parent_id' | 'split_siblings'
 > {
     label_ids?: string[];
-    splits?: SplitLineInput[];
 }
 
 /**
@@ -42,10 +49,13 @@ export type BulkTransactionUpdateData = TransactionUpdateData & {
 
 export type TransactionCreateData = Omit<
     Transaction,
-    'id' | 'created_at' | 'updated_at' | 'splits'
-> & {
-    splits?: SplitLineInput[];
-};
+    | 'id'
+    | 'created_at'
+    | 'updated_at'
+    | 'splits'
+    | 'split_parent_id'
+    | 'split_siblings'
+>;
 
 export interface BulkUpdateResult {
     updated_count: number;
@@ -258,6 +268,43 @@ class TransactionSyncService {
         await withDb<void>(async () => {
             await db.transactions.delete(id);
         }, undefined);
+    }
+
+    /**
+     * Split a transaction into parts. The original is soft-deleted server-side
+     * and the sync endpoint never announces deletions, so it is evicted from the
+     * offline cache here (best-effort, like delete()).
+     */
+    async split(id: string, splits: SplitInput[]): Promise<Transaction[]> {
+        const response = await axios.post(splitRoute.url(id), { splits });
+
+        await withDb<void>(async () => {
+            await db.transactions.delete(id);
+        }, undefined);
+
+        const parts = (response.data.data ?? []) as Record<string, unknown>[];
+
+        return parts.map(
+            (part) =>
+                transformTransactionFromServer(part) as unknown as Transaction,
+        );
+    }
+
+    /**
+     * Merge a split back: every part goes away and the original comes back.
+     * Takes any of the parts, and evicts all of them from the offline cache the
+     * way split() evicts the original (best-effort, like delete()).
+     */
+    async unsplit(id: string, partIds: string[] = []): Promise<Transaction> {
+        const response = await axios.delete(unsplitRoute.url(id));
+
+        await withDb<void>(async () => {
+            await db.transactions.bulkDelete([...new Set([id, ...partIds])]);
+        }, undefined);
+
+        return transformTransactionFromServer(
+            response.data.data,
+        ) as unknown as Transaction;
     }
 
     async updateManyIndividual(

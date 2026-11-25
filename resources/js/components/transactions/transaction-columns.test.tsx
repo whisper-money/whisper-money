@@ -37,6 +37,8 @@ function buildColumnsOptions() {
         onUpdate: () => {},
         onReEvaluateRules: () => {},
         onAutomate: () => {},
+        onSplit: () => {},
+        onUnsplit: vi.fn(),
     };
 }
 
@@ -233,6 +235,20 @@ describe('createTransactionColumns statement payments', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('notes it on each part of a split repayment, whose payment points at the original', () => {
+        renderDescription(
+            {
+                ...row('part-1'),
+                split_parent_id: 'payment-1',
+            } as DecryptedTransaction,
+            new Map([[payment.transaction_id, payment]]),
+        );
+
+        expect(
+            screen.getByTestId('statement-payment-note'),
+        ).toBeInTheDocument();
+    });
+
     it('shows no note outside a credit card page', () => {
         renderDescription(row('payment-1'));
 
@@ -276,5 +292,53 @@ describe('createTransactionColumns select checkboxes', () => {
 
         expect(row.className).not.toContain('max-md:');
         expect(header.className).toBe(row.className);
+    });
+});
+
+describe('createTransactionColumns split parts', () => {
+    function renderDescription(transaction: DecryptedTransaction) {
+        const description = buildColumns().find(
+            (column) =>
+                'accessorKey' in column &&
+                column.accessorKey === 'decryptedDescription',
+        );
+
+        render(
+            <PrivacyModeProvider>
+                {(
+                    description?.cell as (
+                        context: CellContext<DecryptedTransaction, unknown>,
+                    ) => React.ReactNode
+                )?.({
+                    row: { original: transaction },
+                    table: { getState: () => ({ columnVisibility: {} }) },
+                } as unknown as CellContext<DecryptedTransaction, unknown>)}
+            </PrivacyModeProvider>,
+        );
+    }
+
+    const whole = {
+        id: 'tx-1',
+        description: 'MERCADONA S.A.',
+        label_ids: [],
+        notes: null,
+        currency_code: 'EUR',
+    } as unknown as DecryptedTransaction;
+
+    it('marks a part of a split beside its description', () => {
+        renderDescription({ ...whole, split_parent_id: 'tx-0' });
+
+        expect(
+            screen.getByRole('button', {
+                name: 'This transaction is part of a split',
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('MERCADONA S.A.')).toBeInTheDocument();
+    });
+
+    it('leaves a whole transaction unmarked', () => {
+        renderDescription(whole);
+
+        expect(screen.queryByTestId('split-origin')).not.toBeInTheDocument();
     });
 });

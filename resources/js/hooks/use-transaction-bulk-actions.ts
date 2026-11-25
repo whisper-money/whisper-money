@@ -3,6 +3,7 @@ import { type TransactionRowEditing } from '@/hooks/use-transaction-row-editing'
 import { consoleDebug } from '@/lib/debug';
 import { mergeAuthoritativeTransactions } from '@/lib/transaction-bulk-update';
 import { reEvaluateTransactionRules } from '@/lib/transaction-re-evaluation';
+import { isSplitPart } from '@/lib/transaction-splits';
 import {
     type BulkUpdateResult,
     transactionSyncService,
@@ -197,6 +198,25 @@ export function useTransactionBulkActions({
 
     function handleBulkDeleteClick() {
         if (selectedIds.length === 0) {
+            return;
+        }
+
+        // One part of a split cannot go on its own, and refusing the whole
+        // batch up front beats failing halfway through it.
+        const selectedSplitParts = rows.filter(
+            (transaction) =>
+                selectedIds.includes(transaction.id) &&
+                isSplitPart(transaction),
+        );
+
+        if (selectedSplitParts.length > 0) {
+            toast.error(
+                __(
+                    ':count of the selected transactions are splits. Merge them back before deleting them.',
+                    { count: selectedSplitParts.length },
+                ),
+            );
+
             return;
         }
 

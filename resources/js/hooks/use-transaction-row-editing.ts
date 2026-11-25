@@ -69,6 +69,7 @@ export function useTransactionRowEditing({
     setRows,
     onRowUpdated,
     resolveRow,
+    canStartSplits = false,
 }: {
     initialLabels: Label[];
     setRows: Dispatch<SetStateAction<DecryptedTransaction[]>>;
@@ -81,6 +82,11 @@ export function useTransactionRowEditing({
     resolveRow?: (
         transaction: DecryptedTransaction,
     ) => Promise<DecryptedTransaction>;
+    /**
+     * Offer to split a row (the TransactionSplitting feature). Merging a split
+     * back is always offered.
+     */
+    canStartSplits?: boolean;
 }) {
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
@@ -97,6 +103,10 @@ export function useTransactionRowEditing({
     const [duplicateTransaction, setDuplicateTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [deleteTransaction, setDeleteTransaction] =
+        useState<DecryptedTransaction | null>(null);
+    const [splitTransaction, setSplitTransaction] =
+        useState<DecryptedTransaction | null>(null);
+    const [unsplitTransaction, setUnsplitTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
@@ -196,8 +206,12 @@ export function useTransactionRowEditing({
             onAutomate: opening((transaction) =>
                 openAutomateDialog(transaction),
             ),
+            ...(canStartSplits
+                ? { onSplit: opening(setSplitTransaction) }
+                : {}),
+            onUnsplit: opening(setUnsplitTransaction),
         };
-    }, [handleReEvaluateRules, openAutomateDialog, resolveRow]);
+    }, [handleReEvaluateRules, openAutomateDialog, resolveRow, canStartSplits]);
 
     /** The same actions, offered from the edit dialog's own menu. */
     const dialogRowActions = useMemo<TransactionRowActionHandlers>(
@@ -222,6 +236,11 @@ export function useTransactionRowEditing({
         setDuplicateTransaction,
         deleteTransaction,
         setDeleteTransaction,
+        canStartSplits,
+        splitTransaction,
+        setSplitTransaction,
+        unsplitTransaction,
+        setUnsplitTransaction,
         isReEvaluating,
         automateDialogOpen,
         setAutomateDialogOpen,

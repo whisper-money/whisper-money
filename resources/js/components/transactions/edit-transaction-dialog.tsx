@@ -4,11 +4,11 @@ import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Shortcut } from '@/components/shortcuts/shortcut';
 import { ShortcutKbd } from '@/components/shortcuts/shortcut-kbd';
 import { CategorySelect } from '@/components/transactions/category-select';
-import { TransactionRowDropdownMenuContent } from '@/components/transactions/transaction-row-dropdown-menu';
 import {
-    TransactionSplitEditor,
-    validTransactionSplits,
-} from '@/components/transactions/transaction-split-editor';
+    buildSplitBreakdown,
+    SplitBreakdown,
+} from '@/components/transactions/split-breakdown';
+import { TransactionRowDropdownMenuContent } from '@/components/transactions/transaction-row-dropdown-menu';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,11 @@ import {
     getTransactionRowActions,
     type TransactionRowActionHandlers,
 } from '@/lib/transaction-row-actions';
+import {
+    canSplit,
+    hasLegacySplitLines,
+    isSplitPart,
+} from '@/lib/transaction-splits';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type SharedData } from '@/types';
@@ -64,11 +69,7 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
-import {
-    type DecryptedTransaction,
-    type SplitLineInput,
-    type TransactionSplit,
-} from '@/types/transaction';
+import { type DecryptedTransaction } from '@/types/transaction';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate, todayDateString } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -78,6 +79,7 @@ import { getYear, isValid, parseISO } from 'date-fns';
 import {
     CalendarDays,
     ChevronDown,
+    ChevronRight,
     ChevronUp,
     CircleDollarSign,
     CircleSlash,
@@ -88,34 +90,12 @@ import {
     Lock,
     MoreHorizontal,
     Plus,
+    Split,
     Trash2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
-
-function splitLineSignature(
-    splits: ReadonlyArray<
-        Pick<TransactionSplit, 'category_id' | 'amount' | 'position'>
-    >,
-): string {
-    return JSON.stringify(
-        splits.map(({ category_id, amount, position }) => ({
-            category_id,
-            amount,
-            position,
-        })),
-    );
-}
-
-export function haveSplitLinesChanged(
-    persisted: ReadonlyArray<
-        Pick<TransactionSplit, 'category_id' | 'amount' | 'position'>
-    >,
-    draft: readonly SplitLineInput[],
-): boolean {
-    return splitLineSignature(persisted) !== splitLineSignature(draft);
-}
 
 export type TransactionCreateOrigin =
     | 'quick_add'
@@ -142,6 +122,11 @@ interface EditTransactionDialogProps {
     onLabelCreated?: (label: Label) => void;
     onDelete?: (transaction: DecryptedTransaction) => void;
     /**
+     * Edit mode: offers "Split into parts", which closes this dialog and opens
+     * the split one. Left out while splitting is off.
+     */
+    onSplit?: (transaction: DecryptedTransaction) => void;
+    /**
      * Edit mode: the row menu's actions, offered in the header on a phone,
      * whose compact list has no row menu to reach them from.
      */
@@ -150,8 +135,8 @@ interface EditTransactionDialogProps {
     initialAccountId?: string | null;
     /**
      * Create mode only: open the form filled in from this transaction, dated
-     * today, for the recurring ones entered by hand. Its split lines come
-     * along, so the copy is split the same way.
+     * today, for the recurring ones entered by hand. A split is never copied:
+     * the copy goes out whole, and can be split on its own.
      */
     duplicateFrom?: DecryptedTransaction | null;
     /** Which surface opened the dialog, for `transaction_created`. */
@@ -260,6 +245,7 @@ export function EditTransactionDialog({
     onCategorized,
     onLabelCreated,
     onDelete,
+    onSplit,
     rowActions,
     mode,
     initialAccountId = null,
@@ -272,8 +258,6 @@ export function EditTransactionDialog({
     const userCurrencyCode = auth.user.currency_code;
 
     const { sync } = useSyncContext();
-    const transactionSplittingEnabled =
-        usePage<SharedData>().props.features.transactionSplitting;
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
     const [unsignedAmount, setUnsignedAmount] = useState<number>(0);
@@ -306,8 +290,6 @@ export function EditTransactionDialog({
     const [currencyCode, setCurrencyCode] =
         useState<CurrencyCode>(userCurrencyCode);
     const [categoryId, setCategoryId] = useState<string>('null');
-    const [splits, setSplits] = useState<SplitLineInput[] | null>(null);
-    const [removeSplits, setRemoveSplits] = useState(false);
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -325,9 +307,33 @@ export function EditTransactionDialog({
 
     // Manually created transactions can edit account, amount and description
     // both on creation and afterwards. Bank-synced and imported ones keep those
-    // locked to what the source reported.
+    // locked to what the source reported. A part of a split keeps them locked
+    // whatever its source: changing one part's amount or account would leave
+    // the split no longer adding up (the server drops those fields anyway).
+    const isSplitPartTransaction =
+        mode === 'edit' && !!transaction && isSplitPart(transaction);
     const canEditAllFields =
-        mode === 'create' || transaction?.source === 'manually_created';
+        (mode === 'create' || transaction?.source === 'manually_created') &&
+        !isSplitPartTransaction;
+
+    // Parts of a split stay on the original's day, so their date is locked
+    // too; every other transaction can be moved (see sourceDate below).
+    const canEditDate = !isSplitPartTransaction;
+
+    // A part is our row rather than something the bank sent, so its
+    // description can be renamed to say which part it is, even when the
+    // original came from a bank. One still encrypted on the device stays as it
+    // is: there is no readable text to edit.
+    const canEditDescription =
+        canEditAllFields ||
+        (isSplitPartTransaction && !transaction?.description_iv);
+
+    // Split the old way: its lines stay read-only until the conversion turns
+    // them into parts, and the server refuses a category for it meanwhile.
+    const legacySplitLines =
+        mode === 'edit' && transaction && hasLegacySplitLines(transaction)
+            ? (transaction.splits ?? [])
+            : [];
 
     // The toggle carries the sign, so the amount input never sees a minus and
     // nobody has to type one. Everything that persists or matches on the amount
@@ -373,16 +379,6 @@ export function EditTransactionDialog({
             setTransactionDate(transaction.transaction_date);
             setAccountId(transaction.account_id);
             fillFrom(transaction);
-            setSplits(
-                transaction.splits?.length
-                    ? transaction.splits.map((split, position) => ({
-                          category_id: split.category_id,
-                          amount: split.amount,
-                          position,
-                      }))
-                    : null,
-            );
-            setRemoveSplits(false);
         } else if (mode === 'create' && open) {
             const today = todayDateString();
             setTransactionDate(today);
@@ -418,30 +414,10 @@ export function EditTransactionDialog({
             defaultAccountId.current = initialAccount?.id ?? '';
             setCurrencyCode(initialAccount?.currency_code ?? userCurrencyCode);
             setCategoryId('null');
-            setSplits(null);
-            setRemoveSplits(false);
             setSelectedLabelIds([]);
             setNotes('');
             if (duplicateFrom) {
                 fillFrom(duplicateFrom);
-                // The copy is split the way the original is, line for line.
-                // Saving lines needs the feature on, so with it off the copy
-                // goes out whole; the original's category is empty then, as
-                // a split's always is.
-                const lines =
-                    transactionSplittingEnabled && duplicateFrom.splits?.length
-                        ? [...duplicateFrom.splits]
-                              .sort((a, b) => a.position - b.position)
-                              .map((split, position) => ({
-                                  category_id: split.category_id,
-                                  amount: split.amount,
-                                  position,
-                              }))
-                        : null;
-                setSplits(lines);
-                // Lines are only edited in the expanded form, and it cannot
-                // collapse over them.
-                setExpanded(lines !== null);
             }
             isDuplicate.current = !!duplicateFrom;
             defaultCategoryId.current = duplicateFrom?.category_id || 'null';
@@ -454,7 +430,6 @@ export function EditTransactionDialog({
         initialAccountId,
         userCurrencyCode,
         duplicateFrom,
-        transactionSplittingEnabled,
     ]);
 
     useEffect(() => {
@@ -696,15 +671,15 @@ export function EditTransactionDialog({
 
     /**
      * `addAnother` keeps the dialog open for the next entry: the account, date,
-     * type and category carry over, the amount, the prose and any split lines
-     * do not.
+     * type and category carry over, the amount and the prose do not.
      */
     async function save(addAnother: boolean) {
+        if (canEditDescription && !description.trim()) {
+            toast.error(__('Description is required'));
+            return;
+        }
+
         if (canEditAllFields) {
-            if (!description.trim()) {
-                toast.error(__('Description is required'));
-                return;
-            }
             if (unsignedAmount === 0) {
                 toast.error(__('Amount is required'));
                 return;
@@ -719,11 +694,6 @@ export function EditTransactionDialog({
             }
         }
 
-        if (!validTransactionSplits(signedAmount, splits, categories)) {
-            toast.error(__('Complete the split before saving'));
-            return;
-        }
-
         setIsSubmitting(true);
         try {
             const trimmedDescription = description.trim();
@@ -731,18 +701,11 @@ export function EditTransactionDialog({
             if (mode === 'create') {
                 const ruleResult = await checkAndApplyAutomationRules();
 
-                let finalCategoryId =
-                    splits === null && categoryId !== 'null'
-                        ? categoryId
-                        : null;
+                let finalCategoryId = categoryId !== 'null' ? categoryId : null;
                 let finalNotes = notes.trim();
                 let finalLabelIds = [...selectedLabelIds];
 
-                if (
-                    splits === null &&
-                    ruleResult.categoryId &&
-                    !finalCategoryId
-                ) {
+                if (ruleResult.categoryId && !finalCategoryId) {
                     finalCategoryId = ruleResult.categoryId;
                 }
                 if (ruleResult.notes) {
@@ -792,7 +755,6 @@ export function EditTransactionDialog({
                             finalLabelIds.length > 0
                                 ? finalLabelIds
                                 : undefined,
-                        splits: splits ?? undefined,
                     },
                     { updateBalance: balanceWasUpdated },
                 );
@@ -822,12 +784,9 @@ export function EditTransactionDialog({
                 };
 
                 // The rule only wrote the category when the user had left it
-                // alone and nothing was split, which is the case the collapsed
-                // form hides.
+                // alone, which is the case the collapsed form hides.
                 const ruleAppliedCategory =
-                    splits === null &&
-                    !!ruleResult.categoryId &&
-                    categoryId === 'null';
+                    !!ruleResult.categoryId && categoryId === 'null';
 
                 if (!expanded && ruleAppliedCategory && updatedCategory) {
                     notifyRuleCategorized(
@@ -872,12 +831,9 @@ export function EditTransactionDialog({
                     setUnsignedAmount(0);
                     setDescription('');
                     // The prose is about this transaction, not the next one;
-                    // the category is a bucket a batch tends to share. Split
-                    // lines add up to the amount just saved, so they go too.
+                    // the category is a bucket a batch tends to share.
                     setNotes('');
                     setShowNotes(false);
-                    setSplits(null);
-                    setRemoveSplits(false);
                     setFocusAmountAfterSave(true);
                 } else {
                     onOpenChange(false);
@@ -912,42 +868,38 @@ export function EditTransactionDialog({
                     transaction_date?: string;
                     account_id?: string;
                     currency_code?: string;
-                    splits?: SplitLineInput[];
                 } = {
                     notes: encryptedNotes,
                     notes_iv: notesIv,
                     label_ids: selectedLabelIds,
-                    ...(splits === null &&
-                    (removeSplits ||
-                        selectedCategoryId !== transaction.category_id)
+                    // A split the old way has no category of its own to send.
+                    ...(legacySplitLines.length === 0 &&
+                    selectedCategoryId !== transaction.category_id
                         ? { category_id: selectedCategoryId }
                         : {}),
-                    ...(splits !== null &&
-                    haveSplitLinesChanged(transaction.splits ?? [], splits)
-                        ? { splits }
-                        : removeSplits
-                          ? { splits: [] }
-                          : {}),
                 };
 
                 let finalDecryptedDescription =
                     transaction.decryptedDescription;
 
                 if (
+                    canEditDate &&
                     transactionDate !==
-                    transaction.transaction_date.split('T')[0]
+                        transaction.transaction_date.split('T')[0]
                 ) {
                     updateData.transaction_date = transactionDate;
                 }
 
+                if (
+                    canEditDescription &&
+                    trimmedDescription !== transaction.decryptedDescription
+                ) {
+                    updateData.description = trimmedDescription;
+                    updateData.description_iv = null;
+                    finalDecryptedDescription = trimmedDescription;
+                }
+
                 if (canEditAllFields) {
-                    if (
-                        trimmedDescription !== transaction.decryptedDescription
-                    ) {
-                        updateData.description = trimmedDescription;
-                        updateData.description_iv = null;
-                        finalDecryptedDescription = trimmedDescription;
-                    }
                     if (signedAmount !== transaction.amount) {
                         updateData.amount = signedAmount;
                     }
@@ -1088,9 +1040,8 @@ export function EditTransactionDialog({
     const offersBalanceUpdate =
         !selectedAccount || ownsBalanceUpdates(selectedAccount);
     // A new transaction opens on the amount, the description and the chips;
-    // everything else waits behind "More options". Editing is untouched, and
-    // a split in progress keeps the form expanded so its lines never hide.
-    const isMinimal = mode === 'create' && !expanded && splits === null;
+    // everything else waits behind "More options". Editing is untouched.
+    const isMinimal = mode === 'create' && !expanded;
     const transactionalAccounts = filterTransactionalAccounts(accounts);
     // An archived account stays selectable while editing a transaction that
     // already sits on it, otherwise the field reads as empty and the user cannot
@@ -1175,9 +1126,9 @@ export function EditTransactionDialog({
                   locale,
               );
 
-    // What the source reported and the user cannot change. The date is absent
-    // on purpose: this fork lets every transaction be moved, so it stays an
-    // editable field below rather than a locked row here.
+    // What the source reported and the user cannot change. The date is only
+    // here on a part of a split: this fork lets every other transaction be
+    // moved, so it stays an editable field below rather than a locked row.
     const detailRows = transaction
         ? [
               transaction.creditor_name
@@ -1186,6 +1137,15 @@ export function EditTransactionDialog({
               transaction.debtor_name
                   ? { label: __('Debtor'), value: transaction.debtor_name }
                   : null,
+              canEditDate
+                  ? null
+                  : {
+                        label: __('Date'),
+                        value: formatSourceDate(
+                            transaction.transaction_date.split('T')[0],
+                            locale,
+                        ),
+                    },
               accountName
                   ? {
                         label: __('Account'),
@@ -1205,11 +1165,62 @@ export function EditTransactionDialog({
           )
         : [];
 
-    const sourceLabel =
-        transaction?.source === 'imported'
-            ? __('Imported from a file')
-            : __('Imported from your bank');
-    const SourceIcon = transaction?.source === 'imported' ? FileText : Landmark;
+    const sourceLabel = isSplitPartTransaction
+        ? __('Part of a split transaction')
+        : transaction?.source === 'imported'
+          ? __('Imported from a file')
+          : __('Imported from your bank');
+    const SourceIcon = isSplitPartTransaction
+        ? Split
+        : transaction?.source === 'imported'
+          ? FileText
+          : Landmark;
+
+    // In context, where the amount is: splitting replaces this transaction
+    // with its parts, so it closes this dialog for the split one.
+    const splitRow = mode === 'edit' &&
+        onSplit &&
+        transaction &&
+        canSplit(transaction) && (
+            <button
+                type="button"
+                onClick={() => {
+                    onOpenChange(false);
+                    onSplit(transaction);
+                }}
+                disabled={isSubmitting}
+                data-testid="split-transaction"
+                className="flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors outline-none hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-accent/50"
+            >
+                <Split className="size-4 shrink-0" />
+                <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="font-medium">
+                        {__('Split into parts')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        {__('Divide :amount across categories', {
+                            amount: formattedAmount,
+                        })}
+                    </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+        );
+
+    const descriptionField = (
+        <div className="space-y-2">
+            <FormLabel htmlFor="description">{__('Description')}</FormLabel>
+            <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={__('Transaction description')}
+                disabled={isSubmitting}
+                required
+                rows={3}
+            />
+        </div>
+    );
 
     const dateField = (
         <div className="space-y-2">
@@ -1409,14 +1420,6 @@ export function EditTransactionDialog({
                   }))
             : [];
 
-    const splitsAreComplete = validTransactionSplits(
-        signedAmount,
-        splits,
-        categories,
-    );
-
-    // Hidden while a split is in progress: collapsing would hide its lines,
-    // and a save from the collapsed form never sends any.
     const moreOptionsTrigger = (
         <Button
             type="button"
@@ -1560,24 +1563,9 @@ export function EditTransactionDialog({
                                     {!isMinimal && balanceControl}
                                 </div>
 
-                                <div className="space-y-2">
-                                    <FormLabel htmlFor="description">
-                                        {__('Description')}
-                                    </FormLabel>
-                                    <Textarea
-                                        id="description"
-                                        value={description}
-                                        onChange={(e) =>
-                                            setDescription(e.target.value)
-                                        }
-                                        placeholder={__(
-                                            'Transaction description',
-                                        )}
-                                        disabled={isSubmitting}
-                                        required
-                                        rows={3}
-                                    />
-                                </div>
+                                {splitRow}
+
+                                {descriptionField}
 
                                 {isMinimal ? (
                                     <>
@@ -1652,14 +1640,42 @@ export function EditTransactionDialog({
                                         </p>
                                     </div>
 
-                                    {dateField}
+                                    {splitRow}
+
+                                    {canEditDate && dateField}
+
+                                    {canEditDescription && descriptionField}
                                 </>
                             )
                         )}
 
                         {!isMinimal && (
                             <>
-                                {splits === null ? (
+                                {legacySplitLines.length > 0 ? (
+                                    <div
+                                        className="space-y-2"
+                                        data-testid="legacy-split-lines"
+                                    >
+                                        <FormLabel>{__('Category')}</FormLabel>
+                                        <div className="rounded-md border px-3 py-2.5">
+                                            <SplitBreakdown
+                                                lines={buildSplitBreakdown(
+                                                    legacySplitLines,
+                                                )}
+                                                count={legacySplitLines.length}
+                                                currencyCode={
+                                                    transaction?.currency_code ??
+                                                    currencyCode
+                                                }
+                                            />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            {__(
+                                                'This split is in the old format and will be converted into parts. Until then its lines cannot be changed.',
+                                            )}
+                                        </p>
+                                    </div>
+                                ) : (
                                     <div className="space-y-2">
                                         <FormLabel htmlFor="category">
                                             {__('Category')}
@@ -1674,75 +1690,6 @@ export function EditTransactionDialog({
                                             showUncategorized={true}
                                             data-testid="category-select"
                                         />
-                                        {transactionSplittingEnabled && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setRemoveSplits(false);
-                                                    setSplits([
-                                                        {
-                                                            category_id:
-                                                                categoryId ===
-                                                                'null'
-                                                                    ? ''
-                                                                    : categoryId,
-                                                            amount: signedAmount,
-                                                            position: 0,
-                                                        },
-                                                        {
-                                                            category_id: '',
-                                                            amount: 0,
-                                                            position: 1,
-                                                        },
-                                                    ]);
-                                                }}
-                                            >
-                                                {__('Split transaction')}
-                                            </Button>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <TransactionSplitEditor
-                                            amount={signedAmount}
-                                            currencyCode={
-                                                selectedAccount?.currency_code ??
-                                                transaction?.currency_code ??
-                                                userCurrencyCode
-                                            }
-                                            categories={categories}
-                                            value={splits}
-                                            onChange={setSplits}
-                                            disabled={
-                                                isSubmitting ||
-                                                !transactionSplittingEnabled
-                                            }
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={() => {
-                                                if (
-                                                    window.confirm(
-                                                        __(
-                                                            'Remove split transaction?',
-                                                        ),
-                                                    )
-                                                ) {
-                                                    setCategoryId(
-                                                        splits[0]
-                                                            ?.category_id ||
-                                                            'null',
-                                                    );
-                                                    setSplits(null);
-                                                    setRemoveSplits(true);
-                                                }
-                                            }}
-                                        >
-                                            {__('Remove split')}
-                                        </Button>
                                     </div>
                                 )}
 
@@ -1796,27 +1743,28 @@ export function EditTransactionDialog({
                             </>
                         )}
 
-                        {mode === 'create' &&
-                            splits === null &&
-                            moreOptionsTrigger}
+                        {mode === 'create' && moreOptionsTrigger}
                     </div>
 
                     <DialogFooter>
-                        {mode === 'edit' && onDelete && transaction && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={() => {
-                                    onOpenChange(false);
-                                    onDelete(transaction);
-                                }}
-                                disabled={isSubmitting}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
-                            >
-                                <Trash2 />
-                                {__('Delete')}
-                            </Button>
-                        )}
+                        {mode === 'edit' &&
+                            onDelete &&
+                            transaction &&
+                            !isSplitPartTransaction && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        onOpenChange(false);
+                                        onDelete(transaction);
+                                    }}
+                                    disabled={isSubmitting}
+                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto dark:hover:bg-destructive/20"
+                                >
+                                    <Trash2 />
+                                    {__('Delete')}
+                                </Button>
+                            )}
                         <Button
                             type="button"
                             variant="outline"
@@ -1830,7 +1778,7 @@ export function EditTransactionDialog({
                                 type="button"
                                 variant="outline"
                                 onClick={() => save(true)}
-                                disabled={isSubmitting || !splitsAreComplete}
+                                disabled={isSubmitting}
                                 data-testid="submit-and-add-another"
                             >
                                 {__('Save and add another')}
@@ -1838,7 +1786,7 @@ export function EditTransactionDialog({
                         )}
                         <Button
                             type="submit"
-                            disabled={isSubmitting || !splitsAreComplete}
+                            disabled={isSubmitting}
                             data-testid="submit-transaction"
                             aria-keyshortcuts={saveShortcut?.ariaKeyShortcuts}
                         >

@@ -39,8 +39,9 @@ interface ApiSplitLine {
 
 /**
  * A row of `GET /transactions` (TransactionResource), the fields read here. A
- * split transaction is one row with its lines under `splits`; a field still
- * encrypted on the device comes as ''.
+ * part of a split carries the `split_parent_id` its siblings share; a
+ * transaction still split the old way is one row with its lines under
+ * `splits`; a field still encrypted on the device comes as ''.
  */
 export interface ApiTransaction {
     /** The row as the API answered it, which the formatters receive. */
@@ -58,6 +59,7 @@ export interface ApiTransaction {
     notes: string | null;
     creditor_name: string | null;
     debtor_name: string | null;
+    split_parent_id: string | null;
     splits: ApiSplitLine[];
 }
 
@@ -122,6 +124,7 @@ export function apiTransaction(value: unknown): ApiTransaction | null {
         notes: stringOrNull(value.notes),
         creditor_name: stringOrNull(value.creditor_name),
         debtor_name: stringOrNull(value.debtor_name),
+        split_parent_id: stringOrNull(value.split_parent_id),
         splits: isArray(value.splits)
             ? value.splits.map(splitLine).filter((line) => line !== null)
             : [],
@@ -166,9 +169,10 @@ function splitsOf(
 }
 
 /**
- * An API row as the shape the app's own table holds its rows in: a split
- * transaction stays one row, at its own amount, with its lines. Notes the
- * server could not read ('') are left out.
+ * An API row as the shape the app's own table holds its rows in: a part of a
+ * split keeps its `split_parent_id` (its siblings come with the row a dialog
+ * opens on), a transaction split the old way stays one row, at its own amount,
+ * with its lines. Notes the server could not read ('') are left out.
  */
 export function toHeldTransaction(
     row: ApiTransaction,
@@ -197,6 +201,7 @@ export function toHeldTransaction(
         label_ids: row.labels.map((label) => label.id),
         creditor_name: row.creditor_name,
         debtor_name: row.debtor_name,
+        split_parent_id: row.split_parent_id,
         splits,
         is_split: splits.length > 0,
         split_count: splits.length,

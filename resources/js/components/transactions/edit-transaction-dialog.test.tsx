@@ -11,19 +11,14 @@ import {
     render,
     screen,
     waitFor,
-    within,
 } from '@testing-library/react';
 import type React from 'react';
 import { useLayoutEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    EditTransactionDialog,
-    haveSplitLinesChanged,
-} from './edit-transaction-dialog';
+import { EditTransactionDialog } from './edit-transaction-dialog';
 
 const inertiaProps = vi.hoisted(() => ({
-    features: { transactionSplitting: true },
     auth: { user: { currency_code: 'EUR' } },
     currencies: {
         profile: [{ code: 'EUR', name: 'Euro' }],
@@ -75,6 +70,12 @@ vi.mock('@/components/transactions/category-select', () => ({
             ))}
         </div>
     ),
+}));
+
+// The app's root provides it; a split still in lines draws its amounts with it.
+vi.mock('@/contexts/privacy-mode-context', async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    usePrivacyMode: () => ({ isPrivacyModeEnabled: false }),
 }));
 
 vi.mock('@/contexts/sync-context', () => ({
@@ -231,57 +232,8 @@ function openMoreActions() {
     );
 }
 
-describe('split line dirty checking', () => {
-    const persisted = [
-        {
-            id: 'split-1',
-            transaction_id: 'tx-1',
-            category_id: 'category-1',
-            category: { id: 'category-1', name: 'Food' },
-            amount: -400,
-            position: 0,
-        },
-        {
-            id: 'split-2',
-            transaction_id: 'tx-1',
-            category_id: 'category-2',
-            category: { id: 'category-2', name: 'Travel' },
-            amount: -600,
-            position: 1,
-        },
-    ];
-
-    it('ignores persisted split metadata when lines are unchanged', () => {
-        expect(
-            haveSplitLinesChanged(persisted, [
-                { category_id: 'category-1', amount: -400, position: 0 },
-                { category_id: 'category-2', amount: -600, position: 1 },
-            ]),
-        ).toBe(false);
-    });
-
-    it('detects changed split amounts', () => {
-        expect(
-            haveSplitLinesChanged(persisted, [
-                { category_id: 'category-1', amount: -250, position: 0 },
-                { category_id: 'category-2', amount: -750, position: 1 },
-            ]),
-        ).toBe(true);
-    });
-
-    it('detects reordered split lines', () => {
-        expect(
-            haveSplitLinesChanged(persisted, [
-                { category_id: 'category-2', amount: -600, position: 0 },
-                { category_id: 'category-1', amount: -400, position: 1 },
-            ]),
-        ).toBe(true);
-    });
-});
-
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
-        inertiaProps.features.transactionSplitting = true;
         localeState.locale = 'en-US';
         vi.clearAllMocks();
         globalThis.ResizeObserver = class {
@@ -993,11 +945,10 @@ describe('EditTransactionDialog', () => {
         },
     );
 
-    // Upstream locks the date on a part of a split, because there each part is
-    // a transaction of its own. Here a split lives in transaction_splits and the
-    // parent keeps a single date the parts follow, so there is no part-row whose
-    // date could drift — the parent's date moves like any other.
-    it('lets a split parent move its date', () => {
+    // A transaction still split the old way keeps one date its lines follow,
+    // so it moves like any other; only a part of a split keeps its date (see
+    // 'locks the amount, account and date of a part of a split').
+    it('lets a transaction still split into lines move its date', () => {
         render(
             <EditTransactionDialog
                 transaction={{
@@ -1358,7 +1309,7 @@ describe('EditTransactionDialog', () => {
             });
         });
 
-        it('sends no balance update when the split editor saves a card transaction', async () => {
+        it('sends no balance update when a card transaction still split into lines saves', async () => {
             const categories = [
                 { id: 'food', name: 'Food', type: 'expense' },
                 { id: 'home', name: 'Home', type: 'expense' },
@@ -1394,10 +1345,6 @@ describe('EditTransactionDialog', () => {
                 } as DecryptedTransaction,
             });
 
-            const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Remove split' }),
-            );
             fireEvent.click(
                 screen.getByRole('button', { name: 'Save Changes' }),
             );
@@ -1405,12 +1352,10 @@ describe('EditTransactionDialog', () => {
             await waitFor(() => {
                 expect(transactionSyncService.update).toHaveBeenCalledWith(
                     'tx-manual',
-                    expect.objectContaining({ splits: [] }),
+                    expect.not.objectContaining({ splits: expect.anything() }),
                     { updateBalance: false },
                 );
             });
-
-            confirm.mockRestore();
         });
 
         function moveOntoCardAndSave() {
@@ -1474,32 +1419,20 @@ describe('EditTransactionDialog', () => {
         });
     });
 
-    it('hides the start split control while transaction splitting is disabled', () => {
-        inertiaProps.features.transactionSplitting = false;
-
-        render(
-            <EditTransactionDialog
-                transaction={null}
-                categories={[]}
-                accounts={[checkingAccount]}
-                banks={[]}
-                labels={[]}
-                open
-                onOpenChange={vi.fn()}
-                onSuccess={vi.fn()}
-                mode="create"
-            />,
-        );
+    it('never splits while creating: a transaction is split once it exists', () => {
+        renderCreateDialog();
 
         fireEvent.click(screen.getByTestId('toggle-more-options'));
 
         expect(
-            screen.queryByRole('button', { name: 'Split transaction' }),
+            screen.queryByTestId('split-transaction'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Split/ }),
         ).not.toBeInTheDocument();
     });
 
-    it('shows existing split lines and the remove action while transaction splitting is disabled', () => {
-        inertiaProps.features.transactionSplitting = false;
+    it('shows a transaction still split into lines read-only, saying it will be converted', () => {
         const transaction = {
             ...manualTransaction,
             is_split: true,
@@ -1534,13 +1467,184 @@ describe('EditTransactionDialog', () => {
                 open
                 onOpenChange={vi.fn()}
                 onSuccess={vi.fn()}
+                onSplit={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        const lines = screen.getByTestId('legacy-split-lines');
+
+        expect(lines).toHaveTextContent('Split · 2');
+        expect(lines).toHaveTextContent(
+            'This split is in the old format and will be converted into parts. Until then its lines cannot be changed.',
+        );
+        // Nothing to pick or change for it until it is converted, and it
+        // cannot be split the new way either.
+        expect(screen.queryByTestId('category-select')).not.toBeInTheDocument();
+        expect(
+            screen.queryByTestId('split-transaction'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Remove split' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('closes the dialog and asks the parent to split when the split row is clicked', () => {
+        const onSplit = vi.fn();
+        const onOpenChange = vi.fn();
+
+        render(
+            <EditTransactionDialog
+                transaction={manualTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={onOpenChange}
+                onSuccess={vi.fn()}
+                onSplit={onSplit}
+                mode="edit"
+            />,
+        );
+
+        expect(screen.getByTestId('split-transaction')).toHaveTextContent(
+            'Divide -€12.00 across categories',
+        );
+
+        fireEvent.click(screen.getByTestId('split-transaction'));
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(onSplit).toHaveBeenCalledWith(manualTransaction);
+    });
+
+    it('offers the split row on a bank transaction too, and none while splitting is off', () => {
+        const { rerender } = render(
+            <EditTransactionDialog
+                transaction={importedTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                onSplit={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(screen.getByTestId('split-transaction')).toBeInTheDocument();
+        // Read-only rows still open on the dialog itself, not on the row.
+        expect(document.activeElement).toBe(
+            screen.getByTestId('dialog-content'),
+        );
+
+        rerender(
+            <EditTransactionDialog
+                transaction={importedTransaction}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
                 mode="edit"
             />,
         );
 
         expect(
-            screen.getByRole('button', { name: 'Remove split' }),
+            screen.queryByTestId('split-transaction'),
+        ).not.toBeInTheDocument();
+    });
+
+    const splitPart = {
+        ...manualTransaction,
+        id: 'tx-part',
+        split_parent_id: 'tx-original',
+    } as DecryptedTransaction;
+
+    it('locks the amount, account and date of a part of a split, and lets its description change', () => {
+        render(
+            <EditTransactionDialog
+                transaction={splitPart}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                onSplit={vi.fn()}
+                onDelete={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        expect(
+            screen.getByPlaceholderText('Transaction description'),
         ).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('25.00')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('account-select')).not.toBeInTheDocument();
+        expect(
+            document.querySelector('input[type="date"]'),
+        ).not.toBeInTheDocument();
+        // The locked date shows up in the details card instead.
+        expect(screen.getByText('May 27')).toBeInTheDocument();
+        expect(
+            screen.getByText('Part of a split transaction'),
+        ).toBeInTheDocument();
+        // A part is merged back, never split again or deleted on its own.
+        expect(
+            screen.queryByTestId('split-transaction'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Delete' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('sends only what a part of a split may change', async () => {
+        vi.mocked(transactionSyncService.update).mockResolvedValue({} as never);
+
+        render(
+            <EditTransactionDialog
+                transaction={splitPart}
+                categories={[groceries]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="edit"
+            />,
+        );
+
+        fireEvent.change(
+            screen.getByPlaceholderText('Transaction description'),
+            { target: { value: 'Groceries — my half' } },
+        );
+        fireEvent.click(screen.getByText('Groceries'));
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() => {
+            expect(transactionSyncService.update).toHaveBeenCalledOnce();
+        });
+
+        const [id, payload, options] = vi.mocked(transactionSyncService.update)
+            .mock.calls[0];
+
+        expect(id).toBe('tx-part');
+        expect(payload).toMatchObject({
+            description: 'Groceries — my half',
+            category_id: 'category-1',
+        });
+        expect(payload).not.toHaveProperty('amount');
+        expect(payload).not.toHaveProperty('account_id');
+        expect(payload).not.toHaveProperty('currency_code');
+        expect(payload).not.toHaveProperty('transaction_date');
+        expect(options).toEqual({ updateBalance: false });
     });
 
     it('closes the dialog and asks the parent to delete when Delete is clicked', () => {
@@ -1618,9 +1722,6 @@ describe('EditTransactionDialog', () => {
         expect(
             screen.queryByRole('button', { name: /Add note/ }),
         ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: 'Split transaction' }),
-        ).not.toBeInTheDocument();
         expect(screen.getByTestId('date-chip')).toBeInTheDocument();
         expect(screen.getByTestId('balance-chip')).toBeInTheDocument();
 
@@ -1629,9 +1730,6 @@ describe('EditTransactionDialog', () => {
         expect(screen.getByText('Category')).toBeInTheDocument();
         expect(screen.getByText('Labels')).toBeInTheDocument();
         expect(screen.getByLabelText('Date')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Split transaction' }),
-        ).toBeInTheDocument();
         expect(screen.queryByTestId('date-chip')).not.toBeInTheDocument();
     });
 
@@ -1898,144 +1996,6 @@ describe('EditTransactionDialog', () => {
         );
     });
 
-    describe('splitting while creating', () => {
-        const splitCategories = [
-            { id: 'food', name: 'Food', type: 'expense' },
-            { id: 'home', name: 'Home', type: 'expense' },
-        ] as Category[];
-
-        function startSplit() {
-            fireEvent.click(screen.getByTestId('toggle-more-options'));
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Split transaction' }),
-            );
-        }
-
-        function fillSplitLines() {
-            fireEvent.click(
-                within(screen.getByTestId('split-category-0')).getByText(
-                    'Food',
-                ),
-            );
-            fireEvent.click(
-                within(screen.getByTestId('split-category-1')).getByText(
-                    'Home',
-                ),
-            );
-            for (const [label, value] of [
-                ['Amount 1', '-15'],
-                ['Amount 2', '-10'],
-            ]) {
-                const input = screen.getByLabelText(label);
-                fireEvent.change(input, { target: { value } });
-                fireEvent.blur(input);
-            }
-        }
-
-        it('reaches the split editor behind More options and sends its lines', async () => {
-            vi.mocked(transactionSyncService.create).mockResolvedValue({
-                id: 'tx-new',
-            } as never);
-
-            renderCreateDialog({ categories: splitCategories });
-
-            fillDescriptionAndAmount();
-
-            startSplit();
-            fillSplitLines();
-            fireEvent.click(screen.getByTestId('submit-transaction'));
-
-            await waitFor(() => {
-                expect(transactionSyncService.create).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        amount: -2500,
-                        category_id: null,
-                        splits: [
-                            { category_id: 'food', amount: -1500, position: 0 },
-                            { category_id: 'home', amount: -1000, position: 1 },
-                        ],
-                    }),
-                    { updateBalance: true },
-                );
-            });
-        });
-
-        it('cannot collapse while a split is in progress', () => {
-            renderCreateDialog({ categories: splitCategories });
-
-            startSplit();
-
-            expect(
-                screen.queryByTestId('toggle-more-options'),
-            ).not.toBeInTheDocument();
-            expect(screen.queryByTestId('date-chip')).not.toBeInTheDocument();
-            expect(
-                screen.queryByTestId('category-chip'),
-            ).not.toBeInTheDocument();
-            expect(screen.getByTestId('split-category-0')).toBeInTheDocument();
-
-            const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Remove split' }),
-            );
-            confirm.mockRestore();
-
-            expect(screen.getByTestId('toggle-more-options')).toHaveTextContent(
-                'Fewer options',
-            );
-        });
-
-        it('returns to the chips once a split is removed and the form collapsed', () => {
-            renderCreateDialog({ categories: splitCategories });
-
-            startSplit();
-            const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-            fireEvent.click(
-                screen.getByRole('button', { name: 'Remove split' }),
-            );
-            confirm.mockRestore();
-            fireEvent.click(screen.getByTestId('toggle-more-options'));
-
-            expect(screen.getByTestId('date-chip')).toBeInTheDocument();
-            expect(screen.getByTestId('category-chip')).toBeInTheDocument();
-            expect(
-                screen.queryByTestId('split-category-0'),
-            ).not.toBeInTheDocument();
-        });
-
-        it('drops the split lines when adding another', async () => {
-            vi.mocked(transactionSyncService.create).mockResolvedValue({
-                id: 'tx-new',
-            } as never);
-
-            renderCreateDialog({ categories: splitCategories });
-
-            fillDescriptionAndAmount();
-
-            startSplit();
-            fillSplitLines();
-            fireEvent.click(screen.getByTestId('submit-and-add-another'));
-
-            await waitFor(() => {
-                expect(transactionSyncService.create).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        splits: expect.arrayContaining([
-                            expect.objectContaining({ category_id: 'food' }),
-                        ]),
-                    }),
-                    expect.anything(),
-                );
-            });
-            // The lines added up to the amount just saved; the next entry
-            // starts on the plain category field.
-            await waitFor(() => {
-                expect(
-                    screen.getByRole('button', { name: 'Split transaction' }),
-                ).toBeInTheDocument();
-            });
-        });
-    });
-
     describe('duplicating', () => {
         const savingsAccount = {
             ...checkingAccount,
@@ -2063,8 +2023,8 @@ describe('EditTransactionDialog', () => {
             decryptedNotes: 'Flat on Main St',
         };
 
-        // A split parent carries no category of its own; its lines do. They
-        // come out of order here to show the copy follows their positions.
+        // A transaction split the old way carries no category of its own; its
+        // lines do, and a copy never takes them.
         const splitShopping: DecryptedTransaction = {
             ...monthlyRent,
             id: 'tx-shopping',
@@ -2128,7 +2088,6 @@ describe('EditTransactionDialog', () => {
                         notes: 'Flat on Main St',
                         transaction_date: todayDateString(),
                         source: 'manually_created',
-                        splits: undefined,
                     }),
                     { updateBalance: true },
                 );
@@ -2178,21 +2137,17 @@ describe('EditTransactionDialog', () => {
             ]);
         });
 
-        it('copies the split lines, in order, and opens on them', async () => {
+        it('duplicates a transaction still split into lines as one whole transaction', async () => {
             renderCreateDialog({
                 accounts: [checkingAccount, savingsAccount],
                 categories: splitCategories,
                 duplicateFrom: splitShopping,
             });
 
-            // The form cannot collapse over lines in progress.
-            expect(screen.getByTestId('split-category-0')).toBeInTheDocument();
+            // Nothing split to show: the copy opens collapsed like any other.
             expect(
-                screen.queryByTestId('toggle-more-options'),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByTestId('category-chip'),
-            ).not.toBeInTheDocument();
+                screen.getByTestId('toggle-more-options'),
+            ).toBeInTheDocument();
 
             fireEvent.click(screen.getByTestId('submit-transaction'));
 
@@ -2206,79 +2161,9 @@ describe('EditTransactionDialog', () => {
                 description: 'Hypermarket',
                 amount: -2500,
                 category_id: null,
-                label_ids: ['label-1'],
-                notes: 'Flat on Main St',
                 transaction_date: todayDateString(),
             });
-            expect(payload.splits).toEqual([
-                { category_id: 'food', amount: -1500, position: 0 },
-                { category_id: 'home', amount: -1000, position: 1 },
-            ]);
-            expect(
-                payload.splits?.reduce((sum, line) => sum + line.amount, 0),
-            ).toBe(payload.amount);
-            expect(captureEvent).toHaveBeenCalledWith(
-                'transaction_created',
-                expect.objectContaining({
-                    origin: 'duplicate',
-                    expanded: true,
-                }),
-            );
-        });
-
-        it('drops the copied lines when adding another after it', async () => {
-            renderCreateDialog({
-                accounts: [checkingAccount, savingsAccount],
-                categories: splitCategories,
-                duplicateFrom: splitShopping,
-            });
-
-            fireEvent.click(screen.getByTestId('submit-and-add-another'));
-
-            await waitFor(() => {
-                expect(transactionSyncService.create).toHaveBeenCalledOnce();
-            });
-            expect(
-                vi.mocked(transactionSyncService.create).mock.calls[0][0]
-                    .splits,
-            ).toHaveLength(2);
-            await waitFor(() => {
-                expect(
-                    screen.getByRole('button', { name: 'Split transaction' }),
-                ).toBeInTheDocument();
-            });
-
-            await fillAndSubmit('submit-transaction');
-            await waitFor(() => {
-                expect(transactionSyncService.create).toHaveBeenCalledTimes(2);
-            });
-            expect(
-                vi.mocked(transactionSyncService.create).mock.calls[1][0]
-                    .splits,
-            ).toBeUndefined();
-        });
-
-        it('copies no lines while splitting is switched off', async () => {
-            inertiaProps.features.transactionSplitting = false;
-
-            renderCreateDialog({
-                accounts: [checkingAccount, savingsAccount],
-                categories: splitCategories,
-                duplicateFrom: splitShopping,
-            });
-
-            expect(
-                screen.getByTestId('toggle-more-options'),
-            ).toBeInTheDocument();
-            fireEvent.click(screen.getByTestId('submit-transaction'));
-
-            await waitFor(() => {
-                expect(transactionSyncService.create).toHaveBeenCalledOnce();
-            });
-            const payload = vi.mocked(transactionSyncService.create).mock
-                .calls[0][0];
-            expect(payload.splits).toBeUndefined();
-            expect(payload.category_id).toBeNull();
+            expect(payload).not.toHaveProperty('splits');
         });
 
         it('sends no balance update when the original sits on a credit card', async () => {
@@ -2527,116 +2412,6 @@ describe('EditTransactionDialog', () => {
 
             expect(screen.getByPlaceholderText('Add notes...')).toHaveFocus();
         });
-
-        describe('with a split in progress', () => {
-            const splitCategories = [
-                { id: 'food', name: 'Food', type: 'expense' },
-                { id: 'home', name: 'Home', type: 'expense' },
-            ] as Category[];
-
-            function startSplitOnFilledForm() {
-                vi.mocked(transactionSyncService.create).mockResolvedValue({
-                    id: 'tx-new',
-                } as never);
-                renderCreateDialog({ categories: splitCategories });
-                fillDescriptionAndAmount();
-                fireEvent.click(screen.getByTestId('toggle-more-options'));
-                fireEvent.click(
-                    screen.getByRole('button', { name: 'Split transaction' }),
-                );
-            }
-
-            it('leaves an n typed into a split line alone, and opens the notes from outside it', () => {
-                startSplitOnFilledForm();
-                const lineAmount = screen.getByLabelText('Amount 1');
-                lineAmount.focus();
-
-                expect(fireEvent.keyDown(lineAmount, { key: 'n' })).toBe(true);
-                expect(
-                    screen.queryByPlaceholderText('Add notes...'),
-                ).not.toBeInTheDocument();
-                expect(lineAmount).toHaveFocus();
-
-                const lineCategory = screen.getByTestId('split-category-0');
-                lineCategory.focus();
-
-                expect(fireEvent.keyDown(lineCategory, { key: 'n' })).toBe(
-                    true,
-                );
-                expect(
-                    screen.queryByPlaceholderText('Add notes...'),
-                ).not.toBeInTheDocument();
-                expect(lineCategory).toHaveFocus();
-
-                // The same form answers N once no field holds the focus.
-                lineCategory.blur();
-                expect(fireEvent.keyDown(document.body, { key: 'n' })).toBe(
-                    false,
-                );
-                expect(
-                    screen.getByPlaceholderText('Add notes...'),
-                ).toHaveFocus();
-            });
-
-            it('refuses Ctrl+Enter on an incomplete split, as Save would', async () => {
-                startSplitOnFilledForm();
-
-                pressSave(screen.getByLabelText('Amount 2'));
-
-                await waitFor(() => {
-                    expect(toast.error).toHaveBeenCalledWith(
-                        'Complete the split before saving',
-                    );
-                });
-                expect(transactionSyncService.create).not.toHaveBeenCalled();
-            });
-
-            it('saves the split lines with Ctrl+Enter once they add up', async () => {
-                startSplitOnFilledForm();
-                fireEvent.click(
-                    within(screen.getByTestId('split-category-0')).getByText(
-                        'Food',
-                    ),
-                );
-                fireEvent.click(
-                    within(screen.getByTestId('split-category-1')).getByText(
-                        'Home',
-                    ),
-                );
-                for (const [label, value] of [
-                    ['Amount 1', '-15'],
-                    ['Amount 2', '-10'],
-                ]) {
-                    const input = screen.getByLabelText(label);
-                    fireEvent.change(input, { target: { value } });
-                    fireEvent.blur(input);
-                }
-
-                pressSave(screen.getByLabelText('Amount 2'));
-
-                await waitFor(() => {
-                    expect(transactionSyncService.create).toHaveBeenCalledWith(
-                        expect.objectContaining({
-                            amount: -2500,
-                            category_id: null,
-                            splits: [
-                                {
-                                    category_id: 'food',
-                                    amount: -1500,
-                                    position: 0,
-                                },
-                                {
-                                    category_id: 'home',
-                                    amount: -1000,
-                                    position: 1,
-                                },
-                            ],
-                        }),
-                        { updateBalance: true },
-                    );
-                });
-            });
-        });
     });
 });
 
@@ -2670,6 +2445,8 @@ describe('the row actions in the edit dialog', () => {
             onReEvaluateRules: vi.fn(),
             onAutomate: vi.fn(),
             onDelete: vi.fn(),
+            onSplit: vi.fn(),
+            onUnsplit: vi.fn(),
         };
     }
 
@@ -2705,7 +2482,7 @@ describe('the row actions in the edit dialog', () => {
         };
     });
 
-    it('offers the row menu, edit aside and no split action, only below md', async () => {
+    it('offers the row menu, edit aside, only below md', async () => {
         renderDialog();
 
         expect(
@@ -2720,10 +2497,45 @@ describe('the row actions in the edit dialog', () => {
             ),
         ).toEqual([
             'Duplicate',
+            'Split',
             'Re-evaluate rules',
             'Automatize categorization',
             'Delete',
         ]);
+    });
+
+    it('follows the row menu on a part of a split: no duplicate, split or delete, but merge back', async () => {
+        renderDialog({
+            transaction: { ...rowTransaction, split_parent_id: 'tx-original' },
+        });
+        openMoreActions();
+
+        expect(
+            (await screen.findAllByRole('menuitem')).map(
+                (item) => item.textContent,
+            ),
+        ).toEqual([
+            'Re-evaluate rules',
+            'Automatize categorization',
+            'Merge the split back',
+        ]);
+    });
+
+    it('follows the row menu while splitting is off: no split', async () => {
+        const withoutSplit = { ...rowActionHandlers(), onSplit: undefined };
+
+        renderDialog({
+            rowActions: withoutSplit as unknown as ReturnType<
+                typeof rowActionHandlers
+            >,
+        });
+        openMoreActions();
+
+        expect(
+            (await screen.findAllByRole('menuitem')).map(
+                (item) => item.textContent,
+            ),
+        ).not.toContain('Split');
     });
 
     it('follows the row menu on a row still encrypted: no duplicate', async () => {
@@ -2741,6 +2553,7 @@ describe('the row actions in the edit dialog', () => {
 
     it.each([
         ['Duplicate', 'onDuplicate'],
+        ['Split', 'onSplit'],
         ['Re-evaluate rules', 'onReEvaluateRules'],
         ['Automatize categorization', 'onAutomate'],
         ['Delete', 'onDelete'],
@@ -2760,6 +2573,23 @@ describe('the row actions in the edit dialog', () => {
             expect(rowActions[handler]).toHaveBeenCalledWith(rowTransaction);
         },
     );
+
+    it('merges a part back from there', async () => {
+        const rowActions = rowActionHandlers();
+        const onOpenChange = vi.fn();
+        const part = { ...rowTransaction, split_parent_id: 'tx-original' };
+
+        renderDialog({ transaction: part, rowActions, onOpenChange });
+        openMoreActions();
+        fireEvent.click(
+            await screen.findByRole('menuitem', {
+                name: 'Merge the split back',
+            }),
+        );
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(rowActions.onUnsplit).toHaveBeenCalledWith(part);
+    });
 
     it('hides the menu without row actions, and when creating', () => {
         renderDialog({ rowActions: null });

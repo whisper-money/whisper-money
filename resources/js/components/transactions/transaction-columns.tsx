@@ -44,6 +44,9 @@ interface CreateColumnsOptions {
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onAutomate: (transaction: DecryptedTransaction) => void;
+    /** Left out while splitting is off: the row menu then offers no Split. */
+    onSplit?: (transaction: DecryptedTransaction) => void;
+    onUnsplit: (transaction: DecryptedTransaction) => void;
     /** Ids of transactions AI is categorizing in the background right now. */
     categorizingIds?: Set<string>;
     categoryFilterIds?: ReadonlySet<string>;
@@ -72,6 +75,8 @@ export function createTransactionColumns({
     onCategorized,
     onReEvaluateRules,
     onAutomate,
+    onSplit,
+    onUnsplit,
     categorizingIds,
     categoryFilterIds,
     hiddenLabelId,
@@ -125,9 +130,11 @@ export function createTransactionColumns({
         )),
         accountColumn(displayRow),
         descriptionColumn({
+            categories,
             labels,
             hiddenLabelId,
             statementPayments,
+            onUnsplit,
             displayRow,
             badgeOf,
         }),
@@ -202,6 +209,8 @@ export function createTransactionColumns({
                                     onReEvaluateRules,
                                     onAutomate,
                                     onDelete,
+                                    onSplit,
+                                    onUnsplit,
                                 })}
                             />
                         </DropdownMenu>

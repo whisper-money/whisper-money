@@ -2,6 +2,7 @@ import {
     ContextMenuContent,
     ContextMenuItem,
     ContextMenuLabel,
+    ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import {
     getTransactionRowActions,
@@ -9,6 +10,7 @@ import {
 } from '@/lib/transaction-row-actions';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import { Fragment } from 'react';
 
 /**
  * The right-click menu of a transaction, the same on a table row of either
@@ -23,13 +25,15 @@ export function TransactionRowContextMenuContent({
             <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
             {getTransactionRowActions({ transaction, ...handlers }).map(
                 (action) => (
-                    <ContextMenuItem
-                        key={action.id}
-                        onClick={action.onSelect}
-                        variant={action.variant}
-                    >
-                        {action.label}
-                    </ContextMenuItem>
+                    <Fragment key={action.id}>
+                        {action.separated && <ContextMenuSeparator />}
+                        <ContextMenuItem
+                            onClick={action.onSelect}
+                            variant={action.variant}
+                        >
+                            {action.label}
+                        </ContextMenuItem>
+                    </Fragment>
                 ),
             )}
         </ContextMenuContent>

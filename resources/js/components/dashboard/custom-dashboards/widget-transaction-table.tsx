@@ -20,9 +20,9 @@ const NO_HIDDEN_COLUMNS: string[] = [];
 const ACCOUNT_HIDDEN: string[] = ['account'];
 
 /**
- * The transaction a dialog opens on, as the server holds it (a split one with
- * its lines, which the edit dialog edits): a widget only has the API row, and
- * draws a copy of it.
+ * The transaction a dialog opens on, as the server holds it (a part of a split
+ * with its siblings, which the merge dialog lists): a widget only has the API
+ * row, and draws a copy of it.
  */
 async function loadTransaction(
     transaction: DecryptedTransaction,
@@ -54,7 +54,7 @@ export interface WidgetTransactionTableHostProps extends WidgetTransactionTableP
  * A dashboard widget's `<TransactionList>` as the app's own transactions
  * table over the widget's rows: the category picked in place, rows ticked
  * for the bulk actions bar, the row menus and every dialog, without the
- * filters. After any change (a save, a split's lines, a delete, a bulk
+ * filters. After any change (a save, a split or a merge, a delete, a bulk
  * action) the dashboard reloads its widgets' data, which hands the table its
  * rows again.
  */
@@ -128,6 +128,7 @@ export default function WidgetTransactionTable({
             badgeOf={badgeOf}
             showDayTotals={showDayTotals}
             resolveRow={loadTransaction}
+            onSplitChanged={onChanged}
             framedOnPhone
             frameless
             portalBulkActionsBar
