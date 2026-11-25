@@ -3,10 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { captureSetupCardDismissed } from '@/hooks/use-setup-checklist-telemetry';
 import { categorizeHref } from '@/lib/categorize-href';
+import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { index as budgetsIndex } from '@/routes/budgets';
 import { dismiss } from '@/routes/dashboard/setup';
+import { type SharedData } from '@/types';
 import { type BalanceDialogAccount } from '@/types/account';
 import {
     type SetupChecklist,
@@ -14,7 +17,7 @@ import {
 } from '@/types/dashboard';
 import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Link, router, useHttp } from '@inertiajs/react';
+import { Link, router, useHttp, usePage } from '@inertiajs/react';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -64,6 +67,7 @@ export function SetupChecklistCard({
         useState<BalanceDialogAccount | null>(null);
     const { post } = useHttp();
     const steps = useStepViews(checklist.steps, setBalanceAccount);
+    const userId = usePage<SharedData>().props.auth.user.id;
 
     if (dismissed) {
         return null;
@@ -93,6 +97,7 @@ export function SetupChecklistCard({
                             aria-label={__('Hide')}
                             onClick={() => {
                                 setDismissed(true);
+                                captureSetupCardDismissed(checklist, userId);
                                 post(dismiss.url());
                             }}
                         >
@@ -152,6 +157,7 @@ function StepGrid({ steps }: { steps: StepView[] }) {
                     )}
                     {step.action && step.status !== 'done' && (
                         <StepActionButton
+                            step={step.key}
                             action={step.action}
                             primary={step.status === 'next'}
                             className="mt-1"
@@ -193,6 +199,7 @@ function NextStepCompact({ steps }: { steps: StepView[] }) {
                     )}
                     {next.action && (
                         <StepActionButton
+                            step={next.key}
                             action={next.action}
                             primary
                             className="mt-1 w-full"
@@ -222,20 +229,29 @@ function StepStatusLabel({ status }: { status: StepStatus }) {
 }
 
 function StepActionButton({
+    step,
     action,
     primary,
     className,
 }: {
+    step: StepView['key'];
     action: StepAction;
     primary: boolean;
     className?: string;
 }) {
     const variant = primary ? 'default' : 'outline';
+    const captureClick = () =>
+        captureEvent('dashboard_setup_step_clicked', {
+            step,
+            is_primary: primary,
+        });
 
     if ('href' in action) {
         return (
             <Button asChild size="sm" variant={variant} className={className}>
-                <Link href={action.href}>{action.label}</Link>
+                <Link href={action.href} onClick={captureClick}>
+                    {action.label}
+                </Link>
             </Button>
         );
     }
@@ -245,7 +261,10 @@ function StepActionButton({
             size="sm"
             variant={variant}
             className={className}
-            onClick={action.onClick}
+            onClick={() => {
+                captureClick();
+                action.onClick();
+            }}
         >
             {action.label}
         </Button>

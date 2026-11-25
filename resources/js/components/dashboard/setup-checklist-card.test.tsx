@@ -2,7 +2,6 @@ import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
 import { type BalanceDialogAccount } from '@/types/account';
 import { type SetupChecklistStep } from '@/types/dashboard';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SetupChecklistCard } from './setup-checklist-card';
 
@@ -28,12 +27,15 @@ vi.mock('@/components/accounts/update-balance-dialog', () => ({
     ),
 }));
 
-vi.mock('@inertiajs/react', () => ({
-    Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-        <a href={href}>{children}</a>
-    ),
+const captureEvent = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
+
+vi.mock('@inertiajs/react', async () => ({
+    Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
     router: { reload: vi.fn() },
     useHttp: () => ({ post }),
+    usePage: () => ({ props: { auth: { user: { id: 'user-1' } } } }),
 }));
 
 const imported: SetupChecklistStep = {
@@ -92,6 +94,8 @@ function tile(title: string): HTMLElement {
 describe('SetupChecklistCard', () => {
     beforeEach(() => {
         post.mockReset();
+        captureEvent.mockReset();
+        localStorage.clear();
     });
 
     it('counts the steps done and describes what was set up', () => {
@@ -191,5 +195,69 @@ describe('SetupChecklistCard', () => {
         renderCard([imported, categorize], false);
 
         expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull();
+    });
+
+    describe('events', () => {
+        function eventsNamed(name: string) {
+            return captureEvent.mock.calls.filter(([event]) => event === name);
+        }
+
+        it('reports a step clicked from its tile, primary or not', () => {
+            renderCard([imported, spendingLimit, categorize, balance]);
+
+            fireEvent.click(
+                within(tile('Categorize 196 transactions')).getByRole('link', {
+                    name: 'Categorize',
+                }),
+            );
+            fireEvent.click(
+                within(
+                    tile('Add what you still owe on Hipoteca piso'),
+                ).getByRole('button', { name: 'Add balance' }),
+            );
+
+            expect(eventsNamed('dashboard_setup_step_clicked')).toEqual([
+                [
+                    'dashboard_setup_step_clicked',
+                    { step: 'categorize', is_primary: true },
+                ],
+                [
+                    'dashboard_setup_step_clicked',
+                    { step: 'balance', is_primary: false },
+                ],
+            ]);
+        });
+
+        it('reports the step clicked from the compact version as primary', () => {
+            renderCard([
+                imported,
+                { ...spendingLimit, done: false, limit: null },
+            ]);
+
+            const [, compact] = screen.getAllByRole('link', {
+                name: 'Set limit',
+            });
+            fireEvent.click(compact);
+
+            expect(eventsNamed('dashboard_setup_step_clicked')).toEqual([
+                [
+                    'dashboard_setup_step_clicked',
+                    { step: 'spending_limit', is_primary: true },
+                ],
+            ]);
+        });
+
+        it('reports the dismissal with how far the card was', () => {
+            renderCard([imported, spendingLimit, categorize, balance]);
+
+            fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
+
+            expect(eventsNamed('dashboard_setup_card_dismissed')).toEqual([
+                [
+                    'dashboard_setup_card_dismissed',
+                    { steps_done: 2, steps_total: 4 },
+                ],
+            ]);
+        });
     });
 });

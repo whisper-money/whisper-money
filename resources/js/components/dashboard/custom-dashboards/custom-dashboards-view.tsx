@@ -14,6 +14,10 @@ import {
     EmptyStateMedia,
     EmptyStateTitle,
 } from '@/components/ui/empty-state';
+import {
+    useSetupCardCompletedEvent,
+    useSetupCardViewedEvent,
+} from '@/hooks/use-setup-checklist-telemetry';
 import { subscribe } from '@/routes';
 import {
     type DashboardProps,
@@ -67,6 +71,11 @@ export function CustomDashboardsView({
     const selected = data.selectedDashboard;
     const canManage = !auth.isSharedAccount;
     const canEdit = canManage && auth.hasProPlan;
+    useSetupCardViewedEvent(
+        selected === null ? data.setupChecklist : null,
+        auth.user.id,
+    );
+    useSetupCardCompletedEvent(data.setupChecklist, auth.user);
 
     // Edit mode belongs to one dashboard: opening another one reads it.
     const [editingId, setEditingId] = useState<string | null>(null);

@@ -336,6 +336,10 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
+    /** When the onboarding was finished; null while it is not. */
+    onboarded_at?: string | null;
+    /** When the dashboard's "Finish setting up" card was hidden for good. */
+    dashboard_setup_dismissed_at?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

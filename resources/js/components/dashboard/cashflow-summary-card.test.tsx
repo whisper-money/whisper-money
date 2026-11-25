@@ -1,28 +1,19 @@
-import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type SpendingLimit } from '@/types/dashboard';
 import { CashflowSummaryCard } from './cashflow-summary-card';
 
-vi.mock('@inertiajs/react', () => ({
+vi.mock('@inertiajs/react', async () => ({
     usePage: () => ({
         props: { locale: 'en-US', auth: { user: { currency_code: 'EUR' } } },
     }),
-    Link: ({
-        children,
-        href,
-        className,
-    }: {
-        children: ReactNode;
-        href: string;
-        className?: string;
-    }) => (
-        <a href={href} className={className}>
-            {children}
-        </a>
-    ),
+    Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
 }));
+
+const captureEvent = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
 
@@ -164,5 +155,28 @@ describe('CashflowSummaryCard spending limit', () => {
             screen.queryByText('Monthly spending limit'),
         ).not.toBeInTheDocument();
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    describe('spending limit click event', () => {
+        beforeEach(() => captureEvent.mockReset());
+
+        it.each([
+            ['under', { spent: 50000 }],
+            ['near', {}],
+            ['over', { allocated: 100000, spent: 125000 }],
+        ] as const)(
+            'reports the row as %s the limit, with no amounts',
+            (state, overrides) => {
+                renderCard(limit(overrides));
+
+                fireEvent.click(
+                    screen.getByText('Monthly spending limit').closest('a')!,
+                );
+
+                expect(captureEvent.mock.calls).toEqual([
+                    ['dashboard_spending_limit_clicked', { state }],
+                ]);
+            },
+        );
     });
 });
