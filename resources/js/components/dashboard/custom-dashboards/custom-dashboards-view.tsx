@@ -17,11 +17,11 @@ import {
     EmptyStateMedia,
     EmptyStateTitle,
 } from '@/components/ui/empty-state';
+import { useLocale } from '@/hooks/use-locale';
 import {
     useSetupCardCompletedEvent,
     useSetupCardViewedEvent,
 } from '@/hooks/use-setup-checklist-telemetry';
-import { useLocale } from '@/hooks/use-locale';
 import { subscribe } from '@/routes';
 import {
     type DashboardProps,
