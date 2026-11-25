@@ -15,16 +15,19 @@ use App\Rules\StorableDate;
 class TransactionWriteRules
 {
     /**
-     * What a bank or import reported, which the app locks to the source. The
-     * date is left out on purpose, as in the app's edit dialog: which month a
-     * transaction counts towards is the user's call, and the model keeps the
-     * source's date in `source_date`.
+     * The fields that describe the transaction itself. As in the app, a split
+     * part takes all of them from its original, so they are locked there. A
+     * bank/imported row owns them through its sync, except its date, which
+     * stays editable like in the app's edit dialog: which month a transaction
+     * counts towards is the user's call, and the model keeps the source's date
+     * in `source_date`. Notes and category_id stay editable on any transaction.
      *
      * @var list<string>
      */
-    private const array SourceOwnedFields = [
+    private const array CoreFields = [
         'description',
         'amount',
+        'transaction_date',
         'currency_code',
         'account_id',
         'creditor_name',
@@ -78,8 +81,8 @@ class TransactionWriteRules
 
     /**
      * Why `/api/v1` refuses to edit the $sent fields, keyed by the field the
-     * error goes under: what the source owns on a row that came from a bank or
-     * import, and blanking a note the server cannot read. A split's ledger is
+     * error goes under: the locked core fields ({@see self::lockedCoreFields()}),
+     * and blanking a note the server cannot read. A split's ledger is
      * TransactionWriter's to refuse, under the row lock.
      *
      * @param  array<string, mixed>  $sent  the fields the edit carries
@@ -88,9 +91,72 @@ class TransactionWriteRules
     public static function editRefusals(Transaction $transaction, array $sent): array
     {
         return [
-            ...self::sourceOwnedRefusals($transaction, array_keys($sent)),
+            ...self::lockedCoreFieldRefusals($transaction, array_keys($sent)),
             ...array_filter(['notes' => self::blankedEncryptedNotesError($transaction, $sent)]),
         ];
+    }
+
+    /**
+     * The core fields among $sent that the transaction does not let change:
+     * all of them on a split part, all but the date on a bank/imported row,
+     * none on a manually-created one.
+     *
+     * @param  list<string>  $sent  the fields the edit carries
+     * @return list<string>
+     */
+    private static function lockedCoreFields(Transaction $transaction, array $sent): array
+    {
+        $sentCoreFields = array_values(array_intersect(self::CoreFields, $sent));
+
+        if ($transaction->isSplitPart()) {
+            return $sentCoreFields;
+        }
+
+        if ($transaction->source !== TransactionSource::ManuallyCreated) {
+            return array_values(array_diff($sentCoreFields, ['transaction_date']));
+        }
+
+        return [];
+    }
+
+    /**
+     * Why an edit of the $sent fields cannot go through, or null when it can.
+     * Only an edit that actually carries a locked core field is refused: one
+     * limited to notes or the category is allowed on every transaction, which
+     * is how bank/imported rows and split parts get annotated.
+     *
+     * @param  list<string>  $sent  the fields the edit carries
+     * @param  string  $labelsHint  appended to the message, naming where the labels are changed
+     */
+    private static function lockedCoreFieldError(Transaction $transaction, array $sent, string $labelsHint = ''): ?string
+    {
+        $locked = self::lockedCoreFields($transaction, $sent);
+
+        if ($locked === []) {
+            return null;
+        }
+
+        $fields = implode(', ', $locked);
+
+        if ($transaction->isSplitPart()) {
+            return "This transaction is one part of a split, so it cannot change {$fields} — those come from the original. Notes and category_id can still be edited here{$labelsHint}.";
+        }
+
+        return "Only manually-created transactions can change {$fields}. This one came from a bank or import, so those fields are locked; transaction_date, notes and category_id can still be edited here{$labelsHint}.";
+    }
+
+    /**
+     * Why the transaction cannot be deleted, or null when it can. As in the
+     * app, any transaction can, bank/imported ones included (a soft delete the
+     * next sync does not bring back), except one part of a split.
+     */
+    public static function deletionError(Transaction $transaction): ?string
+    {
+        if ($transaction->isSplitPart()) {
+            return 'This transaction is one part of a split, so deleting it on its own would leave the rest no longer adding up. Merge the split back first.';
+        }
+
+        return null;
     }
 
     /**
@@ -128,19 +194,16 @@ class TransactionWriteRules
     }
 
     /**
+     * {@see self::lockedCoreFieldError()} under each locked field it names.
+     *
      * @param  list<string>  $sent
      * @return array<string, string>
      */
-    private static function sourceOwnedRefusals(Transaction $transaction, array $sent): array
+    private static function lockedCoreFieldRefusals(Transaction $transaction, array $sent): array
     {
-        if ($transaction->source === TransactionSource::ManuallyCreated) {
-            return [];
-        }
+        $error = self::lockedCoreFieldError($transaction, $sent);
 
-        $locked = array_values(array_intersect(self::SourceOwnedFields, $sent));
-        $message = 'Only manually-created transactions can change '.implode(', ', $locked).'. This one came from a bank or import, so those fields are locked; transaction_date, notes and category_id can still be edited here.';
-
-        return $locked === [] ? [] : array_fill_keys($locked, $message);
+        return $error === null ? [] : array_fill_keys(self::lockedCoreFields($transaction, $sent), $error);
     }
 
     /**

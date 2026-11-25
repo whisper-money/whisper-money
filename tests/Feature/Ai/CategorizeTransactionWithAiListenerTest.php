@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
+use App\Services\TransactionSplitter;
 use App\Services\Transactions\ReplaceTransactionSplits;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Queue;
@@ -66,6 +67,25 @@ it('does not queue an AI categorization job when the transaction is already cate
     ]);
 
     expect(aiCategorizationJobsQueued())->toBe(0);
+});
+
+it('queues the AI for a split part left uncategorized, never for one given a category in the split', function () {
+    $user = aiEligibleUser();
+    $category = Category::factory()->for($user)->create();
+    $original = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'amount' => -10000,
+    ]);
+
+    Queue::fake();
+
+    app(TransactionSplitter::class)->split($original, [
+        ['amount' => -6000, 'category_id' => $category->id],
+        ['amount' => -4000],
+    ]);
+
+    expect(aiCategorizationJobsQueued())->toBe(1);
 });
 
 it('does not categorize a transaction that gained splits while the queued job waited', function () {

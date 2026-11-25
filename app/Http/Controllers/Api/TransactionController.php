@@ -59,6 +59,8 @@ class TransactionController extends Controller
         $transaction->load(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin', 'splits.category'])
             ->append(['ai_categorized', 'is_split', 'split_count']);
 
+        Transaction::loadSplitSiblings(collect([$transaction]));
+
         return response()
             ->json(['data' => $transaction])
             ->header('Cache-Control', 'no-store, private');

@@ -16,6 +16,7 @@ use App\Models\BudgetPeriod;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\SavingsGoal;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetManagementService;
 use App\Services\BudgetPeriodService;
@@ -268,6 +269,8 @@ class BudgetController extends Controller
                 'budgetTransactions.transaction.labels',
                 'budgetTransactions.transaction.splits.category',
             ]);
+
+            Transaction::loadSplitSiblings($viewedPeriod->budgetTransactions->pluck('transaction')->filter());
         }
 
         $previousPeriod = $budget->periods()

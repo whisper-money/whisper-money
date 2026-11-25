@@ -339,10 +339,10 @@ test('manual category updates return cleared AI provenance', function () {
         ->assertJsonPath('data.ai_categorized', false);
 });
 
-// Upstream locks the date on a part of a split, because there each part is a
-// transaction of its own carrying split_parent_id. Here a split lives in
-// transaction_splits and the parent keeps the single date its parts follow, so
-// what has to hold is that moving the parent moves the whole split with it.
+// A transaction still split the old way keeps its lines in
+// transaction_splits, and the parent keeps the single date its lines follow,
+// so moving the parent moves the whole split with it. A part of a split made
+// the new way is a transaction of its own, and its date is locked (below).
 test('moving a split parent keeps its parts on the new date', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
@@ -375,6 +375,34 @@ test('moving a split parent keeps its parts on the new date', function () {
     ]);
 
     expect($transaction->fresh()->splits)->toHaveCount(2);
+});
+
+test('a part of a split cannot have its date moved', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $original = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-08-27',
+    ]);
+
+    $part = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'split_parent_id' => $original->id,
+        'transaction_date' => '2026-08-27',
+    ]);
+
+    actingAs($user)->patchJson(route('transactions.update', $part), [
+        'transaction_date' => '2026-09-01',
+    ])->assertSuccessful();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $part->id,
+        'transaction_date' => '2026-08-27',
+        'source_date' => null,
+    ]);
 });
 
 test('users can soft delete their own transactions', function () {

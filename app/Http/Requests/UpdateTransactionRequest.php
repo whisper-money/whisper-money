@@ -29,21 +29,17 @@ class UpdateTransactionRequest extends FormRequest
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
-            'splits' => ['sometimes', 'array', 'list'],
-            'splits.*.category_id' => ['required', 'uuid', $this->userOwned('categories')],
-            'splits.*.amount' => ['required', 'integer', 'not_in:0'],
         ];
 
         // Amount, account and currency stay locked to the source data on
         // anything the user did not type in: the bank is the authority on what
         // moved. The date is not - a payroll booked on the 27th can belong to
-        // next month's budget - so it is editable whatever the source.
-        //
-        // A split's parts are rows in transaction_splits, not transactions of
-        // their own, so there is no part to lock here: the parent keeps its own
-        // date and the parts follow it.
+        // next month's budget - so it is editable whatever the source. A part of
+        // a split keeps everything locked whatever its source: changing one
+        // part's amount, date or account would leave the split no longer adding
+        // up to the original.
         $transaction = $this->route('transaction');
-        if ($transaction instanceof Transaction) {
+        if ($transaction instanceof Transaction && ! $transaction->isSplitPart()) {
             $rules['transaction_date'] = ['sometimes', 'date', new StorableDate];
 
             if ($transaction->source === TransactionSource::ManuallyCreated) {

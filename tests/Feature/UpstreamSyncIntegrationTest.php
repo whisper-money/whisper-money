@@ -22,6 +22,7 @@ use App\Models\ExchangeRate;
 use App\Models\Label;
 use App\Models\SavingsGoal;
 use App\Models\Transaction;
+use App\Models\TransactionSplit;
 use App\Models\User;
 use App\Services\BudgetManagementService;
 use Carbon\CarbonImmutable;
@@ -78,12 +79,17 @@ function syncWorld(): array
 
 /**
  * Posted through the real endpoint, so TransactionCreated fires and budget
- * assignment runs the way it does for a user typing one in.
+ * assignment runs the way it does for a user typing one in. `splits` files it
+ * under legacy split lines afterwards ({@see syncSplitIntoLines()}): the web
+ * endpoints no longer write lines.
  *
  * @param  array<string, mixed>  $attributes
  */
 function syncPostedTransaction(User $user, Account $account, array $attributes = []): Transaction
 {
+    $lines = $attributes['splits'] ?? null;
+    unset($attributes['splits']);
+
     $payload = array_merge([
         'account_id' => $account->id,
         'category_id' => null,
@@ -96,7 +102,29 @@ function syncPostedTransaction(User $user, Account $account, array $attributes =
 
     actingAs($user)->postJson(route('transactions.store'), $payload)->assertSuccessful();
 
-    return Transaction::query()->where('description', $payload['description'])->firstOrFail();
+    $transaction = Transaction::query()->where('description', $payload['description'])->firstOrFail();
+
+    if ($lines !== null) {
+        syncSplitIntoLines($transaction, $lines);
+    }
+
+    return $transaction->fresh();
+}
+
+/**
+ * File a transaction under legacy split lines, as the line editor did before
+ * splits became parts: the lines, then a save that fires the update event the
+ * budgets are reassigned on.
+ *
+ * @param  array<int, array{category_id: string, amount: int}>  $lines
+ */
+function syncSplitIntoLines(Transaction $transaction, array $lines): void
+{
+    foreach (array_values($lines) as $position => $line) {
+        TransactionSplit::factory()->create([...$line, 'transaction_id' => $transaction->id, 'position' => $position]);
+    }
+
+    $transaction->touch();
 }
 
 /** The period that actually covers today, not whichever row comes back first. */
@@ -230,33 +258,42 @@ it('weighs a foreign-currency split on a shared account exactly once', function 
     expect(syncCashflowSummary($user)['expense'])->toBe(8000);
 })->group('sync');
 
-it('keeps both screens agreeing while a split is edited and then removed', function () {
+it('keeps both screens agreeing while a split is made, redone and merged', function () {
     [$user, , $accounts, $categories] = syncWorld();
 
     $transaction = syncPostedTransaction($user, $accounts['own'], [
         'amount' => -10000,
-        'splits' => syncSplitOf($categories),
+        'category_id' => $categories['food']->id,
     ]);
 
     $read = fn (): array => [syncDashboardExpense($user), syncCashflowSummary($user)['expense']];
+    $split = fn (int $first, int $second): string => actingAs($user)
+        ->postJson(route('transactions.split.store', $transaction), ['splits' => syncSplitOf($categories, $first, $second)])
+        ->assertCreated()
+        ->json('data.0.id');
+    $merge = fn (string $part) => actingAs($user)
+        ->deleteJson(route('transactions.split.destroy', $part))
+        ->assertSuccessful();
 
     expect($read())->toBe([10000, 10000]);
 
-    // Re-split with different proportions: the total must not move.
-    actingAs($user)->patchJson(route('transactions.update', $transaction), [
-        'splits' => syncSplitOf($categories, -2500, -7500),
-    ])->assertSuccessful();
+    $part = $split(-6000, -4000);
 
     expect($read())->toBe([10000, 10000]);
 
-    // Remove the split: back to one plain categorised row, same total.
-    actingAs($user)->patchJson(route('transactions.update', $transaction), [
-        'splits' => [],
-        'category_id' => $categories['food']->id,
-    ])->assertSuccessful();
+    // Re-split with different proportions (merge, then split again): the
+    // total must not move.
+    $merge($part);
+    $part = $split(-2500, -7500);
+
+    expect($read())->toBe([10000, 10000]);
+
+    // Merge for good: back to the one categorised row, same total.
+    $merge($part);
 
     expect($read())->toBe([10000, 10000])
-        ->and($transaction->fresh()->splits()->count())->toBe(0);
+        ->and(Transaction::query()->where('split_parent_id', $transaction->id)->count())->toBe(0)
+        ->and($transaction->fresh()->category_id)->toBe($categories['food']->id);
 })->group('sync');
 
 it('assigns split postings to the budget tracking their category, at the owner share', function () {

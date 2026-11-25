@@ -157,12 +157,18 @@ class TransactionWriter
     /**
      * Soft delete, as the app does: the sync dedupes against deleted rows, so
      * it does not bring a bank transaction back. Says whether the account
-     * balance moved.
+     * balance moved. One part of a split is refused, as in the app.
      */
     public function delete(Transaction $transaction, bool $updateBalance): bool
     {
         return DB::transaction(function () use ($transaction, $updateBalance): bool {
             $locked = Transaction::query()->whereKey($transaction->id)->lockForUpdate()->firstOrFail();
+
+            $deletionError = TransactionWriteRules::deletionError($locked);
+
+            if ($deletionError !== null) {
+                throw ValidationException::withMessages(['transaction' => $deletionError]);
+            }
 
             if ($updateBalance) {
                 $this->lockBalanceAccounts([$locked->account_id]);

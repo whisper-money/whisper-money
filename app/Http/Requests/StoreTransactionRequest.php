@@ -35,9 +35,6 @@ class StoreTransactionRequest extends FormRequest
             'source' => ['required', Rule::enum(TransactionSource::class)],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['string', 'uuid', $this->userOwned('labels')],
-            'splits' => ['sometimes', 'array', 'list'],
-            'splits.*.category_id' => ['required', 'uuid', $this->userOwned('categories')],
-            'splits.*.amount' => ['required', 'integer', 'not_in:0'],
         ];
     }
 

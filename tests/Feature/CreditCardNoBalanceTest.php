@@ -244,41 +244,23 @@ it('leaves a credit card balance alone when a transaction is created, edited or 
     expect(balancesOf($card))->toBe(['2026-04-01' => 10_000]);
 });
 
-it('leaves a credit card balance alone when the split editor saves lines', function () {
+it('leaves a credit card balance alone when a transaction is split and merged', function () {
     Feature::for($this->user)->activate(TransactionSplitting::class);
     $card = accountWithBalance(AccountType::CreditCard);
     [$food, $home] = Category::factory()->count(2)->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
 
-    $id = actingAs($this->user)->postJson(route('transactions.store'), [
-        'account_id' => $card->id,
-        'description' => 'Split purchase',
-        'transaction_date' => '2026-04-10',
-        'amount' => -10_000,
-        'currency_code' => 'EUR',
-        'source' => 'manually_created',
-        'update_balance' => true,
+    $transaction = storeTransactionUpdatingBalance($card, -10_000);
+
+    $part = actingAs($this->user)->postJson(route('transactions.split.store', $transaction), [
         'splits' => [
             ['category_id' => $food->id, 'amount' => -6_000],
             ['category_id' => $home->id, 'amount' => -4_000],
         ],
-    ])->assertCreated()->assertJsonPath('data.split_count', 2)->json('data.id');
+    ])->assertCreated()->json('data.0.id');
 
-    // The split editor saving new lines together with a new amount and date.
-    actingAs($this->user)->patchJson(route('transactions.update', $id), [
-        'amount' => -12_000,
-        'transaction_date' => '2026-04-12',
-        'update_balance' => true,
-        'splits' => [
-            ['category_id' => $food->id, 'amount' => -7_000],
-            ['category_id' => $home->id, 'amount' => -5_000],
-        ],
-    ])->assertOk()->assertJsonPath('data.amount', -12_000);
-
-    actingAs($this->user)->patchJson(route('transactions.update', $id), [
-        'category_id' => $food->id,
-        'update_balance' => true,
-        'splits' => [],
-    ])->assertOk()->assertJsonPath('data.is_split', false);
+    actingAs($this->user)->deleteJson(route('transactions.split.destroy', $part))
+        ->assertOk()
+        ->assertJsonPath('data.amount', -10_000);
 
     expect(balancesOf($card))->toBe(['2026-04-01' => 10_000]);
 });

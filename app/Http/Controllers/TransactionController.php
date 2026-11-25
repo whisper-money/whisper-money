@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CategorySource;
-use App\Features\TransactionSplitting;
 use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
@@ -22,7 +21,6 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\ManualBalanceAdjuster;
 use App\Services\TransactionDayTotals;
 use App\Services\TransactionFilterSummary;
-use App\Services\Transactions\ReplaceTransactionSplits;
 use Closure;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -33,7 +31,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class TransactionController extends Controller
 {
@@ -61,6 +58,8 @@ class TransactionController extends Controller
             ->withQueryString();
 
         $transactions->getCollection()->each->append(['ai_categorized', 'is_split', 'split_count']);
+
+        Transaction::loadSplitSiblings($transactions->getCollection());
 
         $newestServed = $transactions->getCollection()->max('created_at');
         if ($newestServed && (! $lastVisitAt || $newestServed->gt($lastVisitAt))) {
@@ -181,14 +180,11 @@ class TransactionController extends Controller
         ]);
     }
 
-    public function store(StoreTransactionRequest $request, ManualBalanceAdjuster $balanceAdjuster, ReplaceTransactionSplits $replaceSplits): JsonResponse
+    public function store(StoreTransactionRequest $request, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $data = $request->validated();
         $labelIds = $data['label_ids'] ?? null;
-        $splits = $data['splits'] ?? null;
-        unset($data['label_ids'], $data['splits']);
-
-        $this->authorizeSplitWrite($request, $splits);
+        unset($data['label_ids']);
 
         $transaction = new Transaction([
             ...$data,
@@ -200,15 +196,11 @@ class TransactionController extends Controller
             $transaction->exists = false;
         }
 
-        DB::transaction(function () use ($request, $transaction, $labelIds, $splits, $replaceSplits, $balanceAdjuster): void {
+        DB::transaction(function () use ($request, $transaction, $labelIds, $balanceAdjuster): void {
             $transaction->save();
 
             if ($labelIds !== null) {
                 $transaction->labels()->sync($labelIds);
-            }
-
-            if ($splits !== null) {
-                $replaceSplits->replace($transaction, $splits, $transaction->category_id);
             }
 
             if ($request->boolean('update_balance')) {
@@ -224,14 +216,14 @@ class TransactionController extends Controller
     }
 
     /**
-     * A split transaction is filed under its postings, so its category and
-     * amount belong to the split editor. Checked twice on purpose: once before
-     * the work starts, and again under the row lock, where a split created
-     * concurrently would otherwise slip through.
+     * A transaction still split into the old lines is filed under them, so
+     * its category and amount cannot change directly. Checked twice on
+     * purpose: once before the work starts, and again under the row lock,
+     * where lines written concurrently would otherwise slip through.
      */
-    private function guardSplitLedgerChange(Request $request, Transaction $transaction, bool $hasSplitUpdate): void
+    private function guardSplitLedgerChange(Request $request, Transaction $transaction): void
     {
-        if ($hasSplitUpdate || ! $request->hasAny(['category_id', 'amount'])) {
+        if (! $request->hasAny(['category_id', 'amount'])) {
             return;
         }
 
@@ -332,24 +324,18 @@ class TransactionController extends Controller
         RecalculateHistoricalBalancesJob::dispatch($account);
     }
 
-    public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster, ReplaceTransactionSplits $replaceSplits): JsonResponse
+    public function update(UpdateTransactionRequest $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('update', $transaction);
 
         $data = $request->validated();
         $labelIds = $data['label_ids'] ?? null;
         $hasLabelUpdate = $request->has('label_ids');
-        $splits = $data['splits'] ?? null;
-        $hasSplitUpdate = $request->has('splits');
-        unset($data['label_ids'], $data['splits']);
-
-        if ($hasSplitUpdate) {
-            $this->authorizeSplitWrite($request, $splits ?? []);
-        }
+        unset($data['label_ids']);
 
         $learnedRule = null;
 
-        $this->guardSplitLedgerChange($request, $transaction, $hasSplitUpdate);
+        $this->guardSplitLedgerChange($request, $transaction);
 
         DB::transaction(function () use (
             $request,
@@ -357,9 +343,6 @@ class TransactionController extends Controller
             $data,
             $labelIds,
             $hasLabelUpdate,
-            $splits,
-            $hasSplitUpdate,
-            $replaceSplits,
             $balanceAdjuster,
             &$learnedRule,
         ): void {
@@ -369,11 +352,9 @@ class TransactionController extends Controller
             );
             $originalSnapshot = clone $transaction;
 
-            $this->guardSplitLedgerChange($request, $transaction, $hasSplitUpdate);
+            $this->guardSplitLedgerChange($request, $transaction);
 
-            // Split creation supersedes the simple category and must not teach a
-            // single-category correction.
-            if ($request->has('category_id') && ! ($hasSplitUpdate && $splits !== [])) {
+            if ($request->has('category_id')) {
                 $learnedRule = $this->recordCategoryOverride($transaction, $data);
             }
 
@@ -382,18 +363,7 @@ class TransactionController extends Controller
                 $transaction->load('labels');
             }
 
-            if ($hasSplitUpdate) {
-                $updated = $replaceSplits->replace(
-                    $transaction,
-                    $splits ?? [],
-                    $data['category_id'] ?? null,
-                    $data,
-                );
-                $transaction->setRawAttributes($updated->getAttributes(), true);
-                $transaction->setRelations($updated->getRelations());
-            } else {
-                $this->saveWithLabels($transaction, $data, $hasLabelUpdate);
-            }
+            $this->saveWithLabels($transaction, $data, $hasLabelUpdate);
 
             // Connected accounts and credit cards own no balance rows, so
             // the adjuster skips them.
@@ -403,8 +373,11 @@ class TransactionController extends Controller
             }
         }, attempts: 5);
 
+        $updated = $transaction->fresh()->load(['category', 'account.bank', 'labels', 'categorizedByRule:id,origin', 'splits.category'])->append(['ai_categorized', 'is_split', 'split_count']);
+        Transaction::loadSplitSiblings(collect([$updated]));
+
         return response()->json([
-            'data' => $transaction->fresh()->load(['category', 'account.bank', 'labels', 'categorizedByRule:id,origin', 'splits.category'])->append(['ai_categorized', 'is_split', 'split_count']),
+            'data' => $updated,
             'learned_rule' => $learnedRule === null ? null : [
                 'id' => $learnedRule->id,
                 'title' => $learnedRule->title,
@@ -413,23 +386,17 @@ class TransactionController extends Controller
         ]);
     }
 
-    /** @param array<int, array{category_id: string, amount: int}>|null $splits */
-    private function authorizeSplitWrite(Request $request, ?array $splits): void
-    {
-        if ($splits === null || $splits === []) {
-            return;
-        }
-
-        abort_unless(
-            Feature::for($request->user())->active(TransactionSplitting::class),
-            403,
-            'Creating or replacing transaction splits is currently disabled.',
-        );
-    }
-
     public function destroy(Request $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('delete', $transaction);
+
+        // Removing one part on its own would leave the rest no longer adding up
+        // to what the account actually moved.
+        if ($transaction->isSplitPart()) {
+            return response()->json([
+                'message' => 'This transaction is part of a split. Merge the split back before deleting it.',
+            ], 422);
+        }
 
         if ($request->boolean('update_balance')) {
             $balanceAdjuster->reverseDeletedTransaction($transaction);
@@ -678,6 +645,7 @@ class TransactionController extends Controller
             ->get();
 
         $updated->each->append(['ai_categorized', 'is_split', 'split_count']);
+        Transaction::loadSplitSiblings($updated);
 
         return $updated;
     }

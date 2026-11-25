@@ -83,8 +83,9 @@ class BudgetTransactionService
 
         $matchingPeriodIds = [];
         $createdPeriodIds = [];
+        $assignable = true;
 
-        DB::transaction(function () use ($transaction, $lookups, &$matchingPeriodIds, &$createdPeriodIds): void {
+        DB::transaction(function () use ($transaction, $lookups, &$matchingPeriodIds, &$createdPeriodIds, &$assignable): void {
             // Reset per attempt: a deadlock retry re-runs the closure.
             $matchingPeriodIds = [];
             $createdPeriodIds = [];
@@ -93,7 +94,17 @@ class BudgetTransactionService
                 ->whereKey($transaction->id)
                 ->lockForUpdate()
                 ->with(['labels', 'category', 'splits.category'])
-                ->firstOrFail();
+                ->first();
+
+            // Deleted (or split, which soft-deletes the original) while the job
+            // waited: a trashed row has nothing to assign, and its delete
+            // already queued taking it out of its budgets.
+            $assignable = $locked !== null;
+
+            if (! $assignable) {
+                return;
+            }
+
             $this->reuseLoadedAccount($locked, $transaction);
 
             foreach ($lookups->periodsCovering($locked) as $period) {
@@ -120,7 +131,7 @@ class BudgetTransactionService
                 ->delete();
         }, attempts: 5);
 
-        if ($notify) {
+        if ($notify && $assignable) {
             $this->notifications->handleAssignment($transaction, $matchingPeriodIds, $createdPeriodIds);
         }
     }

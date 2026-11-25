@@ -60,6 +60,25 @@ it('carries the lines of a split transaction, each with its category', function 
         ->assertJsonPath('data.splits.1.amount', -2000);
 });
 
+it('carries the siblings of a split part', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $original = Transaction::factory()->for($user)->for($account)->create(['amount' => -5000]);
+    $part = Transaction::factory()->for($user)->for($account)->create([
+        'amount' => -3000,
+        'split_parent_id' => $original->id,
+    ]);
+    Transaction::factory()->for($user)->for($account)->create([
+        'amount' => -2000,
+        'split_parent_id' => $original->id,
+    ]);
+
+    $this->actingAs($user)
+        ->getJson("/api/transactions/{$part->id}")
+        ->assertOk()
+        ->assertJsonCount(2, 'data.split_siblings');
+});
+
 it('does not answer another user\'s transaction', function () {
     $owner = User::factory()->create();
     $transaction = Transaction::factory()

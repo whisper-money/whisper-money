@@ -15,6 +15,7 @@ use App\Models\Concerns\BelongsToSpace;
 use App\Services\CashflowBlockQuery;
 use App\Services\CategoryTree;
 use App\Services\PeriodComparator;
+use App\Services\TransactionSplitter;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Closure;
@@ -22,6 +23,7 @@ use Database\Factories\TransactionFactory;
 use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -37,6 +40,7 @@ use LogicException;
  * @property-read ?bool $splits_exists whether it has split lines, selected by `withExists('splits')` and absent otherwise
  * @property-read ?int $ownership_percentage the owning account's share, selected by {@see self::scopeJoinOwningAccount()} and absent otherwise
  * @property ?Carbon $source_date
+ * @property ?string $split_parent_id
  * @property int|float $total_amount
  * @property TransactionSource $source
  * @property ?CategorySource $category_source
@@ -66,6 +70,7 @@ class Transaction extends Model
         'user_id',
         'space_id',
         'account_id',
+        'split_parent_id',
         'category_id',
         'category_source',
         'ai_confidence',
@@ -188,6 +193,101 @@ class Transaction extends Model
     public function splits(): HasMany
     {
         return $this->hasMany(TransactionSplit::class)->orderBy('position');
+    }
+
+    /**
+     * The original this row was split off from. It is soft-deleted, so every
+     * read of it needs `withTrashed()`.
+     *
+     * @return BelongsTo<Transaction, $this>
+     */
+    public function splitParent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'split_parent_id');
+    }
+
+    /**
+     * The parts this transaction was split into ({@see TransactionSplitter}).
+     * Empty unless this row is a split original. Upstream's `splits()`: it is
+     * renamed to that once the legacy split lines are gone (PR 3).
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function splitParts(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_parent_id');
+    }
+
+    /**
+     * Whether this row is one part of a split rather than a transaction the
+     * account produced on its own.
+     */
+    public function isSplitPart(): bool
+    {
+        return $this->split_parent_id !== null;
+    }
+
+    /**
+     * Every part of the same split, this one included. Keyed on the shared
+     * parent id, so explaining a part to the user costs no read of the
+     * soft-deleted original: the parts add up to it by construction.
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function splitSiblings(): HasMany
+    {
+        return $this->hasMany(self::class, 'split_parent_id', 'split_parent_id');
+    }
+
+    /**
+     * What the table needs off each sibling. Scopes do not compose into a dotted
+     * `with()` path, so nested eager loads spell the relation out and reuse this.
+     */
+    public const SPLIT_SIBLING_COLUMNS = 'id,split_parent_id,category_id,amount';
+
+    /**
+     * Load the other parts of a split onto whichever of these rows are parts.
+     *
+     * Deliberately not an eager load on the query: `with()` runs its statement
+     * even when every `split_parent_id` is null, which is every page of every
+     * user who has never split anything. This way the extra query happens only
+     * when there is something to explain.
+     *
+     * @param  SupportCollection<int, Transaction>|EloquentCollection<int, Transaction>  $transactions
+     */
+    public static function loadSplitSiblings($transactions): void
+    {
+        $parts = EloquentCollection::make(
+            $transactions->filter(fn (Transaction $transaction): bool => $transaction->isSplitPart())->all()
+        );
+
+        if ($parts->isEmpty()) {
+            return;
+        }
+
+        $parts->load('splitSiblings:'.self::SPLIT_SIBLING_COLUMNS);
+    }
+
+    /**
+     * One movement of money per row, as the account made it: a row that is not
+     * a part of a split and is either live, or a split original (soft-deleted
+     * by {@see TransactionSplitter}) that still has at least one live part. A
+     * row the user deleted, and an original whose parts are all gone, are not.
+     *
+     * For the readers that reason about what the bank moved rather than how
+     * the user filed it (recurring detection, statements, import dedup). It
+     * lifts the soft-delete scope itself, so it works on a plain query.
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopeMovements(Builder $query): Builder
+    {
+        return $query->withTrashed()
+            ->whereNull($query->qualifyColumn('split_parent_id'))
+            ->where(fn (Builder $movement): Builder => $movement
+                ->whereNull($query->qualifyColumn('deleted_at'))
+                ->orWhereHas('splitParts'));
     }
 
     /**
