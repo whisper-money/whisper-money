@@ -101,6 +101,18 @@ export interface SelectedDashboard {
     widgets: DashboardWidgetData[];
 }
 
+/**
+ * The monthly spending limit the onboarding target created: the catch-all
+ * budget's current period, what it allows and what it has counted so far.
+ */
+export interface SpendingLimit {
+    budget_id: string;
+    allocated: number;
+    spent: number;
+    /** Whole days left in the period after today. */
+    days_left: number;
+}
+
 /** The dashboard page props: most of them deferred, all read from the server. */
 export interface DashboardProps extends SharedData {
     netWorthEvolution?: NetWorthEvolutionData;
@@ -118,6 +130,8 @@ export interface DashboardProps extends SharedData {
         current: CashflowSummary;
         previous: CashflowSummary;
     };
+    /** Deferred: the catch-all budget's period in progress, if any. */
+    spendingLimit?: SpendingLimit | null;
     openIntegrationRequests?: boolean;
     /** Deferred: what is in use of each credit card, by account id. */
     creditCardUsage?: Record<string, CreditCardUsage>;

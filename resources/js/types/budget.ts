@@ -155,14 +155,26 @@ export function getBudgetExpenseTypeDescription(
 export function budgetPercentageUsed(budget: Budget): number {
     const period = budget.periods?.[0];
 
-    if (!period || period.allocated_amount <= 0) {
+    if (!period) {
         return 0;
     }
 
     const spent =
         period.budget_transactions?.reduce((sum, t) => sum + t.amount, 0) ?? 0;
 
-    return (spent / period.allocated_amount) * 100;
+    return percentUsed(spent, period.allocated_amount);
+}
+
+/**
+ * How much of a limit was spent, as a percentage. Without a limit nothing is
+ * used until something is spent, and then all of it is.
+ */
+export function percentUsed(spent: number, allocated: number): number {
+    if (allocated <= 0) {
+        return spent > 0 ? 100 : 0;
+    }
+
+    return (spent / allocated) * 100;
 }
 
 export type BudgetSeverity = 'over' | 'near' | 'ok';
@@ -173,8 +185,11 @@ export type BudgetSeverity = 'over' | 'near' | 'ok';
  * list can never disagree with the colour the user is looking at.
  */
 export function budgetSeverity(budget: Budget): BudgetSeverity {
-    const used = budgetPercentageUsed(budget);
+    return usageSeverity(budgetPercentageUsed(budget));
+}
 
+/** Where a share of a limit, as a percentage, sits against that limit. */
+export function usageSeverity(used: number): BudgetSeverity {
     if (used >= 100) {
         return 'over';
     }

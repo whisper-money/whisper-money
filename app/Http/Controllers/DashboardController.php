@@ -14,6 +14,7 @@ use App\Services\CategorySpendingService;
 use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
+use App\Services\OnboardingSummaryService;
 use App\Services\PeriodComparator;
 use App\Services\SavingsGoals\CurrentMonthSavings;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class DashboardController extends Controller
         private ReportPresenter $presenter,
         private CreditCardStatementService $creditCardStatementService,
         private CurrentMonthSavings $currentMonthSavings,
+        private OnboardingSummaryService $onboardingSummary,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -86,6 +88,7 @@ class DashboardController extends Controller
             'topCategories' => Inertia::defer(fn () => $this->getTopCategories($request), 'dashboard'),
             'topLabels' => Inertia::defer(fn () => $this->getTopLabels($request), 'dashboard'),
             'cashflowSummary' => Inertia::defer(fn () => $this->getCashflowSummary($request), 'dashboard'),
+            'spendingLimit' => Inertia::defer(fn () => $this->getSpendingLimit($request), 'dashboard'),
             'creditCardUsage' => Inertia::defer(fn () => $this->getCreditCardUsage($request), 'dashboard'),
             'monthlySavingsGoals' => Inertia::defer(fn () => $this->currentMonthSavings->runningGoals($request->user()), 'dashboard'),
             'monthlySavingsLastMonth' => Inertia::defer(fn () => $this->currentMonthSavings->lastMonth($request->user()), 'dashboard'),
@@ -312,6 +315,34 @@ class DashboardController extends Controller
         $period = new PeriodComparator($today->copy()->startOfMonth(), $today->copy()->endOfMonth());
 
         return $this->summaries->forComparedPeriods($user->id, $user->currency_code, $period, $period->previous());
+    }
+
+    /**
+     * The monthly spending limit the user set as their first target in the
+     * onboarding: the catch-all budget's period in progress, for the row under
+     * the cashflow card. Spent is what the budget itself counts, so the figure
+     * matches the budget page rather than the card's own expense total, which
+     * also includes what other budgets track. Null without a running catch-all
+     * budget or a period covering today.
+     *
+     * @return array{budget_id: string, allocated: int, spent: int, days_left: int}|null
+     */
+    private function getSpendingLimit(Request $request): ?array
+    {
+        $user = $request->user();
+        $period = $this->onboardingSummary->catchAllPeriod($user);
+
+        if ($period === null) {
+            return null;
+        }
+
+        return [
+            'budget_id' => $period->budget_id,
+            'allocated' => $period->allocated_amount,
+            'spent' => $period->spentAmount(),
+            // Whole days after today, so the period's last day reads as none left.
+            'days_left' => (int) $user->localToday()->diffInDays($period->end_date->copy()->startOfDay()),
+        ];
     }
 
     /**
