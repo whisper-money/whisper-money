@@ -32,13 +32,21 @@ class SplitTransactionRequest extends FormRequest
         return [
             'splits' => [...$rules['splits'], 'list'],
             ...is_array($parts) && count($parts) > TransactionSplitter::MAX_PARTS ? [] : [
-                'splits.*' => ['array:amount,category_id,label_ids'],
+                'splits.*' => $rules['splits.*'],
                 'splits.*.amount' => $rules['splits.*.amount'],
                 'splits.*.category_id' => [...$rules['splits.*.category_id'], $this->inSpace(Category::class, 'a category')],
                 'splits.*.label_ids' => [...$rules['splits.*.label_ids'], 'list'],
                 'splits.*.label_ids.*' => [...$rules['splits.*.label_ids.*'], $this->inSpace(Label::class, 'a label')],
             ],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return TransactionSplitter::partMessages();
     }
 
     /**

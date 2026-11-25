@@ -4,6 +4,7 @@ namespace App\Services\Transactions\LegacySplits;
 
 use App\Console\Commands\AuditTransactionSplitsCommand;
 use App\Enums\CategorySource;
+use App\Http\Requests\SplitTransactionRequest;
 use App\Models\Transaction;
 use App\Models\TransactionSplit;
 use App\Models\User;
@@ -42,6 +43,47 @@ class LegacySplitConverter
     /** The reasons a conversion always reports, even when nothing falls under them. */
     public const array FIXED_SKIP_REASONS = [self::SKIP_TRASHED, self::SKIP_PART, self::SKIP_LIVE_WITH_PARTS];
 
+    /**
+     * The `transactions:audit-splits` codes that leave a split alone. A split
+     * left alone can only be repaired in the database, so only these:
+     *
+     * - `parent_has_fewer_than_two_lines`, `split_sum_mismatch`,
+     *   `split_amount_zero`, `split_sign_mismatch`: its parts would break
+     *   what a split promises ({@see TransactionSplitter::partsError()}: two
+     *   parts or more, adding up to the original, none zero, all moving money
+     *   the original's way).
+     * - `category_missing_or_deleted`, `category_owner_or_space_mismatch`: a
+     *   part would be filed under a category that is gone, or that belongs to
+     *   another user or another space: one the app's split refuses
+     *   ({@see SplitTransactionRequest}).
+     *
+     * Converted despite the others:
+     *
+     * - `position_not_contiguous`: parts are created in position order, so a
+     *   gap in the positions means nothing.
+     * - `parent_classification_present`: the original keeps the category and
+     *   provenance it carried, in the trash. Every reader of a figure reads a
+     *   row with lines by its lines and never by its own category
+     *   (`effectiveTransactions()`, {@see Transaction::scopeWhereHasPosting()},
+     *   {@see Transaction::POSTING_CATEGORY_SQL}), and no AI or rule pass takes
+     *   a row with lines, so no figure moves. Only the transaction list's
+     *   category filter also matches such a row by its own column: it is no
+     *   longer listed under that category once trashed.
+     * - `category_type_invalid_or_mixed`: parts are ordinary rows, and any
+     *   category may file one.
+     *
+     * (`parent_missing` names an orphan line, not a transaction: there is no
+     * split to convert.)
+     */
+    private const array BLOCKING_AUDIT_CODES = [
+        'parent_has_fewer_than_two_lines',
+        'split_sum_mismatch',
+        'split_amount_zero',
+        'split_sign_mismatch',
+        'category_missing_or_deleted',
+        'category_owner_or_space_mismatch',
+    ];
+
     public function __construct(
         private readonly SplitBudgetRows $budgetRows,
         private readonly AuditTransactionSplitsCommand $audit,
@@ -50,13 +92,14 @@ class LegacySplitConverter
     /**
      * Every transaction still carrying lines, live or trashed, sorted into
      * the ones to convert and the ones left alone. A row
-     * `transactions:audit-splits` flags is left alone under the anomalies it
-     * reports: nothing it can flag changes a total, so the verification would
-     * pass, yet its parts would break what a split promises.
+     * `transactions:audit-splits` flags with one of
+     * {@see self::BLOCKING_AUDIT_CODES} is left alone under those codes:
+     * the verification might pass, yet its parts would break what a split
+     * promises or cross a space boundary.
      */
     public function plan(?string $userId): LegacySplitPlan
     {
-        $flagged = $this->flaggedByAudit();
+        $flagged = $this->flaggedByAudit($userId);
         $transactions = $this->withLines($userId, Transaction::query()->withTrashed());
         $withLiveParts = array_flip($this->withLiveParts($transactions->modelKeys()));
         $originals = new Collection;
@@ -141,14 +184,16 @@ class LegacySplitConverter
     }
 
     /**
-     * The anomalies `transactions:audit-splits` reports, as one skip reason
-     * per transaction id.
+     * The blocking anomalies `transactions:audit-splits` reports for the
+     * user's splits (everyone's without one), as one skip reason per
+     * transaction id naming the codes behind it.
      *
      * @return array<string, string>
      */
-    private function flaggedByAudit(): array
+    private function flaggedByAudit(?string $userId): array
     {
-        return collect($this->audit->audit()['anomalies'])
+        return collect($this->audit->audit($userId)['anomalies'])
+            ->whereIn('code', self::BLOCKING_AUDIT_CODES)
             ->groupBy('id')
             ->map(fn (SupportCollection $anomalies): string => 'flagged by transactions:audit-splits ('.$anomalies->pluck('code')->implode(', ').')')
             ->all();

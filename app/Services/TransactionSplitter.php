@@ -53,6 +53,19 @@ class TransactionSplitter
     }
 
     /**
+     * The messages that go with {@see self::partRules()}: a part with a field
+     * it does not take would otherwise be answered "must be an array".
+     *
+     * @return array<string, string>
+     */
+    public static function partMessages(): array
+    {
+        return [
+            'splits.*.array' => 'A part takes only amount, category_id and label_ids.',
+        ];
+    }
+
+    /**
      * A label may sit on several parts of the same split, so it is only
      * refused twice within one part. Laravel's `distinct` rule would compare
      * across every part.
@@ -63,7 +76,7 @@ class TransactionSplitter
             $ids = array_map(static fn (mixed $id): string => mb_strtolower((string) $id), array_filter((array) $value, is_scalar(...)));
 
             if (count($ids) !== count(array_unique($ids))) {
-                $fail('The '.$attribute.' field has a duplicate value.');
+                $fail('A label can only be given once per part.');
             }
         };
     }

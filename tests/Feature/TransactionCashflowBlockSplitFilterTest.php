@@ -46,8 +46,8 @@ function splitBlockBudget(Budget $budget): void
 }
 
 /**
- * An October transaction. With $lines it is split, with no category of its own
- * (as ReplaceTransactionSplits leaves the parent), one line per [category, amount].
+ * An October transaction. With $lines it is split the old way, into lines with
+ * no category of its own on the parent, one line per [category, amount].
  *
  * @param  list<array{0: Category, 1: int}>  $lines
  */

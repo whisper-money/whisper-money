@@ -40,6 +40,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Ramsey\Uuid\Uuid;
 
 beforeEach(function () {
     Http::fake();
@@ -677,7 +678,7 @@ it('checks every budget period a converted row is held in, whoever owns the budg
     expect(conversionTables())->toBe($before);
 });
 
-it('skips a split the audit flags, under what it flags, and converts the healthy one next to it', function (Closure $flagged, string $codes) {
+it('skips a split the audit flags as breaking a split, under what it flags, and converts the healthy one next to it', function (Closure $flagged, string $codes) {
     $owner = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $account = Account::factory()->create(['user_id' => $owner->id, 'currency_code' => 'EUR']);
     $groceries = Category::factory()->create(['user_id' => $owner->id, 'type' => CategoryType::Expense]);
@@ -700,12 +701,31 @@ it('skips a split the audit flags, under what it flags, and converts the healthy
         ->and(partIdsOf($anomaly))->toBe([])
         ->and([$anomaly->fresh()?->getAttributes(), $lines()])->toBe($untouched);
 })->with([
+    'a single line' => [
+        fn (Account $account, Category $groceries): Transaction => legacySplitOn($account, -1000, [[$groceries, -1000]]),
+        'parent_has_fewer_than_two_lines',
+    ],
+    'lines that do not add up' => [
+        fn (Account $account, Category $groceries, Category $dining): Transaction => legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -300]]),
+        'split_sum_mismatch',
+    ],
     'a zero line' => [
         fn (Account $account, Category $groceries, Category $dining): Transaction => legacySplitOn($account, -1000, [[$groceries, -1000], [$dining, 0]]),
         'split_amount_zero, split_sign_mismatch',
     ],
     'a line moving money the other way' => [
         fn (Account $account, Category $groceries, Category $dining): Transaction => legacySplitOn($account, -1000, [[$groceries, -1500], [$dining, 500]]),
+        'split_sign_mismatch',
+    ],
+    // Only the codes that keep it from converting are named.
+    'a line moving money the other way in an income category, under a categorized parent' => [
+        function (Account $account, Category $groceries): Transaction {
+            $income = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]);
+            $split = legacySplitOn($account, -1000, [[$groceries, -1500], [$income, 500]]);
+            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $groceries->id]);
+
+            return $split;
+        },
         'split_sign_mismatch',
     ],
     'a line in a deleted category' => [
@@ -733,17 +753,64 @@ it('skips a split the audit flags, under what it flags, and converts the healthy
         ]),
         'category_owner_or_space_mismatch',
     ],
+]);
+
+it('converts a split the audit flags for what parts do not care about, its parts in the order of its lines', function (Closure $flagged, string $code) {
+    $owner = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $account = Account::factory()->create(['user_id' => $owner->id, 'currency_code' => 'EUR']);
+    $groceries = Category::factory()->create(['user_id' => $owner->id, 'type' => CategoryType::Expense]);
+    $dining = Category::factory()->create(['user_id' => $owner->id, 'type' => CategoryType::Expense]);
+    $healthy = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
+    $flaggedSplit = $flagged($account, $groceries, $dining);
+    $original = $flaggedSplit->fresh();
+    $lines = $original->splits->map(fn (TransactionSplit $line): array => [$line->amount, $line->category_id])->all();
+
+    expect(collect(app(AuditTransactionSplitsCommand::class)->audit()['anomalies'])->where('id', $original->id)->pluck('code')->all())->toBe([$code]);
+
+    // Parts are saved one by one: the order their ids were made in is the
+    // order they were created in.
+    $made = [];
+    Str::createUuidsUsing(function () use (&$made) {
+        return $made[] = Uuid::uuid7();
+    });
+
+    $this->artisan('transactions:convert-legacy-splits', ['--execute' => true])
+        ->expectsOutputToContain('Legacy splits to convert: 2')
+        ->expectsOutputToContain('Skipped: 0')
+        ->expectsOutputToContain('Verification passed')
+        ->assertSuccessful();
+
+    $order = array_flip(array_map(fn ($uuid): string => (string) $uuid, $made));
+    $parts = Transaction::query()->where('split_parent_id', $original->id)->get()->sortBy(fn (Transaction $part): int => $order[$part->id])->values();
+    $trashed = Transaction::withTrashed()->findOrFail($original->id);
+
+    expect(partIdsOf($healthy))->toHaveCount(2)
+        ->and($trashed->trashed())->toBeTrue()
+        ->and($parts->map(fn (Transaction $part): array => [$part->amount, $part->category_id])->all())->toBe($lines)
+        // The original keeps what it carried, in the trash, for a merge.
+        ->and($trashed->only(['category_id', 'category_source', 'ai_model', 'ai_confidence']))
+        ->toBe($original->only(['category_id', 'category_source', 'ai_model', 'ai_confidence']));
+})->with([
     'lines of an expense and an income category' => [
-        fn (Account $account, Category $groceries): Transaction => legacySplitOn($account, -1000, [
-            [$groceries, -600],
-            [Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]), -400],
-        ]),
+        function (Account $account, Category $groceries): Transaction {
+            $income = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]);
+
+            return legacySplitOn($account, -1000, [[$groceries, -600], [$income, -400]]);
+        },
+        'category_type_invalid_or_mixed',
+    ],
+    'a line in a transfer category' => [
+        function (Account $account, Category $groceries): Transaction {
+            $transfer = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Transfer]);
+
+            return legacySplitOn($account, -1000, [[$transfer, -600], [$transfer, -400]]);
+        },
         'category_type_invalid_or_mixed',
     ],
     'a parent that still has a category' => [
         function (Account $account, Category $groceries, Category $dining): Transaction {
             $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
-            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $groceries->id]);
+            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $dining->id, 'category_source' => CategorySource::Rule->value]);
 
             return $split;
         },
@@ -758,16 +825,33 @@ it('skips a split the audit flags, under what it flags, and converts the healthy
         },
         'parent_classification_present',
     ],
-    'lines with a gap in their positions' => [
+    'lines with gaps in their positions, not in the order they were written' => [
         function (Account $account, Category $groceries, Category $dining): Transaction {
-            $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
-            DB::table('transaction_splits')->where('transaction_id', $split->id)->where('position', 1)->update(['position' => 2]);
+            $split = legacySplitOn($account, -1000, [[$groceries, -500], [$dining, -300], [$groceries, -200]]);
+            DB::table('transaction_splits')->where('transaction_id', $split->id)->where('position', 1)->update(['position' => 7]);
+            DB::table('transaction_splits')->where('transaction_id', $split->id)->where('position', 2)->update(['position' => 4]);
 
             return $split;
         },
         'position_not_contiguous',
     ],
 ]);
+
+it('audits one user\'s splits when asked to, as the conversion of one user does', function () {
+    $world = legacySplitHousehold();
+    $audit = app(AuditTransactionSplitsCommand::class);
+    $partnerSplit = $world['splits']['partner'];
+
+    $everyone = $audit->audit();
+    $partner = $audit->audit($world['partner']->id);
+    $owner = $audit->audit($world['owner']->id);
+
+    expect($partner)->toBe(['parents_reviewed' => 1, 'lines_reviewed' => 2, 'anomaly_count' => 0, 'anomalies' => []])
+        ->and($owner['parents_reviewed'] + $partner['parents_reviewed'])->toBe($everyone['parents_reviewed'])
+        ->and($owner['lines_reviewed'] + $partner['lines_reviewed'])->toBe($everyone['lines_reviewed'])
+        ->and($owner['anomalies'])->toBe($everyone['anomalies'])
+        ->and(collect($owner['anomalies'])->pluck('id')->contains($partnerSplit->id))->toBeFalse();
+});
 
 it('skips a live row that has lines and live parts, which converting again would count twice', function () {
     $owner = User::factory()->onboarded()->create(['currency_code' => 'EUR']);

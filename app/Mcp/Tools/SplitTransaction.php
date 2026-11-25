@@ -38,7 +38,7 @@ class SplitTransaction extends WriteTool
 
     protected function write(Request $request, User $user): Response
     {
-        $request->validate(TransactionSplitter::partRules());
+        $request->validate(TransactionSplitter::partRules(), TransactionSplitter::partMessages());
 
         $space = $this->resolveSpace($request, $user);
         $transaction = $this->transactionInSpace($request, $space);

@@ -1762,7 +1762,7 @@ describe('split', function () {
                 ['amount' => -2000],
             ]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('splits.0');
+            ->assertJsonValidationErrors(['splits.0' => 'A part takes only amount, category_id and label_ids.']);
 
         expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
     });
@@ -1778,7 +1778,7 @@ describe('split', function () {
                 ['amount' => -2000, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
             ]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids' => 'duplicate']);
+            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids' => 'A label can only be given once per part.']);
 
         expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
     });

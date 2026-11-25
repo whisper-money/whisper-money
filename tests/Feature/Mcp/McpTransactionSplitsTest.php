@@ -142,6 +142,18 @@ it('refuses an invalid split, writing nothing', function (array $splits) {
     'a label twice on one part' => [[['amount' => -6000, 'label_ids' => ['a', 'A']], ['amount' => -4000]]],
 ]);
 
+it('says which fields a part takes, and that a label goes once on a part', function (array $part, string $message) {
+    [$user, , $transaction] = splitMcpFixture();
+
+    callMcpSplitTool($user, ['transaction_id' => $transaction->id, 'splits' => [$part, ['amount' => -4000]]])
+        ->assertHasErrors([$message]);
+
+    expect(mcpSplitParts($transaction))->toHaveCount(0);
+})->with([
+    'an unknown field' => [['amount' => -6000, 'description' => 'x'], 'A part takes only amount, category_id and label_ids.'],
+    'a label twice' => [['amount' => -6000, 'label_ids' => ['a', 'A']], 'A label can only be given once per part.'],
+]);
+
 it('puts the same label on several parts of a split', function () {
     [$user, , $transaction] = splitMcpFixture();
     $label = Label::factory()->create(['user_id' => $user->id, 'space_id' => $transaction->space_id]);

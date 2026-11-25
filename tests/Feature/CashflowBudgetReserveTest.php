@@ -427,8 +427,8 @@ test('a range reads as a quarter once it is longer than a month', function (stri
 ]);
 
 /**
- * A split transaction on the test account, with no category of its own, as
- * ReplaceTransactionSplits leaves the parent: one line per [category, amount].
+ * A transaction on the test account split the old way, into lines with no
+ * category of its own on the parent: one line per [category, amount].
  *
  * @param  list<array{0: Category, 1: int}>  $lines
  */
