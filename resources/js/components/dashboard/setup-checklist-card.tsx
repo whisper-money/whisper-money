@@ -3,10 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import {
-    captureSetupCardDismissed,
-    useSetupCardViewedEvent,
-} from '@/hooks/use-setup-checklist-telemetry';
+import { captureSetupCardDismissed } from '@/hooks/use-setup-checklist-telemetry';
 import { categorizeHref } from '@/lib/categorize-href';
 import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
@@ -71,7 +68,6 @@ export function SetupChecklistCard({
     const { post } = useHttp();
     const steps = useStepViews(checklist.steps, setBalanceAccount);
     const userId = usePage<SharedData>().props.auth.user.id;
-    useSetupCardViewedEvent(checklist, userId);
 
     if (dismissed) {
         return null;

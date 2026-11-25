@@ -33,27 +33,32 @@ export function setupCardProgress(
 }
 
 /**
- * Once per dashboard visit (the card's mount): the card was drawn, and how
- * far along it was. Later reloads of the same visit do not send it again.
+ * Once per dashboard visit: the card was drawn, and how far along it was.
+ *
+ * Called from the dashboard page rather than the card, with the checklist
+ * only while the card is drawn: a full reload (the card's balance dialog
+ * does one) turns the deferred prop back into undefined and remounts the
+ * card, and that is still the same visit.
  */
 export function useSetupCardViewedEvent(
-    checklist: SetupChecklist,
+    shownChecklist: SetupChecklist | null | undefined,
     userId: User['id'],
 ): void {
     const sent = useRef(false);
 
     useEffect(() => {
-        if (sent.current) {
+        if (sent.current || !shownChecklist) {
             return;
         }
 
         sent.current = true;
         captureEvent('dashboard_setup_card_viewed', {
-            ...setupCardProgress(checklist),
-            next_step: checklist.steps.find((step) => !step.done)?.key ?? null,
+            ...setupCardProgress(shownChecklist),
+            next_step:
+                shownChecklist.steps.find((step) => !step.done)?.key ?? null,
         });
         getStorage('local')?.setItem(pendingKey(userId), '1');
-    }, [checklist, userId]);
+    }, [shownChecklist, userId]);
 }
 
 /**

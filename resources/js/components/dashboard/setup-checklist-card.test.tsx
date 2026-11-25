@@ -202,33 +202,6 @@ describe('SetupChecklistCard', () => {
             return captureEvent.mock.calls.filter(([event]) => event === name);
         }
 
-        it('reports the card viewed once, however often it renders', () => {
-            const { rerender } = renderCard([
-                imported,
-                spendingLimit,
-                categorize,
-                balance,
-            ]);
-
-            rerender(
-                <PrivacyModeProvider>
-                    <SetupChecklistCard
-                        checklist={{
-                            steps: [imported, spendingLimit, balance],
-                        }}
-                        canDismiss
-                    />
-                </PrivacyModeProvider>,
-            );
-
-            expect(eventsNamed('dashboard_setup_card_viewed')).toEqual([
-                [
-                    'dashboard_setup_card_viewed',
-                    { steps_total: 4, steps_done: 2, next_step: 'categorize' },
-                ],
-            ]);
-        });
-
         it('reports a step clicked from its tile, primary or not', () => {
             renderCard([imported, spendingLimit, categorize, balance]);
 

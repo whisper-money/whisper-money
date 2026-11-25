@@ -39,6 +39,54 @@ function viewTheCard() {
     renderHook(() => useSetupCardViewedEvent(checklist, 'user-1')).unmount();
 }
 
+describe('useSetupCardViewedEvent', () => {
+    beforeEach(() => {
+        captureEvent.mockReset();
+        localStorage.clear();
+    });
+
+    it('reports the card viewed once per visit, through a full reload', () => {
+        const fewer: SetupChecklist = {
+            steps: [
+                { key: 'categorize', done: true, count: 0 },
+                ...checklist.steps,
+            ],
+        };
+        const { rerender } = renderHook(
+            ({ shown }) => useSetupCardViewedEvent(shown, 'user-1'),
+            {
+                initialProps: {
+                    shown: undefined as SetupChecklist | null | undefined,
+                },
+            },
+        );
+
+        expect(captureEvent).not.toHaveBeenCalled();
+
+        rerender({ shown: checklist });
+        // A full reload: the deferred prop goes back to undefined, then
+        // arrives again with the step the dialog just did.
+        rerender({ shown: undefined });
+        rerender({ shown: fewer });
+
+        expect(captureEvent.mock.calls).toEqual([
+            [
+                'dashboard_setup_card_viewed',
+                { steps_total: 1, steps_done: 0, next_step: 'categorize' },
+            ],
+        ]);
+        expect(
+            localStorage.getItem('dashboard-setup-card-pending:user-1'),
+        ).toBe('1');
+    });
+
+    it('says nothing while the card is not drawn', () => {
+        renderHook(() => useSetupCardViewedEvent(null, 'user-1'));
+
+        expect(captureEvent).not.toHaveBeenCalled();
+    });
+});
+
 describe('useSetupCardCompletedEvent', () => {
     beforeEach(() => {
         captureEvent.mockReset();
