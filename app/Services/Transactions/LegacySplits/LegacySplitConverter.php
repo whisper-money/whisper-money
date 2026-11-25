@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\TransactionSplit;
 use App\Models\User;
 use App\Services\Budgets\SplitBudgetRows;
+use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\TransactionSplitter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -57,20 +58,15 @@ class LegacySplitConverter
      *   another user or another space: one the app's split refuses
      *   ({@see SplitTransactionRequest}).
      *
-     * Converted despite the others:
+     * - `category_type_invalid_or_mixed`, `parent_classification_present`: a
+     *   line in a transfer category, or a parent still filed under a category
+     *   of its own, is read differently by the credit card statement before
+     *   and after ({@see CreditCardStatementService}: a row with lines is a
+     *   repayment by its own category, a split original by its parts), and no
+     *   figure this conversion compares would show it.
      *
-     * - `position_not_contiguous`: parts are created in position order, so a
-     *   gap in the positions means nothing.
-     * - `parent_classification_present`: the original keeps the category and
-     *   provenance it carried, in the trash. Every reader of a figure reads a
-     *   row with lines by its lines and never by its own category
-     *   (`effectiveTransactions()`, {@see Transaction::scopeWhereHasPosting()},
-     *   {@see Transaction::POSTING_CATEGORY_SQL}), and no AI or rule pass takes
-     *   a row with lines, so no figure moves. Only the transaction list's
-     *   category filter also matches such a row by its own column: it is no
-     *   longer listed under that category once trashed.
-     * - `category_type_invalid_or_mixed`: parts are ordinary rows, and any
-     *   category may file one.
+     * Converted despite `position_not_contiguous`: parts are created in
+     * position order, so a gap in the positions means nothing.
      *
      * (`parent_missing` names an orphan line, not a transaction: there is no
      * split to convert.)
@@ -82,6 +78,8 @@ class LegacySplitConverter
         'split_sign_mismatch',
         'category_missing_or_deleted',
         'category_owner_or_space_mismatch',
+        'category_type_invalid_or_mixed',
+        'parent_classification_present',
     ];
 
     public function __construct(

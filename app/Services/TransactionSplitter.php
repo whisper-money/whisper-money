@@ -133,7 +133,7 @@ class TransactionSplitter
             $original->restoreQuietly();
             // A split converted from the old lines comes back as one row:
             // lines left on it would count it a second way and keep it from
-            // being split again. Its category was null, as with lines.
+            // being split again. It keeps whatever category it carried.
             $original->splits()->delete();
         });
 

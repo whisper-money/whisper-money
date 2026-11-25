@@ -718,11 +718,10 @@ it('skips a split the audit flags as breaking a split, under what it flags, and 
         'split_sign_mismatch',
     ],
     // Only the codes that keep it from converting are named.
-    'a line moving money the other way in an income category, under a categorized parent' => [
-        function (Account $account, Category $groceries): Transaction {
-            $income = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]);
-            $split = legacySplitOn($account, -1000, [[$groceries, -1500], [$income, 500]]);
-            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $groceries->id]);
+    'a line moving money the other way, with a gap in the positions' => [
+        function (Account $account, Category $groceries, Category $dining): Transaction {
+            $split = legacySplitOn($account, -1000, [[$groceries, -1500], [$dining, 500]]);
+            DB::table('transaction_splits')->where('transaction_id', $split->id)->where('position', 1)->update(['position' => 7]);
 
             return $split;
         },
@@ -752,6 +751,40 @@ it('skips a split the audit flags as breaking a split, under what it flags, and 
             [Category::factory()->create(['user_id' => $account->user_id, 'space_id' => Space::factory()->create(['owner_id' => $account->user_id, 'personal' => false])->id, 'type' => CategoryType::Expense]), -400],
         ]),
         'category_owner_or_space_mismatch',
+    ],
+    'lines of an expense and an income category' => [
+        function (Account $account, Category $groceries): Transaction {
+            $income = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]);
+
+            return legacySplitOn($account, -1000, [[$groceries, -600], [$income, -400]]);
+        },
+        'category_type_invalid_or_mixed',
+    ],
+    'a line in a transfer category' => [
+        function (Account $account, Category $groceries): Transaction {
+            $transfer = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Transfer]);
+
+            return legacySplitOn($account, -1000, [[$transfer, -600], [$transfer, -400]]);
+        },
+        'category_type_invalid_or_mixed',
+    ],
+    'a parent that still has a category' => [
+        function (Account $account, Category $groceries, Category $dining): Transaction {
+            $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
+            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $dining->id, 'category_source' => CategorySource::Rule->value]);
+
+            return $split;
+        },
+        'parent_classification_present',
+    ],
+    'a parent that still has AI provenance' => [
+        function (Account $account, Category $groceries, Category $dining): Transaction {
+            $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
+            DB::table('transactions')->where('id', $split->id)->update(['ai_model' => 'some-model', 'ai_confidence' => 0.9]);
+
+            return $split;
+        },
+        'parent_classification_present',
     ],
 ]);
 
@@ -791,40 +824,6 @@ it('converts a split the audit flags for what parts do not care about, its parts
         ->and($trashed->only(['category_id', 'category_source', 'ai_model', 'ai_confidence']))
         ->toBe($original->only(['category_id', 'category_source', 'ai_model', 'ai_confidence']));
 })->with([
-    'lines of an expense and an income category' => [
-        function (Account $account, Category $groceries): Transaction {
-            $income = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Income]);
-
-            return legacySplitOn($account, -1000, [[$groceries, -600], [$income, -400]]);
-        },
-        'category_type_invalid_or_mixed',
-    ],
-    'a line in a transfer category' => [
-        function (Account $account, Category $groceries): Transaction {
-            $transfer = Category::factory()->create(['user_id' => $account->user_id, 'type' => CategoryType::Transfer]);
-
-            return legacySplitOn($account, -1000, [[$transfer, -600], [$transfer, -400]]);
-        },
-        'category_type_invalid_or_mixed',
-    ],
-    'a parent that still has a category' => [
-        function (Account $account, Category $groceries, Category $dining): Transaction {
-            $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
-            DB::table('transactions')->where('id', $split->id)->update(['category_id' => $dining->id, 'category_source' => CategorySource::Rule->value]);
-
-            return $split;
-        },
-        'parent_classification_present',
-    ],
-    'a parent that still has AI provenance' => [
-        function (Account $account, Category $groceries, Category $dining): Transaction {
-            $split = legacySplitOn($account, -1000, [[$groceries, -600], [$dining, -400]]);
-            DB::table('transactions')->where('id', $split->id)->update(['ai_model' => 'some-model', 'ai_confidence' => 0.9]);
-
-            return $split;
-        },
-        'parent_classification_present',
-    ],
     'lines with gaps in their positions, not in the order they were written' => [
         function (Account $account, Category $groceries, Category $dining): Transaction {
             $split = legacySplitOn($account, -1000, [[$groceries, -500], [$dining, -300], [$groceries, -200]]);

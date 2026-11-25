@@ -19,7 +19,7 @@ php artisan transactions:convert-legacy-splits --undo [--execute]
 
 Runbook:
 
-- Run `transactions:audit-splits` first. The conversion reuses that audit (for the `--user` given, or everyone) and skips a split flagged with any of these codes, whose parts would break what a split promises or cross a space boundary: `parent_has_fewer_than_two_lines`, `split_sum_mismatch`, `split_amount_zero`, `split_sign_mismatch`, `category_missing_or_deleted`, `category_owner_or_space_mismatch`. Each is counted under those codes, `flagged by transactions:audit-splits (<codes>)`, and the rest still convert. It converts despite the other codes: `position_not_contiguous` (parts follow position order), `parent_classification_present` (the trashed original keeps its category and provenance; every figure reads such a row by its lines) and `category_type_invalid_or_mixed` (a part is an ordinary row and takes any category).
+- Run `transactions:audit-splits` first. The conversion reuses that audit (for the `--user` given, or everyone) and skips a split flagged with any of these codes, whose parts would break what a split promises or cross a space boundary: `parent_has_fewer_than_two_lines`, `split_sum_mismatch`, `split_amount_zero`, `split_sign_mismatch`, `category_missing_or_deleted`, `category_owner_or_space_mismatch`; or that the credit card statement reads differently before and after, which no compared figure would show: `category_type_invalid_or_mixed`, `parent_classification_present`. Each is counted under those codes, `flagged by transactions:audit-splits (<codes>)`, and the rest still convert. Only `position_not_contiguous` is converted all the same (parts follow position order).
 - No screen or API edits or removes lines any more, so a skipped split can only be repaired in the database, then the conversion run again:
   - `parent_has_fewer_than_two_lines`: add the missing line, or delete the single line and put its category on the transaction.
   - `split_sum_mismatch`: correct the line amounts so they add up to the transaction's amount.
@@ -27,6 +27,8 @@ Runbook:
   - `split_sign_mismatch`: give every line the transaction's sign, or replace the lines with ones that do, still adding up.
   - `category_missing_or_deleted`: point the line at a live category of the same user and space (or restore the deleted category).
   - `category_owner_or_space_mismatch`: point the line at a category of the transaction's own user and space.
+  - `category_type_invalid_or_mixed`: point every line at expense categories, or every line at income ones.
+  - `parent_classification_present`: clear the transaction's own `category_id`, `category_source`, `categorized_by_rule_id` and AI columns; its lines file it.
 - No transaction may still carry lines before the old line readers are removed in a later release: a row left on its lines would then read as one uncategorized row. Run the preview until `Legacy splits to convert: 0` and nothing is skipped as `flagged by transactions:audit-splits`.
 - The preview and the run each hold one database transaction, with locks on `transactions`, `label_transaction` and `budget_transactions` rows, until they finish. Pause the queue worker and the scheduler while they run and keep users out of the app.
 - `-v` prints the id of every row, the values of each difference and the message of an exception, which can include descriptions and amounts. Do not paste `-v` output anywhere public.
@@ -44,6 +46,7 @@ After the conversion, until the old lines are dropped in a later release:
 - A category used by a converted split cannot be deleted or change type: the old guards still see the lines the trashed original keeps.
 - Merging a converted split deletes its lines, so `--undo` can no longer put it back, and brings the original back with the category it carried, usually none.
 - Lists kept in first-seen (date, id) order may show a converted split's categories after other rows of the same day, since its parts have new ids. Figures are unchanged.
+- Counts of rows move: a converted split is as many rows as it has parts, and the monthly summary's uncategorized count no longer includes it, its parts being categorized.
 
 ## Data model
 
