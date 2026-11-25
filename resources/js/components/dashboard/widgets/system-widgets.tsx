@@ -47,10 +47,10 @@ export function TopCategoriesWidget({ data }: SystemWidgetProps) {
     return (
         <Deferred
             data="topCategories"
-            fallback={<TopCategoriesCard categories={[]} loading={true} />}
+            fallback={<TopCategoriesCard loading={true} />}
         >
             <PrivacyRevealScope>
-                <TopCategoriesCard categories={data.topCategories ?? []} />
+                <TopCategoriesCard data={data.topCategories ?? null} />
             </PrivacyRevealScope>
         </Deferred>
     );

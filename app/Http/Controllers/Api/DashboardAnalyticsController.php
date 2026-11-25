@@ -119,34 +119,13 @@ class DashboardAnalyticsController extends Controller
             'parent' => 'nullable|uuid',
         ]);
 
-        $period = PeriodComparator::fromRequest($validated);
-        $previousPeriod = $period->previous();
-        $drillParentId = $validated['parent'] ?? null;
+        $spending = $this->categorySpendingService->comparedExpense(
+            $request->user(),
+            PeriodComparator::fromRequest($validated),
+            $validated['parent'] ?? null,
+        );
 
-        $currentSpending = $this->categorySpendingService->forPeriod($request->user()->id, $period->from, $period->to, $drillParentId);
-        $previousSpending = $this->categorySpendingService->forPeriod($request->user()->id, $previousPeriod->from, $previousPeriod->to, $drillParentId);
-
-        $totalAmount = $currentSpending->sum('amount');
-
-        $top = $currentSpending
-            ->sortByDesc('amount')
-            ->take(10)
-            ->map(function ($item) use ($previousSpending, $totalAmount) {
-                $previousAmount = $previousSpending->firstWhere('category_id', $item['category_id'])['amount'] ?? 0;
-
-                return [
-                    'category' => $item['category'],
-                    'category_id' => $item['category_id'],
-                    'amount' => $item['amount'],
-                    'previous_amount' => $previousAmount,
-                    'total_amount' => $totalAmount,
-                    'has_children' => $item['has_children'],
-                    'is_direct' => $item['is_direct'],
-                ];
-            })
-            ->values();
-
-        return response()->json($top);
+        return response()->json($spending['categories']);
     }
 
     /**

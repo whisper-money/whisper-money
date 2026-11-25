@@ -2969,5 +2969,8 @@
     ":amount over the limit": ":amount au-dessus du plafond",
     ":amount left on the last day": "Il reste :amount et c'est le dernier jour",
     ":amount left with 1 day to go": "Il reste :amount et encore 1 jour",
-    ":amount left with :count days to go": "Il reste :amount et encore :count jours"
+    ":amount left with :count days to go": "Il reste :amount et encore :count jours",
+    "Spending this month": "Dépenses de ce mois",
+    "Categorize these": "Les catégoriser",
+    "Same period as Cashflow, so the rows add up to :amount.": "Même période que la Trésorerie : les lignes totalisent :amount."
 }

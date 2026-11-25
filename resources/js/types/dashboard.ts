@@ -1,4 +1,5 @@
 import { type MonthlySummaryNoticeData } from '@/components/dashboard/monthly-summary-notice';
+import { type TopCategoriesData } from '@/components/dashboard/top-categories-card';
 import { type LabelSpending } from '@/components/dashboard/top-labels-card';
 import {
     type WidgetHeight,
@@ -7,7 +8,6 @@ import {
 import { type NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { type SharedData } from '@/types';
 import { type CreditCardUsage } from '@/types/account';
-import { type Category } from '@/types/category';
 import {
     type DashboardMonthlyGoal,
     type MonthlyVerdicts,
@@ -116,15 +116,7 @@ export interface SpendingLimit {
 /** The dashboard page props: most of them deferred, all read from the server. */
 export interface DashboardProps extends SharedData {
     netWorthEvolution?: NetWorthEvolutionData;
-    topCategories?: Array<{
-        category: Category | null;
-        category_id?: string | null;
-        amount: number;
-        previous_amount: number;
-        total_amount: number;
-        has_children?: boolean;
-        is_direct?: boolean;
-    }>;
+    topCategories?: TopCategoriesData;
     topLabels?: LabelSpending[];
     cashflowSummary?: {
         current: CashflowSummary;

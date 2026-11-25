@@ -80,8 +80,8 @@ class DashboardController extends Controller
             'widgetDefinitions' => Inertia::defer(fn (): array => $request->user()->can('create', Dashboard::class)
                 ? $this->presentWidgetDefinitions($request->user())
                 : [], 'dashboard'),
-            // The window the top categories and top labels cards report on, so
-            // their links and drill-downs ask for the same days the server summed.
+            // The window the top labels card reports on, so its links and
+            // drill-downs ask for the same days the server summed.
             'spendingWindow' => fn (): array => $this->lastThirtyDays($request->user())->toDateStrings(),
             'monthlySummary' => Inertia::defer(fn () => $this->latestSummary($request), 'dashboard'),
             'netWorthEvolution' => Inertia::defer(fn () => $this->getNetWorthEvolution($request), 'dashboard'),
@@ -264,35 +264,34 @@ class DashboardController extends Controller
             ->all();
     }
 
+    /**
+     * Where the owner's current month went, on the same days and by the same
+     * rules as the cashflow card beside it, so its rows add up to that card's
+     * expense: the categories, then what has no category yet. Compared with
+     * the month before. `through` is the owner's today, for the card's
+     * "1 – 24 Nov" label. Onboarding estimates are left out, so while the
+     * month holds any the two cards' totals differ, which the card is told.
+     *
+     * @return array{period: array{from: string, to: string, through: string}, total: int, categories: list<array<string, mixed>>, uncategorized: array{amount: int, count: int}, leaves_out_estimates: bool}
+     */
     private function getTopCategories(Request $request): array
     {
         $user = $request->user();
-        $period = $this->lastThirtyDays($user);
-        $previousPeriod = $period->previous();
+        $today = $user->localToday();
+        $period = new PeriodComparator($today->copy()->startOfMonth(), $today->copy()->endOfMonth());
 
-        $currentSpending = $this->categorySpendingService->forPeriod($user->id, $period->from, $period->to);
-        $previousSpending = $this->categorySpendingService->forPeriod($user->id, $previousPeriod->from, $previousPeriod->to);
+        $spending = $this->categorySpendingService->comparedExpense($user, $period);
 
-        $totalAmount = $currentSpending->sum('amount');
-
-        return $currentSpending
-            ->sortByDesc('amount')
-            ->take(10)
-            ->map(function ($item) use ($previousSpending, $totalAmount) {
-                $previousAmount = $previousSpending->firstWhere('category_id', $item['category_id'])['amount'] ?? 0;
-
-                return [
-                    'category' => $item['category'],
-                    'category_id' => $item['category_id'],
-                    'amount' => $item['amount'],
-                    'previous_amount' => $previousAmount,
-                    'total_amount' => $totalAmount,
-                    'has_children' => $item['has_children'],
-                    'is_direct' => $item['is_direct'],
-                ];
-            })
-            ->values()
-            ->all();
+        return [
+            'period' => [...$period->toDateStrings(), 'through' => $today->toDateString()],
+            'total' => $spending['total'],
+            'categories' => $spending['categories'],
+            'uncategorized' => [
+                'amount' => $spending['uncategorized'],
+                'count' => $this->categorySpendingService->uncategorizedExpenseCount($user, $period),
+            ],
+            'leaves_out_estimates' => $this->categorySpendingService->hasEstimates($user, $period),
+        ];
     }
 
     private function getTopLabels(Request $request): array
@@ -347,7 +346,7 @@ class DashboardController extends Controller
 
     /**
      * The 30 days ending on the owner's today ({@see User::localToday()}), both
-     * ends included, for the top categories and top labels cards. Whole days:
+     * ends included, for the top labels card. Whole days:
      * `transaction_date` is a date, and the server's UTC date is a day off for
      * American users every evening and for Asian ones every morning.
      */
