@@ -20,6 +20,11 @@ paths:
   - resources/js/types/transaction-table-source.ts
   - resources/js/lib/compact-list-style.ts
   - resources/js/lib/transaction-day-groups.ts
+  - resources/js/components/transactions/split-transaction-dialog.tsx
+  - resources/js/components/transactions/unsplit-transaction-dialog.tsx
+  - resources/js/components/transactions/split-origin-popover.tsx
+  - resources/js/components/transactions/split-parts-list.tsx
+  - resources/js/lib/transaction-splits.ts
   - app/Services/TransactionDayTotals.php
   - app/Services/TransactionFilterSummary.php
 ---

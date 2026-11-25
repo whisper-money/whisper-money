@@ -5,6 +5,7 @@ paths:
   - 'app/Http/Resources/V1/**'
   - 'app/Services/SavingsGoals/SavingsGoalIncomeWithholding.php'
   - 'app/Mcp/**'
+  - app/Services/TransactionSplitter.php
   - routes/ai.php
 ---
 
