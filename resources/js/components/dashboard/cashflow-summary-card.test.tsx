@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type SpendingLimit } from '@/types/dashboard';
 import { CashflowSummaryCard } from './cashflow-summary-card';
@@ -13,16 +13,29 @@ vi.mock('@inertiajs/react', () => ({
         children,
         href,
         className,
+        onClick,
     }: {
         children: ReactNode;
         href: string;
         className?: string;
+        onClick?: () => void;
     }) => (
-        <a href={href} className={className}>
+        <a
+            href={href}
+            className={className}
+            onClick={(event) => {
+                event.preventDefault();
+                onClick?.();
+            }}
+        >
             {children}
         </a>
     ),
 }));
+
+const captureEvent = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en-US' }));
 
@@ -164,5 +177,28 @@ describe('CashflowSummaryCard spending limit', () => {
             screen.queryByText('Monthly spending limit'),
         ).not.toBeInTheDocument();
         expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    describe('spending limit click event', () => {
+        beforeEach(() => captureEvent.mockReset());
+
+        it.each([
+            ['under', { spent: 50000 }],
+            ['near', {}],
+            ['over', { allocated: 100000, spent: 125000 }],
+        ] as const)(
+            'reports the row as %s the limit, with no amounts',
+            (state, overrides) => {
+                renderCard(limit(overrides));
+
+                fireEvent.click(
+                    screen.getByText('Monthly spending limit').closest('a')!,
+                );
+
+                expect(captureEvent.mock.calls).toEqual([
+                    ['dashboard_spending_limit_clicked', { state }],
+                ]);
+            },
+        );
     });
 });

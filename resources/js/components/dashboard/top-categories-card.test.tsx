@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -38,10 +38,30 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: { auth: { user: { currency_code: 'EUR' } } },
     }),
-    Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-        <a href={href}>{children}</a>
+    Link: ({
+        children,
+        href,
+        onClick,
+    }: {
+        children: React.ReactNode;
+        href: string;
+        onClick?: () => void;
+    }) => (
+        <a
+            href={href}
+            onClick={(event) => {
+                event.preventDefault();
+                onClick?.();
+            }}
+        >
+            {children}
+        </a>
     ),
 }));
+
+const captureEvent = vi.hoisted(() => vi.fn());
+
+vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 function category(id: string, name: string, amount: number, total: number) {
     return {
@@ -154,5 +174,19 @@ describe('TopCategoriesCard', () => {
         expect(
             screen.getByText('No spending data this month'),
         ).toBeInTheDocument();
+    });
+
+    it('reports the click on "Categorize these" with how many are uncategorized', () => {
+        captureEvent.mockReset();
+        render(<TopCategoriesCard data={data()} />);
+
+        fireEvent.click(screen.getByRole('link', { name: 'Categorize these' }));
+
+        expect(captureEvent.mock.calls).toEqual([
+            [
+                'dashboard_uncategorized_categorize_clicked',
+                { uncategorized_count: 31 },
+            ],
+        ]);
     });
 });

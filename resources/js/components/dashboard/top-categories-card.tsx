@@ -20,6 +20,7 @@ import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { categoryChartColor } from '@/lib/chart-colors';
 import { fetchJson } from '@/lib/fetch-json';
+import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
@@ -349,6 +350,11 @@ function UncategorizedRow({
             </div>
             <Link
                 href={href}
+                onClick={() =>
+                    captureEvent('dashboard_uncategorized_categorize_clicked', {
+                        uncategorized_count: count,
+                    })
+                }
                 className="self-start text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
             >
                 {__('Categorize these')}

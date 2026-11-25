@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/stat-tile';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
+import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
@@ -169,6 +170,13 @@ const LIMIT_BAR_COLORS: Record<BudgetSeverity, string | undefined> = {
     over: 'bg-destructive',
 };
 
+/** How the spending limit row reads, as its click event reports it. */
+const LIMIT_STATES: Record<BudgetSeverity, 'under' | 'near' | 'over'> = {
+    ok: 'under',
+    near: 'near',
+    over: 'over',
+};
+
 /**
  * The monthly spending limit the user set as their first target in the
  * onboarding, against what its budget has counted this period. Spent is the
@@ -185,6 +193,7 @@ function SpendingLimitRow({
     const { formatAmount } = useFormatAmount();
     const used = percentUsed(limit.spent, limit.allocated);
     const remaining = limit.allocated - limit.spent;
+    const severity = usageSeverity(used);
     // Whole units like the figures above, except under one, where rounding
     // would print "€0 left" when €0.40 is.
     const formatRemaining = (cents: number) => {
@@ -198,6 +207,11 @@ function SpendingLimitRow({
     return (
         <Link
             href={showBudget({ budget: limit.budget_id }).url}
+            onClick={() =>
+                captureEvent('dashboard_spending_limit_clicked', {
+                    state: LIMIT_STATES[severity],
+                })
+            }
             className="group mt-4 flex flex-col gap-2 border-t pt-3"
         >
             <div className="flex items-center justify-between gap-2 text-sm">
@@ -219,7 +233,7 @@ function SpendingLimitRow({
             <Progress
                 value={Math.min(Math.max(used, 0), 100)}
                 className="h-2"
-                indicatorClassName={LIMIT_BAR_COLORS[usageSeverity(used)]}
+                indicatorClassName={LIMIT_BAR_COLORS[severity]}
                 aria-label={__('Monthly spending limit')}
             />
             <span className="text-xs text-muted-foreground">
