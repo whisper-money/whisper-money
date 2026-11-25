@@ -26,7 +26,6 @@ use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
 use App\Services\BudgetTransactionService;
 use App\Services\Transactions\EffectiveTransactionPostings;
-use App\Services\Transactions\ReplaceTransactionSplits;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,7 +64,7 @@ function splitIntegrationFixture(array $transactionAttributes = []): array
 
 function makeIntegrationSplit(Transaction $transaction, Category $first, Category $second): void
 {
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $first->id, 'amount' => -6000],
         ['category_id' => $second->id, 'amount' => -4000],
     ]);
@@ -480,7 +479,7 @@ it('keeps descendant split postings when analysis filters by a parent category',
         'user_id' => $user->id,
         'space_id' => $transaction->space_id,
     ]);
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $groceries->id, 'amount' => -6000],
         ['category_id' => $home->id, 'amount' => -4000],
     ]);
@@ -498,7 +497,7 @@ it('keeps descendant split postings when analysis filters by a parent category',
         ->assertJsonPath('by_category.0.amount', 6000);
 });
 
-it('exposes split-aware MCP reads and directs direct category writes to split_transaction', function () {
+it('exposes split-aware MCP reads and refuses direct category writes until the lines are converted', function () {
     [$user, , $transaction, $food, $home] = splitIntegrationFixture();
     makeIntegrationSplit($transaction, $food, $home);
     $user->withAccessToken($user->createToken('mcp', ['mcp:read', 'mcp:write'])->accessToken);
@@ -521,8 +520,7 @@ it('exposes split-aware MCP reads and directs direct category writes to split_tr
             'transaction_id' => $transaction->id,
             'category_id' => $food->id,
         ])
-        ->assertHasErrors(['split'])
-        ->assertSee('split_transaction');
+        ->assertHasErrors(['still split into lines the old way']);
 
     expect($transaction->refresh()->category_id)->toBeNull()
         ->and($transaction->splits()->count())->toBe(2);
@@ -551,7 +549,7 @@ it('preserves archived budget snapshots when replacing split lines', function ()
         'type' => CategoryType::Expense,
     ]);
     $budget->update(['archived_at' => now()]);
-    Transaction::withoutEvents(fn () => app(ReplaceTransactionSplits::class)->replace($transaction, [
+    Transaction::withoutEvents(fn () => fileUnderLegacyLines($transaction, [
         ['category_id' => $home->id, 'amount' => -6000],
         ['category_id' => $replacement->id, 'amount' => -4000],
     ]));

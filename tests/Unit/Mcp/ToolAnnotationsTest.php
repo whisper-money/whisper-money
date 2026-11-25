@@ -34,9 +34,11 @@ $readOnly = [
 /**
  * Only irreversible tools are destructive. Creating, updating, categorizing and
  * labelling can all be undone by another call, and marking them destructive
- * makes a client ask for confirmation on every edit. split_transaction is the
- * exception among the writes: it replaces the whole posting set at once, so the
- * postings it overwrites are gone.
+ * makes a client ask for confirmation on every edit. Merging a split back
+ * deletes its parts, and the category, labels and notes set on each of them,
+ * for good. split_transaction stays marked as before: it rewrites an existing
+ * transaction into parts, and a merge brings the original back but not the
+ * parts.
  */
 $destructive = [
     'delete_transaction',
@@ -46,6 +48,7 @@ $destructive = [
     'delete_balance',
     'delete_budget',
     'split_transaction',
+    'merge_transaction_splits',
     // Deletes the placement, its size and position with it. update_widget is
     // not here: every revision is kept and can be gone back to.
     'remove_widget',
@@ -55,7 +58,7 @@ it('declares all three MCP hints on every tool', function () use ($readOnly, $de
     /** @var array<int, class-string<Tool>> $tools */
     $tools = (new ReflectionClass(WhisperMoneyServer::class))->getDefaultProperties()['tools'];
 
-    expect($tools)->toHaveCount(count($readOnly) + 30);
+    expect($tools)->toHaveCount(count($readOnly) + 31);
 
     foreach ($tools as $class) {
         $tool = app($class);

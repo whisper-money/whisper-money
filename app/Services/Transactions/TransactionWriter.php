@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Creating, editing, splitting and deleting a transaction, shared by the
+ * Creating, editing and deleting a transaction, shared by the
  * transaction MCP tools and `/api/v1/transactions`. The inputs arrive validated
  * (TransactionWriteRules) and with the account, category and labels they point
- * at already checked by the caller.
+ * at already checked by the caller. Splitting and merging go through
+ * TransactionSplitter, as the app's do.
  *
  * Every write goes through the model, so its events (budget assignment,
  * automation rules, AI categorization) fire as they do for the app's writes.
@@ -26,10 +27,7 @@ use Illuminate\Validation\ValidationException;
  */
 class TransactionWriter
 {
-    public function __construct(
-        private ManualBalanceAdjuster $balanceAdjuster,
-        private ReplaceTransactionSplits $splits,
-    ) {}
+    public function __construct(private ManualBalanceAdjuster $balanceAdjuster) {}
 
     /**
      * Automation rules run while the row is saved, so $labelIds go on top of
@@ -86,9 +84,9 @@ class TransactionWriter
     }
 
     /**
-     * Change only the fields in $changes, under a row lock, where a split
-     * created concurrently would otherwise slip past the caller's check. A
-     * changed category is always a manual assignment.
+     * Change only the fields in $changes, under a row lock, where the check
+     * for old split lines is made again. A changed category is always a
+     * manual assignment.
      *
      * @param  array<string, mixed>  $changes  any of `description`, `amount`, `transaction_date`, `currency_code`, `account_id`, `notes`, `creditor_name`, `debtor_name` and `category_id`
      */
@@ -118,39 +116,6 @@ class TransactionWriter
             $balanceUpdated = $updateBalance && $this->moveBalance($original, $locked);
 
             return new WrittenTransaction($locked->refresh(), $balanceUpdated);
-        }, attempts: 5);
-    }
-
-    /**
-     * File the transaction under $lines, replacing any it had. Its invariants
-     * and budget reassignment are the web path's: they live in
-     * ReplaceTransactionSplits.
-     *
-     * @param  array<int, array{category_id: string, amount: int}>  $lines
-     */
-    public function split(Transaction $transaction, array $lines): Transaction
-    {
-        return DB::transaction(fn (): Transaction => $this->splits->replace($transaction, $lines), attempts: 5);
-    }
-
-    /**
-     * Put a split transaction back in one piece, filed under $categoryId: its
-     * lines remember no category of its own to go back to. Checked under the
-     * row lock, where a concurrent merge would otherwise pass for a category
-     * change on an unsplit row.
-     */
-    public function mergeSplits(Transaction $transaction, string $categoryId): Transaction
-    {
-        return DB::transaction(function () use ($transaction, $categoryId): Transaction {
-            $locked = Transaction::query()->whereKey($transaction->id)->lockForUpdate()->firstOrFail();
-
-            $mergeError = TransactionWriteRules::mergeError($locked);
-
-            if ($mergeError !== null) {
-                throw ValidationException::withMessages(['transaction' => $mergeError]);
-            }
-
-            return $this->splits->replace($locked, [], $categoryId);
         }, attempts: 5);
     }
 

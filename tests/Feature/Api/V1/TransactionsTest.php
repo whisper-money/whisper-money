@@ -27,6 +27,7 @@ use App\Services\Banking\TransactionSyncService;
 use App\Services\BudgetTransactionService;
 use App\Services\Recurring\DetectRecurringSeries;
 use App\Services\Transactions\TransactionWriter;
+use App\Services\TransactionSplitter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -147,6 +148,7 @@ describe('list', function () {
                 'creditor_name' => 'Fresh Market',
                 'debtor_name' => null,
                 'notes' => null,
+                'split_parent_id' => null,
                 'splits' => [],
                 'created_at' => $newer->created_at->toIso8601String(),
             ]);
@@ -249,6 +251,21 @@ describe('list', function () {
             ->getJson('/api/v1/transactions?category_id='.$elsewhere->id)
             ->assertOk()
             ->assertJsonCount(0, 'data');
+    });
+
+    it('lists the parts of a split instead of the original', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $original = transactionOn($account, ['amount' => -5000]);
+        app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000]]);
+
+        $response = withHeaders(apiV1Bearer($user))
+            ->getJson('/api/v1/transactions')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        expect($response->json('data.*.split_parent_id'))->toBe([$original->id, $original->id])
+            ->and($response->json('data.*.id'))->not->toContain($original->id);
     });
 
     it('never searches ciphertext, and still finds an encrypted row by what is readable', function () {
@@ -1160,6 +1177,48 @@ describe('update', function () {
         expect($transaction->fresh()->amount)->toBe(-1000);
     });
 
+    it('refuses the core fields of a split part, its date included, saving nothing', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $part = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000, 'transaction_date' => '2026-01-15']), [['amount' => -3000], ['amount' => -2000]])->first();
+
+        withHeaders(transactionsWriter($user))
+            ->patchJson('/api/v1/transactions/'.$part->id, ['transaction_date' => '2026-01-01', 'notes' => 'Edited'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction_date' => 'one part of a split']);
+
+        expect($part->fresh()->transaction_date->toDateString())->toBe('2026-01-15')
+            ->and($part->fresh()->notes)->not->toBe('Edited');
+    });
+
+    it('refuses the locked core fields of a split part sent in the query string', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $other = Account::factory()->create(['user_id' => $user->id]);
+        $part = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]])->first();
+
+        withHeaders(transactionsWriter($user))
+            ->patchJson('/api/v1/transactions/'.$part->id.'?amount=1&transaction_date=2020-01-01&account_id='.$other->id, [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['amount', 'transaction_date', 'account_id']);
+
+        expect($part->fresh())->amount->toBe(-3000)->account_id->toBe($account->id);
+    });
+
+    it('edits the notes and the category of a split part', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Dining']);
+        $part = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]])->first();
+
+        withHeaders(transactionsWriter($user))
+            ->patchJson('/api/v1/transactions/'.$part->id, ['notes' => 'The camera, not the lens', 'category_id' => $category->id])
+            ->assertOk()
+            ->assertJsonPath('data.notes', 'The camera, not the lens')
+            ->assertJsonPath('data.category.id', $category->id)
+            ->assertJsonPath('data.split_parent_id', $part->split_parent_id);
+    });
+
     it('refuses unknown fields, labels included, and a category of another user', function () {
         $user = User::factory()->create();
         $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]));
@@ -1410,6 +1469,19 @@ describe('delete', function () {
         Event::assertDispatched(TransactionDeleted::class);
     });
 
+    it('refuses a split part, leaving it and its siblings in place', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $parts = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]]);
+
+        withHeaders(transactionsWriter($user))
+            ->deleteJson('/api/v1/transactions/'.$parts->first()->id)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction' => 'Merge the split back first.']);
+
+        expect(Transaction::query()->whereKey($parts->pluck('id'))->count())->toBe(2);
+    });
+
     it('refuses unknown fields, and a second delete is a 404', function () {
         $user = User::factory()->create();
         $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]));
@@ -1598,68 +1670,135 @@ describe('labels', function () {
 });
 
 describe('split', function () {
-    it('files a transaction under its lines, on the parent', function () {
+    it('replaces a bank transaction with its parts, each with its own category and labels', function () {
         $user = User::factory()->create();
         $account = Account::factory()->create(['user_id' => $user->id, 'type' => 'checking']);
         $account->balances()->create(['balance_date' => '2026-01-15', 'balance' => 10_000]);
-        $before = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $food = Category::factory()->create(['user_id' => $user->id, 'name' => 'Food', 'type' => CategoryType::Expense]);
-        $home = Category::factory()->create(['user_id' => $user->id, 'name' => 'Home', 'type' => CategoryType::Expense]);
-        $transaction = transactionOn($account, [
-            'amount' => -1000,
-            'transaction_date' => '2026-01-15',
-            'category_id' => $before->id,
-            'category_source' => CategorySource::Ai,
-            'ai_confidence' => 0.9,
-        ]);
+        $original = Transaction::factory()->imported()->plaintext()->create(['user_id' => $user->id, 'account_id' => $account->id, 'amount' => -5000, 'transaction_date' => '2026-01-15']);
+        $original->labels()->attach(Label::factory()->create(['user_id' => $user->id]));
+        $category = Category::factory()->create(['user_id' => $user->id, 'name' => 'Groceries']);
+        $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Holidays']);
+        $headers = transactionsWriter($user);
 
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $food->id, 'amount' => -600],
-                ['category_id' => Str::upper($home->id), 'amount' => -400],
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
+                ['amount' => -3000, 'category_id' => Str::upper($category->id), 'label_ids' => [Str::upper($label->id)]],
+                ['amount' => -2000],
             ]])
-            ->assertOk()
-            ->assertJsonPath('data.id', $transaction->id)
-            ->assertJsonPath('data.amount', -1000)
-            ->assertJsonPath('data.category', null)
-            ->assertJsonPath('data.category_source', null)
-            ->assertJsonPath('data.splits.*.amount', [-600, -400])
-            ->assertJsonPath('data.splits.*.position', [0, 1])
-            ->assertJsonPath('data.splits.*.category.name', ['Food', 'Home'])
-            ->assertJsonMissingPath('data.split_parent_id');
+            ->assertCreated()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.amount', -3000)
+            ->assertJsonPath('data.0.category', ['id' => $category->id, 'name' => 'Groceries'])
+            ->assertJsonPath('data.0.category_source', 'manual')
+            ->assertJsonPath('data.0.labels', [['id' => $label->id, 'name' => 'Holidays']])
+            ->assertJsonPath('data.0.split_parent_id', $original->id)
+            ->assertJsonPath('data.0.splits', [])
+            ->assertJsonPath('data.1.amount', -2000)
+            ->assertJsonPath('data.1.category', null)
+            ->assertJsonPath('data.1.labels', [])
+            ->assertJsonPath('data.1.split_parent_id', $original->id);
 
-        $fresh = $transaction->fresh();
-
-        expect($fresh->category_id)->toBeNull()
-            ->and($fresh->ai_confidence)->toBeNull()
-            ->and($fresh->amount)->toBe(-1000)
-            ->and($fresh->splits()->pluck('category_id')->all())->toBe([$food->id, $home->id])
-            ->and(Transaction::query()->count())->toBe(1)
+        expect(Transaction::query()->find($original->id))->toBeNull()
+            ->and($original->fresh()->trashed())->toBeTrue()
             ->and($account->balances()->sole()->balance)->toBe(10_000);
+
+        $listed = withHeaders($headers)->getJson('/api/v1/transactions')->json('data.*.split_parent_id');
+        expect($listed)->toBe([$original->id, $original->id]);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [['amount' => -3000], ['amount' => -2000]]])
+            ->assertNotFound();
     });
 
-    it('replaces the lines of a split one, and files a bank row too', function () {
+    it('refuses parts that do not add up or move money the other way, saving nothing', function (array $splits, string $error) {
         $user = User::factory()->create();
-        $food = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $home = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transaction = splitTransactionInto(transactionOn(Account::factory()->connected()->create(['user_id' => $user->id]), [
-            'amount' => -1000,
-            'source' => TransactionSource::EnableBanking,
-        ]), [[$food, -500], [$home, -500]]);
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $home->id, 'amount' => -100],
-                ['category_id' => $home->id, 'amount' => -200],
-                ['category_id' => $food->id, 'amount' => -700],
-            ]])
-            ->assertOk()
-            ->assertJsonPath('data.splits.*.amount', [-100, -200, -700]);
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => $splits])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits' => $error]);
 
-        expect(TransactionSplit::query()->where('transaction_id', $transaction->id)->count())->toBe(3);
+        expect($original->fresh()->trashed())->toBeFalse()
+            ->and(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+    })->with([
+        'not adding up' => [[['amount' => -3000], ['amount' => -1000]], 'must add up to the original amount of -5000'],
+        'opposite sign' => [[['amount' => -6000], ['amount' => 1000]], 'move money the same way'],
+        'a zero part' => [[['amount' => -5000], ['amount' => 0]], 'Every part of a split needs an amount.'],
+        'a single part' => [[['amount' => -5000]], 'at least 2 items'],
+        'no parts' => [[], 'required'],
+    ]);
+
+    it('refuses a part of a split, a category of another space and a field it does not take', function () {
+        $user = User::factory()->create();
+        $account = Account::factory()->create(['user_id' => $user->id]);
+        $part = app(TransactionSplitter::class)->split(transactionOn($account, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]])->first();
+        $headers = transactionsWriter($user);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$part->id.'/split', ['splits' => [['amount' => -1000], ['amount' => -2000]]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction' => 'already one part of a split']);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.transactionOn($account, ['amount' => -5000])->id.'/split', [
+                'splits' => [
+                    ['amount' => -3000, 'category_id' => Category::factory()->create()->id],
+                    ['amount' => -2000, 'label_ids' => [Label::factory()->create()->id]],
+                ],
+                'parts' => 2,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits.0.category_id', 'splits.1.label_ids.0', 'parts']);
     });
 
-    it('allocates the lines to their budgets, and moves them when replaced', function () {
+    it('refuses a field a part does not have', function () {
+        $user = User::factory()->create();
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
+                ['amount' => -3000, 'position' => 0],
+                ['amount' => -2000],
+            ]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('splits.0');
+
+        expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+    });
+
+    it('refuses more than 100 labels on a part and a label sent twice in a part', function () {
+        $user = User::factory()->create();
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+        $label = Label::factory()->create(['user_id' => $user->id]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$original->id.'/split', ['splits' => [
+                ['amount' => -3000, 'label_ids' => array_map(fn (): string => (string) Str::uuid7(), range(1, 101))],
+                ['amount' => -2000, 'label_ids' => [$label->id, mb_strtoupper($label->id)]],
+            ]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits.0.label_ids' => 'must not have more than 100 items', 'splits.1.label_ids.1' => 'duplicate']);
+
+        expect(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(0);
+    });
+
+    it('refuses a transaction still split into the old lines until it is converted', function () {
+        $user = User::factory()->create();
+        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
+        $transaction = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [[$category, -600], [$category, -400]]);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [['amount' => -500], ['amount' => -500]]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction' => 'converted']);
+
+        expect($transaction->fresh()->trashed())->toBeFalse()
+            ->and($transaction->splits()->count())->toBe(2)
+            ->and(Transaction::query()->where('split_parent_id', $transaction->id)->count())->toBe(0);
+    });
+
+    it('moves the budgets from the original to the parts', function () {
         $user = User::factory()->create();
         $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
         $food = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
@@ -1675,85 +1814,39 @@ describe('split', function () {
                 ['category_id' => $food->id, 'amount' => -600],
                 ['category_id' => $home->id, 'amount' => -400],
             ]])
-            ->assertOk();
+            ->assertCreated();
 
         expect((int) $foodPeriod->budgetTransactions()->sole()->amount)->toBe(600)
+            ->and($foodPeriod->budgetTransactions()->sole()->transaction_id)->not->toBe($transaction->id)
             ->and((int) $homePeriod->budgetTransactions()->sole()->amount)->toBe(400);
-
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $food->id, 'amount' => -100],
-                ['category_id' => $home->id, 'amount' => -900],
-            ]])
-            ->assertOk();
-
-        expect((int) $foodPeriod->budgetTransactions()->sole()->amount)->toBe(100)
-            ->and((int) $homePeriod->budgetTransactions()->sole()->amount)->toBe(900);
     });
 
-    it('leaves an encrypted row encrypted', function () {
+    it('copies an encrypted description and notes onto every part', function () {
         $user = User::factory()->create();
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $transaction = encryptedTransactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
         $stored = fn (Transaction $row): array => [$row->description, $row->description_iv, $row->notes, $row->notes_iv];
         $before = $stored($transaction);
 
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $category->id, 'amount' => -600],
-                ['category_id' => $category->id, 'amount' => -400],
-            ]])
-            ->assertOk()
-            ->assertJsonPath('data.description', '');
+        $parts = withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [['amount' => -600], ['amount' => -400]]])
+            ->assertCreated()
+            ->assertJsonPath('data.0.description', '')
+            ->assertJsonPath('data.0.notes', '')
+            ->json('data.*.id');
+
+        foreach (Transaction::query()->whereKey($parts)->get() as $part) {
+            expect($stored($part))->toBe($before);
+        }
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['category_id' => $category->id])
-            ->assertOk();
+            ->postJson('/api/v1/transactions/'.$parts[0].'/merge-splits')
+            ->assertOk()
+            ->assertJsonPath('data.description', '');
 
         expect($stored($transaction->fresh()))->toBe($before);
     });
 
-    it('keeps the invariants of a split', function (Closure $lines) {
-        $user = User::factory()->create();
-        $expense = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $income = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Income]);
-        $transfer = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Transfer]);
-        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
-
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => $lines($expense, $income, $transfer)])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('splits');
-
-        expect($transaction->splits()->count())->toBe(0);
-    })->with([
-        'short of the parent by a cent' => [fn (Category $e) => [['category_id' => $e->id, 'amount' => -600], ['category_id' => $e->id, 'amount' => -399]]],
-        'past the parent' => [fn (Category $e) => [['category_id' => $e->id, 'amount' => -600], ['category_id' => $e->id, 'amount' => -401]]],
-        'adds up with a line the other way' => [fn (Category $e) => [['category_id' => $e->id, 'amount' => -1100], ['category_id' => $e->id, 'amount' => 100]]],
-        'one line' => [fn (Category $e) => [['category_id' => $e->id, 'amount' => -1000]]],
-        'no lines' => [fn () => []],
-        'expense and income categories' => [fn (Category $e, Category $i) => [['category_id' => $e->id, 'amount' => -600], ['category_id' => $i->id, 'amount' => -400]]],
-        'transfer categories' => [fn (Category $e, Category $i, Category $t) => [['category_id' => $t->id, 'amount' => -600], ['category_id' => $t->id, 'amount' => -400]]],
-    ]);
-
-    it('refuses a zero line, one with no category, and fields a line does not have', function () {
-        $user = User::factory()->create();
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
-
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $category->id, 'amount' => 0],
-                ['amount' => -1000],
-                ['category_id' => $category->id, 'amount' => -1000, 'label_ids' => []],
-            ], 'colour' => 'red'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['splits.0.amount', 'splits.1.category_id', 'splits.2', 'colour']);
-
-        expect($transaction->splits()->count())->toBe(0);
-    });
-
-    it('bounds the lines before looking any of them up', function () {
+    it('bounds the parts before looking any of them up', function () {
         $user = User::factory()->create();
         $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -21]);
@@ -1767,104 +1860,115 @@ describe('split', function () {
         expect(collect($queries['queries'])->filter(fn (string $sql): bool => str_contains($sql, '`categories`')))->toBeEmpty();
     });
 
-    it('takes twenty lines', function () {
+    it('takes twenty parts', function () {
         $user = User::factory()->create();
         $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -20]);
 
         withHeaders(transactionsWriter($user))
             ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => array_fill(0, 20, ['category_id' => $category->id, 'amount' => -1])])
-            ->assertOk()
-            ->assertJsonCount(20, 'data.splits');
-    });
-
-    it('refuses a category of another user or another member', function () {
-        $user = User::factory()->create();
-        $owner = User::factory()->create();
-        $space = sharedTransactionSpace($user, $owner);
-        $mine = Category::factory()->create(['user_id' => $user->id, 'space_id' => $space->id, 'type' => CategoryType::Expense]);
-        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id, 'space_id' => $space->id]), ['amount' => -1000]);
-
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split?space='.$space->id, ['splits' => [
-                ['category_id' => $mine->id, 'amount' => -600],
-                ['category_id' => Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'type' => CategoryType::Expense])->id, 'amount' => -400],
-            ]])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('splits.1.category_id');
-
-        expect($transaction->splits()->count())->toBe(0);
+            ->assertCreated()
+            ->assertJsonCount(20, 'data');
     });
 
     it('answers 403 while splitting is off, and writes nothing', function () {
         $user = User::factory()->create();
         Feature::for($user)->deactivate(TransactionSplitting::class);
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [
-                ['category_id' => $category->id, 'amount' => -600],
-                ['category_id' => $category->id, 'amount' => -400],
-            ]])
+            ->postJson('/api/v1/transactions/'.$transaction->id.'/split', ['splits' => [['amount' => -600], ['amount' => -400]]])
             ->assertForbidden()
             ->assertJsonPath('code', 'splitting_disabled');
 
-        expect($transaction->splits()->count())->toBe(0);
+        expect($transaction->fresh()->trashed())->toBeFalse()
+            ->and(Transaction::query()->where('split_parent_id', $transaction->id)->count())->toBe(0);
     });
 
-    it('splits once for a retried idempotency key', function () {
+    it('answers 404 for a transaction of another user and refuses a read-only token', function () {
         $user = User::factory()->create();
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
-        $headers = [...transactionsWriter($user), 'Idempotency-Key' => 'split-1'];
-        $body = ['splits' => [['category_id' => $category->id, 'amount' => -600], ['category_id' => $category->id, 'amount' => -400]]];
-
-        $first = withHeaders($headers)->postJson('/api/v1/transactions/'.$transaction->id.'/split', $body)->assertOk();
-        $lineIds = $first->json('data.splits.*.id');
-
-        withHeaders($headers)->postJson('/api/v1/transactions/'.$transaction->id.'/split', $body)
-            ->assertOk()
-            ->assertHeader('Idempotent-Replayed', 'true')
-            ->assertJsonPath('data.splits.*.id', $lineIds);
-
-        expect($transaction->splits()->pluck('id')->sort()->values()->all())->toBe(collect($lineIds)->sort()->values()->all());
-    });
-
-    it('needs a write token, and answers 404 for another member\'s transaction', function () {
-        $user = User::factory()->create();
-        $owner = User::factory()->create();
-        $space = sharedTransactionSpace($user, $owner);
-        $mine = transactionOn(Account::factory()->create(['user_id' => $user->id]));
-        $theirs = transactionOn(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]));
-
-        withHeaders(apiV1Bearer($user))
-            ->postJson('/api/v1/transactions/'.$mine->id.'/split', ['splits' => []])
-            ->assertForbidden();
+        $mine = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+        $body = ['splits' => [['amount' => -3000], ['amount' => -2000]]];
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$theirs->id.'/split?space='.$space->id, ['splits' => []])
+            ->postJson('/api/v1/transactions/'.transactionOn(Account::factory()->create(), ['amount' => -5000])->id.'/split', $body)
             ->assertNotFound();
+
+        withHeaders(apiV1Bearer($user))
+            ->postJson('/api/v1/transactions/'.$mine->id.'/split', $body)
+            ->assertForbidden()
+            ->assertJsonPath('code', 'insufficient_scope');
+
+        expect($mine->fresh()->trashed())->toBeFalse();
+    });
+
+    it('replays a split with the same idempotency key instead of failing on the second try', function () {
+        $user = User::factory()->create();
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]);
+        $headers = [...transactionsWriter($user), 'Idempotency-Key' => 'split-dinner'];
+        $body = ['splits' => [['amount' => -3000], ['amount' => -2000]]];
+
+        $first = withHeaders($headers)->postJson('/api/v1/transactions/'.$original->id.'/split', $body)->assertCreated();
+        $replay = withHeaders($headers)->postJson('/api/v1/transactions/'.$original->id.'/split', $body)->assertCreated();
+
+        $replay->assertHeader('Idempotent-Replayed', 'true');
+        expect($replay->json('data.*.id'))->toBe($first->json('data.*.id'))
+            ->and(Transaction::query()->where('split_parent_id', $original->id)->count())->toBe(2);
+    });
+});
+
+describe('split and merge in a shared space', function () {
+    it('answers 404 for splitting or merging another member\'s transaction, and refuses their category and labels on your parts', function () {
+        $member = User::factory()->create();
+        $owner = User::factory()->create();
+        $space = sharedTransactionSpace($member, $owner);
+        $theirAccount = Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirs = transactionOn($theirAccount, ['amount' => -5000]);
+        $theirParts = app(TransactionSplitter::class)->split(transactionOn($theirAccount, ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]]);
+        $mine = transactionOn(Account::factory()->create(['user_id' => $member->id, 'space_id' => $space->id]), ['amount' => -5000]);
+        $theirCategory = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $theirLabel = Label::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]);
+        $headers = transactionsWriter($member);
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$theirs->id.'/split?space='.$space->id, ['splits' => [['amount' => -3000], ['amount' => -2000]]])
+            ->assertNotFound();
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$theirParts->first()->id.'/merge-splits?space='.$space->id)
+            ->assertNotFound();
+
+        withHeaders($headers)
+            ->postJson('/api/v1/transactions/'.$mine->id.'/split?space='.$space->id, ['splits' => [
+                ['amount' => -3000, 'category_id' => $theirCategory->id],
+                ['amount' => -2000, 'label_ids' => [$theirLabel->id]],
+            ]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['splits.0.category_id' => 'of yours', 'splits.1.label_ids.0' => 'of yours']);
+
+        expect($theirs->fresh()->isSplitPart())->toBeFalse()
+            ->and(Transaction::query()->whereKey($theirParts->pluck('id')->all())->count())->toBe(2)
+            ->and($mine->fresh()->trashed())->toBeFalse();
     });
 });
 
 describe('merge splits', function () {
-    it('returns the transaction to unsplit, filed by hand under the category sent', function () {
+    it('puts the original back from any of its parts', function () {
         $user = User::factory()->create();
-        $food = Category::factory()->create(['user_id' => $user->id, 'name' => 'Food', 'type' => CategoryType::Expense]);
-        $transaction = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [[$food, -600], [$food, -400]]);
+        $category = Category::factory()->create(['user_id' => $user->id]);
+        $original = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000, 'category_id' => $category->id]);
+        $parts = app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000]]);
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['category_id' => Str::upper($food->id)])
+            ->postJson('/api/v1/transactions/'.$parts->last()->id.'/merge-splits')
             ->assertOk()
-            ->assertJsonPath('data.id', $transaction->id)
-            ->assertJsonPath('data.amount', -1000)
-            ->assertJsonPath('data.category.id', $food->id)
-            ->assertJsonPath('data.category_source', 'manual')
-            ->assertJsonPath('data.splits', []);
+            ->assertJsonPath('data.id', $original->id)
+            ->assertJsonPath('data.amount', -5000)
+            ->assertJsonPath('data.category.id', $category->id)
+            ->assertJsonPath('data.split_parent_id', null);
 
-        expect($transaction->fresh()->getRawOriginal('category_id'))->toBe($food->id)
-            ->and(TransactionSplit::query()->count())->toBe(0);
+        expect(Transaction::query()->whereKey($parts->pluck('id'))->count())->toBe(0)
+            ->and($original->fresh()->trashed())->toBeFalse();
     });
 
     it('moves the budgets back to the whole amount', function () {
@@ -1874,97 +1978,82 @@ describe('merge splits', function () {
         $home = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $foodPeriod = budgetPeriodCovering(Budget::factory()->forCategories($food)->create(['user_id' => $user->id]), '2026-01-15');
         $homePeriod = budgetPeriodCovering(Budget::factory()->forCategories($home)->create(['user_id' => $user->id]), '2026-01-15');
-        $transaction = splitTransactionInto(transactionOn($account, ['amount' => -1000, 'currency_code' => 'EUR', 'transaction_date' => '2026-01-15']), [[$food, -600], [$home, -400]]);
-        app(BudgetTransactionService::class)->assignTransaction($transaction->fresh());
+        $transaction = transactionOn($account, ['amount' => -1000, 'currency_code' => 'EUR', 'transaction_date' => '2026-01-15', 'category_id' => $food->id]);
+        $parts = app(TransactionSplitter::class)->split($transaction, [['category_id' => $food->id, 'amount' => -600], ['category_id' => $home->id, 'amount' => -400]]);
 
         expect((int) $homePeriod->budgetTransactions()->sole()->amount)->toBe(400);
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['category_id' => $food->id])
+            ->postJson('/api/v1/transactions/'.$parts->first()->id.'/merge-splits')
             ->assertOk();
 
         expect((int) $foodPeriod->budgetTransactions()->sole()->amount)->toBe(1000)
+            ->and($foodPeriod->budgetTransactions()->sole()->transaction_id)->toBe($transaction->id)
             ->and($homePeriod->budgetTransactions()->count())->toBe(0);
     });
 
     it('stays open while splitting is off', function () {
         $user = User::factory()->create();
+        $parts = app(TransactionSplitter::class)->split(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [['amount' => -600], ['amount' => -400]]);
         Feature::for($user)->deactivate(TransactionSplitting::class);
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$parts->first()->id.'/merge-splits')
+            ->assertOk();
+
+        expect(Transaction::query()->whereKey($parts->pluck('id'))->count())->toBe(0);
+    });
+
+    it('refuses a transaction that is not part of a split and a field it does not take', function () {
+        $user = User::factory()->create();
+        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]));
+
+        withHeaders(transactionsWriter($user))
+            ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['force' => true])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction' => 'not part of a split', 'force']);
+    });
+
+    it('refuses a transaction still split into the old lines, and the category the old merge took', function () {
+        $user = User::factory()->create();
         $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
         $transaction = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [[$category, -600], [$category, -400]]);
 
         withHeaders(transactionsWriter($user))
             ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['category_id' => $category->id])
-            ->assertOk();
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['transaction' => 'not part of a split', 'category_id']);
 
-        expect($transaction->splits()->count())->toBe(0);
+        expect($transaction->splits()->count())->toBe(2)
+            ->and($transaction->fresh()->category_id)->toBeNull();
     });
 
-    it('refuses a transaction that is not split, and does not recategorize it', function () {
+    it('answers 404 for a transaction of another user and refuses a read-only token', function () {
         $user = User::factory()->create();
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transaction = transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]);
+        $parts = app(TransactionSplitter::class)->split(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]]);
+        $theirs = app(TransactionSplitter::class)->split(transactionOn(Account::factory()->create(), ['amount' => -5000]), [['amount' => -3000], ['amount' => -2000]]);
 
         withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', ['category_id' => $category->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('transaction');
+            ->postJson('/api/v1/transactions/'.$theirs->first()->id.'/merge-splits')
+            ->assertNotFound();
 
-        expect($transaction->fresh()->category_id)->toBeNull();
+        withHeaders(apiV1Bearer($user))
+            ->postJson('/api/v1/transactions/'.$parts->first()->id.'/merge-splits')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'insufficient_scope');
 
-        expect(fn () => app(TransactionWriter::class)->mergeSplits($transaction, $category->id))
-            ->toThrow(ValidationException::class);
-
-        expect($transaction->fresh()->category_id)->toBeNull();
-    });
-
-    it('needs a category of yours of expense or income type', function () {
-        $user = User::factory()->create();
-        $expense = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transfer = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Transfer]);
-        $transaction = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [[$expense, -600], [$expense, -400]]);
-        $url = '/api/v1/transactions/'.$transaction->id.'/merge-splits';
-
-        withHeaders(transactionsWriter($user))->postJson($url, ['colour' => 'red'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['category_id', 'colour']);
-
-        withHeaders(transactionsWriter($user))->postJson($url, ['category_id' => Category::factory()->create()->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('category_id');
-
-        withHeaders(transactionsWriter($user))->postJson($url, ['category_id' => $transfer->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('splits');
-
-        expect($transaction->splits()->count())->toBe(2);
+        expect(Transaction::query()->whereKey($parts->pluck('id'))->count())->toBe(2);
     });
 
     it('merges once for a retried idempotency key', function () {
         $user = User::factory()->create();
-        $category = Category::factory()->create(['user_id' => $user->id, 'type' => CategoryType::Expense]);
-        $transaction = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [[$category, -600], [$category, -400]]);
+        $parts = app(TransactionSplitter::class)->split(transactionOn(Account::factory()->create(['user_id' => $user->id]), ['amount' => -1000]), [['amount' => -600], ['amount' => -400]]);
         $headers = [...transactionsWriter($user), 'Idempotency-Key' => 'merge-1'];
-        $body = ['category_id' => $category->id];
 
-        withHeaders($headers)->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', $body)->assertOk();
+        withHeaders($headers)->postJson('/api/v1/transactions/'.$parts->first()->id.'/merge-splits')->assertOk();
 
-        withHeaders($headers)->postJson('/api/v1/transactions/'.$transaction->id.'/merge-splits', $body)
+        withHeaders($headers)->postJson('/api/v1/transactions/'.$parts->first()->id.'/merge-splits')
             ->assertOk()
             ->assertHeader('Idempotent-Replayed', 'true');
-    });
-
-    it('answers 404 for another member\'s transaction', function () {
-        $user = User::factory()->create();
-        $owner = User::factory()->create();
-        $space = sharedTransactionSpace($user, $owner);
-        $category = Category::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id, 'type' => CategoryType::Expense]);
-        $theirs = splitTransactionInto(transactionOn(Account::factory()->create(['user_id' => $owner->id, 'space_id' => $space->id]), ['amount' => -1000]), [[$category, -600], [$category, -400]]);
-
-        withHeaders(transactionsWriter($user))
-            ->postJson('/api/v1/transactions/'.$theirs->id.'/merge-splits?space='.$space->id, ['category_id' => $category->id])
-            ->assertNotFound();
-
-        expect($theirs->splits()->count())->toBe(2);
     });
 });

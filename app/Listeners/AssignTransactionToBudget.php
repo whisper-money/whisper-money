@@ -16,10 +16,15 @@ class AssignTransactionToBudget implements ShouldQueue
      * (ReassignTransactionsToBudgets, without budget emails), instead of
      * queueing a job for each of thousands of rows. Only its creation is
      * skipped: a later edit of an imported row is assigned like any other.
+     *
+     * The same goes for one part of a split: it is saved before its labels
+     * are, so TransactionSplitter assigns every part once the split has
+     * committed (TransactionSplitter::split()).
      */
     public function shouldQueue(TransactionCreated|TransactionUpdated $event): bool
     {
-        return ! ($event instanceof TransactionCreated && $event->transaction->import_id !== null);
+        return ! ($event instanceof TransactionCreated
+            && ($event->transaction->import_id !== null || $event->transaction->isSplitPart()));
     }
 
     public function handle(TransactionCreated|TransactionUpdated $event): void

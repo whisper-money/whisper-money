@@ -176,6 +176,22 @@
         "destructive_justification": "Reversible: only label associations change and they can be set again at any time. Neither the transaction nor the labels themselves are removed."
       }
     },
+    "split_transaction": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it replaces one transaction in the user's own account with the parts they asked for.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Overwrites: the transaction is replaced by the parts passed, so the model should confirm the split with the user first. The original is kept and merge_transaction_splits puts it back, and the parts must add up to its amount, so no money is created or lost."
+      }
+    },
+    "merge_transaction_splits": {
+      "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": true },
+      "justifications": {
+        "read_only_justification": "Writes: it removes the parts of a split from the user's own account and restores the transaction they came from.",
+        "open_world_justification": "Declared open-world because it changes data in the user's Whisper Money account, a service outside ChatGPT. It is limited to that one private account: it never reaches the public internet, a bank or any third party.",
+        "destructive_justification": "Irreversible data loss: the parts are deleted along with the category, labels and notes set on each of them, so the model must confirm with the user first. The original transaction itself comes back untouched."
+      }
+    },
     "create_balance": {
       "annotations": { "readOnlyHint": false, "openWorldHint": true, "destructiveHint": false },
       "justifications": {

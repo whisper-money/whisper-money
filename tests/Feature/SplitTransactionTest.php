@@ -2,9 +2,11 @@
 
 use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
+use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
 use App\Features\TransactionSplitting;
 use App\Listeners\AssignTransactionToBudget;
+use App\Listeners\UnassignTransactionFromBudget;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Budget;
@@ -20,6 +22,7 @@ use App\Services\BudgetTransactionService;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\TransactionWriteRules;
 use App\Services\TransactionSplitter;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Pennant\Feature;
@@ -556,4 +559,195 @@ it('refuses deleting one part through the shared writer, and locks every core fi
             'notes' => 'still editable',
             'category_id' => $this->category->id,
         ])))->toBe(['amount', 'transaction_date']);
+});
+
+/**
+ * A budget over a period around today, tracking $tracked, holding whatever
+ * already matches it.
+ */
+function budgetTrackingAroundToday(Label|Category $tracked): BudgetPeriod
+{
+    $budget = Budget::factory()
+        ->{$tracked instanceof Label ? 'forLabels' : 'forCategories'}($tracked)
+        ->create(['user_id' => test()->user->id]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(15),
+        'end_date' => now()->addDays(15),
+    ]);
+
+    app(BudgetTransactionService::class)->assignHistoricalTransactionsToPeriod($period);
+
+    return $period;
+}
+
+it('counts in a label budget only the part that keeps the label, once its labels are in place, and the original again on merge', function () {
+    Mail::fake();
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $original = splittableTransaction(-5000);
+    $original->update(['transaction_date' => now()->toDateString()]);
+    $original->labels()->attach($label);
+    $period = budgetTrackingAroundToday($label);
+
+    expect((int) $period->budgetTransactions()->sole()->amount)->toBe(5000);
+
+    $parts = app(TransactionSplitter::class)->split($original, [
+        ['amount' => -3000, 'label_ids' => [$label->id]],
+        ['amount' => -2000],
+    ]);
+
+    $held = $period->budgetTransactions()->get();
+
+    expect($held)->toHaveCount(1)
+        ->and($held->sole()->transaction_id)->toBe($parts->first()->id)
+        ->and((int) $held->sole()->amount)->toBe(3000);
+
+    app(TransactionSplitter::class)->merge($parts->last());
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id])
+        ->and((int) $period->budgetTransactions()->sole()->amount)->toBe(5000);
+
+    // A split is not new spending: no budget email for its parts.
+    Mail::assertNothingSent();
+});
+
+it('counts in a category budget only the part filed there, for an imported original too, and the original again on merge', function (bool $imported) {
+    $import = $imported ? Import::factory()->create(['user_id' => $this->user->id]) : null;
+    $original = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $this->category->id,
+        'category_source' => CategorySource::Manual,
+        'amount' => -5000,
+        'transaction_date' => now()->toDateString(),
+        'import_id' => $import?->id,
+    ]);
+    $period = budgetTrackingAroundToday($this->category);
+    $elsewhere = Category::factory()->create(['user_id' => $this->user->id]);
+
+    expect((int) $period->budgetTransactions()->sole()->amount)->toBe(5000);
+
+    $parts = app(TransactionSplitter::class)->split($original, [
+        ['amount' => -1200, 'category_id' => $elsewhere->id],
+        ['amount' => -3800, 'category_id' => $this->category->id],
+    ]);
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$parts->last()->id])
+        ->and((int) $period->budgetTransactions()->sole()->amount)->toBe(3800);
+
+    app(TransactionSplitter::class)->merge($parts->first());
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id])
+        ->and((int) $period->budgetTransactions()->sole()->amount)->toBe(5000);
+})->with(['by hand' => false, 'imported' => true]);
+
+it('puts the labels sent for a part on top of what an automation rule tagged it with', function () {
+    $ruleCategory = Category::factory()->create(['user_id' => $this->user->id]);
+    $ruleLabel = Label::factory()->create(['user_id' => $this->user->id]);
+    $chosen = Label::factory()->create(['user_id' => $this->user->id]);
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['mercadona', ['var' => 'description']]],
+        'action_category_id' => $ruleCategory->id,
+    ]);
+    $rule->labels()->attach($ruleLabel->id);
+    $original = splittableTransaction(-6000, 'MERCADONA S.A.');
+
+    $parts = app(TransactionSplitter::class)->split($original, [
+        ['amount' => -1000],
+        ['amount' => -2000, 'category_id' => $this->category->id, 'label_ids' => [$chosen->id]],
+        ['amount' => -3000, 'label_ids' => [$chosen->id]],
+    ])->map(fn (Transaction $part): Transaction => $part->fresh('labels'));
+
+    $labels = $parts->map(fn (Transaction $part): array => $part->labels->pluck('id')->sort()->values()->all());
+
+    expect($parts[0]->category_id)->toBe($ruleCategory->id)
+        ->and($labels[0])->toBe([$ruleLabel->id])
+        ->and($parts[1]->category_id)->toBe($this->category->id)
+        ->and($labels[1])->toBe([$chosen->id])
+        ->and($labels[2])->toBe(collect([$ruleLabel->id, $chosen->id])->sort()->values()->all());
+});
+
+it('checks the parts again against the row as it is under the lock, refusing a split of an amount edited meanwhile', function () {
+    $stale = splittableTransaction(-5000);
+    Transaction::query()->whereKey($stale->id)->update(['amount' => -7000]);
+
+    expect(fn () => app(TransactionSplitter::class)->split($stale, [['amount' => -3000], ['amount' => -2000]]))
+        ->toThrow(ValidationException::class, 'The parts must add up to the original amount of -7000');
+
+    expect(Transaction::query()->where('split_parent_id', $stale->id)->exists())->toBeFalse()
+        ->and($stale->fresh()->trashed())->toBeFalse()
+        ->and($stale->fresh()->amount)->toBe(-7000);
+});
+
+it('keeps a merged original in its budgets when the unassignment the split queued runs after the merge', function () {
+    $original = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $this->category->id,
+        'amount' => -5000,
+        'transaction_date' => now()->toDateString(),
+    ]);
+    $period = budgetAroundToday();
+    $splitter = app(TransactionSplitter::class);
+
+    // The split's unassignment of the original, held back by a busy worker.
+    $late = new TransactionDeleted($original->fresh());
+    $parts = $splitter->split($original, [['amount' => -3000], ['amount' => -2000]]);
+    $splitter->merge($parts->first());
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id]);
+
+    app(UnassignTransactionFromBudget::class)->handle($late);
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id]);
+
+    // A row that is still deleted is taken out as before.
+    $original->delete();
+    app(UnassignTransactionFromBudget::class)->handle(new TransactionDeleted($original));
+
+    expect($period->budgetTransactions()->count())->toBe(0);
+});
+
+it('sends no budget email for a split or a merge, a rule filing a part included', function () {
+    Mail::fake();
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['mercadona', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+    $period = budgetAroundToday();
+    // A new row in the budget would be emailed about.
+    $period->budget->update(['notify_on_new_transaction' => true]);
+    $original = splittableTransaction(-5000, 'MERCADONA S.A.');
+    $original->update(['transaction_date' => now()->toDateString(), 'category_id' => $this->category->id, 'category_source' => CategorySource::Manual]);
+    app(BudgetTransactionService::class)->assignTransaction($original->fresh(), notify: false);
+
+    $parts = app(TransactionSplitter::class)->split($original, [['amount' => -3000], ['amount' => -2000, 'category_id' => $this->category->id]]);
+
+    expect((int) $period->budgetTransactions()->sum('amount'))->toBe(5000);
+
+    app(TransactionSplitter::class)->merge($parts->first());
+
+    expect($period->budgetTransactions()->pluck('transaction_id')->all())->toBe([$original->id]);
+    Mail::assertNothingSent();
+});
+
+it('refuses a category or a label of the user\'s other space for a part', function () {
+    $otherSpace = Space::factory()->create(['owner_id' => $this->user->id, 'personal' => false]);
+    $foreignCategory = Category::factory()->create(['user_id' => $this->user->id, 'space_id' => $otherSpace->id]);
+    $foreignLabel = Label::factory()->create(['user_id' => $this->user->id, 'space_id' => $otherSpace->id]);
+    $original = splittableTransaction();
+
+    $this->actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [
+            ['amount' => -3490, 'category_id' => $foreignCategory->id],
+            ['amount' => -1850, 'label_ids' => [$foreignLabel->id]],
+        ],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['splits.0.category_id', 'splits.1.label_ids.0']);
+
+    expect(Transaction::query()->where('split_parent_id', $original->id)->exists())->toBeFalse();
 });

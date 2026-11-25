@@ -265,11 +265,16 @@ class DetectRecurringSeries
      * rows belonging to deleted or archived accounts are not observations for a
      * new projection; existing pivots remain untouched by apply.
      *
+     * Each one is a movement as the account made it: a split charge is one
+     * occurrence, its original, at the full amount and on its date, never its
+     * parts on the same day (which no cadence tolerates).
+     *
      * @return Builder<Transaction>
      */
     private function candidates(User $user, Space $space, CarbonImmutable $since): Builder
     {
         return Transaction::query()
+            ->movements()
             ->where('user_id', $user->id)
             ->where('space_id', $space->id)
             ->whereNull('description_iv')
@@ -639,8 +644,9 @@ class DetectRecurringSeries
 
         /** @var EloquentCollection<int, Transaction> $transactions */
         $transactions = Transaction::query()
+            ->movements()
             ->whereIn('id', $allIds)
-            ->with(['splits'])
+            ->with(['splits', 'splitParts:id,split_parent_id,category_id,amount'])
             ->get()
             ->keyBy('id');
         $categories = [];
@@ -650,21 +656,11 @@ class DetectRecurringSeries
 
             foreach ($candidate['transaction_ids'] as $transactionId) {
                 $transaction = $transactions->get($transactionId);
+                $categoryId = $transaction instanceof Transaction ? $this->dominantCategoryId($transaction) : null;
 
-                if (! $transaction instanceof Transaction) {
-                    continue;
+                if ($categoryId !== null) {
+                    $tally[$categoryId] = ($tally[$categoryId] ?? 0) + 1;
                 }
-
-                $dominant = $this->postings
-                    ->forTransaction($transaction)
-                    ->sortByDesc(fn ($posting): int => abs($posting->amount))
-                    ->first();
-
-                if ($dominant === null || $dominant->categoryId === null) {
-                    continue;
-                }
-
-                $tally[$dominant->categoryId] = ($tally[$dominant->categoryId] ?? 0) + 1;
             }
 
             arsort($tally);
@@ -672,6 +668,26 @@ class DetectRecurringSeries
         }
 
         return $categories;
+    }
+
+    /**
+     * The category that carries most of one occurrence: the largest part of a
+     * split, the largest line of one still split the old way, or its own.
+     */
+    private function dominantCategoryId(Transaction $transaction): ?string
+    {
+        if ($transaction->splitParts->isNotEmpty()) {
+            return $transaction->splitParts
+                ->sortByDesc(fn (Transaction $part): int => abs($part->amount))
+                ->first()
+                ?->category_id;
+        }
+
+        return $this->postings
+            ->forTransaction($transaction)
+            ->sortByDesc(fn ($posting): int => abs($posting->amount))
+            ->first()
+            ?->categoryId;
     }
 
     private function candidateIdentity(array $candidate): string

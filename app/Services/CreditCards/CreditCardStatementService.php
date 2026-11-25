@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Concerns\ConvertsTransactionCurrency;
 use App\Services\ExchangeRateService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Query\JoinClause;
@@ -180,11 +181,12 @@ class CreditCardStatementService
     }
 
     /**
-     * The card's rows booked between two dates, read on the date the bank
-     * booked them: users move `transaction_date` to tidy their cashflow,
-     * while `source_date` keeps the bank's. Each row carries its category
-     * type and whether it has split lines, so repayments can be told apart
-     * without another query.
+     * The card's movements booked between two dates, read on the date the
+     * bank booked them: users move `transaction_date` to tidy their cashflow,
+     * while `source_date` keeps the bank's. A split charge is one movement, its
+     * original at the full amount, never its parts. Each row carries its
+     * category type and what its split parts or lines say about it, so
+     * repayments can be told apart without another query.
      *
      * @return Collection<int, Transaction>
      */
@@ -206,25 +208,40 @@ class CreditCardStatementService
     private function ledgerQuery(Account $account): HasMany
     {
         return $account->transactions()
+            ->movements()
             ->leftJoin('categories', fn (JoinClause $join) => $join
                 ->on('categories.id', '=', 'transactions.category_id')
                 ->whereNull('categories.deleted_at'))
             ->select('transactions.*', 'categories.type as category_type')
-            ->withExists('splits as has_split_lines');
+            ->withExists('splits as has_split_lines')
+            ->withExists('splitParts as has_split_parts')
+            ->withExists(['splitParts as has_charge_part' => fn (Builder $part) => $part
+                ->whereDoesntHave('category', fn (Builder $category) => $category->where('type', CategoryType::Transfer->value))
+                ->where(fn (Builder $charge) => $charge
+                    ->whereNotNull($charge->qualifyColumn('category_id'))
+                    ->orWhere($charge->qualifyColumn('amount'), '<=', 0))]);
     }
 
     /**
      * Whether a row repays the card instead of ending up on a statement: rows
      * in a transfer category, and uncategorized inflows, which on a card are
-     * almost always the repayment itself. A split row has no category of its
-     * own: its lines carry them, and never a transfer one, because
-     * ReplaceTransactionSplits requires every line to share one expense or
-     * income type and Category::booted() refuses a type change on a category
-     * (or any descendant) that split lines use. So an uncategorized inflow
-     * with lines is a refund and still counts, at its whole amount.
+     * almost always the repayment itself.
+     *
+     * A split original is read through its parts, which say how the user
+     * filed it: it is a repayment only when every part would be one on its
+     * own, and otherwise a charge or a refund at its whole amount. A row still
+     * split the old way has no category of its own: its lines carry them, and
+     * never a transfer one (they all shared one expense or income type, and
+     * Category::booted() refuses a type change on a category that split lines
+     * use). So an uncategorized inflow with lines is a refund and still
+     * counts, at its whole amount.
      */
     private static function isRepayment(Transaction $transaction): bool
     {
+        if ($transaction->getAttribute('has_split_parts')) {
+            return ! $transaction->getAttribute('has_charge_part');
+        }
+
         return $transaction->getAttribute('category_type') === CategoryType::Transfer->value
             || ($transaction->category_id === null && $transaction->amount > 0 && ! $transaction->getAttribute('has_split_lines'));
     }

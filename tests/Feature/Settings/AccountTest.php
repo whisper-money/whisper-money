@@ -9,7 +9,6 @@ use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\TransactionSplit;
 use App\Models\User;
-use App\Services\Transactions\ReplaceTransactionSplits;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
@@ -417,7 +416,7 @@ it('preserves split lines through soft delete and restore and cascades them on f
         'space_id' => $account->space_id,
         'type' => CategoryType::Expense,
     ]));
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $categories[0]->id, 'amount' => -6000],
         ['category_id' => $categories[1]->id, 'amount' => -4000],
     ]);

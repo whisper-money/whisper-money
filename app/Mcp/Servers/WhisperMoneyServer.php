@@ -39,6 +39,7 @@ use App\Mcp\Tools\ListLabels;
 use App\Mcp\Tools\ListRecurringSeries;
 use App\Mcp\Tools\ListSavingsGoals;
 use App\Mcp\Tools\ListSpaces;
+use App\Mcp\Tools\MergeTransactionSplits;
 use App\Mcp\Tools\PlaceWidget;
 use App\Mcp\Tools\RemoveWidget;
 use App\Mcp\Tools\SearchTransactions;
@@ -61,7 +62,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 use Laravel\Mcp\Server\Tool;
 
 #[Name('Whisper Money')]
-#[Version('1.8.0')]
+#[Version('1.9.0')]
 #[Instructions(<<<'MARKDOWN'
 Access to the authenticated user's Whisper Money finance data, for analysing
 spending, cashflow and net worth — and, with write access, for editing that
@@ -114,9 +115,9 @@ themselves.
   is spending tracked by budgets marked fixed (rent, subscriptions),
   `variable_expense` by budgets marked variable (groceries, leisure), and
   `general_expense` the rest, which no budget tracks. Catch-all budgets do not
-  count. Each posting (an unsplit transaction, or one line of a split
-  transaction) counts once, as fixed when budgets of both kinds track it, so a
-  split transaction can be partly fixed, partly variable.
+  count. Each posting (a transaction, one part of a split included, or one line
+  of a transaction still split the old way) counts once, as fixed when budgets
+  of both kinds track it, so a split can be partly fixed, partly variable.
   The three add up to `expense`, and any can be negative in a month of
   refunds. Both `current` and `previous` carry the split; only `current`
   carries `reserved` and `budgets` (each with its `expense_type`).
@@ -165,9 +166,11 @@ themselves.
   currency: amounts in different currencies are never added together, so read
   each bucket's `currency`. Like the other analytics, amounts are the owner's
   share of the account, and an archived account stops counting from the day it
-  was archived. A split transaction counts by its lines: each line lands in its
-  own category and type, a category or type filter keeps only the lines it
-  matches, and a label keeps every line. Every type counts unless `types`
+  was archived. One part of a split counts like any transaction, under its own
+  category, type and labels. A transaction still split the old way counts by
+  its lines: each line lands in its own category and type, a category or type
+  filter keeps only the lines it matches, and a label keeps every line. Every
+  type counts unless `types`
   narrows it, so pass `types: ["expense"]` for spending: otherwise transfers,
   savings and investments add in too. Grouped by a period, every period of the
   range comes back, zeros included; a request that would return more than 1000
@@ -177,13 +180,26 @@ themselves.
   the figures of the app's dashboard cards, across every space like
   `get_cashflow`. `spending_by_label` ranks the labels by expense over a range,
   each against the previous period; a transaction counts under every label it
-  carries (a split one with its expense lines only), and savings goal labels are
+  carries (one still split the old way with its expense lines only), and savings goal labels are
   left out. `get_credit_card_usage` gives each live card's `credit_card_usage`
   (see below) plus `daily`, the running `used` from `period_from` to today, in
   the card's own currency. `get_monthly_savings` adds up the running monthly
   goals' month in progress (`saved` against `target`, a partial first month
   left out) and gives `last_month`: how many goals met their target of how many
   were judged.
+- A transaction that covered several things can be split into parts, each with
+  its own category and labels: `split_transaction` replaces it with 2-20 parts
+  whose amounts must add up to the original and all move money the same way.
+  From then on the parts are what exists — the original is out of every list and
+  every total, and only the parts are returned. Each part carries a
+  `split_parent_id` shared with its siblings; pass any one of them to
+  `merge_transaction_splits` to put the original back, which deletes the parts
+  and everything set on them. A part cannot be split again, deleted on its own,
+  or have its amount, date, account or other core fields changed; categorizing,
+  labelling and editing its notes works as usual. A transaction still split
+  the old way shows `is_split: true` and its lines under `splits`: it reads as
+  before, but it cannot be split again, merged, or have its category or amount
+  changed until it is converted to parts; its notes and labels still change.
 - Custom dashboards: the user can build their own dashboards from widgets you
   write as React components (TSX), drawn with their live data. Dashboards and
   widgets belong to the user, not to a space, and a widget reads only the
@@ -214,15 +230,14 @@ WriteTool policy. A read-only Sanctum token can analyse data but never change it
 transactions can be created on any account, bank-connected ones included — a sync never
 removes them. Bank/imported transactions keep their core fields protected: only a
 manually-created one can change its description, amount, date, currency, account or
-counterparty names, and only a manually-created one can be deleted. Their notes and
-category are not locked — `update_transaction` writes those on any transaction — and you
-can label any transaction, and split any accessible transaction without changing its
-ledger fields. Balances can only be
+counterparty names, and only a manually-created one can be deleted. One part of a split
+keeps every core field, its date included, and cannot be deleted on its own: merge the
+split first. Their notes and category are not locked — `update_transaction` writes those
+on any transaction, split parts included — and you can label any transaction, and split
+any accessible one with `split_transaction`. Balances can only be
 recorded on non-connected accounts, since a connected account's balances come from the bank
 and would be overwritten (`list_balances` reads any account's, `delete_balance` removes a
-manual one recorded by mistake). `split_transaction` replaces all category postings at once;
-the amounts must sum exactly to the parent amount. Use `splits: []` with a
-`fallback_category_id` to remove a split. Labels remain fields of the parent.
+manual one recorded by mistake).
 Accounts come in two kinds and the difference decides what can be written.
 `create_account` opens a manual account of any of the eight types — a loan or a
 property takes its own details (interest rate and term, purchase price and date)
@@ -267,7 +282,7 @@ class WhisperMoneyServer extends Server
      * tools across two pages, so a client that does not follow `nextCursor`
      * silently loses everything past the fifteenth — half the write tools, and
      * whichever read tool a later addition happens to push over the edge. The
-     * ceiling is 100, comfortably above the current count (51 with the custom
+     * ceiling is 100, comfortably above the current count (52 with the custom
      * dashboard tools), and a larger discovery payload is a better trade than
      * tools nobody can see. The framework caps any page at
      * $maxPaginationLength (50 by default), so it is raised with it.
@@ -313,6 +328,7 @@ class WhisperMoneyServer extends Server
         DeleteTransaction::class,
         CategorizeTransaction::class,
         SplitTransaction::class,
+        MergeTransactionSplits::class,
         LabelTransaction::class,
         CreateBalance::class,
         DeleteBalance::class,

@@ -233,6 +233,19 @@ test('a split counts its lines and not the transaction they split', function () 
         ->toBe([$groceries->id => 600, $household->id => 400]);
 });
 
+test('a split counts its parts and not the original it replaced', function () {
+    $account = aggregateAccount($this->user);
+    $groceries = aggregateCategory($this->user, CategoryType::Expense);
+    $household = aggregateCategory($this->user, CategoryType::Expense);
+
+    $original = aggregateRow($account, $groceries, -1000);
+    aggregateRow($account, $groceries, -600, ['split_parent_id' => $original->id]);
+    aggregateRow($account, $household, -400, ['split_parent_id' => $original->id]);
+    $original->delete();
+
+    expect(expenseEverywhere($this))->toBe(['summary' => 1000, 'trend' => 1000, 'sankey' => 1000, 'breakdown' => 1000]);
+});
+
 test('a foreign split converts each line on its own, the last takes the residue, and the share rounds per line', function () {
     ExchangeRate::factory()->create(['base_currency' => 'eur', 'date' => '2026-05-10', 'rates' => ['usd' => 3]]);
 

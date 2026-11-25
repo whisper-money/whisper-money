@@ -14,6 +14,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\RecurringSeries;
 use App\Models\Transaction;
+use App\Models\TransactionSplit;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\EnableBankingProvider;
@@ -587,6 +588,44 @@ McpTestResponse::macro('decodedMcpPayload', function (): array {
 function mcpPayload(McpTestResponse $response): array
 {
     return $response->decodedMcpPayload(); // @phpstan-ignore-line
+}
+
+/**
+ * File $transaction under the old split lines (`transaction_splits`), as the
+ * line writer did before it was removed: any lines it had replaced by these,
+ * in order, the row's own category and its rule and AI provenance cleared,
+ * and the row saved so its update event (budgets, the app's delta sync)
+ * fires. Only for tests that pin how a row still carrying lines is read or
+ * guarded until it is converted.
+ *
+ * @param  list<array{category_id: string, amount: int}>  $lines
+ */
+function fileUnderLegacyLines(Transaction $transaction, array $lines): Transaction
+{
+    $transaction->splits()->delete();
+
+    foreach (array_values($lines) as $position => $line) {
+        TransactionSplit::factory()->create([
+            'transaction_id' => $transaction->id,
+            'category_id' => $line['category_id'],
+            'amount' => (int) $line['amount'],
+            'position' => $position,
+        ]);
+    }
+
+    $transaction->forceFill([
+        'category_id' => null,
+        'category_source' => null,
+        'ai_confidence' => null,
+        'categorized_by_rule_id' => null,
+        'ai_suggested_category_id' => null,
+        'ai_suggested_category_at' => null,
+        'ai_model' => null,
+    ]);
+    $transaction->setUpdatedAt($transaction->freshTimestamp()->max($transaction->updated_at?->copy()->addMicrosecond() ?? now()));
+    $transaction->save();
+
+    return $transaction->fresh(['splits.category']);
 }
 
 /**

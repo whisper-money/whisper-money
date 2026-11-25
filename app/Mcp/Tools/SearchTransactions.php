@@ -83,6 +83,7 @@ class SearchTransactions extends McpTool
                 'source' => $transaction->source->value,
                 'creditor_name' => $transaction->creditor_name,
                 'debtor_name' => $transaction->debtor_name,
+                'split_parent_id' => $transaction->split_parent_id,
                 'is_split' => $transaction->splits->isNotEmpty(),
                 'splits' => $transaction->splits->map(fn ($split): array => [
                     'id' => $split->id,

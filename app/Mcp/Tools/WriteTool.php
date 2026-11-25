@@ -245,6 +245,10 @@ abstract class WriteTool extends McpTool
                 ->map(fn (Label $label): array => ['id' => $label->id, 'name' => $label->name])
                 ->values()
                 ->all(),
+            // Set on one part of a split, shared by its siblings: pass any of
+            // them to merge_transaction_splits.
+            'split_parent_id' => $transaction->split_parent_id,
+            // The old split lines, on a transaction not yet converted to parts.
             'is_split' => $transaction->splits->isNotEmpty(),
             'splits' => $transaction->splits->map(fn ($split): array => [
                 'id' => $split->id,

@@ -23,7 +23,9 @@ class ApplyAutomationRules
      * A row a full import writes is left to the import's own budget pass: the
      * chunk is reassigned in one batch, without budget emails, once the rules
      * have filed every row in it. Reassigning it here as well would queue a
-     * job per row that emails about limits crossed long ago.
+     * job per row that emails about limits crossed long ago. One part of a
+     * split is left to the split's own budget pass, which runs once the split
+     * has committed and sends no budget email: a split is not new spending.
      */
     public function handle(TransactionCreated $event): void
     {
@@ -33,7 +35,7 @@ class ApplyAutomationRules
 
         $this->automationRuleService->applyRules(
             $event->transaction,
-            reassignBudgets: $event->transaction->import_id === null,
+            reassignBudgets: $event->transaction->import_id === null && ! $event->transaction->isSplitPart(),
         );
     }
 }

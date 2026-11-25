@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
 use App\Services\TransactionSplitter;
-use App\Services\Transactions\ReplaceTransactionSplits;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Queue;
 
@@ -100,7 +99,7 @@ it('does not categorize a transaction that gained splits while the queued job wa
     ]);
     $food = Category::factory()->create(['user_id' => $user->id, 'space_id' => $account->space_id, 'type' => CategoryType::Expense]);
     $home = Category::factory()->create(['user_id' => $user->id, 'space_id' => $account->space_id, 'type' => CategoryType::Expense]);
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $food->id, 'amount' => -6000],
         ['category_id' => $home->id, 'amount' => -4000],
     ]);

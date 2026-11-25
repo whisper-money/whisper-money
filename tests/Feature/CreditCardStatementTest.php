@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\TransactionSplit;
 use App\Models\User;
 use App\Services\CreditCards\CreditCardStatementService;
+use App\Services\TransactionSplitter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
@@ -173,6 +174,64 @@ it('subtracts a split refund instead of taking it for a repayment', function () 
     TransactionSplit::factory()->create(['transaction_id' => $refund->id, 'category_id' => test()->expense->id, 'amount' => 500, 'position' => 1]);
 
     expect(estimateOn('2026-03-10')['current_cycle']['amount'])->toBe(3500);
+});
+
+/**
+ * Split $transaction into parts of these amounts, each filed under the
+ * category given with it (null for none).
+ *
+ * @param  list<array{0: int, 1: ?Category}>  $parts
+ */
+function splitCardTransaction(Transaction $transaction, array $parts): void
+{
+    app(TransactionSplitter::class)->split($transaction, array_map(
+        fn (array $part): array => ['amount' => $part[0], 'category_id' => $part[1]?->id],
+        $parts,
+    ));
+}
+
+it('counts the parts of a split once, not the original', function () {
+    $original = cardTransaction(-6000, '2026-03-07');
+    cardTransaction(-4000, '2026-03-07', ['split_parent_id' => $original->id]);
+    cardTransaction(-2000, '2026-03-07', ['split_parent_id' => $original->id]);
+    $original->delete();
+
+    expect(estimateOn('2026-03-10')['current_cycle']['amount'])->toBe(6000);
+});
+
+it('counts a charge split into parts once, at its whole amount', function () {
+    splitCardTransaction(cardTransaction(-6000, '2026-03-07', ['category_id' => null]), [[-4000, test()->expense], [-2000, test()->expense]]);
+
+    expect(estimateOn('2026-03-10')['current_cycle']['amount'])->toBe(6000);
+});
+
+it('subtracts a refund split into parts instead of taking it for a repayment', function () {
+    cardTransaction(-5000, '2026-03-07');
+    splitCardTransaction(cardTransaction(1500, '2026-03-08', ['category_id' => null]), [[1000, test()->expense], [500, test()->expense]]);
+
+    expect(estimateOn('2026-03-10')['current_cycle']['amount'])->toBe(3500);
+});
+
+it('takes a repayment split into transfer parts for a payment, once at its whole amount', function () {
+    cardTransaction(-5000, '2026-02-10');
+    $payment = cardTransaction(2000, '2026-03-08', ['category_id' => test()->transfer->id]);
+    splitCardTransaction($payment, [[1500, test()->transfer], [500, null]]);
+
+    $estimate = estimateOn('2026-03-10');
+
+    expect(collect($estimate['payments'])->pluck('transaction_id')->all())->toBe([$payment->id])
+        ->and($estimate['next_payment'])->toMatchArray(['amount' => 5000, 'paid' => 2000])
+        ->and($estimate['current_cycle']['amount'])->toBe(0);
+});
+
+it('reads a split charge on the date the bank booked it, as its original', function () {
+    $charge = cardTransaction(-1200, '2026-03-12', ['source_date' => '2026-03-01']);
+    splitCardTransaction($charge, [[-700, test()->expense], [-500, null]]);
+
+    $estimate = estimateOn('2026-03-10');
+
+    expect($estimate['next_payment']['amount'])->toBe(1200)
+        ->and($estimate['current_cycle']['amount'])->toBe(0);
 });
 
 it('reads the date the bank booked a row, not the one the user moved it to', function () {
@@ -383,6 +442,21 @@ it('never takes a split refund for a payment', function () {
         ->and($estimate['next_payment'])->toMatchArray(['amount' => 5000, 'paid' => 2000])
         ->and($estimate['current_cycle']['amount'])->toBe(-1500)
         // The refund brings usage down once, as a refund, and the payment once.
+        ->and($figures['credit_card_usage']['used'])->toBe(1500);
+});
+
+it('never takes a refund split into parts for a payment', function () {
+    // The same figures as the refund split into lines above.
+    cardTransaction(-5000, '2026-02-10');
+    splitCardTransaction(cardTransaction(1500, '2026-03-08', ['category_id' => null]), [[1000, test()->expense], [500, test()->expense]]);
+    $payment = cardTransaction(2000, '2026-03-08', ['category_id' => null]);
+
+    $figures = figuresOn('2026-03-10');
+    $estimate = $figures['credit_card_statement'];
+
+    expect(collect($estimate['payments'])->pluck('transaction_id')->all())->toBe([$payment->id])
+        ->and($estimate['next_payment'])->toMatchArray(['amount' => 5000, 'paid' => 2000])
+        ->and($estimate['current_cycle']['amount'])->toBe(-1500)
         ->and($figures['credit_card_usage']['used'])->toBe(1500);
 });
 

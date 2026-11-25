@@ -11,7 +11,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Set (or clear) the category of any transaction, including bank/imported ones. Marks the category as manually assigned. Pass category_id: null to remove the category.')]
+#[Description('Set (or clear) the category of any transaction, bank/imported ones and split parts included. Marks the category as manually assigned. Pass category_id: null to remove the category.')]
 class CategorizeTransaction extends WriteTool
 {
     /**
@@ -43,7 +43,7 @@ class CategorizeTransaction extends WriteTool
             $locked = Transaction::query()->whereKey($transaction->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->splits()->exists()) {
-                return Response::error('This transaction is split. Direct category changes are blocked; use split_transaction to replace or remove its split lines.');
+                return Response::error('This transaction is still split into lines the old way, so its category belongs to those lines until it is converted to the new split model.');
             }
 
             $locked->category_id = $categoryId;

@@ -1,6 +1,8 @@
 # Transaction splits
 
-Transaction splits classify one transaction across multiple categories without creating additional ledger entries.
+New splits follow upstream's model: `TransactionSplitter` replaces a transaction with 2–20 child transactions (parts) that carry `split_parent_id`, and soft-deletes the original, which keeps its bank ids and fingerprint so a sync or a re-import does not bring it back. Merging any part soft-deletes every part and restores the original with the category it had. A part cannot be split again or deleted on its own, and its date, account, amount, currency, description and counterparties are locked; its category, labels and notes stay editable. Splitting is gated by the `TransactionSplitting` flag; merging never is.
+
+The rest of this document describes the fork's earlier model, split lines in `transaction_splits`. Rows that still carry lines are read as before, but no path writes lines any more: such a row cannot be split, merged or recategorized until it is converted to parts.
 
 ## Data model
 
@@ -19,21 +21,18 @@ Positive refunds may use expense categories. They reduce expense analytics and b
 
 ## API contract
 
-Pass `splits` when creating or updating a transaction:
+`POST /api/v1/transactions/{id}/split` takes the parts and answers `201` with them, each a transaction with its `split_parent_id`:
 
 ```json
 {
-  "category_id": null,
   "splits": [
-    { "category_id": "food-uuid", "amount": -6000 },
-    { "category_id": "home-uuid", "amount": -4000 }
+    { "amount": -6000, "category_id": "food-uuid", "label_ids": ["label-uuid"] },
+    { "amount": -4000 }
   ]
 }
 ```
 
-Omitting `splits` leaves existing lines unchanged. An empty array removes existing lines and requires an explicit valid `category_id`. One-line splits are rejected; use a normal category instead.
-
-Responses and incremental transaction sync include ordered `splits`, `is_split`, and `split_count`.
+`category_id` and `label_ids` are optional and must be the caller's own in the space. The amounts must add up to the original and share its sign (`422` under `splits`); a part, or a row still split into lines, is a `422` under `transaction`; `403 splitting_disabled` while the flag is off. `POST /api/v1/transactions/{part-id}/merge-splits` takes no body and answers the original. A row still split into lines keeps its ordered `splits`, `is_split` and `split_count` in responses and incremental sync.
 
 ## Financial behavior
 
@@ -52,38 +51,7 @@ Bulk category changes, automation rules, and AI categorization skip split transa
 
 ## MCP writes
 
-MCP reads are split-aware. `categorize_transaction` and direct `category_id` or
-`amount` changes through `update_transaction` continue to reject split parents.
-Use `split_transaction` for a complete replacement of category postings:
-
-```json
-{
-  "transaction_id": "transaction-uuid",
-  "splits": [
-    { "category_id": "food-uuid", "amount": -6000 },
-    { "category_id": "home-uuid", "amount": -4000 }
-  ],
-  "space": "optional-space-uuid"
-}
-```
-
-The tool may classify any accessible transaction, including imported ones, but
-never changes the parent ledger amount or bank data. The array is a full
-replacement, must sum exactly to the parent amount, and labels remain attached
-to the parent. Remove a split with an explicit fallback category:
-
-```json
-{
-  "transaction_id": "transaction-uuid",
-  "splits": [],
-  "fallback_category_id": "food-uuid"
-}
-```
-
-Non-empty creation and replacement follow the `TransactionSplitting` feature
-flag. Removal with `splits: []` remains available while that flag is disabled.
-OAuth connections can use write tools under the current MCP policy; Sanctum
-tokens need the `mcp:write` ability.
+`split_transaction` takes `transaction_id` and `splits` (parts of `amount`, optional `category_id` and `label_ids`, any of the space's categories and labels) and returns `split_into` and the `parts`. `merge_transaction_splits` takes the id of any part and returns the original. Both tools are marked destructive. `update_transaction` refuses a part's core fields, `delete_transaction` refuses a part, and `categorize_transaction` and `update_transaction` still refuse a category or amount change on a row still split into lines. Splitting follows the `TransactionSplitting` flag; merging stays available while it is off. OAuth connections can use write tools under the current MCP policy; Sanctum tokens need the `mcp:write` ability.
 
 Bank importers do not create or modify splits. Deleting a parent cascades to its lines. Account soft-delete and restore preserve the parent and its lines; force-deleting the parent removes the lines through the foreign-key cascade. Categories referenced by split lines cannot be deleted, and their type cannot be changed while they participate in a split.
 

@@ -9,9 +9,11 @@ use App\Enums\ImportStatus;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Import;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\CategoryTree;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
@@ -154,6 +156,10 @@ class ImportHistoryPresenter
     }
 
     /**
+     * Every row count here is of movements ({@see Transaction::scopeMovements()}):
+     * a row the user split since still counts once, as the row the import
+     * wrote, however many parts it has now.
+     *
      * @param  array<string, ?string>|null  $parentMap  the user's category tree
      * @return array<string, mixed>
      */
@@ -162,19 +168,20 @@ class ImportHistoryPresenter
         // An account the import created that has since been connected to a
         // bank is not deleted by undo: only what the import wrote leaves it.
         [$connected, $created] = $import->accounts()
-            ->withCount('transactions')
+            ->withCount(['transactions' => self::movementsOnly(...)])
             ->orderBy('name')
             ->get(['id', 'name', 'banking_connection_id'])
             ->partition(fn (Account $account): bool => $account->isConnected());
 
         $intoOwn = $import->transactions()
+            ->movements()
             ->whereNotIn('account_id', $created->pluck('id'))
             ->selectRaw('account_id, count(*) as aggregate')
             ->groupBy('account_id')
             ->pluck('aggregate', 'account_id');
 
         $onCreated = $created->sum(fn (Account $account): int => (int) $account->getAttribute('transactions_count'));
-        $importedOnCreated = $import->transactions()->whereIn('account_id', $created->pluck('id'))->count();
+        $importedOnCreated = $import->transactions()->movements()->whereIn('account_id', $created->pluck('id'))->count();
 
         return [
             // Movements on the accounts the import created that it did not
@@ -189,10 +196,21 @@ class ImportHistoryPresenter
             'categories' => $import->categories()->count(),
             // Of those, the ones split lines still use: undo keeps them.
             'categories_kept' => $this->undoer->categoriesKeptForSplits($import, $parentMap),
-            'transactions' => $import->transactions()->count(),
+            'transactions' => $import->transactions()->movements()->count(),
             'balances' => $import->balances()->count(),
             'into_own_accounts' => $this->ownAccountLines($intoOwn),
         ];
+    }
+
+    /**
+     * The account's rows counted as movements, for withCount().
+     *
+     * @param  Builder<Transaction>  $transactions
+     * @return Builder<Transaction>
+     */
+    private static function movementsOnly(Builder $transactions): Builder
+    {
+        return $transactions->movements();
     }
 
     /**

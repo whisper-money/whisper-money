@@ -13,7 +13,6 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
-use App\Services\Transactions\ReplaceTransactionSplits;
 
 use function Pest\Laravel\actingAs;
 
@@ -358,7 +357,7 @@ test('moving a split parent keeps its parts on the new date', function () {
         'amount' => -10000,
     ]);
 
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $category->id, 'amount' => -6000],
         ['category_id' => $category->id, 'amount' => -4000],
     ]);

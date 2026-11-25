@@ -16,6 +16,7 @@ use App\Http\Resources\V1\TransactionResource;
 use App\Services\Transactions\TransactionLabeler;
 use App\Services\Transactions\TransactionWriter;
 use App\Services\Transactions\WrittenTransaction;
+use App\Services\TransactionSplitter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -33,11 +34,13 @@ class TransactionController extends Controller
      * subtree, a category and `label_ids` sent together match either, and each
      * other filter narrows further.
      *
-     * A split transaction is one row. A filter that matches one line returns
-     * the whole transaction: `amount` stays the full amount and `splits` holds
-     * every line, the ones outside the filter included, so to add up a category
-     * read its lines, not `amount`. Labels sit on the transaction, not on a
-     * line, so `label_ids` matches every line of it.
+     * A transaction that was split is not listed: its parts are, each with the
+     * same `split_parent_id`, and each matches a filter on its own category and
+     * labels. A transaction still split the old way is one row whose `splits`
+     * holds its lines: a filter that matches one line returns the whole row,
+     * `amount` stays the full amount and `splits` holds every line, the ones
+     * outside the filter included, so to add up a category read its lines, not
+     * `amount`. Its labels sit on the row, so `label_ids` matches every line.
      *
      * `query` reads what the server can read: an encrypted description or note
      * never matches, though the row can still match on the counterparty names
@@ -89,11 +92,12 @@ class TransactionController extends Controller
      * Update a transaction
      *
      * Changes only the fields you send, and also sets or clears the category.
-     * The labels are not changed here. The notes, the category and the date can
-     * change on any transaction; the rest (description, amount, currency,
-     * account and counterparty names) only on one you recorded by hand: on one
-     * from a bank or an import, sending them is a `422` and nothing is saved.
-     * The category and amount of a split transaction belong to its lines, so
+     * The labels are not changed here. The notes and the category can change on
+     * any transaction, and the date on any but one part of a split; the rest
+     * (description, amount, currency, account and counterparty names) only on
+     * one you recorded by hand that is not one part of a split: on any other,
+     * sending them is a `422` and nothing is saved. The category and amount of
+     * a transaction still split into the old lines belong to its lines, so
      * they are a `422` under `splits`. A new account brings its currency unless
      * `currency_code` picks another.
      *
@@ -121,7 +125,8 @@ class TransactionController extends Controller
      *
      * Deletes a transaction, one that came from a bank or an import included:
      * as in the app, the next sync does not bring it back. Re-uploading a file
-     * that holds it does.
+     * that holds it does. One part of a split cannot be deleted on its own and
+     * answers `422` under `transaction`: merge the split back first.
      *
      * With `update_balance` it also takes the transaction back out of the
      * account's balance snapshots, and `balance_updated` says whether they
@@ -150,9 +155,10 @@ class TransactionController extends Controller
      *
      * Sets the transaction's labels to exactly `label_ids`: a label it had
      * that is not in the list is removed, and an empty list removes them all.
-     * Works on any transaction you own, including one from a bank or an import
-     * and a split one, whose lines share its labels. Labelling is also how a
-     * transaction counts towards a savings goal.
+     * Works on any transaction you own, including one from a bank or an import,
+     * one part of a split, and one still split into the old lines, whose lines
+     * share its labels. Labelling is also how a transaction counts towards a
+     * savings goal.
      *
      * @param  string  $transaction  The transaction's id.
      */
@@ -164,41 +170,51 @@ class TransactionController extends Controller
     /**
      * Split a transaction
      *
-     * Files a transaction under 2 to 20 lines, each with its own amount and
-     * category, replacing the lines it had. Works on bank and imported
-     * transactions too, and changes neither the transaction's amount, date and
-     * account nor its balance. Answers the transaction, with the lines nested
-     * under `splits`.
-     *
-     * The lines must add up to the transaction's amount exactly, each with its
-     * sign and none zero, and their categories must all be expense or all be
-     * income. Anything else is a `422` under `splits`.
+     * Replaces a transaction that covered several things with 2 to 20 parts,
+     * each with its own amount, optional category and labels. Works on bank and
+     * imported transactions too, and moves no balance. The parts must add up to
+     * the original exactly and all move money the same way; anything else is a
+     * `422` under `splits`. From then on the parts are what exists: the original
+     * is out of every list and every total, and each part carries a
+     * `split_parent_id` shared with its siblings. A part cannot be split again,
+     * deleted on its own, or have its amount, date, account or other core
+     * fields changed; categorizing, labelling and editing its notes work as
+     * usual. Splitting a part again, or a transaction still split into the old
+     * lines (`splits`, which it keeps until it is converted), answers `422`
+     * under `transaction`, and the original's id answers `404` once it is
+     * split. While splitting is switched off for the account, `403` with
+     * `splitting_disabled`. Answers `201` with the parts, in the order they were
+     * sent.
      *
      * @param  string  $transaction  The transaction's id.
      */
-    public function split(SplitTransactionRequest $request, string $transaction): TransactionResource
+    public function split(SplitTransactionRequest $request, string $transaction, TransactionSplitter $splitter): JsonResponse
     {
         if (! Feature::for($this->user($request))->active(TransactionSplitting::class)) {
-            throw new ApiV1Exception(403, 'splitting_disabled', 'Creating or replacing transaction splits is currently disabled. Existing splits may still be merged back.');
+            throw new ApiV1Exception(403, 'splitting_disabled', 'Creating transaction splits is currently disabled. Existing splits may still be merged back.');
         }
 
-        return new TransactionResource($this->writer->split($request->transaction(), $request->lines()));
+        $parts = $splitter->split($request->transaction(), $request->splits());
+
+        return TransactionResource::collection($parts)->response()->setStatusCode(201);
     }
 
     /**
      * Merge a split back
      *
-     * Puts a split transaction back in one piece, removing its lines. It takes
-     * `category_id`, an expense or income category of yours in the space,
-     * because a split transaction holds no category of its own to go back to.
-     * One that is not split answers `422` under `transaction`, and a category
-     * of another type under `splits`.
+     * Puts back the transaction a split came from, with the category it had
+     * before, and deletes every part along with the category, labels and notes
+     * set on them. Pass the id of any one of the parts, and no body; one that is
+     * not part of a split answers `422` under `transaction`, and the original's
+     * own id answers `404`: it is out of every list until the merge. Merging
+     * stays open while splitting is switched off. Answers the original
+     * transaction, under its id from before the split.
      *
-     * @param  string  $transaction  The transaction's id.
+     * @param  string  $transaction  The id of any part of the split.
      */
-    public function mergeSplits(MergeTransactionSplitsRequest $request, string $transaction): TransactionResource
+    public function mergeSplits(MergeTransactionSplitsRequest $request, string $transaction, TransactionSplitter $splitter): TransactionResource
     {
-        return new TransactionResource($this->writer->mergeSplits($request->transaction(), $request->categoryId()));
+        return new TransactionResource($splitter->merge($request->transaction()));
     }
 
     private function written(WrittenTransaction $written): TransactionResource

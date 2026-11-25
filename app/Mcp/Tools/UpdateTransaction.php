@@ -12,7 +12,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 
-#[Description('Edit a transaction; only the fields you pass change. Notes and category work on any transaction, bank/imported ones included; the other fields only on manually-created ones.')]
+#[Description('Edit a transaction; only the fields you pass change. Notes and category work on any transaction, bank/imported ones and split parts included; the other fields only on manual ones.')]
 class UpdateTransaction extends WriteTool
 {
     /**
@@ -94,12 +94,20 @@ class UpdateTransaction extends WriteTool
      * Why the request cannot go through, as the error the client sees, or null
      * when it can. Only a request that actually carries a locked field is
      * refused: an edit limited to notes is allowed on every transaction, which
-     * is how an agent annotates bank and imported rows.
+     * is how an agent annotates bank and imported rows and split parts. One
+     * part of a split takes every core field from its original, as in the app
+     * and `/api/v1`.
      */
     private function refuseUneditable(Request $request, Transaction $transaction): ?Response
     {
         if ($transaction->splits()->exists() && $request->hasAny(['category_id', 'amount'])) {
-            return Response::error('This transaction is split. Direct category and amount changes are blocked; use split_transaction for category postings. It does not change the parent ledger amount.');
+            return Response::error('This transaction is still split into lines the old way, so its category and amount belong to those lines until it is converted to the new split model. Notes and labels can still be changed.');
+        }
+
+        if ($transaction->isSplitPart()) {
+            $error = TransactionWriteRules::lockedCoreFieldError($transaction, array_keys($request->all()), ', and label_transaction handles its labels');
+
+            return $error === null ? null : Response::error($error);
         }
 
         $locked = array_values(array_filter(

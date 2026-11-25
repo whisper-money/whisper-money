@@ -10,6 +10,7 @@ use App\Models\RecurringSeries;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Recurring\EstimateDiscretionarySpending;
+use App\Services\TransactionSplitter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
@@ -101,6 +102,27 @@ it('excludes what the projection already walks', function () {
     }
 
     // Only the groceries, never the subscription counted twice.
+    expect(estimateFor($this->user, $this->account)['monthly'])->toBe(-20000);
+});
+
+it('leaves out the parts of a charge the projection walks, and counts the parts of any other split', function () {
+    $series = RecurringSeries::factory()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => 'EUR',
+    ]);
+    $splitter = app(TransactionSplitter::class);
+
+    foreach ([1, 2, 3] as $back) {
+        $groceries = spend($this->user, $this->account, $back, -20000, $this->groceries);
+        $subscription = spend($this->user, $this->account, $back, -1299, $this->groceries);
+        $series->transactions()->attach($subscription->id);
+
+        // Split after detection linked it: the series holds the original.
+        $splitter->split($subscription, [['amount' => -1000, 'category_id' => $this->groceries->id], ['amount' => -299]]);
+        $splitter->split($groceries, [['amount' => -15000, 'category_id' => $this->groceries->id], ['amount' => -5000]]);
+    }
+
+    // The groceries in full, the subscription never counted a second time.
     expect(estimateFor($this->user, $this->account)['monthly'])->toBe(-20000);
 });
 

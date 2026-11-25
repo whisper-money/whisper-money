@@ -64,29 +64,6 @@ class TransactionFactory extends Factory
         ]);
     }
 
-    /**
-     * One part of a split of $original: its owner, space, account, date,
-     * description, notes, currency, source and import, under it. The original
-     * itself is left as it is; soft-delete it to stand for a real split.
-     */
-    public function splitPartOf(Transaction $original): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'split_parent_id' => $original->id,
-            'user_id' => $original->user_id,
-            'space_id' => $original->space_id,
-            'account_id' => $original->account_id,
-            'transaction_date' => $original->transaction_date,
-            'description' => $original->description,
-            'description_iv' => $original->description_iv,
-            'notes' => $original->notes,
-            'notes_iv' => $original->notes_iv,
-            'currency_code' => $original->currency_code,
-            'source' => $original->source,
-            'import_id' => $original->import_id,
-        ]);
-    }
-
     public function plaintext(): static
     {
         return $this->state(fn (array $attributes) => [

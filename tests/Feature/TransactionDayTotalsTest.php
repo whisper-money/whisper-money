@@ -122,6 +122,18 @@ test('a day holding an amount with no rate has no total', function () {
     ]);
 });
 
+test('a split counts its parts, not the original they replaced', function () {
+    $original = dayTransaction('2025-11-12', -5340, attributes: ['category_id' => null]);
+
+    actingAs($this->user)->postJson("/transactions/{$original->id}/split", [
+        'splits' => [['amount' => -3490], ['amount' => -1850]],
+    ])->assertCreated();
+
+    expect(dayTotalsFor())->toBe([
+        '2025-11-12' => ['count' => 2, 'total' => -5340],
+    ]);
+});
+
 /**
  * A transaction split into the given lines, each a category and an amount in
  * cents, without a category of its own, the way splitting one leaves it.

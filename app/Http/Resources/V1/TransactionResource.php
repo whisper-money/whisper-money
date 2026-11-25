@@ -12,7 +12,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * A transaction: money that moved in or out of an account, synced from the
  * bank, imported from a file or recorded by hand. Amounts are in minor units.
  *
- * A split one keeps its lines nested under `splits`. Fields still encrypted on
+ * One part of a split carries the `split_parent_id` its siblings share; a
+ * transaction still split the old way keeps its lines nested under `splits`
+ * until it is converted. Fields still encrypted on
  * the device are empty, as the CSV export writes them: the server cannot read
  * them, and ciphertext is not text.
  *
@@ -52,6 +54,7 @@ class TransactionResource extends JsonResource
             'creditor_name' => $this->creditor_name,
             'debtor_name' => $this->debtor_name,
             'notes' => $this->notes_iv === null ? $this->notes : '',
+            'split_parent_id' => $this->split_parent_id,
             'splits' => $this->splits
                 ->map(fn (TransactionSplit $split): array => [
                     'id' => $split->id,

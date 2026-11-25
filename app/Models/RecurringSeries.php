@@ -109,12 +109,20 @@ class RecurringSeries extends Model
         return $this->belongsTo(Category::class);
     }
 
-    /** @return BelongsToMany<Transaction, $this, RecurringSeriesTransaction, 'pivot'> */
+    /**
+     * The charges the series was detected from. Each is a movement
+     * ({@see Transaction::scopeMovements()}): a charge the user split since
+     * stays here as its original, trashed but with its full amount, while one
+     * the user deleted drops out.
+     *
+     * @return BelongsToMany<Transaction, $this, RecurringSeriesTransaction, 'pivot'>
+     */
     public function transactions(): BelongsToMany
     {
         return $this->belongsToMany(Transaction::class, 'recurring_series_transaction')
             ->using(RecurringSeriesTransaction::class)
-            ->withTimestamps();
+            ->withTimestamps()
+            ->movements();
     }
 
     /**

@@ -14,7 +14,6 @@ use App\Models\Label;
 use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Transactions\ReplaceTransactionSplits;
 
 beforeEach(function () {
     // The balance-evolution endpoint converts account currency via the external
@@ -479,7 +478,7 @@ test('account show serializes split transaction details', function () {
         'space_id' => $account->space_id,
         'type' => CategoryType::Expense,
     ]);
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $food->id, 'amount' => -6000],
         ['category_id' => $home->id, 'amount' => -4000],
     ]);

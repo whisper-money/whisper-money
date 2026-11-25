@@ -15,7 +15,6 @@ use App\Models\Concerns\BelongsToSpace;
 use App\Services\CashflowBlockQuery;
 use App\Services\CategoryTree;
 use App\Services\PeriodComparator;
-use App\Services\TransactionSplitter;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Closure;
@@ -207,7 +206,7 @@ class Transaction extends Model
     }
 
     /**
-     * The parts this transaction was split into ({@see TransactionSplitter}).
+     * The parts this transaction was split into (TransactionSplitter).
      * Empty unless this row is a split original. Upstream's `splits()`: it is
      * renamed to that once the legacy split lines are gone (PR 3).
      *
@@ -271,7 +270,7 @@ class Transaction extends Model
     /**
      * One movement of money per row, as the account made it: a row that is not
      * a part of a split and is either live, or a split original (soft-deleted
-     * by {@see TransactionSplitter}) that still has at least one live part. A
+     * by TransactionSplitter) that still has at least one live part. A
      * row the user deleted, and an original whose parts are all gone, are not.
      *
      * For the readers that reason about what the bank moved rather than how

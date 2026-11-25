@@ -22,7 +22,7 @@ it('nests the split lines under the transaction, in minor units', function () {
         'category' => ['id' => $category->id, 'name' => 'Food'],
         'amount' => -600,
         'position' => 0,
-    ]])->and($row)->not->toHaveKey('split_parent_id');
+    ]])->and($row['split_parent_id'])->toBeNull();
 });
 
 it('writes nothing of a field still encrypted on the device', function () {

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\CategorySource;
 use App\Jobs\ReassignTransactionsToBudgets;
-use App\Listeners\AssignTransactionToBudget;
 use App\Models\Transaction;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Splitting a transaction into parts, and putting it back together. Every
- * caller comes through here, so the invariants live in one place.
+ * caller — the web dialog, the MCP tools and `/api/v1` — comes through here,
+ * so the invariants live in one place.
  *
  * The original row never goes away: it is soft-deleted, which drops it out of
  * every list, every total and every budget in one move, while keeping the
@@ -28,6 +28,24 @@ class TransactionSplitter
     public const MAX_PARTS = 20;
 
     private const string NotASplitPart = 'That transaction is not part of a split, so there is nothing to merge.';
+
+    /**
+     * The shape of a split request, shared by the `split_transaction` MCP tool
+     * and `POST /api/v1/transactions/{id}/split`. Each caller adds its own
+     * check that the category and label ids are in the space.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function partRules(): array
+    {
+        return [
+            'splits' => ['required', 'array', 'min:2', 'max:'.self::MAX_PARTS],
+            'splits.*.amount' => ['required', 'integer'],
+            'splits.*.category_id' => ['nullable', 'string'],
+            'splits.*.label_ids' => ['nullable', 'array', 'max:100'],
+            'splits.*.label_ids.*' => ['required', 'string', 'distinct:ignore_case'],
+        ];
+    }
 
     /**
      * Replace a transaction with its parts.
@@ -50,7 +68,7 @@ class TransactionSplitter
             ]);
         }
 
-        $this->assignImportedParts($created);
+        $this->assignToBudgets($created);
 
         return $created;
     }
@@ -71,11 +89,13 @@ class TransactionSplitter
 
         DB::transaction(function () use ($original): void {
             // Soft-deleting each part fires the model event that takes it back
-            // out of its budgets; restoring the original fires the one that
-            // puts the original back in.
+            // out of its budgets. The original comes back quietly and is put
+            // back in its budgets below, once the merge has committed.
             $original->splitParts->each->delete();
-            $original->restore();
+            $original->restoreQuietly();
         });
+
+        $this->assignToBudgets(collect([$original]));
 
         return $original->fresh();
     }
@@ -84,7 +104,7 @@ class TransactionSplitter
      * Why the transaction cannot be split, or null when it can: a part of a
      * split is not split again.
      */
-    private static function splitPartError(Transaction $transaction): ?string
+    public static function splitPartError(Transaction $transaction): ?string
     {
         return $transaction->isSplitPart()
             ? 'That transaction is already one part of a split. Merge the split back before splitting again.'
@@ -100,7 +120,7 @@ class TransactionSplitter
      *
      * @param  list<array<string, mixed>>  $parts
      */
-    private static function partsError(Transaction $transaction, array $parts): ?string
+    public static function partsError(Transaction $transaction, array $parts): ?string
     {
         if (count($parts) < 2 || count($parts) > self::MAX_PARTS) {
             return 'A split needs between 2 and '.self::MAX_PARTS.' parts.';
@@ -124,10 +144,19 @@ class TransactionSplitter
     }
 
     /**
+     * Why $part cannot be merged back, or null when it can: only a part of a
+     * split has an original to go back to.
+     */
+    public static function mergeError(Transaction $part): ?string
+    {
+        return $part->splitParent()->withTrashed()->exists() ? null : self::NotASplitPart;
+    }
+
+    /**
      * Why a transaction still filed under the old split lines cannot be split
      * into parts, or null when it has none.
      */
-    private static function legacyLinesError(Transaction $transaction): ?string
+    public static function legacyLinesError(Transaction $transaction): ?string
     {
         return $transaction->splits()->exists()
             ? 'This transaction is still split into lines the old way. It has to be converted to the new split model before it can be split again.'
@@ -165,9 +194,11 @@ class TransactionSplitter
             return null;
         }
 
-        // Lines are written under this same lock, so one written since the
-        // check above is caught here.
-        self::throwIfError('transaction_id', self::legacyLinesError($original));
+        // Checked again on the row as it is under the lock: one edited since
+        // the caller read it (its amount, say) must not be replaced by parts
+        // that add up to what it used to be.
+        self::throwIfError('transaction_id', self::splitPartError($original) ?? self::legacyLinesError($original));
+        self::throwIfError('splits', self::partsError($original, $parts));
 
         $created = collect($parts)->map(
             fn (array $part): Transaction => $this->createPart($original, $part)
@@ -211,29 +242,27 @@ class TransactionSplitter
         ]);
 
         $created->save();
-        $created->labels()->sync($part['label_ids'] ?? []);
+        // On top of what an automation rule tagged it with while it was saved,
+        // as for any new transaction (TransactionWriter::create()).
+        $created->labels()->syncWithoutDetaching($part['label_ids'] ?? []);
 
         return $created->load('labels');
     }
 
     /**
-     * Put the parts of an imported original into their budgets. Parts keep the
-     * original's `import_id`, so undoing the import still takes them away, and
-     * {@see AssignTransactionToBudget} skips the creation of an imported row
-     * (an import assigns its rows in one batch per chunk). A split is not new
-     * spending, so no budget emails. Queued after the commit, so it reads the
-     * parts with their labels whether the queue runs now or later.
+     * Put the rows a split or a merge leaves into their budgets, once, after it
+     * has committed: a part then carries its labels, so a budget tracking one
+     * of them counts it whichever order the queue runs in. The listener that
+     * assigns a new row leaves a part to this pass
+     * (AssignTransactionToBudget::shouldQueue()), and the
+     * original comes back without the update event that would assign it.
+     * Parts keep the original's `import_id`, so undoing the import still takes
+     * them away. A split or a merge is not new spending, so no budget emails.
      *
-     * @param  Collection<int, Transaction>  $parts
+     * @param  Collection<int, Transaction>  $transactions
      */
-    private function assignImportedParts(Collection $parts): void
+    private function assignToBudgets(Collection $transactions): void
     {
-        $imported = $parts->filter(fn (Transaction $part): bool => $part->import_id !== null);
-
-        if ($imported->isEmpty()) {
-            return;
-        }
-
-        ReassignTransactionsToBudgets::dispatch($imported->pluck('id')->values()->all(), notify: false);
+        ReassignTransactionsToBudgets::dispatch($transactions->pluck('id')->values()->all(), notify: false);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\V1\Concerns;
 
+use Closure;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -20,6 +21,21 @@ trait AddsRefusals
     public function after(): array
     {
         return [fn (Validator $validator) => $this->addRefusals($validator, $this->unknownFieldRefusals())];
+    }
+
+    /**
+     * An after() refusing unknown fields and what $refusals finds once the
+     * rules have run, keyed by field: a null refusal is none.
+     *
+     * @param  Closure(): array<string, ?string>  $refusals
+     * @return array<int, callable(Validator): void>
+     */
+    protected function refusingUnknownFieldsAnd(Closure $refusals): array
+    {
+        return [fn (Validator $validator) => $this->addRefusals($validator, [
+            ...$this->unknownFieldRefusals(),
+            ...array_filter($refusals()),
+        ])];
     }
 
     /**

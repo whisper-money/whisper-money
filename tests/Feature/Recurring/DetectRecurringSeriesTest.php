@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Recurring\DetectRecurringSeries;
 use App\Services\Recurring\MerchantKeyBuilder;
+use App\Services\TransactionSplitter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -304,6 +305,46 @@ it('attributes a split charge to its largest line', function () {
 
     expect($series->category_id)->toBe($food->id)
         ->and($series->expected_amount)->toBe(-10000);
+});
+
+it('detects a monthly charge whose latest occurrence was split, at its full amount, under its largest part', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $home = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $charges = monthlyCharges($this->user, $this->account, 'Mercadona', amount: -10000);
+    $latest = end($charges);
+    $parts = app(TransactionSplitter::class)->split($latest, [
+        ['amount' => -3000, 'category_id' => $home->id],
+        ['amount' => -7000, 'category_id' => $food->id],
+    ]);
+
+    expect($this->detector->forUser($this->user))->toBe(1);
+
+    $series = RecurringSeries::query()->sole();
+
+    expect($series->cadence)->toBe(RecurringCadence::Monthly)
+        ->and($series->occurrence_count)->toBe(4)
+        ->and($series->expected_amount)->toBe(-10000)
+        ->and($series->recent_amount)->toBe(-10000)
+        ->and($series->last_occurred_on->toDateString())->toBe($latest->transaction_date->toDateString())
+        ->and($series->category_id)->toBe($food->id)
+        // The pivot holds the original, and the series still reads it.
+        ->and($series->transactions->pluck('id')->sort()->values()->all())->toBe(collect($charges)->pluck('id')->sort()->values()->all())
+        ->and(RecurringSeriesTransaction::query()->whereIn('transaction_id', $parts->pluck('id'))->exists())->toBeFalse();
+
+    // A second run finds the same charges and leaves the series as it is.
+    expect($this->detector->previewForUser($this->user))->toMatchArray(['unchanged' => 1, 'created' => 0, 'updated' => 0]);
+});
+
+it('counts a split charge once among the descriptions that tell merchants apart', function () {
+    $charges = monthlyCharges($this->user, $this->account, 'Netflix');
+    $before = app(MerchantKeyBuilder::class)->documentFrequency(Transaction::query()->pluck('description'));
+
+    app(TransactionSplitter::class)->split(end($charges), [['amount' => -1000], ['amount' => -299]]);
+
+    $this->detector->forUser($this->user);
+
+    expect(RecurringSeries::query()->sole()->occurrence_count)->toBe(4)
+        ->and(app(MerchantKeyBuilder::class)->documentFrequency(Transaction::query()->movements()->pluck('description')))->toBe($before);
 });
 
 it('keeps income and expense from the same counterparty apart', function () {

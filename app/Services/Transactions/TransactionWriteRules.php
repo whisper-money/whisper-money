@@ -82,8 +82,9 @@ class TransactionWriteRules
     /**
      * Why `/api/v1` refuses to edit the $sent fields, keyed by the field the
      * error goes under: the locked core fields ({@see self::lockedCoreFields()}),
-     * and blanking a note the server cannot read. A split's ledger is
-     * TransactionWriter's to refuse, under the row lock.
+     * and blanking a note the server cannot read. The ledger of a row still
+     * split into the old lines is TransactionWriter's to refuse, under the row
+     * lock.
      *
      * @param  array<string, mixed>  $sent  the fields the edit carries
      * @return array<string, string>
@@ -128,7 +129,7 @@ class TransactionWriteRules
      * @param  list<string>  $sent  the fields the edit carries
      * @param  string  $labelsHint  appended to the message, naming where the labels are changed
      */
-    private static function lockedCoreFieldError(Transaction $transaction, array $sent, string $labelsHint = ''): ?string
+    public static function lockedCoreFieldError(Transaction $transaction, array $sent, string $labelsHint = ''): ?string
     {
         $locked = self::lockedCoreFields($transaction, $sent);
 
@@ -160,9 +161,10 @@ class TransactionWriteRules
     }
 
     /**
-     * Why an edit of the $sent fields cannot touch a split transaction, or
-     * null when it can. A split one is filed under its lines, so its category
-     * and amount belong to them. The wording is the app's.
+     * Why an edit of the $sent fields cannot touch a transaction still split
+     * into the old lines, or null when it can. Such a row is filed under its
+     * lines, so its category and amount belong to them until it is converted
+     * to parts. The wording is the app's.
      *
      * @param  list<string>  $sent  the fields the edit carries
      */
@@ -173,14 +175,6 @@ class TransactionWriteRules
         }
 
         return 'Category or amount changes on a split transaction require an explicit split replacement or removal.';
-    }
-
-    /**
-     * Why the transaction has nothing to merge back, or null when it does.
-     */
-    public static function mergeError(Transaction $transaction): ?string
-    {
-        return $transaction->splits()->exists() ? null : 'That transaction is not split, so there is nothing to merge.';
     }
 
     /**

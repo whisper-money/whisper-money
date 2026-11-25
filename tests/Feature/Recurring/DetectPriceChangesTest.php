@@ -4,6 +4,7 @@ use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\Recurring\DetectPriceChanges;
+use App\Services\TransactionSplitter;
 
 beforeEach(function () {
     $this->detect = app(DetectPriceChanges::class);
@@ -28,6 +29,27 @@ it('spots a subscription that stepped up and stayed there', function () {
         ->and($rises->first()->percentage())->toBe(23)
         // A monthly rise of 3.00 costs 36.00 more a year.
         ->and($rises->first()->yearlyImpact())->toBe(3600);
+});
+
+it('still reads a charge the user split since, at its full amount', function () {
+    $series = seriesCharging($this->user, $this->account, [1299, 1299, 1299, 1599, 1599, 1599]);
+    $latest = $series->transactions()->orderByDesc('transaction_date')->first();
+    app(TransactionSplitter::class)->split($latest, [['amount' => -1000], ['amount' => -599]]);
+
+    $rises = $this->detect->forUser($this->user);
+
+    expect($series->fresh()->transactions)->toHaveCount(6)
+        ->and($rises)->toHaveCount(1)
+        ->and($rises->first()->previousAmount)->toBe(1299)
+        ->and($rises->first()->currentAmount)->toBe(1599);
+});
+
+it('drops a charge the user deleted from the history', function () {
+    $series = seriesCharging($this->user, $this->account, [1299, 1299, 1299, 1599, 1599, 1599]);
+    $series->transactions()->orderByDesc('transaction_date')->first()->delete();
+
+    expect($series->fresh()->transactions)->toHaveCount(5)
+        ->and($this->detect->forUser($this->user))->toHaveCount(0);
 });
 
 it('leaves a bill that simply swings alone', function () {

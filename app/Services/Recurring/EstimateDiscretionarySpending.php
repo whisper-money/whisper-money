@@ -166,6 +166,9 @@ class EstimateDiscretionarySpending
      * invisible in the everyday estimate, and quietly worse every time the user
      * tidies the detected list up. Only a series still charging in the currency
      * the forecast walks can vouch for a transaction being counted already.
+     *
+     * The series holds a split charge by its original, so every part of it
+     * is already walked forward through its original's pivot.
      */
     private function notAlreadyRecurring(string $currency): callable
     {
@@ -176,7 +179,7 @@ class EstimateDiscretionarySpending
 
         return fn (Builder $query) => $query->whereNotExists(
             fn ($sub) => $sub->from('recurring_series_transaction')
-                ->whereColumn('recurring_series_transaction.transaction_id', 'transactions.id')
+                ->whereRaw('recurring_series_transaction.transaction_id = COALESCE(transactions.split_parent_id, transactions.id)')
                 ->whereIn('recurring_series_transaction.recurring_series_id', $walkedForward)
         );
     }

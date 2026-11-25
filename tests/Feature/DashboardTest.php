@@ -8,7 +8,6 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Transactions\ReplaceTransactionSplits;
 
 test('new guests are redirected to the registration page', function () {
     $this->get(route('dashboard'))->assertRedirect(route('register'));
@@ -82,7 +81,7 @@ test('dashboard cashflow uses split category types instead of the parent sign', 
     $food = Category::factory()->create(['user_id' => $user->id, 'space_id' => $account->space_id, 'type' => CategoryType::Expense]);
     $home = Category::factory()->create(['user_id' => $user->id, 'space_id' => $account->space_id, 'type' => CategoryType::Expense]);
 
-    app(ReplaceTransactionSplits::class)->replace($transaction, [
+    fileUnderLegacyLines($transaction, [
         ['category_id' => $food->id, 'amount' => 6000],
         ['category_id' => $home->id, 'amount' => 4000],
     ]);
