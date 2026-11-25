@@ -334,6 +334,10 @@ export function EditTransactionDialog({
         mode === 'edit' && transaction && hasLegacySplitLines(transaction)
             ? (transaction.splits ?? [])
             : [];
+    // Its lines add up to its amount, so the server refuses a new amount for it
+    // as well: on a manual row the amount and the expense/income toggle are
+    // shown but locked until the conversion.
+    const isAmountLocked = legacySplitLines.length > 0;
 
     // The toggle carries the sign, so the amount input never sees a minus and
     // nobody has to type one. Everything that persists or matches on the amount
@@ -900,7 +904,10 @@ export function EditTransactionDialog({
                 }
 
                 if (canEditAllFields) {
-                    if (signedAmount !== transaction.amount) {
+                    if (
+                        !isAmountLocked &&
+                        signedAmount !== transaction.amount
+                    ) {
                         updateData.amount = signedAmount;
                     }
                     if (accountId !== transaction.account_id) {
@@ -1461,9 +1468,13 @@ export function EditTransactionDialog({
                             ? __('Create a new transaction.')
                             : canEditAllFields
                               ? __('Update this transaction.')
-                              : __(
-                                    'Update the category and notes for this transaction.',
-                                )}
+                              : isSplitPartTransaction && canEditDescription
+                                ? __(
+                                      'Update the description, category and notes for this part of the split.',
+                                  )
+                                : __(
+                                      'Update the category and notes for this transaction.',
+                                  )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -1508,7 +1519,9 @@ export function EditTransactionDialog({
                                                     );
                                                 }
                                             }}
-                                            disabled={isSubmitting}
+                                            disabled={
+                                                isSubmitting || isAmountLocked
+                                            }
                                         >
                                             <ToggleGroupItem
                                                 value="expense"
@@ -1540,7 +1553,10 @@ export function EditTransactionDialog({
                                                 currencyCode={currencyCode}
                                                 currencySlot={currencyPicker}
                                                 placeholder="25.00"
-                                                disabled={isSubmitting}
+                                                disabled={
+                                                    isSubmitting ||
+                                                    isAmountLocked
+                                                }
                                                 required
                                                 className="h-11 text-right text-xl font-semibold tabular-nums md:text-xl"
                                             />
@@ -1671,7 +1687,7 @@ export function EditTransactionDialog({
                                         </div>
                                         <p className="text-sm text-muted-foreground">
                                             {__(
-                                                'This split is in the old format and will be converted into parts. Until then its lines cannot be changed.',
+                                                'This split is in the old format and will be converted into parts. Until then its lines, its category and its amount cannot be changed.',
                                             )}
                                         </p>
                                     </div>

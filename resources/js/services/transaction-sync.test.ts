@@ -9,13 +9,23 @@ import {
 const dbMock = vi.hoisted(() => ({
     transactions: {
         delete: vi.fn(async () => undefined),
+        bulkDelete: vi.fn(async () => undefined),
         put: vi.fn(async () => undefined),
     },
     sync_metadata: { delete: vi.fn(), get: vi.fn(), put: vi.fn() },
 }));
 
 const axiosMock = vi.hoisted(() => ({
-    delete: vi.fn(async () => ({ data: {} })),
+    delete: vi.fn(
+        async (): Promise<{ data: Record<string, unknown> }> => ({
+            data: {},
+        }),
+    ),
+    post: vi.fn(
+        async (): Promise<{ data: Record<string, unknown> }> => ({
+            data: {},
+        }),
+    ),
     patch: vi.fn(
         async (): Promise<{ data: Record<string, unknown> }> => ({
             data: { updated_count: 2, skipped_split_count: 1 },
@@ -127,6 +137,91 @@ describe('transactionSyncService.delete', () => {
             data: undefined,
         });
         expect(dbMock.transactions.delete).toHaveBeenCalledWith('txn-1');
+    });
+});
+
+// The sync endpoint never announces deletions, so whatever a split or a merge
+// takes away has to leave the offline cache here.
+describe('transactionSyncService split and unsplit', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.stubGlobal('indexedDB', {} as IDBFactory);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('evicts the original a split replaced, and returns its parts', async () => {
+        const splits = [
+            { amount: -3000, category_id: null, label_ids: [] },
+            { amount: -2000, category_id: 'food', label_ids: ['label-1'] },
+        ];
+        axiosMock.post.mockResolvedValueOnce({
+            data: {
+                data: [
+                    { id: 'part-1', split_parent_id: 'txn-1', labels: [] },
+                    {
+                        id: 'part-2',
+                        split_parent_id: 'txn-1',
+                        labels: [{ id: 'label-1' }],
+                    },
+                ],
+            },
+        });
+
+        const parts = await transactionSyncService.split('txn-1', splits);
+
+        expect(axiosMock.post).toHaveBeenCalledWith(
+            '/transactions/txn-1/split',
+            { splits },
+        );
+        expect(dbMock.transactions.delete).toHaveBeenCalledOnce();
+        expect(dbMock.transactions.delete).toHaveBeenCalledWith('txn-1');
+        expect(dbMock.transactions.bulkDelete).not.toHaveBeenCalled();
+        expect(parts.map((part) => part.id)).toEqual(['part-1', 'part-2']);
+    });
+
+    it('evicts every part a merge took away, the one it went through once', async () => {
+        axiosMock.delete.mockResolvedValueOnce({
+            data: { data: { id: 'txn-1', labels: [] } },
+        });
+
+        const original = await transactionSyncService.unsplit('part-1', [
+            'part-1',
+            'part-2',
+        ]);
+
+        expect(axiosMock.delete).toHaveBeenCalledWith(
+            '/transactions/part-1/split',
+        );
+        expect(dbMock.transactions.bulkDelete).toHaveBeenCalledOnce();
+        expect(dbMock.transactions.bulkDelete).toHaveBeenCalledWith([
+            'part-1',
+            'part-2',
+        ]);
+        expect(original.id).toBe('txn-1');
+    });
+
+    it('evicts at least the part it went through when the siblings are unknown', async () => {
+        axiosMock.delete.mockResolvedValueOnce({
+            data: { data: { id: 'txn-1', labels: [] } },
+        });
+
+        await transactionSyncService.unsplit('part-1');
+
+        expect(dbMock.transactions.bulkDelete).toHaveBeenCalledOnce();
+        expect(dbMock.transactions.bulkDelete).toHaveBeenCalledWith(['part-1']);
+    });
+
+    it('leaves the cache alone when the server refuses the split', async () => {
+        axiosMock.post.mockRejectedValueOnce(new Error('422'));
+
+        await expect(transactionSyncService.split('txn-1', [])).rejects.toThrow(
+            '422',
+        );
+
+        expect(dbMock.transactions.delete).not.toHaveBeenCalled();
     });
 });
 

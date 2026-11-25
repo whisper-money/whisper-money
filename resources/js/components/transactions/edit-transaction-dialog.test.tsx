@@ -1432,32 +1432,34 @@ describe('EditTransactionDialog', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('shows a transaction still split into lines read-only, saying it will be converted', () => {
-        const transaction = {
-            ...manualTransaction,
-            is_split: true,
-            split_count: 2,
-            splits: [
-                {
-                    id: 'split-1',
-                    transaction_id: manualTransaction.id,
-                    category_id: 'food',
-                    category: null,
-                    amount: -700,
-                    position: 0,
-                },
-                {
-                    id: 'split-2',
-                    transaction_id: manualTransaction.id,
-                    category_id: 'home',
-                    category: null,
-                    amount: -500,
-                    position: 1,
-                },
-            ],
-        } as DecryptedTransaction;
+    // A manual row split the old way, before the conversion turns its lines
+    // into parts.
+    const manualTransactionInLines = {
+        ...manualTransaction,
+        is_split: true,
+        split_count: 2,
+        splits: [
+            {
+                id: 'split-1',
+                transaction_id: manualTransaction.id,
+                category_id: 'food',
+                category: null,
+                amount: -700,
+                position: 0,
+            },
+            {
+                id: 'split-2',
+                transaction_id: manualTransaction.id,
+                category_id: 'home',
+                category: null,
+                amount: -500,
+                position: 1,
+            },
+        ],
+    } as DecryptedTransaction;
 
-        render(
+    function renderEditDialog(transaction: DecryptedTransaction) {
+        return render(
             <EditTransactionDialog
                 transaction={transaction}
                 categories={[]}
@@ -1471,22 +1473,67 @@ describe('EditTransactionDialog', () => {
                 mode="edit"
             />,
         );
+    }
+
+    it('shows a transaction still split into lines read-only, saying it will be converted', () => {
+        renderEditDialog(manualTransactionInLines);
 
         const lines = screen.getByTestId('legacy-split-lines');
 
         expect(lines).toHaveTextContent('Split · 2');
         expect(lines).toHaveTextContent(
-            'This split is in the old format and will be converted into parts. Until then its lines cannot be changed.',
+            'This split is in the old format and will be converted into parts. Until then its lines, its category and its amount cannot be changed.',
         );
         // Nothing to pick or change for it until it is converted, and it
         // cannot be split the new way either.
         expect(screen.queryByTestId('category-select')).not.toBeInTheDocument();
+        // The server refuses a new amount too, so the amount and its sign
+        // stay as they are on this manual row.
+        expect(
+            [
+                screen.getByLabelText('Amount'),
+                screen.getByTestId('transaction-type-expense'),
+                screen.getByTestId('transaction-type-income'),
+            ].map((control) => (control as HTMLButtonElement).disabled),
+        ).toEqual([true, true, true]);
         expect(
             screen.queryByTestId('split-transaction'),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: 'Remove split' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('saves notes, labels and date on a manual row still split into lines without its amount or category', async () => {
+        vi.mocked(transactionSyncService.update).mockResolvedValue({} as never);
+        renderEditDialog({
+            ...manualTransactionInLines,
+            label_ids: ['label-1'],
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
+        fireEvent.change(screen.getByLabelText('Notes'), {
+            target: { value: 'Receipt checked' },
+        });
+        fireEvent.change(
+            document.querySelector('input[type="date"]') as HTMLInputElement,
+            { target: { value: '2026-06-01' } },
+        );
+        fireEvent.click(screen.getByTestId('submit-transaction'));
+
+        await waitFor(() =>
+            expect(transactionSyncService.update).toHaveBeenCalledOnce(),
+        );
+        const payload = vi.mocked(transactionSyncService.update).mock
+            .calls[0][1];
+
+        expect(payload).toMatchObject({
+            notes: 'Receipt checked',
+            label_ids: ['label-1'],
+            transaction_date: '2026-06-01',
+        });
+        expect(payload).not.toHaveProperty('amount');
+        expect(payload).not.toHaveProperty('category_id');
     });
 
     it('closes the dialog and asks the parent to split when the split row is clicked', () => {
@@ -1592,6 +1639,11 @@ describe('EditTransactionDialog', () => {
         ).not.toBeInTheDocument();
         // The locked date shows up in the details card instead.
         expect(screen.getByText('May 27')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Update the description, category and notes for this part of the split.',
+            ),
+        ).toBeTruthy();
         expect(
             screen.getByText('Part of a split transaction'),
         ).toBeInTheDocument();
@@ -2161,6 +2213,9 @@ describe('EditTransactionDialog', () => {
                 description: 'Hypermarket',
                 amount: -2500,
                 category_id: null,
+                // The lines stay behind; the labels and the note come along.
+                label_ids: ['label-1'],
+                notes: 'Flat on Main St',
                 transaction_date: todayDateString(),
             });
             expect(payload).not.toHaveProperty('splits');

@@ -359,6 +359,14 @@ export function TransactionTable({
         [setRowSelection],
     );
 
+    // A split or a merge replaces the rows it touched with others, so ticks
+    // kept across it would count ids that no longer exist. Cleared the way the
+    // bar's own Clear does, "all matching filters" included.
+    const handleSplitChanged = () => {
+        selectionMode.clear();
+        (onSplitChanged ?? source.reload)();
+    };
+
     const bulkActionsBar = (
         <BulkActionsBar
             {...bulk.barProps}
@@ -461,7 +469,7 @@ export function TransactionTable({
                 banks={banks}
                 automationRules={automationRules}
                 onDuplicated={source.reload}
-                onSplitChanged={onSplitChanged ?? source.reload}
+                onSplitChanged={handleSplitChanged}
             />
 
             <TransactionDeleteDialogs

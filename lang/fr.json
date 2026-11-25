@@ -2875,5 +2875,6 @@
     "Split into parts": "Répartir en parties",
     "Divide :amount across categories": "Répartir :amount entre catégories",
     "Part of a split transaction": "Partie d'une transaction répartie",
-    "This split is in the old format and will be converted into parts. Until then its lines cannot be changed.": "Cette répartition est dans l'ancien format et sera convertie en parties. D'ici là, ses lignes ne peuvent pas être modifiées."
+    "This split is in the old format and will be converted into parts. Until then its lines, its category and its amount cannot be changed.": "Cette répartition est dans l'ancien format et sera convertie en parties. D'ici là, ses lignes, sa catégorie et son montant ne peuvent pas être modifiés.",
+    "Update the description, category and notes for this part of the split.": "Mettez à jour la description, la catégorie et les notes de cette partie de la répartition."
 }

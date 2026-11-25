@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -11,7 +10,8 @@ use function Pest\Laravel\actingAs;
 
 /**
  * A user with one bank transaction on a checking account (pinned: the factory
- * picks a random type).
+ * picks a random type). Plaintext, so the row shows its description rather
+ * than the placeholder of a row still encrypted on the device.
  *
  * @return array{0: User, 1: Transaction}
  */
@@ -26,7 +26,7 @@ function userWithBankTransaction(string $description, int $amount): array
         'currency_code' => 'USD',
     ]);
 
-    $transaction = Transaction::factory()->create([
+    $transaction = Transaction::factory()->enableBanking()->plaintext()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
         'category_id' => null,
@@ -34,10 +34,20 @@ function userWithBankTransaction(string $description, int $amount): array
         'amount' => $amount,
         'transaction_date' => now()->toDateString(),
         'currency_code' => 'USD',
-        'source' => TransactionSource::EnableBanking,
     ]);
 
     return [$user, $transaction];
+}
+
+/**
+ * The transactions page wide enough for the table: the row menus live in its
+ * actions column, and only one of the table and the compact list is mounted.
+ */
+function visitTransactionsTable(): mixed
+{
+    return visit('/transactions')
+        ->resize(1440, 900)
+        ->assertPresent('[data-testid="transaction-list-layout"][data-layout="table"]');
 }
 
 it('splits a transaction into two parts from the edit dialog', function () {
@@ -45,10 +55,9 @@ it('splits a transaction into two parts from the edit dialog', function () {
 
     actingAs($user);
 
-    $page = visit('/transactions');
-
     // The row opens the edit dialog, which carries the second way into a split.
-    $page->assertSee('SUPERMARKET RUN')
+    visitTransactionsTable()
+        ->assertSee('SUPERMARKET RUN')
         ->click('SUPERMARKET RUN')
         ->waitForText('Edit Transaction', 5)
         ->click('[data-testid="split-transaction"]')
@@ -70,10 +79,9 @@ it('splits from the row menu, the entry point people actually use', function () 
 
     actingAs($user);
 
-    $page = visit('/transactions');
-
-    $page->assertSee('CORNER SHOP')
-        ->click('Open menu')
+    visitTransactionsTable()
+        ->assertSee('CORNER SHOP')
+        ->click('tr:has-text("CORNER SHOP") button:has-text("Open menu")')
         ->click('[role="menuitem"]:has-text("Split")')
         ->waitForText('Split transaction', 5)
         ->fill('#split-amount-0', '25')
@@ -96,12 +104,12 @@ it('marks the parts of a split and merges them back from the row menu', function
 
     actingAs($user);
 
-    $page = visit('/transactions');
-
-    $page->assertSee('HARDWARE STORE')
+    visitTransactionsTable()
+        ->assertSee('HARDWARE STORE')
+        // One mark per part, in the table only.
         ->assertCount('[data-testid="split-origin"]', 2)
         // Either part merges the whole split back.
-        ->click('button:has-text("Open menu") >> nth=0')
+        ->click('tr:has-text("HARDWARE STORE") button:has-text("Open menu") >> nth=0')
         ->click('[role="menuitem"]:has-text("Merge the split back")')
         ->waitForText('Merge the 2 splits back?', 5)
         ->click('[data-testid="confirm-unsplit"]')

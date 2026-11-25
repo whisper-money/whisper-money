@@ -202,16 +202,35 @@ describe('TransactionTable', () => {
         const tableSource = source();
         renderTable(tableSource);
 
-        expect(rowDialogs.latest?.onSplitChanged).toBe(tableSource.reload);
+        act(() => rowDialogs.latest?.onSplitChanged());
+
+        expect(tableSource.reload).toHaveBeenCalledOnce();
         expect(rowDialogs.latest?.editing.canStartSplits).toBe(true);
+    });
+
+    // Merging two ticked parts takes both rows away: the bar must not go on
+    // counting ids that no longer exist.
+    it('drops the ticked rows when a split or a merge replaces them', () => {
+        const tableSource = source();
+        renderTable(tableSource);
+
+        fireEvent.click(screen.getByText('tick a'));
+        fireEvent.click(screen.getByText('tick b'));
+        expect(screen.getByTestId('bulk-bar').textContent).toBe('2 selected');
+
+        act(() => rowDialogs.latest?.onSplitChanged());
+
+        expect(screen.getByTestId('bulk-bar').textContent).toBe('0 selected');
+        expect(tableSource.reload).toHaveBeenCalledOnce();
     });
 
     it('lets the page say how a split brings its parts in', () => {
         const onSplitChanged = vi.fn();
+        const tableSource = source();
 
         render(
             <TransactionTable
-                source={source()}
+                source={tableSource}
                 categories={[]}
                 accounts={[]}
                 banks={[]}
@@ -221,7 +240,10 @@ describe('TransactionTable', () => {
             />,
         );
 
-        expect(rowDialogs.latest?.onSplitChanged).toBe(onSplitChanged);
+        act(() => rowDialogs.latest?.onSplitChanged());
+
+        expect(onSplitChanged).toHaveBeenCalledOnce();
+        expect(tableSource.reload).not.toHaveBeenCalled();
     });
 
     it('draws the skeleton while the source loads', () => {

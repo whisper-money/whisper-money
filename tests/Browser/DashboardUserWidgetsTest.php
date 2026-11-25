@@ -772,7 +772,7 @@ it('ticks a widget\'s rows for the bulk actions bar, and opens the row menu on a
         ->rightClick('Motoclub')
         // The same actions as the row menu on /transactions, splitting included.
         ->assertSee('Duplicate')
-        ->assertSee('Split')
+        ->assertVisible('[role="menuitem"]:has-text("Split")')
         ->assertSee('Delete')
         ->click('[role="menuitem"]:has-text("Edit")')
         ->waitForText('Edit Transaction', 10)
