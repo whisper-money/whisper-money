@@ -18,6 +18,13 @@ export interface NetWorthEvolutionAccount {
     linked_loan_account_id?: string | null;
     hidden_on_dashboard?: boolean;
     archived_at?: string | null;
+    /**
+     * The first day the account's balance is known for (`YYYY-MM-DD`), or
+     * null when no balance was ever recorded for it.
+     */
+    tracked_since?: string | null;
+    /** The day the first balance was recorded (`YYYY-MM-DD`), or null. */
+    balance_since?: string | null;
 }
 
 export interface OriginalAmount {
@@ -43,6 +50,18 @@ export interface AccountWithMetrics extends Account {
     investedAmount: number | null;
     hidden_on_dashboard: boolean;
     archived_at: string | null;
+    /**
+     * False when no balance was ever recorded, so the card asks for one
+     * instead of showing a zero nobody typed. Unset reads as true.
+     */
+    hasBalance?: boolean;
+    /**
+     * False when the account has no figure for the previous month, so there
+     * is nothing honest to compare the balance against. Unset reads as true.
+     */
+    hasPreviousBalance?: boolean;
+    /** The day the first balance was recorded, when the server said so. */
+    balanceSince?: string | null;
     /** Set on a credit card once its usage has loaded. */
     creditCardUsage?: CreditCardUsage;
 }
@@ -101,24 +120,42 @@ export function deriveAccountMetrics(
 
     return Object.values(accounts).map((account) => {
         const investedKey = account.id + '_invested';
-        const history = data.map((point) => ({
+        const trackedSinceMonth = account.tracked_since?.slice(0, 7);
+        // Only the months the account has a figure for: a month before its
+        // first balance is not a zero, it is a month nobody knows about.
+        const knownMonths = data.filter(
+            (point) =>
+                typeof point[account.id] === 'number' &&
+                (trackedSinceMonth === undefined ||
+                    (point.month as string) >= trackedSinceMonth),
+        );
+        const history = knownMonths.map((point) => ({
             date: formatMonthFromYearMonth(point.month as string, locale),
+            // `|| 0` folds the -0 a zero loan turns into back into a plain 0.
             value:
-                typeof point[account.id] === 'number'
-                    ? netWorthContribution(
-                          account.type,
-                          point[account.id] as number,
-                      )
-                    : 0,
+                netWorthContribution(
+                    account.type,
+                    point[account.id] as number,
+                ) || 0,
             investedAmount:
                 investedKey in point
                     ? (point[investedKey] as number | null)
                     : undefined,
         }));
 
+        const lastMonth = data[data.length - 1].month;
+        const previousMonth = data[data.length - 2]?.month;
+        const hasBalance = account.tracked_since !== null && history.length > 0;
+        const hasPreviousBalance =
+            hasBalance &&
+            previousMonth !== undefined &&
+            knownMonths[knownMonths.length - 1]?.month === lastMonth &&
+            knownMonths[knownMonths.length - 2]?.month === previousMonth;
+
         const currentBalance = history[history.length - 1]?.value ?? 0;
-        const previousBalance =
-            history.length > 1 ? (history[history.length - 2]?.value ?? 0) : 0;
+        const previousBalance = hasPreviousBalance
+            ? history[history.length - 2].value
+            : currentBalance;
 
         return {
             id: account.id,
@@ -132,6 +169,9 @@ export function deriveAccountMetrics(
             previousBalance,
             diff: currentBalance - previousBalance,
             history,
+            hasBalance,
+            hasPreviousBalance,
+            balanceSince: account.balance_since ?? null,
             investedAmount: account.invested_amount ?? null,
             hidden_on_dashboard: account.hidden_on_dashboard ?? false,
             archived_at: account.archived_at ?? null,

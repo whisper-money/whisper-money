@@ -22,6 +22,7 @@ import { type SystemWidgetProps } from './types';
 interface LinkedLoanMetrics {
     currentBalance: number;
     previousBalance: number;
+    hasPreviousBalance?: boolean;
     diff: number;
     history: Array<{ date: string; value: number }>;
     loanAccount?: {
@@ -68,16 +69,29 @@ function AccountBalances({ data }: Pick<SystemWidgetProps, 'data'>) {
         [netWorthEvolution, data.creditCardUsage, locale],
     );
 
-    // Identify linked loan account IDs and filter them out
-    const linkedLoanAccountIds = useMemo(() => {
-        const ids = new Set<string>();
+    // A mortgage folds into its property's card, unless nobody gave it a
+    // balance yet: owing nothing would be made up, so it keeps its own card
+    // asking for the figure.
+    const linkedLoans = useMemo(() => {
+        const loans = new Map<string, AccountWithMetrics>();
         accountMetrics.forEach((a) => {
-            if (a.type === 'real_estate' && a.linked_loan_account_id) {
-                ids.add(a.linked_loan_account_id);
+            if (a.type !== 'real_estate' || !a.linked_loan_account_id) {
+                return;
+            }
+            const loan = accountMetrics.find(
+                (l) => l.id === a.linked_loan_account_id,
+            );
+            if (loan && loan.hasBalance !== false) {
+                loans.set(a.id, loan);
             }
         });
-        return ids;
+        return loans;
     }, [accountMetrics]);
+
+    const linkedLoanAccountIds = useMemo(
+        () => new Set([...linkedLoans.values()].map((loan) => loan.id)),
+        [linkedLoans],
+    );
 
     // Archived accounts stay in the payload so the chart keeps their history,
     // but they are off the dashboard itself: no card, no row in the manager.
@@ -158,30 +172,24 @@ function AccountBalances({ data }: Pick<SystemWidgetProps, 'data'>) {
     // Build linked loan metrics map keyed by real estate account ID
     const linkedLoanMetricsMap = useMemo(() => {
         const map: Record<string, LinkedLoanMetrics> = {};
-        accountMetrics.forEach((a) => {
-            if (a.type === 'real_estate' && a.linked_loan_account_id) {
-                const loan = accountMetrics.find(
-                    (l) => l.id === a.linked_loan_account_id,
-                );
-                if (loan) {
-                    map[a.id] = {
-                        currentBalance: Math.abs(loan.currentBalance),
-                        previousBalance: Math.abs(loan.previousBalance),
-                        diff: loan.diff,
-                        history: loan.history.map((h) => ({
-                            date: h.date,
-                            value: Math.abs(h.value),
-                        })),
-                        loanAccount: {
-                            name: loan.name,
-                            bank: loan.bank,
-                        },
-                    };
-                }
-            }
+        linkedLoans.forEach((loan, propertyId) => {
+            map[propertyId] = {
+                currentBalance: Math.abs(loan.currentBalance),
+                previousBalance: Math.abs(loan.previousBalance),
+                hasPreviousBalance: loan.hasPreviousBalance,
+                diff: loan.diff,
+                history: loan.history.map((h) => ({
+                    date: h.date,
+                    value: Math.abs(h.value),
+                })),
+                loanAccount: {
+                    name: loan.name,
+                    bank: loan.bank,
+                },
+            };
         });
         return map;
-    }, [accountMetrics]);
+    }, [linkedLoans]);
 
     // A balance edited on a card moves every figure the dashboard draws.
     const refetch = useCallback(() => {

@@ -154,4 +154,107 @@ describe('deriveAccountMetrics', () => {
         expect(account.history[0].investedAmount).toBe(250000);
         expect(account.history[1].investedAmount).toBe(300000);
     });
+
+    describe('accounts without a figure for every month', () => {
+        const bank = { id: 'bank_1', user_id: null, name: 'Bank', logo: null };
+
+        function evolution(
+            type: NetWorthEvolutionData['accounts'][string]['type'],
+            trackedSince: string | null | undefined,
+            values: Array<number | null>,
+        ): NetWorthEvolutionData {
+            const months = ['2025-09', '2025-10', '2025-11'].slice(
+                -values.length,
+            );
+
+            return {
+                currency_code: 'EUR',
+                accounts: {
+                    acc: {
+                        id: 'acc',
+                        name: 'Account',
+                        type,
+                        currency_code: 'EUR',
+                        bank,
+                        banking_connection_id: null,
+                        tracked_since: trackedSince,
+                        balance_since: trackedSince,
+                    },
+                },
+                data: months.map((month, i) => ({
+                    month,
+                    ...(values[i] === null
+                        ? { acc: null as unknown as number }
+                        : { acc: values[i] }),
+                })),
+            };
+        }
+
+        it('does not compare an account added this month with the month before it', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('investment', '2025-11-24', [0, 0, 800000]),
+            );
+
+            expect(account.hasBalance).toBe(true);
+            expect(account.hasPreviousBalance).toBe(false);
+            expect(account.currentBalance).toBe(800000);
+            expect(account.diff).toBe(0);
+            expect(account.balanceSince).toBe('2025-11-24');
+            // The months before it are not zeros: they are not drawn at all.
+            expect(account.history).toEqual([
+                expect.objectContaining({ value: 800000 }),
+            ]);
+        });
+
+        it('compares against last month once the account has a figure for it', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('checking', '2025-10-15', [0, 299000, 320000]),
+            );
+
+            expect(account.hasPreviousBalance).toBe(true);
+            expect(account.previousBalance).toBe(299000);
+            expect(account.diff).toBe(21000);
+            expect(account.history).toHaveLength(2);
+        });
+
+        it('treats the null months the server sends before the first figure as unknown', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('checking', undefined, [null, null, 500000]),
+            );
+
+            expect(account.hasBalance).toBe(true);
+            expect(account.hasPreviousBalance).toBe(false);
+            expect(account.currentBalance).toBe(500000);
+            expect(account.history).toHaveLength(1);
+        });
+
+        it('marks a loan with no balance ever recorded as having none, never as -0', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('loan', null, [0, 0, 0]),
+            );
+
+            expect(account.hasBalance).toBe(false);
+            expect(account.hasPreviousBalance).toBe(false);
+            expect(Object.is(account.currentBalance, -0)).toBe(false);
+            expect(Object.is(account.diff, -0)).toBe(false);
+        });
+
+        it('marks an account with every month null as having no balance', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('savings', undefined, [null, null, null]),
+            );
+
+            expect(account.hasBalance).toBe(false);
+        });
+
+        it('writes a paid-off loan as 0, not -0', () => {
+            const [account] = deriveAccountMetrics(
+                evolution('loan', '2025-01-01', [1000, 0, 0]),
+            );
+
+            expect(account.hasBalance).toBe(true);
+            expect(Object.is(account.currentBalance, -0)).toBe(false);
+            expect(Object.is(account.previousBalance, -0)).toBe(false);
+        });
+    });
 });

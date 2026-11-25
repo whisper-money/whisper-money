@@ -240,3 +240,47 @@ test('an account hidden on the dashboard still counts towards net worth', functi
     expect($evolution['accounts'][$account->id]['hidden_on_dashboard'])->toBeTrue();
     expect(collect($evolution['data'])->keyBy('month')[now()->format('Y-m')][$account->id])->toBe(5000);
 });
+
+test('each account says since when its balance is known and since when one was recorded', function () {
+    fakeCurrencyApi();
+
+    $user = User::factory()->onboarded()->create();
+    $withoutBalance = Account::factory()->create(['user_id' => $user->id, 'type' => 'loan']);
+    $addedToday = Account::factory()->create(['user_id' => $user->id]);
+    $imported = Account::factory()->create(['user_id' => $user->id]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $addedToday->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 800000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $imported->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 320000,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $imported->id,
+        'transaction_date' => now()->subMonthsNoOverflow(3)->toDateString(),
+    ]);
+    // A movement with no balance anywhere says nothing about where it stands.
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $withoutBalance->id,
+        'transaction_date' => now()->subMonthsNoOverflow(2)->toDateString(),
+    ]);
+
+    $accounts = $this->actingAs($user)->withoutVite()->get(route('dashboard'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Partial-Component' => 'dashboard',
+        'X-Inertia-Partial-Data' => 'netWorthEvolution',
+    ])->assertOk()->json('props.netWorthEvolution.accounts');
+
+    expect($accounts[$withoutBalance->id]['tracked_since'])->toBeNull();
+    expect($accounts[$withoutBalance->id]['balance_since'])->toBeNull();
+    expect($accounts[$addedToday->id]['tracked_since'])->toBe(now()->toDateString());
+    expect($accounts[$imported->id]['tracked_since'])->toBe(now()->subMonthsNoOverflow(3)->toDateString());
+    // Its balance was only given today, whatever its movements go back to.
+    expect($accounts[$imported->id]['balance_since'])->toBe(now()->toDateString());
+});

@@ -87,13 +87,26 @@ function drawable(
 }
 
 /**
+ * Whether the dashboard's deferred props are still on their way. They share
+ * one deferred group, so they all arrive in the same response: the net worth
+ * standing in for the rest is enough.
+ */
+function isLoadingDeferredData(data: DashboardProps): boolean {
+    return data.netWorthEvolution === undefined;
+}
+
+/**
  * A user dashboard as it reads. A system widget with nothing to show
  * (cashflow switched off, no monthly goal, nothing labelled) renders nothing,
  * and its cell, left empty, is hidden: the grid never keeps a hole for it.
  */
 export function DashboardGrid({ widgets, data, userWidgets }: Props) {
     return (
-        <div className={DASHBOARD_GRID_CLASS_NAME} data-testid="dashboard-grid">
+        <div
+            className={DASHBOARD_GRID_CLASS_NAME}
+            data-testid="dashboard-grid"
+            aria-busy={isLoadingDeferredData(data)}
+        >
             {drawable(widgets, userWidgets).map((item) =>
                 item.kind === 'system' ? (
                     <WidgetBody

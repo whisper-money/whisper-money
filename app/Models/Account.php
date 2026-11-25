@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property AccountType $type
  * @property ?Carbon $archived_at
  * @property ?Carbon $transactions_paginate_before
+ * @property-read ?string $balances_min_balance_date Set by `withMin('balances', 'balance_date')`.
+ * @property-read ?string $transactions_min_transaction_date Set by `withMin('transactions', 'transaction_date')`.
  */
 class Account extends Model
 {

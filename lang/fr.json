@@ -2994,5 +2994,9 @@
     ":limit — :under under last month": ":limit, :under de moins que le mois dernier",
     "1 transaction imported": "1 transaction importée",
     "Categorize 1 transaction": "Catégorisez 1 transaction",
-    "And 1 more account without one": "Et 1 autre compte sans solde"
+    "And 1 more account without one": "Et 1 autre compte sans solde",
+    "No balance yet": "Pas encore de solde",
+    "Add what you still owe": "Ajouter ce qu'il reste à rembourser",
+    "Added today": "Ajouté aujourd'hui",
+    "Added :date": "Ajouté le :date"
 }
