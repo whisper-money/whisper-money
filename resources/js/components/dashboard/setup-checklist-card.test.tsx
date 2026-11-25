@@ -32,7 +32,7 @@ const captureEvent = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/posthog', () => ({ captureEvent }));
 
 vi.mock('@inertiajs/react', async () => ({
-    Link: (await import('./link.fixture')).FixtureLink,
+    Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
     router: { reload: vi.fn() },
     useHttp: () => ({ post }),
     usePage: () => ({ props: { auth: { user: { id: 'user-1' } } } }),

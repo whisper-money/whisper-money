@@ -41,7 +41,7 @@ vi.mock('@inertiajs/react', async () => ({
     usePage: () => ({
         props: { auth: { user: { currency_code: 'EUR' } } },
     }),
-    Link: (await import('./link.fixture')).FixtureLink,
+    Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
 }));
 
 function category(id: string, name: string, amount: number, total: number) {

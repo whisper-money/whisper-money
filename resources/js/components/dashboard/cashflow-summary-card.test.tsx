@@ -8,7 +8,7 @@ vi.mock('@inertiajs/react', async () => ({
     usePage: () => ({
         props: { locale: 'en-US', auth: { user: { currency_code: 'EUR' } } },
     }),
-    Link: (await import('./link.fixture')).FixtureLink,
+    Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
 }));
 
 const captureEvent = vi.hoisted(() => vi.fn());
