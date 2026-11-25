@@ -162,6 +162,9 @@ it('shares a medal, with and without the amount on it', function (): void {
 
 it('asks for the uncategorized month, and stops asking once it is snoozed', function (): void {
     $user = medalReader();
+    // Past the dashboard's 14 "Finish setting up" days, which keep this
+    // prompt quiet while the card asks for the same work.
+    $user->forceFill(['onboarded_at' => now()->subDays(15)])->saveQuietly();
 
     // The month in progress, which is the pile the nudge is about: the sweep
     // reads closed months, this asks about the one nobody has tidied yet.

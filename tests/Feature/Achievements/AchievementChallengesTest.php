@@ -4,6 +4,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Achievement;
 use App\Models\Category;
+use App\Models\Dashboard;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -39,6 +40,9 @@ beforeEach(function (): void {
 function challenged(array $attributes = []): User
 {
     return User::factory()->onboarded()->create([
+        // Past the dashboard's 14 "Finish setting up" days, which keep the
+        // categorize prompt quiet: the tests below are about the prompt itself.
+        'onboarded_at' => now()->subDays(15),
         'currency_code' => 'EUR',
         'locale' => 'en',
         'last_active_at' => now(),
@@ -205,6 +209,41 @@ it('stops asking for three days once the reader says not now', function (): void
     expect($user->fresh()->uncategorized_prompt_snoozed_until->toDateString())
         ->toBe(now()->addDays(3)->toDateString())
         ->and(challengesFor($user)['uncategorized'])->toBeNull();
+});
+
+it('leaves the pile to the setup card while the dashboard shows it', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect(challengesFor($user)['uncategorized'])->toBeNull();
+});
+
+it('keeps asking when Overview opens one of the reader\'s own dashboards, which has no setup card', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    $dashboard = Dashboard::factory()->for($user)->create();
+    $user->forceFill(['default_dashboard_id' => $dashboard->id])->save();
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect($user->can('create', Dashboard::class))->toBeTrue()
+        ->and(challengesFor($user)['uncategorized']['count'])->toBe(2);
+});
+
+it('asks again once the setup card is hidden', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDay()]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    $this->actingAs($user)
+        ->post(route('dashboard.setup.dismiss'))
+        ->assertNoContent();
+
+    expect(challengesFor($user->fresh())['uncategorized']['count'])->toBe(2);
+});
+
+it('asks again once the setup card\'s days are over', function (): void {
+    $user = challenged(['onboarded_at' => now()->subDays(15)]);
+    recordFor($user, 2, monthsAgo: 0);
+
+    expect(challengesFor($user)['uncategorized']['count'])->toBe(2);
 });
 
 it('asks again once the snooze has run out', function (): void {

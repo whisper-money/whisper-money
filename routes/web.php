@@ -16,6 +16,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Dashboards\DashboardManagementController;
 use App\Http\Controllers\Dashboards\DashboardWidgetController;
 use App\Http\Controllers\Dashboards\DefaultDashboardController;
+use App\Http\Controllers\DashboardSetupDismissalController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
 use App\Http\Controllers\IntegrationRequestController;
@@ -289,6 +290,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // "Hide" on the dashboard's "Finish setting up" card. Closed to the demo
+    // and press accounts: hiding it there would hide it for everybody.
+    Route::post('dashboard/setup/dismiss', DashboardSetupDismissalController::class)
+        ->middleware('block-shared')
+        ->name('dashboard.setup.dismiss');
 
     // The user's own dashboards and the system widgets placed on them. Writes
     // are closed to the demo and press accounts, whose dashboards everybody shares.

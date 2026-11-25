@@ -48,6 +48,7 @@ use Stripe\Subscription as StripeSubscription;
  * @property ?Carbon $transactions_last_visited_at
  * @property ?Carbon $ai_consent_prompt_dismissed_at
  * @property ?Carbon $uncategorized_prompt_snoozed_until
+ * @property ?Carbon $dashboard_setup_dismissed_at
  * @property ?Carbon $second_offer_shown_at
  * @property ?string $trial_banner_dismissed_for
  * @property ?Carbon $retention_coupon_redeemed_at
@@ -135,6 +136,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'transactions_last_visited_at' => 'datetime',
             'ai_consent_prompt_dismissed_at' => 'datetime',
             'uncategorized_prompt_snoozed_until' => 'datetime',
+            'dashboard_setup_dismissed_at' => 'datetime',
         ];
     }
 

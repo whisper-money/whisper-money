@@ -4,7 +4,7 @@ import { __ } from '@/utils/i18n';
 import { RefreshCw } from 'lucide-react';
 
 interface SyncedBalanceNoticeProps {
-    account?: Account | null;
+    account?: Pick<Account, 'banking_connection_id'> | null;
 }
 
 /**

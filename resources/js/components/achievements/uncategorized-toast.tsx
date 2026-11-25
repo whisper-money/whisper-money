@@ -1,13 +1,12 @@
 import { MedalProgress } from '@/components/achievements/achievement-cell';
 import { monthsLabel } from '@/components/achievements/achievement-figure';
 import { useChallengesToast } from '@/components/achievements/use-challenges-toast';
+import { categorizeHref } from '@/lib/categorize-href';
 import { snooze } from '@/routes/achievements/uncategorized';
-import { index as transactionsIndex } from '@/routes/transactions';
 import { type Challenges } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import axios from 'axios';
-import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { TagsIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,24 +24,6 @@ import { toast } from 'sonner';
 const TOAST_ID = 'uncategorized-transactions';
 
 let shown = false;
-
-/**
- * Straight to the pile it is asking about, and to nothing else: the count is
- * the month in progress, so the list has to be the month in progress too. An
- * unbounded "uncategorized" filter would open on a longer list than the number
- * the reader just clicked.
- */
-function categorizeHref(): string {
-    const today = new Date();
-
-    return transactionsIndex({
-        query: {
-            category_ids: 'uncategorized',
-            date_from: format(startOfMonth(today), 'yyyy-MM-dd'),
-            date_to: format(endOfMonth(today), 'yyyy-MM-dd'),
-        },
-    }).url;
-}
 
 function UncategorizedToastBody({
     prompt,
@@ -79,7 +60,7 @@ function UncategorizedToastBody({
 
                 <div className="mt-2 flex items-center gap-2">
                     <Link
-                        href={categorizeHref()}
+                        href={categorizeHref({ monthInProgress: true })}
                         onClick={() => toast.dismiss(TOAST_ID)}
                         className="inline-flex h-[26px] items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
                     >

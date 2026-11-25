@@ -7,7 +7,10 @@ import {
 } from '@/components/dashboard/widgets/types';
 import { type NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { type SharedData } from '@/types';
-import { type CreditCardUsage } from '@/types/account';
+import {
+    type BalanceDialogAccount,
+    type CreditCardUsage,
+} from '@/types/account';
 import {
     type DashboardMonthlyGoal,
     type MonthlyVerdicts,
@@ -18,6 +21,42 @@ export interface CashflowSummary {
     expense: number;
     net: number;
     savings_rate: number;
+}
+
+/** A step of the dashboard's "Finish setting up" card, in its own shape. */
+export type SetupChecklistStep =
+    | {
+          key: 'imported';
+          done: true;
+          count: number;
+          /** Y-m-d of the oldest and newest movement. */
+          first_date: string;
+          last_date: string;
+          accounts_count: number;
+          /** Set when the movements are all in one account. */
+          account_name: string | null;
+      }
+    | {
+          key: 'spending_limit';
+          done: boolean;
+          /** This month's limit, in minor units. */
+          limit: number | null;
+          /** How far under the month it was built on the user set it. */
+          under_last_month: number | null;
+          currency_code: string;
+      }
+    | { key: 'categorize'; done: boolean; count: number }
+    | {
+          key: 'balance';
+          done: false;
+          /** The first account that never got a balance. */
+          account: BalanceDialogAccount;
+          /** How many more accounts are like it. */
+          others_count: number;
+      };
+
+export interface SetupChecklist {
+    steps: SetupChecklistStep[];
 }
 
 /** One of the user's own dashboards, as the picker lists it. */
@@ -128,6 +167,8 @@ export interface DashboardProps extends SharedData {
     /** Deferred: what is in use of each credit card, by account id. */
     creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
+    /** Deferred: the "Finish setting up" card, null when there is none to draw. */
+    setupChecklist?: SetupChecklist | null;
     monthlySavingsGoals?: DashboardMonthlyGoal[];
     monthlySavingsLastMonth?: MonthlyVerdicts | null;
     /** Deferred: the user's own dashboards, in their order. */
