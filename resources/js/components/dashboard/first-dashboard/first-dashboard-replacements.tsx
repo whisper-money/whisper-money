@@ -2,8 +2,8 @@ import { type SystemWidgetId } from '@/components/dashboard/widgets/registry';
 import { PrivacyRevealScope } from '@/contexts/privacy-mode-context';
 import { type FirstDashboardState } from '@/types/dashboard';
 import { type ReactNode } from 'react';
-import { CurrentAccountNeededCard } from './current-account-needed-card';
 import { EstimatedSpendingCard } from './estimated-spending-card';
+import { CurrentAccountNeededCard } from './lazy-cards';
 import { NoMovementsCashflowCard } from './no-movements-cashflow-card';
 
 /**

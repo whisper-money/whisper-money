@@ -1,6 +1,6 @@
-import { EstimatesSwapCard } from '@/components/dashboard/first-dashboard/estimates-swap-card';
 import { firstDashboardDescription } from '@/components/dashboard/first-dashboard/first-dashboard-copy';
 import { firstDashboardReplacements } from '@/components/dashboard/first-dashboard/first-dashboard-replacements';
+import { EstimatesSwapCard } from '@/components/dashboard/first-dashboard/lazy-cards';
 import { SetupChecklistCard } from '@/components/dashboard/setup-checklist-card';
 import { DashboardLayoutView } from '@/components/dashboard/widgets/dashboard-layout-view';
 import {
