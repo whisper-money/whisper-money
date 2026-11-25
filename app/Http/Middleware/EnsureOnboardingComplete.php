@@ -28,7 +28,9 @@ class EnsureOnboardingComplete
         $isOpenBankingRoute = $request->routeIs('open-banking.*');
 
         if ($user->isOnboarded()) {
-            if ($isOnboardingRoute) {
+            // The emailed import link is asked for from the dashboard too, by
+            // a user whose only movements are the onboarding estimates.
+            if ($isOnboardingRoute && ! $request->routeIs('onboarding.import-link.store')) {
                 return redirect()->route('dashboard');
             }
 

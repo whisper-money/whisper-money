@@ -55,6 +55,18 @@ it('queues the import link to the user’s own email, on the emails queue', func
     });
 });
 
+it('queues the link for someone already onboarded, from the dashboard\'s estimates card', function () {
+    Mail::fake();
+    $user = importLinkUser(['onboarded_at' => now()]);
+    $account = importLinkAccount($user);
+
+    $this->actingAs($user)
+        ->postJson('/onboarding/import-link', ['account_id' => $account->id])
+        ->assertAccepted();
+
+    Mail::assertQueued(OnboardingImportLinkEmail::class);
+});
+
 it('puts a signed link to that account in the email, and nothing about the user in it', function () {
     $user = importLinkUser(['name' => 'Ana']);
     $account = importLinkAccount($user, ['name' => 'Joint account']);
