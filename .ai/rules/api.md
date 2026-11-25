@@ -19,8 +19,8 @@ An income-rate goal is measured against its whole space's income, so its target 
 ## Encrypted fields read as an empty string
 An account name or a note still encrypted on the device reads `''` on the API, never ciphertext. A client writing back the `''` it read must not erase the value, so a blank `notes` on an encrypted note is a 422. Never derive a stored value from an encrypted field: an auto-tag rule built from an encrypted account name stores ciphertext and can never match.
 
-## A filtered split is one whole row
-A list filtered by category or label returns the split parent once, with its `amount` and every line in `splits`, those outside the filter too, so lines still add up to the parent. A client totalling a category reads the lines. This differs from the day totals and filter summaries, which add only the matching lines.
+## Split and merge go through TransactionSplitter; a row with old lines is one whole row
+`POST /api/v1/transactions/{id}/split` and `split_transaction` create parts (201 with the parts, each carrying `split_parent_id`); `merge-splits` and `merge_transaction_splits` take any part and answer the original. Only split is gated by the TransactionSplitting flag. A part's core fields are locked and it cannot be deleted. A label may sit on several parts, so never validate part labels with `distinct`, which compares across parts. A transaction still split the old way is read-only as a split: a list filtered by category or label returns it once, with its `amount` and every line in `splits`, those outside the filter too, and it is refused by split until converted.
 
 ## OAuth metadata: route:cache and scopes
 Production runs `route:cache`, which restores the package's closures on the package class, so overriding `protectedResourceMetadata()` answers `mcp:use` there. Metadata and route changes go in `OAuthRegistrar` as explicit routes, and need a real `route:cache` probe. Authorization server metadata lists `mcp:use` alone: a client requesting everything listed there would ask for both surfaces and get `invalid_scope`. `api:use` is advertised on the `/api/v1` resource metadata only.
