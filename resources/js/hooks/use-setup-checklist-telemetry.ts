@@ -5,10 +5,12 @@ import { type SetupChecklist } from '@/types/dashboard';
 import { useEffect, useRef } from 'react';
 
 /**
- * Set while this browser has shown the "Finish setting up" card with steps
- * left, so that the visit on which the server stops sending it can tell why.
+ * Set while this browser has shown the user the "Finish setting up" card with
+ * steps left, so that the visit on which the server stops sending it can tell
+ * why. One per user, since a browser can be shared between accounts.
  */
-const PENDING_KEY = 'dashboard-setup-card-pending';
+const pendingKey = (userId: User['id']) =>
+    `dashboard-setup-card-pending:${userId}`;
 
 /** The card's window after onboarding: SetupChecklist::WINDOW_DAYS on the server. */
 const WINDOW_DAYS = 14;
@@ -30,8 +32,14 @@ export function setupCardProgress(
     };
 }
 
-/** Once per page load: the card was drawn, and how far along it was. */
-export function useSetupCardViewedEvent(checklist: SetupChecklist): void {
+/**
+ * Once per dashboard visit (the card's mount): the card was drawn, and how
+ * far along it was. Later reloads of the same visit do not send it again.
+ */
+export function useSetupCardViewedEvent(
+    checklist: SetupChecklist,
+    userId: User['id'],
+): void {
     const sent = useRef(false);
 
     useEffect(() => {
@@ -44,17 +52,23 @@ export function useSetupCardViewedEvent(checklist: SetupChecklist): void {
             ...setupCardProgress(checklist),
             next_step: checklist.steps.find((step) => !step.done)?.key ?? null,
         });
-        getStorage('local')?.setItem(PENDING_KEY, '1');
-    }, [checklist]);
+        getStorage('local')?.setItem(pendingKey(userId), '1');
+    }, [checklist, userId]);
 }
 
-/** The user hid the card for good. */
-export function captureSetupCardDismissed(checklist: SetupChecklist): void {
+/**
+ * The user hid the card for good: reported, and the card no longer counts as
+ * pending, so its absence from now on is not read as completed.
+ */
+export function captureSetupCardDismissed(
+    checklist: SetupChecklist,
+    userId: User['id'],
+): void {
     captureEvent(
         'dashboard_setup_card_dismissed',
         setupCardProgress(checklist),
     );
-    getStorage('local')?.removeItem(PENDING_KEY);
+    getStorage('local')?.removeItem(pendingKey(userId));
 }
 
 /**
@@ -65,6 +79,10 @@ export function captureSetupCardDismissed(checklist: SetupChecklist): void {
  *
  * `checklist` is undefined while the deferred prop loads, null when there is
  * no card to draw.
+ *
+ * A lower bound, sent on the visit after the last step was done rather than
+ * when it was: a user who finishes on another browser, or comes back after
+ * the window, is not counted.
  */
 export function useSetupCardCompletedEvent(
     checklist: SetupChecklist | null | undefined,
@@ -77,11 +95,13 @@ export function useSetupCardCompletedEvent(
 
         const storage = getStorage('local');
 
-        if (!storage || storage.getItem(PENDING_KEY) === null) {
+        const key = pendingKey(user.id);
+
+        if (!storage || storage.getItem(key) === null) {
             return;
         }
 
-        storage.removeItem(PENDING_KEY);
+        storage.removeItem(key);
 
         if (isWithinSetupWindow(user)) {
             captureEvent('dashboard_setup_card_completed');
@@ -90,11 +110,12 @@ export function useSetupCardCompletedEvent(
 }
 
 function isWithinSetupWindow(user: User): boolean {
-    const onboardedAt = user.onboarded_at;
-
-    if (typeof onboardedAt !== 'string' || user.dashboard_setup_dismissed_at) {
+    if (!user.onboarded_at || user.dashboard_setup_dismissed_at) {
         return false;
     }
 
-    return Date.now() - new Date(onboardedAt).getTime() < WINDOW_DAYS * DAY_MS;
+    return (
+        Date.now() - new Date(user.onboarded_at).getTime() <
+        WINDOW_DAYS * DAY_MS
+    );
 }

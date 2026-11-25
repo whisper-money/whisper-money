@@ -35,6 +35,7 @@ vi.mock('@inertiajs/react', async () => ({
     Link: (await import('./link.fixture')).FixtureLink,
     router: { reload: vi.fn() },
     useHttp: () => ({ post }),
+    usePage: () => ({ props: { auth: { user: { id: 'user-1' } } } }),
 }));
 
 const imported: SetupChecklistStep = {

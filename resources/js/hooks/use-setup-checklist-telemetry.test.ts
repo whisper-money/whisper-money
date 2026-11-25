@@ -21,6 +21,7 @@ const daysAgo = (days: number) =>
 
 function user(overrides: Record<string, unknown> = {}): User {
     return {
+        id: 'user-1',
         onboarded_at: daysAgo(2),
         dashboard_setup_dismissed_at: null,
         ...overrides,
@@ -35,7 +36,7 @@ function completedEvents() {
 
 /** This browser showed the card with steps left on an earlier visit. */
 function viewTheCard() {
-    renderHook(() => useSetupCardViewedEvent(checklist)).unmount();
+    renderHook(() => useSetupCardViewedEvent(checklist, 'user-1')).unmount();
 }
 
 describe('useSetupCardCompletedEvent', () => {
@@ -92,6 +93,16 @@ describe('useSetupCardCompletedEvent', () => {
         expect(completedEvents()).toHaveLength(0);
     });
 
+    it('says nothing to another user of the same browser', () => {
+        viewTheCard();
+
+        renderHook(() =>
+            useSetupCardCompletedEvent(null, user({ id: 'user-2' })),
+        );
+
+        expect(completedEvents()).toHaveLength(0);
+    });
+
     it('says nothing when the card was dismissed, here or elsewhere', () => {
         viewTheCard();
         renderHook(() =>
@@ -102,7 +113,7 @@ describe('useSetupCardCompletedEvent', () => {
         );
 
         viewTheCard();
-        captureSetupCardDismissed(checklist);
+        captureSetupCardDismissed(checklist, 'user-1');
         renderHook(() => useSetupCardCompletedEvent(null, user()));
 
         expect(completedEvents()).toHaveLength(0);

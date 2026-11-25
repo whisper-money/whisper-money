@@ -12,6 +12,7 @@ import { captureEvent } from '@/lib/posthog';
 import { cn } from '@/lib/utils';
 import { index as budgetsIndex } from '@/routes/budgets';
 import { dismiss } from '@/routes/dashboard/setup';
+import { type SharedData } from '@/types';
 import { type BalanceDialogAccount } from '@/types/account';
 import {
     type SetupChecklist,
@@ -19,7 +20,7 @@ import {
 } from '@/types/dashboard';
 import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Link, router, useHttp } from '@inertiajs/react';
+import { Link, router, useHttp, usePage } from '@inertiajs/react';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -69,7 +70,8 @@ export function SetupChecklistCard({
         useState<BalanceDialogAccount | null>(null);
     const { post } = useHttp();
     const steps = useStepViews(checklist.steps, setBalanceAccount);
-    useSetupCardViewedEvent(checklist);
+    const userId = usePage<SharedData>().props.auth.user.id;
+    useSetupCardViewedEvent(checklist, userId);
 
     if (dismissed) {
         return null;
@@ -99,7 +101,7 @@ export function SetupChecklistCard({
                             aria-label={__('Hide')}
                             onClick={() => {
                                 setDismissed(true);
-                                captureSetupCardDismissed(checklist);
+                                captureSetupCardDismissed(checklist, userId);
                                 post(dismiss.url());
                             }}
                         >
