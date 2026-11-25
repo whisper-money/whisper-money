@@ -59,6 +59,48 @@ export interface SetupChecklist {
     steps: SetupChecklistStep[];
 }
 
+/** What every first-dashboard state says in the page header. */
+interface FirstDashboardHeader {
+    /** Y-m-d, the day the onboarding ended on the user's calendar. */
+    tracking_since: string;
+    accounts_count: number;
+    /** The monthly spending the user guessed in the onboarding, in minor units. */
+    spending_guess: number | null;
+    /** The user's currency, the one the guess is in. */
+    currency_code: string;
+}
+
+/** One round figure typed in during the onboarding, by category. */
+export interface EstimateRow {
+    name: string;
+    /** Positive, in minor units. */
+    amount: number;
+}
+
+/** The onboarding estimates of the month they stand for. */
+export interface DashboardEstimates {
+    /** Y-m. */
+    month: string;
+    count: number;
+    total: number;
+    currency_code: string;
+    /** The account the emailed import link opens on; null when it cannot take a file. */
+    account_id: string | null;
+    /** Largest first. */
+    rows: EstimateRow[];
+}
+
+/**
+ * The system dashboard of a user with no real movement yet: only the
+ * onboarding estimates, or only balances and no current account.
+ */
+export type FirstDashboardState =
+    | ({
+          state: 'estimates';
+          estimates: DashboardEstimates;
+      } & FirstDashboardHeader)
+    | ({ state: 'balances' } & FirstDashboardHeader);
+
 /** One of the user's own dashboards, as the picker lists it. */
 export interface DashboardSummary {
     id: string;
@@ -169,6 +211,8 @@ export interface DashboardProps extends SharedData {
     monthlySummary?: MonthlySummaryNoticeData | null;
     /** Deferred: the "Finish setting up" card, null when there is none to draw. */
     setupChecklist?: SetupChecklist | null;
+    /** Deferred: the estimate-only or balance-only state, null for everybody else. */
+    firstDashboardState?: FirstDashboardState | null;
     monthlySavingsGoals?: DashboardMonthlyGoal[];
     monthlySavingsLastMonth?: MonthlyVerdicts | null;
     /** Deferred: the user's own dashboards, in their order. */

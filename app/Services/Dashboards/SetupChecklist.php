@@ -41,17 +41,22 @@ class SetupChecklist
      */
     private const WINDOW_DAYS = 14;
 
-    public function __construct(private OnboardingSummaryService $onboarding) {}
+    public function __construct(
+        private OnboardingSummaryService $onboarding,
+        private FirstDashboardState $firstDashboard,
+    ) {}
 
     /**
      * The card's steps in order, or null when there is no card to draw: the
-     * window is over, the user hid it, or every step is done.
+     * window is over, the user hid it, every step is done, or the only
+     * movements are onboarding estimates, whose own card asks for the import
+     * in this one's place ({@see FirstDashboardState}).
      *
      * @return array{steps: list<array<string, mixed>>}|null
      */
     public function for(User $user): ?array
     {
-        if (! $this->isOpenFor($user)) {
+        if (! $this->isOpenFor($user) || $this->firstDashboard->isEstimateOnly($user)) {
             return null;
         }
 

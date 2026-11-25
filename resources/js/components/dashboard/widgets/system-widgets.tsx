@@ -23,7 +23,10 @@ export function NetWorthWidget({ data }: SystemWidgetProps) {
             }
         >
             <PrivacyRevealScope>
-                <NetWorthChart data={netWorthEvolutionOf(data)} />
+                <NetWorthChart
+                    data={netWorthEvolutionOf(data)}
+                    isFirstReading={data.firstDashboardState != null}
+                />
             </PrivacyRevealScope>
         </Deferred>
     );

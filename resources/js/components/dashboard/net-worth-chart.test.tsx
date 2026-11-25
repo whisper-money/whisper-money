@@ -147,4 +147,22 @@ describe('NetWorthChart', () => {
         expect(screen.queryByTestId('net-worth-no-data')).toBeNull();
         expect(screen.getByText('for the last 12 months')).toBeTruthy();
     });
+
+    it('says how one reading becomes a line, before the user has any movement', () => {
+        const oneReading = evolution([...Array(12).fill(null), 800000]);
+        const { unmount } = render(
+            <NetWorthChart data={oneReading} isFirstReading />,
+        );
+
+        expect(
+            screen.getByText(
+                'First reading, November. Update your balances once a month and this becomes a line.',
+            ),
+        ).toBeTruthy();
+        unmount();
+
+        render(<NetWorthChart data={oneReading} />);
+
+        expect(screen.queryByText(/First reading/)).toBeNull();
+    });
 });

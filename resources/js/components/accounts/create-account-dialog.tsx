@@ -28,9 +28,12 @@ type Mode = 'choice' | 'manual';
 export function CreateAccountDialog({
     onSuccess,
     trigger,
+    initialMode = 'choice',
 }: {
     onSuccess?: () => void;
     trigger?: React.ReactNode;
+    /** `manual` opens straight on the form, for an "add it by hand" action. */
+    initialMode?: Mode;
 }) {
     const {
         auth,
@@ -58,7 +61,7 @@ export function CreateAccountDialog({
     const isFirstAccount = sharedAccountsList.length === 0;
 
     const [open, setOpen] = useState(false);
-    const [mode, setMode] = useState<Mode>('choice');
+    const [mode, setMode] = useState<Mode>(initialMode);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
@@ -83,7 +86,7 @@ export function CreateAccountDialog({
     function handleOpenChange(newOpen: boolean) {
         setOpen(newOpen);
         if (!newOpen) {
-            setMode('choice');
+            setMode(initialMode);
         }
     }
 

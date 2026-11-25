@@ -1,3 +1,6 @@
+import { EstimatesSwapCard } from '@/components/dashboard/first-dashboard/estimates-swap-card';
+import { firstDashboardDescription } from '@/components/dashboard/first-dashboard/first-dashboard-copy';
+import { firstDashboardWidgets } from '@/components/dashboard/first-dashboard/first-dashboard-widgets';
 import { SetupChecklistCard } from '@/components/dashboard/setup-checklist-card';
 import { DashboardLayoutView } from '@/components/dashboard/widgets/dashboard-layout-view';
 import {
@@ -18,6 +21,7 @@ import {
     useSetupCardCompletedEvent,
     useSetupCardViewedEvent,
 } from '@/hooks/use-setup-checklist-telemetry';
+import { useLocale } from '@/hooks/use-locale';
 import { subscribe } from '@/routes';
 import {
     type DashboardProps,
@@ -69,13 +73,24 @@ export function CustomDashboardsView({
 }: Props) {
     const { auth } = data;
     const selected = data.selectedDashboard;
+    const locale = useLocale();
+    // Only the system dashboard knows the estimate-only and balance-only
+    // states: a dashboard of the user's own draws what they put on it.
+    const firstState =
+        selected === null ? (data.firstDashboardState ?? null) : null;
     const canManage = !auth.isSharedAccount;
     const canEdit = canManage && auth.hasProPlan;
     useSetupCardViewedEvent(
         selected === null ? data.setupChecklist : null,
         auth.user.id,
     );
-    useSetupCardCompletedEvent(data.setupChecklist, auth.user);
+    // With only estimates the server sends no checklist because the estimates
+    // card has taken its place, not because its steps are done: undefined
+    // keeps that absence from being reported as completed.
+    useSetupCardCompletedEvent(
+        firstState?.state === 'estimates' ? undefined : data.setupChecklist,
+        auth.user,
+    );
 
     // Edit mode belongs to one dashboard: opening another one reads it.
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -101,7 +116,11 @@ export function CustomDashboardsView({
         <>
             <PageHeader
                 title={title}
-                description={description}
+                description={
+                    firstState
+                        ? firstDashboardDescription(firstState, locale)
+                        : description
+                }
                 actions={
                     <>
                         {/* An empty dashboard offers its own Add widget button. */}
@@ -167,16 +186,30 @@ export function CustomDashboardsView({
             {selected === null ? (
                 <>
                     {/* Nothing while it loads: most users have no card, and a
-                        placeholder would flash for them on every visit. */}
-                    {data.setupChecklist && (
-                        <SetupChecklistCard
-                            checklist={data.setupChecklist}
-                            canDismiss={!auth.isSharedAccount}
-                        />
+                        placeholder would flash for them on every visit. One
+                        nudge at a time: with only estimates, theirs takes the
+                        setup card's place (the server sends no checklist). */}
+                    {firstState?.state === 'estimates' ? (
+                        <EstimatesSwapCard estimates={firstState.estimates} />
+                    ) : (
+                        data.setupChecklist && (
+                            <SetupChecklistCard
+                                checklist={data.setupChecklist}
+                                canDismiss={!auth.isSharedAccount}
+                            />
+                        )
                     )}
                     <DashboardLayoutView
                         layout={SYSTEM_DASHBOARD_LAYOUT}
                         data={data}
+                        replacements={
+                            firstState
+                                ? firstDashboardWidgets(
+                                      firstState,
+                                      data.features.cashflow,
+                                  )
+                                : undefined
+                        }
                     />
                 </>
             ) : isLocked(data, selected) ? (

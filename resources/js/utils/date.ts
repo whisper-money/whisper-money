@@ -115,6 +115,17 @@ export function formatMonthFromYearMonth(
 }
 
 /**
+ * The full name of a `Y-m` month as a sentence reads it, without the year:
+ * "October", "octubre".
+ */
+export function formatMonthName(
+    yearMonth: string,
+    locale: string = 'en-US',
+): string {
+    return formatDate(`${yearMonth}-01`, 'MMMM', locale);
+}
+
+/**
  * Format a date to show month and year (e.g., "January 2026" or "Enero 2026")
  * Capitalizes the first letter
  */
