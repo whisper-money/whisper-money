@@ -38,6 +38,8 @@ export interface ForecastAccountSummary {
     type: string;
     currencyCode: string;
     minimumBalance: number | null;
+    /** The balance the warnings read against; null for a card or a loan without a minimum. */
+    alertThreshold: number | null;
 }
 
 export interface ForecastMonthColumn {

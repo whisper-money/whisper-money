@@ -26,7 +26,7 @@ import { type ReactNode } from 'react';
 export interface PlanCellContext {
     today: string;
     currencyCode: string;
-    minimumBalance: number | null;
+    alertThreshold: number | null;
     projectionByMonth: Record<string, ProjectedMonth>;
 }
 
@@ -340,13 +340,13 @@ function SummaryCell({
         <PlanCell
             className={cn(
                 'font-semibold',
-                balanceTone(projected.min, context.minimumBalance),
+                balanceTone(projected.min, context.alertThreshold),
             )}
             sub={__('worst case :amount', {
                 amount: number(projected.pessimisticMin),
             })}
             subClassName={
-                balanceTone(projected.pessimisticMin, context.minimumBalance) ||
+                balanceTone(projected.pessimisticMin, context.alertThreshold) ||
                 undefined
             }
         >

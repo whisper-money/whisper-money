@@ -68,7 +68,8 @@ class ForecastPresenter
         $plan = $this->builder->build($user, $spaceId, null, $horizon + 1, $today);
         $projected = collect($this->projector->project($plan->input)['accounts'])->keyBy('accountId');
         $visibleCount = 1 + ($isPro ? $horizon : min(self::FREE_MONTHS, $horizon));
-        $alerts = $projected->map(fn (array $projection): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $projection['minimumBalance']))->all();
+        $thresholds = $included->mapWithKeys(fn (Account $account): array => [$account->id => $this->alerts->threshold($account->type, $projected[$account->id]['minimumBalance'])]);
+        $alerts = $projected->map(fn (array $projection, string $id): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $thresholds[$id]))->all();
         $account = $this->selectedAccount($included, $accountId, $alerts);
         $projection = $projected[$account->id];
         $visible = array_slice($projection['months'], 0, $visibleCount);
@@ -78,7 +79,7 @@ class ForecastPresenter
             'forecast' => [
                 ...$base,
                 'currencyCode' => $account->currency_code,
-                'account' => $this->accountSummary($account, $projection['minimumBalance']),
+                'account' => [...$this->accountSummary($account, $projection['minimumBalance']), 'alertThreshold' => $thresholds[$account->id]],
                 'accounts' => $included->map(fn (Account $other): array => [
                     'id' => $other->id,
                     'name' => $other->name,
@@ -91,7 +92,7 @@ class ForecastPresenter
                     ...$alerts[$account->id],
                     'causes' => $this->causes($plan, $account->id, $alerts[$account->id]['month']),
                 ],
-                'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($locked, $projection['minimumBalance']),
+                'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($locked, $thresholds[$account->id]),
                 'kpis' => $this->kpis($visible, $this->projectionAccount($plan, $account->id)->openingBalance),
                 'plan' => $this->rows->build($user, $plan, $account, array_column($visible, 'month')),
             ],

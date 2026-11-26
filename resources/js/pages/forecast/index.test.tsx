@@ -124,6 +124,7 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
             type: 'checking',
             currencyCode: 'EUR',
             minimumBalance: null,
+            alertThreshold: 0,
         },
         accounts: [
             { id: 'checking', name: 'Checking', hasAlert: true },

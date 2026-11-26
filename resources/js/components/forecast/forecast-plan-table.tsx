@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { monthColumnLabel } from '@/lib/forecast/format';
+import { isShort, monthColumnLabel } from '@/lib/forecast/format';
 import {
     buildPlanRows,
     groupRowIds,
@@ -88,7 +88,7 @@ function ColumnHeader({
     const short =
         projected !== undefined &&
         column.status === 'future' &&
-        projected.min < (context.minimumBalance ?? 0);
+        isShort(projected.min, context.alertThreshold);
     let tag = '';
 
     if (column.status === 'current') {
@@ -249,7 +249,7 @@ export function ForecastPlanTable({
             locale,
             today: forecast.today,
             currencyCode: forecast.currencyCode,
-            minimumBalance: forecast.account.minimumBalance,
+            alertThreshold: forecast.account.alertThreshold,
             projectionByMonth: Object.fromEntries(
                 forecast.projection.map((month) => [month.month, month]),
             ),

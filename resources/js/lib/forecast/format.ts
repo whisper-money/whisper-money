@@ -78,14 +78,25 @@ export function lineOrigin(
     return `${sourceLabel(source)} · ${when}`;
 }
 
-/** The tone of a balance against zero and the account's wanted minimum. */
-export function balanceTone(
-    balance: number,
-    minimumBalance: number | null,
-): string {
-    if (balance < 0) {
-        return 'text-destructive';
+/**
+ * Whether a balance falls below the account's alert threshold: its wanted
+ * minimum, else zero, or nothing at all for a card or a loan without one.
+ */
+export function isShort(balance: number, threshold: number | null): boolean {
+    return threshold !== null && balance < threshold;
+}
+
+/**
+ * The tone of a balance against the account's alert threshold: red below
+ * zero (or below the threshold, when that is lower), amber below the wanted
+ * minimum.
+ */
+export function balanceTone(balance: number, threshold: number | null): string {
+    if (!isShort(balance, threshold)) {
+        return '';
     }
 
-    return balance < (minimumBalance ?? 0) ? 'text-warning' : '';
+    return balance < Math.min(threshold as number, 0)
+        ? 'text-destructive'
+        : 'text-warning';
 }

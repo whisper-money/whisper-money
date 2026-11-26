@@ -208,6 +208,16 @@ describe('the account shown', function () {
                 ->where('forecast.accounts.0.id', $card->id));
     });
 
+    it('never warns about a credit card living below zero', function () {
+        $card = forecastPageAccount($this->user, 'A card', AccountType::CreditCard, -45000);
+
+        $this->actingAs($this->user)->get(route('forecast.index', ['account' => $card->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('forecast.account.alertThreshold', null)
+                ->where('forecast.alert.level', 'ok')
+                ->where('forecast.accounts.0.hasAlert', false));
+    });
+
     it('is the one asked for', function () {
         $this->actingAs($this->user)->get(route('forecast.index', ['account' => $this->savings->id]))
             ->assertInertia(fn (AssertableInertia $page) => $page
@@ -225,12 +235,12 @@ describe('the account shown', function () {
     });
 
     it('is by default the account whose problem is the deepest', function () {
-        $card = forecastPageAccount($this->user, 'A card', AccountType::CreditCard, 0);
-        forecastPageLine($this->user, $card, 'Card bill', -1500000, '2026-12-03', ForecastFrequency::Once);
+        $joint = forecastPageAccount($this->user, 'A joint account', AccountType::Checking, 0);
+        forecastPageLine($this->user, $joint, 'Tax bill', -1500000, '2026-12-03', ForecastFrequency::Once);
 
         $this->actingAs($this->user)->get(route('forecast.index'))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('forecast.account.id', $card->id)
+                ->where('forecast.account.id', $joint->id)
                 ->where('forecast.accounts.0.hasAlert', true)
                 ->where('forecast.accounts.1.hasAlert', true));
     });

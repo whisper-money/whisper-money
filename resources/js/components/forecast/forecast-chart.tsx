@@ -13,7 +13,12 @@ import {
     buildChartSeries,
     type ForecastChartPoint,
 } from '@/lib/forecast/chart-series';
-import { monthLongName, monthShortLabel } from '@/lib/forecast/format';
+import {
+    balanceTone,
+    isShort,
+    monthLongName,
+    monthShortLabel,
+} from '@/lib/forecast/format';
 import { cn } from '@/lib/utils';
 import { type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
@@ -63,13 +68,9 @@ function barFill(point: ForecastChartPoint, series: 'income' | 'expenses') {
     return series === 'income' ? INCOME : EXPENSE;
 }
 
-function minTone(min: number, minimumBalance: number | null): string {
-    if (min < 0) {
-        return 'font-semibold text-destructive';
-    }
-
-    return min < (minimumBalance ?? 0)
-        ? 'font-semibold text-warning'
+function minTone(min: number, threshold: number | null): string {
+    return isShort(min, threshold)
+        ? `font-semibold ${balanceTone(min, threshold)}`
         : 'text-muted-foreground';
 }
 
@@ -327,7 +328,7 @@ export function ForecastChart({
                                             : minTone(
                                                   point.min,
                                                   forecast.account
-                                                      .minimumBalance,
+                                                      .alertThreshold,
                                               ),
                                     )}
                                 >

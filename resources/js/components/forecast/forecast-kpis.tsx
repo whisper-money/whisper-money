@@ -89,7 +89,7 @@ export function ForecastKpis({ forecast }: { forecast: ForecastData }) {
                 <StatTileValue
                     className={balanceTone(
                         kpis.lowest.min,
-                        account.minimumBalance,
+                        account.alertThreshold,
                     )}
                 >
                     <AmountDisplay
