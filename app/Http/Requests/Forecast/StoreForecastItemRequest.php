@@ -5,6 +5,7 @@ namespace App\Http\Requests\Forecast;
 use App\Enums\ForecastFrequency;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Http\Requests\Forecast\Concerns\ScopesForecastEdits;
+use App\Models\Account;
 use App\Services\Forecast\Data\NewForecastLine;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -37,7 +38,7 @@ class StoreForecastItemRequest extends FormRequest
             'destination_account_id' => ['nullable', 'string', 'prohibited_unless:type,transfer', 'different:account_id', $this->includedAccount()],
             'destination_external' => ['boolean'],
             'category_id' => ['nullable', 'string', 'prohibited_if:type,transfer', $this->userOwned('categories')],
-            'amount' => ['required', 'integer', 'min:1'],
+            'amount' => ['required', 'integer', 'min:1', 'max:'.self::MAX_AMOUNT],
             'date' => ['required', 'date_format:Y-m-d'],
             'frequency' => ['required', Rule::enum(ForecastFrequency::class)],
             'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date'],
@@ -56,11 +57,20 @@ class StoreForecastItemRequest extends FormRequest
                     $validator->errors()->add('destination_account_id', __('Choose where the transfer goes.'));
                 }
 
+                if ($this->input('destination_account_id') !== null && ! $this->sameCurrency()) {
+                    $validator->errors()->add('destination_account_id', __('A transfer goes between two accounts in the same currency.'));
+                }
+
                 if (! $this->editWindow()->allowsNewDate($this->user(), (string) $this->input('date'))) {
                     $validator->errors()->add('date', __('Choose a date from today within the months you can plan.'));
                 }
             },
         ];
+    }
+
+    private function sameCurrency(): bool
+    {
+        return Account::query()->whereKey([$this->input('account_id'), $this->input('destination_account_id')])->distinct()->count('currency_code') === 1;
     }
 
     public function line(): NewForecastLine

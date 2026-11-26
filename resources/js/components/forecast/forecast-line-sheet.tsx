@@ -13,6 +13,17 @@ import {
     ImpactCallout,
     ScopeChoice,
 } from '@/components/forecast/forecast-sheet-parts';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,11 +91,22 @@ function PaymentsList({
                                     locale,
                                 )}
                             </span>
-                            <span>
+                            <span className="flex flex-col items-end">
                                 {formatAmount(
                                     Math.abs(payment.real),
                                     currencyCode,
                                     { fractionDigits: 0 },
+                                )}
+                                {payment.real !== payment.planned && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {__('planned :amount', {
+                                            amount: formatAmount(
+                                                Math.abs(payment.planned),
+                                                currencyCode,
+                                                { fractionDigits: 0 },
+                                            ),
+                                        })}
+                                    </span>
                                 )}
                             </span>
                             <span className="text-success">
@@ -152,6 +174,52 @@ function DriftOffer({
     );
 }
 
+/** "Dejar de prever", once the user confirms: the line stops counting from now on. */
+function StopForecasting({
+    name,
+    onConfirm,
+    disabled,
+}: {
+    name: string;
+    onConfirm: () => void;
+    disabled: boolean;
+}) {
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    disabled={disabled}
+                >
+                    {__('Stop forecasting it')}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        {__('Stop forecasting :name?', { name })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {__(
+                            'It leaves the forecast in every month and payments stop being matched to it. What was already paid stays in your transactions.',
+                        )}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>{__('Cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-white hover:bg-destructive/90"
+                        onClick={onConfirm}
+                    >
+                        {__('Stop forecasting it')}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
 /**
  * "Editar previsión": one occurrence of a concrete line. The amount, the
  * months it affects (only this one, or from it on), the repetition and the
@@ -179,7 +247,11 @@ export function ForecastLineSheet({
     const [frequency, setFrequency] = useState<ForecastFrequency>(
         line.definition.frequency,
     );
-    const [day, setDay] = useState(String(dayOf(occurrenceDate)));
+    const movedTo = line.definition.overrides?.find(
+        (override) => override.occurrenceDate === occurrenceDate,
+    )?.movedTo;
+    const initialDay = dayOf(movedTo ?? occurrenceDate);
+    const [day, setDay] = useState(String(initialDay));
     const currencyCode = forecast.currencyCode;
     const format = (value: number) =>
         formatAmount(Math.abs(value), currencyCode, { fractionDigits: 0 });
@@ -198,14 +270,21 @@ export function ForecastLineSheet({
             Number.isInteger(parsedDay) &&
             parsedDay >= 1 &&
             parsedDay <= 31 &&
-            parsedDay !== dayOf(occurrenceDate)
+            parsedDay !== initialDay
                 ? parsedDay
                 : null,
     };
     const edited = withLine(
         projectionInput,
         line.id,
-        editedDefinitions(line.definition, edit, forecast.today),
+        editedDefinitions(
+            line.definition,
+            edit,
+            forecast.today,
+            line.payments.some(
+                (payment) => payment.occurrenceDate < occurrenceDate,
+            ),
+        ),
     );
     const impact = impactOn(
         forecast.projection,
@@ -248,21 +327,18 @@ export function ForecastLineSheet({
             testId="forecast-line-sheet"
             footer={
                 <>
-                    <Button
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={stop}
+                    <StopForecasting
+                        name={line.name}
+                        onConfirm={stop}
                         disabled={processing}
-                    >
-                        {__('Stop forecasting it')}
-                    </Button>
+                    />
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={onClose}>
                             {__('Cancel')}
                         </Button>
                         <Button
                             onClick={submit}
-                            disabled={processing || unchanged}
+                            disabled={processing || unchanged || amount <= 0}
                         >
                             {__('Save')}
                         </Button>

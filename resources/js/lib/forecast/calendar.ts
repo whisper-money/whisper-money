@@ -47,6 +47,29 @@ export function horizonEnd(startDate: string, horizonMonths: number): string {
     return formatDate(year, month, daysInMonth(year, month));
 }
 
+/** The date in `date`'s month on `day`, or on its last day when shorter. */
+export function onDay(date: string, day: number): string {
+    const [year, month] = parseDate(date);
+
+    return formatDate(year, month, Math.min(day, daysInMonth(year, month)));
+}
+
+export function previousDay(date: string): string {
+    const [year, month, day] = parseDate(date);
+
+    if (day > 1) {
+        return formatDate(year, month, day - 1);
+    }
+
+    const [previousYear, previousMonth] = parseDate(monthStart(date, -1));
+
+    return formatDate(
+        previousYear,
+        previousMonth,
+        daysInMonth(previousYear, previousMonth),
+    );
+}
+
 export function monthKey(date: string): string {
     return date.slice(0, 7);
 }

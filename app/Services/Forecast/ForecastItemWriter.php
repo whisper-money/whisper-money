@@ -9,7 +9,6 @@ use App\Enums\ForecastItemSource;
 use App\Models\ForecastItem;
 use App\Models\ForecastItemOverride;
 use App\Models\User;
-use App\Services\Forecast\Data\DriftSuggestion;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\NewForecastLine;
 use Illuminate\Support\Facades\DB;
@@ -20,8 +19,11 @@ use Illuminate\Support\Facades\DB;
  * this month" stores an override of that one occurrence; nothing already
  * planned before the change moves. A new schedule (another repetition or
  * day) from a month on rewrites the line in place when nothing of it was
- * left to come before that month, and otherwise ends the line the day
- * before and carries on as a new one, so the months before keep theirs.
+ * paid or left to come before that month, and otherwise ends the line the
+ * day before and carries on as a new one, so the months before keep theirs.
+ *
+ * "From this month on" with a new amount replaces every later version too:
+ * the months after it take the amount the user just typed.
  *
  * Callers check the user may make the change (ForecastEditWindow).
  */
@@ -84,11 +86,15 @@ class ForecastItemWriter
     public function changeFromHere(User $user, ForecastItem $item, string $occurrenceDate, ?int $amount, ?ForecastFrequency $frequency, ?int $day): ForecastItem
     {
         return DB::transaction(function () use ($user, $item, $occurrenceDate, $amount, $frequency, $day): ForecastItem {
-            $anchor = $day === null ? $occurrenceDate : self::onDay($occurrenceDate, $day);
+            $anchor = $day === null ? $occurrenceDate : ForecastCalendar::onDay($occurrenceDate, $day);
             $frequency ??= $item->frequency;
 
             if ($frequency !== $item->frequency || $anchor !== $occurrenceDate) {
                 $item = $this->reschedule($user, $item, $occurrenceDate, $anchor, $frequency);
+            }
+
+            if ($amount !== null) {
+                $item->versions()->where('effective_from', '>', $anchor)->delete();
             }
 
             if ($amount !== null && $amount !== $this->amountOn($item, $anchor)) {
@@ -97,29 +103,6 @@ class ForecastItemWriter
 
             return $item;
         });
-    }
-
-    /**
-     * Updates a line to what its last payments were (ForecastDrift), from
-     * the first occurrence still to come after them.
-     */
-    public function acceptDrift(User $user, ForecastItem $item, DriftSuggestion $suggestion): void
-    {
-        $item->versions()->updateOrCreate(['effective_from' => $this->driftStartsOn($user, $item, $suggestion)], ['amount' => $suggestion->amount]);
-    }
-
-    /**
-     * The occurrence a drift update starts on: the first one scheduled after
-     * the latest payment, and not before today.
-     */
-    public function driftStartsOn(User $user, ForecastItem $item, DriftSuggestion $suggestion): string
-    {
-        $today = $user->localToday()->toDateString();
-        $afterPayment = $suggestion->lastPaidOn === null ? $today : date('Y-m-d', strtotime($suggestion->lastPaidOn.' +1 day'));
-        $from = max($today, $afterPayment);
-        $next = $this->expander->expand([ExpandableItem::fromModel($item)], $from, ForecastCalendar::horizonEnd($from, 13))[0] ?? null;
-
-        return $next->occurrenceDate ?? $from;
     }
 
     /**
@@ -148,38 +131,36 @@ class ForecastItemWriter
         $successor->versions()->create(['effective_from' => $anchor, 'amount' => $amount]);
 
         $item->overrides()->where('occurrence_date', '>=', $occurrenceDate)->delete();
-        $item->forceFill(['ends_on' => date('Y-m-d', strtotime($occurrenceDate.' -1 day'))])->save();
+        $item->forceFill(['ends_on' => ForecastCalendar::previousDay($occurrenceDate)])->save();
 
         return $successor;
     }
 
     /**
-     * Whether the line has an occurrence between the start of the month in
-     * progress and `$date`: one the new schedule must not take away.
+     * Whether the line has something before `$date` the new schedule must
+     * not take away: a payment matched to it, or an occurrence still to come
+     * since the month in progress started.
      */
     private function hasOccurrencesBefore(User $user, ForecastItem $item, string $date): bool
     {
         $from = ForecastCalendar::monthStart($user->localToday()->toDateString());
 
+        if ($item->matches()->where('occurrence_date', '<', $date)->exists()) {
+            return true;
+        }
+
         return $from < $date
-            && $this->expander->expand([ExpandableItem::fromModel($item)], $from, date('Y-m-d', strtotime($date.' -1 day'))) !== [];
-    }
-
-    private function amountOn(ForecastItem $item, string $date): ?int
-    {
-        $item->load('versions');
-
-        return $item->versions->filter(fn ($version): bool => $version->effective_from->toDateString() <= $date)->last()->amount
-            ?? $item->versions->first()?->amount;
+            && $this->expander->expand([ExpandableItem::fromModel($item)], $from, ForecastCalendar::previousDay($date)) !== [];
     }
 
     /**
-     * The date in `$date`'s month on `$day`, or on its last day when shorter.
+     * The amount of the version in force on the date, else the first one.
      */
-    public static function onDay(string $date, int $day): string
+    public static function amountOn(ForecastItem $item, string $date): ?int
     {
-        [$year, $month] = ForecastCalendar::parse($date);
+        $versions = $item->versions()->get();
 
-        return ForecastCalendar::format($year, $month, min($day, ForecastCalendar::daysInMonth($year, $month)));
+        return $versions->filter(fn ($version): bool => $version->effective_from->toDateString() <= $date)->last()->amount
+            ?? $versions->first()?->amount;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Forecast;
 
 use App\Enums\ForecastFrequency;
 use App\Services\Forecast\Data\ExpandableItem;
+use App\Services\Forecast\ForecastCalendar;
 use App\Services\Forecast\ForecastItemWriter;
 use App\Services\Forecast\OccurrenceExpander;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,7 @@ class UpdateForecastItemRequest extends ForecastItemActionRequest
         return [
             'scope' => ['required', Rule::in(['occurrence', 'from_here'])],
             'occurrence_date' => ['required', 'date_format:Y-m-d'],
-            'amount' => ['nullable', 'integer', 'min:1'],
+            'amount' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_AMOUNT],
             'frequency' => ['nullable', 'prohibited_unless:scope,from_here', Rule::enum(ForecastFrequency::class)],
             'day' => ['nullable', 'integer', 'between:1,31'],
         ];
@@ -47,7 +48,7 @@ class UpdateForecastItemRequest extends ForecastItemActionRequest
                     return;
                 }
 
-                if ($this->day() !== null && ! $this->editWindow()->allowsNewDate($this->user(), ForecastItemWriter::onDay($date, $this->day()))) {
+                if ($this->day() !== null && ! $this->editWindow()->allowsNewDate($this->user(), ForecastCalendar::onDay($date, $this->day()))) {
                     $validator->errors()->add('day', __('Choose a day from today within the months you can plan.'));
                 }
             },
@@ -83,7 +84,7 @@ class UpdateForecastItemRequest extends ForecastItemActionRequest
             return null;
         }
 
-        $isIncome = ($this->item()->versions()->latest('effective_from')->value('amount') ?? 0) > 0;
+        $isIncome = (ForecastItemWriter::amountOn($this->item(), $this->occurrenceDate()) ?? 0) > 0;
 
         return $isIncome ? (int) $this->input('amount') : -(int) $this->input('amount');
     }
@@ -93,7 +94,7 @@ class UpdateForecastItemRequest extends ForecastItemActionRequest
      */
     public function movedTo(): ?string
     {
-        return $this->day() === null ? null : ForecastItemWriter::onDay($this->occurrenceDate(), $this->day());
+        return $this->day() === null ? null : ForecastCalendar::onDay($this->occurrenceDate(), $this->day());
     }
 
     /**
@@ -102,9 +103,6 @@ class UpdateForecastItemRequest extends ForecastItemActionRequest
      */
     private function isScheduled(string $date): bool
     {
-        $line = ExpandableItem::fromModel($this->item());
-        $schedule = new ExpandableItem($line->id, $line->accountId, $line->destinationAccountId, $line->frequency, $line->anchorDate, $line->endsOn, $line->versions);
-
-        return app(OccurrenceExpander::class)->expand([$schedule], $date, $date) !== [];
+        return app(OccurrenceExpander::class)->expand([ExpandableItem::fromModel($this->item())->withoutOverrides()], $date, $date) !== [];
     }
 }

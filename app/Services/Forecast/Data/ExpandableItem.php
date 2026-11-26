@@ -50,6 +50,14 @@ final readonly class ExpandableItem
     }
 
     /**
+     * The bare schedule: every occurrence on the date the schedule gives it.
+     */
+    public function withoutOverrides(): self
+    {
+        return new self($this->id, $this->accountId, $this->destinationAccountId, $this->frequency, $this->anchorDate, $this->endsOn, $this->versions);
+    }
+
+    /**
      * Reads the line with its `versions` and `overrides` relations, loading
      * them when the caller did not. A transfer out of the app has no
      * destination here, so it moves only the source account: it is spend.

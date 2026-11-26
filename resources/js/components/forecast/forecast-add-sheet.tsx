@@ -70,6 +70,21 @@ interface Draft {
     endsOn: string;
 }
 
+/** A transfer goes to another account in the same currency, or out of the app. */
+function canReceive(
+    accounts: ForecastAccountTab[],
+    fromId: string,
+    toId: string,
+): boolean {
+    const currency = (id: string) =>
+        accounts.find((account) => account.id === id)?.currencyCode;
+
+    return (
+        toId === OUTSIDE ||
+        (toId !== fromId && currency(toId) === currency(fromId))
+    );
+}
+
 function initialDraft(
     prefill: AddPrefill | undefined,
     accountId: string,
@@ -85,7 +100,8 @@ function initialDraft(
         accountId: source,
         destination:
             prefill?.destinationAccountId ??
-            accounts.find((account) => account.id !== source)?.id ??
+            accounts.find((account) => canReceive(accounts, source, account.id))
+                ?.id ??
             OUTSIDE,
         categoryId: prefill?.categoryId ?? null,
         amount: prefill?.amount ?? 0,
@@ -266,6 +282,8 @@ export function ForecastAddSheet({
         setDraft((current) => ({ ...current, ...patch }));
 
     const isTransfer = draft.type === 'transfer';
+    const source = accounts.find((account) => account.id === draft.accountId);
+    const currencyCode = source?.currencyCode ?? forecast.currencyCode;
     const month = monthKey(draft.date);
     const monthName = monthLongName(month, locale);
     const dateInRange = draft.date >= forecast.today && draft.date <= lastDay;
@@ -384,10 +402,13 @@ export function ForecastAddSheet({
                             onChange={(accountId) =>
                                 change({
                                     accountId,
-                                    destination:
-                                        draft.destination === accountId
-                                            ? OUTSIDE
-                                            : draft.destination,
+                                    destination: canReceive(
+                                        accounts,
+                                        accountId,
+                                        draft.destination,
+                                    )
+                                        ? draft.destination
+                                        : OUTSIDE,
                                 })
                             }
                             accounts={accounts}
@@ -407,8 +428,12 @@ export function ForecastAddSheet({
                             id="forecast-add-to"
                             value={draft.destination}
                             onChange={(destination) => change({ destination })}
-                            accounts={accounts.filter(
-                                (account) => account.id !== draft.accountId,
+                            accounts={accounts.filter((account) =>
+                                canReceive(
+                                    accounts,
+                                    draft.accountId,
+                                    account.id,
+                                ),
                             )}
                             label={destinationLabel}
                             withOutside
@@ -483,7 +508,7 @@ export function ForecastAddSheet({
                         onChange={(amount) =>
                             change({ amount: Math.abs(amount) })
                         }
-                        currencyCode={forecast.currencyCode}
+                        currencyCode={currencyCode}
                         commitOnChange
                     />
                 </Field>

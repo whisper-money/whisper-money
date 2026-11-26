@@ -38,7 +38,6 @@ class ForecastPlanRows
         private readonly OccurrenceExpander $expander,
         private readonly ForecastHistory $history,
         private readonly ForecastDrift $drift,
-        private readonly ForecastItemWriter $writer,
     ) {}
 
     /**
@@ -125,7 +124,7 @@ class ForecastPlanRows
 
         foreach ($items as $item) {
             $drift = $drifts[$item->id] ?? null;
-            $driftFrom = $drift === null ? null : $this->writer->driftStartsOn($user, $item, $drift);
+            $driftFrom = $drift === null ? null : $this->drift->startsOn($user, $item, $drift);
 
             $details[$item->id] = [
                 'accountId' => $item->account_id,

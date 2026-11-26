@@ -32,7 +32,7 @@ class StoreForecastEstimateRequest extends FormRequest
             'account_id' => ['required', 'string', $this->includedAccount()],
             'category_id' => ['nullable', 'string', $this->userOwned('categories')->whereNull('parent_id')],
             'month' => ['required', 'date_format:Y-m'],
-            'amount' => ['required', 'integer', 'min:0'],
+            'amount' => ['required', 'integer', 'min:0', 'max:'.self::MAX_AMOUNT],
             'scope' => ['required', Rule::in(['month', 'from_here'])],
         ];
     }

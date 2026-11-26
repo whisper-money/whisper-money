@@ -22,11 +22,13 @@ class ForecastItemDriftController extends Controller
     {
         $suggestion = $drift->suggestionFor($item);
 
-        if ($suggestion === null || ! $window->allowsMonth($request->user(), ForecastCalendar::monthKey($writer->driftStartsOn($request->user(), $item, $suggestion)))) {
+        $from = $suggestion === null ? null : $drift->startsOn($request->user(), $item, $suggestion);
+
+        if ($from === null || ! $window->allowsMonth($request->user(), ForecastCalendar::monthKey($from))) {
             throw ValidationException::withMessages(['drift' => __('There is nothing to update on this line.')]);
         }
 
-        $writer->acceptDrift($request->user(), $item, $suggestion);
+        $writer->changeFromHere($request->user(), $item, $from, $suggestion->amount, null, null);
 
         return back();
     }

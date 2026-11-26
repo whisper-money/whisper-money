@@ -6,9 +6,7 @@ import {
 } from '@/components/forecast/forecast-sheet-parts';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useForecastSave } from '@/hooks/use-forecast-save';
 import { alertThreshold, withAccountSettings } from '@/lib/forecast/edits';
 import { __ } from '@/utils/i18n';
@@ -19,8 +17,7 @@ const GROWING = ['investment', 'retirement', 'real_estate', 'savings'];
 
 /**
  * How the account takes part in the forecast: the balance its owner wants
- * to keep (the warnings read against it), its yearly growth, and whether
- * the forecast covers it at all.
+ * to keep (the warnings read against it) and its yearly growth.
  */
 export function ForecastAccountSheet({
     forecast,
@@ -37,7 +34,6 @@ export function ForecastAccountSheet({
             ? ''
             : String(account.annualRateBps / 100),
     );
-    const [included, setIncluded] = useState(true);
     const rateBps = rate.trim() === '' ? null : Math.round(Number(rate) * 100);
 
     const submit = () => {
@@ -48,24 +44,21 @@ export function ForecastAccountSheet({
             {
                 minimum_balance: minimum,
                 annual_rate: rate.trim() === '' ? null : Number(rate),
-                included,
             },
-            included
-                ? {
-                      input: withAccountSettings(projectionInput, account.id, {
-                          minimumBalance: minimum,
-                          annualRateBps: Number.isNaN(rateBps) ? null : rateBps,
-                      }),
-                      forecast: {
-                          ...forecast,
-                          account: {
-                              ...account,
-                              minimumBalance: minimum,
-                              alertThreshold: threshold,
-                          },
-                      },
-                  }
-                : null,
+            {
+                input: withAccountSettings(projectionInput, account.id, {
+                    minimumBalance: minimum,
+                    annualRateBps: Number.isNaN(rateBps) ? null : rateBps,
+                }),
+                forecast: {
+                    ...forecast,
+                    account: {
+                        ...account,
+                        minimumBalance: minimum,
+                        alertThreshold: threshold,
+                    },
+                },
+            },
             onClose,
         );
     };
@@ -127,24 +120,6 @@ export function ForecastAccountSheet({
                     />
                 </Field>
             )}
-
-            <div className="flex items-start gap-3">
-                <Checkbox
-                    id="forecast-account-included"
-                    checked={included}
-                    onCheckedChange={(checked) => setIncluded(checked === true)}
-                />
-                <div className="grid gap-1">
-                    <Label htmlFor="forecast-account-included">
-                        {__('Include this account in the forecast')}
-                    </Label>
-                    <span className="text-xs text-muted-foreground">
-                        {__(
-                            'Left out, it gets no forecast and its lines stop counting.',
-                        )}
-                    </span>
-                </div>
-            </div>
         </ForecastSheet>
     );
 }

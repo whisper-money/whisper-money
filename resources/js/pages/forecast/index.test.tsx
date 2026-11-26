@@ -644,6 +644,12 @@ describe('editing the forecast', () => {
                 name: 'Stop forecasting it',
             }),
         );
+        expect(visit).not.toHaveBeenCalled();
+        fireEvent.click(
+            within(screen.getByRole('alertdialog')).getByRole('button', {
+                name: 'Stop forecasting it',
+            }),
+        );
 
         const [url, options] = lastVisit();
         expect(url).toBe('/forecast/items/insurance');
@@ -788,7 +794,7 @@ describe('editing the forecast', () => {
             document.querySelector('[data-test="forecast-change-minimum"]')!,
         );
         expect(sheet('forecast-account-sheet')).toHaveTextContent(
-            'Include this account in the forecast',
+            'Wanted minimum',
         );
     });
 

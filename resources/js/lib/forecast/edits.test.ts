@@ -107,6 +107,39 @@ describe('editing a line on the client', () => {
         ]);
     });
 
+    it('replaces the later versions from a month on', () => {
+        const [line] = editedDefinitions(
+            {
+                ...rent,
+                versions: [
+                    ...rent.versions,
+                    { effectiveFrom: '2027-06-05', amount: -230000 },
+                ],
+            },
+            { ...edit, amount: -200000 },
+            '2026-11-26',
+        );
+
+        expect(line.versions).toEqual([
+            { effectiveFrom: '2026-01-05', amount: -190000 },
+            { effectiveFrom: '2027-03-05', amount: -200000 },
+        ]);
+    });
+
+    it('keeps the schedule a payment was matched to', () => {
+        const lines = editedDefinitions(
+            insurance,
+            { ...edit, occurrenceDate: '2027-04-03', day: 20 },
+            '2026-11-26',
+            true,
+        );
+
+        expect(lines.map((line) => line.id)).toEqual([
+            'insurance',
+            'insurance:next',
+        ]);
+    });
+
     it('splits the line when a new day starts after months still to come', () => {
         const [before, after] = editedDefinitions(
             rent,

@@ -14,13 +14,7 @@ import {
     type ForecastGroup,
     type ForecastLine,
 } from '@/types/forecast';
-import {
-    createContext,
-    useContext,
-    useMemo,
-    useState,
-    type ReactNode,
-} from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 export type ForecastEditTarget =
     | { kind: 'line'; line: ForecastLine; month: string }
@@ -65,48 +59,48 @@ export function ForecastEditorProvider({
     const [sequence, setSequence] = useState(0);
     const { save } = useForecastSave();
 
-    const editor = useMemo<ForecastEditor | null>(
-        () =>
-            projectionInput === null
-                ? null
-                : {
-                      open: (next) => {
-                          setTarget(next);
-                          setSequence((count) => count + 1);
-                      },
-                      acceptDrift: (line) => {
-                          if (line.drift === null) {
-                              return;
-                          }
-
-                          const definitions = editedDefinitions(
-                              line.definition,
-                              {
-                                  scope: 'from_here',
-                                  occurrenceDate: line.drift.from,
-                                  amount: line.drift.amount,
-                                  frequency: null,
-                                  day: null,
-                              },
-                              forecast.today,
-                          );
-
-                          save(
-                              acceptDrift(line.id),
-                              {},
-                              {
-                                  input: withLine(
-                                      projectionInput,
-                                      line.id,
-                                      definitions,
-                                  ),
-                                  itemIds: [line.id],
-                              },
-                          );
-                      },
+    const editor: ForecastEditor | null =
+        projectionInput === null
+            ? null
+            : {
+                  open: (next) => {
+                      setTarget(next);
+                      setSequence((count) => count + 1);
                   },
-        [projectionInput, forecast.today, save],
-    );
+                  acceptDrift: (line) => {
+                      if (line.drift === null) {
+                          return;
+                      }
+
+                      const definitions = editedDefinitions(
+                          line.definition,
+                          {
+                              scope: 'from_here',
+                              occurrenceDate: line.drift.from,
+                              amount: line.drift.amount,
+                              frequency: null,
+                              day: null,
+                          },
+                          forecast.today,
+                          true,
+                      );
+
+                      save(
+                          acceptDrift(line.id),
+                          {},
+                          {
+                              input: withLine(
+                                  projectionInput,
+                                  line.id,
+                                  definitions,
+                              ),
+                              itemIds: [line.id],
+                          },
+                          undefined,
+                          { toastErrors: true },
+                      );
+                  },
+              };
 
     const sheet: ForecastSheetProps | null =
         projectionInput === null

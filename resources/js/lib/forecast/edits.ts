@@ -1,10 +1,9 @@
 import {
-    daysInMonth,
-    formatDate,
     horizonEnd,
     monthKey,
     monthStart,
-    parseDate,
+    onDay,
+    previousDay,
 } from '@/lib/forecast/calendar';
 import { expandOccurrences } from '@/lib/forecast/expand-occurrences';
 import { projectForecast } from '@/lib/forecast/project';
@@ -45,29 +44,6 @@ export interface LineEdit {
 
 export type EstimateScope = 'month' | 'from_here';
 
-/** The date in `date`'s month on `day`, or on its last day when shorter. */
-export function onDay(date: string, day: number): string {
-    const [year, month] = parseDate(date);
-
-    return formatDate(year, month, Math.min(day, daysInMonth(year, month)));
-}
-
-function dayBefore(date: string): string {
-    const [year, month, day] = parseDate(date);
-
-    if (day > 1) {
-        return formatDate(year, month, day - 1);
-    }
-
-    const [previousYear, previousMonth] = parseDate(monthStart(date, -1));
-
-    return formatDate(
-        previousYear,
-        previousMonth,
-        daysInMonth(previousYear, previousMonth),
-    );
-}
-
 /** The amount of the latest version in force on the date, else the first one. */
 export function amountOn(
     versions: ForecastItemVersion[],
@@ -81,19 +57,22 @@ export function amountOn(
     return (inForce.at(-1) ?? sorted[0])?.amount ?? null;
 }
 
+/** A new amount from `effectiveFrom` on, replacing every later version. */
 function withVersion(
     definition: ExpandableForecastItem,
     effectiveFrom: string,
     amount: number,
 ): ExpandableForecastItem {
+    const earlier = definition.versions.filter(
+        (version) => version.effectiveFrom < effectiveFrom,
+    );
+
     return {
         ...definition,
-        versions: [
-            ...definition.versions.filter(
-                (version) => version.effectiveFrom !== effectiveFrom,
-            ),
-            { effectiveFrom, amount },
-        ],
+        versions:
+            amountOn(earlier, effectiveFrom) === amount
+                ? earlier
+                : [...earlier, { effectiveFrom, amount }],
     };
 }
 
@@ -125,31 +104,33 @@ function editOccurrence(
 }
 
 /**
- * A new schedule from `date` on: in place when nothing of the line was left
- * to come since the month in progress started, else the line ends the day
- * before and carries on as a new one.
+ * A new schedule from `date` on: in place when nothing of the line was paid
+ * or left to come before it, else the line ends the day before and carries
+ * on as a new one.
  */
 function reschedule(
     definition: ExpandableForecastItem,
     date: string,
     anchorDate: string,
     frequency: ForecastFrequency,
-    today: string,
+    context: { today: string; paidBefore: boolean },
 ): ExpandableForecastItem[] {
-    const from = monthStart(today);
+    const from = monthStart(context.today);
     const kept = (definition.overrides ?? []).filter(
         (override) => override.occurrenceDate < date,
     );
     const hasEarlier =
-        from < date &&
-        expandOccurrences([definition], from, dayBefore(date)).length > 0;
+        context.paidBefore ||
+        (from < date &&
+            expandOccurrences([definition], from, previousDay(date)).length >
+                0);
 
     if (!hasEarlier) {
         return [{ ...definition, anchorDate, frequency, overrides: kept }];
     }
 
     return [
-        { ...definition, endsOn: dayBefore(date), overrides: kept },
+        { ...definition, endsOn: previousDay(date), overrides: kept },
         {
             ...definition,
             id: `${definition.id}:next`,
@@ -166,11 +147,16 @@ function reschedule(
     ];
 }
 
-/** What a line becomes after an edit: itself, or itself and its successor. */
+/**
+ * What a line becomes after an edit: itself, or itself and its successor.
+ * `paidBefore` says whether a payment was matched to it before the edited
+ * occurrence, which keeps its schedule from moving under that payment.
+ */
 export function editedDefinitions(
     definition: ExpandableForecastItem,
     edit: LineEdit,
     today: string,
+    paidBefore = false,
 ): ExpandableForecastItem[] {
     if (edit.scope === 'occurrence') {
         return [editOccurrence(definition, edit)];
@@ -188,15 +174,12 @@ export function editedDefinitions(
                   edit.occurrenceDate,
                   anchorDate,
                   frequency,
-                  today,
+                  { today, paidBefore },
               )
             : [definition];
     const target = definitions.length - 1;
 
-    if (
-        edit.amount !== null &&
-        edit.amount !== amountOn(definitions[target].versions, anchorDate)
-    ) {
+    if (edit.amount !== null) {
         definitions[target] = withVersion(
             definitions[target],
             anchorDate,
@@ -413,8 +396,8 @@ function lineAmounts(
         const month = monthKey(occurrence.date);
 
         if (
-            !line.definition ||
-            !occurrence.itemId.startsWith(line.id) ||
+            (occurrence.itemId !== line.id &&
+                occurrence.itemId !== `${line.id}:next`) ||
             month === months[0] ||
             !months.includes(month)
         ) {

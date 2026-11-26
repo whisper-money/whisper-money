@@ -149,7 +149,7 @@ function DriftSuggestion({
             data-test={`forecast-drift-${line.id}`}
         >
             {__('Your :name is now :amount. Update from :month?', {
-                name: line.name.toLocaleLowerCase(locale),
+                name: line.name,
                 amount: formatAmount(
                     Math.abs(line.drift.amount),
                     currencyCode,

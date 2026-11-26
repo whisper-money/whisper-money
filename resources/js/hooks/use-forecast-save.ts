@@ -27,6 +27,7 @@ export interface ForecastSave {
         data: RequestPayload,
         edit: OptimisticEdit | null,
         onSaved?: () => void,
+        options?: { toastErrors?: boolean },
     ) => void;
     processing: boolean;
     errors: Record<string, string>;
@@ -39,13 +40,19 @@ export interface ForecastSave {
  * in flight, then replaced by the forecast the server answers with (only
  * `forecast` and `projectionInput` reload). A request that fails puts the
  * page back as it was, and its validation errors are returned for the
- * sheet to show.
+ * sheet to show, or toasted when no sheet is open to show them.
  */
 export function useForecastSave(): ForecastSave {
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const save: ForecastSave['save'] = (route, data, edit, onSaved) => {
+    const save: ForecastSave['save'] = (
+        route,
+        data,
+        edit,
+        onSaved,
+        options,
+    ) => {
         setErrors({});
         router.visit(route.url, {
             method: route.method,
@@ -79,8 +86,12 @@ export function useForecastSave(): ForecastSave {
             onError: (failed) => {
                 setErrors(failed);
 
-                if (Object.keys(failed).length === 0) {
-                    toast.error(__('The forecast could not be saved.'));
+                const messages = Object.values(failed);
+
+                if (messages.length === 0 || options?.toastErrors) {
+                    toast.error(
+                        messages[0] ?? __('The forecast could not be saved.'),
+                    );
                 }
             },
         });

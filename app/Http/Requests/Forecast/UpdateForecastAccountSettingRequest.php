@@ -28,7 +28,7 @@ class UpdateForecastAccountSettingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'minimum_balance' => ['sometimes', 'nullable', 'integer'],
+            'minimum_balance' => ['sometimes', 'nullable', 'integer', 'between:-'.self::MAX_AMOUNT.','.self::MAX_AMOUNT],
             'annual_rate' => ['sometimes', 'nullable', 'numeric', 'between:-100,100'],
             'included' => ['sometimes', 'boolean'],
         ];

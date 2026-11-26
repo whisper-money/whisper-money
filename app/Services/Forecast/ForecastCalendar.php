@@ -78,6 +78,36 @@ final class ForecastCalendar
     }
 
     /**
+     * The date in `$date`'s month on `$day`, or on its last day when shorter.
+     */
+    public static function onDay(string $date, int $day): string
+    {
+        [$year, $month] = self::parse($date);
+
+        return self::format($year, $month, min($day, self::daysInMonth($year, $month)));
+    }
+
+    public static function nextDay(string $date): string
+    {
+        [$year, $month, $day] = self::parse($date);
+
+        return $day < self::daysInMonth($year, $month) ? self::format($year, $month, $day + 1) : self::monthStart($date, 1);
+    }
+
+    public static function previousDay(string $date): string
+    {
+        [$year, $month, $day] = self::parse($date);
+
+        if ($day > 1) {
+            return self::format($year, $month, $day - 1);
+        }
+
+        [$previousYear, $previousMonth] = self::parse(self::monthStart($date, -1));
+
+        return self::format($previousYear, $previousMonth, self::daysInMonth($previousYear, $previousMonth));
+    }
+
+    /**
      * The `Y-m` key of a date.
      */
     public static function monthKey(string $date): string

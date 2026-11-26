@@ -197,6 +197,12 @@ describe('adding a line', function () {
         }, 'account_id'],
         'another user\'s category' => [fn ($test) => newExpense($test->checking, ['category_id' => forecastExpenseCategory(User::factory()->create())->id]), 'category_id'],
         'a transfer to nowhere' => [fn ($test) => ['type' => 'transfer', 'account_id' => $test->checking->id, 'amount' => 100, 'date' => '2026-12-01', 'frequency' => 'once'], 'destination_account_id'],
+        'a transfer between two currencies' => [function ($test) {
+            $dollars = editingAccount($test->user, 'Dollars', AccountType::Savings, 0);
+            $dollars->forceFill(['currency_code' => 'USD'])->save();
+
+            return ['type' => 'transfer', 'account_id' => $test->checking->id, 'destination_account_id' => $dollars->id, 'amount' => 100, 'date' => '2026-12-01', 'frequency' => 'once'];
+        }, 'destination_account_id'],
         'a transfer to the same account' => [fn ($test) => ['type' => 'transfer', 'account_id' => $test->checking->id, 'destination_account_id' => $test->checking->id, 'amount' => 100, 'date' => '2026-12-01', 'frequency' => 'once'], 'destination_account_id'],
     ]);
 
@@ -242,6 +248,41 @@ describe('changing a line', function () {
 
         expect(editingVersions($this->rent))->toBe(['2026-01-05' => -190000, '2027-03-05' => -200000])
             ->and(ForecastItem::query()->count())->toBe(1);
+    });
+
+    it('replaces the later versions from a month on', function () {
+        $this->rent->versions()->create(['effective_from' => '2027-06-05', 'amount' => -230000]);
+
+        $this->actingAs($this->user)->patch(route('forecast.items.update', $this->rent), [
+            'scope' => 'from_here', 'occurrence_date' => '2027-03-05', 'amount' => 200000,
+        ])->assertSessionHasNoErrors();
+
+        expect(editingVersions($this->rent))->toBe(['2026-01-05' => -190000, '2027-03-05' => -200000]);
+    });
+
+    it('keeps the sign of the version in force on the occurrence', function () {
+        $refund = editingLine($this->user, $this->checking, 'Refund', 5000, '2026-12-10');
+        $refund->versions()->create(['effective_from' => '2027-06-10', 'amount' => -1000]);
+
+        $this->actingAs($this->user)->patch(route('forecast.items.update', $refund), [
+            'scope' => 'occurrence', 'occurrence_date' => '2027-01-10', 'amount' => 6000,
+        ])->assertSessionHasNoErrors();
+
+        expect($refund->overrides()->sole()->amount)->toBe(6000);
+    });
+
+    it('keeps the schedule a payment was matched to and carries on as a new line', function () {
+        $insurance = editingLine($this->user, $this->checking, 'Insurance', -60000, '2026-04-10', ForecastFrequency::Yearly);
+        forecastCharge($this->checking, '2026-04-10', -60000, 'INSURANCE');
+
+        $this->actingAs($this->user)->patch(route('forecast.items.update', $insurance), [
+            'scope' => 'from_here', 'occurrence_date' => '2027-04-10', 'day' => 20,
+        ])->assertSessionHasNoErrors();
+
+        expect($insurance->fresh())
+            ->anchor_date->toDateString()->toBe('2026-04-10')
+            ->ends_on->toDateString()->toBe('2027-04-09')
+            ->and(ForecastItem::query()->where('name', 'Insurance')->whereKeyNot($insurance->id)->sole()->anchor_date->toDateString())->toBe('2027-04-20');
     });
 
     it('reschedules in place when nothing of the line was left before', function () {
@@ -371,6 +412,17 @@ describe('adjusting an estimate', function () {
             ->and(Budget::query()->count())->toBe($budgets);
     });
 
+    it('replaces the adjustments that start later when set from a month on', function () {
+        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'amount' => 30000];
+
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'month' => '2027-03', 'scope' => 'month']);
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'month' => '2026-12', 'scope' => 'from_here', 'amount' => 20000]);
+
+        expect(ForecastEstimateAdjustment::query()->sole())
+            ->starts_on->toDateString()->toBe('2026-12-01')
+            ->amount->toBe(20000);
+    });
+
     it('sets it from a month on, replacing an earlier figure for that month', function () {
         $data = ['account_id' => $this->checking->id, 'category_id' => null, 'month' => '2026-12', 'amount' => 30000, 'scope' => 'from_here'];
 
@@ -441,6 +493,23 @@ describe('answering a spike', function () {
             ->and($line->source)->toBe(ForecastItemSource::Detected)
             ->and($line->anchor_date->toDateString())->toBe('2027-11-10')
             ->and($line->versions->sole()->amount)->toBe(-90000);
+    });
+
+    it('does not add the same yearly line twice', function () {
+        $this->actingAs($this->user)->post(route('forecast.spikes.store', $this->spike), ['answer' => 'repeats']);
+        $this->actingAs($this->user)->post(route('forecast.spikes.store', $this->spike), ['answer' => 'one_off']);
+        $this->actingAs($this->user)->post(route('forecast.spikes.store', $this->spike), ['answer' => 'repeats'])->assertSessionHasNoErrors();
+
+        expect(ForecastItem::query()->whereKeyNot($this->rent->id)->count())->toBe(1);
+    });
+
+    it('leaves a user without Pro to plan only the months they see', function () {
+        $free = editingFreeUser();
+        $spike = forecastCharge(editingAccount($free, 'Mine', AccountType::Checking, 1000), '2026-11-10', -90000, 'TALLER');
+
+        $this->actingAs($free)->post(route('forecast.spikes.store', $spike), ['answer' => 'repeats'])->assertSessionHasErrors('answer');
+
+        expect(ForecastItem::query()->where('user_id', $free->id)->count())->toBe(0);
     });
 
     it('rejects an unknown answer and another user\'s transaction', function () {

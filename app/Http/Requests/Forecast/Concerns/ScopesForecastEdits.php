@@ -18,6 +18,12 @@ use Illuminate\Validation\Rules\In;
  */
 trait ScopesForecastEdits
 {
+    /**
+     * The largest amount an edit takes, in minor units: far beyond any real
+     * balance, well inside the columns.
+     */
+    protected const MAX_AMOUNT = 100_000_000_000_000;
+
     protected function abortUnlessOwned(Model $model, ?string $spaceId): void
     {
         abort_if($this->user()->cannot('update', $model) || $spaceId !== $this->user()->activeSpace()->id, 404);
