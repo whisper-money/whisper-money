@@ -6,6 +6,11 @@ namespace App\Services\Forecast;
  * Calendar arithmetic on `Y-m-d` strings, kept to plain integers so the
  * TypeScript port (resources/js/lib/forecast/calendar.ts) can match it to the
  * day without a date library or a time zone in the way.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final class ForecastCalendar
 {
@@ -18,7 +23,7 @@ final class ForecastCalendar
         return in_array($month, [4, 6, 9, 11], true) ? 30 : 31;
     }
 
-    public static function isLeapYear(int $year): bool
+    private static function isLeapYear(int $year): bool
     {
         return ($year % 4 === 0 && $year % 100 !== 0) || $year % 400 === 0;
     }

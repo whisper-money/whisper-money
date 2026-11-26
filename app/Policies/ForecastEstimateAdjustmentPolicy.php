@@ -10,11 +10,8 @@ class ForecastEstimateAdjustmentPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastEstimateAdjustment  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->user_id;
+        return $model instanceof ForecastEstimateAdjustment ? $model->user_id : null;
     }
 }

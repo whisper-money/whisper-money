@@ -21,6 +21,11 @@ use App\Services\Forecast\Data\ProjectionInput;
  * the TypeScript port in resources/js/lib/forecast/project.ts gives the same
  * figures, which tests/Fixtures/forecast-parity.json checks. Exact while
  * amounts times 31 (or times a rate in basis points) stay below 2^53.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final class ForecastProjector
 {

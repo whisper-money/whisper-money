@@ -10,11 +10,8 @@ class ForecastAccountSettingPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastAccountSetting  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->account?->user_id;
+        return $model instanceof ForecastAccountSetting ? $model->account?->user_id : null;
     }
 }

@@ -8,6 +8,11 @@ namespace App\Services\Forecast\Data;
  * expected to land, after any move. `amount` is signed from the line's
  * account: a transfer takes it from `accountId` and gives its opposite to
  * `destinationAccountId`.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final readonly class Occurrence
 {

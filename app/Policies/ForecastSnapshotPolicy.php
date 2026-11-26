@@ -10,11 +10,8 @@ class ForecastSnapshotPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastSnapshot  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->user_id;
+        return $model instanceof ForecastSnapshot ? $model->user_id : null;
     }
 }

@@ -5,6 +5,11 @@ namespace App\Services\Forecast\Data;
 /**
  * Everything ForecastProjector works from. `startDate` is a `Y-m-d` day; the
  * projection covers its month and the `horizonMonths - 1` months after it.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final readonly class ProjectionInput
 {

@@ -10,11 +10,8 @@ class ForecastExcludedTransactionPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastExcludedTransaction  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->transaction?->user_id;
+        return $model instanceof ForecastExcludedTransaction ? $model->transaction?->user_id : null;
     }
 }

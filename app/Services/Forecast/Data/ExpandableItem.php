@@ -9,6 +9,11 @@ use App\Models\ForecastItem;
  * What OccurrenceExpander needs from a forecast line, detached from Eloquent
  * so the parity fixtures shared with the TypeScript engine can build it too.
  * Dates are `Y-m-d` strings.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final readonly class ExpandableItem
 {

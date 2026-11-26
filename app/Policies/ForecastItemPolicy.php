@@ -10,11 +10,8 @@ class ForecastItemPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastItem  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->user_id;
+        return $model instanceof ForecastItem ? $model->user_id : null;
     }
 }

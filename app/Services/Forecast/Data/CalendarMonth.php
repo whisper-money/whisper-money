@@ -12,8 +12,8 @@ final readonly class CalendarMonth
 {
     public function __construct(
         public string $key,
-        public int $year,
-        public int $month,
+        private int $year,
+        private int $month,
         public int $firstDay,
         public int $lastDay,
     ) {}

@@ -17,13 +17,13 @@ final class MonthAccumulator
     /**
      * The band is BAND_NUMERATOR / BAND_DENOMINATOR (40%) of the estimate.
      */
-    public const BAND_NUMERATOR = 2;
+    private const BAND_NUMERATOR = 2;
 
-    public const BAND_DENOMINATOR = 5;
+    private const BAND_DENOMINATOR = 5;
 
-    public ?int $min = null;
+    private ?int $min = null;
 
-    public ?string $minDate = null;
+    private ?string $minDate = null;
 
     public int $close = 0;
 
@@ -44,7 +44,7 @@ final class MonthAccumulator
      */
     public array $balances = [];
 
-    public function __construct(public readonly string $month) {}
+    public function __construct(private readonly string $month) {}
 
     public function observe(string $date, int $balance): void
     {

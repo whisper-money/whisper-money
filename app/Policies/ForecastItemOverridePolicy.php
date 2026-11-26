@@ -10,11 +10,8 @@ class ForecastItemOverridePolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastItemOverride  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->forecastItem?->user_id;
+        return $model instanceof ForecastItemOverride ? $model->forecastItem?->user_id : null;
     }
 }

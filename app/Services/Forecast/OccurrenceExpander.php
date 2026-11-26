@@ -17,6 +17,11 @@ use App\Services\Forecast\Data\Occurrence;
  * lands in the range by its new date. Pure: the TypeScript port in
  * resources/js/lib/forecast/expand-occurrences.ts must give the same result,
  * which tests/Fixtures/forecast-parity.json checks.
+ *
+ * The forecast pages, jobs and MCP tool of the later phases call it; until
+ * then only the tests do.
+ *
+ * @api
  */
 final class OccurrenceExpander
 {
@@ -117,9 +122,9 @@ final class OccurrenceExpander
             $item->id,
             $item->accountId,
             $item->destinationAccountId,
-            $override?->movedTo ?? $scheduled,
+            $override->movedTo ?? $scheduled,
             $scheduled,
-            $override?->amount ?? $this->amountOn($versions, $scheduled),
+            $override->amount ?? $this->amountOn($versions, $scheduled),
         );
     }
 

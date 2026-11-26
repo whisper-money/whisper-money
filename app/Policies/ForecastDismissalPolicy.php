@@ -10,11 +10,8 @@ class ForecastDismissalPolicy
 {
     use HandlesForecastOwnership;
 
-    /**
-     * @param  ForecastDismissal  $model
-     */
     protected function ownerId(Model $model): ?string
     {
-        return $model->user_id;
+        return $model instanceof ForecastDismissal ? $model->user_id : null;
     }
 }
