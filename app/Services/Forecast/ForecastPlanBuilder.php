@@ -67,6 +67,7 @@ class ForecastPlanBuilder
                 $horizonMonths,
             ),
             $selectedEstimates,
+            $items,
         );
     }
 

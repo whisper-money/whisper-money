@@ -34,6 +34,15 @@ final readonly class EstimateRow
     }
 
     /**
+     * This account's share of the budget's monthly limit, or null when the
+     * row stands on its median.
+     */
+    public function budgetAmount(): ?int
+    {
+        return $this->budgetLimit === null ? null : (int) floor($this->budgetLimit * ($this->budgetShare ?? 0));
+    }
+
+    /**
      * The month's figure before any adjustment: the median, or this
      * account's share of the budget less the concrete lines of the month,
      * never below zero.

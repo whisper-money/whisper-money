@@ -45,6 +45,8 @@ export interface NavItem {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | ReactNode | null;
     isActive?: boolean;
+    /** False keeps the item out of the mobile bottom bar. */
+    mobile?: boolean;
 }
 
 export interface NavSectionHeader {

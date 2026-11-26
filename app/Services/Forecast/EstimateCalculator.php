@@ -285,12 +285,13 @@ class EstimateCalculator
 
         foreach ($months as $index => $month) {
             $adjustment = $this->adjustmentCovering($adjustments, $month);
-            $amount = $adjustment === null ? $row->amountFor($concrete[$month] ?? 0) : max($adjustment->amount, 0);
-            $amount = $index === 0 ? max($amount - $row->spentNow, 0) : $amount;
+            $planned = $adjustment === null ? $row->amountFor($concrete[$month] ?? 0) : max($adjustment->amount, 0);
+            $spent = $index === 0 ? $row->spentNow : 0;
+            $amount = max($planned - $spent, 0);
 
-            if ($amount > 0 || $adjustment !== null) {
+            if ($amount > 0 || $spent > 0 || $adjustment !== null) {
                 $basis = $adjustment === null ? $row->basis() : ForecastEstimateBasis::Adjustment;
-                $estimates[] = new CategoryEstimate($accountId, $bucket === self::OTHER ? null : $bucket, $month, $amount, $basis);
+                $estimates[] = new CategoryEstimate($accountId, $bucket === self::OTHER ? null : $bucket, $month, $amount, $basis, $planned, $spent, $adjustment === null ? $row->budgetAmount() : null);
             }
         }
 

@@ -43,7 +43,8 @@ export type UpsellSource =
     | 'accounts'
     | 'second_offer'
     | 'api'
-    | 'mcp';
+    | 'mcp'
+    | 'forecast';
 
 /** The upsell points whose copy sells a bank connection. */
 const BANK_UPSELL_SOURCES: UpsellSource[] = ['connections', 'accounts'];
@@ -95,6 +96,13 @@ function upsellCopy(
                 title: __('Build on your data with Standard'),
                 description: __(
                     'Create tokens to connect AI assistants to your data.',
+                ),
+            };
+        case 'forecast':
+            return {
+                title: __('See 12 months ahead with Standard'),
+                description: __(
+                    'Your forecast covers the whole year, warns you before an account runs short and lets you edit your plan.',
                 ),
             };
         case 'second_offer':

@@ -2,6 +2,9 @@
 
 namespace App\Services\Forecast\Data;
 
+use App\Models\ForecastItem;
+use Illuminate\Database\Eloquent\Collection;
+
 /**
  * What the forecast is worked out from: the projector's input, plus the
  * per-category estimates behind its monthly ones, which the page shows as
@@ -15,9 +18,11 @@ final readonly class ForecastPlan
 {
     /**
      * @param  list<CategoryEstimate>  $categoryEstimates
+     * @param  Collection<int, ForecastItem>  $items  The lines of the included accounts, versions and overrides loaded.
      */
     public function __construct(
         public ProjectionInput $input,
         public array $categoryEstimates,
+        public Collection $items = new Collection,
     ) {}
 }

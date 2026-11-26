@@ -19,6 +19,7 @@ use App\Http\Controllers\Dashboards\DefaultDashboardController;
 use App\Http\Controllers\DashboardSetupDismissalController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
@@ -337,6 +338,8 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');
+    // Behind the Forecast flag: ShowForecastRequest answers 404 without it.
+    Route::get('forecast', [ForecastController::class, 'index'])->name('forecast.index');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::patch('accounts/reorder', [AccountController::class, 'reorder'])->name('accounts.reorder');
