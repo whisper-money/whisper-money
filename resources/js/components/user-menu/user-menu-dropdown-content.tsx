@@ -22,7 +22,6 @@ import {
     LogOut,
     Moon,
     Settings,
-    Shield,
 } from 'lucide-react';
 import { Fragment, type ReactNode } from 'react';
 import { PlanBadge } from './plan-badge';
@@ -32,6 +31,7 @@ import {
     type UserMenuGroup,
     useUserMenuModel,
 } from './use-user-menu-model';
+import { UserMenuEntryElement, UserMenuEntryMeta } from './user-menu-entry';
 import { UserMenuProgress } from './user-menu-progress';
 import { UserMenuSwitch } from './user-menu-switch';
 
@@ -48,54 +48,18 @@ function EntryItem({
     cleanup: () => void;
 }) {
     const Icon = entry.icon;
-    const content = (
-        <>
-            {Icon && <Icon className="size-4" />}
-            {entry.label}
-            {entry.meta && <span className={META_CLASS}>{entry.meta}</span>}
-        </>
-    );
-
-    if (entry.kind === 'action') {
-        return (
-            <DropdownMenuItem
-                onClick={() => {
-                    entry.onSelect();
-                    cleanup();
-                }}
-            >
-                {content}
-            </DropdownMenuItem>
-        );
-    }
-
-    if (entry.external) {
-        return (
-            <DropdownMenuItem asChild>
-                <a
-                    className="w-full cursor-pointer"
-                    href={entry.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={cleanup}
-                >
-                    {content}
-                </a>
-            </DropdownMenuItem>
-        );
-    }
 
     return (
         <DropdownMenuItem asChild>
-            <Link
-                className="w-full"
-                href={entry.href}
-                as="button"
-                prefetch={entry.prefetch ?? true}
-                onClick={cleanup}
+            <UserMenuEntryElement
+                entry={entry}
+                onNavigate={cleanup}
+                className="w-full cursor-pointer"
             >
-                {content}
-            </Link>
+                {Icon && <Icon className="size-4" />}
+                {entry.label}
+                <UserMenuEntryMeta entry={entry} className={META_CLASS} />
+            </UserMenuEntryElement>
         </DropdownMenuItem>
     );
 }
@@ -275,33 +239,15 @@ export function UserMenuDropdownContent({
                     <DropdownMenuSeparator />
                     <RadioChoices choices={menu.chartScheme} />
                     <DropdownMenuSeparator />
-                    <EntryItem
-                        entry={{
-                            kind: 'link',
-                            id: 'more-appearance',
-                            label: __('More appearance options…'),
-                            href: menu.moreAppearanceHref,
-                        }}
-                        cleanup={cleanup}
-                    />
+                    <EntryItem entry={menu.moreAppearance} cleanup={cleanup} />
                 </Submenu>
 
                 <Submenu icon={<CircleHelp />} label={__('Help & community')}>
                     <Groups groups={menu.helpGroups} cleanup={cleanup} />
                 </Submenu>
 
-                {menu.adminHref && (
-                    <EntryItem
-                        entry={{
-                            kind: 'link',
-                            id: 'admin',
-                            label: __('Admin'),
-                            href: menu.adminHref,
-                            icon: Shield,
-                            prefetch: false,
-                        }}
-                        cleanup={cleanup}
-                    />
+                {menu.admin && (
+                    <EntryItem entry={menu.admin} cleanup={cleanup} />
                 )}
             </DropdownMenuGroup>
 

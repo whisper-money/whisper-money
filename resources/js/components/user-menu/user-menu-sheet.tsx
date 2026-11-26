@@ -11,7 +11,7 @@ import { type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { PlanBadge } from './plan-badge';
 import {
     type UserMenuChoiceSet,
@@ -20,6 +20,7 @@ import {
     type UserMenuLink,
     useUserMenuModel,
 } from './use-user-menu-model';
+import { UserMenuEntryElement, UserMenuEntryMeta } from './user-menu-entry';
 import { UserMenuProgress } from './user-menu-progress';
 import { UserMenuSwitch } from './user-menu-switch';
 
@@ -47,59 +48,19 @@ function RowCard({ children }: { children: ReactNode }) {
 function EntryRow({
     entry,
     onNavigate,
-    className,
-    children,
 }: {
     entry: UserMenuEntry;
     onNavigate: () => void;
-    className?: string;
-    children?: ReactNode;
 }) {
-    const content = children ?? (
-        <>
-            {entry.label}
-            {entry.meta && <span className={META_CLASS}>{entry.meta}</span>}
-        </>
-    );
-
-    if (entry.kind === 'action') {
-        return (
-            <button
-                type="button"
-                className={cn(ROW_CLASS, className)}
-                onClick={() => {
-                    onNavigate();
-                    entry.onSelect();
-                }}
-            >
-                {content}
-            </button>
-        );
-    }
-
-    if (entry.external) {
-        return (
-            <a
-                className={cn(ROW_CLASS, className)}
-                href={entry.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={onNavigate}
-            >
-                {content}
-            </a>
-        );
-    }
-
     return (
-        <Link
-            className={cn(ROW_CLASS, className)}
-            href={entry.href}
-            prefetch={entry.prefetch ?? true}
-            onClick={onNavigate}
+        <UserMenuEntryElement
+            entry={entry}
+            onNavigate={onNavigate}
+            className={ROW_CLASS}
         >
-            {content}
-        </Link>
+            {entry.label}
+            <UserMenuEntryMeta entry={entry} className={META_CLASS} />
+        </UserMenuEntryElement>
     );
 }
 
@@ -187,20 +148,7 @@ function ChoiceCard<T extends string>({
  * sheet instead of a dropdown, whose submenus open as levels with a back
  * button, since floating submenus do not work under a thumb.
  */
-export function UserMenuSheet({
-    user,
-    open,
-    onOpenChange,
-    onOpenSupport,
-    onOpenIntegrationRequests,
-}: {
-    user: User;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onOpenSupport: () => void;
-    onOpenIntegrationRequests: () => void;
-}) {
-    const menu = useUserMenuModel({ onOpenSupport, onOpenIntegrationRequests });
+export function UserMenuSheet({ open, onOpenChange, ...props }: SheetProps) {
     const [level, setLevel] = useState<Level>('root');
 
     const changeOpen = (next: boolean) => {
@@ -210,7 +158,78 @@ export function UserMenuSheet({
 
         onOpenChange(next);
     };
-    const close = () => changeOpen(false);
+
+    return (
+        <Drawer open={open} onOpenChange={changeOpen}>
+            <DrawerContent
+                className="bg-background data-[vaul-drawer-direction=bottom]:max-h-[92vh]"
+                data-testid="user-menu-sheet"
+            >
+                <DrawerTitle className="sr-only">{__('User menu')}</DrawerTitle>
+                <UserMenuSheetBody
+                    {...props}
+                    level={level}
+                    setLevel={setLevel}
+                    onClose={() => changeOpen(false)}
+                />
+            </DrawerContent>
+        </Drawer>
+    );
+}
+
+type SheetProps = {
+    user: User;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onOpenSupport: () => void;
+    onOpenIntegrationRequests: () => void;
+};
+
+/**
+ * What the open sheet shows. Its own component so the menu's hooks (theme,
+ * chart colours, privacy) only run while the sheet is open, not in the nav
+ * bar of every page.
+ */
+function UserMenuSheetBody({
+    user,
+    level,
+    setLevel,
+    onClose,
+    onOpenSupport,
+    onOpenIntegrationRequests,
+}: Omit<SheetProps, 'open' | 'onOpenChange'> & {
+    level: Level;
+    setLevel: (level: Level) => void;
+    onClose: () => void;
+}) {
+    const menu = useUserMenuModel({ onOpenSupport, onOpenIntegrationRequests });
+    const close = () => {
+        menu.cleanup();
+        onClose();
+    };
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
+    const previousLevel = useRef<Level>(level);
+
+    // A level swaps the sheet's whole content, so focus follows it: onto the
+    // new heading going in, back onto the row that opened it coming out.
+    useEffect(() => {
+        if (previousLevel.current === level) {
+            return;
+        }
+
+        if (level === 'root') {
+            bodyRef.current
+                ?.querySelector<HTMLElement>(
+                    `[data-level="${previousLevel.current}"]`,
+                )
+                ?.focus();
+        } else {
+            headingRef.current?.focus();
+        }
+
+        previousLevel.current = level;
+    }, [level]);
 
     const levels: {
         id: Exclude<Level, 'root'>;
@@ -228,16 +247,11 @@ export function UserMenuSheet({
     const current = levels.find((candidate) => candidate.id === level);
 
     return (
-        <Drawer open={open} onOpenChange={changeOpen}>
-            <DrawerContent
-                className="bg-background data-[vaul-drawer-direction=bottom]:max-h-[92vh]"
-                data-testid="user-menu-sheet"
-            >
-                <DrawerTitle className="sr-only">{__('User menu')}</DrawerTitle>
-                <DrawerDescription className="sr-only">
-                    {current?.label ?? __('User menu')}
-                </DrawerDescription>
-
+        <>
+            <DrawerDescription className="sr-only">
+                {current?.label ?? __('User menu')}
+            </DrawerDescription>
+            <div ref={bodyRef} className="flex min-h-0 flex-col">
                 {current ? (
                     <div className="flex flex-col gap-4 overflow-y-auto px-4 pt-2 pb-6">
                         <div className="flex items-center gap-1">
@@ -249,7 +263,11 @@ export function UserMenuSheet({
                             >
                                 <ChevronLeft className="size-5" />
                             </button>
-                            <h2 className="text-[17px] font-semibold">
+                            <h2
+                                ref={headingRef}
+                                tabIndex={-1}
+                                className="text-[17px] font-semibold outline-none"
+                            >
                                 {current.label}
                             </h2>
                         </div>
@@ -272,14 +290,7 @@ export function UserMenuSheet({
                                 <ChoiceCard choices={menu.chartScheme} />
                                 <RowCard>
                                     <EntryRow
-                                        entry={{
-                                            kind: 'link',
-                                            id: 'more-appearance',
-                                            label: __(
-                                                'More appearance options…',
-                                            ),
-                                            href: menu.moreAppearanceHref,
-                                        }}
+                                        entry={menu.moreAppearance}
                                         onNavigate={close}
                                     />
                                 </RowCard>
@@ -358,6 +369,7 @@ export function UserMenuSheet({
                                 <button
                                     key={candidate.id}
                                     type="button"
+                                    data-level={candidate.id}
                                     className={ROW_CLASS}
                                     onClick={() => setLevel(candidate.id)}
                                 >
@@ -376,15 +388,9 @@ export function UserMenuSheet({
                                     />
                                 </button>
                             ))}
-                            {menu.adminHref && (
+                            {menu.admin && (
                                 <EntryRow
-                                    entry={{
-                                        kind: 'link',
-                                        id: 'admin',
-                                        label: __('Admin'),
-                                        href: menu.adminHref,
-                                        prefetch: false,
-                                    }}
+                                    entry={menu.admin}
                                     onNavigate={close}
                                 />
                             )}
@@ -410,7 +416,7 @@ export function UserMenuSheet({
                         </span>
                     </div>
                 )}
-            </DrawerContent>
-        </Drawer>
+            </div>
+        </>
     );
 }

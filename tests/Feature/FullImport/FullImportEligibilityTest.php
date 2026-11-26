@@ -1,8 +1,10 @@
 <?php
 
+use App\Features\Forecast;
 use App\Models\Import;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Pennant\Feature;
 use Tests\Support\FullImportFixtures as Fixtures;
 
 function fullImportUserOnboarded(?int $daysAgo): User
@@ -119,4 +121,14 @@ it('lets nobody else read or undo an import', function () {
     $this->delete(route('full-import.destroy', $import))->assertForbidden();
 
     expect($import->fresh()->undone_at)->toBeNull();
+});
+
+it('shares the Settings answer on every page behind the Forecast flag, for the user menu', function () {
+    $user = fullImportUserOnboarded(3);
+    Feature::for($user)->activate(Forecast::class);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.fullImportSettings', true));
 });

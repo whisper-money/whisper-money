@@ -220,6 +220,19 @@ describe('user menu with the Forecast flag on (desktop)', () => {
         expect(within(menu).getByText('Version 1.2.3')).toBeInTheDocument();
     });
 
+    it('closes the menu once an entry is picked', () => {
+        setPage({ forecast: true });
+        render(<NavUser />);
+
+        fireEvent.click(
+            within(openDropdown()).getByRole('menuitem', {
+                name: /categories/i,
+            }),
+        );
+
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+
     it('shows privacy mode as a switch that keeps the menu open', () => {
         setPage({ forecast: true });
         render(<NavUser />);
@@ -405,9 +418,9 @@ describe('user menu with the Forecast flag on (phone)', () => {
             within(sheet).getByRole('button', { name: /^settings/i }),
         );
 
-        expect(
+        expect(document.activeElement).toBe(
             within(sheet).getByRole('heading', { name: 'Settings' }),
-        ).toBeInTheDocument();
+        );
         expect(
             within(sheet).getByRole('link', { name: /bank accounts/i }),
         ).toHaveAttribute('href', '/settings/accounts');
@@ -416,6 +429,9 @@ describe('user menu with the Forecast flag on (phone)', () => {
         fireEvent.click(within(sheet).getByRole('button', { name: 'Back' }));
 
         expect(within(sheet).getByText('Organize')).toBeInTheDocument();
+        expect(document.activeElement).toBe(
+            within(sheet).getByRole('button', { name: /^settings/i }),
+        );
     });
 
     it('marks the current theme in the appearance level', () => {

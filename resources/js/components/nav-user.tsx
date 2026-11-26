@@ -33,6 +33,15 @@ export function NavUser({ className }: { className?: string }) {
     // The reorganised menu ships with the forecast; with the flag off the menu
     // is exactly the one everybody has today.
     const reorganized = features?.forecast === true;
+    // On the phone the reorganised menu is a bottom sheet, not a dropdown.
+    const usesSheet = reorganized && isMobile;
+    const sheetTriggerProps = usesSheet
+        ? {
+              onClick: () => setSheetOpen(true),
+              'aria-haspopup': 'dialog' as const,
+              'aria-expanded': sheetOpen,
+          }
+        : {};
     const menuHandlers = {
         user: auth.user,
         onOpenSupport: () => setSupportOpen(true),
@@ -44,13 +53,7 @@ export function NavUser({ className }: { className?: string }) {
             size="lg"
             className="group p-0 text-sidebar-accent-foreground sm:p-2 sm:data-[state=open]:bg-sidebar-accent"
             data-test="sidebar-menu-button"
-            {...(reorganized && isMobile
-                ? {
-                      onClick: () => setSheetOpen(true),
-                      'aria-haspopup': 'dialog' as const,
-                      'aria-expanded': sheetOpen,
-                  }
-                : {})}
+            {...sheetTriggerProps}
         >
             <UserInfo user={auth.user} hideNameOnMobile />
             <ChevronsUpDown className="ml-auto hidden size-4 sm:block" />
@@ -60,7 +63,7 @@ export function NavUser({ className }: { className?: string }) {
     return (
         <SidebarMenu className={className}>
             <SidebarMenuItem>
-                {reorganized && isMobile ? (
+                {usesSheet ? (
                     <>
                         {trigger}
                         <UserMenuSheet

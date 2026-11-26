@@ -40,6 +40,7 @@ import {
     Layers,
     LifeBuoy,
     MessageSquare,
+    Shield,
     Tag,
     Zap,
     type LucideIcon,
@@ -108,9 +109,10 @@ export interface UserMenuModel {
     /** The theme, with the current one's label for the submenu trigger. */
     appearance: UserMenuChoiceSet<Appearance> & { label: string };
     chartScheme: UserMenuChoiceSet<ChartColorScheme>;
-    moreAppearanceHref: string;
+    moreAppearance: UserMenuLink;
     privacy: { enabled: boolean; toggle: () => void };
-    adminHref: string | null;
+    /** Null for everyone but the admin. */
+    admin: UserMenuLink | null;
     /** A POST: links to it must keep the route's method. */
     logoutRoute: ReturnType<typeof logout>;
     onLogout: () => void;
@@ -159,16 +161,14 @@ export function useUserMenuModel({
         subscriptionsEnabled,
         isDemoAccount: auth.isDemoAccount ?? false,
         isSharedAccount: auth.isSharedAccount ?? false,
-        // Outside the settings pages the server only says whether an import
-        // can start, so either answer opens the entry.
-        showFullImport:
-            (features?.fullImport ?? false) ||
-            (features?.fullImportSettings ?? false),
+        // Shared on every page while the Forecast flag is on, so this is the
+        // answer the settings navigation reads.
+        showFullImport: features?.fullImportSettings ?? false,
     });
     const isPro = auth.hasProPlan;
     const planLabel = subscriptionsEnabled
         ? isPro
-            ? 'Pro'
+            ? __('Pro')
             : __('Free')
         : null;
 
@@ -338,12 +338,21 @@ export function useUserMenuModel({
             })),
             select: saveScheme,
         },
-        moreAppearanceHref: editAppearance.url(),
+        moreAppearance: link(
+            'more-appearance',
+            __('More appearance options…'),
+            editAppearance.url(),
+        ),
         privacy: {
             enabled: isPrivacyModeEnabled,
             toggle: togglePrivacyMode,
         },
-        adminHref: auth.isAdmin ? adminIndex.url() : null,
+        admin: auth.isAdmin
+            ? link('admin', __('Admin'), adminIndex.url(), {
+                  icon: Shield,
+                  prefetch: false,
+              })
+            : null,
         logoutRoute: logout(),
         onLogout: () => {
             cleanup();

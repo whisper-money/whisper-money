@@ -562,9 +562,11 @@ class HandleInertiaRequests extends Middleware
             // as long as an import can still be undone, while starting one is
             // only offered inside it. The second costs a query once the window
             // is closed, and only the Settings menu reads it, so only Settings
-            // pages pay for it.
+            // pages pay for it — and, behind the Forecast flag, every page,
+            // since the reorganised user menu lists the Settings pages too.
             'fullImport' => $user->canUseFullImport(),
-            'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
+            'fullImportSettings' => (request()->is('settings', 'settings/*') || Feature::for($user)->active(Forecast::class))
+                && $user->canSeeFullImportSettings(),
             'brokerImports' => Feature::for($user)->active(BrokerImports::class),
             'forecast' => Feature::for($user)->active(Forecast::class),
         ];
