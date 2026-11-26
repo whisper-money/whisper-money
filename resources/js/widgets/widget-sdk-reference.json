@@ -457,6 +457,7 @@
         "Array": ["isArray", "from"],
         "Object": ["keys", "values", "entries", "fromEntries"]
     },
+    "constructor_only": ["RegExp"],
     "forbidden_property_names": [
         "constructor",
         "__proto__",

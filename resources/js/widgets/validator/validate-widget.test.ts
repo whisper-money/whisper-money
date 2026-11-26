@@ -274,6 +274,11 @@ const EVASIONS: [name: string, source: string, code: string][] = [
         'forbidden-property',
     ],
     ['escaped global', widget('<div>{\\u0077indow.fetch}</div>'), 'global'],
+    [
+        'global in an object shorthand',
+        widget("<div>{String(get({ window }, 'window'))}</div>"),
+        'global',
+    ],
     // Tags from a variable
     [
         'tag from a string variable',
@@ -469,6 +474,59 @@ const EVASIONS: [name: string, source: string, code: string][] = [
         `import { TransactionList } from '@whisper-money/widget-sdk';\nexport default function W() { return <TransactionList transactions={() => []} />; }`,
         'component-prop',
     ],
+    // RegExp is constructor-only: its legacy statics (input, $1, lastMatch…)
+    // hold the last string any code on the page matched
+    ['RegExp.input', widget('<div>{RegExp.input}</div>'), 'global'],
+    ['RegExp.$1', widget('<div>{RegExp.$1}</div>'), 'global'],
+    ['RegExp.lastMatch', widget('<div>{RegExp.lastMatch}</div>'), 'global'],
+    ["RegExp['$_']", widget("<div>{RegExp['$_']}</div>"), 'global'],
+    [
+        'RegExp as a value',
+        widget('<div>{String(R.input)}</div>', 'const R = RegExp;'),
+        'global',
+    ],
+    [
+        'RegExp as an argument',
+        widget('<div>{f(RegExp)}</div>', 'const f = (r) => r.leftContext;'),
+        'global',
+    ],
+    [
+        'RegExp cast to any',
+        widget('<div>{(RegExp as any).input}</div>'),
+        'global',
+    ],
+    ['RegExp in parentheses', widget('<div>{(RegExp).input}</div>'), 'global'],
+    [
+        'RegExp called through parentheses',
+        widget("<div>{String((RegExp)('x'))}</div>"),
+        'global',
+    ],
+    ['RegExp in an array', widget('<div>{[RegExp][0].input}</div>'), 'global'],
+    [
+        'RegExp destructured',
+        widget('<div>{input}</div>', 'const { input } = RegExp;'),
+        'global',
+    ],
+    [
+        'RegExp in an object shorthand',
+        widget("<div>{get({ RegExp }, 'RegExp')}</div>"),
+        'global',
+    ],
+    [
+        'RegExp.call',
+        widget("<div>{String(RegExp.call(null, 'x'))}</div>"),
+        'global',
+    ],
+    [
+        'new RegExp.input',
+        widget('<div>{String(new RegExp.input())}</div>'),
+        'global',
+    ],
+    [
+        'RegExp as a tagged template',
+        widget('<div>{String(RegExp`x`)}</div>'),
+        'global',
+    ],
 ];
 
 describe('validateWidget evasion battery', () => {
@@ -489,6 +547,15 @@ describe('validateWidget evasion battery', () => {
         expect(
             validateWidget(widget('<Bar onClick={() => 1} />'))[0].message,
         ).toContain('Allowed props: key, dataKey');
+    });
+
+    it('explains how to use RegExp', () => {
+        expect(
+            validateWidget(widget('<div>{RegExp.input}</div>'))[0].message,
+        ).toContain('new RegExp(pattern, flags)');
+        expect(
+            validateWidget(widget('<div>{window.name}</div>'))[0].message,
+        ).toContain('Regex literals');
     });
 
     it('rejects sources over the size limit before parsing them', () => {
@@ -631,6 +698,12 @@ describe('validateWidget valid widgets', () => {
             'safe globals and statics',
             widget(
                 '<div>{Math.max(...Object.values(x).map(Number))}{JSON.stringify(Array.from(new Set([1])))}{new Intl.NumberFormat().format(1)}</div>',
+            ),
+        ],
+        [
+            'regex literals and the RegExp constructor',
+            widget(
+                "<div>{String(/^foo/i.test(x.a))}{x.a.replace(/-/g, ' ')}{String(x.a.match(/\\d+/))}{String(new RegExp(x.term, 'i').test(x.a))}{String(RegExp('x').source)}{String(new RegExp)}</div>",
             ),
         ],
         [
