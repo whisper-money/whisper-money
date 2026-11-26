@@ -508,6 +508,26 @@ describe('user menu with the Forecast flag on (phone)', () => {
         await waitFor(() => expect(levelPanels(sheet)).toHaveLength(1));
     });
 
+    it('settles on the root when Back is tapped mid-transition', async () => {
+        setPage({ forecast: true });
+        mobile.value = true;
+        render(<NavUser />);
+
+        const sheet = openSheet();
+        fireEvent.click(
+            within(sheet).getByRole('button', { name: /^settings/i }),
+        );
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Back' }));
+
+        await waitFor(() => expect(levelPanels(sheet)).toHaveLength(1));
+        expect(within(sheet).getByText('Organize')).toBeInTheDocument();
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                within(sheet).getByRole('button', { name: /^settings/i }),
+            ),
+        );
+    });
+
     it('only crossfades the levels under reduced motion', async () => {
         window.matchMedia = vi.fn().mockImplementation((query: string) => ({
             matches: query === '(prefers-reduced-motion: reduce)',

@@ -210,6 +210,16 @@ function UserMenuSheetBody({
     // follows it: onto the new heading going in, back onto the row that
     // opened it coming out.
     const focusLevel = () => {
+        // Someone already moved on inside the new level: leave focus be.
+        const active = document.activeElement;
+        if (
+            active &&
+            bodyRef.current?.contains(active) &&
+            !active.closest('[inert]')
+        ) {
+            return;
+        }
+
         if (level !== 'root') {
             headingRef.current?.focus();
         } else if (from) {
