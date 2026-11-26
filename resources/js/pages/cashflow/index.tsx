@@ -3,6 +3,7 @@ import { BreakdownCard } from '@/components/cashflow/breakdown-card';
 import { type CashflowBlockHrefs } from '@/components/cashflow/cashflow-blocks';
 import { CashflowDetailsDrawer } from '@/components/cashflow/cashflow-details-drawer';
 import { ExpensesCard } from '@/components/cashflow/expenses-card';
+import { ForecastRestOfMonthCard } from '@/components/cashflow/forecast-rest-of-month-card';
 import { MonthlySavingsCashflowCard } from '@/components/cashflow/monthly-savings-cashflow-card';
 import { NetCashflowCard } from '@/components/cashflow/net-cashflow-card';
 import {
@@ -23,8 +24,10 @@ import {
     CASHFLOW_BLOCKS,
     cashflowBlockTransactionsUrl,
 } from '@/lib/cashflow-block';
+import { monthKey } from '@/lib/monthly-savings';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
+import { type ForecastRestOfMonthData } from '@/types/forecast-entry';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
@@ -128,10 +131,13 @@ export default function CashflowPage() {
         auth,
         period: initialPeriod,
         periodType: initialPeriodType,
+        forecastRestOfMonth,
     } = usePage<{
         auth: { user: { currency_code: string } };
         period: string | null;
         periodType: CashflowPeriodType;
+        /** Behind the Forecast flag: absent without it, null with no line. */
+        forecastRestOfMonth?: ForecastRestOfMonthData | null;
     }>().props;
 
     const [periodType, setPeriodType] =
@@ -317,6 +323,13 @@ export default function CashflowPage() {
                         period={period}
                     />
                 </div>
+
+                {/* Only the month in progress has a rest to forecast. */}
+                {forecastRestOfMonth &&
+                    periodType === 'month' &&
+                    monthKey(currentDate) === forecastRestOfMonth.month && (
+                        <ForecastRestOfMonthCard rest={forecastRestOfMonth} />
+                    )}
             </div>
         </AppSidebarLayout>
     );

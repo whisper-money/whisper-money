@@ -4,7 +4,6 @@ namespace App\Services\Forecast;
 
 use App\Enums\AccountType;
 use App\Enums\ForecastAlertLevel;
-use App\Enums\ForecastFrequency;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\Forecast\Data\ForecastContext;
@@ -48,6 +47,7 @@ class ForecastPresenter
         private readonly ForecastPlanRows $rows,
         private readonly ForecastTransferSuggester $transfers,
         private readonly ForecastAllAccountsPresenter $allAccounts,
+        private readonly ForecastAlertCauses $causes,
     ) {}
 
     /**
@@ -101,7 +101,7 @@ class ForecastPresenter
                 'past' => $this->pastMonths->forAccount($user, $spaceId, $account, $today, self::PAST_MONTHS),
                 'alert' => [
                     ...$alert,
-                    'causes' => $this->causes($context->plan, $account->id, $alert['month']),
+                    'causes' => $this->causes->for($context->plan, $account->id, $alert['month']),
                     'transfer' => $this->transfers->suggest($account, $visible, $included, $context->projected, $context->thresholds, $today),
                 ],
                 'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($context->lockedMonths($account->id), $context->thresholds[$account->id]),
@@ -215,32 +215,6 @@ class ForecastPresenter
             'lowest' => ['month' => $lowest['month'], 'min' => $lowest['min'], 'minDate' => $lowest['minDate']],
             'concreteShare' => $expenses > 0 ? (int) round(100 * ($expenses - $estimated) / $expenses) : null,
         ];
-    }
-
-    /**
-     * The two largest charges of the problem month that are not monthly:
-     * what the user already knows is coming, which explains the dip.
-     *
-     * @return list<array{name: string, amount: int}>
-     */
-    private function causes(ForecastPlan $plan, string $accountId, ?string $month): array
-    {
-        if ($month === null) {
-            return [];
-        }
-
-        $items = $plan->items->keyBy('id');
-
-        return collect($plan->input->occurrences)
-            ->filter(fn (Occurrence $occurrence): bool => $occurrence->accountId === $accountId
-                && $occurrence->amount < 0
-                && ForecastCalendar::monthKey($occurrence->date) === $month
-                && $items->get($occurrence->itemId)?->frequency !== ForecastFrequency::Monthly)
-            ->sortBy('amount')
-            ->take(2)
-            ->map(fn (Occurrence $occurrence): array => ['name' => (string) $items->get($occurrence->itemId)?->name, 'amount' => -$occurrence->amount])
-            ->values()
-            ->all();
     }
 
     /**

@@ -4447,5 +4447,16 @@
     "Transfers between your accounts go apart: they change the balance of each account but not the total. The growth uses the yearly rate of each investment account. The likely range applies to the estimate only.": "Las transferencias entre tus cuentas van aparte: cambian el saldo de cada cuenta pero no el total. La revalorización usa el % anual de cada cuenta de inversión. El rango probable aplica solo a lo estimado.",
     "Where the drop comes from": "De dónde sale la bajada",
     "Your total holds in :month, but :account drops to :amount. Your other accounts have enough to cover it.": "Tu total aguanta en :month, pero :account baja a :amount. Entre tus otras cuentas tienes de sobra para cubrirlo.",
-    "There is no exchange rate for :currencies today, so those accounts are left out of the total.": "Hoy no hay tipo de cambio para :currencies, así que esas cuentas quedan fuera del total."
+    "There is no exchange rate for :currencies today, so those accounts are left out of the total.": "Hoy no hay tipo de cambio para :currencies, así que esas cuentas quedan fuera del total.",
+    ":month looks tight in your :account": ":month viene justo en tu :account",
+    "You could drop to :amount around :day :month because of :causes.": "Podrías bajar a :amount hacia el :day de :month por :causes.",
+    "You could drop to :amount around :day :month.": "Podrías bajar a :amount hacia el :day de :month.",
+    "Your balance may not stretch that far that month.": "Ese mes el saldo podría no llegar.",
+    "See forecast": "Ver previsión",
+    "Remind me in :month": "Recordármelo en :month",
+    "What is left of :month": "Lo que queda de :month",
+    "forecast": "previsto",
+    ":count more planned": ":count previstos más",
+    "Balance at the end of the month": "Saldo a fin de mes",
+    "See the next 12 months": "Ver los próximos 12 meses"
 }
