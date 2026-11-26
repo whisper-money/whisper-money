@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\RefreshForecasts;
+use App\Enums\AccountType;
 use App\Enums\ForecastAlertLevel;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastItemKind;
@@ -24,7 +25,7 @@ use Laravel\Pennant\Feature;
 /**
  * A Pro user whose checking account starts November with 1.000,00 and pays
  * 300,00 rent on the 15th: it drops below zero in February 2027, the fourth
- * month of the forecast.
+ * month of the forecast, and stays there to its end (November 2027).
  */
 function alertsUser(bool $pro = true): User
 {
@@ -32,7 +33,7 @@ function alertsUser(bool $pro = true): User
     $factory = User::factory()->onboarded();
     $user = ($pro ? $factory->subscribed() : $factory)->create(['timezone' => 'Europe/Madrid', 'currency_code' => 'EUR', 'locale' => 'es']);
     Feature::for($user)->activate(Forecast::class);
-    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR', 'name' => 'Cuenta Nómina Secreta']);
+    $account = Account::factory()->create(['user_id' => $user->id, 'type' => AccountType::Checking, 'currency_code' => 'EUR', 'name' => 'Cuenta Nómina Secreta']);
     AccountBalance::factory()->create(['account_id' => $account->id, 'balance_date' => '2026-11-01', 'balance' => 100_000]);
     ForecastItem::factory()->amount(-30_000)->create(['user_id' => $user->id, 'account_id' => $account->id, 'anchor_date' => '2026-01-15']);
 
@@ -68,7 +69,7 @@ it('stores a strong alert for each month short and tells about them once', funct
 
     $this->artisan('forecast:refresh')->assertSuccessful();
 
-    expect(openAlertMonths($user))->toBe(['2027-02', '2027-03', '2027-04', '2027-05', '2027-06', '2027-07', '2027-08', '2027-09', '2027-10'])
+    expect(openAlertMonths($user))->toBe(['2027-02', '2027-03', '2027-04', '2027-05', '2027-06', '2027-07', '2027-08', '2027-09', '2027-10', '2027-11'])
         ->and(ForecastAlert::query()->where('level', '!=', ForecastAlertLevel::Strong)->count())->toBe(0)
         ->and(ForecastAlert::query()->whereNull('notified_at')->count())->toBe(0);
 
@@ -77,7 +78,7 @@ it('stores a strong alert for each month short and tells about them once', funct
         && $mail->month === '2027-02'
         && $mail->monthsAway === 3
         && ! $mail->belowMinimum
-        && count($mail->alertIds) === 9);
+        && count($mail->alertIds) === 10);
 
     expect($user->notifications()->count())->toBe(1);
     $row = app(NotificationFeed::class)->page($user)[0];
@@ -94,7 +95,7 @@ it('sends nothing again while the problem stays', function () {
 
     Mail::assertQueuedCount(1);
     expect($user->notifications()->count())->toBe(1)
-        ->and(ForecastAlert::query()->count())->toBe(9);
+        ->and(ForecastAlert::query()->count())->toBe(10);
 });
 
 it('resolves an alert that goes away, and tells again when it comes back', function () {
@@ -111,15 +112,15 @@ it('resolves an alert that goes away, and tells again when it comes back', funct
     $this->artisan('forecast:refresh')->assertSuccessful();
 
     expect(openAlertMonths($user))->toBe([])
-        ->and(ForecastAlert::query()->whereNotNull('resolved_at')->count())->toBe(9);
+        ->and(ForecastAlert::query()->whereNotNull('resolved_at')->count())->toBe(10);
 
     $bonus->update(['archived_at' => now()]);
     // A week later: November's rent is behind, so February no longer falls short.
     $this->travelTo('2026-11-18 14:00:00');
     $this->artisan('forecast:refresh')->assertSuccessful();
 
-    expect(openAlertMonths($user))->toHaveCount(8)
-        ->and(ForecastAlert::query()->count())->toBe(9)
+    expect(openAlertMonths($user))->toHaveCount(9)
+        ->and(ForecastAlert::query()->count())->toBe(10)
         ->and(ForecastAlert::query()->whereNull('resolved_at')->pluck('first_seen_at')->map->toDateTimeString()->unique()->all())->toBe(['2026-11-18 14:00:00']);
     Mail::assertQueuedCount(2);
     expect($user->notifications()->count())->toBe(2);
@@ -141,7 +142,7 @@ it('reopens a problem that flickers back within a week without telling again', f
     $this->travelTo('2026-11-13 09:00:00');
     $this->artisan('forecast:refresh')->assertSuccessful();
 
-    expect(openAlertMonths($user))->toHaveCount(9)
+    expect(openAlertMonths($user))->toHaveCount(10)
         ->and(ForecastAlert::query()->value('first_seen_at')->toDateTimeString())->toBe('2026-11-10 12:00:00');
     Mail::assertQueuedCount(1);
     expect($user->notifications()->count())->toBe(1);
@@ -238,7 +239,7 @@ it('hands the alerts back when the email gives up, without ringing twice on the 
     });
     (new ForecastAlertEmail($mail->month, $mail->monthsAway, $mail->belowMinimum, $mail->alertIds))->failed(new RuntimeException('SMTP down'));
 
-    expect(ForecastAlert::query()->whereNull('notified_at')->count())->toBe(9);
+    expect(ForecastAlert::query()->whereNull('notified_at')->count())->toBe(10);
 
     $this->artisan('forecast:refresh')->assertSuccessful();
 
@@ -251,7 +252,7 @@ it('releases the claim when sending throws', function () {
     Mail::shouldReceive('to')->andThrow(new RuntimeException('Queue down'));
 
     expect(fn () => app(ForecastAlertService::class)->refresh($user))->toThrow(RuntimeException::class);
-    expect(ForecastAlert::query()->whereNull('notified_at')->count())->toBe(9);
+    expect(ForecastAlert::query()->whereNull('notified_at')->count())->toBe(10);
 });
 
 it('resolves the open alerts of a user who has no forecast line left', function () {
@@ -313,4 +314,14 @@ it('is one of the hourly refresh steps', function () {
     $steps = (new ReflectionClassConstant(RefreshForecasts::class, 'HOURLY_STEPS'))->getValue();
 
     expect($steps)->toContain(EvaluateForecastAlerts::class);
+});
+
+it('never raises an alert for a credit card without a wanted minimum, by the page\'s rule', function () {
+    $user = alertsUser();
+    alertsAccount($user)->update(['type' => AccountType::CreditCard]);
+
+    $this->artisan('forecast:refresh')->assertSuccessful();
+
+    expect(ForecastAlert::query()->count())->toBe(0);
+    Mail::assertNothingQueued();
 });
