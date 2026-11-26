@@ -29,6 +29,7 @@ class UserSettingFactory extends Factory
             'budget_notify_on_new_transaction' => false,
             'budget_notify_on_close_to_limit' => true,
             'budget_notify_on_over_limit' => true,
+            'forecast_notify_email' => true,
         ];
     }
 
