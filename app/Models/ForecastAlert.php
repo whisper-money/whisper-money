@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ForecastAlertLevel;
 use App\Models\Concerns\BelongsToSpace;
+use App\Services\Forecast\Data\ForecastAlertFinding;
 use Carbon\Carbon;
 use Database\Factories\ForecastAlertFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -54,6 +55,14 @@ class ForecastAlert extends Model
             'notified_at' => 'datetime',
             'resolved_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The key the forecast's findings are matched to stored alerts by.
+     */
+    public function key(): string
+    {
+        return ForecastAlertFinding::keyFor($this->account_id, $this->month->format('Y-m'));
     }
 
     /** @return BelongsTo<User, $this> */

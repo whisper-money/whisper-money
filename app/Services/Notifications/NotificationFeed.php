@@ -6,6 +6,7 @@ use App\Models\MonthlySummary;
 use App\Models\User;
 use App\Notifications\AchievementsWelcome;
 use App\Notifications\AchievementUnlocked;
+use App\Notifications\ForecastAlertRaised;
 use App\Notifications\MonthlySavingsGoalClosed;
 use App\Notifications\MonthlySummaryReady;
 use App\Services\Achievements\Catalog;
@@ -170,6 +171,7 @@ class NotificationFeed
                 AchievementUnlocked::class => $this->achievementRow($notification->data),
                 AchievementsWelcome::class => $this->welcomeRow($notification->data),
                 MonthlySavingsGoalClosed::class => $this->monthlySavingsGoalRow($notification->data),
+                ForecastAlertRaised::class => $this->forecastAlertRow($notification->data),
                 default => [
                     'kind' => 'other',
                     'title' => class_basename($notification->type),
@@ -272,6 +274,27 @@ class NotificationFeed
                 'value' => $difference,
                 'currency' => $data['currency_code'] ?? 'USD',
             ],
+        ];
+    }
+
+    /**
+     * "One of your accounts could run short in April". Like the email, no
+     * amount and no account: the forecast page has them.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{kind: string, title: string, body: ?string, url: string}
+     */
+    private function forecastAlertRow(array $data): array
+    {
+        $month = Carbon::createFromFormat('Y-m-d', ($data['month'] ?? now()->format('Y-m')).'-01')
+            ->locale(app()->getLocale())
+            ->isoFormat('MMMM');
+
+        return [
+            'kind' => 'forecast_alert',
+            'title' => __('One of your accounts could run short in :month', ['month' => $month]),
+            'body' => __('Open your forecast to get ahead of it.'),
+            'url' => route('forecast.index'),
         ];
     }
 

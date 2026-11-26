@@ -1,7 +1,9 @@
 <?php
 
+use App\Features\Forecast;
 use App\Models\User;
 use App\Models\UserSetting;
+use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config()->set('inertia.ssr.enabled', false);
@@ -90,4 +92,39 @@ test('budget notification defaults can be updated', function () {
     expect($setting->budget_notify_on_new_transaction)->toBeTrue()
         ->and($setting->budget_notify_on_close_to_limit)->toBeTrue()
         ->and($setting->budget_notify_on_over_limit)->toBeTrue();
+});
+
+describe('forecast alert emails', function () {
+    test('with the Forecast flag on, the toggle is shared and can be turned off', function () {
+        $user = User::factory()->create();
+        Feature::for($user)->activate(Forecast::class);
+
+        $this->actingAs($user)->get(route('notifications.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('notifyForecastAlerts', true));
+
+        $this->actingAs($user)
+            ->patch(route('notifications.update'), ['notifications' => ['forecast_alert_email' => false]])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        expect($user->fresh()->wantsForecastAlertEmail())->toBeFalse();
+
+        $this->actingAs($user->fresh())->get(route('notifications.index'))
+            ->assertInertia(fn ($page) => $page->where('notifyForecastAlerts', false));
+    });
+
+    test('with the Forecast flag off, the page has no toggle and the key is refused', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('notifications.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->missing('notifyForecastAlerts'));
+
+        $this->actingAs($user)
+            ->patch(route('notifications.update'), ['notifications' => ['forecast_alert_email' => false]])
+            ->assertSessionHasErrors('notifications');
+
+        expect($user->fresh()->wantsForecastAlertEmail())->toBeTrue();
+    });
 });

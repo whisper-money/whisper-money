@@ -18,10 +18,10 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -59,6 +59,8 @@ interface Props {
     budgets: BudgetRow[];
     savingsGoalReminderDefault: boolean;
     monthlySavingsGoals: MonthlyGoalRow[];
+    /** Only sent when the Forecast flag is on. */
+    notifyForecastAlerts?: boolean;
 }
 
 // `key` is the column on the budget/default; `defaultKey` is the wire key the
@@ -97,7 +99,12 @@ export default function Notifications({
     budgets,
     savingsGoalReminderDefault,
     monthlySavingsGoals,
+    notifyForecastAlerts,
 }: Props) {
+    const { features } = usePage<SharedData>().props;
+    const showForecastAlerts =
+        features?.forecast === true && notifyForecastAlerts !== undefined;
+
     const emailToggles = [
         {
             id: 'notify-marketing',
@@ -126,6 +133,19 @@ export default function Notifications({
                 'One email a day when you unlock something, however many you unlock. They always show up in the app either way.',
             ),
         },
+        ...(showForecastAlerts
+            ? [
+                  {
+                      id: 'notify-forecast-alerts',
+                      preferenceKey: 'forecast_alert_email',
+                      checked: notifyForecastAlerts === true,
+                      label: __('Forecast alerts by email'),
+                      description: __(
+                          'An email when your forecast spots a new month in which one of your accounts could run short, once per problem. It never includes amounts or account names.',
+                      ),
+                  },
+              ]
+            : []),
         {
             id: 'notify-on-bank-transactions-synced',
             preferenceKey: 'bank_transactions_synced',

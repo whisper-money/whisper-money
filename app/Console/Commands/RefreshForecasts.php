@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Services\Forecast\ForecastAudience;
+use App\Services\Forecast\Refresh\EvaluateForecastAlerts;
 use App\Services\Forecast\Refresh\ForecastRefreshStep;
 use App\Services\Forecast\Refresh\FreezeMonthSnapshots;
 use App\Services\Forecast\Refresh\RematchRecentTransactions;
@@ -15,8 +16,8 @@ use Throwable;
  * The forecast's background upkeep, for users with the `Forecast` flag only:
  * everyone else is never read. Each user runs the hourly steps every run,
  * and the weekly ones once a week, in the run where it is Monday 06:00 on
- * their clock. Later phases add their work (suggestions, alerts) as steps to
- * these lists.
+ * their clock. Later phases add their work (suggestions) as steps to these
+ * lists.
  */
 class RefreshForecasts extends Command
 {
@@ -26,6 +27,7 @@ class RefreshForecasts extends Command
     private const HOURLY_STEPS = [
         FreezeMonthSnapshots::class,
         RematchRecentTransactions::class,
+        EvaluateForecastAlerts::class,
     ];
 
     /**
@@ -37,7 +39,7 @@ class RefreshForecasts extends Command
 
     protected $signature = 'forecast:refresh';
 
-    protected $description = 'Freeze the forecast of each month as it opens and match recent transactions to forecast occurrences, for users with the Forecast flag';
+    protected $description = 'Freeze the forecast of each month as it opens, match recent transactions to forecast occurrences and raise forecast alerts, for users with the Forecast flag';
 
     public function handle(ForecastAudience $audience): int
     {

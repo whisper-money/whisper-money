@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\ForecastAlertLevel;
 use App\Services\Forecast\ForecastAlertEvaluator;
 
 function alertMonth(string $month, int $min, int $pessimisticMin, string $minDate = '-15'): array
@@ -63,4 +64,15 @@ it('holds an account to its wanted minimum, else to zero, except a card or a loa
     'credit card' => [AccountType::CreditCard, null, null],
     'loan' => [AccountType::Loan, null, null],
     'credit card with a minimum' => [AccountType::CreditCard, -100000, -100000],
+]);
+
+it('rates one month by the same rule, for the stored alerts', function (int $min, int $pessimisticMin, ?int $threshold, ?ForecastAlertLevel $level) {
+    expect((new ForecastAlertEvaluator)->levelOf(alertMonth('2027-04', $min, $pessimisticMin), $threshold))->toBe($level);
+})->with([
+    'below zero' => [-1, -1, 0, ForecastAlertLevel::Strong],
+    'at zero' => [0, 0, 0, null],
+    'below the wanted minimum' => [29_999, 29_999, 30_000, ForecastAlertLevel::Strong],
+    'only the worst case below' => [10_000, -1, 0, ForecastAlertLevel::Soft],
+    'the worst case at the threshold' => [10_000, 0, 0, null],
+    'no threshold' => [-90_000, -95_000, null, null],
 ]);

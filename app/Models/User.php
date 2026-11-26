@@ -1231,6 +1231,14 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * The email about a new forecast alert. The bell rings either way.
+     */
+    public function wantsForecastAlertEmail(): bool
+    {
+        return $this->setting->forecast_notify_email ?? true;
+    }
+
+    /**
      * The one email a day the medals can produce. The rows in the bell are the
      * record of what happened and stay whatever this says.
      */

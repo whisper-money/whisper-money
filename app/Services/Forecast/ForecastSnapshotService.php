@@ -2,7 +2,6 @@
 
 namespace App\Services\Forecast;
 
-use App\Models\Account;
 use App\Models\ForecastSnapshot;
 use App\Models\User;
 use App\Services\Forecast\Data\CategoryEstimate;
@@ -24,7 +23,10 @@ use Illuminate\Support\Collection;
  */
 class ForecastSnapshotService
 {
-    public function __construct(private readonly ForecastPlanBuilder $plans) {}
+    public function __construct(
+        private readonly ForecastPlanBuilder $plans,
+        private readonly ForecastAccounts $accounts,
+    ) {}
 
     /**
      * Freeze the owner's month in progress in each space they hold accounts
@@ -36,11 +38,7 @@ class ForecastSnapshotService
     {
         $month = ForecastCalendar::monthStart($user->localToday()->toDateString());
 
-        return Account::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('space_id')
-            ->distinct()
-            ->pluck('space_id')
+        return $this->accounts->spaceIds($user)
             ->map(fn (string $spaceId): ForecastSnapshot => $this->freeze($user, $spaceId, $month))
             ->values();
     }

@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Features\Forecast;
 use App\Http\Controllers\Settings\NotificationPreferenceController;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Laravel\Pennant\Feature;
 
 class UpdateNotificationPreferencesRequest extends FormRequest
 {
@@ -23,7 +25,13 @@ class UpdateNotificationPreferencesRequest extends FormRequest
      */
     public function rules(): array
     {
-        $allowedKeys = implode(',', array_keys(NotificationPreferenceController::PREFERENCES));
+        $keys = array_keys(NotificationPreferenceController::PREFERENCES);
+
+        if (! Feature::for($this->user())->active(Forecast::class)) {
+            $keys = array_diff($keys, NotificationPreferenceController::FORECAST_PREFERENCES);
+        }
+
+        $allowedKeys = implode(',', $keys);
 
         return [
             'notifications' => ['required', 'array:'.$allowedKeys],
