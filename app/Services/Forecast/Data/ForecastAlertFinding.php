@@ -25,16 +25,6 @@ final readonly class ForecastAlertFinding
     ) {}
 
     /**
-     * What a stored alert keeps of the finding for the dashboard's card.
-     *
-     * @return array{lowest_balance: int|null, lowest_on: string|null, causes: list<array{name: string, amount: int}>}
-     */
-    public function details(): array
-    {
-        return ['lowest_balance' => $this->lowestBalance, 'lowest_on' => $this->lowestOn, 'causes' => $this->causes];
-    }
-
-    /**
      * The key a stored alert is found by: one per account and month.
      */
     public function key(): string

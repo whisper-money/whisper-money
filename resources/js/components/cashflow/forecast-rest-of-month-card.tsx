@@ -3,7 +3,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLocale } from '@/hooks/use-locale';
-import { monthLongName } from '@/lib/forecast/format';
+import { listOf, monthLongName } from '@/lib/forecast/format';
 import { type ForecastRestOfMonthData } from '@/types/forecast-entry';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -59,11 +59,9 @@ function estimateRow(
 
     return {
         key: 'estimates',
-        label: new Intl.ListFormat(locale, {
-            style: 'long',
-            type: 'conjunction',
-        }).format(
+        label: listOf(
             more > 0 ? [...names, __(':count more', { count: more })] : names,
+            locale,
         ),
         amount: estimates.reduce((sum, estimate) => sum + estimate.amount, 0),
     };
@@ -95,7 +93,7 @@ export function ForecastRestOfMonthCard({
                     })}
                 </CardTitle>
                 <span className="text-xs text-muted-foreground">
-                    {__('forecast')}
+                    {__('forecasted')}
                 </span>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">

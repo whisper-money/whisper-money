@@ -77,6 +77,16 @@ class ForecastAlert extends Model
         return ForecastAlertFinding::keyFor($this->account_id, $this->month->format('Y-m'));
     }
 
+    /**
+     * What the alert keeps of a finding for the dashboard's card.
+     *
+     * @return array{lowest_balance: int|null, lowest_on: string|null, causes: list<array{name: string, amount: int}>}
+     */
+    public static function detailsFrom(ForecastAlertFinding $finding): array
+    {
+        return ['lowest_balance' => $finding->lowestBalance, 'lowest_on' => $finding->lowestOn, 'causes' => $finding->causes];
+    }
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

@@ -155,8 +155,9 @@ class ForecastAlertService
         }
 
         $lowest = (int) $month['min'];
+        $lowestOn = $month['minDate'] === null ? null : (string) $month['minDate'];
 
-        return new ForecastAlertFinding($accountId, $key, $level, $lowest >= 0, $lowest, $month['minDate'] === null ? null : (string) $month['minDate'], $this->causes->for($plan, $accountId, $key));
+        return new ForecastAlertFinding($accountId, $key, $level, $lowest >= 0, $lowest, $lowestOn, $this->causes->for($plan, $accountId, $key));
     }
 
     /**
@@ -198,8 +199,25 @@ class ForecastAlertService
 
         // A new problem is not one the user asked to be reminded of later.
         return $flicker
-            ? ['level' => $finding->level, 'resolved_at' => null, ...$finding->details()]
-            : ['level' => $finding->level, 'first_seen_at' => $now, 'notified_at' => null, 'resolved_at' => null, 'snoozed_until' => null, ...$finding->details()];
+            ? ['level' => $finding->level, 'resolved_at' => null, ...ForecastAlert::detailsFrom($finding)]
+            : ['level' => $finding->level, 'first_seen_at' => $now, 'notified_at' => null, 'resolved_at' => null, 'snoozed_until' => null, ...ForecastAlert::detailsFrom($finding)];
+    }
+
+    /**
+     * The snooze the account's problem is under from an earlier month on, if
+     * any: a month that turns short after the user asked to be reminded later
+     * is the same problem, and stays put away with it.
+     */
+    private function snoozeCovering(ForecastAlertFinding $finding): ?string
+    {
+        $until = ForecastAlert::query()
+            ->where('account_id', $finding->accountId)
+            ->whereNull('resolved_at')
+            ->where('month', '<', $finding->month.'-01')
+            ->where('snoozed_until', '>', now()->toDateString())
+            ->max('snoozed_until');
+
+        return $until === null ? null : (string) $until;
     }
 
     private function upsert(?ForecastAlert $alert, User $user, string $spaceId, ForecastAlertFinding $finding, CarbonInterface $now): void
@@ -207,7 +225,14 @@ class ForecastAlertService
         if ($alert === null) {
             ForecastAlert::query()->createOrFirst(
                 ['account_id' => $finding->accountId, 'month' => $finding->month.'-01'],
-                ['user_id' => $user->id, 'space_id' => $spaceId, 'level' => $finding->level, 'first_seen_at' => $now, ...$finding->details()],
+                [
+                    'user_id' => $user->id,
+                    'space_id' => $spaceId,
+                    'level' => $finding->level,
+                    'first_seen_at' => $now,
+                    'snoozed_until' => $this->snoozeCovering($finding),
+                    ...ForecastAlert::detailsFrom($finding),
+                ],
             );
 
             return;
@@ -217,7 +242,7 @@ class ForecastAlertService
         // writes nothing.
         $alert->fill($alert->resolved_at !== null
             ? $this->reopening($alert, $finding, $now)
-            : ['level' => $finding->level, ...$finding->details()]);
+            : ['level' => $finding->level, ...ForecastAlert::detailsFrom($finding)]);
 
         if ($alert->isDirty()) {
             $alert->save();

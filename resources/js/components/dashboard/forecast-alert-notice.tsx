@@ -55,8 +55,7 @@ function useDescription(alert: ForecastDashboardAlertData): string {
  * forecast's stored alerts: drawn only when there is a strong one. "Remind
  * me" puts it away until the first day of the month before the problem one;
  * the card goes the moment it is clicked and the request goes out on its own,
- * as the monthly summary notice does. Should it fail, the card is back on
- * the next load.
+ * as the monthly summary notice does. Should it fail, the card comes back.
  */
 export function ForecastAlertNotice({
     alert,
@@ -67,6 +66,7 @@ export function ForecastAlertNotice({
     const [snoozed, setSnoozed] = useState(false);
     const { post } = useHttp();
     const description = useDescription(alert);
+    const { remindOn } = alert;
 
     if (snoozed) {
         return null;
@@ -106,20 +106,21 @@ export function ForecastAlertNotice({
                         {__('See forecast')}
                     </Link>
                 </Button>
-                {alert.remindOn !== null && (
+                {remindOn !== null && (
                     <Button
                         variant="outline"
                         className="border-destructive/30 bg-background text-destructive hover:text-destructive"
                         onClick={() => {
                             setSnoozed(true);
-                            post(snooze(alert.id).url);
+                            post(snooze(alert.id).url, {
+                                onError: () => setSnoozed(false),
+                                onHttpException: () => setSnoozed(false),
+                                onNetworkError: () => setSnoozed(false),
+                            });
                         }}
                     >
                         {__('Remind me in :month', {
-                            month: monthLongName(
-                                (alert.remindOn as string).slice(0, 7),
-                                locale,
-                            ),
+                            month: monthLongName(remindOn.slice(0, 7), locale),
                         })}
                     </Button>
                 )}

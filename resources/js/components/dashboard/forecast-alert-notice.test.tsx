@@ -92,10 +92,29 @@ describe('ForecastAlertNotice', () => {
             screen.getByRole('button', { name: 'Remind me in March' }),
         );
 
-        expect(post).toHaveBeenCalledWith('/forecast/alerts/alert-1/snooze');
+        expect(post).toHaveBeenCalledWith(
+            '/forecast/alerts/alert-1/snooze',
+            expect.any(Object),
+        );
         expect(
             screen.queryByText('April looks tight in your Checking'),
         ).not.toBeInTheDocument();
+    });
+
+    it('comes back when the snooze fails', () => {
+        post.mockImplementation(
+            (_url: string, options: { onHttpException: () => void }) =>
+                options.onHttpException(),
+        );
+        renderNotice(alert());
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Remind me in March' }),
+        );
+
+        expect(
+            screen.getByText('April looks tight in your Checking'),
+        ).toBeInTheDocument();
     });
 
     it('offers no reminder when it would already be due', () => {

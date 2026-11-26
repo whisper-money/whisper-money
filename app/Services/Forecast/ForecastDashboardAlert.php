@@ -31,14 +31,12 @@ class ForecastDashboardAlert
         $alert = $this->visible($user, $today)
             ->with('account:id,name,currency_code')
             ->orderBy('month')
-            ->orderBy('lowest_balance')
+            ->orderBy('first_seen_at')
             ->first();
 
         if ($alert === null) {
             return null;
         }
-
-        $remindOn = self::remindOn($alert);
 
         return [
             'id' => $alert->id,
@@ -49,8 +47,7 @@ class ForecastDashboardAlert
             'lowestBalance' => $alert->lowest_balance,
             'lowestOn' => $alert->lowest_on?->toDateString(),
             'causes' => $alert->causes ?? [],
-            // Nothing to put off when the reminder would already be due.
-            'remindOn' => $remindOn->gt($today) ? $remindOn->toDateString() : null,
+            'remindOn' => self::remindOn($alert, $today)?->toDateString(),
         ];
     }
 
@@ -62,9 +59,9 @@ class ForecastDashboardAlert
      */
     public function snooze(ForecastAlert $alert, User $user): bool
     {
-        $remindOn = self::remindOn($alert);
+        $remindOn = self::remindOn($alert, $user->localToday());
 
-        if ($remindOn->lte($user->localToday())) {
+        if ($remindOn === null) {
             return false;
         }
 
@@ -79,9 +76,15 @@ class ForecastDashboardAlert
         return true;
     }
 
-    private static function remindOn(ForecastAlert $alert): Carbon
+    /**
+     * The first day of the month before the alert's, or null when that day
+     * has already come: there is nothing to put off then.
+     */
+    private static function remindOn(ForecastAlert $alert, Carbon $today): ?Carbon
     {
-        return $alert->month->copy()->startOfMonth()->subMonthNoOverflow();
+        $remindOn = $alert->month->copy()->startOfMonth()->subMonthNoOverflow();
+
+        return $remindOn->gt($today) ? $remindOn : null;
     }
 
     /**

@@ -100,3 +100,11 @@ export function balanceTone(balance: number, threshold: number | null): string {
         ? 'text-destructive'
         : 'text-warning';
 }
+
+/** "A, B and C", in the reader's language. */
+export function listOf(items: string[], locale: string): string {
+    return new Intl.ListFormat(locale, {
+        style: 'long',
+        type: 'conjunction',
+    }).format(items);
+}

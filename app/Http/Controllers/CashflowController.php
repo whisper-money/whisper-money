@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\Forecast;
+use App\Services\Forecast\ForecastAudience;
 use App\Services\Forecast\ForecastRestOfMonth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class CashflowController extends Controller
 {
-    public function __invoke(Request $request, ForecastRestOfMonth $restOfMonth): Response
+    public function __invoke(Request $request, ForecastAudience $forecastAudience): Response
     {
         $periodType = $request->query('period_type');
         $validPeriodType = is_string($periodType) && in_array($periodType, ['month', 'quarter', 'year'], true)
@@ -25,7 +24,7 @@ class CashflowController extends Controller
         return Inertia::render('cashflow/index', [
             'period' => $validPeriod,
             'periodType' => $validPeriodType,
-            ...$this->forecastProps($request, $restOfMonth),
+            ...$this->forecastProps($request, $forecastAudience),
         ]);
     }
 
@@ -37,14 +36,14 @@ class CashflowController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function forecastProps(Request $request, ForecastRestOfMonth $restOfMonth): array
+    private function forecastProps(Request $request, ForecastAudience $forecastAudience): array
     {
-        if (! Feature::for($request->user())->active(Forecast::class)) {
+        if (! $forecastAudience->isActive($request->user())) {
             return [];
         }
 
         return [
-            'forecastRestOfMonth' => Inertia::defer(fn (): ?array => $restOfMonth->for($request->user())),
+            'forecastRestOfMonth' => Inertia::defer(fn (): ?array => app(ForecastRestOfMonth::class)->for($request->user())),
         ];
     }
 

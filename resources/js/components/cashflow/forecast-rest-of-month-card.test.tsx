@@ -45,7 +45,7 @@ describe('ForecastRestOfMonthCard', () => {
         expect(
             screen.getByText('What is left of November'),
         ).toBeInTheDocument();
-        expect(screen.getByText('forecast')).toBeInTheDocument();
+        expect(screen.getByText('forecasted')).toBeInTheDocument();
         expect(amountNextTo('Salary (Nov 28)')).toMatch(/^\+.*2,450\.00/);
         expect(amountNextTo('Groceries and Leisure')).toMatch(/-.*13\.00/);
         expect(amountNextTo('Balance at the end of the month')).toMatch(

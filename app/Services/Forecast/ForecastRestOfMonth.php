@@ -33,8 +33,9 @@ class ForecastRestOfMonth
     ) {}
 
     /**
+     * Null without a forecast line or an account to show.
+     *
      * @return array{month: string, currencyCode: string, lines: list<array{name: string, date: string, amount: int}>, estimates: list<array{name: string|null, amount: int}>, endBalance: int}|null
-     *                                                                                                                                                                                               Null without a forecast line or an account to show.
      */
     public function for(User $user): ?array
     {
@@ -83,16 +84,37 @@ class ForecastRestOfMonth
      */
     private function pending(ForecastPlan $plan, string $month): array
     {
+        // An override can move an occurrence into this month from the one
+        // before or after it, so its scheduled date may lie outside it.
         $paid = ForecastMatch::query()
             ->whereIn('forecast_item_id', $plan->items->modelKeys())
             ->whereBetween('occurrence_date', [ForecastCalendar::monthStart($month.'-01', -1), ForecastCalendar::horizonEnd($month.'-01', 2)])
             ->get(['forecast_item_id', 'occurrence_date'])
-            ->mapWithKeys(fn (ForecastMatch $match): array => [$match->forecast_item_id.'|'.$match->occurrence_date->toDateString() => true]);
+            ->mapWithKeys(fn (ForecastMatch $match): array => [self::occurrenceKey($match->forecast_item_id, $match->occurrence_date->toDateString()) => true]);
 
         return array_values(array_filter(
             $plan->input->occurrences,
-            fn (Occurrence $occurrence): bool => ! $paid->has($occurrence->itemId.'|'.$occurrence->occurrenceDate),
+            fn (Occurrence $occurrence): bool => ! $paid->has(self::occurrenceKey($occurrence->itemId, $occurrence->occurrenceDate)),
         ));
+    }
+
+    private static function occurrenceKey(string $itemId, string $occurrenceDate): string
+    {
+        return $itemId.'|'.$occurrenceDate;
+    }
+
+    /**
+     * What an occurrence does to the accounts shown: a transfer between two
+     * of them, nothing.
+     *
+     * @param  array<string, int>  $selected  Account ids as keys.
+     */
+    private static function effectOn(Occurrence $occurrence, array $selected): int
+    {
+        $out = isset($selected[$occurrence->accountId]) ? $occurrence->amount : 0;
+        $in = $occurrence->destinationAccountId !== null && isset($selected[$occurrence->destinationAccountId]) ? $occurrence->amount : 0;
+
+        return $out - $in;
     }
 
     /**
@@ -109,8 +131,7 @@ class ForecastRestOfMonth
         $lines = [];
 
         foreach ($pending as $occurrence) {
-            $amount = (isset($selected[$occurrence->accountId]) ? $occurrence->amount : 0)
-                - ($occurrence->destinationAccountId !== null && isset($selected[$occurrence->destinationAccountId]) ? $occurrence->amount : 0);
+            $amount = self::effectOn($occurrence, $selected);
 
             if ($amount !== 0) {
                 $lines[] = ['name' => (string) $names->get($occurrence->itemId), 'date' => $occurrence->date, 'amount' => $amount];

@@ -71,18 +71,15 @@ function entryCardsAlert(User $user, Account $account, string $month, array $att
 }
 
 /**
- * The dashboard's forecast warning, as its deferred request sends it.
+ * The dashboard's forecast warning, as the page receives it.
  */
 function dashboardForecastAlert(User $user): ?array
 {
     $alert = null;
 
-    // Not arrow functions: they would capture $alert by value.
     actingAs($user)->get(route('dashboard'))->assertOk()->assertInertia(function (AssertableInertia $page) use (&$alert) {
-        $page->missing('forecastAlert')->loadDeferredProps('dashboard', function (AssertableInertia $reload) use (&$alert) {
-            $reload->has('forecastAlert');
-            $alert = $reload->toArray()['props']['forecastAlert'];
-        });
+        $page->has('forecastAlert');
+        $alert = $page->toArray()['props']['forecastAlert'];
     });
 
     return $alert;
@@ -110,6 +107,8 @@ describe('the dashboard card', function () {
         actingAs($this->user)->get(route('dashboard'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
             ->missing('forecastAlert')
             ->loadDeferredProps('dashboard', fn (AssertableInertia $reload) => $reload->missing('forecastAlert')));
+
+        expect(ForecastAlert::query()->sole()->snoozed_until)->toBeNull();
     });
 
     it('shows the strong alert the refresh stored, with what it found', function () {
@@ -192,6 +191,19 @@ describe('snoozing', function () {
             ->and($may->fresh()->snoozed_until->toDateString())->toBe('2027-03-01')
             ->and($march->fresh()->snoozed_until)->toBeNull()
             ->and(dashboardForecastAlert($this->user)['month'])->toBe('2027-03');
+    });
+
+    it('puts away a month that turns short after the snooze, as the same problem', function () {
+        $service = app(ForecastAlertService::class);
+        $service->refresh($this->user);
+        actingAs($this->user)->post(route('forecast.alerts.snooze', ForecastAlert::query()->sole()))->assertNoContent();
+        // A second insurance in May makes that month short too.
+        entryCardsLine($this->user, $this->checking, 'Property tax', -900000, '2026-05-20', ForecastFrequency::Yearly);
+
+        $service->refresh($this->user);
+
+        expect(ForecastAlert::query()->where('month', '2027-05-01')->sole()->snoozed_until->toDateString())->toBe('2027-03-01')
+            ->and(dashboardForecastAlert($this->user))->toBeNull();
     });
 
     it('is refused when the reminder would already be due', function () {

@@ -19,7 +19,8 @@ class ForecastAlertSnoozeController extends Controller
     {
         Gate::authorize('update', $alert);
 
-        abort_unless($dashboardAlert->snooze($alert, $request->user()), 422, 'The reminder would already be due.');
+        // The reminder would already be due: there is nothing to put off.
+        abort_unless($dashboardAlert->snooze($alert, $request->user()), 422);
 
         return response()->noContent();
     }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\Forecast;
 use App\Models\Account;
 use App\Models\Dashboard;
 use App\Models\DashboardWidget;
@@ -15,6 +14,7 @@ use App\Services\CategorySpendingService;
 use App\Services\CreditCards\CreditCardStatementService;
 use App\Services\Dashboards\FirstDashboardState;
 use App\Services\Dashboards\SetupChecklist;
+use App\Services\Forecast\ForecastAudience;
 use App\Services\Forecast\ForecastDashboardAlert;
 use App\Services\LabelSpendingService;
 use App\Services\MonthlySummary\ReportPresenter;
@@ -24,7 +24,6 @@ use App\Services\SavingsGoals\CurrentMonthSavings;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class DashboardController extends Controller
 {
@@ -43,6 +42,7 @@ class DashboardController extends Controller
         private SetupChecklist $setupChecklist,
         private FirstDashboardState $firstDashboardState,
         private ForecastDashboardAlert $forecastAlert,
+        private ForecastAudience $forecastAudience,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -117,18 +117,20 @@ class DashboardController extends Controller
 
     /**
      * Behind the Forecast flag, the warning the dashboard opens with when an
-     * account is about to run short; without the flag, no prop at all.
+     * account is about to run short; without the flag, no prop at all. Not
+     * deferred: it is one indexed read of the stored alerts, and arriving
+     * after the first paint it would push the whole dashboard down.
      *
      * @return array<string, mixed>
      */
     private function forecastProps(Request $request): array
     {
-        if (! Feature::for($request->user())->active(Forecast::class)) {
+        if (! $this->forecastAudience->isActive($request->user())) {
             return [];
         }
 
         return [
-            'forecastAlert' => Inertia::defer(fn (): ?array => $this->forecastAlert->for($request->user()), 'dashboard'),
+            'forecastAlert' => fn (): ?array => $this->forecastAlert->for($request->user()),
         ];
     }
 
