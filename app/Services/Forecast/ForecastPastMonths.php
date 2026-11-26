@@ -23,7 +23,7 @@ class ForecastPastMonths
     ) {}
 
     /**
-     * @return list<array{month: string, income: int, expenses: int, close: int, min: int}> Oldest first, today's month last.
+     * @return list<array{month: string, income: int, expenses: int, close: int|null, min: int|null}> Oldest first, today's month last.
      */
     public function forAccount(User $user, string $spaceId, Account $account, string $today, int $completeMonths = 2): array
     {
@@ -86,18 +86,23 @@ class ForecastPastMonths
     }
 
     /**
-     * @return array{close: int, min: int}
+     * The lowest and the last balance of the days anything is known about;
+     * null for a month before the account's history starts.
+     *
+     * @return array{close: int|null, min: int|null}
      */
     private function balanceRange(BalanceLookup $balances, string $accountId, string $start, string $end): array
     {
         $min = null;
-        $close = 0;
+        $close = null;
 
         for ($day = Carbon::parse($start); $day->toDateString() <= $end; $day->addDay()) {
-            $close = $balances->getBalanceAt($accountId, $day);
-            $min = $min === null ? $close : min($min, $close);
+            if ($balances->hasHistoryOn($accountId, $day)) {
+                $close = $balances->getBalanceAt($accountId, $day);
+                $min = $min === null ? $close : min($min, $close);
+            }
         }
 
-        return ['close' => $close, 'min' => $min ?? $close];
+        return ['close' => $close, 'min' => $min];
     }
 }

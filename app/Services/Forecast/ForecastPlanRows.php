@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Forecast\Data\CategoryEstimate;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\ForecastPlan;
+use App\Services\Forecast\Data\Occurrence;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -42,7 +43,9 @@ class ForecastPlanRows
         $items = $plan->items
             ->filter(fn (ForecastItem $item): bool => $item->account_id === $account->id || $item->destination_account_id === $account->id)
             ->values();
-        $amounts = $this->amountsByItem($items, $account->id, $months);
+        $occurrences = $this->occurrences($items, $months);
+        $amounts = $this->amountsByItem($occurrences, $account->id);
+        $dates = $this->datesIn($occurrences, $months[0]);
         $matched = $this->matchedThisMonth($items, $account->id, $months[0]);
         $counterparts = $this->counterpartNames($user, $items, $account->id);
         $parents = $this->history->parentCategories($user);
@@ -50,7 +53,8 @@ class ForecastPlanRows
         $transfers = [];
 
         foreach ($items as $item) {
-            $row = $this->itemRow($item, $account->id, $amounts[$item->id] ?? [], $matched[$item->id] ?? null, $counterparts, $months[0]);
+            $row = $this->itemRow($item, $account->id, $amounts[$item->id] ?? [], $counterparts);
+            $row['current'] = $this->currentCell($row['amounts'][$months[0]] ?? null, $matched[$item->id] ?? null, $dates[$item->id] ?? null);
 
             if ($item->destination_account_id !== null) {
                 $transfers[] = $row;
@@ -76,26 +80,64 @@ class ForecastPlanRows
     }
 
     /**
-     * Each line's amount by month over the months shown, from the account's
-     * side.
+     * The lines' occurrences over the months shown.
      *
      * @param  Collection<int, ForecastItem>  $items
      * @param  list<string>  $months
+     * @return list<Occurrence>
+     */
+    private function occurrences(Collection $items, array $months): array
+    {
+        $from = ForecastCalendar::monthStart($months[0].'-01');
+
+        return $this->expander->expand($items->map(ExpandableItem::fromModel(...)), $from, ForecastCalendar::horizonEnd($from, count($months)));
+    }
+
+    /**
+     * Each line's amount by month, from the account's side.
+     *
+     * @param  list<Occurrence>  $occurrences
      * @return array<string, array<string, int>> By line id, then month.
      */
-    private function amountsByItem(Collection $items, string $accountId, array $months): array
+    private function amountsByItem(array $occurrences, string $accountId): array
     {
-        $from = $months[0].'-01';
-        $occurrences = $this->expander->expand($items->map(ExpandableItem::fromModel(...)), $from, ForecastCalendar::horizonEnd($from, count($months)));
         $amounts = [];
 
         foreach ($occurrences as $occurrence) {
             $month = ForecastCalendar::monthKey($occurrence->date);
-            $signed = $occurrence->accountId === $accountId ? $occurrence->amount : -$occurrence->amount;
+            $signed = self::signedFor($accountId, $occurrence->accountId, $occurrence->amount);
             $amounts[$occurrence->itemId][$month] = ($amounts[$occurrence->itemId][$month] ?? 0) + $signed;
         }
 
         return $amounts;
+    }
+
+    /**
+     * The day each line is due in the month, the first one when it has several.
+     *
+     * @param  list<Occurrence>  $occurrences
+     * @return array<string, string> By line id.
+     */
+    private function datesIn(array $occurrences, string $month): array
+    {
+        $dates = [];
+
+        foreach ($occurrences as $occurrence) {
+            if (ForecastCalendar::monthKey($occurrence->date) === $month) {
+                $dates[$occurrence->itemId] ??= $occurrence->date;
+            }
+        }
+
+        return $dates;
+    }
+
+    /**
+     * An amount booked on `$bookedOn`, as the account shown sees it: the
+     * other leg of a transfer has the opposite sign.
+     */
+    private static function signedFor(string $accountId, string $bookedOn, int $amount): int
+    {
+        return $bookedOn === $accountId ? $amount : -$amount;
     }
 
     /**
@@ -109,7 +151,7 @@ class ForecastPlanRows
     {
         $matches = ForecastMatch::query()
             ->whereIn('forecast_item_id', $items->modelKeys())
-            ->whereBetween('occurrence_date', [$month.'-01', ForecastCalendar::horizonEnd($month.'-01', 1)])
+            ->whereBetween('occurrence_date', [ForecastCalendar::monthStart($month.'-01'), ForecastCalendar::horizonEnd($month.'-01', 1)])
             ->with('transaction:id,account_id,amount')
             ->get();
         $real = [];
@@ -119,7 +161,7 @@ class ForecastPlanRows
                 continue;
             }
 
-            $signed = $match->transaction->account_id === $accountId ? $match->transaction->amount : -$match->transaction->amount;
+            $signed = self::signedFor($accountId, $match->transaction->account_id, $match->transaction->amount);
             $real[$match->forecast_item_id] = ($real[$match->forecast_item_id] ?? 0) + $signed;
         }
 
@@ -149,7 +191,7 @@ class ForecastPlanRows
      * @param  array<string, string>  $counterparts
      * @return array<string, mixed>
      */
-    private function itemRow(ForecastItem $item, string $accountId, array $amounts, ?int $real, array $counterparts, string $currentMonth): array
+    private function itemRow(ForecastItem $item, string $accountId, array $amounts, array $counterparts): array
     {
         $isTransfer = $item->destination_account_id !== null;
         $incoming = $item->destination_account_id === $accountId;
@@ -163,18 +205,17 @@ class ForecastPlanRows
             'direction' => $isTransfer ? ($incoming ? 'in' : 'out') : null,
             'counterpartyName' => $isTransfer ? ($counterparts[$incoming ? $item->account_id : (string) $item->destination_account_id] ?? null) : null,
             'amounts' => $amounts,
-            'current' => $this->currentCell($amounts[$currentMonth] ?? null, $real),
         ];
     }
 
     /**
-     * @return array{planned: int|null, real: int|null, status: 'matched'|'pending'|'none'}
+     * @return array{planned: int|null, real: int|null, date: string|null, status: 'matched'|'pending'|'none'}
      */
-    private function currentCell(?int $planned, ?int $real): array
+    private function currentCell(?int $planned, ?int $real, ?string $date): array
     {
         $status = $real !== null ? 'matched' : ($planned !== null ? 'pending' : 'none');
 
-        return ['planned' => $planned, 'real' => $real, 'status' => $status];
+        return ['planned' => $planned, 'real' => $real, 'date' => $date, 'status' => $status];
     }
 
     /**

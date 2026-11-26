@@ -34,6 +34,7 @@ use Laravel\Mcp\Server\Registrar;
 use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
 use Laravel\Passport\Http\Controllers\AuthorizationController as PassportAuthorizationController;
 use Laravel\Passport\Passport;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -92,6 +93,10 @@ class AppServiceProvider extends ServiceProvider
         // type-hint). Do not also register them explicitly here — doing both
         // registers every listener twice, so each queued listener is dispatched
         // twice per event.
+
+        // A route behind a feature flag the user does not have does not exist
+        // for them: 404, not Pennant's default 400.
+        EnsureFeaturesAreActive::whenInactive(fn () => abort(404));
 
         // SES allows this account 10 sends per second (and 50,000 a day), and
         // throttles anything above it. Every mailable and job on the `emails`

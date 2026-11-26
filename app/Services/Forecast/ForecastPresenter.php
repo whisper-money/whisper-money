@@ -3,6 +3,7 @@
 namespace App\Services\Forecast;
 
 use App\Enums\AccountType;
+use App\Enums\ForecastAlertLevel;
 use App\Enums\ForecastFrequency;
 use App\Models\Account;
 use App\Models\User;
@@ -67,12 +68,11 @@ class ForecastPresenter
         $plan = $this->builder->build($user, $spaceId, null, $horizon + 1, $today);
         $projected = collect($this->projector->project($plan->input)['accounts'])->keyBy('accountId');
         $visibleCount = 1 + ($isPro ? $horizon : min(self::FREE_MONTHS, $horizon));
-        $alerts = $projected->map(fn (array $projection): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $projection['minimumBalance']));
-        $account = $this->selectedAccount($included, $accountId, $alerts->all());
+        $alerts = $projected->map(fn (array $projection): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $projection['minimumBalance']))->all();
+        $account = $this->selectedAccount($included, $accountId, $alerts);
         $projection = $projected[$account->id];
         $visible = array_slice($projection['months'], 0, $visibleCount);
         $locked = array_slice($projection['months'], $visibleCount);
-        $visibleMonths = array_map(fn (array $month): string => (string) $month['month'], $visible);
 
         return [
             'forecast' => [
@@ -82,12 +82,9 @@ class ForecastPresenter
                 'accounts' => $included->map(fn (Account $other): array => [
                     'id' => $other->id,
                     'name' => $other->name,
-                    'hasAlert' => $alerts[$other->id]['level'] === ForecastAlertEvaluator::LEVEL_STRONG,
+                    'hasAlert' => $this->isStrong($alerts[$other->id]),
                 ])->all(),
-                'months' => [
-                    ...array_map(fn (string $month, int $index): array => ['month' => $month, 'status' => $index === 0 ? 'current' : 'future'], $visibleMonths, array_keys($visibleMonths)),
-                    ...array_map(fn (array $month): array => ['month' => $month['month'], 'status' => 'locked'], $locked),
-                ],
+                'months' => $this->monthColumns($visible, $locked),
                 'projection' => $visible,
                 'past' => $this->pastMonths->forAccount($user, $spaceId, $account, $today, self::PAST_MONTHS),
                 'alert' => [
@@ -95,16 +92,47 @@ class ForecastPresenter
                     'causes' => $this->causes($plan, $account->id, $alerts[$account->id]['month']),
                 ],
                 'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($locked, $projection['minimumBalance']),
-                'kpis' => $this->kpis($visible, $this->openingBalance($plan, $account->id)),
-                'plan' => $this->rows->build($user, $plan, $account, $visibleMonths),
+                'kpis' => $this->kpis($visible, $this->projectionAccount($plan, $account->id)->openingBalance),
+                'plan' => $this->rows->build($user, $plan, $account, array_column($visible, 'month')),
             ],
             'projectionInput' => $this->projectionInput($plan, $account->id, $today, $visibleCount),
         ];
     }
 
     /**
+     * The plan's columns: the month in progress, the months shown and, without
+     * Pro, the locked ones by name only.
+     *
+     * @param  list<array<string, int|string|null>>  $visible
+     * @param  list<array<string, int|string|null>>  $locked
+     * @return list<array{month: string, status: 'current'|'future'|'locked'}>
+     */
+    private function monthColumns(array $visible, array $locked): array
+    {
+        $columns = [];
+
+        foreach ($visible as $index => $month) {
+            $columns[] = ['month' => (string) $month['month'], 'status' => $index === 0 ? 'current' : 'future'];
+        }
+
+        foreach ($locked as $month) {
+            $columns[] = ['month' => (string) $month['month'], 'status' => 'locked'];
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @param  array{level: string}  $alert
+     */
+    private function isStrong(array $alert): bool
+    {
+        return $alert['level'] === ForecastAlertLevel::Strong->value;
+    }
+
+    /**
      * @param  Collection<int, Account>  $included
-     * @param  array<string, array{level: string}>  $alerts
+     * @param  array<string, array{level: string, min: int|null}>  $alerts
      */
     private function selectedAccount(Collection $included, ?string $accountId, array $alerts): Account
     {
@@ -112,7 +140,7 @@ class ForecastPresenter
             return $included->firstWhere('id', $accountId) ?? abort(404);
         }
 
-        return $included->first(fn (Account $account): bool => $alerts[$account->id]['level'] === ForecastAlertEvaluator::LEVEL_STRONG)
+        return $included->filter(fn (Account $account): bool => $this->isStrong($alerts[$account->id]))->sortBy(fn (Account $account): int => (int) $alerts[$account->id]['min'])->first()
             ?? $included->sortBy('position')->first(fn (Account $account): bool => $account->type === AccountType::Checking)
             ?? $included->first();
     }
@@ -183,11 +211,6 @@ class ForecastPresenter
     private function projectionAccount(ForecastPlan $plan, string $accountId): ProjectionAccount
     {
         return collect($plan->input->accounts)->first(fn (ProjectionAccount $candidate): bool => $candidate->id === $accountId);
-    }
-
-    private function openingBalance(ForecastPlan $plan, string $accountId): int
-    {
-        return $this->projectionAccount($plan, $accountId)->openingBalance;
     }
 
     /**

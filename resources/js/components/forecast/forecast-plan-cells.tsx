@@ -1,8 +1,12 @@
-import { balanceTone } from '@/components/forecast/forecast-kpis';
 import { Badge } from '@/components/ui/badge';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { dayOf, lineKindLabel, lineOrigin } from '@/lib/forecast/format';
+import {
+    balanceTone,
+    dayOf,
+    lineKindLabel,
+    lineOrigin,
+} from '@/lib/forecast/format';
 import {
     groupCurrentTotal,
     groupMonthTotal,
@@ -20,6 +24,7 @@ import { type ReactNode } from 'react';
 
 /** What every plan cell needs to know about the table it sits in. */
 export interface PlanCellContext {
+    today: string;
     currencyCode: string;
     minimumBalance: number | null;
     projectionByMonth: Record<string, ProjectedMonth>;
@@ -32,7 +37,7 @@ function useNumber(currencyCode: string): (amount: number) => string {
         formatAmountNumber(amount, currencyCode, { fractionDigits: 0 });
 }
 
-export function Cell({
+export function PlanCell({
     children,
     sub,
     className,
@@ -65,7 +70,9 @@ export function Cell({
     );
 }
 
-export const EMPTY = <Cell className="text-muted-foreground">—</Cell>;
+export const EMPTY_CELL = (
+    <PlanCell className="text-muted-foreground">—</PlanCell>
+);
 
 /** A month the free plan does not show: a blurred placeholder, no figure. */
 export function LockedCell() {
@@ -187,34 +194,43 @@ function deviationTone(deviation: number): string {
     return deviation > 0 ? 'text-success' : 'text-muted-foreground';
 }
 
+/** "arrives on the 28th" while it is to come, "expected on the 1st" once overdue. */
+function pendingLabel(date: string | null, today: string): string | undefined {
+    if (date === null) {
+        return undefined;
+    }
+
+    return date < today
+        ? __('expected on the :day', { day: dayOf(date) })
+        : __('arrives on the :day', { day: dayOf(date) });
+}
+
 function LineCurrentCell({
     line,
     currencyCode,
+    today,
 }: {
     line: ForecastLine;
     currencyCode: string;
+    today: string;
 }) {
     const number = useNumber(currencyCode);
-    const { real, planned, status } = line.current;
+    const { real, planned, status, date } = line.current;
 
     if (status === 'pending') {
         return (
-            <Cell
-                sub={__('arrives on the :day', { day: dayOf(line.anchorDate) })}
-            >
-                {__('pending')}
-            </Cell>
+            <PlanCell sub={pendingLabel(date, today)}>{__('pending')}</PlanCell>
         );
     }
 
     if (status === 'none' || real === null) {
-        return EMPTY;
+        return EMPTY_CELL;
     }
 
     const deviation = real - (planned ?? real);
 
     return (
-        <Cell
+        <PlanCell
             sub={
                 deviation === 0
                     ? __('✓ as planned')
@@ -226,7 +242,7 @@ function LineCurrentCell({
             subClassName={deviationTone(deviation)}
         >
             {number(real)}
-        </Cell>
+        </PlanCell>
     );
 }
 
@@ -240,13 +256,13 @@ function EstimateCurrentCell({
     const number = useNumber(currencyCode);
 
     if (estimate.current === null) {
-        return EMPTY;
+        return EMPTY_CELL;
     }
 
     const { spent, planned, left } = estimate.current;
 
     return (
-        <Cell
+        <PlanCell
             sub={__('of :planned · :left left', {
                 planned: number(planned),
                 left: number(left),
@@ -254,7 +270,7 @@ function EstimateCurrentCell({
             subClassName={spent > planned ? 'text-foreground' : undefined}
         >
             {number(-spent)}
-        </Cell>
+        </PlanCell>
     );
 }
 
@@ -275,24 +291,24 @@ function GroupCell({
         const total = groupCurrentTotal(row.group);
 
         return (
-            <Cell className="font-semibold">
+            <PlanCell className="font-semibold">
                 {total.real === 0 && total.pending
                     ? __('pending')
                     : number(total.real)}
-            </Cell>
+            </PlanCell>
         );
     }
 
     const total = groupMonthTotal(row.group, month);
 
     if (total === null) {
-        return EMPTY;
+        return EMPTY_CELL;
     }
 
     return (
-        <Cell className="font-semibold">
+        <PlanCell className="font-semibold">
             {row.group.estimate ? `≈ ${number(total)}` : number(total)}
-        </Cell>
+        </PlanCell>
     );
 }
 
@@ -309,15 +325,19 @@ function SummaryCell({
     const projected = context.projectionByMonth[month];
 
     if (!projected) {
-        return EMPTY;
+        return EMPTY_CELL;
     }
 
     if (summary === 'close') {
-        return <Cell className="font-semibold">{number(projected.close)}</Cell>;
+        return (
+            <PlanCell className="font-semibold">
+                {number(projected.close)}
+            </PlanCell>
+        );
     }
 
     return (
-        <Cell
+        <PlanCell
             className={cn(
                 'font-semibold',
                 balanceTone(projected.min, context.minimumBalance),
@@ -331,7 +351,7 @@ function SummaryCell({
             }
         >
             {number(projected.min)}
-        </Cell>
+        </PlanCell>
     );
 }
 
@@ -365,13 +385,18 @@ export function PlanMonthCell({
                     <LineCurrentCell
                         line={row.line}
                         currencyCode={context.currencyCode}
+                        today={context.today}
                     />
                 );
             }
 
             const amount = row.line.amounts[month];
 
-            return amount === undefined ? EMPTY : <Cell>{number(amount)}</Cell>;
+            return amount === undefined ? (
+                EMPTY_CELL
+            ) : (
+                <PlanCell>{number(amount)}</PlanCell>
+            );
         }
         case 'estimate': {
             if (current) {
@@ -386,11 +411,11 @@ export function PlanMonthCell({
             const amount = row.estimate.amounts[month];
 
             return amount === undefined ? (
-                EMPTY
+                EMPTY_CELL
             ) : (
-                <Cell className="text-muted-foreground italic">
+                <PlanCell className="text-muted-foreground italic">
                     ≈ {number(amount)}
-                </Cell>
+                </PlanCell>
             );
         }
         case 'summary':

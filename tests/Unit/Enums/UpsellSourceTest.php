@@ -10,6 +10,7 @@ it('sends a checkout started outside the wizard nowhere special and asks for no 
     'billing settings' => [UpsellSource::Billing],
     'API settings' => [UpsellSource::Api],
     'MCP settings' => [UpsellSource::Mcp],
+    'forecast' => [UpsellSource::Forecast],
 ]);
 
 it('switches the AI consent on from the in-app dialogs that disclose it, without a way back into the wizard', function (UpsellSource $source) {
@@ -24,5 +25,6 @@ it('maps the paywall, billing, API and MCP points to their query values', functi
     expect(UpsellSource::tryFrom('paywall'))->toBe(UpsellSource::Paywall)
         ->and(UpsellSource::tryFrom('billing'))->toBe(UpsellSource::Billing)
         ->and(UpsellSource::tryFrom('api'))->toBe(UpsellSource::Api)
-        ->and(UpsellSource::tryFrom('mcp'))->toBe(UpsellSource::Mcp);
+        ->and(UpsellSource::tryFrom('mcp'))->toBe(UpsellSource::Mcp)
+        ->and(UpsellSource::tryFrom('forecast'))->toBe(UpsellSource::Forecast);
 });

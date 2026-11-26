@@ -291,7 +291,16 @@ class EstimateCalculator
 
             if ($amount > 0 || $spent > 0 || $adjustment !== null) {
                 $basis = $adjustment === null ? $row->basis() : ForecastEstimateBasis::Adjustment;
-                $estimates[] = new CategoryEstimate($accountId, $bucket === self::OTHER ? null : $bucket, $month, $amount, $basis, $planned, $spent, $adjustment === null ? $row->budgetAmount() : null);
+                $estimates[] = new CategoryEstimate(
+                    accountId: $accountId,
+                    categoryId: $bucket === self::OTHER ? null : $bucket,
+                    month: $month,
+                    amount: $amount,
+                    basis: $basis,
+                    planned: $planned,
+                    spent: $spent,
+                    budgetAmount: $adjustment === null ? $row->budgetAmount() : null,
+                );
             }
         }
 

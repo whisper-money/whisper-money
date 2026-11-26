@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\CategoryType;
 use App\Enums\ForecastFrequency;
 use App\Features\Forecast;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Category;
 use App\Models\ForecastAccountSetting;
 use App\Models\ForecastItem;
 use App\Models\ForecastMatch;
@@ -108,6 +110,18 @@ it('shows a Pro user the month in progress and the twelve after it', function ()
         ->where('projectionInput.startDate', '2026-11-26'));
 });
 
+it('draws the real months before today only where the balance history reaches', function () {
+    forecastCharge($this->checking, '2026-10-03', -4000, 'BAKERY');
+    forecastCharge($this->checking, '2026-10-28', 300000, 'PAYROLL', Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income]));
+
+    $past = forecastPageProps($this->actingAs($this->user)->get(route('forecast.index')))['forecast']['past'];
+
+    expect(array_column($past, 'month'))->toBe(['2026-09', '2026-10', '2026-11'])
+        ->and($past[0])->toMatchArray(['income' => 0, 'expenses' => 0, 'close' => null, 'min' => null])
+        ->and($past[1])->toMatchArray(['income' => 300000, 'expenses' => 4000])
+        ->and($past[2]['close'])->toBe(100000);
+});
+
 it('follows the horizon asked for', function (int $horizon) {
     $this->actingAs($this->user)->get(route('forecast.index', ['horizon' => $horizon]))
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -116,9 +130,11 @@ it('follows the horizon asked for', function (int $horizon) {
             ->has('forecast.projection', $horizon + 1));
 })->with([3, 6, 12]);
 
-it('refuses a horizon it does not offer', function () {
-    $this->actingAs($this->user)->get(route('forecast.index', ['horizon' => 5]))->assertSessionHasErrors('horizon');
-});
+it('reads a horizon it does not offer as the default, so a stale link still opens', function (string $horizon) {
+    $this->actingAs($this->user)->get(route('forecast.index', ['horizon' => $horizon]))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('forecast.horizon', 12));
+})->with(['5', 'nope', '']);
 
 it('lets a user without Pro in, like Cashflow', function () {
     $free = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
@@ -201,10 +217,22 @@ describe('the account shown', function () {
                 ->where('projectionInput.accounts.0.id', $this->savings->id));
     });
 
-    it('is never another user\'s', function () {
+    it('is never another user\'s, which reads like one that does not exist', function () {
         $other = forecastPageAccount(User::factory()->create(), 'Theirs', AccountType::Checking, 500);
 
-        $this->actingAs($this->user)->get(route('forecast.index', ['account' => $other->id]))->assertForbidden();
+        $this->actingAs($this->user)->get(route('forecast.index', ['account' => $other->id]))->assertNotFound();
+        $this->actingAs($this->user)->get(route('forecast.index', ['account' => 'not-a-uuid']))->assertNotFound();
+    });
+
+    it('is by default the account whose problem is the deepest', function () {
+        $card = forecastPageAccount($this->user, 'A card', AccountType::CreditCard, 0);
+        forecastPageLine($this->user, $card, 'Card bill', -1500000, '2026-12-03', ForecastFrequency::Once);
+
+        $this->actingAs($this->user)->get(route('forecast.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('forecast.account.id', $card->id)
+                ->where('forecast.accounts.0.hasAlert', true)
+                ->where('forecast.accounts.1.hasAlert', true));
     });
 
     it('is never one outside the forecast or the active space', function () {
@@ -273,8 +301,8 @@ describe('the plan', function () {
         $plan = forecastPageProps($this->actingAs($this->user)->get(route('forecast.index')))['forecast']['plan'];
         $lines = collect([...$plan['income'], ...$plan['expenses']])->flatMap(fn (array $group): array => $group['items'])->keyBy('name');
 
-        expect($lines['Rent']['current'])->toBe(['planned' => -190000, 'real' => -192000, 'status' => 'matched'])
-            ->and($lines['Salary']['current'])->toBe(['planned' => 300000, 'real' => null, 'status' => 'pending'])
-            ->and($lines['Car insurance']['current'])->toBe(['planned' => null, 'real' => null, 'status' => 'none']);
+        expect($lines['Rent']['current'])->toBe(['planned' => -190000, 'real' => -192000, 'date' => '2026-11-05', 'status' => 'matched'])
+            ->and($lines['Salary']['current'])->toBe(['planned' => 300000, 'real' => null, 'date' => '2026-11-01', 'status' => 'pending'])
+            ->and($lines['Car insurance']['current'])->toBe(['planned' => null, 'real' => null, 'date' => null, 'status' => 'none']);
     });
 });

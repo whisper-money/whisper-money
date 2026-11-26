@@ -2,19 +2,18 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastAlertLevel;
+
 /**
  * Reads the projected months of one account for the forecast's warnings. A
  * month is a strong problem when its lowest balance falls below the account's
  * wanted minimum (zero when it has none), and a soft one when only the
  * pessimistic minimum does, that is, only if the estimated spend comes in at
- * the top of its band. The strong month reported is the lowest one.
+ * the top of its band. The strong month reported is the lowest one; `level`
+ * is `ok` when there is no problem at all.
  */
 class ForecastAlertEvaluator
 {
-    public const LEVEL_STRONG = 'strong';
-
-    private const LEVEL_SOFT = 'soft';
-
     private const LEVEL_OK = 'ok';
 
     /**
@@ -24,14 +23,15 @@ class ForecastAlertEvaluator
     public function evaluate(array $months, ?int $minimumBalance): array
     {
         $threshold = $minimumBalance ?? 0;
-        $strong = $this->lowest(array_filter($months, fn (array $month): bool => $month['min'] < $threshold));
-        $softMonths = array_values(array_map(
-            fn (array $month): string => (string) $month['month'],
-            array_filter($months, fn (array $month): bool => $month['min'] >= $threshold && $month['pessimisticMin'] < $threshold),
-        ));
+        $strong = collect($months)->filter(fn (array $month): bool => $this->isStrong($month, $threshold))->sortBy('min')->first();
+        $softMonths = collect($months)
+            ->filter(fn (array $month): bool => ! $this->isStrong($month, $threshold) && $month['pessimisticMin'] < $threshold)
+            ->map(fn (array $month): string => (string) $month['month'])
+            ->values()
+            ->all();
 
         return [
-            'level' => $this->level($strong, $softMonths),
+            'level' => $this->level($strong !== null, $softMonths !== []),
             'month' => $strong['month'] ?? null,
             'min' => $strong['min'] ?? null,
             'minDate' => $strong['minDate'] ?? null,
@@ -46,38 +46,23 @@ class ForecastAlertEvaluator
      */
     public function strongCount(array $months, ?int $minimumBalance): int
     {
-        $threshold = $minimumBalance ?? 0;
-
-        return count(array_filter($months, fn (array $month): bool => $month['min'] < $threshold));
+        return count(array_filter($months, fn (array $month): bool => $this->isStrong($month, $minimumBalance ?? 0)));
     }
 
     /**
-     * @param  array<int, array<string, int|string|null>>  $months
-     * @return array<string, int|string|null>|null
+     * @param  array<string, int|string|null>  $month
      */
-    private function lowest(array $months): ?array
+    private function isStrong(array $month, int $threshold): bool
     {
-        $lowest = null;
-
-        foreach ($months as $month) {
-            if ($lowest === null || $month['min'] < $lowest['min']) {
-                $lowest = $month;
-            }
-        }
-
-        return $lowest;
+        return $month['min'] < $threshold;
     }
 
-    /**
-     * @param  array<string, int|string|null>|null  $strong
-     * @param  list<string>  $softMonths
-     */
-    private function level(?array $strong, array $softMonths): string
+    private function level(bool $strong, bool $soft): string
     {
-        if ($strong !== null) {
-            return self::LEVEL_STRONG;
+        if ($strong) {
+            return ForecastAlertLevel::Strong->value;
         }
 
-        return $softMonths === [] ? self::LEVEL_OK : self::LEVEL_SOFT;
+        return $soft ? ForecastAlertLevel::Soft->value : self::LEVEL_OK;
     }
 }

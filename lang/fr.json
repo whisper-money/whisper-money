@@ -3044,7 +3044,6 @@
     ":concrete + estimated": ":concrete + estimé",
     ":count concrete": ":count concrets",
     ":percent% concrete": ":percent % concret",
-    "Add an account to see how its balance is going to evolve.": "Ajoutez un compte pour voir comment son solde va évoluer.",
     "Add to the forecast": "Ajouter à la prévision",
     "Add your yearly payments to sharpen it": "Ajoutez vos paiements annuels pour l'affiner",
     "Added by you": "Ajouté par vous",
@@ -3083,7 +3082,6 @@
     "PRO": "PRO",
     "Pick a month to see it in the plan": "Choisissez un mois pour le voir dans le plan",
     "Recurring": "Récurrent",
-    "See 12 months ahead with Standard": "Voyez 12 mois à l'avance avec Standard",
     "See :month in the plan": "Voir :month dans le plan",
     "See the next 12 months with Pro": "Voyez les 12 prochains mois avec Pro",
     "Set by you": "Défini par vous",
@@ -3113,5 +3111,9 @@
     "your main categories": "vos catégories principales",
     "✓ as planned": "✓ comme prévu",
     "Balance today": "Solde du jour",
-    "Transfers": "Virements"
+    "Transfers": "Virements",
+    "See 12 months ahead": "Voyez 12 mois à l'avance",
+    "Go to accounts": "Aller aux comptes",
+    "expected on the :day": "attendu le :day",
+    "The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.": "La prévision couvre les comptes non archivés de cet espace. Ajoutez-en un pour voir comment son solde va évoluer."
 }

@@ -49,8 +49,9 @@ export interface ForecastPastMonth {
     month: string;
     income: number;
     expenses: number;
-    close: number;
-    min: number;
+    /** Null before the account's balance history starts. */
+    close: number | null;
+    min: number | null;
 }
 
 export interface ForecastAlert {
@@ -73,6 +74,8 @@ export interface ForecastKpis {
 export interface ForecastCurrentCell {
     planned: number | null;
     real: number | null;
+    /** The day the line is due this month, when it is. */
+    date: string | null;
     status: 'matched' | 'pending' | 'none';
 }
 

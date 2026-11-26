@@ -33,7 +33,7 @@ export function ForecastHorizonPicker({
                             },
                         })}
                         preserveScroll
-                        aria-pressed={selected}
+                        aria-current={selected ? 'true' : undefined}
                         className={cn(
                             'inline-flex min-h-8 items-center rounded-md px-3 text-[13px]',
                             selected

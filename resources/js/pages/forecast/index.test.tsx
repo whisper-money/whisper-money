@@ -74,7 +74,12 @@ function line(overrides: Partial<ForecastLine>): ForecastLine {
         direction: null,
         counterpartyName: null,
         amounts: {},
-        current: { planned: -190000, real: -190000, status: 'matched' },
+        current: {
+            planned: -190000,
+            real: -190000,
+            date: '2026-11-05',
+            status: 'matched',
+        },
         ...overrides,
     };
 }
@@ -96,7 +101,7 @@ const home: ForecastGroup = {
             source: 'manual',
             anchorDate: '2026-04-10',
             amounts: { '2027-04': -700000 },
-            current: { planned: null, real: null, status: 'none' },
+            current: { planned: null, real: null, date: null, status: 'none' },
         }),
     ],
     estimate: {
@@ -252,6 +257,46 @@ describe('the forecast page', () => {
         // Home is already open: its yearly insurance explains April.
         expect(screen.getByText('✓ as planned')).toBeInTheDocument();
         expect(screen.getByText('of 60 · 40 left')).toBeInTheDocument();
+    });
+
+    it('tells a line still to come from one that is overdue', () => {
+        const pending = (id: string, date: string) =>
+            line({
+                id,
+                name: id,
+                current: { planned: -100, real: null, date, status: 'pending' },
+            });
+        renderPage(
+            forecast({
+                plan: {
+                    income: [],
+                    expenses: [
+                        {
+                            ...home,
+                            items: [
+                                pending('Gym', '2026-11-02'),
+                                pending('Phone', '2026-11-28'),
+                            ],
+                        },
+                    ],
+                    transfers: [],
+                },
+                alert: {
+                    level: 'ok',
+                    month: null,
+                    min: null,
+                    minDate: null,
+                    softMonths: [],
+                    causes: [],
+                },
+            }),
+        );
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-toggle-all"]')!,
+        );
+
+        expect(screen.getByText('expected on the 2')).toBeInTheDocument();
+        expect(screen.getByText('arrives on the 28')).toBeInTheDocument();
     });
 
     it('marks the account with a problem and says it in a strong alert', () => {

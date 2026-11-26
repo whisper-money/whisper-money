@@ -8,21 +8,14 @@ import {
 } from '@/components/ui/stat-tile';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { dayOf, monthLongName, monthWithYear } from '@/lib/forecast/format';
+import {
+    balanceTone,
+    dayOf,
+    monthLongName,
+    monthWithYear,
+} from '@/lib/forecast/format';
 import { type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
-
-/** The tone of a balance against zero and the account's wanted minimum. */
-export function balanceTone(
-    balance: number,
-    minimumBalance: number | null,
-): string {
-    if (balance < 0) {
-        return 'text-destructive';
-    }
-
-    return balance < (minimumBalance ?? 0) ? 'text-warning' : '';
-}
 
 function KpiCard({ children }: { children: React.ReactNode }) {
     return (

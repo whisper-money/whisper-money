@@ -332,7 +332,9 @@ export function ForecastChart({
                                     )}
                                 >
                                     {point.min === null
-                                        ? __('Pro')
+                                        ? point.status === 'locked'
+                                            ? __('Pro')
+                                            : '—'
                                         : __('min. :amount', {
                                               amount: formatAmountNumber(
                                                   point.min,

@@ -100,7 +100,7 @@ function upsellCopy(
             };
         case 'forecast':
             return {
-                title: __('See 12 months ahead with Standard'),
+                title: __('See 12 months ahead'),
                 description: __(
                     'Your forecast covers the whole year, warns you before an account runs short and lets you edit your plan.',
                 ),

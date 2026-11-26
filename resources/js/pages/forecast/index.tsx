@@ -1,3 +1,4 @@
+import { index as accountsList } from '@/actions/App/Http/Controllers/AccountController';
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
 import { ForecastAccountTabs } from '@/components/forecast/forecast-account-tabs';
 import { ForecastAlerts } from '@/components/forecast/forecast-alerts';
@@ -18,7 +19,7 @@ import { initiallyExpandedGroups } from '@/lib/forecast/plan-rows';
 import { type BreadcrumbItem } from '@/types';
 import { type ForecastData, type ForecastPageProps } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
 /** The month picked by default: the one with the problem, else the next one. */
@@ -120,9 +121,14 @@ export default function ForecastPage({ forecast }: ForecastPageProps) {
                                 </EmptyStateTitle>
                                 <EmptyStateDescription>
                                     {__(
-                                        'Add an account to see how its balance is going to evolve.',
+                                        'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',
                                     )}
                                 </EmptyStateDescription>
+                                <Button asChild variant="outline">
+                                    <Link href={accountsList()}>
+                                        {__('Go to accounts')}
+                                    </Link>
+                                </Button>
                             </EmptyState>
                         </CardContent>
                     </Card>

@@ -77,3 +77,15 @@ export function lineOrigin(
 
     return `${sourceLabel(source)} · ${when}`;
 }
+
+/** The tone of a balance against zero and the account's wanted minimum. */
+export function balanceTone(
+    balance: number,
+    minimumBalance: number | null,
+): string {
+    if (balance < 0) {
+        return 'text-destructive';
+    }
+
+    return balance < (minimumBalance ?? 0) ? 'text-warning' : '';
+}

@@ -247,6 +247,7 @@ export function ForecastPlanTable({
     const context: PlanCellContext & { locale: string } = useMemo(
         () => ({
             locale,
+            today: forecast.today,
             currencyCode: forecast.currencyCode,
             minimumBalance: forecast.account.minimumBalance,
             projectionByMonth: Object.fromEntries(

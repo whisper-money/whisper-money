@@ -39,6 +39,11 @@ export interface GroupCurrentTotal {
     pending: boolean;
 }
 
+/** The row id of a parent category's group. */
+export function groupId(section: 'income' | 'expenses', key: string): string {
+    return `group:${section}:${key}`;
+}
+
 function groupRow(
     group: ForecastGroup,
     section: 'income' | 'expenses',
@@ -66,7 +71,7 @@ function groupRow(
 
     return {
         type: 'group',
-        id: `group:${section}:${group.key}`,
+        id: groupId(section, group.key),
         section,
         group,
         subRows,
@@ -162,12 +167,7 @@ export function initiallyExpandedGroups(
                 line.amounts[alertMonth] !== undefined,
         );
 
-    return [
-        ...plan.income
-            .filter(opens)
-            .map((group) => `group:income:${group.key}`),
-        ...plan.expenses
-            .filter(opens)
-            .map((group) => `group:expenses:${group.key}`),
-    ];
+    return (['income', 'expenses'] as const).flatMap((section) =>
+        plan[section].filter(opens).map((group) => groupId(section, group.key)),
+    );
 }
