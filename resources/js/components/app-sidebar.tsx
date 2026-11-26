@@ -31,6 +31,7 @@ export function AppSidebar() {
         () => getMainNavItems(page.props.features, page.props.locale),
         [page.props.features, page.props.locale],
     );
+    const mobileNavItems = mainNavItems.filter((item) => item.mobile !== false);
     const { trigger } = useWebHaptics();
     const collapsed = useSidebar().state === 'collapsed';
 
@@ -41,7 +42,7 @@ export function AppSidebar() {
                 className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-1 rounded-full border border-border/75 bg-sidebar/50 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur group-has-[[data-test=mobile-bulk-actions-bar]]/sidebar-wrapper:hidden md:hidden"
                 data-test="mobile-nav"
             >
-                {mainNavItems.map((item) => {
+                {mobileNavItems.map((item) => {
                     const isActive = page.url.startsWith(resolveUrl(item.href));
                     const label = item.mobileTitle ?? item.title;
                     const Icon = item.icon as LucideIcon | null;

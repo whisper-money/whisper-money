@@ -1,9 +1,11 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
 import { index as budgetsIndex } from '@/actions/App/Http/Controllers/BudgetController';
+import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { cashflow, dashboard } from '@/routes';
 import { Features, NavItem } from '@/types';
 import {
+    ChartSpline,
     CreditCard,
     LayoutGrid,
     PiggyBank,
@@ -50,6 +52,17 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
             mobileTitle: getMobileLabel('cashflow', locale),
             href: cashflow(),
             icon: TrendingUp,
+        });
+    }
+
+    // Desktop only for now: the mobile bar swaps Accounts for it later.
+    if (features.forecast) {
+        items.push({
+            type: 'nav-item',
+            title: 'Forecast',
+            href: forecastIndex(),
+            icon: ChartSpline,
+            mobile: false,
         });
     }
 

@@ -29,6 +29,7 @@ enum UpsellSource: string
     case Billing = 'billing';
     case Api = 'api';
     case Mcp = 'mcp';
+    case Forecast = 'forecast';
 
     /**
      * Where a checkout started from this point sends the user once the plan is

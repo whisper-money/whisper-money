@@ -126,10 +126,13 @@ it('defaults the forecast email preference to on', function () {
     expect($user->setting()->first()->forecast_notify_email)->toBeTrue();
 });
 
-it('adds no route: with nothing to reach, the engine changes nothing for any user', function () {
+it('adds only the read-only forecast page, which answers 404 with the flag off (ForecastPageTest)', function () {
     $forecastRoutes = collect(Route::getRoutes()->getRoutes())
-        ->filter(fn ($route): bool => str_contains($route->uri(), 'forecast') || str_starts_with((string) $route->getName(), 'forecast'));
+        ->filter(fn ($route): bool => str_contains($route->uri(), 'forecast') || str_starts_with((string) $route->getName(), 'forecast'))
+        ->map(fn ($route): string => implode('|', $route->methods()).' '.$route->getName())
+        ->values()
+        ->all();
 
-    expect($forecastRoutes)->toBeEmpty()
+    expect($forecastRoutes)->toBe(['GET|HEAD forecast.index'])
         ->and(Account::factory()->create()->exists)->toBeTrue();
 });

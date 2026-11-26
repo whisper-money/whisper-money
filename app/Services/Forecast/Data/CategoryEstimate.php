@@ -13,6 +13,11 @@ use App\Enums\ForecastEstimateBasis;
  * a budget that fits the category, or the user's own adjustment. In the month
  * the projection starts in it is what is left of it.
  *
+ * `planned` is the month's whole figure before what was spent, `spent` what
+ * the start month already spent (zero in every later month), and
+ * `budgetAmount` this account's share of the budget the figure stands on,
+ * when it stands on one. The page shows them as "spent X of Y".
+ *
  * The forecast page of a later phase reads it; until then only the tests do.
  *
  * @api
@@ -25,6 +30,9 @@ final readonly class CategoryEstimate
         public string $month,
         public int $amount,
         public ForecastEstimateBasis $basis,
+        public ?int $planned = null,
+        public int $spent = 0,
+        public ?int $budgetAmount = null,
     ) {}
 
     public function toMonthlyEstimate(): MonthlyEstimate

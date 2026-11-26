@@ -1,5 +1,6 @@
 <?php
 
+use App\Features\Forecast;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AdminController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Dashboards\DefaultDashboardController;
 use App\Http\Controllers\DashboardSetupDismissalController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\EmailUnsubscribeController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
 use App\Http\Controllers\LoanDetailController;
@@ -62,6 +64,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 Route::get('/', function () {
@@ -337,6 +340,10 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     // Renders the dashboard with the integration-requests drawer opened on top.
     Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');
+    // The cash-flow forecast, behind its flag: 404 without it.
+    Route::middleware(EnsureFeaturesAreActive::using(Forecast::class))->group(function () {
+        Route::get('forecast', [ForecastController::class, 'index'])->name('forecast.index');
+    });
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::patch('accounts/reorder', [AccountController::class, 'reorder'])->name('accounts.reorder');
