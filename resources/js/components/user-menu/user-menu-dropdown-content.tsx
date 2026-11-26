@@ -130,7 +130,7 @@ function Submenu({
 }) {
     return (
         <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-2 [&_svg:not([class*='text-'])]:text-muted-foreground">
+            <DropdownMenuSubTrigger className="gap-2 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground">
                 {icon}
                 {label}
                 {meta && <span className={META_CLASS}>{meta}</span>}
