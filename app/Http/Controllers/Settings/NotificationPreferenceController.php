@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Features\Forecast;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBudgetNotificationPreferencesRequest;
 use App\Http\Requests\Settings\UpdateNotificationPreferencesRequest;
@@ -13,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Pennant\Feature;
 
 class NotificationPreferenceController extends Controller
 {
@@ -35,7 +37,15 @@ class NotificationPreferenceController extends Controller
         'budget_close_to_limit' => 'budget_notify_on_close_to_limit',
         'budget_over_limit' => 'budget_notify_on_over_limit',
         'savings_goal_month_end_reminder' => 'savings_goal_notify_on_month_end_reminder',
+        'forecast_alert_email' => 'forecast_notify_email',
     ];
+
+    /**
+     * Preferences only users with the `Forecast` flag see and can change.
+     *
+     * @var list<string>
+     */
+    public const FORECAST_PREFERENCES = ['forecast_alert_email'];
 
     public function index(Request $request): Response
     {
@@ -72,6 +82,10 @@ class NotificationPreferenceController extends Controller
                 ->notArchived()
                 ->orderBy('name')
                 ->get(['id', 'name', 'notify_on_month_end_reminder']),
+            // Absent with the flag off, so the page renders as it always did.
+            ...(Feature::for($user)->active(Forecast::class) ? [
+                'notifyForecastAlerts' => $user->wantsForecastAlertEmail(),
+            ] : []),
         ]);
     }
 

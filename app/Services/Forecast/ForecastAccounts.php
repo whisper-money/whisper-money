@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\ForecastAccountSetting;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * The accounts a user's forecast in one space covers: every live account of
@@ -22,6 +23,21 @@ class ForecastAccounts
             ->whereIn('account_id', Account::query()->where('user_id', $user->id)->forSpace($spaceId)->select('id'))
             ->get()
             ->keyBy('account_id');
+    }
+
+    /**
+     * The spaces the user holds accounts in: each has a forecast of its own.
+     *
+     * @return SupportCollection<int, string>
+     */
+    public function spaceIds(User $user): SupportCollection
+    {
+        return Account::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('space_id')
+            ->distinct()
+            ->pluck('space_id')
+            ->values();
     }
 
     /**

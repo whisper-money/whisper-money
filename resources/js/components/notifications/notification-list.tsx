@@ -12,6 +12,7 @@ import {
     FileTextIcon,
     RepeatIcon,
     SparklesIcon,
+    TriangleAlertIcon,
     type LucideIcon,
 } from 'lucide-react';
 import { type ReactNode } from 'react';
@@ -108,6 +109,7 @@ const KINDS: Record<
         label: () => __('Monthly savings'),
         icon: RepeatIcon,
     },
+    forecast_alert: { label: () => __('Forecast'), icon: TriangleAlertIcon },
     other: { label: () => __('Notification'), icon: BellIcon },
 };
 

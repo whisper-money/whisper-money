@@ -222,6 +222,7 @@ export type NotificationKind =
     | 'achievement'
     | 'achievements_welcome'
     | 'monthly_savings_goal'
+    | 'forecast_alert'
     | 'other';
 
 /** One row in the bell, already worded for the reader's language. */

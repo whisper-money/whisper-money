@@ -40,7 +40,7 @@ class ForecastAlertEvaluator
         $months = $threshold === null ? [] : $months;
         $strong = collect($months)->filter(fn (array $month): bool => $this->isStrong($month, $threshold))->sortBy('min')->first();
         $softMonths = collect($months)
-            ->filter(fn (array $month): bool => ! $this->isStrong($month, $threshold) && $month['pessimisticMin'] < $threshold)
+            ->filter(fn (array $month): bool => $this->levelOf($month, $threshold) === ForecastAlertLevel::Soft)
             ->map(fn (array $month): string => (string) $month['month'])
             ->values()
             ->all();
@@ -52,6 +52,24 @@ class ForecastAlertEvaluator
             'minDate' => $strong['minDate'] ?? null,
             'softMonths' => $softMonths,
         ];
+    }
+
+    /**
+     * The problem one month is, if any: what the stored alerts are kept by.
+     *
+     * @param  array<string, int|string|null>  $month  A ForecastProjector month.
+     */
+    public function levelOf(array $month, ?int $threshold): ?ForecastAlertLevel
+    {
+        if ($threshold === null) {
+            return null;
+        }
+
+        if ($this->isStrong($month, $threshold)) {
+            return ForecastAlertLevel::Strong;
+        }
+
+        return $month['pessimisticMin'] < $threshold ? ForecastAlertLevel::Soft : null;
     }
 
     /**
