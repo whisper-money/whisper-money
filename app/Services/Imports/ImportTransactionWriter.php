@@ -5,11 +5,13 @@ namespace App\Services\Imports;
 use App\Enums\CategorySource;
 use App\Enums\ImportChunkKind;
 use App\Enums\TransactionSource;
+use App\Jobs\MatchTransactionsToForecast;
 use App\Jobs\ReassignTransactionsToBudgets;
 use App\Models\Account;
 use App\Models\Import;
 use App\Models\ImportChunk;
 use App\Models\Transaction;
+use App\Services\Forecast\ForecastAudience;
 use App\Services\TransactionDuplicateMatcher;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  * what the user had in their previous app. Budgets are assigned once per
  * chunk instead of once per row (`AssignTransactionToBudget` skips imported
  * rows), and without the emails a history of crossed limits would set off.
+ * Forecast occurrences are matched the same way, once per chunk, for an
+ * owner with the `Forecast` flag and a forecast line.
  *
  * A chunk's rows, its removal from the staging table and the running counts
  * are committed together, so a run that stops at its deadline leaves exactly
@@ -46,7 +50,13 @@ class ImportTransactionWriter
     /** @var array{total: int, processed: int, imported: int, duplicates: int, skipped: int} */
     private array $totals = ['total' => 0, 'processed' => 0, 'imported' => 0, 'duplicates' => 0, 'skipped' => 0];
 
-    public function __construct(private TransactionDuplicateMatcher $duplicates) {}
+    /** Whether the import's owner has their transactions matched to the forecast, read once per run. */
+    private ?bool $matchesForecast = null;
+
+    public function __construct(
+        private TransactionDuplicateMatcher $duplicates,
+        private ForecastAudience $forecast,
+    ) {}
 
     /**
      * Write chunks until none is left or the deadline passes.
@@ -87,6 +97,7 @@ class ImportTransactionWriter
         ];
         $this->perAccount = collect($import->stats['per_account'] ?? [])->keyBy('account_id')->all();
         $this->externalIds = $this->duplicateKeys = [];
+        $this->matchesForecast = null;
 
         $import->recordStats(['transactions' => $this->totals]);
     }
@@ -110,6 +121,11 @@ class ImportTransactionWriter
 
         if ($createdIds !== []) {
             ReassignTransactionsToBudgets::dispatch($createdIds, notify: false);
+
+            if ($this->matchesForecast ??= $import->user !== null && $this->forecast->matchesTransactionsOf($import->user)) {
+                // After commit: the chunk's rows only exist once it is.
+                MatchTransactionsToForecast::dispatch($createdIds)->afterCommit();
+            }
         }
 
         $chunk->delete();

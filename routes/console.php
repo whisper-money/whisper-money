@@ -17,6 +17,11 @@ Schedule::command('budgets:generate-periods')->hourly()->withoutOverlapping(60);
 // a month opens once on its (goal, month) key, and closing, the bell notice and
 // the reminder are each claimed on the period, so each goes out once a month.
 Schedule::command('savings-goals:generate-periods')->hourly()->withoutOverlapping(60);
+// Hourly for the same reason: a forecast month opens at each owner's midnight,
+// so its plan is frozen within the hour of it. It also re-matches recent
+// transactions to forecast occurrences. Only users with the Forecast flag are
+// read, and every step is idempotent.
+Schedule::command('forecast:refresh')->hourly()->withoutOverlapping(60);
 // The press account keeps itself alive: every reset re-derives its 12 months of
 // transactions and balances from today, so a journalist who logs in months after
 // the press round still lands on current data. It also provisions the account on
