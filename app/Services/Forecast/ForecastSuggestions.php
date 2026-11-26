@@ -13,10 +13,6 @@ use App\Services\Forecast\Data\ForecastCandidate;
  * review, the yearly ones for the second. A suggestion the user dismissed, or
  * one an existing line of the same account already covers by fingerprint, is
  * not proposed again. Nothing is stored.
- *
- * The review flow of a later phase calls it; until then only the tests do.
- *
- * @api
  */
 class ForecastSuggestions
 {

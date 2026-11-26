@@ -33,7 +33,14 @@ function KpiCard({ children }: { children: React.ReactNode }) {
  * and its likely range, the lowest point, and how much of the spend is
  * concrete rather than estimated.
  */
-export function ForecastKpis({ forecast }: { forecast: ForecastData }) {
+export function ForecastKpis({
+    forecast,
+    onAddYearly,
+}: {
+    forecast: ForecastData;
+    /** Opens the review on its yearly payments. */
+    onAddYearly?: () => void;
+}) {
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
     const editor = useForecastEditor();
@@ -140,7 +147,18 @@ export function ForecastKpis({ forecast }: { forecast: ForecastData }) {
                     />
                 </div>
                 <StatTileDescription>
-                    {__('Add your yearly payments to sharpen it')}
+                    {onAddYearly ? (
+                        <button
+                            type="button"
+                            className="text-left text-foreground underline underline-offset-4 hover:text-foreground/80"
+                            onClick={onAddYearly}
+                            data-test="forecast-add-yearly"
+                        >
+                            {__('Add your yearly payments to sharpen it')}
+                        </button>
+                    ) : (
+                        __('Add your yearly payments to sharpen it')
+                    )}
                 </StatTileDescription>
             </KpiCard>
         </div>

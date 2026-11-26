@@ -7,18 +7,22 @@ import {
     type ForecastData,
     type ForecastGroup,
     type ForecastLine,
+    type ForecastReviewPrompt,
 } from '@/types/forecast';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ForecastPage from './index';
 
-const { visit } = vi.hoisted(() => ({ visit: vi.fn() }));
+const { visit, reload } = vi.hoisted(() => ({
+    visit: vi.fn(),
+    reload: vi.fn(),
+}));
 
 vi.mock('@inertiajs/react', async () => ({
     Head: () => null,
     Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
-    router: { visit },
+    router: { visit, reload, post: vi.fn() },
     usePage: () => ({
         props: {
             pricing: { defaultPlan: 'monthly' },
@@ -36,6 +40,8 @@ vi.mock('@inertiajs/react', async () => ({
         },
     }),
 }));
+
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
 
 vi.mock('@/layouts/app/app-sidebar-layout', () => ({
     default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -241,9 +247,16 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
 function renderPage(
     data: ForecastData,
     projectionInput: ProjectionInput | null = null,
+    reviewPrompt: ForecastReviewPrompt = { hasLines: true },
+    newSuggestionCount: number | undefined = 0,
 ) {
     return render(
-        <ForecastPage forecast={data} projectionInput={projectionInput} />,
+        <ForecastPage
+            forecast={data}
+            projectionInput={projectionInput}
+            reviewPrompt={reviewPrompt}
+            newSuggestionCount={newSuggestionCount}
+        />,
     );
 }
 
@@ -809,5 +822,82 @@ describe('editing the forecast', () => {
         const [url, options] = lastVisit();
         expect(url).toBe('/forecast/items/rent/drift');
         expect(options.method).toBe('post');
+    });
+});
+
+describe('the review on the forecast page', () => {
+    beforeEach(() => {
+        reload.mockClear();
+        window.localStorage.clear();
+    });
+
+    it('opens on its own for a user with no line yet, and asks for it', () => {
+        renderPage(forecast(), null, { hasLines: false }, 3);
+
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).not.toBeNull();
+        expect(reload).toHaveBeenCalledWith({ only: ['review'] });
+        expect(
+            document.querySelector('[data-test="forecast-no-lines"]'),
+        ).toHaveTextContent('Review what we found (3)');
+    });
+
+    it('does not open on its own again once skipped', () => {
+        window.localStorage.setItem('forecast-review-skipped:guest', '1');
+
+        renderPage(forecast(), null, { hasLines: false }, 3);
+
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).toBeNull();
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-start-review"]')!,
+        );
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).not.toBeNull();
+    });
+
+    it('links the new suggestions from the plan once there are lines', () => {
+        renderPage(forecast(), null, { hasLines: true }, 2);
+
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).toBeNull();
+        expect(
+            document.querySelector('[data-test="forecast-no-lines"]'),
+        ).toBeNull();
+
+        const link = document.querySelector(
+            '[data-test="forecast-review-link"]',
+        )!;
+        expect(link).toHaveTextContent('Recurring detected (2 new)');
+
+        fireEvent.click(link);
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).not.toBeNull();
+    });
+
+    it('remembers the review was skipped when closed without saving', () => {
+        renderPage(forecast(), null, { hasLines: false }, 3);
+
+        fireEvent.keyDown(document.activeElement ?? document.body, {
+            key: 'Escape',
+        });
+
+        expect(
+            window.localStorage.getItem('forecast-review-skipped:guest'),
+        ).toBe('1');
+    });
+
+    it('has no link when nothing new was found', () => {
+        renderPage(forecast(), null, { hasLines: true }, 0);
+
+        expect(
+            document.querySelector('[data-test="forecast-review-link"]'),
+        ).toBeNull();
     });
 });

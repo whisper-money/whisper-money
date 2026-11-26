@@ -148,6 +148,17 @@ class ForecastItem extends Model
     }
 
     /**
+     * Whether each occurrence is paid by several transactions: a line the
+     * review merged from several suggestions (three subscriptions as one
+     * line), whose rule recognises any of them, so its rule is an `or` at the
+     * top. Each of those transactions pays a part of the occurrence.
+     */
+    public function takesSeveralPayments(): bool
+    {
+        return is_array($this->match_rules_json) && array_key_exists('or', $this->match_rules_json);
+    }
+
+    /**
      * Whether the line moves money between two accounts, or out of the app.
      */
     public function isTransfer(): bool

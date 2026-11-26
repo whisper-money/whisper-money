@@ -54,6 +54,33 @@ final readonly class ForecastCandidate
     }
 
     /**
+     * What the review names the suggestion by, to keep or dismiss it: two
+     * suggestions can share an identity on different accounts.
+     */
+    public function reviewKey(): string
+    {
+        return $this->kind->value.'|'.$this->accountId.'|'.$this->identity();
+    }
+
+    /**
+     * Whether this and `$other` can be one line in the review: charges of the
+     * same account and direction, on the same schedule within `$windowDays`
+     * of each other, each recognised by its description (so the line can
+     * tell its payments apart), and neither a transfer.
+     */
+    public function canMergeWith(self $other, int $windowDays): bool
+    {
+        $dayGap = abs($this->anchorDay - $other->anchorDay);
+
+        return $this->accountId === $other->accountId
+            && ($this->amount < 0) === ($other->amount < 0)
+            && $this->frequency === $other->frequency
+            && min($dayGap, 31 - $dayGap) <= $windowDays
+            && $this->fingerprint !== null && $other->fingerprint !== null
+            && $this->kind !== ForecastSuggestionKind::Transfer && $other->kind !== ForecastSuggestionKind::Transfer;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array
