@@ -11,7 +11,7 @@ import { type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { PlanBadge } from './plan-badge';
 import {
     type UserMenuChoiceSet,
@@ -22,6 +22,10 @@ import {
 } from './use-user-menu-model';
 import { UserMenuEntryElement, UserMenuEntryMeta } from './user-menu-entry';
 import { UserMenuProgress } from './user-menu-progress';
+import {
+    type LevelDirection,
+    UserMenuSheetLevels,
+} from './user-menu-sheet-levels';
 import { UserMenuSwitch } from './user-menu-switch';
 
 type Level = 'root' | 'settings' | 'appearance' | 'help';
@@ -149,18 +153,8 @@ function ChoiceCard<T extends string>({
  * button, since floating submenus do not work under a thumb.
  */
 export function UserMenuSheet({ open, onOpenChange, ...props }: SheetProps) {
-    const [level, setLevel] = useState<Level>('root');
-
-    const changeOpen = (next: boolean) => {
-        if (!next) {
-            setLevel('root');
-        }
-
-        onOpenChange(next);
-    };
-
     return (
-        <Drawer open={open} onOpenChange={changeOpen}>
+        <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent
                 className="bg-background data-[vaul-drawer-direction=bottom]:max-h-[92vh]"
                 data-testid="user-menu-sheet"
@@ -168,9 +162,7 @@ export function UserMenuSheet({ open, onOpenChange, ...props }: SheetProps) {
                 <DrawerTitle className="sr-only">{__('User menu')}</DrawerTitle>
                 <UserMenuSheetBody
                     {...props}
-                    level={level}
-                    setLevel={setLevel}
-                    onClose={() => changeOpen(false)}
+                    onClose={() => onOpenChange(false)}
                 />
             </DrawerContent>
         </Drawer>
@@ -188,18 +180,15 @@ type SheetProps = {
 /**
  * What the open sheet shows. Its own component so the menu's hooks (theme,
  * chart colours, privacy) only run while the sheet is open, not in the nav
- * bar of every page.
+ * bar of every page; it unmounts once the sheet has closed, so the next
+ * opening starts at the root level.
  */
 function UserMenuSheetBody({
     user,
-    level,
-    setLevel,
     onClose,
     onOpenSupport,
     onOpenIntegrationRequests,
 }: Omit<SheetProps, 'open' | 'onOpenChange'> & {
-    level: Level;
-    setLevel: (level: Level) => void;
     onClose: () => void;
 }) {
     const menu = useUserMenuModel({ onOpenSupport, onOpenIntegrationRequests });
@@ -207,29 +196,40 @@ function UserMenuSheetBody({
         menu.cleanup();
         onClose();
     };
+    const [{ level, from }, setNavigation] = useState<{
+        level: Level;
+        from: Level | null;
+    }>({ level: 'root', from: null });
+    const setLevel = (next: Level) =>
+        setNavigation({ level: next, from: level });
+    const direction: LevelDirection = level === 'root' ? -1 : 1;
     const headingRef = useRef<HTMLHeadingElement>(null);
     const bodyRef = useRef<HTMLDivElement>(null);
-    const previousLevel = useRef<Level>(level);
 
-    // A level swaps the sheet's whole content, so focus follows it: onto the
-    // new heading going in, back onto the row that opened it coming out.
-    useEffect(() => {
-        if (previousLevel.current === level) {
+    // A level swaps the sheet's whole content, so once it has slid in focus
+    // follows it: onto the new heading going in, back onto the row that
+    // opened it coming out.
+    const focusLevel = () => {
+        // Someone already moved on inside the new level: leave focus be.
+        const active = document.activeElement;
+        if (
+            active &&
+            bodyRef.current?.contains(active) &&
+            !active.closest('[inert]')
+        ) {
             return;
         }
 
-        if (level === 'root') {
+        if (level !== 'root') {
+            headingRef.current?.focus();
+        } else if (from) {
             bodyRef.current
                 ?.querySelector<HTMLElement>(
-                    `[data-level="${previousLevel.current}"]`,
+                    `[data-level="${from}"]:not([inert] *)`,
                 )
                 ?.focus();
-        } else {
-            headingRef.current?.focus();
         }
-
-        previousLevel.current = level;
-    }, [level]);
+    };
 
     const levels: {
         id: Exclude<Level, 'root'>;
@@ -252,170 +252,181 @@ function UserMenuSheetBody({
                 {current?.label ?? __('User menu')}
             </DrawerDescription>
             <div ref={bodyRef} className="flex min-h-0 flex-col">
-                {current ? (
-                    <div className="flex flex-col gap-4 overflow-y-auto px-4 pt-2 pb-6">
-                        <div className="flex items-center gap-1">
-                            <button
-                                type="button"
-                                aria-label={__('Back')}
-                                onClick={() => setLevel('root')}
-                                className="flex size-11 items-center justify-center rounded-lg hover:bg-accent"
-                            >
-                                <ChevronLeft className="size-5" />
-                            </button>
-                            <h2
-                                ref={headingRef}
-                                tabIndex={-1}
-                                className="text-[17px] font-semibold outline-none"
-                            >
-                                {current.label}
-                            </h2>
-                        </div>
+                <UserMenuSheetLevels
+                    levelKey={level}
+                    direction={direction}
+                    onEntered={focusLevel}
+                >
+                    {current ? (
+                        <div className="flex flex-col gap-4 px-4 pt-2 pb-6">
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    aria-label={__('Back')}
+                                    onClick={() => setLevel('root')}
+                                    className="flex size-11 items-center justify-center rounded-lg hover:bg-accent"
+                                >
+                                    <ChevronLeft className="size-5" />
+                                </button>
+                                <h2
+                                    ref={headingRef}
+                                    tabIndex={-1}
+                                    className="text-[17px] font-semibold outline-none"
+                                >
+                                    {current.label}
+                                </h2>
+                            </div>
 
-                        {level === 'settings' && (
-                            <GroupCards
-                                groups={menu.settingsGroups}
-                                onNavigate={close}
-                            />
-                        )}
-                        {level === 'help' && (
-                            <GroupCards
-                                groups={menu.helpGroups}
-                                onNavigate={close}
-                            />
-                        )}
-                        {level === 'appearance' && (
-                            <>
-                                <ChoiceCard choices={menu.appearance} />
-                                <ChoiceCard choices={menu.chartScheme} />
-                                <RowCard>
-                                    <EntryRow
-                                        entry={menu.moreAppearance}
-                                        onNavigate={close}
-                                    />
-                                </RowCard>
-                            </>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-4 overflow-y-auto px-4 pt-3 pb-6">
-                        <div className="flex items-center gap-3 px-1 pt-1 text-left text-sm">
-                            <UserInfo user={user} showEmail={true} />
-                            {menu.planLabel && (
-                                <PlanBadge
-                                    label={menu.planLabel}
-                                    isPro={menu.isPro}
+                            {level === 'settings' && (
+                                <GroupCards
+                                    groups={menu.settingsGroups}
+                                    onNavigate={close}
                                 />
                             )}
+                            {level === 'help' && (
+                                <GroupCards
+                                    groups={menu.helpGroups}
+                                    onNavigate={close}
+                                />
+                            )}
+                            {level === 'appearance' && (
+                                <>
+                                    <ChoiceCard choices={menu.appearance} />
+                                    <ChoiceCard choices={menu.chartScheme} />
+                                    <RowCard>
+                                        <EntryRow
+                                            entry={menu.moreAppearance}
+                                            onNavigate={close}
+                                        />
+                                    </RowCard>
+                                </>
+                            )}
                         </div>
-
-                        {menu.achievements && (
-                            <Card size="flush" className="overflow-hidden">
-                                <Link
-                                    href={menu.progressHref}
-                                    prefetch
-                                    onClick={close}
-                                    className="flex px-3.5 py-3 transition-colors hover:bg-accent"
-                                >
-                                    <UserMenuProgress
-                                        achievements={menu.achievements}
-                                        className="text-sm font-medium"
-                                        barClassName="h-1.5"
+                    ) : (
+                        <div className="flex flex-col gap-4 px-4 pt-3 pb-6">
+                            <div className="flex items-center gap-3 px-1 pt-1 text-left text-sm">
+                                <UserInfo user={user} showEmail={true} />
+                                {menu.planLabel && (
+                                    <PlanBadge
+                                        label={menu.planLabel}
+                                        isPro={menu.isPro}
                                     />
-                                </Link>
-                            </Card>
-                        )}
-
-                        <div>
-                            <div className={GROUP_LABEL_CLASS}>
-                                {__('Organize')}
+                                )}
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
-                                {[
-                                    menu.accounts,
-                                    ...menu.organize.slice(0, 3),
-                                ].map((entry) => (
-                                    <Tile
+
+                            {menu.achievements && (
+                                <Card size="flush" className="overflow-hidden">
+                                    <Link
+                                        href={menu.progressHref}
+                                        prefetch
+                                        onClick={close}
+                                        className="flex px-3.5 py-3 transition-colors hover:bg-accent"
+                                    >
+                                        <UserMenuProgress
+                                            achievements={menu.achievements}
+                                            className="text-sm font-medium"
+                                            barClassName="h-1.5"
+                                        />
+                                    </Link>
+                                </Card>
+                            )}
+
+                            <div>
+                                <div className={GROUP_LABEL_CLASS}>
+                                    {__('Organize')}
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[
+                                        menu.accounts,
+                                        ...menu.organize.slice(0, 3),
+                                    ].map((entry) => (
+                                        <Tile
+                                            key={entry.id}
+                                            entry={entry}
+                                            onNavigate={close}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <RowCard>
+                                {menu.organize.slice(3).map((entry) => (
+                                    <EntryRow
                                         key={entry.id}
                                         entry={entry}
                                         onNavigate={close}
                                     />
                                 ))}
-                            </div>
-                        </div>
-
-                        <RowCard>
-                            {menu.organize.slice(3).map((entry) => (
-                                <EntryRow
-                                    key={entry.id}
-                                    entry={entry}
-                                    onNavigate={close}
-                                />
-                            ))}
-                            <button
-                                type="button"
-                                role="switch"
-                                aria-checked={menu.privacy.enabled}
-                                className={ROW_CLASS}
-                                onClick={menu.privacy.toggle}
-                            >
-                                {__('Privacy mode')}
-                                <UserMenuSwitch
-                                    checked={menu.privacy.enabled}
-                                    size="md"
-                                />
-                            </button>
-                            {levels.map((candidate) => (
                                 <button
-                                    key={candidate.id}
                                     type="button"
-                                    data-level={candidate.id}
+                                    role="switch"
+                                    aria-checked={menu.privacy.enabled}
                                     className={ROW_CLASS}
-                                    onClick={() => setLevel(candidate.id)}
+                                    onClick={menu.privacy.toggle}
                                 >
-                                    {candidate.label}
-                                    {candidate.meta && (
-                                        <span className={META_CLASS}>
-                                            {candidate.meta}
-                                        </span>
-                                    )}
-                                    <ChevronRight
-                                        aria-hidden="true"
-                                        className={cn(
-                                            'size-4 text-muted-foreground',
-                                            !candidate.meta && 'ml-auto',
-                                        )}
+                                    {__('Privacy mode')}
+                                    <UserMenuSwitch
+                                        checked={menu.privacy.enabled}
+                                        size="md"
                                     />
                                 </button>
-                            ))}
-                            {menu.admin && (
-                                <EntryRow
-                                    entry={menu.admin}
-                                    onNavigate={close}
-                                />
-                            )}
-                        </RowCard>
+                                {levels.map((candidate) => (
+                                    <button
+                                        key={candidate.id}
+                                        type="button"
+                                        data-level={candidate.id}
+                                        className={ROW_CLASS}
+                                        onClick={() => setLevel(candidate.id)}
+                                    >
+                                        {candidate.label}
+                                        {candidate.meta && (
+                                            <span className={META_CLASS}>
+                                                {candidate.meta}
+                                            </span>
+                                        )}
+                                        <ChevronRight
+                                            aria-hidden="true"
+                                            className={cn(
+                                                'size-4 text-muted-foreground',
+                                                !candidate.meta && 'ml-auto',
+                                            )}
+                                        />
+                                    </button>
+                                ))}
+                                {menu.admin && (
+                                    <EntryRow
+                                        entry={menu.admin}
+                                        onNavigate={close}
+                                    />
+                                )}
+                            </RowCard>
 
-                        <RowCard>
-                            <Link
-                                href={menu.logoutRoute}
-                                as="button"
-                                onClick={() => {
-                                    menu.onLogout();
-                                    close();
-                                }}
-                                className={cn(ROW_CLASS, 'text-destructive')}
-                                data-test="logout-button"
-                            >
-                                {__('Log out')}
-                            </Link>
-                        </RowCard>
+                            <RowCard>
+                                <Link
+                                    href={menu.logoutRoute}
+                                    as="button"
+                                    onClick={() => {
+                                        menu.onLogout();
+                                        close();
+                                    }}
+                                    className={cn(
+                                        ROW_CLASS,
+                                        'text-destructive',
+                                    )}
+                                    data-test="logout-button"
+                                >
+                                    {__('Log out')}
+                                </Link>
+                            </RowCard>
 
-                        <span className="text-center text-xs text-muted-foreground">
-                            {__('Version :version', { version: menu.version })}
-                        </span>
-                    </div>
-                )}
+                            <span className="text-center text-xs text-muted-foreground">
+                                {__('Version :version', {
+                                    version: menu.version,
+                                })}
+                            </span>
+                        </div>
+                    )}
+                </UserMenuSheetLevels>
             </div>
         </>
     );

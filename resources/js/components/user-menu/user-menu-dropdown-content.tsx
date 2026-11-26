@@ -11,6 +11,7 @@ import {
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
+import { cn } from '@/lib/utils';
 import { type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -23,7 +24,13 @@ import {
     Moon,
     Settings,
 } from 'lucide-react';
-import { Fragment, type ReactNode } from 'react';
+import {
+    type AnimationEvent,
+    Fragment,
+    type ReactNode,
+    type RefObject,
+    useRef,
+} from 'react';
 import { PlanBadge } from './plan-badge';
 import {
     type UserMenuChoiceSet,
@@ -39,6 +46,42 @@ const GROUP_LABEL_CLASS =
     'px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase';
 
 const META_CLASS = 'ml-auto text-xs text-muted-foreground tabular-nums';
+
+/**
+ * A submenu grows out of the row that opened it: scaled and slid from that
+ * edge, and it leaves the same way it came. Under reduced motion it only
+ * fades. Radix's transform origin is the fallback until the animation starts
+ * (see pivotOnTrigger).
+ */
+const SUBMENU_MOTION_CLASS = cn(
+    'origin-(--radix-dropdown-menu-content-transform-origin) duration-150 ease-out',
+    'data-[state=closed]:data-[side=left]:slide-out-to-right-2 data-[state=closed]:data-[side=right]:slide-out-to-left-2',
+    'motion-reduce:[--tw-enter-scale:1]! motion-reduce:[--tw-enter-translate-x:0]! motion-reduce:[--tw-exit-scale:1]! motion-reduce:[--tw-exit-translate-x:0]!',
+);
+
+/**
+ * Radix puts the submenu's transform origin at its own corner, which is far
+ * from the row once the submenu has been shifted to fit the viewport. When
+ * an animation starts (the submenu is placed by then) the origin moves to
+ * the middle of the trigger row, on the edge that faces it.
+ */
+function pivotOnTrigger(triggerRef: RefObject<HTMLDivElement | null>) {
+    return (event: AnimationEvent<HTMLDivElement>) => {
+        const content = event.currentTarget;
+        const trigger = triggerRef.current;
+
+        if (!trigger || event.target !== content) {
+            return;
+        }
+
+        const row = trigger.getBoundingClientRect();
+        const box = content.getBoundingClientRect();
+        const edge = content.dataset.side === 'left' ? '100%' : '0';
+        const rowMiddle = row.top + row.height / 2 - box.top;
+
+        content.style.transformOrigin = `${edge} ${rowMiddle}px`;
+    };
+}
 
 function EntryItem({
     entry,
@@ -128,18 +171,24 @@ function Submenu({
     meta?: string;
     children: ReactNode;
 }) {
+    const triggerRef = useRef<HTMLDivElement>(null);
+
     return (
         <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-2 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground">
+            <DropdownMenuSubTrigger
+                ref={triggerRef}
+                className="gap-2 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground"
+            >
                 {icon}
                 {label}
                 {meta && <span className={META_CLASS}>{meta}</span>}
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
                 <DropdownMenuSubContent
-                    className="w-62 rounded-lg"
+                    className={cn('w-62 rounded-lg', SUBMENU_MOTION_CLASS)}
                     aria-label={label}
                     sideOffset={8}
+                    onAnimationStart={pivotOnTrigger(triggerRef)}
                 >
                     {children}
                 </DropdownMenuSubContent>

@@ -1,6 +1,13 @@
 import { NavUser } from '@/components/nav-user';
 import { type User } from '@/types';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -273,6 +280,49 @@ describe('user menu with the Forecast flag on (desktop)', () => {
         ).toHaveAttribute('href', '/settings/accounts');
     });
 
+    it('grows a submenu out of its row and only fades it under reduced motion', () => {
+        setPage({ forecast: true });
+        render(<NavUser />);
+        openDropdown();
+
+        const help = openSubmenu(/^help & community$/i);
+
+        expect(help).toHaveAttribute('data-side', 'right');
+        expect(help).toHaveClass(
+            'origin-(--radix-dropdown-menu-content-transform-origin)',
+            'data-[state=open]:zoom-in-95',
+            'data-[side=right]:slide-in-from-left-2',
+            'data-[state=closed]:data-[side=right]:slide-out-to-left-2',
+            'duration-150',
+            'ease-out',
+            'motion-reduce:[--tw-enter-translate-x:0]!',
+            'motion-reduce:[--tw-enter-scale:1]!',
+        );
+    });
+
+    it('pivots the submenu on the middle of the row that opened it', () => {
+        setPage({ forecast: true });
+        render(<NavUser />);
+        openDropdown();
+
+        const trigger = screen.getByRole('menuitem', {
+            name: /^help & community$/i,
+        });
+        const help = openSubmenu(/^help & community$/i);
+        // Shifted up to fit the viewport: the row sits 140px below its top.
+        vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+            top: 600,
+            height: 32,
+        } as DOMRect);
+        vi.spyOn(help, 'getBoundingClientRect').mockReturnValue({
+            top: 476,
+        } as DOMRect);
+
+        fireEvent.animationStart(help);
+
+        expect(help.style.transformOrigin).toBe('0 140px');
+    });
+
     it('offers a shared account only the settings it can open', () => {
         setPage({ forecast: true, isSharedAccount: true, isDemoAccount: true });
         render(<NavUser />);
@@ -406,7 +456,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
         expect(within(sheet).queryByText('Admin')).toBeNull();
     });
 
-    it('drills into a level and comes back', () => {
+    it('drills into a level and comes back', async () => {
         setPage({ forecast: true, isAdmin: true });
         mobile.value = true;
         render(<NavUser />);
@@ -418,20 +468,114 @@ describe('user menu with the Forecast flag on (phone)', () => {
             within(sheet).getByRole('button', { name: /^settings/i }),
         );
 
-        expect(document.activeElement).toBe(
-            within(sheet).getByRole('heading', { name: 'Settings' }),
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                within(sheet).getByRole('heading', { name: 'Settings' }),
+            ),
         );
         expect(
             within(sheet).getByRole('link', { name: /bank accounts/i }),
         ).toHaveAttribute('href', '/settings/accounts');
-        expect(within(sheet).queryByText('Organize')).toBeNull();
+        await waitFor(() =>
+            expect(within(sheet).queryByText('Organize')).toBeNull(),
+        );
 
         fireEvent.click(within(sheet).getByRole('button', { name: 'Back' }));
 
         expect(within(sheet).getByText('Organize')).toBeInTheDocument();
-        expect(document.activeElement).toBe(
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                within(sheet).getByRole('button', { name: /^settings/i }),
+            ),
+        );
+    });
+
+    function levelPanels(sheet: HTMLElement): HTMLElement[] {
+        return [
+            ...within(sheet).getByTestId('user-menu-sheet-levels').children,
+        ] as HTMLElement[];
+    }
+
+    it('slides the new level in while the current one slides out', async () => {
+        setPage({ forecast: true });
+        mobile.value = true;
+        render(<NavUser />);
+
+        const sheet = openSheet();
+        expect(levelPanels(sheet)).toHaveLength(1);
+
+        fireEvent.click(
             within(sheet).getByRole('button', { name: /^settings/i }),
         );
+
+        // Both levels are on screen while they move; the one leaving can no
+        // longer be focused or read, so there is a single way through.
+        const [leaving, entering] = levelPanels(sheet);
+        expect(leaving).toHaveAttribute('inert');
+        expect(leaving).toHaveAttribute('aria-hidden', 'true');
+        expect(leaving).toHaveTextContent('Organize');
+        expect(entering).not.toHaveAttribute('inert');
+        expect(entering.style.transform).toContain('translateX(100%)');
+        expect(
+            within(sheet).getAllByRole('heading', { name: 'Settings' }),
+        ).toHaveLength(1);
+
+        await waitFor(() => expect(levelPanels(sheet)).toHaveLength(1));
+
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Back' }));
+
+        // Back reverses it: the root comes in from the left.
+        expect(levelPanels(sheet)[1].style.transform).toContain(
+            'translateX(-100%)',
+        );
+        await waitFor(() => expect(levelPanels(sheet)).toHaveLength(1));
+    });
+
+    it('settles on the root when Back is tapped mid-transition', async () => {
+        setPage({ forecast: true });
+        mobile.value = true;
+        render(<NavUser />);
+
+        const sheet = openSheet();
+        fireEvent.click(
+            within(sheet).getByRole('button', { name: /^settings/i }),
+        );
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Back' }));
+
+        await waitFor(() => expect(levelPanels(sheet)).toHaveLength(1));
+        expect(within(sheet).getByText('Organize')).toBeInTheDocument();
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                within(sheet).getByRole('button', { name: /^settings/i }),
+            ),
+        );
+    });
+
+    it('only crossfades the levels under reduced motion', async () => {
+        window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+            matches: query === '(prefers-reduced-motion: reduce)',
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        })) as unknown as typeof window.matchMedia;
+        setPage({ forecast: true });
+        mobile.value = true;
+        render(<NavUser />);
+
+        const sheet = openSheet();
+        fireEvent.click(within(sheet).getByRole('button', { name: /^help/i }));
+
+        const [, entering] = levelPanels(sheet);
+        expect(entering.style.transform).not.toContain('translateX');
+        expect(entering.style.opacity).toBe('0');
+
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                within(sheet).getByRole('heading', {
+                    name: 'Help & community',
+                }),
+            ),
+        );
+        expect(levelPanels(sheet)).toHaveLength(1);
     });
 
     it('marks the current theme in the appearance level', () => {
