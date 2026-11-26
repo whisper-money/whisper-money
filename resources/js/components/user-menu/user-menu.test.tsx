@@ -300,6 +300,29 @@ describe('user menu with the Forecast flag on (desktop)', () => {
         );
     });
 
+    it('pivots the submenu on the middle of the row that opened it', () => {
+        setPage({ forecast: true });
+        render(<NavUser />);
+        openDropdown();
+
+        const trigger = screen.getByRole('menuitem', {
+            name: /^help & community$/i,
+        });
+        const help = openSubmenu(/^help & community$/i);
+        // Shifted up to fit the viewport: the row sits 140px below its top.
+        vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+            top: 600,
+            height: 32,
+        } as DOMRect);
+        vi.spyOn(help, 'getBoundingClientRect').mockReturnValue({
+            top: 476,
+        } as DOMRect);
+
+        fireEvent.animationStart(help);
+
+        expect(help.style.transformOrigin).toBe('0 140px');
+    });
+
     it('offers a shared account only the settings it can open', () => {
         setPage({ forecast: true, isSharedAccount: true, isDemoAccount: true });
         render(<NavUser />);
