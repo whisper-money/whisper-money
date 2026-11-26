@@ -19,6 +19,7 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use App\Services\Banking\TransactionSyncService;
+use App\Services\Forecast\ForecastCalendar;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Database\Eloquent\Collection;
@@ -817,4 +818,62 @@ function bindStripeBillingHistory(
     $stripeClient->invoices = $invoiceService;
     $stripeClient->subscriptions = $subscriptionService;
     app()->bind(StripeClient::class, fn () => $stripeClient);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Forecast history
+|--------------------------------------------------------------------------
+|
+| The forecast learns from a user's past: these book that past on an account,
+| in its own currency, the way a bank would describe it.
+|
+*/
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function forecastCharge(Account $account, string $date, int $amount, string $description, ?Category $category = null, array $attributes = []): Transaction
+{
+    return Transaction::factory()->create([
+        'user_id' => $account->user_id,
+        'account_id' => $account->id,
+        'category_id' => $category?->id,
+        'description' => $description,
+        'transaction_date' => $date,
+        'amount' => $amount,
+        'currency_code' => $account->currency_code,
+        ...$attributes,
+    ]);
+}
+
+/**
+ * The same charge on the same day of each month, from the first date on.
+ *
+ * @param  list<int>|int  $amounts  One per month, or the same every month.
+ * @return list<Transaction>
+ */
+function forecastMonthlyCharges(Account $account, string $firstDate, int $months, array|int $amounts, string|Closure $description, ?Category $category = null, int $stepMonths = 1): array
+{
+    $charges = [];
+
+    for ($index = 0; $index < $months; $index++) {
+        $date = ForecastCalendar::addMonths($firstDate, $index * $stepMonths);
+        $amount = is_array($amounts) ? $amounts[$index] : $amounts;
+        $text = $description instanceof Closure ? $description($index, $date) : $description;
+        $charges[] = forecastCharge($account, $date, $amount, $text, $category);
+    }
+
+    return $charges;
+}
+
+function forecastExpenseCategory(User $user, ?Category $parent = null, ?string $name = null): Category
+{
+    $factory = Category::factory();
+
+    return ($parent !== null ? $factory->childOf($parent) : $factory)->create([
+        'user_id' => $user->id,
+        'type' => CategoryType::Expense,
+        'name' => $name ?? Str::random(10),
+    ]);
 }

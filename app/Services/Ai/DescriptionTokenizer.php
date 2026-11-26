@@ -18,6 +18,25 @@ class DescriptionTokenizer
     private const MIN_TOKEN_LENGTH = 3;
 
     /**
+     * Words that only announce what follows (a reference, a mandate, a
+     * number) and change nothing about who the counterparty is.
+     */
+    private const REFERENCE_MARKERS = [
+        'ref', 'refs', 'referencia', 'reference', 'nref', 'mandato', 'mandate', 'num', 'numero', 'número', 'number', 'txn', 'trx', 'operacion', 'operación',
+    ];
+
+    /**
+     * Month names and their usual abbreviations in the languages the app
+     * speaks, which bank descriptions use to say which period a charge is for.
+     */
+    private const MONTH_NAMES = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre',
+        'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+        'janvier', 'février', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
+        'ene', 'feb', 'abr', 'ago', 'sep', 'sept', 'oct', 'nov', 'dic', 'jan', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'dec', 'fev', 'avr', 'jui', 'aou',
+    ];
+
+    /**
      * Split a description into lowercased word tokens, with digits and
      * punctuation stripped and very short tokens dropped.
      *
@@ -37,6 +56,29 @@ class DescriptionTokenizer
         return array_values(array_filter(
             explode(' ', $value),
             fn (string $token): bool => mb_strlen($token) >= self::MIN_TOKEN_LENGTH,
+        ));
+    }
+
+    /**
+     * The tokens that stay the same from one charge of a counterparty to the
+     * next, in their original order: like tokens(), but every word that
+     * carries a digit (an IBAN, a reference code, a date) goes whole rather
+     * than leaving its letters behind (punctuation splits words first, so
+     * "IBERDROLA-01/12" keeps its name), and so do reference markers and month
+     * names. "RECIBO IBERDROLA REF 88412 01/11" and "Recibo Iberdrola ref.
+     * 90233 - 01/12" both give `recibo iberdrola`.
+     *
+     * @return list<string>
+     */
+    public function stableTokens(string $value): array
+    {
+        $value = preg_replace('/[^\p{L}\p{N}]+/u', ' ', mb_strtolower($value)) ?? $value;
+        $value = preg_replace('/\S*\d\S*/u', ' ', $value) ?? $value;
+        $noise = array_flip([...self::REFERENCE_MARKERS, ...self::MONTH_NAMES]);
+
+        return array_values(array_filter(
+            $this->tokens($value),
+            fn (string $token): bool => ! isset($noise[$token]),
         ));
     }
 
