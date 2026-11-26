@@ -168,7 +168,7 @@ export function ForecastChart({
 
     return (
         <Card className="gap-4" data-test="forecast-chart">
-            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col gap-0.5">
                     <CardTitle>{__('Income, expenses and balance')}</CardTitle>
                     <CardDescription>
@@ -217,7 +217,14 @@ export function ForecastChart({
                             />
                         </defs>
                         <XAxis dataKey="month" hide />
-                        <YAxis hide domain={['auto', 'auto']} />
+                        {/* Bars must stand on zero, or their heights would mislead. */}
+                        <YAxis
+                            hide
+                            domain={[
+                                (dataMin: number) => Math.min(0, dataMin),
+                                'auto',
+                            ]}
+                        />
                         {selectedMonth && (
                             <ReferenceArea
                                 x1={selectedMonth}
@@ -322,7 +329,7 @@ export function ForecastChart({
                                 </span>
                                 <span
                                     className={cn(
-                                        'text-[10px] tabular-nums',
+                                        'hidden text-[10px] tabular-nums sm:inline',
                                         point.min === null
                                             ? 'text-muted-foreground'
                                             : minTone(

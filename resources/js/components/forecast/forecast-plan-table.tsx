@@ -288,7 +288,7 @@ export function ForecastPlanTable({
 
     return (
         <Card className="gap-0 py-0" data-test="forecast-plan">
-            <CardHeader className="flex flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
                 <div className="flex flex-col gap-0.5">
                     <CardTitle>{__('Your plan')}</CardTitle>
                     <CardDescription>
