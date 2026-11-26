@@ -275,6 +275,11 @@ const EVASIONS: [name: string, source: string, code: string][] = [
     ],
     ['escaped global', widget('<div>{\\u0077indow.fetch}</div>'), 'global'],
     [
+        'component in an object shorthand',
+        widget("<div>{String(get({ Bar }, 'Bar'))}</div>"),
+        'component-value',
+    ],
+    [
         'global in an object shorthand',
         widget("<div>{String(get({ window }, 'window'))}</div>"),
         'global',
@@ -703,7 +708,7 @@ describe('validateWidget valid widgets', () => {
         [
             'regex literals and the RegExp constructor',
             widget(
-                "<div>{String(/^foo/i.test(x.a))}{x.a.replace(/-/g, ' ')}{String(x.a.match(/\\d+/))}{String(new RegExp(x.term, 'i').test(x.a))}{String(RegExp('x').source)}{String(new RegExp)}</div>",
+                "<div>{String(/^foo/i.test(x.a))}{x.a.replace(/-/g, ' ')}{String(x.a.match(/\\d+/))}{String(new RegExp(x.term, 'i').test(x.a))}{String(RegExp('x').source)}{String(new RegExp)}{String(RegExp?.('x'))}</div>",
             ),
         ],
         [
