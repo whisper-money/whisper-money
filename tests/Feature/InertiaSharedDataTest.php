@@ -2,6 +2,7 @@
 
 use App\Enums\BankingConnectionStatus;
 use App\Features\BrokerImports;
+use App\Features\Forecast;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\FailedInvoice;
@@ -64,6 +65,7 @@ test('shared feature flags do not include coinbase flag', function () {
         'fullImport' => false,
         'fullImportSettings' => false,
         'brokerImports' => false,
+        'forecast' => false,
     ]);
 });
 
@@ -327,5 +329,37 @@ test('guests never get the broker imports flag, even with the null scope active'
     $this->withoutVite()->get(route('home'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('features.brokerImports', false)
+        );
+});
+
+test('shared feature flags reflect the forecast flag per user', function (bool $active) {
+    $user = User::factory()->onboarded()->create();
+
+    if ($active) {
+        Feature::for($user)->activate(Forecast::class);
+    }
+
+    actingAs($user)->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.forecast', $active)
+        );
+})->with(['active' => true, 'inactive' => false]);
+
+test('the forecast flag is off for a user nobody enabled it for', function () {
+    $other = User::factory()->onboarded()->create();
+    Feature::for($other)->activate(Forecast::class);
+
+    actingAs(User::factory()->onboarded()->create())->withoutVite()->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.forecast', false)
+        );
+});
+
+test('guests never get the forecast flag, even with the null scope active', function () {
+    Feature::for(null)->activate(Forecast::class);
+
+    $this->withoutVite()->get(route('home'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('features.forecast', false)
         );
 });

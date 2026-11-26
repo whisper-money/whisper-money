@@ -1,5 +1,6 @@
 <?php
 
+use App\Features\Forecast;
 use App\Models\User;
 use Laravel\Pennant\Feature;
 use Tests\Support\SampleRolloutFeature;
@@ -31,4 +32,18 @@ test('rejects a feature that does not exist', function () {
     $this->artisan('feature:enable', ['feature' => 'NoSuchFeature', 'target' => 'all'])
         ->expectsOutputToContain("Feature 'NoSuchFeature' not found.")
         ->assertFailed();
+});
+
+test('enables and disables the forecast flag for one user by name', function () {
+    $user = User::factory()->create();
+
+    $this->artisan('feature:enable', ['feature' => 'Forecast', 'target' => $user->email])
+        ->assertSuccessful();
+
+    expect(Feature::for($user)->active(Forecast::class))->toBeTrue();
+
+    $this->artisan('feature:disable', ['feature' => 'Forecast', 'target' => $user->email])
+        ->assertSuccessful();
+
+    expect(Feature::for($user)->active(Forecast::class))->toBeFalse();
 });

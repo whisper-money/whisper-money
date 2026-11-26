@@ -19,6 +19,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import {
+    settingsVisibility,
+    type SettingsVisibility,
+} from '@/lib/settings-visibility';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -35,124 +39,44 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { Menu } from 'lucide-react';
 import { type PropsWithChildren } from 'react';
 
+const navItem = (
+    title: string,
+    href: NavItem['href'],
+): NavItem & { type: 'nav-item' } => ({
+    type: 'nav-item' as const,
+    title,
+    href,
+    icon: null,
+});
+
 const getNavItems = (
-    subscriptionsEnabled: boolean,
-    isDemoAccount: boolean,
-    isSharedAccount: boolean,
-    showFullImport: boolean,
+    visibility: SettingsVisibility,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
-    {
-        type: 'nav-item' as const,
-        title: 'Bank accounts',
-        href: accountsIndex(),
-        icon: null,
-    },
-    {
-        type: 'nav-item' as const,
-        title: 'Connections',
-        href: '/settings/connections',
-        icon: null,
-    },
-    {
-        type: 'nav-item' as const,
-        title: 'Automation rules',
-        href: automationRulesIndex(),
-        icon: null,
-    },
-    {
-        type: 'nav-item' as const,
-        title: 'Categories',
-        href: categoriesIndex(),
-        icon: null,
-    },
-    {
-        type: 'nav-item' as const,
-        title: 'Labels',
-        href: labelsIndex(),
-        icon: null,
-    },
-    // Demo-only: the press account is shared too, but connecting an assistant
-    // to it is the whole reason it exists.
-    ...(!isDemoAccount
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'AI Connector',
-                  href: mcpIndex(),
-                  icon: null,
-              },
-          ]
-        : []),
-    // Both shared accounts: the API refuses them, so they get no tokens.
-    ...(!isSharedAccount
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'API',
-                  href: apiTokensIndex(),
-                  icon: null,
-              },
-          ]
-        : []),
+    navItem('Bank accounts', accountsIndex()),
+    navItem('Connections', '/settings/connections'),
+    navItem('Automation rules', automationRulesIndex()),
+    navItem('Categories', categoriesIndex()),
+    navItem('Labels', labelsIndex()),
+    ...(visibility.aiConnector ? [navItem('AI Connector', mcpIndex())] : []),
+    ...(visibility.api ? [navItem('API', apiTokensIndex())] : []),
     { type: 'divider' },
     {
         type: 'section-header',
         title: 'Profile Settings',
     },
-    ...(!isSharedAccount
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'User account',
-                  href: editAccount(),
-                  icon: null,
-              },
-              {
-                  type: 'nav-item' as const,
-                  title: 'Notifications',
-                  href: notificationsIndex(),
-                  icon: null,
-              },
-          ]
+    ...(visibility.userAccount ? [navItem('User account', editAccount())] : []),
+    ...(visibility.notifications
+        ? [navItem('Notifications', notificationsIndex())]
         : []),
-    ...(subscriptionsEnabled && !isSharedAccount
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'Manage Plan',
-                  href: billing(),
-                  icon: null,
-              },
-          ]
-        : []),
-    {
-        type: 'nav-item' as const,
-        title: 'Appearance',
-        href: editAppearance(),
-        icon: null,
-    },
-    ...(!isSharedAccount
+    ...(visibility.managePlan ? [navItem('Manage Plan', billing())] : []),
+    navItem('Appearance', editAppearance()),
+    ...(visibility.deleteAccount
         ? [
               { type: 'divider' as const },
-              // Kept out of the way on purpose: it is for moving in, not for
-              // every day. Shown while the import window is open, and for as
-              // long as an import can still be undone after it.
-              ...(showFullImport
-                  ? [
-                        {
-                            type: 'nav-item' as const,
-                            title: 'Import from another app',
-                            href: fullImportIndex(),
-                            icon: null,
-                        },
-                    ]
+              ...(visibility.fullImport
+                  ? [navItem('Import from another app', fullImportIndex())]
                   : []),
-              {
-                  type: 'nav-item' as const,
-                  title: 'Delete Account',
-                  href: editDeleteAccount(),
-                  icon: null,
-              },
+              navItem('Delete Account', editDeleteAccount()),
           ]
         : []),
 ];
@@ -232,10 +156,12 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     const currentPath = window.location.pathname;
     const sidebarNavItems = getNavItems(
-        subscriptionsEnabled,
-        isDemoAccount,
-        isSharedAccount,
-        features?.fullImportSettings ?? false,
+        settingsVisibility({
+            subscriptionsEnabled,
+            isDemoAccount,
+            isSharedAccount,
+            showFullImport: features?.fullImportSettings ?? false,
+        }),
     );
 
     const activeNavItem = sidebarNavItems.find(
