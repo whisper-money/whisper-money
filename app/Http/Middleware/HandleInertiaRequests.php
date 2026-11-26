@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AccountType;
 use App\Enums\BankingProvider;
 use App\Features\BrokerImports;
+use App\Features\Forecast;
 use App\Http\Controllers\OnboardingImportLinkController;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
@@ -548,11 +549,12 @@ class HandleInertiaRequests extends Middleware
                 'fullImport' => false,
                 'fullImportSettings' => false,
                 'brokerImports' => false,
+                'forecast' => false,
             ];
         }
 
         // One query for every flag, however many of them get read below.
-        Feature::for($user)->load([BrokerImports::class]);
+        Feature::for($user)->load([BrokerImports::class, Forecast::class]);
 
         return [
             'cashflow' => true,
@@ -564,6 +566,7 @@ class HandleInertiaRequests extends Middleware
             'fullImport' => $user->canUseFullImport(),
             'fullImportSettings' => request()->is('settings', 'settings/*') && $user->canSeeFullImportSettings(),
             'brokerImports' => Feature::for($user)->active(BrokerImports::class),
+            'forecast' => Feature::for($user)->active(Forecast::class),
         ];
     }
 

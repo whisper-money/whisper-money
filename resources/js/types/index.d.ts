@@ -70,6 +70,8 @@ export interface Features {
     fullImportSettings: boolean;
     /** The header import drawer recognises Trade Republic and MyInvestor files. */
     brokerImports: boolean;
+    /** The cash-flow forecast and the reorganised user menu that ships with it. */
+    forecast: boolean;
 }
 
 /** A bank connection that stopped syncing until the user reconnects it. */

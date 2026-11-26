@@ -1,6 +1,5 @@
-import { update as updateChartColorScheme } from '@/actions/App/Http/Controllers/Settings/ChartColorSchemeController';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 
 import AppearanceTabs from '@/components/appearance-tabs';
 import HeadingSmall from '@/components/heading-small';
@@ -11,7 +10,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useChartColorScheme } from '@/hooks/use-chart-color-scheme';
+import {
+    CHART_COLOR_SCHEMES,
+    useChartColorScheme,
+} from '@/hooks/use-chart-color-scheme';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -24,25 +26,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const schemes: { value: ChartColorScheme; label: string }[] = [
-    { value: 'colorful', label: 'Colorful' },
-    { value: 'neutral', label: 'Neutral' },
-    { value: 'blue', label: 'Blue' },
-    { value: 'pink', label: 'Pink' },
-];
-
 export default function Appearance() {
-    const { scheme, updateScheme } = useChartColorScheme();
+    const { scheme, saveScheme } = useChartColorScheme();
 
     const handleSchemeChange = (value: string) => {
-        const newScheme = value as ChartColorScheme;
-        updateScheme(newScheme);
-
-        router.patch(
-            updateChartColorScheme.url(),
-            { chart_color_scheme: newScheme },
-            { preserveScroll: true },
-        );
+        saveScheme(value as ChartColorScheme);
     };
 
     return (
@@ -73,7 +61,7 @@ export default function Appearance() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {schemes.map(({ value, label }) => (
+                            {CHART_COLOR_SCHEMES.map(({ value, label }) => (
                                 <SelectItem key={value} value={value}>
                                     {__(label)}
                                 </SelectItem>

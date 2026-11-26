@@ -1,9 +1,19 @@
+import { update as updateChartColorScheme } from '@/actions/App/Http/Controllers/Settings/ChartColorSchemeController';
 import { readStoredValue, writeStoredValue } from '@/lib/safe-storage';
 import { ChartColorScheme, SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'chart-color-scheme';
+
+/** Every chart theme a reader can pick, with its untranslated label. */
+export const CHART_COLOR_SCHEMES: { value: ChartColorScheme; label: string }[] =
+    [
+        { value: 'colorful', label: 'Colorful' },
+        { value: 'neutral', label: 'Neutral' },
+        { value: 'blue', label: 'Blue' },
+        { value: 'pink', label: 'Pink' },
+    ];
 
 const setCookie = (name: string, value: string, days = 365) => {
     if (typeof document === 'undefined') {
@@ -58,5 +68,19 @@ export function useChartColorScheme() {
         updateScheme(saved || serverScheme || 'colorful');
     }, [serverScheme, updateScheme]);
 
-    return { scheme, updateScheme } as const;
+    /** Applies the theme at once and stores it on the account. */
+    const saveScheme = useCallback(
+        (newScheme: ChartColorScheme) => {
+            updateScheme(newScheme);
+
+            router.patch(
+                updateChartColorScheme.url(),
+                { chart_color_scheme: newScheme },
+                { preserveScroll: true },
+            );
+        },
+        [updateScheme],
+    );
+
+    return { scheme, updateScheme, saveScheme } as const;
 }
