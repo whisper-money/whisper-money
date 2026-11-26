@@ -123,7 +123,7 @@ class EstimateCalculator
                 continue;
             }
 
-            $bucket = $parents[$transaction->category_id] ?? self::OTHER;
+            $bucket = $transaction->category_id === null ? self::OTHER : ($parents[$transaction->category_id] ?? self::OTHER);
             $month = ForecastCalendar::monthKey($transaction->transaction_date->toDateString());
             $spend[$transaction->account_id][$bucket][$month] = ($spend[$transaction->account_id][$bucket][$month] ?? 0) - $transaction->account->shareOfAmount($transaction->amount);
         }
