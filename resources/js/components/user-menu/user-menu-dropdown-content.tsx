@@ -11,6 +11,7 @@ import {
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
+import { cn } from '@/lib/utils';
 import { type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -39,6 +40,17 @@ const GROUP_LABEL_CLASS =
     'px-2 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase';
 
 const META_CLASS = 'ml-auto text-xs text-muted-foreground tabular-nums';
+
+/**
+ * A submenu grows out of the row that opened it: scaled and slid from that
+ * edge (Radix's transform origin points at the trigger), and it leaves the
+ * same way it came. Under reduced motion it only fades.
+ */
+const SUBMENU_MOTION_CLASS = cn(
+    'origin-(--radix-dropdown-menu-content-transform-origin) duration-150 ease-out',
+    'data-[state=closed]:data-[side=left]:slide-out-to-right-2 data-[state=closed]:data-[side=right]:slide-out-to-left-2',
+    'motion-reduce:[--tw-enter-scale:1]! motion-reduce:[--tw-enter-translate-x:0]! motion-reduce:[--tw-exit-scale:1]! motion-reduce:[--tw-exit-translate-x:0]!',
+);
 
 function EntryItem({
     entry,
@@ -137,7 +149,7 @@ function Submenu({
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
                 <DropdownMenuSubContent
-                    className="w-62 rounded-lg"
+                    className={cn('w-62 rounded-lg', SUBMENU_MOTION_CLASS)}
                     aria-label={label}
                     sideOffset={8}
                 >
