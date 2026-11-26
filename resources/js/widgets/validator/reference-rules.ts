@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import {
+    CONSTRUCTOR_ONLY_GLOBALS,
     FORBIDDEN_PROPERTY_NAMES,
     SAFE_GLOBALS,
     SAFE_STATIC_METHODS,
@@ -24,7 +25,23 @@ const COMPUTED_KEY_HINT =
 export function checkReference(
     context: ValidationContext,
     identifier: ts.Identifier,
-    symbol = context.checker.getSymbolAtLocation(identifier),
+): void {
+    checkReferenceTo(
+        context,
+        identifier,
+        context.checker.getSymbolAtLocation(identifier),
+    );
+}
+
+/**
+ * `symbol` is what the name resolves to, `undefined` for a global. It is not
+ * defaulted: the symbol at a shorthand property's name is the property itself,
+ * declared in the widget, so `{ window }` would pass as a local.
+ */
+function checkReferenceTo(
+    context: ValidationContext,
+    identifier: ts.Identifier,
+    symbol: ts.Symbol | undefined,
 ): void {
     const name = identifier.text;
 
@@ -41,6 +58,12 @@ export function checkReference(
     }
 
     if (SAFE_GLOBALS.has(name)) {
+        return;
+    }
+
+    if (CONSTRUCTOR_ONLY_GLOBALS.has(name)) {
+        checkConstructorOnlyReference(context, identifier);
+
         return;
     }
 
@@ -65,6 +88,33 @@ export function checkReference(
             `Only ${[...staticMethods].map((method) => `${name}.${method}`).join(', ')} are available from \`${name}\`.`,
         );
     }
+}
+
+/**
+ * `new RegExp(p, f)` and `RegExp(p)` only: the identifier itself must be what
+ * is called, with no parentheses or casts around it, so it never becomes a
+ * value whose statics could be read.
+ */
+function checkConstructorOnlyReference(
+    context: ValidationContext,
+    identifier: ts.Identifier,
+): void {
+    const parent = identifier.parent;
+
+    if (
+        (ts.isNewExpression(parent) || ts.isCallExpression(parent)) &&
+        parent.expression === identifier
+    ) {
+        return;
+    }
+
+    const name = identifier.text;
+
+    context.report(
+        identifier,
+        'global',
+        `\`${name}\` can only be called as \`new ${name}(pattern, flags)\`: its properties and the constructor itself cannot be used as values. Regex literals like \`/^foo/i\` work too.`,
+    );
 }
 
 /** `get(obj, 'view')`: a literal key `get` would reject at runtime anyway. */
@@ -123,7 +173,7 @@ export function checkShorthandProperty(
     node: ts.ShorthandPropertyAssignment,
 ): void {
     checkPropertyName(context, node.name, node.name.text);
-    checkReference(
+    checkReferenceTo(
         context,
         node.name,
         context.checker.getShorthandAssignmentValueSymbol(node),
@@ -284,5 +334,5 @@ function checkPropertyName(
 }
 
 function unknownGlobalMessage(name: string): string {
-    return `\`${name}\` is not available in widgets. The only globals are ${[...SAFE_GLOBALS].join(', ')}, plus Array.isArray/from and Object.keys/values/entries/fromEntries. Data comes from useWidgetData() and the environment from useWidgetEnv().`;
+    return `\`${name}\` is not available in widgets. The only globals are ${[...SAFE_GLOBALS].join(', ')}, plus Array.isArray/from and Object.keys/values/entries/fromEntries. Regex literals (\`/…/\`) work, and \`RegExp\` is available only as \`new RegExp(pattern, flags)\`. Data comes from useWidgetData() and the environment from useWidgetEnv().`;
 }

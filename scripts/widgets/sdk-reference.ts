@@ -10,6 +10,7 @@
  */
 import {
     COMMON_ATTRIBUTES,
+    CONSTRUCTOR_ONLY_GLOBALS,
     FORBIDDEN_PROPERTY_NAMES,
     HTML_ATTRIBUTES,
     HTML_TAGS,
@@ -56,6 +57,7 @@ export function widgetSdkReference() {
                 list(methods),
             ]),
         ),
+        constructor_only: list(CONSTRUCTOR_ONLY_GLOBALS),
         forbidden_property_names: list(FORBIDDEN_PROPERTY_NAMES),
         get_forbidden_keys: list(GET_FORBIDDEN_KEYS),
         tags: { html: list(HTML_TAGS), svg: list(SVG_TAGS) },

@@ -67,6 +67,18 @@ export const SAFE_STATIC_METHODS: ReadonlyMap<
 ]);
 
 /**
+ * Globals that may only be called or constructed (`new RegExp(term, 'i')`,
+ * `RegExp('x')`), never used as a value or read from. `RegExp` keeps legacy
+ * static accessors shared by the whole realm (`RegExp.input`/`$_`,
+ * `lastMatch`/`$&`, `leftContext`, `$1`…`$9`) that hold the last string any
+ * code on the page matched a regex against, which is host data the widget was
+ * never given. Holding `RegExp` as a value would let it read them later.
+ */
+export const CONSTRUCTOR_ONLY_GLOBALS: ReadonlySet<string> = new Set([
+    'RegExp',
+]);
+
+/**
  * Property names that can never be read, written, destructured or used as a
  * literal key: they lead to prototypes, `Function` or the DOM. `$$typeof`,
  * `_owner` and `_store` are React element internals: with them a widget could

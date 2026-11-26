@@ -143,12 +143,13 @@ describe('widget reference', function () {
         $json = dashboardToolJson(callDashboardTool(User::factory()->create(), GetWidgetSdk::class)->assertOk());
 
         expect($json['rules'])->not->toBeEmpty()
-            ->and(implode("\n", $json['rules']))->toContain('<Amount', 'privacyMode', 'dark:', 'container', 'language', "get(obj, 'target')", 'network')
+            ->and(implode("\n", $json['rules']))->toContain('<Amount', 'privacyMode', 'dark:', 'container', 'language', "get(obj, 'target')", 'network', 'new RegExp(pattern, flags)')
             ->and($json['modules']['@whisper-money/widget-sdk']['values'])->toContain('useWidgetData', 'useWidgetEnv', 'get', 'wm')
             ->and($json['modules']['@whisper-money/widget-sdk']['components'])->toHaveKey('Amount')
             ->and($json['modules']['recharts']['components']['Bar'])->toHaveKey('dataKey')
             ->and($json['modules']['react']['exports'])->toContain('useState')->not->toContain('useRef')
-            ->and($json['globals'])->toContain('Math')->not->toContain('fetch')
+            ->and($json['globals'])->toContain('Math')->not->toContain('fetch', 'RegExp')
+            ->and($json['constructor_only'])->toBe(['RegExp'])
             ->and($json['tags']['html'])->toContain('div')->not->toContain('img')
             ->and($json['forbidden_property_names'])->toContain('constructor', 'target')
             ->and($json['classes']['base'])->toContain('flex')
