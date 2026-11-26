@@ -45,12 +45,12 @@ function lastScheduledDate(item: ExpandableForecastItem, to: string): string {
     let last = to;
 
     for (const override of item.overrides ?? []) {
-        if (override.movedTo && override.occurrenceDate > last) {
+        if (override.movedTo != null && override.occurrenceDate > last) {
             last = override.occurrenceDate;
         }
     }
 
-    return item.endsOn && item.endsOn < last ? item.endsOn : last;
+    return item.endsOn != null && item.endsOn < last ? item.endsOn : last;
 }
 
 function scheduledDates(item: ExpandableForecastItem, until: string): string[] {

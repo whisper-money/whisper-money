@@ -11,7 +11,16 @@ final class ForecastCalendar
 {
     public static function daysInMonth(int $year, int $month): int
     {
-        return cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        if ($month === 2) {
+            return self::isLeapYear($year) ? 29 : 28;
+        }
+
+        return in_array($month, [4, 6, 9, 11], true) ? 30 : 31;
+    }
+
+    public static function isLeapYear(int $year): bool
+    {
+        return ($year % 4 === 0 && $year % 100 !== 0) || $year % 400 === 0;
     }
 
     public static function format(int $year, int $month, int $day): string

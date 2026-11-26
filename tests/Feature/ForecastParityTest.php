@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ForecastFrequency;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\Occurrence;
 use App\Services\Forecast\Data\ProjectionInput;
@@ -52,4 +53,15 @@ it('keeps the mockup scenario figures the design was drawn from', function () {
     expect($current['accountId'])->toBe('current')
         ->and(array_column($current['months'], 'min'))->toBe([-15500, 1200, 20900])
         ->and(array_column($fixture['expected']['projection']['total'], 'transfers'))->toBe([0, 0, 0]);
+});
+
+it('covers every frequency, so a new one cannot drift between the engines unseen', function () {
+    $frequencies = collect(forecastParityFixtures())
+        ->flatMap(fn (array $fixture): array => array_column($fixture[0]['input']['items'], 'frequency'))
+        ->unique()
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($frequencies)->toBe(collect(ForecastFrequency::cases())->pluck('value')->sort()->values()->all());
 });

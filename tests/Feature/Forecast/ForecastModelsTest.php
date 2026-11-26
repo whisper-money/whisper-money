@@ -95,6 +95,16 @@ it('pays each transaction into one forecast occurrence at most', function () {
     expect(fn () => ForecastMatch::factory()->create(['transaction_id' => $match->transaction_id]))->toThrow(QueryException::class);
 });
 
+it('keeps one alert per account and month', function () {
+    $alert = ForecastAlert::factory()->create();
+
+    expect(fn () => ForecastAlert::factory()->soft()->create([
+        'user_id' => $alert->user_id,
+        'account_id' => $alert->account_id,
+        'month' => $alert->month,
+    ]))->toThrow(QueryException::class);
+});
+
 it('removes an account\'s forecast rows with it and frees transfers into it', function () {
     $item = ForecastItem::factory()->transfer()->create();
     $destination = $item->destinationAccount;

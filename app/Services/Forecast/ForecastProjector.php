@@ -2,8 +2,8 @@
 
 namespace App\Services\Forecast;
 
+use App\Services\Forecast\Data\CalendarMonth;
 use App\Services\Forecast\Data\MonthlyEstimate;
-use App\Services\Forecast\Data\MonthSummary;
 use App\Services\Forecast\Data\Occurrence;
 use App\Services\Forecast\Data\ProjectionAccount;
 use App\Services\Forecast\Data\ProjectionInput;
@@ -13,33 +13,38 @@ use App\Services\Forecast\Data\ProjectionInput;
  * sums them into a total, month by month.
  *
  * Each day takes that day's occurrences and an even share of the month's
- * estimated spend; a transfer takes money from one account and gives it to
- * the other, so it leaves the total untouched. An account with a yearly rate
- * grows by a twelfth of it on the close of every whole month it covers (the
- * month the projection starts in is partial, so it does not grow). All in
- * integer minor units, so the TypeScript port in resources/js/lib/forecast/
- * project.ts gives the same figures, which tests/Fixtures/forecast-parity.json
- * checks.
+ * estimated spend (in the start month, what is left of it over the days left);
+ * a transfer takes money from one account and gives it to the other, so it
+ * leaves the total untouched. An account with a yearly rate grows by a twelfth
+ * of it on the close of every whole month it covers (the month the projection
+ * starts in is partial, so it does not grow). All in integer minor units, so
+ * the TypeScript port in resources/js/lib/forecast/project.ts gives the same
+ * figures, which tests/Fixtures/forecast-parity.json checks. Exact while
+ * amounts times 31 (or times a rate in basis points) stay below 2^53.
  */
 final class ForecastProjector
 {
+    private const NO_FLOW = ['income' => 0, 'expenses' => 0, 'transfers' => 0];
+
     /**
      * @return array{accounts: list<array{accountId: string, minimumBalance: int|null, months: list<array<string, int|string|null>>}>, total: list<array<string, int|string|null>>}
      */
     public function project(ProjectionInput $input): array
     {
         $months = $this->months($input->startDate, $input->horizonMonths);
+        $flows = $this->flowsByAccount($input->occurrences);
+        $estimates = $this->estimatesByAccount($input->estimates);
         $perAccount = array_map(
-            fn (ProjectionAccount $account): array => $this->projectAccount($account, $months, $input),
+            fn (ProjectionAccount $account): array => $this->projectAccount($account, $months, $flows[$account->id] ?? [], $estimates[$account->id] ?? []),
             $input->accounts,
         );
 
         return [
             'accounts' => array_map(
-                fn (ProjectionAccount $account, array $summaries): array => [
+                fn (ProjectionAccount $account, array $accumulators): array => [
                     'accountId' => $account->id,
                     'minimumBalance' => $account->minimumBalance,
-                    'months' => $this->toArrays($summaries),
+                    'months' => $this->toArrays($accumulators),
                 ],
                 $input->accounts,
                 $perAccount,
@@ -49,80 +54,70 @@ final class ForecastProjector
     }
 
     /**
-     * @param  list<MonthSummary>  $summaries
+     * @param  list<MonthAccumulator>  $accumulators
      * @return list<array<string, int|string|null>>
      */
-    private function toArrays(array $summaries): array
+    private function toArrays(array $accumulators): array
     {
-        return array_map(fn (MonthSummary $month): array => $month->toArray(), $summaries);
+        return array_map(fn (MonthAccumulator $month): array => $month->toArray(), $accumulators);
     }
 
     /**
-     * @return list<array{key: string, year: int, month: int, firstDay: int, lastDay: int}>
+     * @return list<CalendarMonth>
      */
     private function months(string $startDate, int $horizonMonths): array
     {
         $months = [];
 
         for ($offset = 0; $offset < $horizonMonths; $offset++) {
-            $first = $offset === 0 ? $startDate : ForecastCalendar::monthStart($startDate, $offset);
-            [$year, $month, $day] = ForecastCalendar::parse($first);
-            $months[] = [
-                'key' => ForecastCalendar::monthKey($first),
-                'year' => $year,
-                'month' => $month,
-                'firstDay' => $day,
-                'lastDay' => ForecastCalendar::daysInMonth($year, $month),
-            ];
+            $months[] = CalendarMonth::startingOn($offset === 0 ? $startDate : ForecastCalendar::monthStart($startDate, $offset));
         }
 
         return $months;
     }
 
     /**
-     * @param  list<array{key: string, year: int, month: int, firstDay: int, lastDay: int}>  $months
-     * @return list<MonthSummary>
+     * @param  list<CalendarMonth>  $months
+     * @param  array<string, array{income: int, expenses: int, transfers: int}>  $flows
+     * @param  array<string, int>  $estimates
+     * @return list<MonthAccumulator>
      */
-    private function projectAccount(ProjectionAccount $account, array $months, ProjectionInput $input): array
+    private function projectAccount(ProjectionAccount $account, array $months, array $flows, array $estimates): array
     {
-        $flows = $this->dailyFlows($account->id, $input->occurrences);
-        $estimates = $this->estimatesByMonth($account->id, $input->estimates);
         $balance = $account->openingBalance;
-        $summaries = [];
+        $accumulators = [];
 
         foreach ($months as $month) {
-            $summary = $this->projectMonth($account, $month, $balance, $flows, $estimates[$month['key']] ?? 0);
-            $balance = $summary->close;
-            $summaries[] = $summary;
+            $accumulator = $this->projectMonth($account, $month, $balance, $flows, max($estimates[$month->key] ?? 0, 0));
+            $balance = $accumulator->close;
+            $accumulators[] = $accumulator;
         }
 
-        return $summaries;
+        return $accumulators;
     }
 
     /**
-     * @param  array{key: string, year: int, month: int, firstDay: int, lastDay: int}  $month
      * @param  array<string, array{income: int, expenses: int, transfers: int}>  $flows
      */
-    private function projectMonth(ProjectionAccount $account, array $month, int $balance, array $flows, int $estimate): MonthSummary
+    private function projectMonth(ProjectionAccount $account, CalendarMonth $month, int $balance, array $flows, int $estimate): MonthAccumulator
     {
-        $summary = new MonthSummary($month['key']);
-        $summary->estimated = $estimate;
-        $days = $month['lastDay'] - $month['firstDay'] + 1;
+        $accumulator = new MonthAccumulator($month->key);
+        $accumulator->estimated = $estimate;
 
-        for ($day = $month['firstDay']; $day <= $month['lastDay']; $day++) {
-            $date = ForecastCalendar::format($month['year'], $month['month'], $day);
-            $balance += $summary->addFlow($flows[$date] ?? null);
-            $balance -= $this->estimateShare($estimate, $day - $month['firstDay'] + 1, $days);
+        for ($day = $month->firstDay; $day <= $month->lastDay; $day++) {
+            $date = $month->date($day);
+            $balance += $accumulator->addFlow($flows[$date] ?? null);
+            $balance -= $this->estimateShare($estimate, $day - $month->firstDay + 1, $month->days());
 
-            if ($day === $month['lastDay'] && $month['firstDay'] === 1) {
-                $summary->growth = $this->monthlyGrowth($balance, $account->annualRateBps);
-                $balance += $summary->growth;
+            if ($day === $month->lastDay && $month->isWhole()) {
+                $accumulator->growth = $this->monthlyGrowth($balance, $account->annualRateBps);
+                $balance += $accumulator->growth;
             }
 
-            $summary->observe($date, $balance);
+            $accumulator->observe($date, $balance);
         }
 
-        return $summary;
+        return $accumulator;
     }
 
     /**
@@ -144,22 +139,25 @@ final class ForecastProjector
     }
 
     /**
+     * Each account's concrete flows by day, in one pass: a transfer counts on
+     * both its accounts.
+     *
      * @param  list<Occurrence>  $occurrences
-     * @return array<string, array{income: int, expenses: int, transfers: int}>
+     * @return array<string, array<string, array{income: int, expenses: int, transfers: int}>>
      */
-    private function dailyFlows(string $accountId, array $occurrences): array
+    private function flowsByAccount(array $occurrences): array
     {
         $flows = [];
 
         foreach ($occurrences as $occurrence) {
-            $flows[$occurrence->date] ??= ['income' => 0, 'expenses' => 0, 'transfers' => 0];
+            $flow = $flows[$occurrence->accountId][$occurrence->date] ?? self::NO_FLOW;
+            $flow[$this->flowKind($occurrence)] += $occurrence->isTransfer() ? $occurrence->amount : abs($occurrence->amount);
+            $flows[$occurrence->accountId][$occurrence->date] = $flow;
 
-            if ($occurrence->accountId === $accountId) {
-                $flows[$occurrence->date][$this->flowKind($occurrence)] += $occurrence->isTransfer() ? $occurrence->amount : abs($occurrence->amount);
-            }
-
-            if ($occurrence->destinationAccountId === $accountId) {
-                $flows[$occurrence->date]['transfers'] -= $occurrence->amount;
+            if ($occurrence->destinationAccountId !== null) {
+                $flow = $flows[$occurrence->destinationAccountId][$occurrence->date] ?? self::NO_FLOW;
+                $flow['transfers'] -= $occurrence->amount;
+                $flows[$occurrence->destinationAccountId][$occurrence->date] = $flow;
             }
         }
 
@@ -179,39 +177,40 @@ final class ForecastProjector
     }
 
     /**
+     * Adjustments may lower an estimate, but a month never spends less than
+     * nothing: projectAccount() floors each month's sum at zero.
+     *
      * @param  list<MonthlyEstimate>  $estimates
-     * @return array<string, int>
+     * @return array<string, array<string, int>> Amount by account, then month.
      */
-    private function estimatesByMonth(string $accountId, array $estimates): array
+    private function estimatesByAccount(array $estimates): array
     {
-        $byMonth = [];
+        $byAccount = [];
 
         foreach ($estimates as $estimate) {
-            if ($estimate->accountId === $accountId) {
-                $byMonth[$estimate->month] = ($byMonth[$estimate->month] ?? 0) + $estimate->amount;
-            }
+            $byAccount[$estimate->accountId][$estimate->month] = ($byAccount[$estimate->accountId][$estimate->month] ?? 0) + $estimate->amount;
         }
 
-        return $byMonth;
+        return $byAccount;
     }
 
     /**
-     * @param  list<array{key: string, year: int, month: int, firstDay: int, lastDay: int}>  $months
-     * @param  list<list<MonthSummary>>  $perAccount
-     * @return list<MonthSummary>
+     * @param  list<CalendarMonth>  $months
+     * @param  list<list<MonthAccumulator>>  $perAccount
+     * @return list<MonthAccumulator>
      */
     private function total(array $months, array $perAccount): array
     {
         $totals = [];
 
         foreach ($months as $index => $month) {
-            $total = new MonthSummary($month['key']);
+            $total = new MonthAccumulator($month->key);
             $balances = [];
 
-            foreach ($perAccount as $summaries) {
-                $total->absorbFlows($summaries[$index]);
+            foreach ($perAccount as $accumulators) {
+                $total->absorbFlows($accumulators[$index]);
 
-                foreach ($summaries[$index]->balances as $date => $balance) {
+                foreach ($accumulators[$index]->balances as $date => $balance) {
                     $balances[$date] = ($balances[$date] ?? 0) + $balance;
                 }
             }

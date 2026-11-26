@@ -40,7 +40,7 @@ interface DailyFlow {
     transfers: number;
 }
 
-class MonthSummary {
+class MonthAccumulator {
     min: number | null = null;
     minDate: string | null = null;
     close = 0;
@@ -75,7 +75,7 @@ class MonthSummary {
         return flow.income - flow.expenses + flow.transfers;
     }
 
-    absorbFlows(other: MonthSummary): void {
+    absorbFlows(other: MonthAccumulator): void {
         this.income += other.income;
         this.concreteExpenses += other.concreteExpenses;
         this.transfers += other.transfers;
@@ -121,55 +121,64 @@ function calendarMonths(
     });
 }
 
-function dailyFlows(
+function addFlow(
+    flows: Map<string, Map<string, DailyFlow>>,
     accountId: string,
+    date: string,
+    change: (flow: DailyFlow) => void,
+): void {
+    const byDate = flows.get(accountId) ?? new Map<string, DailyFlow>();
+    const flow = byDate.get(date) ?? { income: 0, expenses: 0, transfers: 0 };
+    change(flow);
+    byDate.set(date, flow);
+    flows.set(accountId, byDate);
+}
+
+/** Each account's concrete flows by day, in one pass: a transfer counts on both its accounts. */
+function flowsByAccount(
     occurrences: ForecastOccurrence[],
-): Map<string, DailyFlow> {
-    const flows = new Map<string, DailyFlow>();
+): Map<string, Map<string, DailyFlow>> {
+    const flows = new Map<string, Map<string, DailyFlow>>();
 
     for (const occurrence of occurrences) {
-        const flow = flows.get(occurrence.date) ?? {
-            income: 0,
-            expenses: 0,
-            transfers: 0,
-        };
-        flows.set(occurrence.date, flow);
-        const isTransfer = occurrence.destinationAccountId !== null;
+        const destination = occurrence.destinationAccountId;
 
-        if (occurrence.accountId === accountId) {
-            if (isTransfer) {
+        addFlow(flows, occurrence.accountId, occurrence.date, (flow) => {
+            if (destination !== null) {
                 flow.transfers += occurrence.amount;
             } else if (occurrence.amount >= 0) {
                 flow.income += occurrence.amount;
             } else {
                 flow.expenses -= occurrence.amount;
             }
-        }
+        });
 
-        if (occurrence.destinationAccountId === accountId) {
-            flow.transfers -= occurrence.amount;
+        if (destination !== null) {
+            addFlow(flows, destination, occurrence.date, (flow) => {
+                flow.transfers -= occurrence.amount;
+            });
         }
     }
 
     return flows;
 }
 
-function estimatesByMonth(
-    accountId: string,
+/** Estimates by account, then month; projectAccount floors each month's sum at zero. */
+function estimatesByAccount(
     estimates: MonthlyEstimate[],
-): Map<string, number> {
-    const byMonth = new Map<string, number>();
+): Map<string, Map<string, number>> {
+    const byAccount = new Map<string, Map<string, number>>();
 
     for (const estimate of estimates) {
-        if (estimate.accountId === accountId) {
-            byMonth.set(
-                estimate.month,
-                (byMonth.get(estimate.month) ?? 0) + estimate.amount,
-            );
-        }
+        const byMonth = byAccount.get(estimate.accountId) ?? new Map();
+        byMonth.set(
+            estimate.month,
+            (byMonth.get(estimate.month) ?? 0) + estimate.amount,
+        );
+        byAccount.set(estimate.accountId, byMonth);
     }
 
-    return byMonth;
+    return byAccount;
 }
 
 /** The `day`-th of `days` even shares of the estimate; the shares add up exactly. */
@@ -186,75 +195,74 @@ function projectMonth(
     openingBalance: number,
     flows: Map<string, DailyFlow>,
     estimate: number,
-): MonthSummary {
-    const summary = new MonthSummary(month.key);
-    summary.estimated = estimate;
+): MonthAccumulator {
+    const accumulator = new MonthAccumulator(month.key);
+    accumulator.estimated = estimate;
     const days = month.lastDay - month.firstDay + 1;
     let balance = openingBalance;
 
     for (let day = month.firstDay; day <= month.lastDay; day++) {
         const date = formatDate(month.year, month.month, day);
-        balance += summary.addFlow(flows.get(date));
+        balance += accumulator.addFlow(flows.get(date));
         balance -= estimateShare(estimate, day - month.firstDay + 1, days);
 
         if (day === month.lastDay && month.firstDay === 1) {
-            summary.growth = intdiv(
+            accumulator.growth = intdiv(
                 balance * (account.annualRateBps ?? 0),
                 120_000,
             );
-            balance += summary.growth;
+            balance += accumulator.growth;
         }
 
-        summary.observe(date, balance);
+        accumulator.observe(date, balance);
     }
 
-    return summary;
+    return accumulator;
 }
 
 function projectAccount(
     account: ProjectionAccount,
     months: CalendarMonth[],
-    input: ProjectionInput,
-): MonthSummary[] {
-    const flows = dailyFlows(account.id, input.occurrences);
-    const estimates = estimatesByMonth(account.id, input.estimates ?? []);
+    flows: Map<string, DailyFlow>,
+    estimates: Map<string, number>,
+): MonthAccumulator[] {
     let balance = account.openingBalance;
 
     return months.map((month) => {
-        const summary = projectMonth(
+        const accumulator = projectMonth(
             account,
             month,
             balance,
             flows,
-            estimates.get(month.key) ?? 0,
+            Math.max(estimates.get(month.key) ?? 0, 0),
         );
-        balance = summary.close;
+        balance = accumulator.close;
 
-        return summary;
+        return accumulator;
     });
 }
 
 function total(
     months: CalendarMonth[],
-    perAccount: MonthSummary[][],
-): MonthSummary[] {
+    perAccount: MonthAccumulator[][],
+): MonthAccumulator[] {
     return months.map((month, index) => {
-        const summary = new MonthSummary(month.key);
+        const accumulator = new MonthAccumulator(month.key);
         const balances = new Map<string, number>();
 
-        for (const summaries of perAccount) {
-            summary.absorbFlows(summaries[index]);
+        for (const accumulators of perAccount) {
+            accumulator.absorbFlows(accumulators[index]);
 
-            for (const [date, balance] of summaries[index].balances) {
+            for (const [date, balance] of accumulators[index].balances) {
                 balances.set(date, (balances.get(date) ?? 0) + balance);
             }
         }
 
         for (const [date, balance] of balances) {
-            summary.observe(date, balance);
+            accumulator.observe(date, balance);
         }
 
-        return summary;
+        return accumulator;
     });
 }
 
@@ -264,8 +272,15 @@ function total(
  */
 export function projectForecast(input: ProjectionInput): Projection {
     const months = calendarMonths(input.startDate, input.horizonMonths);
+    const flows = flowsByAccount(input.occurrences);
+    const estimates = estimatesByAccount(input.estimates ?? []);
     const perAccount = input.accounts.map((account) =>
-        projectAccount(account, months, input),
+        projectAccount(
+            account,
+            months,
+            flows.get(account.id) ?? new Map(),
+            estimates.get(account.id) ?? new Map(),
+        ),
     );
 
     return {

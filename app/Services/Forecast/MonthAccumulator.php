@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Services\Forecast\Data;
+namespace App\Services\Forecast;
 
 /**
- * One projected month of an account, or of all of them, built day by day.
+ * Builds one projected month of an account, or of all of them, day by day;
+ * toArray() is what ForecastProjector returns for it.
  *
  * `min` is the lowest end-of-day balance and `close` the last one. `income`
  * and `expenses` leave transfers out; `expenses` includes the estimated spend,
@@ -11,7 +12,7 @@ namespace App\Services\Forecast\Data;
  * estimate alone (concrete lines have none), 40% of the month's estimate and
  * not carried over, and `pessimisticMin` the minimum less that band.
  */
-final class MonthSummary
+final class MonthAccumulator
 {
     /**
      * The band is BAND_NUMERATOR / BAND_DENOMINATOR (40%) of the estimate.

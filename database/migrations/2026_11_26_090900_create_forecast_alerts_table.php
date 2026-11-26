@@ -9,6 +9,8 @@ return new class extends Migration
     /**
      * A low-balance problem the forecast found in an account's month. It is
      * kept so the email about it goes out once, and closed when it goes away.
+     * One row per account and month: a soft alert turning strong, or one that
+     * comes back after being resolved, updates it instead of adding another.
      */
     public function up(): void
     {
@@ -24,7 +26,7 @@ return new class extends Migration
             $table->timestamp('resolved_at')->nullable();
             $table->timestamps();
 
-            $table->index(['account_id', 'month']);
+            $table->unique(['account_id', 'month']);
         });
     }
 
