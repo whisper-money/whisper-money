@@ -1,3 +1,5 @@
+import { useForecastEditor } from '@/components/forecast/forecast-editor';
+import { suggestedTransfer } from '@/components/forecast/forecast-plan-table';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -136,14 +138,48 @@ function StrongAlert({ forecast, onShowMonth }: ForecastAlertsProps) {
                     </AlertDescription>
                 </div>
             </div>
-            <Button
-                variant="outline"
-                className="border-destructive/30 bg-background text-destructive hover:text-destructive"
-                onClick={() => onShowMonth(alert.month as string)}
-            >
-                {__('See :month in the plan', { month })}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+                <Button
+                    variant="outline"
+                    className="border-destructive/30 bg-background text-destructive hover:text-destructive"
+                    onClick={() => onShowMonth(alert.month as string)}
+                >
+                    {__('See :month in the plan', { month })}
+                </Button>
+                <PlanTransferButton forecast={forecast} />
+            </div>
         </Alert>
+    );
+}
+
+/** "Planificar traspaso de 500 € desde Ahorro": the suggested transfer, prefilled. */
+function PlanTransferButton({ forecast }: { forecast: ForecastData }) {
+    const editor = useForecastEditor();
+    const { formatAmount } = useFormatAmount();
+    const transfer = forecast.alert.transfer;
+    const from = forecast.accounts.find(
+        (account) => account.id === transfer?.fromAccountId,
+    );
+
+    if (transfer === null || from === undefined || editor === null) {
+        return null;
+    }
+
+    return (
+        <Button
+            variant="destructive"
+            onClick={() =>
+                editor.open(suggestedTransfer(transfer, forecast.account.id))
+            }
+            data-test="forecast-plan-transfer"
+        >
+            {__('Plan a transfer of :amount from :account', {
+                amount: formatAmount(transfer.amount, forecast.currencyCode, {
+                    fractionDigits: 0,
+                }),
+                account: from.name,
+            })}
+        </Button>
     );
 }
 

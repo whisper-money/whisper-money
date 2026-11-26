@@ -193,8 +193,8 @@ describe('the account shown', function () {
                 ->where('forecast.alert.minDate', '2027-04-10')
                 ->where('forecast.alert.causes', [['name' => 'Car insurance', 'amount' => 700000]])
                 ->where('forecast.accounts', [
-                    ['id' => $this->checking->id, 'name' => 'Checking', 'hasAlert' => true],
-                    ['id' => $this->savings->id, 'name' => 'Savings', 'hasAlert' => false],
+                    ['id' => $this->checking->id, 'name' => 'Checking', 'type' => 'checking', 'currencyCode' => 'EUR', 'hasAlert' => true],
+                    ['id' => $this->savings->id, 'name' => 'Savings', 'type' => 'savings', 'currencyCode' => 'EUR', 'hasAlert' => false],
                 ]));
     });
 

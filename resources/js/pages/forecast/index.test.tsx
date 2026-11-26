@@ -1,4 +1,8 @@
-import { type ProjectedMonth } from '@/lib/forecast/types';
+import { accountMonths, withLine } from '@/lib/forecast/edits';
+import {
+    type ProjectedMonth,
+    type ProjectionInput,
+} from '@/lib/forecast/types';
 import {
     type ForecastData,
     type ForecastGroup,
@@ -9,10 +13,28 @@ import { type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ForecastPage from './index';
 
+const { visit } = vi.hoisted(() => ({ visit: vi.fn() }));
+
 vi.mock('@inertiajs/react', async () => ({
     Head: () => null,
     Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
-    usePage: () => ({ props: { pricing: { defaultPlan: 'monthly' } } }),
+    router: { visit },
+    usePage: () => ({
+        props: {
+            pricing: { defaultPlan: 'monthly' },
+            categories: [
+                {
+                    id: 'home',
+                    name: 'Home',
+                    icon: 'House',
+                    color: 'blue',
+                    type: 'expense',
+                    cashflow_direction: 'out',
+                    parent_id: null,
+                },
+            ],
+        },
+    }),
 }));
 
 vi.mock('@/layouts/app/app-sidebar-layout', () => ({
@@ -80,6 +102,24 @@ function line(overrides: Partial<ForecastLine>): ForecastLine {
             date: '2026-11-05',
             status: 'matched',
         },
+        accountId: 'checking',
+        categoryId: 'home',
+        definition: {
+            id: overrides.id ?? 'rent',
+            accountId: 'checking',
+            destinationAccountId: null,
+            frequency: 'monthly',
+            anchorDate: '2026-01-05',
+            endsOn: null,
+            versions: [{ effectiveFrom: '2026-01-05', amount: -190000 }],
+            overrides: [],
+        },
+        occurrenceDates: {},
+        matchText: null,
+        amountTolerance: 0,
+        dateWindowDays: 3,
+        payments: [],
+        drift: null,
         ...overrides,
     };
 }
@@ -124,11 +164,24 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
             type: 'checking',
             currencyCode: 'EUR',
             minimumBalance: null,
+            annualRateBps: null,
             alertThreshold: 0,
         },
         accounts: [
-            { id: 'checking', name: 'Checking', hasAlert: true },
-            { id: 'savings', name: 'Savings', hasAlert: false },
+            {
+                id: 'checking',
+                name: 'Checking',
+                type: 'checking',
+                currencyCode: 'EUR',
+                hasAlert: true,
+            },
+            {
+                id: 'savings',
+                name: 'Savings',
+                type: 'savings',
+                currencyCode: 'EUR',
+                hasAlert: false,
+            },
         ],
         months: [
             ...MONTHS.map((month, index) => ({
@@ -171,6 +224,7 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
             minDate: '2027-04-10',
             softMonths: [],
             causes: [{ name: 'Car insurance', amount: 700000 }],
+            transfer: null,
         },
         lockedAlertCount: null,
         kpis: {
@@ -184,8 +238,13 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
     };
 }
 
-function renderPage(data: ForecastData) {
-    return render(<ForecastPage forecast={data} projectionInput={null} />);
+function renderPage(
+    data: ForecastData,
+    projectionInput: ProjectionInput | null = null,
+) {
+    return render(
+        <ForecastPage forecast={data} projectionInput={projectionInput} />,
+    );
 }
 
 function selectedColumn(): string | null {
@@ -289,6 +348,7 @@ describe('the forecast page', () => {
                     minDate: null,
                     softMonths: [],
                     causes: [],
+                    transfer: null,
                 },
             }),
         );
@@ -325,6 +385,7 @@ describe('the forecast page', () => {
                     minDate: null,
                     softMonths: [],
                     causes: [],
+                    transfer: null,
                 },
             }),
         );
@@ -355,6 +416,7 @@ describe('the forecast page without Pro', () => {
             minDate: null,
             softMonths: [],
             causes: [],
+            transfer: null,
         },
         plan: {
             income: [],
@@ -418,5 +480,328 @@ describe('the forecast page without Pro', () => {
                 '[data-test="forecast-chart-month-2027-03"]',
             ),
         ).toBeDisabled();
+    });
+});
+
+describe('editing the forecast', () => {
+    /** The engine's input for the fixture: rent, salary and a yearly insurance on checking. */
+    function editingInput(): ProjectionInput {
+        const base: ProjectionInput = {
+            accounts: [
+                { id: 'checking', openingBalance: 100000 },
+                { id: 'savings', openingBalance: 900000 },
+            ],
+            occurrences: [],
+            estimates: [],
+            startDate: '2026-11-26',
+            horizonMonths: 7,
+        };
+        const rent = forecast().plan.expenses[0].items[0].definition;
+
+        return withLine(
+            withLine(withLine(base, 'rent', [rent]), 'salary', [
+                {
+                    ...rent,
+                    id: 'salary',
+                    anchorDate: '2026-01-01',
+                    versions: [{ effectiveFrom: '2026-01-01', amount: 300000 }],
+                },
+            ]),
+            'insurance',
+            [
+                {
+                    ...rent,
+                    id: 'insurance',
+                    frequency: 'yearly',
+                    anchorDate: '2027-04-03',
+                    versions: [
+                        { effectiveFrom: '2027-04-03', amount: -705000 },
+                    ],
+                },
+            ],
+        );
+    }
+
+    function editable(overrides: Partial<ForecastData> = {}): ForecastData {
+        const base = forecast(overrides);
+        const [rent, insurance] = base.plan.expenses[0].items;
+
+        return {
+            ...base,
+            projection: accountMonths(editingInput(), 'checking'),
+            plan: {
+                ...base.plan,
+                expenses: [
+                    {
+                        ...base.plan.expenses[0],
+                        items: [
+                            {
+                                ...rent,
+                                occurrenceDates: Object.fromEntries(
+                                    [...MONTHS, '2027-05'].map((month) => [
+                                        month,
+                                        `${month}-05`,
+                                    ]),
+                                ),
+                                drift: { amount: -201000, from: '2026-12-05' },
+                            },
+                            {
+                                ...insurance,
+                                definition: {
+                                    ...insurance.definition,
+                                    id: 'insurance',
+                                    frequency: 'yearly',
+                                    anchorDate: '2027-04-03',
+                                },
+                                occurrenceDates: { '2027-04': '2027-04-03' },
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+    }
+
+    function lastVisit() {
+        return visit.mock.calls.at(-1) as [
+            string,
+            {
+                method: string;
+                data: Record<string, unknown>;
+                only: string[];
+                optimistic: (props: unknown) => {
+                    forecast: ForecastData;
+                    projectionInput: ProjectionInput;
+                };
+            },
+        ];
+    }
+
+    function sheet(test: string): HTMLElement {
+        return document.querySelector(`[data-test="${test}"]`) as HTMLElement;
+    }
+
+    it('opens the line of a month, shows what the change does and saves it optimistically', () => {
+        visit.mockClear();
+        const data = editable();
+        renderPage(data, editingInput());
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-cell-line:rent-2027-03"]',
+            )!,
+        );
+
+        const edit = sheet('forecast-line-sheet');
+        expect(edit).toHaveTextContent('Rent · March 2027');
+        expect(edit).toHaveTextContent('Before: €1900');
+        expect(edit).toHaveTextContent('March 2027 onwards');
+
+        fireEvent.change(within(edit).getByLabelText('Amount'), {
+            target: { value: '2000' },
+        });
+        expect(within(edit).getByRole('status')).toHaveTextContent(
+            'With this change, the minimum of April drops from €-550 to €-750.',
+        );
+
+        fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+
+        const [url, options] = lastVisit();
+        expect(url).toBe('/forecast/items/rent');
+        expect(options.method).toBe('patch');
+        expect(options.only).toEqual(['forecast', 'projectionInput']);
+        expect(options.data).toMatchObject({
+            scope: 'from_here',
+            occurrence_date: '2027-03-05',
+            amount: 200000,
+        });
+
+        const optimistic = options.optimistic({
+            forecast: data,
+            projectionInput: editingInput(),
+        });
+        expect(optimistic.forecast.alert).toMatchObject({
+            level: 'strong',
+            month: '2027-04',
+            min: -75000,
+        });
+        expect(
+            optimistic.forecast.plan.expenses[0].items[0].amounts,
+        ).toMatchObject({ '2027-02': -190000, '2027-03': -200000 });
+    });
+
+    it('stops forecasting a line', () => {
+        visit.mockClear();
+        renderPage(editable(), editingInput());
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-cell-line:insurance-2027-04"]',
+            )!,
+        );
+        fireEvent.click(
+            within(sheet('forecast-line-sheet')).getByRole('button', {
+                name: 'Stop forecasting it',
+            }),
+        );
+
+        const [url, options] = lastVisit();
+        expect(url).toBe('/forecast/items/insurance');
+        expect(options.method).toBe('delete');
+        expect(
+            options.optimistic({
+                forecast: editable(),
+                projectionInput: editingInput(),
+            }).forecast.alert.level,
+        ).toBe('ok');
+    });
+
+    it('opens the suggested transfer from the warning, prefilled, with before and after', () => {
+        visit.mockClear();
+        const transfer = {
+            fromAccountId: 'savings',
+            amount: 60000,
+            date: '2027-04-01',
+            month: '2027-04',
+        };
+        const data = editable();
+        renderPage(
+            { ...data, alert: { ...data.alert, transfer } },
+            editingInput(),
+        );
+
+        expect(
+            document.querySelector(
+                '[data-test="forecast-cell-suggestion:transfer-2027-04"]',
+            ),
+        ).toHaveTextContent('+600?');
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Plan a transfer of €600 from Savings',
+            }),
+        );
+
+        const add = sheet('forecast-add-sheet');
+        expect(
+            within(add).getByRole('radio', { name: 'Transfer' }),
+        ).toHaveAttribute('aria-checked', 'true');
+        expect(sheet('forecast-before-after')).toHaveTextContent(
+            'This is how April looks',
+        );
+        expect(sheet('forecast-before-after')).toHaveTextContent(
+            'Checking · min.€-550→€50',
+        );
+        expect(sheet('forecast-before-after')).toHaveTextContent(
+            'Total of your accounts',
+        );
+
+        fireEvent.click(
+            within(add).getByRole('button', { name: 'Add transfer' }),
+        );
+
+        const [url, options] = lastVisit();
+        expect(url).toBe('/forecast/items');
+        expect(options.method).toBe('post');
+        expect(options.data).toMatchObject({
+            type: 'transfer',
+            account_id: 'savings',
+            destination_account_id: 'checking',
+            destination_external: false,
+            amount: 60000,
+            date: '2027-04-01',
+            frequency: 'once',
+        });
+    });
+
+    it('only opens the months that can still change', () => {
+        renderPage(editable(), editingInput());
+
+        expect(
+            document.querySelector(
+                '[data-test="forecast-cell-line:rent-2026-11"]',
+            ),
+        ).toBeNull();
+        expect(
+            document.querySelector(
+                '[data-test="forecast-cell-line:insurance-2027-03"]',
+            ),
+        ).toBeNull();
+    });
+
+    it('opens nothing without the projection input', () => {
+        renderPage(editable());
+
+        expect(
+            document.querySelector('[data-test^="forecast-cell-"]'),
+        ).toBeNull();
+        expect(
+            document.querySelector('[data-test="forecast-add"]'),
+        ).toBeDisabled();
+    });
+
+    it('adds a line in a category, adjusts an estimate and changes the wanted minimum', () => {
+        visit.mockClear();
+        renderPage(editable(), editingInput());
+
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: '+ Add something concrete in Home',
+            }),
+        );
+        expect(
+            within(sheet('forecast-add-sheet')).getByRole('radio', {
+                name: 'Expense',
+            }),
+        ).toHaveAttribute('aria-checked', 'true');
+        fireEvent.click(
+            within(sheet('forecast-add-sheet')).getByRole('button', {
+                name: 'Cancel',
+            }),
+        );
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-cell-estimate:home-2027-01"]',
+            )!,
+        );
+        const estimate = sheet('forecast-estimate-sheet');
+        expect(estimate).toHaveTextContent(
+            'Estimated rest of Home · January 2027',
+        );
+        fireEvent.change(
+            within(estimate).getByLabelText('What you expect to spend'),
+            {
+                target: { value: '100' },
+            },
+        );
+        fireEvent.click(within(estimate).getByRole('button', { name: 'Save' }));
+        expect(lastVisit()[1].data).toEqual({
+            account_id: 'checking',
+            category_id: 'home',
+            month: '2027-01',
+            amount: 10000,
+            scope: 'from_here',
+        });
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-change-minimum"]')!,
+        );
+        expect(sheet('forecast-account-sheet')).toHaveTextContent(
+            'Include this account in the forecast',
+        );
+    });
+
+    it("accepts the update a line's last payments suggest", () => {
+        visit.mockClear();
+        renderPage(editable(), editingInput());
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-drift-rent"]')!,
+        );
+
+        const [url, options] = lastVisit();
+        expect(url).toBe('/forecast/items/rent/drift');
+        expect(options.method).toBe('post');
     });
 });

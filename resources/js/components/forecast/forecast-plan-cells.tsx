@@ -1,3 +1,4 @@
+import { useForecastEditor } from '@/components/forecast/forecast-editor';
 import { Badge } from '@/components/ui/badge';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -6,6 +7,7 @@ import {
     dayOf,
     lineKindLabel,
     lineOrigin,
+    monthLongName,
 } from '@/lib/forecast/format';
 import {
     groupCurrentTotal,
@@ -123,7 +125,51 @@ export function lineName(line: ForecastLine): string {
     return `${arrow} ${line.counterpartyName ?? line.name}`;
 }
 
-export function LineHeader({ line }: { line: ForecastLine }) {
+/** "Tu alquiler ahora es de 950 €. ¿Actualizar desde diciembre?", accepted in one tap. */
+function DriftSuggestion({
+    line,
+    currencyCode,
+}: {
+    line: ForecastLine;
+    currencyCode: string;
+}) {
+    const locale = useLocale();
+    const editor = useForecastEditor();
+    const { formatAmount } = useFormatAmount();
+
+    if (line.drift === null || editor === null) {
+        return null;
+    }
+
+    return (
+        <button
+            type="button"
+            className="max-w-[230px] text-left text-[11px] text-warning underline-offset-4 hover:underline"
+            onClick={() => editor.acceptDrift(line)}
+            data-test={`forecast-drift-${line.id}`}
+        >
+            {__('Your :name is now :amount. Update from :month?', {
+                name: line.name.toLocaleLowerCase(locale),
+                amount: formatAmount(
+                    Math.abs(line.drift.amount),
+                    currencyCode,
+                    {
+                        fractionDigits: 0,
+                    },
+                ),
+                month: monthLongName(line.drift.from.slice(0, 7), locale),
+            })}
+        </button>
+    );
+}
+
+export function LineHeader({
+    line,
+    currencyCode,
+}: {
+    line: ForecastLine;
+    currencyCode: string;
+}) {
     const locale = useLocale();
 
     return (
@@ -140,6 +186,7 @@ export function LineHeader({ line }: { line: ForecastLine }) {
                     )}
                 </span>
             </span>
+            <DriftSuggestion line={line} currencyCode={currencyCode} />
         </span>
     );
 }

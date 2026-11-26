@@ -1,3 +1,4 @@
+import { useForecastEditor } from '@/components/forecast/forecast-editor';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -35,6 +36,7 @@ function KpiCard({ children }: { children: React.ReactNode }) {
 export function ForecastKpis({ forecast }: { forecast: ForecastData }) {
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
+    const editor = useForecastEditor();
     const { kpis, currencyCode, account } = forecast;
     const share = kpis.concreteShare ?? 0;
     const format = (amount: number) =>
@@ -61,6 +63,19 @@ export function ForecastKpis({ forecast }: { forecast: ForecastData }) {
                         : __('Wanted minimum :amount', {
                               amount: format(account.minimumBalance),
                           })}
+                    {editor && (
+                        <>
+                            {' · '}
+                            <button
+                                type="button"
+                                className="underline underline-offset-4 hover:text-foreground"
+                                onClick={() => editor.open({ kind: 'account' })}
+                                data-test="forecast-change-minimum"
+                            >
+                                {__('change')}
+                            </button>
+                        </>
+                    )}
                 </StatTileDescription>
             </KpiCard>
             <KpiCard>

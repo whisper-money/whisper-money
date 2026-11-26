@@ -3,13 +3,15 @@ import {
     type ForecastGroup,
     type ForecastLine,
     type ForecastPlan,
+    type ForecastTransferSuggestion,
 } from '@/types/forecast';
 
 /**
  * The rows of the forecast plan table, as a tree TanStack Table expands
  * through `subRows`: a section heading, then each parent category with its
  * concrete lines, its estimated rest and the "add something concrete" link
- * under it, then the transfers, and the minimum and closing balance rows.
+ * under it, then the transfers (and the one the warning suggests), and the
+ * minimum and closing balance rows.
  */
 export type PlanSection = 'income' | 'expenses' | 'transfers';
 
@@ -27,9 +29,19 @@ export type PlanRow =
           type: 'estimate';
           id: string;
           estimate: ForecastEstimate;
-          groupName: string | null;
+          group: ForecastGroup;
       }
-    | { type: 'add'; id: string; groupName: string | null }
+    | {
+          type: 'add';
+          id: string;
+          section: 'income' | 'expenses';
+          group: ForecastGroup;
+      }
+    | {
+          type: 'suggestion';
+          id: string;
+          suggestion: ForecastTransferSuggestion;
+      }
     | { type: 'summary'; id: string; summary: 'minimum' | 'close' };
 
 /** What a group adds up to in the month in progress. */
@@ -59,15 +71,11 @@ function groupRow(
             type: 'estimate',
             id: `estimate:${group.key}`,
             estimate: group.estimate,
-            groupName: group.name,
+            group,
         });
     }
 
-    subRows.push({
-        type: 'add',
-        id: `add:${group.key}`,
-        groupName: group.name,
-    });
+    subRows.push({ type: 'add', id: `add:${group.key}`, section, group });
 
     return {
         type: 'group',
@@ -78,7 +86,10 @@ function groupRow(
     };
 }
 
-export function buildPlanRows(plan: ForecastPlan): PlanRow[] {
+export function buildPlanRows(
+    plan: ForecastPlan,
+    suggestion: ForecastTransferSuggestion | null = null,
+): PlanRow[] {
     const rows: PlanRow[] = [];
 
     if (plan.income.length > 0) {
@@ -93,7 +104,7 @@ export function buildPlanRows(plan: ForecastPlan): PlanRow[] {
     });
     rows.push(...plan.expenses.map((group) => groupRow(group, 'expenses')));
 
-    if (plan.transfers.length > 0) {
+    if (plan.transfers.length > 0 || suggestion !== null) {
         rows.push({
             type: 'section',
             id: 'section:transfers',
@@ -108,6 +119,14 @@ export function buildPlanRows(plan: ForecastPlan): PlanRow[] {
                 }),
             ),
         );
+
+        if (suggestion !== null) {
+            rows.push({
+                type: 'suggestion',
+                id: 'suggestion:transfer',
+                suggestion,
+            });
+        }
     }
 
     rows.push({ type: 'summary', id: 'summary:minimum', summary: 'minimum' });

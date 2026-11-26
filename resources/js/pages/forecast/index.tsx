@@ -3,6 +3,10 @@ import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastC
 import { ForecastAccountTabs } from '@/components/forecast/forecast-account-tabs';
 import { ForecastAlerts } from '@/components/forecast/forecast-alerts';
 import { ForecastChart } from '@/components/forecast/forecast-chart';
+import {
+    ForecastEditorProvider,
+    useForecastEditor,
+} from '@/components/forecast/forecast-editor';
 import { ForecastHorizonPicker } from '@/components/forecast/forecast-horizon-picker';
 import { ForecastKpis } from '@/components/forecast/forecast-kpis';
 import { ForecastPlanTable } from '@/components/forecast/forecast-plan-table';
@@ -20,7 +24,7 @@ import { type BreadcrumbItem } from '@/types';
 import { type ForecastData, type ForecastPageProps } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { Head, Link } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 
 /** The month picked by default: the one with the problem, else the next one. */
 function defaultMonth(forecast: ForecastData): string | null {
@@ -32,6 +36,21 @@ function defaultMonth(forecast: ForecastData): string | null {
         forecast.months.find((column) => column.status === 'future')?.month ??
         forecast.months[0]?.month ??
         null
+    );
+}
+
+/** The header's "Add to the forecast", which opens the add sheet once there is an account. */
+function AddButton() {
+    const editor = useForecastEditor();
+
+    return (
+        <Button
+            disabled={editor === null}
+            onClick={() => editor?.open({ kind: 'add' })}
+            data-test="forecast-add"
+        >
+            {__('Add to the forecast')}
+        </Button>
     );
 }
 
@@ -81,11 +100,34 @@ function ForecastContent({ forecast }: { forecast: ForecastData }) {
     );
 }
 
+/** The edit sheets, once there is an account to edit. */
+function EditorBoundary({
+    forecast,
+    projectionInput,
+    children,
+}: ForecastPageProps & { children: ReactNode }) {
+    if (forecast.account === null) {
+        return children;
+    }
+
+    return (
+        <ForecastEditorProvider
+            forecast={forecast}
+            projectionInput={projectionInput}
+        >
+            {children}
+        </ForecastEditorProvider>
+    );
+}
+
 /**
  * The cash-flow forecast of one account: how the user is going to be, from
  * what they know and what they usually spend.
  */
-export default function ForecastPage({ forecast }: ForecastPageProps) {
+export default function ForecastPage({
+    forecast,
+    projectionInput,
+}: ForecastPageProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: __('Forecast'), href: forecastIndex().url },
     ];
@@ -93,52 +135,54 @@ export default function ForecastPage({ forecast }: ForecastPageProps) {
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Forecast')} />
-            <div className="mx-auto flex w-full max-w-page flex-col gap-5 p-4">
-                <PageHeader
-                    title={__('Forecast')}
-                    description={__(
-                        'How you are going to be, from what you know and what you usually spend. The more you make concrete, the more reliable it is.',
-                    )}
-                    actions={
-                        <div className="flex flex-wrap items-center gap-2">
-                            <ForecastHorizonPicker
-                                horizon={forecast.horizon}
-                                accountId={forecast.account?.id ?? null}
-                            />
-                            {/* Adding lines lands with editing (T7). */}
-                            <Button disabled title={__('Coming soon')}>
-                                {__('Add to the forecast')}
-                            </Button>
-                        </div>
-                    }
-                />
-                {forecast.account === null ? (
-                    <Card>
-                        <CardContent>
-                            <EmptyState>
-                                <EmptyStateTitle>
-                                    {__('No accounts to forecast')}
-                                </EmptyStateTitle>
-                                <EmptyStateDescription>
-                                    {__(
-                                        'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',
-                                    )}
-                                </EmptyStateDescription>
-                                <Button asChild variant="outline">
-                                    <Link href={accountsList()}>
-                                        {__('Go to accounts')}
-                                    </Link>
-                                </Button>
-                            </EmptyState>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <ForecastContent
-                        key={`${forecast.account.id}:${forecast.horizon}`}
-                        forecast={forecast}
+            <EditorBoundary
+                forecast={forecast}
+                projectionInput={projectionInput}
+            >
+                <div className="mx-auto flex w-full max-w-page flex-col gap-5 p-4">
+                    <PageHeader
+                        title={__('Forecast')}
+                        description={__(
+                            'How you are going to be, from what you know and what you usually spend. The more you make concrete, the more reliable it is.',
+                        )}
+                        actions={
+                            <div className="flex flex-wrap items-center gap-2">
+                                <ForecastHorizonPicker
+                                    horizon={forecast.horizon}
+                                    accountId={forecast.account?.id ?? null}
+                                />
+                                <AddButton />
+                            </div>
+                        }
                     />
-                )}
-            </div>
+                    {forecast.account === null ? (
+                        <Card>
+                            <CardContent>
+                                <EmptyState>
+                                    <EmptyStateTitle>
+                                        {__('No accounts to forecast')}
+                                    </EmptyStateTitle>
+                                    <EmptyStateDescription>
+                                        {__(
+                                            'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',
+                                        )}
+                                    </EmptyStateDescription>
+                                    <Button asChild variant="outline">
+                                        <Link href={accountsList()}>
+                                            {__('Go to accounts')}
+                                        </Link>
+                                    </Button>
+                                </EmptyState>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <ForecastContent
+                            key={`${forecast.account.id}:${forecast.horizon}`}
+                            forecast={forecast}
+                        />
+                    )}
+                </div>
+            </EditorBoundary>
         </AppSidebarLayout>
     );
 }

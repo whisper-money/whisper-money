@@ -15,9 +15,8 @@ use Illuminate\Database\Eloquent\Collection;
  * amount the suggestion goes away until it drifts again. A transfer is read
  * from its sending leg. Computed on the fly: nothing is stored.
  *
- * The edit flow of a later phase reads it; until then only the tests do.
- *
- * @api
+ * The forecast plan offers it on the line, and accepting it adds a version
+ * from the first occurrence after the latest payment (ForecastItemWriter).
  */
 class ForecastDrift
 {
@@ -73,7 +72,12 @@ class ForecastDrift
             return null;
         }
 
-        return new DriftSuggestion($item->id, $latest->first()->transaction->amount, $latest->last()->occurrence_date->toDateString());
+        return new DriftSuggestion(
+            $item->id,
+            $latest->first()->transaction->amount,
+            $latest->last()->occurrence_date->toDateString(),
+            $latest->first()->occurrence_date->toDateString(),
+        );
     }
 
     /**
