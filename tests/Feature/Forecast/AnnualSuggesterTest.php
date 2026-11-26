@@ -53,6 +53,8 @@ it('suggests nothing without strict proof', function (array $charges) {
     'nine months apart' => [['2025-09-10' => -14000, '2026-06-09' => -14000]],
     'fourteen months apart' => [['2025-05-10' => -14000, '2026-07-12' => -14000]],
     'seen once' => [['2026-06-09' => -14000]],
+    'a third charge earlier' => [['2025-05-02' => -14000, '2025-06-10' => -14000, '2026-06-09' => -14000]],
+    'under 30 a year' => [['2025-06-10' => -2500, '2026-06-09' => -2500]],
     'next one long overdue' => [['2024-11-01' => -14000, '2025-11-01' => -14000]],
 ]);
 

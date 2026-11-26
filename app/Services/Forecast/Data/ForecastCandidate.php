@@ -43,11 +43,12 @@ final readonly class ForecastCandidate
     ) {}
 
     /**
-     * What a dismissal of this suggestion is remembered by: its fingerprint,
-     * or, for one recognised by amount and day alone, its account, direction
-     * and day of the month.
+     * What the suggestion is recognised by across runs: its fingerprint, or,
+     * for one recognised by amount and day alone, its account, direction and
+     * day of the month. A dismissal stores it as its fingerprint, and so does
+     * the line confirmed from it, so neither comes back.
      */
-    public function dismissalKey(): string
+    public function identity(): string
     {
         return $this->fingerprint ?? sprintf('~%s:%s:%d', $this->accountId, $this->amount < 0 ? 'out' : 'in', $this->anchorDay);
     }

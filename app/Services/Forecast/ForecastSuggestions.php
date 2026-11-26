@@ -9,7 +9,7 @@ use App\Services\Forecast\Data\ForecastCandidate;
 
 /**
  * The lines the forecast proposes to a user in one space, read from the last
- * 18 months: the recurring ones (and transfers) for the first step of the
+ * 18 months of the accounts the forecast includes: the recurring ones (and transfers) for the first step of the
  * review, the yearly ones for the second. A suggestion the user dismissed, or
  * one an existing line of the same account already covers by fingerprint, is
  * not proposed again. Nothing is stored.
@@ -28,6 +28,7 @@ class ForecastSuggestions
         private readonly AnnualSuggester $annual,
         private readonly TransferPairer $pairer,
         private readonly DescriptionFingerprint $fingerprint,
+        private readonly ForecastAccounts $accounts,
     ) {}
 
     /**
@@ -36,13 +37,14 @@ class ForecastSuggestions
     public function for(User $user, string $spaceId, ?string $today = null): array
     {
         $today ??= $user->localToday()->toDateString();
-        $transactions = $this->history->transactions($user, $spaceId, ForecastCalendar::monthStart($today, -self::HISTORY_MONTHS), $today);
+        $accountIds = $this->accounts->included($user, $spaceId)->modelKeys();
+        $transactions = $this->history->transactions($user, $spaceId, ForecastCalendar::monthStart($today, -self::HISTORY_MONTHS), $today, $accountIds);
         $legs = $this->pairer->pair($transactions);
         $groups = $this->fingerprint->groups($transactions);
         $known = $this->knownKeys($user, $spaceId);
 
-        $isNew = fn (ForecastCandidate $candidate): bool => ! isset($known['dismissed'][$candidate->kind->value.'|'.$candidate->dismissalKey()])
-            && ! isset($known['planned'][$candidate->accountId.'|'.$candidate->fingerprint]);
+        $isNew = fn (ForecastCandidate $candidate): bool => ! isset($known['dismissed'][$candidate->kind->value.'|'.$candidate->identity()])
+            && ! isset($known['planned'][$candidate->accountId.'|'.$candidate->identity()]);
 
         return [
             'recurring' => array_values(array_filter($this->recurring->detect($groups, $legs, $today), $isNew)),

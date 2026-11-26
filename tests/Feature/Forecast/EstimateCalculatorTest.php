@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ForecastEstimateBasis;
 use App\Enums\ForecastFrequency;
 use App\Models\Account;
 use App\Models\Budget;
@@ -56,7 +57,7 @@ it('estimates each parent category with the median of the last three complete mo
     $estimates = estimatesFor($this->user);
     $row = fn (string $month): ?CategoryEstimate => $estimates[$this->account->id.'|'.$this->food->id.'|'.$month] ?? null;
 
-    expect($row('2026-12'))->amount->toBe(40000)->basis->toBe(CategoryEstimate::BASIS_MEDIAN)
+    expect($row('2026-12'))->amount->toBe(40000)->basis->toBe(ForecastEstimateBasis::Median)
         ->and($row('2027-02'))->amount->toBe(40000)
         ->and($row('2026-11'))->amount->toBe(25000);
 });
@@ -119,7 +120,7 @@ it('stands on a budget that fits the parent, less its concrete lines', function 
     $estimates = estimatesFor($this->user);
     $row = fn (string $month): CategoryEstimate => $estimates[$this->account->id.'|'.$this->food->id.'|'.$month];
 
-    expect($row('2026-12'))->amount->toBe(60000)->basis->toBe(CategoryEstimate::BASIS_BUDGET)
+    expect($row('2026-12'))->amount->toBe(60000)->basis->toBe(ForecastEstimateBasis::Budget)
         ->and($row('2027-01')->amount)->toBe(40000)
         ->and($row('2026-11')->amount)->toBe(25000);
 });
@@ -133,7 +134,7 @@ it('ignores a budget that follows labels or spans several parents', function (st
     }
 
     expect(estimatesFor($this->user)[$this->account->id.'|'.$this->food->id.'|2026-12'])
-        ->amount->toBe(40000)->basis->toBe(CategoryEstimate::BASIS_MEDIAN);
+        ->amount->toBe(40000)->basis->toBe(ForecastEstimateBasis::Median);
 })->with(['label', 'several parents']);
 
 it('splits a budget over the accounts in the user\'s currency by what each spent', function () {
@@ -149,7 +150,7 @@ it('splits a budget over the accounts in the user\'s currency by what each spent
 
     expect($estimates[$this->account->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(64000)
         ->and($estimates[$second->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(16000)
-        ->and($estimates[$dollars->id.'|'.$this->food->id.'|2026-12'])->basis->toBe(CategoryEstimate::BASIS_MEDIAN)->amount->toBe(30000);
+        ->and($estimates[$dollars->id.'|'.$this->food->id.'|2026-12'])->basis->toBe(ForecastEstimateBasis::Median)->amount->toBe(30000);
 });
 
 it('takes the user\'s adjustment for the months it covers', function () {
@@ -171,9 +172,9 @@ it('takes the user\'s adjustment for the months it covers', function () {
 
     $estimates = estimatesFor($this->user);
 
-    expect($estimates[$this->account->id.'|'.$this->food->id.'|2027-01'])->amount->toBe(10000)->basis->toBe(CategoryEstimate::BASIS_ADJUSTMENT)
-        ->and($estimates[$this->account->id.'|'.$this->food->id.'|2027-02'])->amount->toBe(40000)->basis->toBe(CategoryEstimate::BASIS_MEDIAN)
-        ->and($estimates[$this->account->id.'||2026-12'])->amount->toBe(0)->basis->toBe(CategoryEstimate::BASIS_ADJUSTMENT);
+    expect($estimates[$this->account->id.'|'.$this->food->id.'|2027-01'])->amount->toBe(10000)->basis->toBe(ForecastEstimateBasis::Adjustment)
+        ->and($estimates[$this->account->id.'|'.$this->food->id.'|2027-02'])->amount->toBe(40000)->basis->toBe(ForecastEstimateBasis::Median)
+        ->and($estimates[$this->account->id.'||2026-12'])->amount->toBe(0)->basis->toBe(ForecastEstimateBasis::Adjustment);
 });
 
 it('weighs a shared account by the user\'s share of it', function () {
@@ -183,4 +184,25 @@ it('weighs a shared account by the user\'s share of it', function () {
     }
 
     expect(estimatesFor($this->user)[$shared->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(5000);
+});
+
+it('reads a young account from its first month only', function () {
+    $young = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    forecastCharge($young, '2026-10-08', -40000, 'LIDL', $this->groceries);
+
+    expect(estimatesFor($this->user)[$young->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(40000);
+});
+
+it('takes a parent\'s concrete lines off its budget on any account the budget covers', function () {
+    $second = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    fittingBudget($this->user, 60000, $this->groceries);
+    ForecastItem::factory()->amount(-20000)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $second->id,
+        'category_id' => $this->groceries->id,
+        'frequency' => ForecastFrequency::Monthly,
+        'anchor_date' => '2026-11-20',
+    ]);
+
+    expect(estimatesFor($this->user)[$this->account->id.'|'.$this->food->id.'|2026-12']->amount)->toBe(40000);
 });

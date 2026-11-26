@@ -7,7 +7,6 @@ use App\Enums\ForecastFrequency;
 use App\Models\Transaction;
 use App\Services\Forecast\Data\ForecastCandidate;
 use App\Services\Forecast\Data\TransferLeg;
-use Carbon\Carbon;
 
 /**
  * Finds the charges and incomes that repeat. Transactions are grouped by
@@ -35,8 +34,6 @@ class RecurringDetector
     private const AMOUNT_BAND = 0.10;
 
     private const DAY_BAND = 3;
-
-    private const OVERDUE_DAYS = 7;
 
     /**
      * Days between two charges that fit each period, keyed by its months.
@@ -137,7 +134,7 @@ class RecurringDetector
 
         $schedule = $this->schedule($charges);
 
-        if ($schedule === null || $this->hasStopped($charges, $schedule['months'], $today)) {
+        if ($schedule === null || $this->builder->hasStopped($charges[array_key_last($charges)]->transaction_date->toDateString(), $schedule['months'], $today)) {
             return null;
         }
 
@@ -179,19 +176,6 @@ class RecurringDetector
     }
 
     /**
-     * Whether the charge after the last one is more than a week overdue.
-     *
-     * @param  list<Transaction>  $charges
-     */
-    private function hasStopped(array $charges, int $months, string $today): bool
-    {
-        $last = $charges[array_key_last($charges)]->transaction_date;
-        $expected = Carbon::parse(ForecastCalendar::addMonths($last->toDateString(), $months));
-
-        return $expected->addDays(self::OVERDUE_DAYS)->toDateString() < $today;
-    }
-
-    /**
      * @param  list<Transaction>  $charges
      */
     private function amountIsSteady(array $charges): bool
@@ -210,9 +194,9 @@ class RecurringDetector
      */
     private function isIncomingTransfer(array $charges, array $legs): bool
     {
-        $paired = array_filter($charges, fn (Transaction $charge): bool => $charge->amount > 0 && ! ($legs[$charge->id] ?? new TransferLeg($charge->id))->counterpartUnknown());
+        $internal = array_filter($this->builder->legsOf($charges, $legs), fn (TransferLeg $leg): bool => $leg->isInternal());
 
-        return count($paired) * 2 > count($charges);
+        return $charges[0]->amount > 0 && count($internal) * 2 > count($charges);
     }
 
     private function directionKey(Transaction $transaction): string

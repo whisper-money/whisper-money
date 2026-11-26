@@ -2,10 +2,13 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastEstimateBasis;
 use App\Models\Account;
 use App\Models\ForecastEstimateAdjustment;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Forecast\Data\CategoryEstimate;
+use App\Services\Forecast\Data\EstimateRow;
 use App\Services\Forecast\Data\Occurrence;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,16 +19,17 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * It is the median of the three complete months before the start, over the
  * spend that paid no forecast line, was not marked a one-off and is not a
- * transfer between the user's accounts. A parent with a budget that fits it
- * (see ForecastBudgetTargets) takes the budget instead, less the concrete
- * lines of that parent in the month, never below zero; the budget covers
- * every account in the user's currency, so each takes the share of it it
- * spent over those months. A parent whose median is under 30 a month in the
- * account's currency is too small for a row: it joins "Other spending"
- * (`categoryId` null) with the uncategorized spend. An adjustment the user
- * made replaces the figure for the months it covers, the latest one winning.
- * In the start month the estimate is what is left of it after what was
- * already spent there.
+ * transfer between the user's accounts. Only the months since the account's
+ * first transaction count, so a young account is not read as spending
+ * nothing. A parent with a budget that fits it (see ForecastBudgetTargets)
+ * takes the budget instead, less the concrete lines of that parent in the
+ * month, never below zero; the budget covers every account in the user's
+ * currency, so each takes the share of it it spent over those months. A
+ * parent whose median is under 30 a month in the account's currency is too
+ * small for a row: it joins "Other spending" (`categoryId` null) with the
+ * uncategorized spend. An adjustment the user made replaces the figure for
+ * the months it covers, the latest one winning. In the start month the
+ * estimate is what is left of it after what was already spent there.
  */
 class EstimateCalculator
 {
@@ -33,6 +37,9 @@ class EstimateCalculator
 
     private const SMALL_ROW_MAJOR_UNITS = 30;
 
+    /**
+     * The bucket key of "Other spending", which has no category.
+     */
     private const OTHER = '';
 
     public function __construct(
@@ -50,30 +57,51 @@ class EstimateCalculator
     public function estimate(User $user, string $spaceId, Collection $accounts, string $startDate, int $horizonMonths, array $occurrences, array $itemCategories): array
     {
         $parents = $this->history->parentCategories($user);
-        $months = $this->monthKeys($startDate, -self::MEDIAN_MONTHS, $horizonMonths);
-        $pastMonths = array_slice($months, 0, self::MEDIAN_MONTHS);
-        $months = array_slice($months, self::MEDIAN_MONTHS);
+        $months = $this->monthKeys($startDate, $horizonMonths);
+        $pastMonths = $this->pastMonthsByAccount($user, $accounts, $startDate);
         $spend = $this->spendByBucket($user, $spaceId, $accounts, $startDate, $parents);
         $budgetShares = $this->budgetShares($user, $spaceId, $accounts, $spend, $parents, $pastMonths);
-        $concrete = $this->concreteSpendByParent($occurrences, $itemCategories, $parents, $budgetShares);
+        $concrete = $this->concreteSpendByParent($occurrences, $itemCategories, $parents, $this->inUserCurrency($user, $accounts)->modelKeys());
         $adjustments = $this->adjustments($user, $spaceId, $accounts, $parents);
         $estimates = [];
 
         foreach ($accounts as $account) {
-            $rows = $this->rows($account, $spend[$account->id] ?? [], $budgetShares, $adjustments[$account->id] ?? [], $pastMonths, $months[0]);
+            $rows = $this->rows($account, $spend[$account->id] ?? [], $budgetShares, $adjustments[$account->id] ?? [], $pastMonths[$account->id], $months[0]);
 
             foreach ($rows as $bucket => $row) {
-                foreach ($months as $index => $month) {
-                    $estimate = $this->estimateFor($account->id, $bucket, $row, $month, $index === 0, $concrete, $adjustments[$account->id][$bucket] ?? []);
-
-                    if ($estimate !== null) {
-                        $estimates[] = $estimate;
-                    }
-                }
+                array_push($estimates, ...$this->estimatesFor($account->id, (string) $bucket, $row, $months, $concrete[$bucket] ?? [], $adjustments[$account->id][$bucket] ?? []));
             }
         }
 
         return $estimates;
+    }
+
+    /**
+     * The complete months before the start that count for each account: the
+     * last three, from the month of its first transaction on.
+     *
+     * @param  Collection<int, Account>  $accounts
+     * @return array<string, list<string>>
+     */
+    private function pastMonthsByAccount(User $user, Collection $accounts, string $startDate): array
+    {
+        $firstMonths = Transaction::query()
+            ->where('user_id', $user->id)
+            ->whereIn('account_id', $accounts->modelKeys())
+            ->groupBy('account_id')
+            ->selectRaw('account_id, min(transaction_date) as first_date')
+            ->pluck('first_date', 'account_id');
+
+        $pastMonths = [];
+        foreach ($accounts as $account) {
+            $first = ForecastCalendar::monthKey((string) ($firstMonths[$account->id] ?? $startDate));
+            $pastMonths[$account->id] = array_values(array_filter(
+                array_map(fn (int $offset): string => ForecastCalendar::monthKey(ForecastCalendar::monthStart($startDate, $offset)), range(-self::MEDIAN_MONTHS, -1)),
+                fn (string $month): bool => $month >= $first,
+            ));
+        }
+
+        return $pastMonths;
     }
 
     /**
@@ -86,14 +114,12 @@ class EstimateCalculator
      */
     private function spendByBucket(User $user, string $spaceId, Collection $accounts, string $startDate, array $parents): array
     {
-        $transactions = $this->history->transactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate, $accounts->modelKeys(), onlyUnplanned: true);
+        $transactions = $this->history->unplannedTransactions($user, $spaceId, ForecastCalendar::monthStart($startDate, -self::MEDIAN_MONTHS), $startDate, $accounts->modelKeys());
         $legs = $this->pairer->pair($transactions);
         $spend = [];
 
         foreach ($transactions as $transaction) {
-            $leg = $legs[$transaction->id] ?? null;
-
-            if (! ForecastHistory::isSpend($transaction) || ($leg !== null && ! $leg->counterpartUnknown())) {
+            if (! $transaction->isExpenseSide() || ($legs[$transaction->id] ?? null)?->isInternal()) {
                 continue;
             }
 
@@ -106,6 +132,15 @@ class EstimateCalculator
     }
 
     /**
+     * @param  Collection<int, Account>  $accounts
+     * @return Collection<int, Account>
+     */
+    private function inUserCurrency(User $user, Collection $accounts): Collection
+    {
+        return $accounts->filter(fn (Account $account): bool => strcasecmp($account->currency_code, (string) $user->currency_code) === 0)->values();
+    }
+
+    /**
      * Each fitting budget's split over the accounts in the user's currency,
      * by the spend each had in its parent over the median months (or, with
      * none, in anything; or, with none at all, all on the first of them).
@@ -113,12 +148,12 @@ class EstimateCalculator
      * @param  Collection<int, Account>  $accounts
      * @param  array<string, array<string, array<string, int>>>  $spend
      * @param  array<string, string>  $parents
-     * @param  list<string>  $pastMonths
+     * @param  array<string, list<string>>  $pastMonths
      * @return array<string, array{limit: int, shares: array<string, float>}> By parent category id.
      */
     private function budgetShares(User $user, string $spaceId, Collection $accounts, array $spend, array $parents, array $pastMonths): array
     {
-        $eligible = $accounts->filter(fn (Account $account): bool => strtoupper($account->currency_code) === strtoupper((string) $user->currency_code));
+        $eligible = $this->inUserCurrency($user, $accounts);
 
         if ($eligible->isEmpty()) {
             return [];
@@ -127,8 +162,8 @@ class EstimateCalculator
         $shares = [];
 
         foreach ($this->budgets->monthlyByParent($user, $spaceId, $parents) as $parent => $limit) {
-            $weights = $this->weights($eligible, fn (string $accountId): int => $this->pastTotal($spend[$accountId][$parent] ?? [], $pastMonths))
-                ?? $this->weights($eligible, fn (string $accountId): int => array_sum(array_map(fn (array $byMonth): int => $this->pastTotal($byMonth, $pastMonths), $spend[$accountId] ?? [])))
+            $weights = $this->weights($eligible, fn (string $accountId): int => $this->pastTotal($spend[$accountId][$parent] ?? [], $pastMonths[$accountId]))
+                ?? $this->weights($eligible, fn (string $accountId): int => array_sum(array_map(fn (array $byMonth): int => $this->pastTotal($byMonth, $pastMonths[$accountId]), $spend[$accountId] ?? [])))
                 ?? [$eligible->first()->id => 1.0];
 
             $shares[$parent] = ['limit' => $limit, 'shares' => $weights];
@@ -144,30 +179,31 @@ class EstimateCalculator
      */
     private function weights(Collection $accounts, callable $weigh): ?array
     {
-        $weights = $accounts->mapWithKeys(fn (Account $account): array => [$account->id => max($weigh($account->id), 0)])->filter();
+        $weights = collect($accounts->modelKeys())->mapWithKeys(fn (string $accountId): array => [$accountId => max($weigh($accountId), 0)])->filter();
         $total = $weights->sum();
 
         return $total > 0 ? $weights->map(fn (int $weight): float => $weight / $total)->all() : null;
     }
 
     /**
-     * The spend of the lines of each budgeted parent, by month, over the
-     * accounts its budget covers.
+     * The spend of the lines of each parent, by month, over the accounts a
+     * budget can cover (those in the user's currency).
      *
      * @param  list<Occurrence>  $occurrences
      * @param  array<string, string|null>  $itemCategories
      * @param  array<string, string>  $parents
-     * @param  array<string, array{limit: int, shares: array<string, float>}>  $budgetShares
+     * @param  list<string>  $budgetAccountIds
      * @return array<string, array<string, int>> By parent category id, then `Y-m` month.
      */
-    private function concreteSpendByParent(array $occurrences, array $itemCategories, array $parents, array $budgetShares): array
+    private function concreteSpendByParent(array $occurrences, array $itemCategories, array $parents, array $budgetAccountIds): array
     {
+        $budgetAccounts = array_flip($budgetAccountIds);
         $concrete = [];
 
         foreach ($occurrences as $occurrence) {
             $parent = $parents[$itemCategories[$occurrence->itemId] ?? ''] ?? null;
 
-            if ($parent === null || $occurrence->amount >= 0 || ! isset($budgetShares[$parent]['shares'][$occurrence->accountId])) {
+            if ($parent === null || $occurrence->amount >= 0 || ! isset($budgetAccounts[$occurrence->accountId])) {
                 continue;
             }
 
@@ -197,97 +233,68 @@ class EstimateCalculator
             ->get();
 
         foreach ($adjustments as $adjustment) {
-            $byBucket[$adjustment->account_id][$parents[$adjustment->category_id ?? ''] ?? self::OTHER][] = $adjustment;
+            $bucket = $adjustment->category_id === null ? self::OTHER : ($parents[$adjustment->category_id] ?? self::OTHER);
+            $byBucket[$adjustment->account_id][$bucket][] = $adjustment;
         }
 
         return $byBucket;
     }
 
     /**
-     * The rows of one account: each bucket with its basis, its median and
-     * what it spent so far in the start month. Small median rows fold into
-     * OTHER unless the user adjusted them.
+     * The rows of one account by bucket. Small median rows fold into OTHER
+     * unless the user adjusted them.
      *
      * @param  array<string, array<string, int>>  $spend
      * @param  array<string, array{limit: int, shares: array<string, float>}>  $budgetShares
      * @param  array<string, list<ForecastEstimateAdjustment>>  $adjustments
      * @param  list<string>  $pastMonths
-     * @return array<string, array{median: int, limit: int|null, share: float|null, spentNow: int}>
+     * @return array<string, EstimateRow>
      */
     private function rows(Account $account, array $spend, array $budgetShares, array $adjustments, array $pastMonths, string $startMonth): array
     {
-        $buckets = array_unique([...array_keys($spend), ...array_keys($adjustments), ...array_keys(array_filter($budgetShares, fn (array $budget): bool => isset($budget['shares'][$account->id])))]);
+        $budgeted = array_filter($budgetShares, fn (array $budget): bool => isset($budget['shares'][$account->id]));
+        $buckets = array_unique(array_map(strval(...), [...array_keys($spend), ...array_keys($adjustments), ...array_keys($budgeted)]));
         $smallRow = Money::toMinor(self::SMALL_ROW_MAJOR_UNITS, $account->currency_code);
         $rows = [];
 
         foreach ($buckets as $bucket) {
-            $bucket = (string) $bucket;
-            $share = $budgetShares[$bucket]['shares'][$account->id] ?? null;
-            $row = [
-                'median' => $this->median($spend[$bucket] ?? [], $pastMonths),
-                'limit' => $share === null ? null : $budgetShares[$bucket]['limit'],
-                'share' => $share,
-                'spentNow' => max($spend[$bucket][$startMonth] ?? 0, 0),
-            ];
-            $folds = $row['share'] === null && $row['median'] < $smallRow && ! isset($adjustments[$bucket]);
+            $row = new EstimateRow(
+                $this->median($spend[$bucket] ?? [], $pastMonths),
+                max($spend[$bucket][$startMonth] ?? 0, 0),
+                $budgeted[$bucket]['limit'] ?? null,
+                $budgeted[$bucket]['shares'][$account->id] ?? null,
+            );
+            $folds = $row->budgetLimit === null && $row->median < $smallRow && ! isset($adjustments[$bucket]);
             $target = $folds ? self::OTHER : $bucket;
 
-            $rows[$target] = isset($rows[$target]) ? $this->merge($rows[$target], $row) : $row;
+            $rows[$target] = isset($rows[$target]) ? $rows[$target]->foldedWith($row) : $row;
         }
 
         return $rows;
     }
 
     /**
-     * Only median rows fold, and OTHER is always one, so the merged row
-     * keeps the target's budget fields.
-     *
-     * @param  array{median: int, limit: int|null, share: float|null, spentNow: int}  $into
-     * @param  array{median: int, limit: int|null, share: float|null, spentNow: int}  $row
-     * @return array{median: int, limit: int|null, share: float|null, spentNow: int}
-     */
-    private function merge(array $into, array $row): array
-    {
-        return [...$into, 'median' => $into['median'] + $row['median'], 'spentNow' => $into['spentNow'] + $row['spentNow']];
-    }
-
-    /**
-     * @param  array{median: int, limit: int|null, share: float|null, spentNow: int}  $row
-     * @param  array<string, array<string, int>>  $concrete
+     * @param  list<string>  $months  The horizon, the start month first.
+     * @param  array<string, int>  $concrete  The parent's concrete spend by month.
      * @param  list<ForecastEstimateAdjustment>  $adjustments  Latest start first.
+     * @return list<CategoryEstimate>
      */
-    private function estimateFor(string $accountId, string $bucket, array $row, string $month, bool $isStartMonth, array $concrete, array $adjustments): ?CategoryEstimate
+    private function estimatesFor(string $accountId, string $bucket, EstimateRow $row, array $months, array $concrete, array $adjustments): array
     {
-        [$amount, $basis] = $this->baseFor($bucket, $row, $month, $concrete);
-        $adjustment = $this->adjustmentCovering($adjustments, $month);
+        $estimates = [];
 
-        if ($adjustment !== null) {
-            [$amount, $basis] = [max($adjustment->amount, 0), CategoryEstimate::BASIS_ADJUSTMENT];
+        foreach ($months as $index => $month) {
+            $adjustment = $this->adjustmentCovering($adjustments, $month);
+            $amount = $adjustment === null ? $row->amountFor($concrete[$month] ?? 0) : max($adjustment->amount, 0);
+            $amount = $index === 0 ? max($amount - $row->spentNow, 0) : $amount;
+
+            if ($amount > 0 || $adjustment !== null) {
+                $basis = $adjustment === null ? $row->basis() : ForecastEstimateBasis::Adjustment;
+                $estimates[] = new CategoryEstimate($accountId, $bucket === self::OTHER ? null : $bucket, $month, $amount, $basis);
+            }
         }
 
-        if ($isStartMonth) {
-            $amount = max($amount - $row['spentNow'], 0);
-        }
-
-        if ($amount === 0 && $adjustment === null) {
-            return null;
-        }
-
-        return new CategoryEstimate($accountId, $bucket === self::OTHER ? null : $bucket, $month, $amount, $basis);
-    }
-
-    /**
-     * @param  array{median: int, limit: int|null, share: float|null, spentNow: int}  $row
-     * @param  array<string, array<string, int>>  $concrete
-     * @return array{0: int, 1: CategoryEstimate::BASIS_*}
-     */
-    private function baseFor(string $bucket, array $row, string $month, array $concrete): array
-    {
-        if ($row['share'] === null || $row['limit'] === null) {
-            return [$row['median'], CategoryEstimate::BASIS_MEDIAN];
-        }
-
-        return [(int) floor(max($row['limit'] - ($concrete[$bucket][$month] ?? 0), 0) * $row['share']), CategoryEstimate::BASIS_BUDGET];
+        return $estimates;
     }
 
     /**
@@ -308,17 +315,19 @@ class EstimateCalculator
     }
 
     /**
-     * The median of the complete months' spend, a month without any counting
-     * as zero and one with more refunds than spend as nothing.
+     * The median of the months that count, a month without spend counting as
+     * zero and one with more refunds than spend as nothing.
      *
      * @param  array<string, int>  $byMonth
      * @param  list<string>  $pastMonths
      */
     private function median(array $byMonth, array $pastMonths): int
     {
-        $months = array_map(fn (string $month): int => max($byMonth[$month] ?? 0, 0), $pastMonths);
+        if ($pastMonths === []) {
+            return 0;
+        }
 
-        return (int) round(collect($months)->median());
+        return (int) round(collect($pastMonths)->map(fn (string $month): int => max($byMonth[$month] ?? 0, 0))->median());
     }
 
     /**
@@ -331,17 +340,12 @@ class EstimateCalculator
     }
 
     /**
-     * The `Y-m` keys of `$count` months from `$from` months after the start's.
+     * The `Y-m` keys of the horizon's months, the start month first.
      *
      * @return list<string>
      */
-    private function monthKeys(string $startDate, int $from, int $count): array
+    private function monthKeys(string $startDate, int $horizonMonths): array
     {
-        $months = [];
-        for ($offset = $from; $offset < $count; $offset++) {
-            $months[] = ForecastCalendar::monthKey(ForecastCalendar::monthStart($startDate, $offset));
-        }
-
-        return $months;
+        return array_map(fn (int $offset): string => ForecastCalendar::monthKey(ForecastCalendar::monthStart($startDate, $offset)), range(0, $horizonMonths - 1));
     }
 }

@@ -91,6 +91,19 @@ it('leaves out the accounts the user excluded, archived lines and other users\' 
         ->and(collect($plan->input->occurrences)->pluck('itemId')->unique()->sort()->values()->all())->toBe(collect([$this->rent->id, $this->saving->id])->sort()->values()->all());
 });
 
+it('keeps a transfer from an excluded account into an included one', function () {
+    ForecastAccountSetting::query()->where('account_id', $this->savings->id)->update(['included' => false]);
+    $back = ForecastItem::factory()->transfer($this->checking)->amount(-10000)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->savings->id,
+        'anchor_date' => '2026-01-20',
+    ]);
+
+    $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->user->current_space_id, horizonMonths: 2, startDate: '2026-11-10');
+
+    expect(collect($plan->input->occurrences)->pluck('itemId')->contains($back->id))->toBeTrue();
+});
+
 it('runs nothing on its own, so a user without the Forecast flag sees no change', function () {
     expect(Feature::for($this->user)->active(Forecast::class))->toBeFalse();
     Queue::fake();

@@ -18,6 +18,13 @@ class DescriptionTokenizer
     private const MIN_TOKEN_LENGTH = 3;
 
     /**
+     * REFERENCE_MARKERS and MONTH_NAMES as a lookup, built on first use.
+     *
+     * @var array<string, int>|null
+     */
+    private static ?array $noise = null;
+
+    /**
      * Words that only announce what follows (a reference, a mandate, a
      * number) and change nothing about who the counterparty is.
      */
@@ -28,12 +35,14 @@ class DescriptionTokenizer
     /**
      * Month names and their usual abbreviations in the languages the app
      * speaks, which bank descriptions use to say which period a charge is for.
+     * Names and abbreviations that are also words in merchant names ("mar",
+     * "may", "ago", "mars", "mai") are left out.
      */
     private const MONTH_NAMES = [
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre',
         'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
-        'janvier', 'février', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
-        'ene', 'feb', 'abr', 'ago', 'sep', 'sept', 'oct', 'nov', 'dic', 'jan', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'dec', 'fev', 'avr', 'jui', 'aou',
+        'janvier', 'février', 'fevrier', 'avril', 'juin', 'juillet', 'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
+        'ene', 'feb', 'abr', 'sep', 'sept', 'oct', 'nov', 'dic', 'jan', 'apr', 'jun', 'jul', 'aug', 'dec', 'fev', 'avr', 'jui', 'aou',
     ];
 
     /**
@@ -74,7 +83,7 @@ class DescriptionTokenizer
     {
         $value = preg_replace('/[^\p{L}\p{N}]+/u', ' ', mb_strtolower($value)) ?? $value;
         $value = preg_replace('/\S*\d\S*/u', ' ', $value) ?? $value;
-        $noise = array_flip([...self::REFERENCE_MARKERS, ...self::MONTH_NAMES]);
+        $noise = self::$noise ??= array_flip([...self::REFERENCE_MARKERS, ...self::MONTH_NAMES]);
 
         return array_values(array_filter(
             $this->tokens($value),

@@ -2,6 +2,8 @@
 
 namespace App\Services\Forecast\Data;
 
+use App\Enums\ForecastEstimateBasis;
+
 /**
  * The estimated rest of one parent category on one account in a `Y-m` month:
  * spend expected beyond the concrete lines, in positive minor units of the
@@ -17,21 +19,12 @@ namespace App\Services\Forecast\Data;
  */
 final readonly class CategoryEstimate
 {
-    public const BASIS_MEDIAN = 'median';
-
-    public const BASIS_BUDGET = 'budget';
-
-    public const BASIS_ADJUSTMENT = 'adjustment';
-
-    /**
-     * @param  self::BASIS_*  $basis
-     */
     public function __construct(
         public string $accountId,
         public ?string $categoryId,
         public string $month,
         public int $amount,
-        public string $basis,
+        public ForecastEstimateBasis $basis,
     ) {}
 
     public function toMonthlyEstimate(): MonthlyEstimate

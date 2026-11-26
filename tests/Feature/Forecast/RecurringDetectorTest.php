@@ -6,6 +6,7 @@ use App\Enums\ForecastFrequency;
 use App\Enums\ForecastSuggestionKind;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\ForecastAccountSetting;
 use App\Models\ForecastDismissal;
 use App\Models\ForecastItem;
 use App\Models\Space;
@@ -51,7 +52,7 @@ it('finds a monthly bill whose references and dates change every month', functio
         ->and($candidate->frequency)->toBe(ForecastFrequency::Monthly)
         ->and($candidate->accountId)->toBe($this->account->id)
         ->and($candidate->amount)->toBe(-6267)
-        ->and($candidate->amountTolerance)->toBe(183)
+        ->and($candidate->amountTolerance)->toBe(627)
         ->and($candidate->anchorDay)->toBe(3)
         ->and($candidate->nextDate)->toBe('2026-12-03')
         ->and($candidate->lastChargedOn)->toBe('2026-11-03')
@@ -98,7 +99,7 @@ it('falls back to amount and day when a description says nothing stable', functi
         ->and($candidates[0]->confidence)->toBe(ForecastConfidence::Review)
         ->and($candidates[0]->frequency)->toBe(ForecastFrequency::Monthly)
         ->and($candidates[0]->amount)->toBe(-80000)
-        ->and($candidates[0]->dismissalKey())->toBe('~'.$this->account->id.':out:1');
+        ->and($candidates[0]->identity())->toBe('~'.$this->account->id.':out:1');
 });
 
 it('does not group charges by amount when their description names a payee', function () {
@@ -172,6 +173,28 @@ it('reads only the user\'s own transactions in the space', function () {
     $otherSpace = Space::factory()->create();
     $elsewhere = Account::factory()->create(['user_id' => $this->user->id, 'space_id' => $otherSpace->id, 'currency_code' => 'EUR']);
     forecastMonthlyCharges($elsewhere, '2026-03-08', 9, -1299, 'HBO MAX');
+
+    expect(recurringCandidates($this->user))->toBe([]);
+});
+
+it('does not propose again a line recognised by amount and day once it is planned', function () {
+    forecastMonthlyCharges($this->account, '2026-04-01', 8, -80000, fn (int $index): string => (string) (88412 + $index));
+    $identity = recurringCandidates($this->user)[0]->identity();
+
+    ForecastItem::factory()->create(['user_id' => $this->user->id, 'account_id' => $this->account->id, 'fingerprint' => $identity]);
+
+    expect(recurringCandidates($this->user))->toBe([]);
+});
+
+it('keeps a tolerance of a tenth of the amount for a charge that never moved', function () {
+    forecastMonthlyCharges($this->account, '2026-05-08', 7, -1099, 'NETFLIX.COM');
+
+    expect(candidateNamed($this->user, 'netflix com')->amountTolerance)->toBe(110);
+});
+
+it('reads nothing from an account the user left out of the forecast', function () {
+    ForecastAccountSetting::factory()->create(['account_id' => $this->account->id, 'included' => false]);
+    forecastMonthlyCharges($this->account, '2026-03-08', 9, -1299, 'NETFLIX.COM');
 
     expect(recurringCandidates($this->user))->toBe([]);
 });

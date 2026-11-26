@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
@@ -18,8 +19,8 @@ function pairLegs(Transaction ...$transactions): array
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
-    $this->savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR', 'type' => AccountType::Checking]);
+    $this->savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR', 'type' => AccountType::Savings]);
 });
 
 it('pairs opposite amounts between two of the user\'s accounts within two days', function () {
@@ -63,5 +64,20 @@ it('takes a transfer, saving or investment category as one leg with an unknown c
     $legs = pairLegs($leg, $spend);
 
     expect($legs)->toHaveKeys([$leg->id])->not->toHaveKey($spend->id)
-        ->and($legs[$leg->id]->counterpartUnknown())->toBeTrue();
+        ->and($legs[$leg->id]->isInternal())->toBeFalse();
 })->with([CategoryType::Transfer, CategoryType::Savings, CategoryType::Investment]);
+
+it('never pairs a leg filed as an expense or an income', function () {
+    $rent = forecastCharge($this->checking, '2026-10-01', -100000, 'ALQUILER', forecastExpenseCategory($this->user));
+    $salary = forecastCharge($this->savings, '2026-10-01', 100000, 'NOMINA', Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income]));
+
+    expect(pairLegs($rent, $salary))->toBe([]);
+});
+
+it('gives a credit card payment five days to settle', function () {
+    $card = Account::factory()->creditCard()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $payment = forecastCharge($this->checking, '2026-10-05', -90000, 'PAGO TARJETA');
+    $settled = forecastCharge($card, '2026-10-09', 90000, 'PAGO RECIBIDO');
+
+    expect(pairLegs($payment, $settled)[$payment->id]->counterpartAccountId)->toBe($card->id);
+});

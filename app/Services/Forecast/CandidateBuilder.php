@@ -14,7 +14,8 @@ use Carbon\Carbon;
  * Turns the charges a detector recognised as one line into its suggestion:
  * the amount is the mean of the last three, the tolerance how far the recent
  * ones strayed from it, the category the one they carry most often, and the
- * schedule continues from the occurrence the last charge paid. A charge can
+ * schedule continues from the occurrence the last charge paid. The
+ * tolerance is never under a tenth of the amount. A charge can
  * land a few days early and pay next month's occurrence (a salary paid on 30
  * September for October), so the day of the month is read across the turn of
  * the month.
@@ -22,6 +23,17 @@ use Carbon\Carbon;
 class CandidateBuilder
 {
     private const AMOUNT_CHARGES = 3;
+
+    /**
+     * How late a charge can be before its line counts as stopped.
+     */
+    private const OVERDUE_DAYS = 7;
+
+    /**
+     * The least tolerance a line gets, as a share of its amount, so a charge
+     * that never moved still matches after a small price rise.
+     */
+    private const MIN_TOLERANCE_SHARE = 0.10;
 
     private const TOLERANCE_CHARGES = 6;
 
@@ -40,12 +52,12 @@ class CandidateBuilder
         $last = $charges[array_key_last($charges)];
         $amount = $this->meanAmount(array_slice($charges, -self::AMOUNT_CHARGES));
         $anchorDay = $this->anchorDay($charges);
-        $transferLegs = array_values(array_filter(array_map(fn (Transaction $charge): ?TransferLeg => $legs[$charge->id] ?? null, $charges)));
+        $transferLegs = $this->legsOf($charges, $legs);
         $isTransfer = count($transferLegs) * 2 > count($charges);
         $destinationAccountId = $isTransfer ? $this->mostFrequent(array_map(fn (TransferLeg $leg): ?string => $leg->counterpartAccountId, $transferLegs)) : null;
 
         return new ForecastCandidate(
-            kind: $isTransfer ? ForecastSuggestionKind::Transfer : ($frequency === ForecastFrequency::Yearly ? ForecastSuggestionKind::Annual : ForecastSuggestionKind::Recurring),
+            kind: $this->kind($isTransfer, $frequency),
             accountId: $last->account_id,
             currencyCode: $last->account->currency_code ?? $last->currency_code,
             name: $this->name($last),
@@ -65,6 +77,38 @@ class CandidateBuilder
     }
 
     /**
+     * Whether the charge after the last one is more than a week overdue, so
+     * the line has stopped.
+     */
+    public function hasStopped(string $lastCharge, int $stepMonths, string $today): bool
+    {
+        $expected = Carbon::parse(ForecastCalendar::addMonths($lastCharge, $stepMonths));
+
+        return $expected->addDays(self::OVERDUE_DAYS)->toDateString() < $today;
+    }
+
+    /**
+     * The transfer legs among the charges.
+     *
+     * @param  list<Transaction>  $charges
+     * @param  array<string, TransferLeg>  $legs
+     * @return list<TransferLeg>
+     */
+    public function legsOf(array $charges, array $legs): array
+    {
+        return array_values(array_filter(array_map(fn (Transaction $charge): ?TransferLeg => $legs[$charge->id] ?? null, $charges)));
+    }
+
+    private function kind(bool $isTransfer, ForecastFrequency $frequency): ForecastSuggestionKind
+    {
+        if ($isTransfer) {
+            return ForecastSuggestionKind::Transfer;
+        }
+
+        return $frequency === ForecastFrequency::Yearly ? ForecastSuggestionKind::Annual : ForecastSuggestionKind::Recurring;
+    }
+
+    /**
      * @param  list<Transaction>  $charges
      */
     private function meanAmount(array $charges): int
@@ -77,7 +121,9 @@ class CandidateBuilder
      */
     private function tolerance(array $charges, int $amount): int
     {
-        return max(array_map(fn (Transaction $charge): int => abs($charge->amount - $amount), $charges));
+        $observed = max(array_map(fn (Transaction $charge): int => abs($charge->amount - $amount), $charges));
+
+        return max($observed, (int) round(abs($amount) * self::MIN_TOLERANCE_SHARE));
     }
 
     /**
@@ -86,7 +132,7 @@ class CandidateBuilder
      *
      * @param  list<Transaction>  $charges
      */
-    public function anchorDay(array $charges): int
+    private function anchorDay(array $charges): int
     {
         $days = array_map(fn (Transaction $charge): int => $charge->transaction_date->day, $charges);
 

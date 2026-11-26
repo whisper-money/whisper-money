@@ -2,19 +2,22 @@
 
 namespace App\Services\Forecast;
 
-use App\Enums\CategoryType;
 use App\Models\ForecastExcludedTransaction;
 use App\Models\ForecastMatch;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\CategoryTree;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Reads the past the forecast learns from: a user's own transactions in one
  * space, as they count towards totals (an archived account stops on the day
  * it was archived). A split original is soft-deleted, so only its parts are
  * read. Rows come oldest first, with their category and account loaded.
+ *
+ * Categories belong to the user rather than to a space, so the category
+ * tree is read user-wide.
  */
 class ForecastHistory
 {
@@ -22,24 +25,43 @@ class ForecastHistory
 
     /**
      * @param  list<string>|null  $accountIds  Null reads every account.
-     * @param  bool  $onlyUnplanned  Leave out what already paid a forecast line or was marked a one-off.
      * @return Collection<int, Transaction>
      */
-    public function transactions(User $user, string $spaceId, string $from, string $to, ?array $accountIds = null, bool $onlyUnplanned = false): Collection
+    public function transactions(User $user, string $spaceId, string $from, string $to, ?array $accountIds = null): Collection
+    {
+        return $this->query($user, $spaceId, $from, $to, $accountIds)->get();
+    }
+
+    /**
+     * Like transactions(), leaving out what already paid a forecast line or
+     * the user marked a one-off.
+     *
+     * @param  list<string>|null  $accountIds  Null reads every account.
+     * @return Collection<int, Transaction>
+     */
+    public function unplannedTransactions(User $user, string $spaceId, string $from, string $to, ?array $accountIds = null): Collection
+    {
+        return $this->query($user, $spaceId, $from, $to, $accountIds)
+            ->whereNotIn('transactions.id', ForecastMatch::query()->select('transaction_id'))
+            ->whereNotIn('transactions.id', ForecastExcludedTransaction::query()->select('transaction_id'))
+            ->get();
+    }
+
+    /**
+     * @param  list<string>|null  $accountIds
+     * @return Builder<Transaction>
+     */
+    private function query(User $user, string $spaceId, string $from, string $to, ?array $accountIds): Builder
     {
         return Transaction::query()
             ->where('transactions.user_id', $user->id)
             ->forSpace($spaceId)
             ->transactionDateWithin($from, $to)
             ->countingTowardsTotals()
-            ->when($accountIds !== null, fn ($query) => $query->whereIn('transactions.account_id', $accountIds))
-            ->when($onlyUnplanned, fn ($query) => $query
-                ->whereNotIn('transactions.id', ForecastMatch::query()->select('transaction_id'))
-                ->whereNotIn('transactions.id', ForecastExcludedTransaction::query()->select('transaction_id')))
-            ->with(['category:id,parent_id,type', 'account:id,currency_code,ownership_percentage'])
+            ->when($accountIds !== null, fn (Builder $query) => $query->whereIn('transactions.account_id', $accountIds))
+            ->with(['category:id,parent_id,type', 'account:id,type,currency_code,ownership_percentage'])
             ->orderBy('transactions.transaction_date')
-            ->orderBy('transactions.id')
-            ->get();
+            ->orderBy('transactions.id');
     }
 
     /**
@@ -59,19 +81,5 @@ class ForecastHistory
         }
 
         return $roots;
-    }
-
-    /**
-     * Spend the forecast estimates: what an expense category holds (refunds
-     * included, they lower it) and what is uncategorized and leaves the
-     * account. The same split as Transaction::scopeExpenseSide().
-     */
-    public static function isSpend(Transaction $transaction): bool
-    {
-        if ($transaction->category === null) {
-            return $transaction->amount < 0;
-        }
-
-        return $transaction->category->type === CategoryType::Expense;
     }
 }

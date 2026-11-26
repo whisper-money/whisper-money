@@ -20,8 +20,12 @@ final readonly class TransferLeg
         public ?string $counterpartAccountId = null,
     ) {}
 
-    public function counterpartUnknown(): bool
+    /**
+     * Whether the money moved between two of the user's accounts in the app,
+     * so the other leg already carries it.
+     */
+    public function isInternal(): bool
     {
-        return $this->counterpartAccountId === null;
+        return $this->counterpartAccountId !== null;
     }
 }

@@ -23,7 +23,8 @@ use Illuminate\Database\Eloquent\Collection;
  * the occurrences of the lines stored for them; and the estimated rest of
  * each parent category. Estimates are worked out over every included account,
  * because a budget is split across them, and only then narrowed to the
- * selection. A transfer counts when either of its accounts is selected.
+ * selection. A transfer counts when either of its accounts is included and
+ * selected; the projector moves only the accounts it projects.
  *
  * The forecast page, jobs and MCP tool of the later phases call it; until
  * then only the tests do.
@@ -35,6 +36,7 @@ class ForecastPlanBuilder
     public function __construct(
         private readonly OccurrenceExpander $expander,
         private readonly EstimateCalculator $estimates,
+        private readonly ForecastAccounts $accounts,
     ) {}
 
     /**
@@ -44,53 +46,28 @@ class ForecastPlanBuilder
     public function build(User $user, string $spaceId, ?array $accountIds = null, int $horizonMonths = 12, ?string $startDate = null): ForecastPlan
     {
         $startDate ??= $user->localToday()->toDateString();
-        $settings = $this->settings($user, $spaceId);
-        $included = $this->includedAccounts($user, $spaceId, $settings);
+        $settings = $this->accounts->settings($user, $spaceId);
+        $included = $this->accounts->included($user, $spaceId, $settings);
         $items = $this->items($user, $spaceId, $included->modelKeys());
         $occurrences = $this->expander->expand($items->map(ExpandableItem::fromModel(...)), $startDate, ForecastCalendar::horizonEnd($startDate, $horizonMonths));
         $categoryEstimates = $this->estimates->estimate($user, $spaceId, $included, $startDate, $horizonMonths, $occurrences, $items->pluck('category_id', 'id')->all());
         $selected = $accountIds === null ? $included : $included->filter(fn (Account $account): bool => in_array($account->id, $accountIds, true))->values();
         $selectedIds = array_flip($selected->modelKeys());
 
-        $categoryEstimates = array_values(array_filter($categoryEstimates, fn (CategoryEstimate $estimate): bool => isset($selectedIds[$estimate->accountId])));
+        $selectedEstimates = array_values(array_filter($categoryEstimates, fn (CategoryEstimate $estimate): bool => isset($selectedIds[$estimate->accountId])));
+        $touchesSelection = fn (Occurrence $occurrence): bool => isset($selectedIds[$occurrence->accountId])
+            || ($occurrence->destinationAccountId !== null && isset($selectedIds[$occurrence->destinationAccountId]));
 
         return new ForecastPlan(
             new ProjectionInput(
                 $this->projectionAccounts($selected, $settings, $startDate),
-                array_values(array_filter($occurrences, fn (Occurrence $occurrence): bool => isset($selectedIds[$occurrence->accountId]) || isset($selectedIds[$occurrence->destinationAccountId ?? '']))),
-                array_map(fn (CategoryEstimate $estimate) => $estimate->toMonthlyEstimate(), $categoryEstimates),
+                array_values(array_filter($occurrences, $touchesSelection)),
+                array_map(fn (CategoryEstimate $estimate) => $estimate->toMonthlyEstimate(), $selectedEstimates),
                 $startDate,
                 $horizonMonths,
             ),
-            $categoryEstimates,
+            $selectedEstimates,
         );
-    }
-
-    /**
-     * @return Collection<string, ForecastAccountSetting> By account id.
-     */
-    private function settings(User $user, string $spaceId): Collection
-    {
-        return ForecastAccountSetting::query()
-            ->whereIn('account_id', Account::query()->where('user_id', $user->id)->forSpace($spaceId)->select('id'))
-            ->get()
-            ->keyBy('account_id');
-    }
-
-    /**
-     * @param  Collection<string, ForecastAccountSetting>  $settings
-     * @return Collection<int, Account>
-     */
-    private function includedAccounts(User $user, string $spaceId, Collection $settings): Collection
-    {
-        return Account::query()
-            ->where('user_id', $user->id)
-            ->forSpace($spaceId)
-            ->notArchived()
-            ->orderBy('name')
-            ->get()
-            ->filter(fn (Account $account): bool => ! $settings->has($account->id) || $settings[$account->id]->included)
-            ->values();
     }
 
     /**
@@ -103,7 +80,7 @@ class ForecastPlanBuilder
             ->where('user_id', $user->id)
             ->forSpace($spaceId)
             ->notArchived()
-            ->whereIn('account_id', $accountIds)
+            ->where(fn ($query) => $query->whereIn('account_id', $accountIds)->orWhereIn('destination_account_id', $accountIds))
             ->with(['versions', 'overrides'])
             ->get();
     }
