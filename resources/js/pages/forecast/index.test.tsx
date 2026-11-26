@@ -601,7 +601,7 @@ describe('editing the forecast', () => {
             target: { value: '2000' },
         });
         expect(within(edit).getByRole('status')).toHaveTextContent(
-            'With this change, the minimum of April drops from €-550 to €-750.',
+            'With this change, the minimum of April 2027 drops from €-550 to €-750.',
         );
 
         fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));

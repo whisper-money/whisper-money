@@ -443,6 +443,7 @@ export function ForecastLineSheet({
                 impact={impact}
                 currencyCode={currencyCode}
                 threshold={forecast.account.alertThreshold}
+                today={forecast.today}
             />
         </ForecastSheet>
     );

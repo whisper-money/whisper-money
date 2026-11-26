@@ -160,6 +160,7 @@ export function ForecastEstimateSheet({
                 impact={impact}
                 currencyCode={currencyCode}
                 threshold={forecast.account.alertThreshold}
+                today={forecast.today}
             />
         </ForecastSheet>
     );

@@ -383,7 +383,7 @@ export function ForecastAddSheet({
                 <ToggleGroupItem value="expense">
                     {__('Expense')}
                 </ToggleGroupItem>
-                <ToggleGroupItem value="income">{__('Income')}</ToggleGroupItem>
+                <ToggleGroupItem value="income">{__('Inflow')}</ToggleGroupItem>
                 <ToggleGroupItem value="transfer">
                     {__('Transfer')}
                 </ToggleGroupItem>

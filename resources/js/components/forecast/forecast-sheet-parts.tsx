@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sheet';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { monthLongName } from '@/lib/forecast/format';
+import { monthLongName, monthWithYear } from '@/lib/forecast/format';
 import { type ForecastFrequency } from '@/lib/forecast/types';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -223,10 +223,13 @@ export function ImpactCallout({
     impact,
     currencyCode,
     threshold,
+    today,
 }: {
     impact: { month: string; before: number; after: number } | null;
     currencyCode: string;
     threshold: number | null;
+    /** Months of another year than today's are named with it. */
+    today: string;
 }) {
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
@@ -240,7 +243,10 @@ export function ImpactCallout({
     const lowers = impact.after < impact.before;
     const short = threshold !== null && impact.after < threshold;
     const values = {
-        month: monthLongName(impact.month, locale),
+        month:
+            impact.month.slice(0, 4) === today.slice(0, 4)
+                ? monthLongName(impact.month, locale)
+                : monthWithYear(impact.month, locale),
         before: format(impact.before),
         after: format(impact.after),
     };
