@@ -5,6 +5,7 @@ import {
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
@@ -245,126 +246,128 @@ function SuggestionRow({
               );
 
     return (
-        <div
-            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-2 py-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
-            data-test="forecast-review-row"
-        >
-            <Checkbox
-                id={checkboxId}
-                checked={draft.selected}
-                onCheckedChange={(checked) =>
-                    onChange({ selected: checked === true })
-                }
-                aria-label={draft.name}
-            />
-            <div className="flex min-w-0 flex-col gap-0.5">
-                {renaming ? (
-                    <Input
-                        autoFocus
-                        defaultValue={draft.name}
-                        aria-label={__('Name')}
-                        className="h-8"
-                        maxLength={255}
-                        onBlur={(event) => {
-                            onChange({
-                                name: event.target.value.trim() || draft.name,
-                            });
-                            setRenaming(false);
-                        }}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                event.currentTarget.blur();
-                            }
-
-                            if (event.key === 'Escape') {
-                                event.preventDefault();
-                                event.stopPropagation();
+        <Card size="flush" data-test="forecast-review-row">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-2 py-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]">
+                <Checkbox
+                    id={checkboxId}
+                    checked={draft.selected}
+                    onCheckedChange={(checked) =>
+                        onChange({ selected: checked === true })
+                    }
+                    aria-label={draft.name}
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    {renaming ? (
+                        <Input
+                            autoFocus
+                            defaultValue={draft.name}
+                            aria-label={__('Name')}
+                            className="h-8"
+                            maxLength={255}
+                            onBlur={(event) => {
+                                onChange({
+                                    name:
+                                        event.target.value.trim() || draft.name,
+                                });
                                 setRenaming(false);
-                            }
-                        }}
-                    />
-                ) : (
-                    <button
-                        type="button"
-                        className="truncate text-left text-sm font-medium hover:underline"
-                        onClick={() => setRenaming(true)}
-                        title={__('Rename')}
-                    >
-                        {draft.name}
-                    </button>
-                )}
-                <label
-                    htmlFor={checkboxId}
-                    className="text-xs text-muted-foreground"
-                >
-                    {detail}
-                </label>
-                {isTransfer && suggestion.destinationUnknown && (
-                    <Select
-                        value={draft.destinationAccountId ?? OUTSIDE}
-                        onValueChange={(value) =>
-                            onChange({
-                                destinationAccountId:
-                                    value === OUTSIDE ? null : value,
-                            })
-                        }
-                    >
-                        <SelectTrigger
-                            className="mt-1 h-8 w-full max-w-64 text-xs"
-                            aria-label={__('Where it goes')}
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    event.currentTarget.blur();
+                                }
+
+                                if (event.key === 'Escape') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setRenaming(false);
+                                }
+                            }}
+                        />
+                    ) : (
+                        <button
+                            type="button"
+                            className="truncate text-left text-sm font-medium hover:underline"
+                            onClick={() => setRenaming(true)}
+                            title={__('Rename')}
                         >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value={OUTSIDE}>
-                                {__(
-                                    'Outside Whisper Money (counts as spending)',
-                                )}
-                            </SelectItem>
-                            {accounts
-                                .filter(
-                                    (account) =>
-                                        account.id !== suggestion.accountId,
-                                )
-                                .map((account) => (
-                                    <SelectItem
-                                        key={account.id}
-                                        value={account.id}
-                                    >
-                                        {account.name}
-                                    </SelectItem>
-                                ))}
-                        </SelectContent>
-                    </Select>
-                )}
+                            {draft.name}
+                        </button>
+                    )}
+                    <label
+                        htmlFor={checkboxId}
+                        className="text-xs text-muted-foreground"
+                    >
+                        {detail}
+                    </label>
+                    {isTransfer && suggestion.destinationUnknown && (
+                        <Select
+                            value={draft.destinationAccountId ?? OUTSIDE}
+                            onValueChange={(value) =>
+                                onChange({
+                                    destinationAccountId:
+                                        value === OUTSIDE ? null : value,
+                                })
+                            }
+                        >
+                            <SelectTrigger
+                                className="mt-1 h-8 w-full max-w-64 text-xs"
+                                aria-label={__('Where it goes')}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={OUTSIDE}>
+                                    {__(
+                                        'Outside Whisper Money (counts as spending)',
+                                    )}
+                                </SelectItem>
+                                {accounts
+                                    .filter(
+                                        (account) =>
+                                            account.id !== suggestion.accountId,
+                                    )
+                                    .map((account) => (
+                                        <SelectItem
+                                            key={account.id}
+                                            value={account.id}
+                                        >
+                                            {account.name}
+                                        </SelectItem>
+                                    ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                </div>
+                <Badge
+                    variant={
+                        suggestion.confidence === 'high' ? 'success' : 'warning'
+                    }
+                    className="col-start-2 row-start-2 rounded-full sm:col-start-auto sm:row-start-auto"
+                >
+                    {suggestion.confidence === 'high'
+                        ? __('Sure')
+                        : __('Review')}
+                </Badge>
+                <AmountDisplay
+                    amountInCents={isTransfer ? Math.abs(amount) : amount}
+                    currencyCode={suggestion.currencyCode}
+                    showSign={!isTransfer}
+                    maximumFractionDigits={0}
+                    minimumFractionDigits={0}
+                    className={cn(
+                        'min-w-20 text-right text-sm font-medium tabular-nums',
+                        !isTransfer && amount > 0 && 'text-success',
+                    )}
+                />
+                <RowMenu
+                    draft={draft}
+                    mergeTargets={mergeTargets}
+                    onRename={() => setRenaming(true)}
+                    onMerge={onMerge}
+                    onSeparate={onSeparate}
+                />
             </div>
-            <Badge
-                variant={
-                    suggestion.confidence === 'high' ? 'success' : 'warning'
-                }
-                className="col-start-2 row-start-2 rounded-full sm:col-start-auto sm:row-start-auto"
-            >
-                {suggestion.confidence === 'high' ? __('Sure') : __('Review')}
-            </Badge>
-            <AmountDisplay
-                amountInCents={isTransfer ? Math.abs(amount) : amount}
-                currencyCode={suggestion.currencyCode}
-                showSign={!isTransfer}
-                maximumFractionDigits={0}
-                minimumFractionDigits={0}
-                className={cn(
-                    'min-w-20 text-right text-sm font-medium tabular-nums',
-                    !isTransfer && amount > 0 && 'text-success',
-                )}
-            />
-            <RowMenu
-                draft={draft}
-                mergeTargets={mergeTargets}
-                onRename={() => setRenaming(true)}
-                onMerge={onMerge}
-                onSeparate={onSeparate}
-            />
-        </div>
+        </Card>
     );
 }
 

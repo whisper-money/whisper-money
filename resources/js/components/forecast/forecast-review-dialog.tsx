@@ -160,12 +160,15 @@ function ReviewFlow({
         setError(null);
         router.post(
             store.url(),
-            reviewAnswers(
-                sawRecurring ? drafts : [],
-                review.annual,
-                addedAnnual,
-                manual,
-            ),
+            // Spread into a plain object: Inertia's payload type is a record.
+            {
+                ...reviewAnswers(
+                    sawRecurring ? drafts : [],
+                    review.annual,
+                    addedAnnual,
+                    manual,
+                ),
+            },
             {
                 preserveScroll: true,
                 onSuccess: onSaved,

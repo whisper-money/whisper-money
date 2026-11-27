@@ -5,6 +5,7 @@ import {
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -344,115 +345,120 @@ function ManualPaymentRow({
     const amountId = `${payment.id}-amount`;
 
     return (
-        <div
-            className="grid grid-cols-2 items-center gap-2 rounded-lg border p-2 sm:grid-cols-[minmax(0,1.2fr)_110px_130px_minmax(0,1.2fr)_40px]"
-            data-test="forecast-review-manual-row"
-        >
-            <span className="col-span-2 flex min-w-0 flex-col gap-0.5 pl-1 sm:col-span-1">
-                {payment.presetId === 'other' ? (
-                    <Input
-                        value={payment.name}
-                        placeholder={__('What is it?')}
-                        aria-label={__('Name')}
-                        maxLength={255}
-                        className="h-9"
-                        onChange={(event) =>
-                            onChange({ name: event.target.value })
-                        }
-                    />
-                ) : (
-                    <span className="truncate text-sm font-medium">
-                        {payment.name}
-                    </span>
-                )}
-                {preset?.eitherWay ? (
-                    <Select
-                        value={payment.direction}
-                        onValueChange={(value) =>
-                            onChange({ direction: value as 'in' | 'out' })
-                        }
-                    >
-                        <SelectTrigger
-                            className="h-7 w-fit gap-1 border-0 px-0 text-[11px] text-muted-foreground shadow-none"
-                            aria-label={__('Payment or refund of :name', {
-                                name: label,
-                            })}
+        <Card size="flush" data-test="forecast-review-manual-row">
+            <div className="grid grid-cols-2 items-center gap-2 p-2 sm:grid-cols-[minmax(0,1.2fr)_110px_130px_minmax(0,1.2fr)_40px]">
+                <span className="col-span-2 flex min-w-0 flex-col gap-0.5 pl-1 sm:col-span-1">
+                    {payment.presetId === 'other' ? (
+                        <Input
+                            value={payment.name}
+                            placeholder={__('What is it?')}
+                            aria-label={__('Name')}
+                            maxLength={255}
+                            className="h-9"
+                            onChange={(event) =>
+                                onChange({ name: event.target.value })
+                            }
+                        />
+                    ) : (
+                        <span className="truncate text-sm font-medium">
+                            {payment.name}
+                        </span>
+                    )}
+                    {preset?.eitherWay ? (
+                        <Select
+                            value={payment.direction}
+                            onValueChange={(value) =>
+                                onChange({ direction: value as 'in' | 'out' })
+                            }
                         >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="out">{__('Payment')}</SelectItem>
-                            <SelectItem value="in">{__('Refund')}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                ) : (
-                    <span className="text-[11px] text-muted-foreground">
-                        {preset?.kind()}
-                    </span>
-                )}
-            </span>
-            <span>
-                <Label htmlFor={amountId} className="sr-only">
-                    {__('Amount of :name', { name: label })}
-                </Label>
-                <AmountInput
-                    id={amountId}
-                    value={payment.amount}
-                    onChange={(amount) =>
-                        onChange({ amount: Math.abs(amount) })
+                            <SelectTrigger
+                                className="h-7 w-fit gap-1 border-0 px-0 text-[11px] text-muted-foreground shadow-none"
+                                aria-label={__('Payment or refund of :name', {
+                                    name: label,
+                                })}
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="out">
+                                    {__('Payment')}
+                                </SelectItem>
+                                <SelectItem value="in">
+                                    {__('Refund')}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <span className="text-[11px] text-muted-foreground">
+                            {preset?.kind()}
+                        </span>
+                    )}
+                </span>
+                <span>
+                    <Label htmlFor={amountId} className="sr-only">
+                        {__('Amount of :name', { name: label })}
+                    </Label>
+                    <AmountInput
+                        id={amountId}
+                        value={payment.amount}
+                        onChange={(amount) =>
+                            onChange({ amount: Math.abs(amount) })
+                        }
+                        currencyCode={account?.currencyCode ?? 'EUR'}
+                        placeholder={__('Amount')}
+                        commitOnChange
+                    />
+                </span>
+                <Select
+                    value={String(payment.month)}
+                    onValueChange={(value) =>
+                        onChange({ month: Number(value) })
                     }
-                    currencyCode={account?.currencyCode ?? 'EUR'}
-                    placeholder={__('Amount')}
-                    commitOnChange
-                />
-            </span>
-            <Select
-                value={String(payment.month)}
-                onValueChange={(value) => onChange({ month: Number(value) })}
-            >
-                <SelectTrigger
-                    className="w-full"
-                    aria-label={__('Month of :name', { name: label })}
                 >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {MONTHS.map((month) => (
-                        <SelectItem key={month} value={String(month)}>
-                            <span className="capitalize">
-                                {formatMonthName(monthKey(month), locale)}
-                            </span>
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Select
-                value={payment.accountId}
-                onValueChange={(value) => onChange({ accountId: value })}
-            >
-                <SelectTrigger
-                    className="w-full min-w-0 [&>span]:truncate"
-                    aria-label={__('Account of :name', { name: label })}
+                    <SelectTrigger
+                        className="w-full"
+                        aria-label={__('Month of :name', { name: label })}
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {MONTHS.map((month) => (
+                            <SelectItem key={month} value={String(month)}>
+                                <span className="capitalize">
+                                    {formatMonthName(monthKey(month), locale)}
+                                </span>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select
+                    value={payment.accountId}
+                    onValueChange={(value) => onChange({ accountId: value })}
                 >
-                    <SelectValue placeholder={__('Account')} />
-                </SelectTrigger>
-                <SelectContent>
-                    {accounts.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                            {option.name}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="justify-self-end"
-                onClick={onRemove}
-                aria-label={__('Remove :name', { name: label })}
-            >
-                <X />
-            </Button>
-        </div>
+                    <SelectTrigger
+                        className="w-full min-w-0 [&>span]:truncate"
+                        aria-label={__('Account of :name', { name: label })}
+                    >
+                        <SelectValue placeholder={__('Account')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {accounts.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                                {option.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="justify-self-end"
+                    onClick={onRemove}
+                    aria-label={__('Remove :name', { name: label })}
+                >
+                    <X />
+                </Button>
+            </div>
+        </Card>
     );
 }
