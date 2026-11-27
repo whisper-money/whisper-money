@@ -35,10 +35,12 @@ interface ForecastAccountTabsProps {
     /** The account shown, or null for "All accounts". */
     selectedId: string | null;
     horizon: ForecastHorizon;
+    /** Sizes the trigger where it sits, as the phone's row with the horizon. */
+    className?: string;
 }
 
 /**
- * The desktop account filter: a menu with "All accounts", then the accounts
+ * The account filter, on a computer and on a phone: a menu with "All accounts", then the accounts
  * the forecast covers (the ones it warns about, then the projection-only
  * ones), each with its type, trend and warning, and the way to choose the
  * accounts. Picking one shows it, as the URL says.
@@ -47,6 +49,7 @@ export function ForecastAccountTabs({
     accounts,
     selectedId,
     horizon,
+    className,
 }: ForecastAccountTabsProps) {
     const editor = useForecastEditor();
     const { formatAmount } = useFormatAmount();
@@ -90,7 +93,10 @@ export function ForecastAccountTabs({
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="outline"
-                    className="h-10 min-w-[260px] justify-start gap-2.5 self-start rounded-md px-3"
+                    className={cn(
+                        'h-10 min-w-[260px] justify-start gap-2.5 self-start rounded-md px-3',
+                        className,
+                    )}
                     data-test="forecast-account-filter"
                 >
                     <CreditCardIcon className="text-muted-foreground" />
@@ -116,38 +122,40 @@ export function ForecastAccountTabs({
             <DropdownMenuContent
                 align="start"
                 sideOffset={6}
-                className="flex max-h-(--radix-dropdown-menu-content-available-height) w-[340px] flex-col overflow-y-auto rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
+                className="flex max-h-(--radix-dropdown-menu-content-available-height) w-[340px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
                 data-test="forecast-account-menu"
             >
-                <AccountOption
-                    name={__('All accounts')}
-                    hint={allAccountsHint(accounts.length, alertCount)}
-                    selected={selectedId === null}
-                    hasAlert={false}
-                    onSelect={() => show('all')}
-                    dataTest="forecast-tab-all"
-                />
-                {spending.length > 0 && (
-                    <DropdownMenuGroup>
-                        <DropdownMenuLabel className={GROUP_LABEL}>
-                            {__('Your accounts')}
-                        </DropdownMenuLabel>
-                        {spending.map(option)}
-                    </DropdownMenuGroup>
-                )}
-                {projectionOnly.length > 0 && (
-                    <DropdownMenuGroup>
-                        <DropdownMenuLabel className={GROUP_LABEL}>
-                            {__('Projection only')}
-                        </DropdownMenuLabel>
-                        {projectionOnly.map(option)}
-                    </DropdownMenuGroup>
-                )}
+                <div className="flex min-h-0 flex-col overflow-y-auto">
+                    <AccountOption
+                        name={__('All accounts')}
+                        hint={allAccountsHint(accounts.length, alertCount)}
+                        selected={selectedId === null}
+                        hasAlert={false}
+                        onSelect={() => show('all')}
+                        dataTest="forecast-tab-all"
+                    />
+                    {spending.length > 0 && (
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel className={GROUP_LABEL}>
+                                {__('Your accounts')}
+                            </DropdownMenuLabel>
+                            {spending.map(option)}
+                        </DropdownMenuGroup>
+                    )}
+                    {projectionOnly.length > 0 && (
+                        <DropdownMenuGroup>
+                            <DropdownMenuLabel className={GROUP_LABEL}>
+                                {__('Projection only')}
+                            </DropdownMenuLabel>
+                            {projectionOnly.map(option)}
+                        </DropdownMenuGroup>
+                    )}
+                </div>
                 {editor && (
                     <>
-                        <DropdownMenuSeparator className="mx-0" />
+                        <DropdownMenuSeparator className="mx-0 shrink-0" />
                         <DropdownMenuItem
-                            className="min-h-10 gap-2.5 rounded-sm px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
+                            className="min-h-10 shrink-0 gap-2.5 rounded-sm px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
                             onSelect={() => editor.open({ kind: 'accounts' })}
                             data-test="forecast-choose-accounts"
                         >

@@ -1477,6 +1477,32 @@ describe('the forecast page on a phone', () => {
         ).toBeInTheDocument();
     });
 
+    it('filters the accounts with the same menu as on a computer, which leads to choosing them', () => {
+        renderPage(forecast(), {
+            accounts: [{ id: 'checking', openingBalance: 100000 }],
+            occurrences: [],
+            estimates: [],
+            startDate: '2026-11-26',
+            horizonMonths: 7,
+        });
+
+        expect(
+            document.querySelector('[data-test="forecast-mobile-account"]'),
+        ).not.toBeInTheDocument();
+
+        openAccountMenu();
+        expect(
+            document.querySelector('[data-test="forecast-account-menu"]'),
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-choose-accounts"]')!,
+        );
+        expect(
+            document.querySelector('[data-test="forecast-accounts-sheet"]'),
+        ).toBeInTheDocument();
+    });
+
     it('picks the problem month first, marks the months that run short and follows the chip or the chart', () => {
         renderPage(forecast());
 
@@ -1652,20 +1678,18 @@ describe('the forecast page on a phone', () => {
         ).toBeInTheDocument();
     });
 
-    it('moves to another account or horizon from the selects', () => {
+    it('moves to another account from the menu or horizon from the select', () => {
         visit.mockClear();
         renderPage(forecast());
 
-        const account = screen.getByLabelText('Account');
-        expect(account).toHaveValue('checking');
         expect(
-            within(account).getByRole('option', { name: 'Checking · ⚠' }),
-        ).toBeInTheDocument();
-        expect(
-            within(account).getByRole('option', { name: 'All accounts' }),
-        ).toBeInTheDocument();
+            document.querySelector('[data-test="forecast-account-filter"]'),
+        ).toHaveTextContent('Checking');
 
-        fireEvent.change(account, { target: { value: 'savings' } });
+        openAccountMenu();
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-tab-savings"]')!,
+        );
         expect(visit.mock.calls.at(-1)?.[0]).toBe(
             '/forecast?account=savings&horizon=6',
         );
@@ -1751,7 +1775,9 @@ describe('the forecast page on a phone', () => {
     it('shows the "All accounts" month with each category summed in the user\'s currency', () => {
         renderPage(allForecast());
 
-        expect(screen.getByLabelText('Account')).toHaveValue('all');
+        expect(
+            document.querySelector('[data-test="forecast-account-filter"]'),
+        ).toHaveTextContent('All accounts');
 
         fireEvent.click(chip('2026-12'));
         const home = group('group:expenses:home');
