@@ -46,25 +46,36 @@ test('nobody is an admin while ADMIN_EMAIL is unset', function (?string $adminEm
     $this->actingAs($user)->get('/admin')->assertNotFound();
 })->with([null, '']);
 
-test('the user list renders and paginates, newest first', function () {
+test('the page lists the ten newest users and how many there are', function () {
     $admin = admin();
-    User::factory()->count(30)->create();
+    $newest = User::factory()->create(['created_at' => now()->addMinute()]);
+    User::factory()->count(12)->create(['created_at' => now()->subDay()]);
 
     $this->actingAs($admin)
         ->get('/admin')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('users.data', 25)
-            ->where('users.total', 31)
-            ->where('users.current_page', 1)
+            ->has('latestUsers', 10)
+            ->where('latestUsers.0.id', $newest->id)
+            ->where('userCount', 14)
+            ->missing('users')
         );
+});
+
+test('the page carries 30 days of sign-ups and active users', function () {
+    $this->travelTo('2026-11-27 12:00:00');
+    $admin = admin();
+    User::factory()->count(2)->create(['created_at' => '2026-11-20 09:00:00']);
 
     $this->actingAs($admin)
-        ->get('/admin?page=2')
+        ->get('/admin')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('users.data', 6)
-            ->where('users.current_page', 2)
+            ->has('signupChart', 30)
+            ->where('signupChart.0.date', '2026-10-29')
+            ->where('signupChart.22', ['date' => '2026-11-20', 'signups' => 2, 'active_users' => 0])
+            // The admin's own request is today's activity.
+            ->where('signupChart.29', ['date' => '2026-11-27', 'signups' => 1, 'active_users' => 1])
         );
 });
 

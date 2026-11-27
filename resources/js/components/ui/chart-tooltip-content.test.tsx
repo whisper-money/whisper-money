@@ -138,3 +138,18 @@ describe('ChartTooltipContent zero rows', () => {
         expect(screen.queryByText('Savings')).not.toBeInTheDocument();
     });
 });
+
+describe('ChartTooltipContent total row', () => {
+    it('adds the rows up by default', () => {
+        renderTooltip({});
+
+        expect(screen.getByText('Total')).toBeInTheDocument();
+    });
+
+    it('leaves the total out for a chart whose series do not add up', () => {
+        renderTooltip({ hideTotal: true });
+
+        expect(screen.queryByText('Total')).not.toBeInTheDocument();
+        expect(screen.getByText('Checking')).toBeInTheDocument();
+    });
+});
