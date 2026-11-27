@@ -76,6 +76,14 @@ vi.mock('@/hooks/use-format-amount', () => ({
 
 vi.mock('@/hooks/use-locale', () => ({ useLocale: () => 'en' }));
 
+/** Opens the desktop account filter, as a pointer press on it does. */
+function openAccountMenu(): void {
+    fireEvent.pointerDown(
+        document.querySelector('[data-test="forecast-account-filter"]')!,
+        { button: 0, ctrlKey: false },
+    );
+}
+
 function renderPage(
     data: ForecastData | ForecastAllData,
     projectionInput: ProjectionInput | null = null,
@@ -302,9 +310,12 @@ describe('the forecast page', () => {
     it('marks the account with a problem and says it in a strong alert', () => {
         renderPage(forecast());
 
-        const tabs = screen.getByRole('navigation', { name: 'Account' });
         expect(
-            within(tabs).getByRole('img', { name: 'has a warning' }),
+            within(
+                document.querySelector(
+                    '[data-test="forecast-account-filter"]',
+                )!,
+            ).getByRole('img', { name: 'has a warning' }),
         ).toBeInTheDocument();
         expect(
             document.querySelector('[data-test="forecast-alert-strong"]'),
@@ -327,10 +338,9 @@ describe('the forecast page', () => {
         expect(
             document.querySelector('[data-test="forecast-trend"]'),
         ).toHaveTextContent('Trend of the last 12 months: +€299.86/month');
+        openAccountMenu();
         expect(
-            within(
-                screen.getByRole('navigation', { name: 'Account' }),
-            ).getByRole('link', { name: /Savings/ }),
+            document.querySelector('[data-test="forecast-tab-savings"]'),
         ).toHaveTextContent('trend +€299.86/month');
     });
 
@@ -896,6 +906,7 @@ describe('editing the forecast', () => {
         });
         renderPage(data, editingInput());
 
+        openAccountMenu();
         fireEvent.click(
             document.querySelector('[data-test="forecast-choose-accounts"]')!,
         );
@@ -1141,12 +1152,12 @@ describe('the "All accounts" view', () => {
         ) as HTMLElement;
     }
 
-    it('selects the "All accounts" tab and says the money is in the wrong account', () => {
+    it('selects "All accounts" in the filter and says the money is in the wrong account', () => {
         renderPage(all());
 
         expect(
-            screen.getByRole('link', { name: 'All accounts' }).className,
-        ).toContain('bg-primary');
+            document.querySelector('[data-test="forecast-account-filter"]'),
+        ).toHaveTextContent('All accounts1 warning');
 
         const alert = document.querySelector(
             '[data-test="forecast-all-alert-split"]',
