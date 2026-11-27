@@ -3,9 +3,9 @@ import {
     alertThreshold,
     editedDefinitions,
     estimateDeltas,
+    estimateKind,
     evaluateAlert,
     impactOn,
-    isAdjustableEstimate,
     withEstimateDeltas,
     withLine,
 } from '@/lib/forecast/edits';
@@ -289,16 +289,29 @@ describe('recomputing the forecast', () => {
         expect(adjusted.estimates?.[0].day).toBe(27);
     });
 
-    it('cannot adjust other income, which a category-less adjustment would miss', () => {
-        expect(
-            isAdjustableEstimate({ section: 'income', categoryId: null }),
-        ).toBe(false);
-        expect(
-            isAdjustableEstimate({ section: 'income', categoryId: 'salary' }),
-        ).toBe(true);
-        expect(
-            isAdjustableEstimate({ section: 'expenses', categoryId: null }),
-        ).toBe(true);
+    it('tells income from spend by the section, so "Other income" is adjusted as income', () => {
+        expect(estimateKind({ section: 'income' })).toBe('income');
+        expect(estimateKind({ section: 'expenses' })).toBe('expense');
+
+        const adjusted = withEstimateDeltas(
+            { ...input(), estimates: [] },
+            {
+                accountId: 'checking',
+                categoryId: null,
+                kind: estimateKind({ section: 'income' }),
+            },
+            { '2026-12': 40000 },
+        );
+
+        expect(adjusted.estimates).toEqual([
+            {
+                accountId: 'checking',
+                categoryId: null,
+                kind: 'income',
+                month: '2026-12',
+                amount: 40000,
+            },
+        ]);
     });
 });
 

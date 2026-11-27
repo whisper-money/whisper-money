@@ -3,17 +3,19 @@ import {
     type ForecastEditTarget,
 } from '@/components/forecast/forecast-editor';
 import {
+    CategoryHeader,
+    CategoryMonthCell,
     EMPTY_CELL,
     EstimateHeader,
     LineHeader,
     LockedCell,
     PlanCell,
     PlanMonthCell,
+    signedFigure,
     type PlanCellContext,
 } from '@/components/forecast/forecast-plan-cells';
 import {
-    AddLineRow,
-    concreteHint,
+    CategoryToggle,
     EditableCell,
     MonthHeader,
     PlanRowShell,
@@ -26,10 +28,12 @@ import {
     accountEstimateGroup,
     allGroupIds,
     buildAllPlanRows,
+    opensAllAccounts,
     shortAccountCount,
+    soleEstimate,
     type AllPlanRow,
 } from '@/lib/forecast/all-accounts';
-import { isAdjustableEstimate } from '@/lib/forecast/edits';
+import { estimateKind } from '@/lib/forecast/edits';
 import {
     balanceTone,
     isShort,
@@ -45,7 +49,6 @@ import {
     type ForecastMonthColumn,
 } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
-import { ChevronRightIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 
 interface ForecastAllPlanTableProps {
@@ -128,7 +131,7 @@ function RowHeader({
     expanded,
     onToggle,
 }: {
-    row: Exclude<AllPlanRow, { type: 'section' } | { type: 'add' }>;
+    row: Exclude<AllPlanRow, { type: 'section' }>;
     context: TableContext;
     expanded: boolean;
     onToggle: () => void;
@@ -138,35 +141,33 @@ function RowHeader({
         formatAmount(amount, currencyCode, { fractionDigits: 0 });
 
     switch (row.type) {
-        case 'group':
+        case 'group': {
+            const sole = soleEstimate(row.group);
+
             return (
-                <button
-                    type="button"
-                    onClick={onToggle}
-                    aria-expanded={expanded}
-                    className="flex min-h-8 items-center gap-2 text-left text-[13px] font-semibold"
+                <CategoryToggle
+                    expanded={opensAllAccounts(row.group) ? expanded : null}
+                    onToggle={onToggle}
                 >
-                    <ChevronRightIcon
-                        aria-hidden="true"
-                        className={cn(
-                            'size-3.5 text-muted-foreground transition-transform',
-                            expanded && 'rotate-90',
+                    <CategoryHeader
+                        name={groupName(row.group)}
+                        estimate={sole}
+                        currencyCode={context.accountCurrency(
+                            sole?.accountId ?? '',
                         )}
+                        accountName={
+                            sole === null
+                                ? undefined
+                                : context.accountName(sole.accountId)
+                        }
                     />
-                    <span>{groupName(row.group)}</span>
-                    <span className="text-[11px] font-normal text-muted-foreground">
-                        {concreteHint(
-                            row.group.items.length,
-                            row.group.estimates.length > 0,
-                        )}
-                    </span>
-                </button>
+                </CategoryToggle>
             );
+        }
         case 'line':
             return (
                 <LineHeader
                     line={row.line}
-                    currencyCode={context.accountCurrency(row.line.accountId)}
                     name={
                         row.line.kind === 'transfer'
                             ? transferName(row.line, context)
@@ -288,28 +289,33 @@ function GroupCell({
 
     if (current) {
         const { real, pending } = row.group.current;
+        const figure = signedFigure(real, (amount) =>
+            number(amount, currencyCode),
+        );
 
         return (
-            <PlanCell className="font-semibold">
-                {real === 0 && pending
-                    ? __('pending')
-                    : number(real, currencyCode)}
+            <PlanCell className={cn('font-semibold', figure.className)}>
+                {real === 0 && pending ? __('pending') : figure.text}
             </PlanCell>
         );
     }
 
-    const total = row.group.totals[month];
-
-    if (total === undefined) {
-        return EMPTY_CELL;
-    }
-
     return (
-        <PlanCell className="font-semibold">
-            {row.group.estimates.length > 0
-                ? `≈ ${number(total, currencyCode)}`
-                : number(total, currencyCode)}
-        </PlanCell>
+        <CategoryMonthCell
+            total={row.group.totals[month]}
+            estimate={
+                row.group.estimates.length === 0
+                    ? null
+                    : {
+                          kind: estimateKind(row.group),
+                          // In the user's currency only when the figure is that one estimate.
+                          amount: opensAllAccounts(row.group)
+                              ? null
+                              : (row.group.totals[month] ?? null),
+                      }
+            }
+            currencyCode={currencyCode}
+        />
     );
 }
 
@@ -363,7 +369,7 @@ function MonthFigure({
     column,
     context,
 }: {
-    row: Exclude<AllPlanRow, { type: 'section' } | { type: 'add' }>;
+    row: Exclude<AllPlanRow, { type: 'section' }>;
     column: ForecastMonthColumn;
     context: TableContext;
 }) {
@@ -455,7 +461,7 @@ function MonthFigure({
     }
 }
 
-/** What a cell opens: a line or an estimated rest of its own account, in a month that can change. */
+/** What a cell opens: a line, or a category's estimate on its own account, in a month that can change. */
 function editTarget(
     row: AllPlanRow,
     column: ForecastMonthColumn,
@@ -475,16 +481,19 @@ function editTarget(
             : null;
     }
 
-    if (row.type === 'estimate' && isAdjustableEstimate(row.group)) {
-        return {
-            kind: 'estimate',
-            group: accountEstimateGroup(row.group, row.estimate),
-            month: column.month,
-            accountId: row.estimate.accountId,
-        };
+    const estimate = row.type === 'group' ? soleEstimate(row.group) : null;
+    const edited = row.type === 'estimate' ? row.estimate : estimate;
+
+    if (edited === null || (row.type !== 'estimate' && row.type !== 'group')) {
+        return null;
     }
 
-    return null;
+    return {
+        kind: 'estimate',
+        group: accountEstimateGroup(row.group, edited),
+        month: column.month,
+        accountId: edited.accountId,
+    };
 }
 
 function rowLabel(row: AllPlanRow, context: TableContext): string {
@@ -494,8 +503,8 @@ function rowLabel(row: AllPlanRow, context: TableContext): string {
             : row.line.name;
     }
 
-    return row.type === 'estimate'
-        ? __('Estimated rest of :group', { group: groupName(row.group) })
+    return row.type === 'estimate' || row.type === 'group'
+        ? groupName(row.group)
         : '';
 }
 
@@ -504,7 +513,7 @@ function MonthCell({
     column,
     context,
 }: {
-    row: Exclude<AllPlanRow, { type: 'section' } | { type: 'add' }>;
+    row: Exclude<AllPlanRow, { type: 'section' }>;
     column: ForecastMonthColumn;
     context: TableContext;
 }) {
@@ -533,7 +542,7 @@ function MonthCell({
 }
 
 function look(
-    row: Exclude<AllPlanRow, { type: 'section' } | { type: 'add' }>,
+    row: Exclude<AllPlanRow, { type: 'section' }>,
 ): 'group' | 'child' | 'summary' | 'plain' {
     switch (row.type) {
         case 'group':
@@ -548,7 +557,7 @@ function look(
 
 /**
  * "Your plan · all accounts": the user's parent categories adding up every
- * account (each line and estimated rest says which account it is on), the
+ * account (each line and estimate says which account it is on), the
  * estimated growth, the transfers between the accounts, which leave the
  * total as it is, and how each account and the total close every month.
  * Tapping a figure edits it on its own account.
@@ -594,16 +603,21 @@ export function ForecastAllPlanTable({
         <PlanTableCard
             title={__('Your plan · all accounts')}
             description={__(
-                'Your categories adding up every account; each concrete line says which account it is on. Below, how each account closes.',
+                'Your categories adding up every account, from your last 3 months; tap a figure to change it on its account. Below, how each account closes.',
             )}
             allExpanded={allExpanded}
             headerAction={headerAction}
-            onToggleAll={() =>
-                setOpen(
-                    allExpanded
-                        ? {}
-                        : Object.fromEntries(groupIds.map((id) => [id, true])),
-                )
+            onToggleAll={
+                groupIds.length === 0
+                    ? null
+                    : () =>
+                          setOpen(
+                              allExpanded
+                                  ? {}
+                                  : Object.fromEntries(
+                                        groupIds.map((id) => [id, true]),
+                                    ),
+                          )
             }
             columns={forecast.months.map((column) => {
                 const short =
@@ -634,17 +648,6 @@ export function ForecastAllPlanTable({
                         <SectionHeading
                             key={row.id}
                             {...sectionLabel(row.section)}
-                            colSpan={colSpan}
-                        />
-                    );
-                }
-
-                if (row.type === 'add') {
-                    return (
-                        <AddLineRow
-                            key={row.id}
-                            section={row.section}
-                            group={row.group}
                             colSpan={colSpan}
                         />
                     );

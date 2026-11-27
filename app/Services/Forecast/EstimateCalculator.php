@@ -2,11 +2,9 @@
 
 namespace App\Services\Forecast;
 
-use App\Enums\CategoryType;
 use App\Enums\ForecastEstimateBasis;
 use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\ForecastEstimateAdjustment;
 use App\Models\Transaction;
 use App\Models\User;
@@ -38,7 +36,7 @@ use Illuminate\Database\Eloquent\Collection;
  * account's currency is too small for a row: it joins "Other income" or
  * "Other spending" (`categoryId` null) with the uncategorized money of its
  * side. An adjustment the user made replaces the figure for the months it
- * covers, the latest one winning; it is income when its category is. In
+ * covers, the latest one winning, on the side it was made on. In
  * the start month the estimate is what is left of it after what already
  * came in or went out there. Each row also says when in the month it lands
  * (see EstimateTiming).
@@ -291,9 +289,8 @@ class EstimateCalculator
     }
 
     /**
-     * The user's adjustments by account and row, latest start first. One
-     * on an income category adjusts its income row; any other (or none),
-     * its spend row.
+     * The user's adjustments by account and row, latest start first, each
+     * on the side it was made on.
      *
      * @param  Collection<int, Account>  $accounts
      * @param  array<string, string>  $parents
@@ -302,38 +299,19 @@ class EstimateCalculator
     private function adjustments(User $user, string $spaceId, Collection $accounts, array $parents): array
     {
         $byBucket = [];
-
         $adjustments = ForecastEstimateAdjustment::query()
             ->where('user_id', $user->id)
             ->forSpace($spaceId)
             ->whereIn('account_id', $accounts->modelKeys())
             ->orderByDesc('starts_on')
             ->get();
-        $incomeParents = array_flip($this->incomeParents($user, $parents));
 
         foreach ($adjustments as $adjustment) {
             $parent = $adjustment->category_id === null ? self::OTHER : ($parents[$adjustment->category_id] ?? self::OTHER);
-            $kind = isset($incomeParents[$parent]) ? ForecastEstimateKind::Income : ForecastEstimateKind::Expense;
-            $byBucket[$adjustment->account_id][self::bucket($kind, $parent)][] = $adjustment;
+            $byBucket[$adjustment->account_id][self::bucket($adjustment->kind, $parent)][] = $adjustment;
         }
 
         return $byBucket;
-    }
-
-    /**
-     * The user's parent categories of the income type.
-     *
-     * @param  array<string, string>  $parents
-     * @return list<string>
-     */
-    private function incomeParents(User $user, array $parents): array
-    {
-        return Category::query()
-            ->where('user_id', $user->id)
-            ->whereIn('id', array_values(array_unique($parents)))
-            ->where('type', CategoryType::Income)
-            ->pluck('id')
-            ->all();
     }
 
     /**

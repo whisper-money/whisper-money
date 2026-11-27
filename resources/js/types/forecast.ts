@@ -157,8 +157,6 @@ export interface ForecastLine {
     amountTolerance: number;
     dateWindowDays: number;
     payments: ForecastLinePayment[];
-    /** "It is now 950. Update from December?" */
-    drift: { amount: number; from: string } | null;
 }
 
 export interface ForecastEstimate {

@@ -1,4 +1,3 @@
-import { store as acceptDrift } from '@/actions/App/Http/Controllers/Forecast/ForecastItemDriftController';
 import { ForecastAccountsSheet } from '@/components/forecast/forecast-account-choices';
 import { ForecastAccountSheet } from '@/components/forecast/forecast-account-sheet';
 import {
@@ -7,9 +6,7 @@ import {
 } from '@/components/forecast/forecast-add-sheet';
 import { ForecastEstimateSheet } from '@/components/forecast/forecast-estimate-sheet';
 import { ForecastLineSheet } from '@/components/forecast/forecast-line-sheet';
-import { useForecastSave } from '@/hooks/use-forecast-save';
 import { accountSheetForecast } from '@/lib/forecast/all-accounts';
-import { editedDefinitions, withLine } from '@/lib/forecast/edits';
 import { type ProjectionInput } from '@/lib/forecast/types';
 import {
     type ForecastAllData,
@@ -25,7 +22,7 @@ export type ForecastEditTarget =
           kind: 'estimate';
           group: ForecastGroup;
           month: string;
-          /** The account of the estimated rest, out of the "All accounts" view. */
+          /** The account of the category's estimate, out of the "All accounts" view. */
           accountId?: string;
       }
     | { kind: 'add'; prefill?: AddPrefill }
@@ -34,7 +31,6 @@ export type ForecastEditTarget =
 
 interface ForecastEditor {
     open: (target: ForecastEditTarget) => void;
-    acceptDrift: (line: ForecastLine) => void;
 }
 
 const ForecastEditorContext = createContext<ForecastEditor | null>(null);
@@ -66,9 +62,9 @@ function targetAccountId(target: ForecastEditTarget): string | undefined {
 }
 
 /**
- * Holds which edit sheet of the forecast is open (a line, an estimated
- * rest, a new line, the account's settings or the accounts covered) and lets the table, the
- * warnings and the figures open them. Out of the "All accounts" view, a
+ * Holds which edit sheet of the forecast is open (a line, a category's
+ * estimate, a new line, the account's settings or the accounts covered)
+ * and lets the table, the warnings and the figures open them. Out of the "All accounts" view, a
  * sheet edits the account the line, the estimate or the new line is on.
  */
 export function ForecastEditorProvider({
@@ -82,7 +78,6 @@ export function ForecastEditorProvider({
 }) {
     const [target, setTarget] = useState<ForecastEditTarget | null>(null);
     const [sequence, setSequence] = useState(0);
-    const { save } = useForecastSave();
     const forecast =
         page.scope === 'all'
             ? accountSheetForecast(
@@ -98,39 +93,6 @@ export function ForecastEditorProvider({
                   open: (next) => {
                       setTarget(next);
                       setSequence((count) => count + 1);
-                  },
-                  acceptDrift: (line) => {
-                      if (line.drift === null) {
-                          return;
-                      }
-
-                      const definitions = editedDefinitions(
-                          line.definition,
-                          {
-                              scope: 'from_here',
-                              occurrenceDate: line.drift.from,
-                              amount: line.drift.amount,
-                              frequency: null,
-                              day: null,
-                          },
-                          forecast.today,
-                          true,
-                      );
-
-                      save(
-                          acceptDrift(line.id),
-                          {},
-                          {
-                              input: withLine(
-                                  projectionInput,
-                                  line.id,
-                                  definitions,
-                              ),
-                              itemIds: [line.id],
-                          },
-                          undefined,
-                          { toastErrors: true },
-                      );
                   },
               };
 

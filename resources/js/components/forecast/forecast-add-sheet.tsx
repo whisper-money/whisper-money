@@ -55,6 +55,30 @@ export interface AddPrefill {
 
 const OUTSIDE = 'outside';
 
+/**
+ * What repeats every month or so is already in its category's estimate:
+ * a charge or an income added by hand happens once or once a year. Only a
+ * transfer takes every repetition.
+ */
+const CATEGORY_FREQUENCIES: ForecastFrequency[] = ['once', 'yearly'];
+
+/** The repetitions a type of line takes, or undefined for all of them. */
+function frequenciesFor(type: AddType): ForecastFrequency[] | undefined {
+    return type === 'transfer' ? undefined : CATEGORY_FREQUENCIES;
+}
+
+/** The repetition kept when the type changes: the same one when the new type takes it, else once. */
+function keptFrequency(
+    type: AddType,
+    frequency: ForecastFrequency,
+): ForecastFrequency {
+    const allowed = frequenciesFor(type);
+
+    return allowed === undefined || allowed.includes(frequency)
+        ? frequency
+        : 'once';
+}
+
 /** The id a line not stored yet goes by in the client engine. */
 const NEW_LINE = 'new-line';
 
@@ -106,7 +130,7 @@ function initialDraft(
         categoryId: prefill?.categoryId ?? null,
         amount: prefill?.amount ?? 0,
         date: prefill?.date ?? today,
-        frequency: prefill?.frequency ?? 'once',
+        frequency: keptFrequency(type, prefill?.frequency ?? 'once'),
         endsOn: '',
     };
 }
@@ -254,8 +278,8 @@ function AccountSelect({
 }
 
 /**
- * "Añadir previsión": a concrete charge, income or transfer the user
- * knows is coming. A transfer goes from one account to another (or out of
+ * "Añadir previsión": a one-off or yearly charge or income the user knows
+ * is coming (it adds on top of its category's estimate), or a transfer. A transfer goes from one account to another (or out of
  * the app), and the sheet shows what it does to both before it is added:
  * the receiving account's lowest point, the sending one's close, and the
  * total, which a transfer between two accounts leaves as it was.
@@ -375,7 +399,14 @@ export function ForecastAddSheet({
                 variant="outline"
                 value={draft.type}
                 onValueChange={(type) =>
-                    type && change({ type: type as AddType })
+                    type &&
+                    change({
+                        type: type as AddType,
+                        frequency: keptFrequency(
+                            type as AddType,
+                            draft.frequency,
+                        ),
+                    })
                 }
                 aria-label={__('Type')}
                 className="grid w-full grid-cols-3"
@@ -539,6 +570,7 @@ export function ForecastAddSheet({
                         id="forecast-add-frequency"
                         value={draft.frequency}
                         onChange={(frequency) => change({ frequency })}
+                        only={frequenciesFor(draft.type)}
                     />
                 </Field>
                 {draft.frequency !== 'once' && (
@@ -580,6 +612,14 @@ export function ForecastAddSheet({
                             : undefined
                     }
                 />
+            )}
+
+            {!isTransfer && (
+                <Note>
+                    {__(
+                        "What repeats every month is already in its category's estimate: change that figure in your plan instead.",
+                    )}
+                </Note>
             )}
 
             {isTransfer && (

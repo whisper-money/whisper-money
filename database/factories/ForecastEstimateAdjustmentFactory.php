@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\ForecastEstimateAdjustment;
@@ -14,7 +15,8 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class ForecastEstimateAdjustmentFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Define the model's default state. Its side follows its category, as
+     * the forecast page sends it.
      *
      * @return array<string, mixed>
      */
@@ -24,6 +26,7 @@ class ForecastEstimateAdjustmentFactory extends Factory
             'user_id' => User::factory(),
             'account_id' => fn (array $attributes) => Account::factory()->state(['user_id' => $attributes['user_id']]),
             'category_id' => fn (array $attributes) => Category::factory()->state(['user_id' => $attributes['user_id']]),
+            'kind' => fn (array $attributes): ForecastEstimateKind => ForecastEstimateKind::forCategoryType(Category::query()->whereKey($attributes['category_id'])->value('type')),
             'starts_on' => now()->startOfMonth()->toDateString(),
             'amount' => fake()->numberBetween(1000, 100000),
         ];

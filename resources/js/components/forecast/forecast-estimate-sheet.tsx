@@ -22,7 +22,7 @@ import {
     withEstimateDeltas,
 } from '@/lib/forecast/edits';
 import { monthWithYear } from '@/lib/forecast/format';
-import { groupName } from '@/lib/forecast/plan-rows';
+import { estimateBand, groupName } from '@/lib/forecast/plan-rows';
 import { type ForecastGroup } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { useState } from 'react';
@@ -37,8 +37,9 @@ function plannedIn(group: ForecastGroup, month: string, current: boolean) {
 }
 
 /**
- * Adjusts the estimated rest of a category on the account, for one month
- * or from it on. Only the forecast changes; the budget stays as it is.
+ * Adjusts the estimate of a category on the account (income or spend,
+ * "Other income" and "Other spending" included), for one month or from it
+ * on. Only the forecast changes; the budget stays as it is.
  */
 export function ForecastEstimateSheet({
     forecast,
@@ -59,6 +60,9 @@ export function ForecastEstimateSheet({
     const monthLabel = monthWithYear(month, locale);
     const name = groupName(group);
     const currencyCode = forecast.currencyCode;
+    const kind = estimateKind(group);
+    const format = (value: number) =>
+        formatAmount(value, currencyCode, { fractionDigits: 0 });
 
     const deltas = estimateDeltas(group, amount, month, scope, visible);
     const edited = withEstimateDeltas(
@@ -66,7 +70,7 @@ export function ForecastEstimateSheet({
         {
             accountId: forecast.account.id,
             categoryId: group.categoryId,
-            kind: estimateKind(group),
+            kind,
         },
         deltas,
     );
@@ -81,6 +85,7 @@ export function ForecastEstimateSheet({
             {
                 account_id: forecast.account.id,
                 category_id: group.categoryId,
+                kind,
                 month,
                 amount,
                 scope,
@@ -96,8 +101,8 @@ export function ForecastEstimateSheet({
         <ForecastSheet
             open
             onOpenChange={(open) => !open && onClose()}
-            eyebrow={`${__('Estimated')} · ${forecast.account.name}`}
-            title={`${__('Estimated rest of :group', { group: name })} · ${monthLabel}`}
+            eyebrow={`${kind === 'income' ? __('Income') : __('Expenses')} · ${forecast.account.name}`}
+            title={`${name} · ${monthLabel}`}
             testId="forecast-estimate-sheet"
             footer={
                 <div className="ml-auto flex gap-2">
@@ -115,15 +120,14 @@ export function ForecastEstimateSheet({
         >
             <Field
                 label={
-                    estimateKind(group) === 'income'
+                    kind === 'income'
                         ? __('What you expect to receive')
                         : __('What you expect to spend')
                 }
                 htmlFor="forecast-estimate-amount"
-                hint={__('Now: :amount', {
-                    amount: formatAmount(original, currencyCode, {
-                        fractionDigits: 0,
-                    }),
+                hint={__('Now: :amount, likely ± :band', {
+                    amount: format(original),
+                    band: format(estimateBand(kind, original)),
                 })}
                 error={errors.amount}
             >
@@ -156,8 +160,19 @@ export function ForecastEstimateSheet({
                     },
                 ]}
             />
-            {errors.month && (
-                <p className="text-sm text-destructive">{errors.month}</p>
+            {(errors.month || errors.kind) && (
+                <p className="text-sm text-destructive">
+                    {errors.month ?? errors.kind}
+                </p>
+            )}
+
+            {group.items.length > 0 && (
+                <Note>
+                    {__(
+                        'The yearly and one-off payments you added to :group come on top of this figure.',
+                        { group: name },
+                    )}
+                </Note>
             )}
 
             <Note>

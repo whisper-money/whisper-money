@@ -1,8 +1,6 @@
 import { type ForecastEditTarget } from '@/components/forecast/forecast-editor';
 import { accountEstimateGroup } from '@/lib/forecast/all-accounts';
-import { isAdjustableEstimate } from '@/lib/forecast/edits';
-import { dayOf } from '@/lib/forecast/format';
-import { groupId, groupName } from '@/lib/forecast/plan-rows';
+import { groupId, groupName, opensIntoLines } from '@/lib/forecast/plan-rows';
 import {
     type ForecastAllData,
     type ForecastAllGroup,
@@ -17,9 +15,11 @@ import { __ } from '@/utils/i18n';
 
 /**
  * The mobile forecast's month card: instead of the plan's twelve columns,
- * one month at a time, as a list of rows (the income, each parent category
- * of spend, the transfers) that open into their concrete lines and their
- * estimated rest.
+ * one month at a time, as a list of rows: each parent category of income,
+ * then each of spend ("Other income" / "Other spending" last in theirs),
+ * then the transfers. A category is its estimate, which a tap adjusts;
+ * one holding lines the user added (or, across every account, estimated
+ * on several) opens into them.
  */
 
 export interface MobileMonthEntry {
@@ -32,7 +32,7 @@ export interface MobileMonthEntry {
     amount: number;
     currencyCode: string;
     approximate: boolean;
-    /** The day a line lands in the month; null for an estimated rest. */
+    /** The day a line lands in the month; null for an estimate. */
     date: string | null;
     /** In the month in progress, whether a line was already paid or is still to come. */
     status: 'paid' | 'pending' | null;
@@ -42,18 +42,22 @@ export interface MobileMonthEntry {
 
 export interface MobileMonthGroup {
     id: string;
-    kind: 'income' | 'category' | 'transfers';
+    section: 'income' | 'expenses' | 'transfers';
     name: string;
+    /** What it is made of, for a row that opens; empty for one that does not. */
     hint: string;
+    /** The category's only estimate, whose basis a row that does not open says. */
+    estimate: ForecastEstimate | null;
+    /** Whether the month is the one in progress, where the figure is what is still to come. */
+    inProgress: boolean;
     total: number;
     currencyCode: string;
     approximate: boolean;
     entries: MobileMonthEntry[];
-    /** Where "+ Add something concrete" adds to, or null for no such link. */
-    add: {
-        section: 'income' | 'expenses';
-        group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
-    } | null;
+    /** Whether it opens into its entries; else a tap opens `target`. */
+    opens: boolean;
+    /** What tapping a row that does not open opens, or null when the month cannot change. */
+    target: ForecastEditTarget | null;
 }
 
 interface Scope {
@@ -123,7 +127,7 @@ function lineEntries(
     });
 }
 
-/** The estimated rest in the month: what is left of it in the month in progress. */
+/** A category's estimate in the month: what is left of it in the month in progress. */
 function estimateAmount(
     estimate: ForecastEstimate,
     column: ForecastMonthColumn,
@@ -147,9 +151,23 @@ interface EstimateSource {
     /** The group the estimate sheet edits. */
     group: ForecastGroup;
     currencyCode: string;
-    /** Set out of the "All accounts" view, where each account has its own rest. */
+    /** Set out of the "All accounts" view, where each account has its own estimate. */
     accountId?: string;
     accountName?: string;
+}
+
+function estimateTarget(
+    source: EstimateSource,
+    column: ForecastMonthColumn,
+): ForecastEditTarget {
+    return {
+        kind: 'estimate',
+        group: source.group,
+        month: column.month,
+        ...(source.accountId === undefined
+            ? {}
+            : { accountId: source.accountId }),
+    };
 }
 
 function estimateEntry(
@@ -166,57 +184,30 @@ function estimateEntry(
         {
             id: source.id,
             kind: 'estimate',
-            name: __('Estimated rest'),
+            name: __('Estimate'),
             accountName: source.accountName,
             amount,
             currencyCode: source.currencyCode,
             approximate: true,
             date: null,
             status: null,
-            target: isAdjustableEstimate(source.group)
-                ? {
-                      kind: 'estimate',
-                      group: source.group,
-                      month: column.month,
-                      ...(source.accountId === undefined
-                          ? {}
-                          : { accountId: source.accountId }),
-                  }
-                : null,
+            target: estimateTarget(source, column),
         },
     ];
 }
 
-/** "2 concrete this month + estimated", or "Estimated" with no concrete line. */
-export function monthHint(entries: MobileMonthEntry[]): string {
-    const count = entries.filter((entry) => entry.kind !== 'estimate').length;
-    const estimated = count < entries.length;
-
-    if (count === 0 && estimated) {
-        return __('Estimated');
-    }
-
-    const concrete =
-        count === 1
-            ? __('1 concrete this month')
-            : __(':count concrete this month', { count });
-
-    return estimated ? __(':concrete + estimated', { concrete }) : concrete;
+/** "Car insurance, Checking": the lines and the accounts a row that opens is made of. */
+function contentsHint(entries: MobileMonthEntry[]): string {
+    return entries
+        .map((entry) =>
+            entry.kind === 'estimate' ? entry.accountName : entry.name,
+        )
+        .filter((name): name is string => Boolean(name))
+        .join(', ');
 }
 
 function sum(entries: MobileMonthEntry[]): number {
     return entries.reduce((total, entry) => total + entry.amount, 0);
-}
-
-/** "Salary · day 28" for a single income, else how many there are. */
-function incomeHint(entries: MobileMonthEntry[]): string {
-    const [only] = entries;
-
-    if (entries.length === 1 && only.date !== null) {
-        return `${only.name} · ${__('day :day', { day: dayOf(only.date) })}`;
-    }
-
-    return monthHint(entries);
 }
 
 /** A transfer reads as an arrow to (or from) the other account. */
@@ -230,8 +221,11 @@ function present<T>(value: T | null): value is T {
     return value !== null;
 }
 
+/** What a category of either view (an account, or all of them) has in common. */
+type MonthGroupLike = Pick<ForecastGroup, 'key' | 'items' | 'name' | 'section'>;
+
 /** How one view (an account, or all of them) reads its plan for a month. */
-interface MonthSource<G extends { key: string; items: ForecastLine[] }> {
+interface MonthSource<G extends MonthGroupLike> {
     plan: { income: G[]; expenses: G[]; transfers: ForecastLine[] };
     scope: Scope;
     currencyCode: string;
@@ -240,76 +234,68 @@ interface MonthSource<G extends { key: string; items: ForecastLine[] }> {
     totalOf: (group: G, entries: MobileMonthEntry[]) => number;
     /** What the transfers change the balance by. */
     transfersTotal: (entries: MobileMonthEntry[]) => number;
-    asGroup: (
-        group: G,
-    ) => Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
 }
 
-function buildMonthGroups<G extends { key: string; items: ForecastLine[] }>(
+function buildMonthGroups<G extends MonthGroupLike>(
     source: MonthSource<G>,
 ): MobileMonthGroup[] {
     const { plan, scope, currencyCode } = source;
-    const entriesOf = (group: G) => [
-        ...lineEntries(group.items, scope),
-        ...source
-            .estimatesOf(group)
-            .flatMap((estimate) => estimateEntry(estimate, scope.column)),
-    ];
-    const row = (
-        kind: MobileMonthGroup['kind'],
-        rest: Omit<MobileMonthGroup, 'kind' | 'currencyCode' | 'approximate'>,
-    ): MobileMonthGroup | null =>
-        rest.entries.length === 0
+    const categoryRow = (group: G): MobileMonthGroup | null => {
+        const estimates = source.estimatesOf(group);
+        const entries = [
+            ...lineEntries(group.items, scope),
+            ...estimates.flatMap((estimate) =>
+                estimateEntry(estimate, scope.column),
+            ),
+        ];
+        // Across every account a category may be estimated on several: it opens into them too.
+        const opens = opensIntoLines(group) || estimates.length > 1;
+        const [sole] = estimates;
+
+        if (entries.length === 0) {
+            return null;
+        }
+
+        return {
+            id: groupId(group.section, group.key),
+            section: group.section,
+            name: groupName(group),
+            hint: opens ? contentsHint(entries) : '',
+            estimate: opens ? null : sole.estimate,
+            inProgress: scope.column.status === 'current',
+            total: source.totalOf(group, entries),
+            currencyCode,
+            approximate: entries.some((entry) => entry.approximate),
+            entries,
+            opens,
+            target: opens ? null : estimateTarget(sole, scope.column),
+        };
+    };
+    const transfers = lineEntries(plan.transfers, scope, transferName);
+    const transfersRow: MobileMonthGroup | null =
+        transfers.length === 0
             ? null
             : {
-                  kind,
+                  id: 'transfers',
+                  section: 'transfers',
+                  name: __('Transfers'),
+                  hint: __(':names · not spending', {
+                      names: transfers.map((entry) => entry.name).join(', '),
+                  }),
+                  estimate: null,
+                  inProgress: scope.column.status === 'current',
+                  total: source.transfersTotal(transfers),
                   currencyCode,
-                  approximate: rest.entries.some((entry) => entry.approximate),
-                  ...rest,
+                  approximate: false,
+                  entries: transfers,
+                  opens: true,
+                  target: null,
               };
-    const income = plan.income.map((group) => ({
-        group,
-        entries: entriesOf(group),
-    }));
-    const incomeEntries = income.flatMap(({ entries }) => entries);
-    const transfers = lineEntries(plan.transfers, scope, transferName);
 
     return [
-        row('income', {
-            id: 'income',
-            name: __('Income'),
-            hint: incomeHint(incomeEntries),
-            total: income.reduce(
-                (total, { group, entries }) =>
-                    total + source.totalOf(group, entries),
-                0,
-            ),
-            entries: incomeEntries,
-            add: null,
-        }),
-        ...plan.expenses.map((group) => {
-            const entries = entriesOf(group);
-            const named = source.asGroup(group);
-
-            return row('category', {
-                id: groupId('expenses', group.key),
-                name: groupName(named),
-                hint: monthHint(entries),
-                total: source.totalOf(group, entries),
-                entries,
-                add: { section: 'expenses', group: named },
-            });
-        }),
-        row('transfers', {
-            id: 'transfers',
-            name: __('Transfers'),
-            hint: __(':names · not spending', {
-                names: transfers.map((entry) => entry.name).join(', '),
-            }),
-            total: source.transfersTotal(transfers),
-            entries: transfers,
-            add: null,
-        }),
+        ...plan.income.map(categoryRow),
+        ...plan.expenses.map(categoryRow),
+        transfersRow,
     ].filter(present);
 }
 
@@ -339,7 +325,6 @@ export function accountMonthGroups(
                   ],
         totalOf: (_, entries) => sum(entries),
         transfersTotal: sum,
-        asGroup: (group) => group,
     });
 }
 
@@ -376,6 +361,5 @@ export function allMonthGroups(
             })),
         totalOf: (group, entries) => group.totals[column.month] ?? sum(entries),
         transfersTotal: () => forecast.plan.transferEffect[column.month] ?? 0,
-        asGroup: (group) => group,
     });
 }

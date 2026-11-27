@@ -43,7 +43,7 @@ export function line(overrides: Partial<ForecastLine>): ForecastLine {
         id: 'rent',
         name: 'Rent',
         kind: 'monthly',
-        source: 'detected',
+        source: 'manual',
         anchorDate: '2026-01-05',
         direction: null,
         counterpartyName: null,
@@ -71,7 +71,6 @@ export function line(overrides: Partial<ForecastLine>): ForecastLine {
         amountTolerance: 0,
         dateWindowDays: 3,
         payments: [],
-        drift: null,
         ...overrides,
     };
 }

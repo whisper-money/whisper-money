@@ -9,8 +9,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Adjusts the estimated rest of a category on one account, for one month
- * or from it on. It only changes the forecast: the budget stays as it is.
+ * Adjusts the estimate of a category (or of "Other income" / "Other
+ * spending") on one account, for one month or from it on, on its side. It
+ * only changes the forecast: the budget stays as it is.
  * Setting the same month again replaces the earlier figure, and "from this
  * month on" replaces the adjustments that started later too.
  */
@@ -23,6 +24,7 @@ class ForecastEstimateController extends Controller
             'space_id' => $request->user()->activeSpace()->id,
             'account_id' => $request->input('account_id'),
             'category_id' => $request->input('category_id'),
+            'kind' => $request->kind(),
         ];
 
         DB::transaction(function () use ($request, $bucket): void {

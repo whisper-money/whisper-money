@@ -2,10 +2,7 @@ import {
     destroy,
     update,
 } from '@/actions/App/Http/Controllers/Forecast/ForecastItemController';
-import {
-    type ForecastSheetProps,
-    useForecastEditor,
-} from '@/components/forecast/forecast-editor';
+import { type ForecastSheetProps } from '@/components/forecast/forecast-editor';
 import {
     Field,
     ForecastSheet,
@@ -135,45 +132,6 @@ function PaymentsList({
     );
 }
 
-function DriftOffer({
-    line,
-    currencyCode,
-    onAccept,
-}: {
-    line: ForecastLine;
-    currencyCode: string;
-    onAccept: () => void;
-}) {
-    const locale = useLocale();
-    const { formatAmount } = useFormatAmount();
-
-    if (line.drift === null) {
-        return null;
-    }
-
-    return (
-        <div
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warning/10 p-3 text-sm"
-            data-test="forecast-drift"
-        >
-            <span>
-                {__('Your :name is now :amount. Update from :month?', {
-                    name: line.name,
-                    amount: formatAmount(
-                        Math.abs(line.drift.amount),
-                        currencyCode,
-                        { fractionDigits: 0 },
-                    ),
-                    month: monthLongName(line.drift.from.slice(0, 7), locale),
-                })}
-            </span>
-            <Button size="sm" variant="outline" onClick={onAccept}>
-                {__('Update')}
-            </Button>
-        </div>
-    );
-}
-
 /** "Dejar de prever", once the user confirms: the line stops counting from now on. */
 function StopForecasting({
     name,
@@ -236,7 +194,6 @@ export function ForecastLineSheet({
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
     const { save, processing, errors } = useForecastSave();
-    const editor = useForecastEditor();
     const occurrenceDate =
         line.occurrenceDates[month] ?? line.current.date ?? `${month}-01`;
     const original = occurrenceAmount(line, occurrenceDate);
@@ -427,15 +384,6 @@ export function ForecastLineSheet({
                     />
                 </Field>
             </div>
-
-            <DriftOffer
-                line={line}
-                currencyCode={currencyCode}
-                onAccept={() => {
-                    editor?.acceptDrift(line);
-                    onClose();
-                }}
-            />
 
             <PaymentsList line={line} currencyCode={currencyCode} />
 

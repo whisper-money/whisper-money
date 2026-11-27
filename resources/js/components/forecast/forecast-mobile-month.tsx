@@ -1,6 +1,10 @@
 import { useForecastEditor } from '@/components/forecast/forecast-editor';
-import { KindBadge } from '@/components/forecast/forecast-plan-cells';
-import { AddLineButton } from '@/components/forecast/forecast-plan-table';
+import {
+    KindBadge,
+    signedFigure,
+    useBandHint,
+    useEstimateBasis,
+} from '@/components/forecast/forecast-plan-cells';
 import { UpgradeDialog } from '@/components/subscription/upgrade-dialog';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
@@ -34,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { type ForecastMonthColumn } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { ChevronRightIcon, LockIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 const CHIP =
     'inline-flex min-h-10 flex-none items-center gap-1 rounded-full border px-3 text-[13px] transition-colors';
@@ -199,6 +203,57 @@ function EntryRow({
     );
 }
 
+/** A row's heading and figure: "Groceries · Median of 3 months · ≈ −420". */
+function GroupSummary({ group }: { group: MobileMonthGroup }) {
+    const number = useNumber();
+    const basis = useEstimateBasis(group.currencyCode);
+    const band = useBandHint(group.currencyCode);
+    const figure = signedFigure(
+        group.total,
+        (amount) => number(amount, group.currencyCode),
+        { signed: group.section !== 'transfers' },
+    );
+    const current = group.inProgress ? group.estimate?.current : null;
+    let hint = group.estimate === null ? group.hint : basis(group.estimate);
+
+    if (current) {
+        hint = __(':spent of :planned so far · :left to come', {
+            spent: number(current.spent, group.currencyCode),
+            planned: number(current.planned, group.currencyCode),
+            left: number(current.left, group.currencyCode),
+        });
+    }
+
+    return (
+        <>
+            <span className="flex min-w-0 flex-1 flex-col gap-px py-2">
+                <span className="text-sm font-medium">{group.name}</span>
+                {hint && (
+                    <span className="truncate text-[11px] text-muted-foreground">
+                        {hint}
+                    </span>
+                )}
+            </span>
+            <span
+                className={cn(
+                    'text-sm font-semibold tabular-nums',
+                    figure.className,
+                )}
+                title={
+                    group.estimate === null
+                        ? undefined
+                        : band(group.estimate.kind, group.total)
+                }
+            >
+                {group.approximate && '≈ '}
+                {figure.text}
+            </span>
+        </>
+    );
+}
+
+const GROUP_ROW = 'flex min-h-13 w-full items-center gap-2 px-3.5 text-left';
+
 function GroupRow({
     group,
     open,
@@ -208,45 +263,61 @@ function GroupRow({
     open: boolean;
     onToggle: () => void;
 }) {
-    const number = useNumber();
-    const income = group.kind === 'income';
+    const editor = useForecastEditor();
+    const chevron = (
+        <ChevronRightIcon
+            aria-hidden="true"
+            className={cn(
+                'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                open && 'rotate-90',
+                !group.opens && 'invisible',
+            )}
+        />
+    );
+    const target = editor === null ? null : group.target;
+    let heading = (
+        <div className={GROUP_ROW}>
+            {chevron}
+            <GroupSummary group={group} />
+        </div>
+    );
+
+    if (group.opens) {
+        heading = (
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={open}
+                className={GROUP_ROW}
+            >
+                {chevron}
+                <GroupSummary group={group} />
+            </button>
+        );
+    } else if (target !== null) {
+        heading = (
+            <button
+                type="button"
+                onClick={() => editor?.open(target)}
+                className={cn(
+                    GROUP_ROW,
+                    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted',
+                )}
+                data-test={`forecast-month-edit-${group.id}`}
+            >
+                {chevron}
+                <GroupSummary group={group} />
+            </button>
+        );
+    }
 
     return (
         <div
             className="border-t"
             data-test={`forecast-month-group-${group.id}`}
         >
-            <button
-                type="button"
-                onClick={onToggle}
-                aria-expanded={open}
-                className="flex min-h-13 w-full items-center gap-2 px-3.5 text-left"
-            >
-                <ChevronRightIcon
-                    aria-hidden="true"
-                    className={cn(
-                        'size-3.5 shrink-0 text-muted-foreground transition-transform',
-                        open && 'rotate-90',
-                    )}
-                />
-                <span className="flex min-w-0 flex-1 flex-col gap-px py-2">
-                    <span className="text-sm font-medium">{group.name}</span>
-                    <span className="truncate text-[11px] text-muted-foreground">
-                        {group.hint}
-                    </span>
-                </span>
-                <span
-                    className={cn(
-                        'text-sm font-semibold tabular-nums',
-                        income && group.total > 0 && 'text-success',
-                    )}
-                >
-                    {group.approximate && '≈ '}
-                    {income && group.total > 0 && '+'}
-                    {number(group.total, group.currencyCode)}
-                </span>
-            </button>
-            {open && (
+            {heading}
+            {group.opens && open && (
                 <div className="flex flex-col gap-0.5 pr-3.5 pb-2.5 pl-9">
                     {group.entries.map((entry) => (
                         <EntryRow
@@ -255,17 +326,24 @@ function GroupRow({
                             groupCurrency={group.currencyCode}
                         />
                     ))}
-                    {group.add && (
-                        <span className="flex min-h-8 items-center">
-                            <AddLineButton
-                                section={group.add.section}
-                                group={group.add.group}
-                            />
-                        </span>
-                    )}
                 </div>
             )}
         </div>
+    );
+}
+
+/** "INCOME", "EXPENSES", "TRANSFERS" over the rows of each. */
+function SectionLabel({ section }: { section: MobileMonthGroup['section'] }) {
+    const labels = {
+        income: __('Income'),
+        expenses: __('Expenses'),
+        transfers: __('Transfers'),
+    };
+
+    return (
+        <h3 className="border-t px-3.5 pt-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            {labels[section]}
+        </h3>
     );
 }
 
@@ -308,8 +386,9 @@ export function LockedMonthCard({ month }: { month: string }) {
 
 /**
  * One month of the plan on the phone: its lowest balance and worst case,
- * how it closes, and the income, each parent category and the transfers of
- * that month, each opening into what makes it up.
+ * how it closes, and each parent category of income and of spend and the
+ * transfers of that month. A category is one figure a tap adjusts; one
+ * holding lines the user added opens into them.
  */
 export function ForecastMonthCard({
     month,
@@ -395,13 +474,17 @@ export function ForecastMonthCard({
                     </EmptyStateDescription>
                 </EmptyState>
             ) : (
-                groups.map((group) => (
-                    <GroupRow
-                        key={group.id}
-                        group={group}
-                        open={open.has(group.id)}
-                        onToggle={() => toggle(group.id)}
-                    />
+                groups.map((group, index) => (
+                    <Fragment key={group.id}>
+                        {groups[index - 1]?.section !== group.section && (
+                            <SectionLabel section={group.section} />
+                        )}
+                        <GroupRow
+                            group={group}
+                            open={open.has(group.id)}
+                            onToggle={() => toggle(group.id)}
+                        />
+                    </Fragment>
                 ))
             )}
         </Card>

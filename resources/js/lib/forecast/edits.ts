@@ -238,20 +238,14 @@ export interface EstimateTarget {
 }
 
 /**
- * Whether the estimate sheet can adjust a group's estimate. An adjustment
- * without a category always lands on "Other spending" (the server tells
- * income from spend by the category), so "Other income" cannot be
- * adjusted yet.
+ * Whether a group's estimate is income or spend: its section's side, which
+ * the adjustment stores, so "Other income" and "Other spending" stay apart
+ * though neither has a category.
  */
-export function isAdjustableEstimate(
-    group: Pick<ForecastGroup, 'section' | 'categoryId'>,
-): boolean {
-    return group.section !== 'income' || group.categoryId !== null;
-}
-
-/** Whether a group's estimate is income or spend. */
-export function estimateKind(group: ForecastGroup): MonthlyEstimateKind {
-    return group.estimate?.kind ?? 'expense';
+export function estimateKind(
+    group: Pick<ForecastGroup, 'section'>,
+): MonthlyEstimateKind {
+    return group.section === 'income' ? 'income' : 'expense';
 }
 
 /** The input with one category's estimate on an account moved by `deltas` (by month). */
@@ -290,8 +284,8 @@ export function withEstimateDeltas(
 }
 
 /**
- * How much the estimated rest of a group changes in each month an
- * adjustment covers: what is left to spend in the month in progress, the
+ * How much the estimate of a group changes in each month an adjustment
+ * covers: what is left to spend (or receive) in the month in progress, the
  * whole figure in the months after it.
  */
 export function estimateDeltas(
@@ -545,7 +539,10 @@ export function impactOn(
     );
 }
 
-/** The plan with a group's estimate moved by `deltas`, as the table shows it. */
+/**
+ * The plan with a group's estimate moved by `deltas`, as the table shows
+ * it. A group with no estimate yet (only lines the user added) gets one.
+ */
 export function withEstimateAmounts(
     forecast: ForecastData,
     edited: Pick<ForecastGroup, 'key' | 'section'>,
@@ -553,39 +550,38 @@ export function withEstimateAmounts(
 ): ForecastData {
     const currentMonth = forecast.months[0]?.month;
     const adjust = (group: ForecastGroup): ForecastGroup => {
-        if (
-            group.key !== edited.key ||
-            group.section !== edited.section ||
-            group.estimate === null
-        ) {
+        if (group.key !== edited.key || group.section !== edited.section) {
             return group;
         }
 
-        const sign = group.estimate.kind === 'income' ? 1 : -1;
-
-        const amounts = { ...group.estimate.amounts };
-        let current = group.estimate.current;
+        const kind = estimateKind(group);
+        const estimate = group.estimate ?? {
+            kind,
+            basis: null,
+            budgetAmount: null,
+            amounts: {},
+            current: null,
+        };
+        const sign = kind === 'income' ? 1 : -1;
+        const amounts = { ...estimate.amounts };
+        let current = estimate.current;
 
         for (const [month, delta] of Object.entries(deltas)) {
-            if (month === currentMonth && current !== null) {
-                current = {
-                    ...current,
-                    planned: current.planned + delta,
-                    left: Math.max(current.left + delta, 0),
-                };
-            } else if (month !== currentMonth) {
+            if (month !== currentMonth) {
                 amounts[month] = (amounts[month] ?? 0) + sign * delta;
+            } else {
+                const before = current ?? { spent: 0, planned: 0, left: 0 };
+                current = {
+                    ...before,
+                    planned: before.planned + delta,
+                    left: Math.max(before.left + delta, 0),
+                };
             }
         }
 
         return {
             ...group,
-            estimate: {
-                ...group.estimate,
-                basis: 'adjustment',
-                amounts,
-                current,
-            },
+            estimate: { ...estimate, basis: 'adjustment', amounts, current },
         };
     };
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\ForecastEstimateKind;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastItemKind;
 use App\Enums\ForecastItemSource;
@@ -134,7 +135,7 @@ describe('adding a line', function () {
 
     it('stores an income with a positive amount and an end', function () {
         $this->actingAs($this->user)->post(route('forecast.items.store'), newExpense($this->checking, [
-            'type' => 'income', 'name' => 'Rental income', 'frequency' => 'monthly', 'ends_on' => '2027-06-30',
+            'type' => 'income', 'name' => 'Rental income', 'frequency' => 'yearly', 'ends_on' => '2027-06-30',
         ]))->assertSessionHasNoErrors();
 
         $item = ForecastItem::query()->where('name', 'Rental income')->sole();
@@ -188,7 +189,9 @@ describe('adding a line', function () {
         'no amount' => [fn ($test) => newExpense($test->checking, ['amount' => 0]), 'amount'],
         'a day already gone' => [fn ($test) => newExpense($test->checking, ['date' => '2026-11-25']), 'date'],
         'an unknown repetition' => [fn ($test) => newExpense($test->checking, ['frequency' => 'weekly']), 'frequency'],
-        'an end before the start' => [fn ($test) => newExpense($test->checking, ['frequency' => 'monthly', 'ends_on' => '2026-12-01']), 'ends_on'],
+        'an end before the start' => [fn ($test) => newExpense($test->checking, ['frequency' => 'yearly', 'ends_on' => '2026-12-01']), 'ends_on'],
+        'a monthly charge, which its category already estimates' => [fn ($test) => newExpense($test->checking, ['frequency' => 'monthly']), 'frequency'],
+        'a quarterly income' => [fn ($test) => newExpense($test->checking, ['type' => 'income', 'frequency' => 'quarterly']), 'frequency'],
         'another user\'s account' => [fn ($test) => newExpense(editingAccount(User::factory()->create(), 'Theirs', AccountType::Checking, 0)), 'account_id'],
         'an account left out of the forecast' => [function ($test) {
             ForecastAccountSetting::factory()->create(['account_id' => $test->savings->id, 'included' => false]);
@@ -401,7 +404,7 @@ describe('adjusting an estimate', function () {
         $budgets = Budget::query()->count();
 
         $this->actingAs($this->user)->from($this->from)->post(route('forecast.estimates.store'), [
-            'account_id' => $this->checking->id, 'category_id' => $food->id, 'month' => '2027-02', 'amount' => 45000, 'scope' => 'month',
+            'account_id' => $this->checking->id, 'category_id' => $food->id, 'kind' => 'expense', 'month' => '2027-02', 'amount' => 45000, 'scope' => 'month',
         ])->assertRedirect($this->from)->assertSessionHasNoErrors();
 
         expect(ForecastEstimateAdjustment::query()->sole())
@@ -413,7 +416,7 @@ describe('adjusting an estimate', function () {
     });
 
     it('replaces the adjustments that start later when set from a month on', function () {
-        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'amount' => 30000];
+        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'kind' => 'expense', 'amount' => 30000];
 
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'month' => '2027-03', 'scope' => 'month']);
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'month' => '2026-12', 'scope' => 'from_here', 'amount' => 20000]);
@@ -424,7 +427,7 @@ describe('adjusting an estimate', function () {
     });
 
     it('sets it from a month on, replacing an earlier figure for that month', function () {
-        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'month' => '2026-12', 'amount' => 30000, 'scope' => 'from_here'];
+        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'kind' => 'expense', 'month' => '2026-12', 'amount' => 30000, 'scope' => 'from_here'];
 
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), $data)->assertSessionHasNoErrors();
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'amount' => 25000])->assertSessionHasNoErrors();
@@ -439,7 +442,7 @@ describe('adjusting an estimate', function () {
         forecastCharge($this->checking, '2026-10-12', -40000, 'SUPER', $food);
 
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
-            'account_id' => $this->checking->id, 'category_id' => $food->id, 'month' => '2026-11', 'amount' => 45000, 'scope' => 'from_here',
+            'account_id' => $this->checking->id, 'category_id' => $food->id, 'kind' => 'expense', 'month' => '2026-11', 'amount' => 45000, 'scope' => 'from_here',
         ]);
 
         $group = collect($this->actingAs($this->user)->get($this->from)->viewData('page')['props']['forecast']['plan']['expenses'])->firstWhere('categoryId', $food->id);
@@ -448,9 +451,24 @@ describe('adjusting an estimate', function () {
             ->and($group['estimate']['amounts']['2027-01'])->toBe(-45000);
     });
 
+    it('says the category was set by the user once a later month is, though the month in progress is not', function () {
+        $food = forecastExpenseCategory($this->user, name: 'Food');
+        forecastCharge($this->checking, '2026-10-12', -40000, 'SUPER', $food);
+
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => $food->id, 'month' => '2027-01', 'amount' => 45000, 'scope' => 'from_here',
+        ])->assertSessionHasNoErrors();
+
+        $group = collect($this->actingAs($this->user)->get($this->from)->viewData('page')['props']['forecast']['plan']['expenses'])->firstWhere('categoryId', $food->id);
+
+        expect($group['estimate']['basis'])->toBe('adjustment')
+            ->and($group['estimate']['amounts']['2026-12'])->toBe(-40000)
+            ->and($group['estimate']['amounts']['2027-01'])->toBe(-45000);
+    });
+
     it('rejects what it cannot adjust', function (Closure $data, string $field) {
         $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
-            'account_id' => $this->checking->id, 'month' => '2026-12', 'amount' => 100, 'scope' => 'month', ...$data($this),
+            'account_id' => $this->checking->id, 'kind' => 'expense', 'month' => '2026-12', 'amount' => 100, 'scope' => 'month', ...$data($this),
         ])->assertSessionHasErrors($field);
 
         expect(ForecastEstimateAdjustment::query()->count())->toBe(0);
@@ -459,12 +477,50 @@ describe('adjusting an estimate', function () {
         'a subcategory' => [fn ($test) => ['category_id' => forecastExpenseCategory($test->user, forecastExpenseCategory($test->user))->id], 'category_id'],
         'another user\'s account' => [fn () => ['account_id' => editingAccount(User::factory()->create(), 'Theirs', AccountType::Checking, 0)->id], 'account_id'],
         'an unknown scope' => [fn () => ['scope' => 'forever'], 'scope'],
+        'no side for "Other"' => [fn () => ['kind' => null], 'kind'],
+        'an unknown side' => [fn () => ['kind' => 'transfer'], 'kind'],
+        'an income category on the spend side' => [fn ($test) => ['category_id' => forecastIncomeCategory($test->user)->id], 'kind'],
+        'a spend category on the income side' => [fn ($test) => ['category_id' => forecastExpenseCategory($test->user)->id, 'kind' => 'income'], 'kind'],
     ]);
+
+    it('takes the side of the category when none is sent, as a page loaded before the change does', function () {
+        $salary = forecastIncomeCategory($this->user);
+
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => $salary->id, 'month' => '2026-12', 'amount' => 250000, 'scope' => 'from_here',
+        ])->assertSessionHasNoErrors();
+
+        expect(ForecastEstimateAdjustment::query()->sole()->kind)->toBe(ForecastEstimateKind::Income);
+    });
+
+    it('keeps "Other income" and "Other spending" apart, though neither has a category', function () {
+        $data = ['account_id' => $this->checking->id, 'category_id' => null, 'month' => '2026-12', 'scope' => 'from_here'];
+
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'kind' => 'expense', 'amount' => 30000])->assertSessionHasNoErrors();
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'kind' => 'income', 'amount' => 50000])->assertSessionHasNoErrors();
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [...$data, 'kind' => 'income', 'amount' => 60000])->assertSessionHasNoErrors();
+
+        expect(ForecastEstimateAdjustment::query()->orderBy('amount')->get()->map(fn (ForecastEstimateAdjustment $adjustment): array => [$adjustment->kind->value, $adjustment->amount])->all())
+            ->toBe([['expense', 30000], ['income', 60000]]);
+    });
+
+    it('reads an "Other income" adjustment in the forecast as money in', function () {
+        $this->actingAs($this->user)->post(route('forecast.estimates.store'), [
+            'account_id' => $this->checking->id, 'category_id' => null, 'kind' => 'income', 'month' => '2026-12', 'amount' => 50000, 'scope' => 'from_here',
+        ])->assertSessionHasNoErrors();
+
+        $plan = $this->actingAs($this->user)->get($this->from)->viewData('page')['props']['forecast']['plan'];
+        $otherIncome = collect($plan['income'])->firstWhere('key', 'other');
+
+        expect($otherIncome['estimate'])->toMatchArray(['kind' => 'income', 'basis' => 'adjustment'])
+            ->and($otherIncome['estimate']['amounts']['2027-01'])->toBe(50000)
+            ->and(data_get(collect($plan['expenses'])->firstWhere('key', 'other'), 'estimate.basis'))->not->toBe('adjustment');
+    });
 
     it('lets a user without Pro adjust only the months they see', function () {
         $free = editingFreeUser();
         $account = editingAccount($free, 'Mine', AccountType::Checking, 1000);
-        $data = ['account_id' => $account->id, 'amount' => 100, 'scope' => 'from_here'];
+        $data = ['account_id' => $account->id, 'kind' => 'expense', 'amount' => 100, 'scope' => 'from_here'];
 
         $this->actingAs($free)->post(route('forecast.estimates.store'), [...$data, 'month' => '2027-01'])->assertSessionHasErrors('month');
         $this->actingAs($free)->post(route('forecast.estimates.store'), [...$data, 'month' => '2026-12'])->assertSessionHasNoErrors();
@@ -573,7 +629,7 @@ describe('what the page gives the edit sheets', function () {
             ->and($line['matchText'])->toBe('rent')
             ->and($line['amountTolerance'])->toBe(1000)
             ->and($line['payments'])->toBe([['occurrenceDate' => '2026-11-05', 'planned' => -190000, 'real' => -191000]])
-            ->and($line['drift'])->toBeNull()
+            ->and($line)->not->toHaveKey('drift')
             ->and($forecast['account']['annualRateBps'])->toBeNull();
     });
 

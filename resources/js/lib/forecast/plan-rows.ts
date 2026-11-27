@@ -1,3 +1,4 @@
+import { type MonthlyEstimateKind } from '@/lib/forecast/types';
 import {
     type ForecastEstimate,
     type ForecastGroup,
@@ -22,10 +23,12 @@ export function groupName(
 
 /**
  * The rows of the forecast plan table, as a tree TanStack Table expands
- * through `subRows`: a section heading, then each parent category with its
- * concrete lines, its estimated rest and the "add something concrete" link
- * under it, then the transfers (and the one the warning suggests), and the
- * minimum and closing balance rows.
+ * through `subRows`: the income section, then the expenses one, each with
+ * a row per parent category ("Other income" / "Other spending" last), then
+ * the transfers (and the one the warning suggests), and the minimum and
+ * closing balance rows. A category is one figure a month, its estimate;
+ * only one that holds lines the user added (a yearly payment, a one-off)
+ * opens, into those lines and its estimate.
  */
 export type PlanSection = 'income' | 'expenses' | 'transfers';
 
@@ -43,12 +46,6 @@ export type PlanRow =
           type: 'estimate';
           id: string;
           estimate: ForecastEstimate;
-          group: ForecastGroup;
-      }
-    | {
-          type: 'add';
-          id: string;
-          section: 'income' | 'expenses';
           group: ForecastGroup;
       }
     | {
@@ -70,6 +67,11 @@ export function groupId(section: 'income' | 'expenses', key: string): string {
     return `group:${section}:${key}`;
 }
 
+/** Whether a category opens: only into the lines the user added to it. */
+export function opensIntoLines(group: Pick<ForecastGroup, 'items'>): boolean {
+    return group.items.length > 0;
+}
+
 function groupRow(
     group: ForecastGroup,
     section: 'income' | 'expenses',
@@ -80,7 +82,7 @@ function groupRow(
         line,
     }));
 
-    if (group.estimate) {
+    if (group.estimate && opensIntoLines(group)) {
         subRows.push({
             type: 'estimate',
             id: `estimate:${group.key}`,
@@ -88,8 +90,6 @@ function groupRow(
             group,
         });
     }
-
-    subRows.push({ type: 'add', id: `add:${group.key}`, section, group });
 
     return {
         type: 'group',
@@ -178,9 +178,11 @@ export function groupCurrentTotal(group: ForecastGroup): GroupCurrentTotal {
     };
 }
 
-/** The ids of every expandable row of the plan. */
+/** The ids of every row of the plan that opens. */
 export function groupRowIds(rows: PlanRow[]): string[] {
-    return rows.filter((row) => row.type === 'group').map((row) => row.id);
+    return rows
+        .filter((row) => row.type === 'group' && row.subRows.length > 0)
+        .map((row) => row.id);
 }
 
 /**
@@ -205,4 +207,19 @@ export function initiallyExpandedGroups(
     return (['income', 'expenses'] as const).flatMap((section) =>
         plan[section].filter(opens).map((group) => groupId(section, group.key)),
     );
+}
+
+/**
+ * How far a category's figure may land from its estimate: 40% of a spend,
+ * 10% of an income, as the projection's band (lib/forecast/project.ts).
+ */
+export function estimateBand(
+    kind: MonthlyEstimateKind,
+    amount: number,
+): number {
+    const magnitude = Math.abs(amount);
+
+    return kind === 'income'
+        ? Math.floor(magnitude / 10)
+        : Math.floor((magnitude * 2) / 5);
 }

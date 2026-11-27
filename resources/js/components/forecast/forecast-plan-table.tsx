@@ -3,6 +3,7 @@ import {
     type ForecastEditTarget,
 } from '@/components/forecast/forecast-editor';
 import {
+    CategoryHeader,
     EMPTY_CELL,
     EstimateHeader,
     KindBadge,
@@ -21,7 +22,6 @@ import {
 } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { isAdjustableEstimate } from '@/lib/forecast/edits';
 import {
     isShort,
     monthColumnLabel,
@@ -37,7 +37,6 @@ import {
 import { cn } from '@/lib/utils';
 import {
     type ForecastData,
-    type ForecastGroup,
     type ForecastMonthColumn,
     type ForecastTransferSuggestion,
 } from '@/types/forecast';
@@ -84,14 +83,6 @@ function sectionLabel(section: PlanSection): { name: string; hint: string } {
                 ),
             };
     }
-}
-
-/** "2 concrete + estimated". */
-export function concreteHint(count: number, estimated: boolean): string {
-    const concrete =
-        count === 1 ? __('1 concrete') : __(':count concrete', { count });
-
-    return estimated ? __(':concrete + estimated', { concrete }) : concrete;
 }
 
 function ColumnHeader({
@@ -169,6 +160,52 @@ export function MonthHeader({
     );
 }
 
+/**
+ * A category's heading: a button that opens it when it holds lines the user
+ * added (`expanded` true or false), else just its name, lined up with them.
+ */
+export function CategoryToggle({
+    expanded,
+    onToggle,
+    children,
+}: {
+    expanded: boolean | null;
+    onToggle: () => void;
+    children: ReactNode;
+}) {
+    const chevron = (
+        <ChevronRightIcon
+            aria-hidden="true"
+            className={cn(
+                'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                expanded === true && 'rotate-90',
+                expanded === null && 'invisible',
+            )}
+        />
+    );
+
+    if (expanded === null) {
+        return (
+            <span className="flex items-center gap-2">
+                {chevron}
+                {children}
+            </span>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={expanded}
+            className="flex items-center gap-2 text-left"
+        >
+            {chevron}
+            {children}
+        </button>
+    );
+}
+
 function RowHeader({
     row,
     currencyCode,
@@ -181,30 +218,19 @@ function RowHeader({
     switch (data.type) {
         case 'group':
             return (
-                <button
-                    type="button"
-                    onClick={row.getToggleExpandedHandler()}
-                    aria-expanded={row.getIsExpanded()}
-                    className="flex min-h-8 items-center gap-2 text-left text-[13px] font-semibold"
+                <CategoryToggle
+                    expanded={row.getCanExpand() ? row.getIsExpanded() : null}
+                    onToggle={row.getToggleExpandedHandler()}
                 >
-                    <ChevronRightIcon
-                        aria-hidden="true"
-                        className={cn(
-                            'size-3.5 text-muted-foreground transition-transform',
-                            row.getIsExpanded() && 'rotate-90',
-                        )}
+                    <CategoryHeader
+                        name={groupName(data.group)}
+                        estimate={data.group.estimate}
+                        currencyCode={currencyCode}
                     />
-                    <span>{groupName(data.group)}</span>
-                    <span className="text-[11px] font-normal text-muted-foreground">
-                        {concreteHint(
-                            data.group.items.length,
-                            data.group.estimate !== null,
-                        )}
-                    </span>
-                </button>
+                </CategoryToggle>
             );
         case 'line':
-            return <LineHeader line={data.line} currencyCode={currencyCode} />;
+            return <LineHeader line={data.line} />;
         case 'suggestion':
             return <SuggestionHeader suggestion={data.suggestion} />;
         case 'estimate':
@@ -272,72 +298,7 @@ function FullWidthRow({ row, colSpan }: { row: PlanRow; colSpan: number }) {
         );
     }
 
-    if (row.type === 'add') {
-        return (
-            <AddLineRow
-                section={row.section}
-                group={row.group}
-                colSpan={colSpan}
-            />
-        );
-    }
-
     return null;
-}
-
-/** "+ Add something concrete in Home", under a category's lines. */
-export function AddLineRow({
-    section,
-    group,
-    colSpan,
-}: {
-    section: 'income' | 'expenses';
-    group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
-    colSpan: number;
-}) {
-    return (
-        <tr>
-            <td colSpan={colSpan} className="px-4 pb-1.5 pl-10">
-                <AddLineButton section={section} group={group} />
-            </td>
-        </tr>
-    );
-}
-
-export function AddLineButton({
-    section,
-    group,
-}: {
-    section: 'income' | 'expenses';
-    group: Pick<ForecastGroup, 'name' | 'categoryId' | 'section'>;
-}) {
-    const editor = useForecastEditor();
-    const label = __('+ Add something concrete in :group', {
-        group: groupName(group),
-    });
-
-    if (editor === null) {
-        return <span className="text-xs text-muted-foreground">{label}</span>;
-    }
-
-    return (
-        <button
-            type="button"
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            onClick={() =>
-                editor.open({
-                    kind: 'add',
-                    prefill: {
-                        type: section === 'income' ? 'income' : 'expense',
-                        categoryId: group.categoryId,
-                    },
-                })
-            }
-            data-test="forecast-add-line"
-        >
-            {label}
-        </button>
-    );
 }
 
 function useAccountName(accountId: string): string {
@@ -408,10 +369,9 @@ function editTarget(
                 (!current || row.line.current.status === 'pending')
                 ? { kind: 'line', line: row.line, month: column.month }
                 : null;
+        case 'group':
         case 'estimate':
-            return isAdjustableEstimate(row.group)
-                ? { kind: 'estimate', group: row.group, month: column.month }
-                : null;
+            return { kind: 'estimate', group: row.group, month: column.month };
         case 'suggestion':
             return row.suggestion.month === column.month
                 ? suggestedTransfer(row.suggestion, forecast.account.id)
@@ -425,10 +385,9 @@ function rowLabel(row: PlanRow): string {
     switch (row.type) {
         case 'line':
             return row.line.name;
+        case 'group':
         case 'estimate':
-            return __('Estimated rest of :group', {
-                group: groupName(row.group),
-            });
+            return groupName(row.group);
         default:
             return __('Suggested transfer');
     }
@@ -541,9 +500,10 @@ const ForecastTableContext = createContext<ForecastData | null>(null);
 
 /**
  * "Your plan": the forecast of the account month by month, by the user's
- * parent categories. A category opens into its concrete lines and its
- * estimated rest; the month in progress shows what really happened against
- * what was planned. The first column stays in place while the months scroll,
+ * parent categories, income first. Each category is one figure a month,
+ * its estimate, which a tap adjusts; one holding lines the user added
+ * opens into them. The month in progress shows what really happened
+ * against what was planned. The first column stays in place while the months scroll,
  * and the month picked on the chart is highlighted.
  */
 export function ForecastPlanTable({
@@ -608,18 +568,21 @@ export function ForecastPlanTable({
             <PlanTableCard
                 title={__('Your plan')}
                 description={__(
-                    'By your categories. Open one to see what is concrete and what is estimated; tap a figure to change it.',
+                    'By your categories, from what came in and went out in your last 3 months. Tap a figure to change it.',
                 )}
                 allExpanded={allExpanded}
                 headerAction={headerAction}
-                onToggleAll={() =>
-                    setExpanded(
-                        allExpanded
-                            ? {}
-                            : Object.fromEntries(
-                                  groupIds.map((id) => [id, true]),
-                              ),
-                    )
+                onToggleAll={
+                    groupIds.length === 0
+                        ? null
+                        : () =>
+                              setExpanded(
+                                  allExpanded
+                                      ? {}
+                                      : Object.fromEntries(
+                                            groupIds.map((id) => [id, true]),
+                                        ),
+                              )
                 }
                 columns={forecast.months.map((column) => (
                     <ColumnHeader
@@ -633,7 +596,7 @@ export function ForecastPlanTable({
                 {table.getRowModel().rows.map((row) => {
                     const data = row.original;
 
-                    if (data.type === 'section' || data.type === 'add') {
+                    if (data.type === 'section') {
                         return (
                             <FullWidthRow
                                 key={row.id}
@@ -700,7 +663,8 @@ export function PlanTableCard({
     title: string;
     description: string;
     allExpanded: boolean;
-    onToggleAll: () => void;
+    /** Null when nothing opens: no "Expand all" then. */
+    onToggleAll: (() => void) | null;
     /** Next to "Expand all": the link to the review, when there is something new. */
     headerAction?: ReactNode;
     /** The month headings. */
@@ -715,14 +679,18 @@ export function PlanTableCard({
                     <CardDescription>{description}</CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onToggleAll}
-                        data-test="forecast-toggle-all"
-                    >
-                        {allExpanded ? __('Collapse all') : __('Expand all')}
-                    </Button>
+                    {onToggleAll && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onToggleAll}
+                            data-test="forecast-toggle-all"
+                        >
+                            {allExpanded
+                                ? __('Collapse all')
+                                : __('Expand all')}
+                        </Button>
+                    )}
                     {headerAction}
                 </div>
             </CardHeader>

@@ -2,6 +2,7 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastEstimateBasis;
 use App\Enums\ForecastEstimateKind;
 use App\Models\Account;
 use App\Models\Category;
@@ -39,7 +40,6 @@ class ForecastPlanRows
     public function __construct(
         private readonly OccurrenceExpander $expander,
         private readonly ForecastHistory $history,
-        private readonly ForecastDrift $drift,
         private readonly TransferEstimateRows $transferRows,
     ) {}
 
@@ -87,7 +87,7 @@ class ForecastPlanRows
         $dates = $this->datesIn($occurrences, $months[0]);
         $matched = $this->matchedThisMonth($items, $sides, $months[0]);
         $counterparts = $this->counterpartNames($user, $items, $sides);
-        $editing = $this->editDetails($user, $items, $occurrences, ForecastCalendar::horizonEnd($months[0].'-01', count($months)));
+        $editing = $this->editDetails($items, $occurrences, ForecastCalendar::horizonEnd($months[0].'-01', count($months)));
         $parents = $this->history->parentCategories($user);
         $groups = ['income' => [], 'expenses' => []];
         $transfers = [];
@@ -146,14 +146,14 @@ class ForecastPlanRows
     /**
      * What the edit sheet of each line needs: the line as the client engine
      * expands it, the occurrence each month shown holds, how it is
-     * recognised, its last payments, and the update they suggest. Nothing
-     * past `$until` is sent: versions and overrides after it are left out.
+     * recognised and its last payments. Nothing past `$until` is sent:
+     * versions and overrides after it are left out.
      *
      * @param  Collection<int, ForecastItem>  $items
      * @param  list<Occurrence>  $occurrences
      * @return array<string, array<string, mixed>> By line id.
      */
-    private function editDetails(User $user, Collection $items, array $occurrences, string $until): array
+    private function editDetails(Collection $items, array $occurrences, string $until): array
     {
         $occurrenceDates = [];
 
@@ -162,13 +162,9 @@ class ForecastPlanRows
         }
 
         $payments = $this->recentPayments($items);
-        $drifts = $this->drift->suggestions($items);
         $details = [];
 
         foreach ($items as $item) {
-            $drift = $drifts[$item->id] ?? null;
-            $driftFrom = $drift === null ? null : $this->drift->startsOn($user, $item, $drift);
-
             $details[$item->id] = [
                 'accountId' => $item->account_id,
                 'categoryId' => $item->category_id,
@@ -178,7 +174,6 @@ class ForecastPlanRows
                 'amountTolerance' => $item->amount_tolerance,
                 'dateWindowDays' => $item->date_window_days,
                 'payments' => $payments[$item->id] ?? [],
-                'drift' => $driftFrom === null || $driftFrom > $until ? null : ['amount' => $drift->amount, 'from' => $driftFrom],
             ];
         }
 
@@ -406,7 +401,8 @@ class ForecastPlanRows
 
     /**
      * The estimate of a group: signed amounts by month (income positive,
-     * spend negative), its `kind`, and what the month in progress has
+     * spend negative), its `kind`, its basis ("adjustment" once the user set
+     * any month shown, so the row says so), and what the month in progress has
      * already spent or received of it (`spent`, positive).
      *
      * @param  list<CategoryEstimate>  $estimates
@@ -432,6 +428,10 @@ class ForecastPlanRows
             }
 
             $basis ??= ['basis' => $estimate->basis->value, 'budgetAmount' => $estimate->budgetAmount];
+
+            if ($estimate->basis === ForecastEstimateBasis::Adjustment) {
+                $basis = ['basis' => $estimate->basis->value, 'budgetAmount' => null];
+            }
         }
 
         return [

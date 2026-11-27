@@ -1,5 +1,6 @@
 import { evaluateAlert, kpisOf } from '@/lib/forecast/edits';
 import { isShort } from '@/lib/forecast/format';
+import { opensIntoLines } from '@/lib/forecast/plan-rows';
 import {
     type ForecastAccountEstimate,
     type ForecastAccountForecast,
@@ -12,10 +13,11 @@ import {
 
 /**
  * The rows of the "All accounts" plan: each section heading, then each
- * parent category (open or not) with its lines, the estimated rest of each
- * account and the "add something concrete" link, the estimated growth, the
- * transfers and their effect on the total, and the close of each account
- * and of the total.
+ * parent category (open or not) with the lines the user added and the
+ * estimate of each account, the estimated growth, the transfers and their
+ * effect on the total, and the close of each account and of the total. A
+ * category estimated on a single account, with no line of its own, does
+ * not open: its row is that estimate.
  */
 export type AllPlanRow =
     | {
@@ -36,12 +38,6 @@ export type AllPlanRow =
           estimate: ForecastAccountEstimate;
           group: ForecastAllGroup;
       }
-    | {
-          type: 'add';
-          id: string;
-          section: 'income' | 'expenses';
-          group: ForecastAllGroup;
-      }
     | { type: 'growth'; id: string }
     | { type: 'effect'; id: string }
     | { type: 'account'; id: string; account: ForecastAccountForecast }
@@ -49,6 +45,18 @@ export type AllPlanRow =
 
 export function allGroupId(section: 'income' | 'expenses', key: string) {
     return `group:${section}:${key}`;
+}
+
+/** The one estimate a category has, when it is on a single account. */
+export function soleEstimate(
+    group: ForecastAllGroup,
+): ForecastAccountEstimate | null {
+    return group.estimates.length === 1 ? group.estimates[0] : null;
+}
+
+/** Whether a category opens: into its lines, or into the estimate of each of its accounts. */
+export function opensAllAccounts(group: ForecastAllGroup): boolean {
+    return opensIntoLines(group) || group.estimates.length > 1;
 }
 
 function groupRows(
@@ -59,7 +67,7 @@ function groupRows(
     const id = allGroupId(section, group.key);
     const head: AllPlanRow = { type: 'group', id, section, group };
 
-    if (!open) {
+    if (!open || !opensAllAccounts(group)) {
         return [head];
     }
 
@@ -80,7 +88,6 @@ function groupRows(
                 group,
             }),
         ),
-        { type: 'add', id: `add:${id}`, section, group },
     ];
 }
 
@@ -154,10 +161,12 @@ export function buildAllPlanRows(
     return rows;
 }
 
-/** The ids of every parent category of the plan. */
+/** The ids of every parent category of the plan that opens. */
 export function allGroupIds(forecast: ForecastAllData): string[] {
     return (['income', 'expenses'] as const).flatMap((section) =>
-        forecast.plan[section].map((group) => allGroupId(section, group.key)),
+        forecast.plan[section]
+            .filter(opensAllAccounts)
+            .map((group) => allGroupId(section, group.key)),
     );
 }
 
@@ -191,14 +200,20 @@ export function shortAccountsByMonth(
 }
 
 /**
- * One estimated rest as the estimate sheet edits it: a category of a
- * single account.
+ * One account's estimate of a category as the estimate sheet edits it: a
+ * category of a single account.
  */
 export function accountEstimateGroup(
     group: ForecastAllGroup,
     estimate: ForecastAccountEstimate,
 ): ForecastGroup {
-    return { ...group, items: [], estimate };
+    return {
+        ...group,
+        items: group.items.filter(
+            (line) => line.accountId === estimate.accountId,
+        ),
+        estimate,
+    };
 }
 
 /**
