@@ -1,4 +1,5 @@
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
+import { ForecastAccountTabs } from '@/components/forecast/forecast-account-tabs';
 import { ForecastAlerts } from '@/components/forecast/forecast-alerts';
 import { ForecastAllAlerts } from '@/components/forecast/forecast-all-alerts';
 import { useForecastEditor } from '@/components/forecast/forecast-editor';
@@ -21,7 +22,7 @@ import {
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { shortAccountCount } from '@/lib/forecast/all-accounts';
-import { isShort, monthWithYear, trendLabel } from '@/lib/forecast/format';
+import { isShort, monthWithYear } from '@/lib/forecast/format';
 import {
     accountMonthGroups,
     allMonthGroups,
@@ -29,14 +30,13 @@ import {
 import { initiallyExpandedGroups } from '@/lib/forecast/plan-rows';
 import { cn } from '@/lib/utils';
 import {
-    type ForecastAccountTab,
     type ForecastAllData,
     type ForecastData,
     type ForecastHorizon,
 } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { PlusIcon, Settings2Icon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import { useId, useMemo, type ReactNode } from 'react';
 
 const HORIZONS: ForecastHorizon[] = [12, 6, 3];
@@ -62,41 +62,13 @@ export function ForecastMobileAddButton() {
     );
 }
 
-/** An account as the phone's picker names it: a warning, "projection only" or its balance trend after it. */
-function mobileAccountLabel(
-    account: ForecastAccountTab,
-    format: (amount: number, currencyCode: string) => string,
-): string {
-    if (account.hasAlert) {
-        return `${account.name} · ⚠`;
-    }
-
-    const trend = trendLabel(
-        account.trend,
-        (amount) => format(amount, account.currencyCode),
-        true,
-    );
-
-    return [
-        account.name,
-        account.projectionOnly ? __('projection only') : null,
-        trend,
-    ]
-        .filter((part) => part !== null)
-        .join(' · ');
-}
-
-/** The phone's account and horizon pickers, as the system's own selects, and the way to choose the accounts. */
+/** The phone's account filter, the same menu as on a computer with the way to choose the accounts, and the horizon picker. */
 function MobileControls({
     forecast,
 }: {
     forecast: ForecastData | ForecastAllData;
 }) {
     const id = useId();
-    const editor = useForecastEditor();
-    const { formatAmount } = useFormatAmount();
-    const format = (amount: number, currencyCode: string) =>
-        formatAmount(amount, currencyCode, { fractionDigits: 0 });
     const accountId = forecast.scope === 'all' ? 'all' : forecast.account.id;
     const visit = (account: string, horizon: ForecastHorizon) =>
         router.visit(forecastIndex({ query: { account, horizon } }).url, {
@@ -105,25 +77,12 @@ function MobileControls({
 
     return (
         <div className="flex gap-2">
-            <label htmlFor={`${id}-account`} className="sr-only">
-                {__('Account')}
-            </label>
-            <select
-                id={`${id}-account`}
-                className={cn(SELECT, 'min-w-0 flex-1')}
-                value={accountId}
-                onChange={(event) =>
-                    visit(event.target.value, forecast.horizon)
-                }
-                data-test="forecast-mobile-account"
-            >
-                <option value="all">{__('All accounts')}</option>
-                {forecast.accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                        {mobileAccountLabel(account, format)}
-                    </option>
-                ))}
-            </select>
+            <ForecastAccountTabs
+                accounts={forecast.accounts}
+                selectedId={accountId === 'all' ? null : accountId}
+                horizon={forecast.horizon}
+                className="min-w-0 flex-1"
+            />
             <label htmlFor={`${id}-horizon`} className="sr-only">
                 {__('Horizon')}
             </label>
@@ -145,18 +104,6 @@ function MobileControls({
                     </option>
                 ))}
             </select>
-            {editor && (
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-10 shrink-0"
-                    onClick={() => editor.open({ kind: 'accounts' })}
-                    aria-label={__('Choose accounts')}
-                    data-test="forecast-choose-accounts"
-                >
-                    <Settings2Icon />
-                </Button>
-            )}
         </div>
     );
 }
