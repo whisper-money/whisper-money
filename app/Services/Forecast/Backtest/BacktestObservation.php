@@ -21,7 +21,7 @@ final readonly class BacktestObservation
         public int $forecast,
         public int $actual,
         public ?int $band,
-        public int $floor,
+        private int $floor,
     ) {}
 
     public function isInsideBand(): bool
