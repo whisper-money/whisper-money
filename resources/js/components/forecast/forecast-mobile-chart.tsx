@@ -298,12 +298,14 @@ function useBarTooltip(barsRef: RefObject<HTMLElement | null>) {
         };
 
         document.addEventListener('pointerdown', dismissOutside);
-        window.addEventListener('scroll', dismiss, true);
+        // The page's scroll only: the month chips scroll their own strip to
+        // the picked month, which must not close the tooltip it just opened.
+        window.addEventListener('scroll', dismiss);
         window.addEventListener('resize', dismiss);
 
         return () => {
             document.removeEventListener('pointerdown', dismissOutside);
-            window.removeEventListener('scroll', dismiss, true);
+            window.removeEventListener('scroll', dismiss);
             window.removeEventListener('resize', dismiss);
         };
     }, [barsRef, open]);

@@ -107,6 +107,18 @@ describe('ForecastMobileChart', () => {
         expect(tooltip()).toBeNull();
     });
 
+    it('keeps the tooltip while the month chips scroll to the picked month', () => {
+        renderChart();
+        const strip = document.createElement('div');
+        document.body.appendChild(strip);
+
+        fireEvent.click(bar('2026-12'));
+        fireEvent.scroll(strip);
+
+        expect(tooltip()).toHaveTextContent('Forecast');
+        strip.remove();
+    });
+
     it("shows the last closed month's tooltip without picking it", () => {
         renderChart();
 
