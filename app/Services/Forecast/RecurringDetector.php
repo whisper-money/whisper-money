@@ -22,12 +22,6 @@ use App\Services\Forecast\Data\TransferLeg;
  * otherwise. The incoming leg of a transfer between two of the user's
  * accounts is left out: the outgoing leg already carries it. Pure over the
  * transactions it is given; nothing is stored.
- *
- * The review no longer proposes what repeats every month (the forecast
- * estimates it per category); the "What you pay every month" card reads
- * the detector next. Until then only the tests do.
- *
- * @api
  */
 class RecurringDetector
 {
