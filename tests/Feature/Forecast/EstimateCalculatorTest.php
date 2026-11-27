@@ -289,6 +289,20 @@ it('keeps other income apart from other spending', function () {
         ->and(estimatesFor($this->user)[$this->account->id.'||2026-12'])->amount->toBe(4000);
 });
 
+it('takes an adjustment without a category on the side it was made on', function () {
+    ForecastEstimateAdjustment::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'kind' => ForecastEstimateKind::Income,
+        'starts_on' => '2027-01-01',
+        'amount' => 50000,
+    ]);
+
+    expect(incomeEstimatesFor($this->user)[$this->account->id.'||2027-01'])->amount->toBe(50000)->basis->toBe(ForecastEstimateBasis::Adjustment)
+        ->and(estimatesFor($this->user))->not->toHaveKey($this->account->id.'||2027-01');
+});
+
 it('takes the user\'s adjustment of an income category as income', function () {
     $salary = forecastIncomeCategory($this->user);
     foreach (['2026-08-27', '2026-09-27', '2026-10-27'] as $date) {

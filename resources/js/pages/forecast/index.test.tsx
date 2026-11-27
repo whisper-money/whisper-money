@@ -147,16 +147,16 @@ describe('the forecast page', () => {
         ).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /Home/ }));
-        expect(screen.queryByText('Estimated rest')).not.toBeInTheDocument();
+        expect(screen.queryByText('Estimate')).not.toBeInTheDocument();
 
         fireEvent.click(
             document.querySelector('[data-test="forecast-toggle-all"]')!,
         );
-        expect(screen.getByText('Estimated rest')).toBeInTheDocument();
+        expect(screen.getByText('Estimate')).toBeInTheDocument();
         expect(screen.getByText('Collapse all')).toBeInTheDocument();
 
         fireEvent.click(screen.getByText('Collapse all'));
-        expect(screen.queryByText('Estimated rest')).not.toBeInTheDocument();
+        expect(screen.queryByText('Estimate')).not.toBeInTheDocument();
         expect(screen.getByText('Expand all')).toBeInTheDocument();
     });
 
@@ -231,11 +231,15 @@ describe('the forecast page', () => {
             }),
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /Work/ }));
+        // A category with nothing added to it is one row: no toggle.
+        expect(
+            screen.queryByRole('button', { name: /^Work/ }),
+        ).not.toBeInTheDocument();
 
         const cell = screen.getByText('of 3000 · 2000 left').parentElement!;
 
-        expect(cell).toHaveTextContent('1000');
+        expect(cell).toHaveTextContent('+1000');
+        expect(cell).toHaveClass('text-success');
         expect(cell).not.toHaveTextContent('-1000');
     });
 
@@ -499,7 +503,6 @@ describe('editing the forecast', () => {
                                         `${month}-05`,
                                     ]),
                                 ),
-                                drift: { amount: -201000, from: '2026-12-05' },
                             },
                             {
                                 ...insurance,
@@ -723,20 +726,17 @@ describe('editing the forecast', () => {
         ).toBeDisabled();
     });
 
-    it('adds a line in a category, adjusts an estimate and changes the wanted minimum', () => {
+    it('adds a line from the header, adjusts a category and changes the wanted minimum', () => {
         visit.mockClear();
         renderPage(editable(), editingInput());
 
-        fireEvent.click(
-            screen.getByRole('button', {
-                name: '+ Add something concrete in Home',
-            }),
-        );
         expect(
-            within(sheet('forecast-add-sheet')).getByRole('radio', {
-                name: 'Expense',
-            }),
-        ).toHaveAttribute('aria-checked', 'true');
+            screen.queryByText(/Add something concrete/),
+        ).not.toBeInTheDocument();
+        fireEvent.click(document.querySelector('[data-test="forecast-add"]')!);
+        expect(sheet('forecast-add-sheet')).toHaveTextContent(
+            "What repeats every month is already in its category's estimate",
+        );
         fireEvent.click(
             within(sheet('forecast-add-sheet')).getByRole('button', {
                 name: 'Cancel',
@@ -745,13 +745,12 @@ describe('editing the forecast', () => {
 
         fireEvent.click(
             document.querySelector(
-                '[data-test="forecast-cell-estimate:home-2027-01"]',
+                '[data-test="forecast-cell-group:expenses:home-2027-01"]',
             )!,
         );
         const estimate = sheet('forecast-estimate-sheet');
-        expect(estimate).toHaveTextContent(
-            'Estimated rest of Home · January 2027',
-        );
+        expect(estimate).toHaveTextContent('Home · January 2027');
+        expect(estimate).toHaveTextContent('Now: €60, likely ± €24');
         fireEvent.change(
             within(estimate).getByLabelText('What you expect to spend'),
             {
@@ -762,6 +761,7 @@ describe('editing the forecast', () => {
         expect(lastVisit()[1].data).toEqual({
             account_id: 'checking',
             category_id: 'home',
+            kind: 'expense',
             month: '2027-01',
             amount: 10000,
             scope: 'from_here',
@@ -773,6 +773,89 @@ describe('editing the forecast', () => {
         expect(sheet('forecast-account-sheet')).toHaveTextContent(
             'Wanted minimum',
         );
+    });
+
+    it('adjusts "Other income" on the income side, and shows it at once', () => {
+        visit.mockClear();
+        const otherIncome = {
+            ...home,
+            key: 'other',
+            section: 'income' as const,
+            categoryId: null,
+            name: null,
+            items: [],
+            estimate: {
+                kind: 'income' as const,
+                basis: 'median' as const,
+                budgetAmount: null,
+                amounts: { '2027-01': 20000, '2027-02': 20000 },
+                current: null,
+            },
+        };
+        const input: ProjectionInput = {
+            ...editingInput(),
+            estimates: ['2027-01', '2027-02'].map((month) => ({
+                accountId: 'checking',
+                categoryId: null,
+                kind: 'income',
+                month,
+                amount: 20000,
+                day: 15,
+            })),
+        };
+        renderPage(
+            editable({
+                plan: {
+                    income: [otherIncome],
+                    expenses: [home],
+                    transfers: [],
+                },
+            }),
+            input,
+        );
+
+        const cell = document.querySelector<HTMLElement>(
+            '[data-test="forecast-cell-group:income:other-2027-01"]',
+        )!;
+        expect(cell).toHaveTextContent('≈ +200');
+        expect(cell.firstElementChild).toHaveAttribute('title', 'Likely ± 20');
+
+        fireEvent.click(cell);
+        const estimate = sheet('forecast-estimate-sheet');
+        expect(estimate).toHaveTextContent('Other income · January 2027');
+        fireEvent.change(
+            within(estimate).getByLabelText('What you expect to receive'),
+            { target: { value: '500' } },
+        );
+        fireEvent.click(within(estimate).getByRole('button', { name: 'Save' }));
+
+        const [, options] = lastVisit();
+        expect(options.data).toEqual({
+            account_id: 'checking',
+            category_id: null,
+            kind: 'income',
+            month: '2027-01',
+            amount: 50000,
+            scope: 'from_here',
+        });
+
+        const { forecast: optimistic, projectionInput } = options.optimistic({
+            forecast: editable(),
+            projectionInput: input,
+        });
+        // From January on: every month shown after it takes the new figure.
+        expect(optimistic.plan.income[0].estimate?.amounts).toEqual({
+            '2027-01': 50000,
+            '2027-02': 50000,
+            '2027-03': 50000,
+            '2027-04': 50000,
+            '2027-05': 50000,
+        });
+        expect(
+            projectionInput.estimates?.find(
+                (candidate) => candidate.month === '2027-01',
+            ),
+        ).toMatchObject({ kind: 'income', categoryId: null, amount: 50000 });
     });
 
     it('lists every account, an excluded house can be switched on, and a projection-only one never asks for a minimum', () => {
@@ -861,17 +944,39 @@ describe('editing the forecast', () => {
         expect(sheet('forecast-accounts-sheet')).not.toBeNull();
     });
 
-    it("accepts the update a line's last payments suggest", () => {
-        visit.mockClear();
-        renderPage(editable(), editingInput());
-
-        fireEvent.click(
-            document.querySelector('[data-test="forecast-drift-rent"]')!,
+    it('shows a usual transfer between accounts as a read-only row', () => {
+        const usual = line({
+            id: 'usual-transfer',
+            name: 'Savings',
+            kind: 'transfer',
+            source: 'estimate',
+            direction: 'out',
+            counterpartyName: 'Savings',
+            amounts: { '2026-12': -50000, '2027-01': -50000 },
+            occurrenceDates: {},
+            current: { planned: null, real: null, date: null, status: 'none' },
+        });
+        renderPage(
+            editable({
+                plan: { income: [], expenses: [home], transfers: [usual] },
+            }),
+            editingInput(),
         );
 
-        const [url, options] = lastVisit();
-        expect(url).toBe('/forecast/items/rent/drift');
-        expect(options.method).toBe('post');
+        const row = document.querySelector<HTMLElement>(
+            '[data-test="forecast-row-line:usual-transfer"]',
+        )!;
+        expect(row).toHaveTextContent('→ Savings');
+        expect(row).toHaveTextContent('-500');
+        expect(row.querySelector('[data-test^="forecast-cell-"]')).toBeNull();
+    });
+
+    it('offers no drift update on a line any more: a category covers what repeats', () => {
+        renderPage(editable(), editingInput());
+
+        expect(
+            document.querySelector('[data-test^="forecast-drift"]'),
+        ).not.toBeInTheDocument();
     });
 });
 
@@ -1092,19 +1197,67 @@ describe('the "All accounts" view', () => {
         renderPage(all());
 
         const group = row('group:expenses:home');
-        expect(group).toHaveTextContent('2 concrete + estimated');
+        expect(group).not.toHaveTextContent('concrete');
         expect(group).toHaveTextContent('≈ -2060');
         expect(group).toHaveTextContent('-1920');
 
-        fireEvent.click(within(group).getByRole('button'));
+        fireEvent.click(within(group).getByRole('button', { expanded: false }));
 
         expect(row('line:rent')).toHaveTextContent(
-            'Checking · Detected · day 5',
+            'Checking · Added by you · day 5',
         );
-        expect(row('line:cleaning')).toHaveTextContent('Savings · Detected');
+        expect(row('line:cleaning')).toHaveTextContent(
+            'Savings · Added by you',
+        );
         expect(row('estimate:home:savings')).toHaveTextContent(
             'Savings · Median of 3 months',
         );
+    });
+
+    it('edits a category estimated on one account straight from its row', () => {
+        visit.mockClear();
+        const base = all();
+        const [homeAll] = base.plan.expenses;
+        renderPage(
+            {
+                ...base,
+                plan: {
+                    ...base.plan,
+                    expenses: [{ ...homeAll, items: [] }],
+                },
+            },
+            {
+                accounts: [
+                    { id: 'checking', openingBalance: 100000 },
+                    { id: 'savings', openingBalance: 900000 },
+                ],
+                occurrences: [],
+                estimates: [],
+                startDate: '2026-11-26',
+                horizonMonths: 7,
+            },
+        );
+
+        const group = row('group:expenses:home');
+        expect(
+            within(group).queryByRole('button', { expanded: false }),
+        ).not.toBeInTheDocument();
+        expect(group).toHaveTextContent('Savings · Median of 3 months');
+        expect(
+            document.querySelector('[data-test="forecast-toggle-all"]'),
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-cell-group:expenses:home-2026-12"]',
+            )!,
+        );
+
+        const sheet = document.querySelector(
+            '[data-test="forecast-estimate-sheet"]',
+        )!;
+        expect(sheet).toHaveTextContent('Expenses · Savings');
+        expect(sheet).toHaveTextContent('Home · December 2026');
     });
 
     it('lists the growth, the transfers neutral in the total and each account’s close', () => {
@@ -1290,17 +1443,17 @@ describe('the forecast page on a phone', () => {
         expect(chip('2027-04')).toHaveAttribute('aria-pressed', 'true');
         expect(chip('2027-04')).toHaveTextContent('⚠');
         expect(chip('2027-01')).not.toHaveTextContent('⚠');
-        expect(within(monthCard()).getByRole('heading')).toHaveTextContent(
-            'April 2027',
-        );
+        expect(
+            within(monthCard()).getByRole('heading', { level: 2 }),
+        ).toHaveTextContent('April 2027');
         expect(monthCard()).toHaveTextContent('worst case €-580');
 
         fireEvent.click(chip('2027-01'));
         expect(chip('2027-01')).toHaveAttribute('aria-pressed', 'true');
         expect(chip('2027-04')).toHaveAttribute('aria-pressed', 'false');
-        expect(within(monthCard()).getByRole('heading')).toHaveTextContent(
-            'January 2027',
-        );
+        expect(
+            within(monthCard()).getByRole('heading', { level: 2 }),
+        ).toHaveTextContent('January 2027');
 
         fireEvent.click(
             document.querySelector(
@@ -1313,12 +1466,12 @@ describe('the forecast page on a phone', () => {
         ).toBeDisabled();
     });
 
-    it('opens a category into its concrete lines, its estimated rest and the add link', () => {
+    it('opens a category that holds lines into them and its estimate', () => {
         renderPage(forecast());
 
         // April holds the yearly insurance that explains the dip: open.
         expect(group('group:expenses:home')).toHaveTextContent(
-            '2 concrete this month + estimated',
+            'Rent, Car insurance',
         );
         expect(group('group:expenses:home')).toHaveTextContent('≈ -8960');
         expect(
@@ -1329,16 +1482,18 @@ describe('the forecast page on a phone', () => {
         const home = group('group:expenses:home');
         const toggle = within(home).getByRole('button', { name: /Home/ });
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        expect(within(home).queryByText('Rent')).not.toBeInTheDocument();
+        expect(
+            home.querySelector('[data-test="forecast-entry-line:rent"]'),
+        ).toBeNull();
 
         fireEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        expect(within(home).getByText('Rent')).toBeInTheDocument();
-        expect(within(home).getByText('Estimated rest')).toBeInTheDocument();
-        expect(within(home).getByText('≈ -60')).toBeInTheDocument();
         expect(
-            within(home).getByText('+ Add something concrete in Home'),
-        ).toBeInTheDocument();
+            home.querySelector('[data-test="forecast-entry-line:rent"]'),
+        ).toHaveTextContent('Rent');
+        expect(within(home).getByText('Estimate')).toBeInTheDocument();
+        expect(within(home).getByText('≈ -60')).toBeInTheDocument();
+        expect(within(home).queryByText(/Add something concrete/)).toBeNull();
         expect(within(home).queryByText('Car insurance')).toBeNull();
     });
 
@@ -1370,14 +1525,30 @@ describe('the forecast page on a phone', () => {
         ).toBeInTheDocument();
     });
 
-    it('lists the income and the transfers of the month as their own rows', () => {
-        const salary = line({
-            id: 'salary',
-            name: 'Salary',
+    it('lists each income category above the expenses, and the transfers', () => {
+        visit.mockClear();
+        const salary = {
+            ...home,
+            key: 'work',
+            section: 'income' as const,
+            categoryId: 'work',
+            name: 'Work',
+            items: [],
+            estimate: {
+                kind: 'income' as const,
+                basis: 'median' as const,
+                budgetAmount: null,
+                amounts: { '2027-04': 300000 },
+                current: null,
+            },
+        };
+        const otherIncome = {
+            ...salary,
+            key: 'other',
             categoryId: null,
-            amounts: { '2027-04': 300000 },
-            occurrenceDates: { '2027-04': '2027-04-28' },
-        });
+            name: null,
+            estimate: { ...salary.estimate, amounts: { '2027-04': 10000 } },
+        };
         const toSavings = line({
             id: 'to-savings',
             name: 'To savings',
@@ -1389,28 +1560,48 @@ describe('the forecast page on a phone', () => {
         renderPage(
             forecast({
                 plan: {
-                    income: [
-                        {
-                            ...home,
-                            key: 'work',
-                            section: 'income',
-                            name: 'Work',
-                            items: [salary],
-                            estimate: null,
-                        },
-                    ],
+                    income: [salary, otherIncome],
                     expenses: [home],
                     transfers: [toSavings],
                 },
             }),
+            {
+                accounts: [{ id: 'checking', openingBalance: 100000 }],
+                occurrences: [],
+                estimates: [],
+                startDate: '2026-11-26',
+                horizonMonths: 7,
+            },
         );
 
-        expect(group('income')).toHaveTextContent('Salary · day 28');
-        expect(group('income')).toHaveTextContent('+3000');
+        const headings = within(monthCard())
+            .getAllByRole('heading', { level: 3 })
+            .map((heading) => heading.textContent);
+        expect(headings).toEqual(['Income', 'Expenses', 'Transfers']);
+        expect(group('group:income:work')).toHaveTextContent(
+            'Median of 3 months',
+        );
+        expect(group('group:income:work')).toHaveTextContent('≈ +3000');
+        expect(group('group:income:other')).toHaveTextContent('Other income');
         expect(group('transfers')).toHaveTextContent(
             '→ Savings · not spending',
         );
         expect(group('transfers')).toHaveTextContent('-500');
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-month-edit-group:income:other"]',
+            )!,
+        );
+        const sheet = document.querySelector(
+            '[data-test="forecast-estimate-sheet"]',
+        )!;
+        expect(sheet).toHaveTextContent('Other income · April 2027');
+        expect(
+            within(sheet as HTMLElement).getByLabelText(
+                'What you expect to receive',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('moves to another account or horizon from the selects', () => {

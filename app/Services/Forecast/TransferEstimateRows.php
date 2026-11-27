@@ -98,7 +98,6 @@ class TransferEstimateRows
             'amountTolerance' => 0,
             'dateWindowDays' => 0,
             'payments' => [],
-            'drift' => null,
         ];
     }
 }

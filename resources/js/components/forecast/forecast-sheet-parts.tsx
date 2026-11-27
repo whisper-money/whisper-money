@@ -198,12 +198,15 @@ export function FrequencySelect({
     onChange,
     disabled,
     withOnce = true,
+    only,
 }: {
     id: string;
     value: ForecastFrequency;
     onChange: (value: ForecastFrequency) => void;
     disabled?: boolean;
     withOnce?: boolean;
+    /** The repetitions offered, when not all of them. */
+    only?: ForecastFrequency[];
 }) {
     return (
         <Select
@@ -216,7 +219,9 @@ export function FrequencySelect({
             </SelectTrigger>
             <SelectContent>
                 {FREQUENCIES.filter(
-                    (frequency) => withOnce || frequency !== 'once',
+                    (frequency) =>
+                        (withOnce || frequency !== 'once') &&
+                        (only === undefined || only.includes(frequency)),
                 ).map((frequency) => (
                     <SelectItem key={frequency} value={frequency}>
                         {frequencyLabel(frequency)}

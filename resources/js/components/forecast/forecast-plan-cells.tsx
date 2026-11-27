@@ -1,4 +1,3 @@
-import { useForecastEditor } from '@/components/forecast/forecast-editor';
 import { Badge } from '@/components/ui/badge';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -7,17 +6,19 @@ import {
     dayOf,
     lineKindLabel,
     lineOrigin,
-    monthLongName,
 } from '@/lib/forecast/format';
 import {
+    estimateBand,
     groupCurrentTotal,
     groupMonthTotal,
+    opensIntoLines,
     type PlanRow,
 } from '@/lib/forecast/plan-rows';
 import { type ProjectedMonth } from '@/lib/forecast/types';
 import { cn } from '@/lib/utils';
 import {
     type ForecastEstimate,
+    type ForecastGroup,
     type ForecastLine,
     type ForecastLineKind,
 } from '@/types/forecast';
@@ -44,14 +45,18 @@ export function PlanCell({
     sub,
     className,
     subClassName,
+    title,
 }: {
     children: ReactNode;
     sub?: ReactNode;
     className?: string;
     subClassName?: string;
+    /** What hovering the figure tells: an estimate's band. */
+    title?: string;
 }) {
     return (
         <span
+            title={title}
             className={cn(
                 'flex min-h-8 w-full flex-col items-end justify-center gap-0.5 rounded-md px-2 py-0.5 text-[13px] tabular-nums',
                 className,
@@ -125,57 +130,17 @@ export function lineName(line: ForecastLine): string {
     return `${arrow} ${line.counterpartyName ?? line.name}`;
 }
 
-/** "Tu alquiler ahora es de 950 €. ¿Actualizar desde diciembre?", accepted in one tap. */
-function DriftSuggestion({
-    line,
-    currencyCode,
-}: {
-    line: ForecastLine;
-    currencyCode: string;
-}) {
-    const locale = useLocale();
-    const editor = useForecastEditor();
-    const { formatAmount } = useFormatAmount();
-
-    if (line.drift === null || editor === null) {
-        return null;
-    }
-
-    return (
-        <button
-            type="button"
-            className="max-w-[230px] text-left text-[11px] text-warning underline-offset-4 hover:underline"
-            onClick={() => editor.acceptDrift(line)}
-            data-test={`forecast-drift-${line.id}`}
-        >
-            {__('Your :name is now :amount. Update from :month?', {
-                name: line.name,
-                amount: formatAmount(
-                    Math.abs(line.drift.amount),
-                    currencyCode,
-                    {
-                        fractionDigits: 0,
-                    },
-                ),
-                month: monthLongName(line.drift.from.slice(0, 7), locale),
-            })}
-        </button>
-    );
-}
-
-/** "Checking · Detected · day 28": the origin, after the account it is on when the view shows several. */
+/** "Checking · Added by you · day 28": the origin, after the account it is on when the view shows several. */
 function withAccount(origin: string, accountName?: string): string {
     return accountName ? `${accountName} · ${origin}` : origin;
 }
 
 export function LineHeader({
     line,
-    currencyCode,
     name,
     accountName,
 }: {
     line: ForecastLine;
-    currencyCode: string;
     /** Shown instead of the line's own name. */
     name?: string;
     /** The account the line is on, when the view shows several. */
@@ -200,7 +165,77 @@ export function LineHeader({
                     )}
                 </span>
             </span>
-            <DriftSuggestion line={line} currencyCode={currencyCode} />
+        </span>
+    );
+}
+
+/** Where a category's estimate comes from: "Median of 3 months", "Set by you", its budget. */
+export function useEstimateBasis(
+    currencyCode: string,
+): (estimate: ForecastEstimate) => string {
+    const number = useNumber(currencyCode);
+
+    return (estimate) => {
+        if (estimate.basis === 'adjustment') {
+            return __('Set by you');
+        }
+
+        if (estimate.basis !== 'budget' || estimate.budgetAmount === null) {
+            return __('Median of 3 months');
+        }
+
+        const firstPlanned = Object.values(estimate.amounts)[0];
+        const concrete =
+            firstPlanned === undefined
+                ? 0
+                : estimate.budgetAmount + firstPlanned;
+
+        return concrete > 0
+            ? __('Budget :budget − concrete :concrete', {
+                  budget: number(estimate.budgetAmount),
+                  concrete: number(concrete),
+              })
+            : __('Budget :budget', { budget: number(estimate.budgetAmount) });
+    };
+}
+
+/** "Likely ± 120": how far a month of the category may land from its estimate. */
+export function useBandHint(
+    currencyCode: string,
+): (kind: ForecastEstimate['kind'], amount: number) => string {
+    const number = useNumber(currencyCode);
+
+    return (kind, amount) =>
+        __('Likely ± :amount', { amount: number(estimateBand(kind, amount)) });
+}
+
+/** A category's name, and where its estimate comes from under it. */
+export function CategoryHeader({
+    name,
+    estimate,
+    currencyCode,
+    accountName,
+}: {
+    name: string;
+    estimate: ForecastEstimate | null;
+    currencyCode: string;
+    /** The account the estimate is on, when the view shows several. */
+    accountName?: string;
+}) {
+    const basis = useEstimateBasis(currencyCode);
+    const hint =
+        estimate === null
+            ? accountName
+            : withAccount(basis(estimate), accountName);
+
+    return (
+        <span className="flex min-h-8 flex-col justify-center gap-px text-left">
+            <span className="text-[13px] font-semibold">{name}</span>
+            {hint && (
+                <span className="text-[11px] font-normal text-muted-foreground">
+                    {hint}
+                </span>
+            )}
         </span>
     );
 }
@@ -215,39 +250,33 @@ export function EstimateHeader({
     /** The account the estimate is for, when the view shows several. */
     accountName?: string;
 }) {
-    const number = useNumber(currencyCode);
-    const firstPlanned = Object.values(estimate.amounts)[0];
-    let basis = __('Median of 3 months');
-
-    if (estimate.basis === 'adjustment') {
-        basis = __('Set by you');
-    } else if (estimate.basis === 'budget' && estimate.budgetAmount !== null) {
-        const concrete =
-            firstPlanned === undefined
-                ? 0
-                : estimate.budgetAmount + firstPlanned;
-        basis =
-            concrete > 0
-                ? __('Budget :budget − concrete :concrete', {
-                      budget: number(estimate.budgetAmount),
-                      concrete: number(concrete),
-                  })
-                : __('Budget :budget', {
-                      budget: number(estimate.budgetAmount),
-                  });
-    }
+    const basis = useEstimateBasis(currencyCode);
 
     return (
         <span className="flex flex-col gap-1">
-            <span className="text-[13px]">{__('Estimated rest')}</span>
+            <span className="text-[13px]">{__('Estimate')}</span>
             <span className="flex flex-wrap items-center gap-1.5">
                 <KindBadge kind="estimate" />
                 <span className="text-[11px] text-muted-foreground">
-                    {withAccount(basis, accountName)}
+                    {withAccount(basis(estimate), accountName)}
                 </span>
             </span>
         </span>
     );
+}
+
+/** Income reads in the success colour with its "+"; spend in the foreground with its sign. */
+export function signedFigure(
+    amount: number,
+    format: (amount: number) => string,
+    { signed = true }: { signed?: boolean } = {},
+): { text: string; className: string | undefined } {
+    if (signed && amount > 0) {
+        return { text: `+${format(amount)}`, className: 'text-success' };
+    }
+
+    // `|| 0` keeps an untouched spend (−0) from reading "−0".
+    return { text: format(amount || 0), className: undefined };
 }
 
 function deviationTone(deviation: number): string {
@@ -313,9 +342,11 @@ function LineCurrentCell({
 function EstimateCurrentCell({
     estimate,
     currencyCode,
+    className,
 }: {
     estimate: ForecastEstimate;
     currencyCode: string;
+    className?: string;
 }) {
     const number = useNumber(currencyCode);
 
@@ -324,55 +355,110 @@ function EstimateCurrentCell({
     }
 
     const { spent, planned, left } = estimate.current;
+    const figure = signedFigure(
+        estimate.kind === 'income' ? spent : -spent,
+        number,
+    );
 
     return (
         <PlanCell
+            className={cn(figure.className, className)}
             sub={__('of :planned · :left left', {
                 planned: number(planned),
                 left: number(left),
             })}
             subClassName={spent > planned ? 'text-foreground' : undefined}
         >
-            {number(estimate.kind === 'income' ? spent : -spent)}
+            {figure.text}
+        </PlanCell>
+    );
+}
+
+/**
+ * A category's figure in a month: "≈ X" when an estimate makes it up,
+ * income in the success colour, and on hover the band of the estimated
+ * part (the lines the user added are exact).
+ */
+export function CategoryMonthCell({
+    total,
+    estimate,
+    currencyCode,
+}: {
+    total: number | undefined;
+    /** The estimate's side and its amount in the month, when one is part of the figure. */
+    estimate: { kind: ForecastEstimate['kind']; amount: number | null } | null;
+    currencyCode: string;
+}) {
+    const number = useNumber(currencyCode);
+    const band = useBandHint(currencyCode);
+
+    if (total === undefined) {
+        return EMPTY_CELL;
+    }
+
+    const figure = signedFigure(total, number);
+
+    return (
+        <PlanCell
+            className={cn('font-semibold', figure.className)}
+            title={
+                estimate?.amount == null
+                    ? undefined
+                    : band(estimate.kind, estimate.amount)
+            }
+        >
+            {estimate === null ? figure.text : `≈ ${figure.text}`}
         </PlanCell>
     );
 }
 
 function GroupCell({
-    row,
+    group,
     month,
     current,
     currencyCode,
 }: {
-    row: Extract<PlanRow, { type: 'group' }>;
+    group: ForecastGroup;
     month: string;
     current: boolean;
     currencyCode: string;
 }) {
     const number = useNumber(currencyCode);
 
+    if (current && group.estimate !== null && !opensIntoLines(group)) {
+        return (
+            <EstimateCurrentCell
+                estimate={group.estimate}
+                currencyCode={currencyCode}
+                className="font-semibold"
+            />
+        );
+    }
+
     if (current) {
-        const total = groupCurrentTotal(row.group);
+        const total = groupCurrentTotal(group);
+        const figure = signedFigure(total.real, number);
 
         return (
-            <PlanCell className="font-semibold">
+            <PlanCell className={cn('font-semibold', figure.className)}>
                 {total.real === 0 && total.pending
                     ? __('pending')
-                    : number(total.real)}
+                    : figure.text}
             </PlanCell>
         );
     }
 
-    const total = groupMonthTotal(row.group, month);
-
-    if (total === null) {
-        return EMPTY_CELL;
-    }
-
     return (
-        <PlanCell className="font-semibold">
-            {row.group.estimate ? `≈ ${number(total)}` : number(total)}
-        </PlanCell>
+        <CategoryMonthCell
+            total={groupMonthTotal(group, month) ?? undefined}
+            estimate={
+                group.estimate && {
+                    kind: group.estimate.kind,
+                    amount: group.estimate.amounts[month] ?? null,
+                }
+            }
+            currencyCode={currencyCode}
+        />
     );
 }
 
@@ -432,12 +518,13 @@ export function PlanMonthCell({
     context: PlanCellContext;
 }) {
     const number = useNumber(context.currencyCode);
+    const band = useBandHint(context.currencyCode);
 
     switch (row.type) {
         case 'group':
             return (
                 <GroupCell
-                    row={row}
+                    group={row.group}
                     month={month}
                     current={current}
                     currencyCode={context.currencyCode}
@@ -456,10 +543,16 @@ export function PlanMonthCell({
 
             const amount = row.line.amounts[month];
 
-            return amount === undefined ? (
-                EMPTY_CELL
-            ) : (
-                <PlanCell>{number(amount)}</PlanCell>
+            if (amount === undefined) {
+                return EMPTY_CELL;
+            }
+
+            const figure = signedFigure(amount, number, {
+                signed: row.line.kind !== 'transfer',
+            });
+
+            return (
+                <PlanCell className={figure.className}>{figure.text}</PlanCell>
             );
         }
         case 'estimate': {
@@ -477,7 +570,10 @@ export function PlanMonthCell({
             return amount === undefined ? (
                 EMPTY_CELL
             ) : (
-                <PlanCell className="text-muted-foreground italic">
+                <PlanCell
+                    className="text-muted-foreground italic"
+                    title={band(row.estimate.kind, amount)}
+                >
                     ≈ {number(amount)}
                 </PlanCell>
             );

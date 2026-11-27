@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ForecastEstimateKind;
 use App\Models\Concerns\BelongsToSpace;
 use Carbon\Carbon;
 use Database\Factories\ForecastEstimateAdjustmentFactory;
@@ -11,14 +12,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * The user's own figure for the estimated rest of a parent category on one
- * account, from `starts_on` until `ends_on` (open-ended when null). It only
- * changes the forecast, never the budget.
+ * The user's own figure for the estimate of a parent category on one
+ * account, from `starts_on` until `ends_on` (open-ended when null), on the
+ * side `kind` says: income or spend ("Other income" and "Other spending"
+ * both have no category). It only changes the forecast, never the budget.
  *
  * @property string $id
  * @property string $user_id
  * @property string $account_id
  * @property string|null $category_id
+ * @property ForecastEstimateKind $kind
  * @property Carbon $starts_on
  * @property Carbon|null $ends_on
  * @property int $amount
@@ -33,6 +36,7 @@ class ForecastEstimateAdjustment extends Model
         'space_id',
         'account_id',
         'category_id',
+        'kind',
         'starts_on',
         'ends_on',
         'amount',
@@ -46,6 +50,7 @@ class ForecastEstimateAdjustment extends Model
     protected function casts(): array
     {
         return [
+            'kind' => ForecastEstimateKind::class,
             'starts_on' => 'date:Y-m-d',
             'ends_on' => 'date:Y-m-d',
             'amount' => 'integer',
