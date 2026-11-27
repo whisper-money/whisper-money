@@ -3376,5 +3376,9 @@
     ":dropped · the forecast only had :amount left": ":dropped · la prévision n’avait plus que :amount",
     "I’m dropping :name": "J’arrête :name",
     "Keep :name": "Je garde :name",
-    "≈ :amount a month": "≈ :amount par mois"
+    "≈ :amount a month": "≈ :amount par mois",
+    "Actual": "Réel",
+    "So far + forecast": "Réel + prévision",
+    "Lowest balance": "Solde le plus bas",
+    "Accounts with a warning": "Comptes avec alerte"
 }

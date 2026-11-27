@@ -170,21 +170,36 @@ export function allGroupIds(forecast: ForecastAllData): string[] {
     );
 }
 
+/** An account that falls below its threshold in a month, and how low it goes. */
+export interface ShortAccount {
+    account: ForecastAccountForecast;
+    /** The lowest balance of the month, in the account's own currency. */
+    min: number;
+}
+
+/** The accounts that fall below their threshold in a month. */
+export function shortAccounts(
+    forecast: ForecastAllData,
+    month: string,
+): ShortAccount[] {
+    return forecast.accountForecasts.flatMap((account) => {
+        const projected = account.projection.find(
+            (candidate) => candidate.month === month,
+        );
+
+        return projected !== undefined &&
+            isShort(projected.min, account.alertThreshold)
+            ? [{ account, min: projected.min }]
+            : [];
+    });
+}
+
 /** How many accounts fall below their threshold in a month. */
 export function shortAccountCount(
     forecast: ForecastAllData,
     month: string,
 ): number {
-    return forecast.accountForecasts.filter((account) => {
-        const projected = account.projection.find(
-            (candidate) => candidate.month === month,
-        );
-
-        return (
-            projected !== undefined &&
-            isShort(projected.min, account.alertThreshold)
-        );
-    }).length;
+    return shortAccounts(forecast, month).length;
 }
 
 /** How many accounts fall below their threshold, by month. */
