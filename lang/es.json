@@ -4526,5 +4526,6 @@
     "Keep :name": "Mantengo :name",
     "≈ :amount a month": "≈ :amount al mes",
     "Unique voters": "Votantes únicos",
-    ":count requests, most voted first.": ":count solicitudes, las más votadas primero."
+    ":count requests, most voted first.": ":count solicitudes, las más votadas primero.",
+    "No requests waiting for review.": "No hay solicitudes pendientes de revisión."
 }

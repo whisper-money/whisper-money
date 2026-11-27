@@ -335,6 +335,16 @@ const columns: ColumnDef<AdminIntegrationRequest>[] = [
 
 type Filter = IntegrationRequestStatus | 'all';
 
+function emptyMessage(filterable: boolean, filter: Filter): string {
+    if (!filterable) {
+        return __('No requests waiting for review.');
+    }
+
+    return filter === 'all'
+        ? __('No integration requests found.')
+        : __('No requests with this status.');
+}
+
 /**
  * The web form of `integration-requests:review`: the requests in the order
  * the server sent them, each one a click from approved. With `filterable`,
@@ -390,11 +400,7 @@ export function IntegrationRequestList({
 
             <SettingsTable
                 table={table}
-                emptyMessage={
-                    filter === 'all'
-                        ? __('No integration requests found.')
-                        : __('No requests with this status.')
-                }
+                emptyMessage={emptyMessage(filterable, filter)}
             />
         </div>
     );
