@@ -23,8 +23,8 @@ use Inertia\Response;
  * (`newSuggestionCount`) comes right after the page, since working it out
  * when it is not cached reads 18 months of history; the review itself
  * (`review`), always of every included account whichever one the page
- * shows, is only sent when the page asks for it. The "What you pay
- * every month" card (`recurringCharges`) runs the recurring detector live,
+ * shows, is only sent when the page asks for it. The "Recurring
+ * transactions" card (`recurringCharges`) runs the recurring detector live,
  * so it comes after the page too, on its own.
  */
 class ForecastController extends Controller

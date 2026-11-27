@@ -139,6 +139,21 @@ describe('the forecast page with no account in it', () => {
 });
 
 describe('the forecast page', () => {
+    it('heads the plan above its card, with "Expand all" next to the heading', () => {
+        renderPage(forecast());
+
+        const card = document.querySelector('[data-test="forecast-plan"]')!;
+        const heading = screen.getByRole('heading', { name: 'Your plan' });
+
+        expect(card.contains(heading)).toBe(false);
+        expect(
+            card.contains(
+                document.querySelector('[data-test="forecast-toggle-all"]'),
+            ),
+        ).toBe(false);
+        expect(heading.closest('section')?.contains(card)).toBe(true);
+    });
+
     it('opens the group that explains the problem and folds the rest on demand', () => {
         renderPage(forecast());
 

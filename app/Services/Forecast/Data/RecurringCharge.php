@@ -5,7 +5,7 @@ namespace App\Services\Forecast\Data;
 use App\Enums\ForecastFrequency;
 
 /**
- * One charge that repeats, as the "What you pay every month" card lists it.
+ * One charge that repeats, as the "Recurring transactions" card lists it.
  * `amount` is the median of its last three charges, positive, in the
  * account's minor units; `monthly` and `yearly` are what it costs a month
  * and a year at its frequency. `categoryId` is the parent category its

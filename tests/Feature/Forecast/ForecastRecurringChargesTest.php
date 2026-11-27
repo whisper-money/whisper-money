@@ -21,7 +21,7 @@ use Inertia\Testing\AssertableInertia;
 use Laravel\Pennant\Feature;
 
 /**
- * "What you pay every month" on 26 Nov 2026: a checking account paying a
+ * "Recurring transactions" on 26 Nov 2026: a checking account paying a
  * gym (45.00) and Netflix (14.99, then 15.99) every month in "Leisure", a
  * home insurance (300.00) every quarter, and transferring 500 to savings
  * every month; it is also paid a salary.
