@@ -90,7 +90,7 @@ export function ForecastAccountTabs({
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="outline"
-                    className="h-10 min-w-[260px] justify-start gap-2.5 rounded-lg px-3"
+                    className="h-10 min-w-[260px] justify-start gap-2.5 self-start rounded-md px-3"
                     data-test="forecast-account-filter"
                 >
                     <CreditCardIcon className="text-muted-foreground" />
@@ -116,7 +116,7 @@ export function ForecastAccountTabs({
             <DropdownMenuContent
                 align="start"
                 sideOffset={6}
-                className="flex w-[340px] flex-col rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
+                className="flex max-h-(--radix-dropdown-menu-content-available-height) w-[340px] flex-col overflow-y-auto rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
                 data-test="forecast-account-menu"
             >
                 <AccountOption
@@ -147,7 +147,7 @@ export function ForecastAccountTabs({
                     <>
                         <DropdownMenuSeparator className="mx-0" />
                         <DropdownMenuItem
-                            className="min-h-10 gap-2.5 rounded-md px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
+                            className="min-h-10 gap-2.5 rounded-sm px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
                             onSelect={() => editor.open({ kind: 'accounts' })}
                             data-test="forecast-choose-accounts"
                         >
@@ -208,7 +208,7 @@ function AccountOption({
     return (
         <DropdownMenuItem
             className={cn(
-                'min-h-10 gap-2.5 rounded-md px-2.5 py-1.5 text-foreground focus:bg-muted',
+                'min-h-10 gap-2.5 rounded-sm px-2.5 py-1.5 text-foreground focus:bg-muted',
                 selected && 'bg-muted',
             )}
             role="menuitemradio"
