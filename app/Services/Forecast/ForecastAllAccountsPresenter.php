@@ -203,8 +203,9 @@ class ForecastAllAccountsPresenter
 
     /**
      * Whether, in every month shown, what the accounts have above their
-     * threshold covers what the others are missing below theirs. Cards and
-     * loans have no threshold, so they neither lend nor count as short.
+     * threshold covers what the others are missing below theirs. Only a
+     * liquid account has a threshold: a card, a loan, an investment or a
+     * house neither lends nor counts as short.
      *
      * @param  array<string, string>  $currencies  The accounts counted: their currency by id.
      */

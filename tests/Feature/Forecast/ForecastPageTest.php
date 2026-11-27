@@ -193,8 +193,8 @@ describe('the account shown', function () {
                 ->where('forecast.alert.minDate', '2027-04-10')
                 ->where('forecast.alert.causes', [['name' => 'Car insurance', 'amount' => 700000]])
                 ->where('forecast.accounts', [
-                    ['id' => $this->checking->id, 'name' => 'Checking', 'type' => 'checking', 'currencyCode' => 'EUR', 'hasAlert' => true],
-                    ['id' => $this->savings->id, 'name' => 'Savings', 'type' => 'savings', 'currencyCode' => 'EUR', 'hasAlert' => false],
+                    ['id' => $this->checking->id, 'name' => 'Checking', 'type' => 'checking', 'currencyCode' => 'EUR', 'projectionOnly' => false, 'hasAlert' => true],
+                    ['id' => $this->savings->id, 'name' => 'Savings', 'type' => 'savings', 'currencyCode' => 'EUR', 'projectionOnly' => false, 'hasAlert' => false],
                 ]));
     });
 
@@ -248,7 +248,7 @@ describe('the account shown', function () {
     it('is never one outside the forecast or the active space', function () {
         $excluded = forecastPageAccount($this->user, 'Left out', AccountType::Checking, 500);
         ForecastAccountSetting::factory()->create(['account_id' => $excluded->id, 'included' => false]);
-        $elsewhere = Account::factory()->create(['user_id' => $this->user->id, 'space_id' => Space::factory()->create()->id]);
+        $elsewhere = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'space_id' => Space::factory()->create()->id]);
 
         $this->actingAs($this->user)->get(route('forecast.index', ['account' => $excluded->id]))->assertNotFound();
         $this->actingAs($this->user)->get(route('forecast.index', ['account' => $elsewhere->id]))->assertNotFound();

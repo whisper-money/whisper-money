@@ -173,7 +173,8 @@ app is kept in their books.
   `close`, and `band`, how far the close and the lowest point may drop if the
   estimated spend comes in high (`pessimistic_min`). A month's `alert_level` is
   `strong` when its lowest balance falls below `alert_threshold` (the minimum the
-  user set, else 0; null for a card or loan without one, which never alerts),
+  user set, else 0; null for anything but a checking or savings account, which
+  never alerts: cards, loans, investments, properties),
   `soft` when only `pessimistic_min` does, else `ok`; `alert.strong_month` is the
   worst strong month, and `soft_months` lists the soft ones. `alert_causes` names the largest non-monthly charges of an
   alert month, what explains the dip. With `plan: "free"` only the month in

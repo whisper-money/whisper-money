@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
@@ -19,7 +20,7 @@ function spikesFor(User $user): array
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $this->food = forecastExpenseCategory($this->user);
     $this->groceries = forecastExpenseCategory($this->user, $this->food);
 

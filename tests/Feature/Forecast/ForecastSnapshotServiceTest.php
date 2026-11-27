@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\ForecastItem;
 use App\Models\ForecastSnapshot;
@@ -9,7 +10,7 @@ use App\Services\Forecast\ForecastSnapshotService;
 
 beforeEach(function () {
     $this->user = User::factory()->create(['timezone' => 'Europe/Madrid']);
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $this->food = forecastExpenseCategory($this->user);
     $this->rent = ForecastItem::factory()->amount(-90000)->create([
         'user_id' => $this->user->id,
@@ -69,7 +70,7 @@ it('opens the month on the owner\'s clock, not the server\'s', function () {
     expect(app(ForecastSnapshotService::class)->freezeCurrentMonth($this->user)->first()->month->toDateString())->toBe('2026-11-01');
 
     $buenosAires = User::factory()->create(['timezone' => 'America/Argentina/Buenos_Aires']);
-    Account::factory()->create(['user_id' => $buenosAires->id, 'currency_code' => 'EUR']);
+    Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $buenosAires->id, 'currency_code' => 'EUR']);
 
     // ...and still 31 October in Buenos Aires.
     expect(app(ForecastSnapshotService::class)->freezeCurrentMonth($buenosAires)->first()->month->toDateString())->toBe('2026-10-01');
@@ -78,7 +79,7 @@ it('opens the month on the owner\'s clock, not the server\'s', function () {
 it('freezes one snapshot per space the owner holds accounts in', function () {
     $this->travelTo('2026-11-01 09:00:00');
     $shared = Space::factory()->create(['owner_id' => $this->user->id]);
-    Account::factory()->create(['user_id' => $this->user->id, 'space_id' => $shared->id, 'currency_code' => 'EUR']);
+    Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'space_id' => $shared->id, 'currency_code' => 'EUR']);
 
     $snapshots = app(ForecastSnapshotService::class)->freezeCurrentMonth($this->user);
 

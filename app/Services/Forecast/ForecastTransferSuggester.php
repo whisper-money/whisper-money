@@ -2,7 +2,6 @@
 
 namespace App\Services\Forecast;
 
-use App\Enums\AccountType;
 use App\Models\Account;
 use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection;
@@ -12,8 +11,9 @@ use Illuminate\Database\Eloquent\Collection;
  * Ahorro". The smallest round amount (whole hundreds) that lifts the lowest
  * balance back above the threshold, moved at the start of the first month
  * that falls short, from the other account with the most room to spare
- * after it. Only an account in the same currency that is not a card or a
- * loan can lend, and only if the amount leaves it above its own threshold.
+ * after it. Only a liquid account (checking or savings) in the same
+ * currency can lend, and only if the amount leaves it above its own
+ * threshold: a card, a loan, an investment or a house never does.
  * Nothing is stored: it prefills the transfer the user then confirms.
  */
 class ForecastTransferSuggester
@@ -67,7 +67,7 @@ class ForecastTransferSuggester
         return $accounts
             ->filter(fn (Account $other): bool => $other->id !== $account->id
                 && $other->currency_code === $account->currency_code
-                && ! in_array($other->type, [AccountType::CreditCard, AccountType::Loan], true))
+                && ForecastAccounts::isLiquid($other->type))
             ->map(fn (Account $other): array => [$other, $this->headroom($projected[$other->id]['months'], $range, $thresholds[$other->id] ?? 0)])
             ->filter(fn (array $pair): bool => $pair[1] >= $amount)
             ->sortByDesc(fn (array $pair): int => $pair[1])

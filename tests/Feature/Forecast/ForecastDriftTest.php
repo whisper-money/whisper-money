@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\ForecastItem;
 use App\Models\ForecastItemVersion;
@@ -21,7 +22,7 @@ function paidForecastOccurrence(ForecastItem $item, Account $account, string $oc
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $this->gym = ForecastItem::factory()->amount(-4000)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
@@ -66,7 +67,7 @@ it('stops suggesting once the user updated the amount', function () {
 });
 
 it('reads a transfer from its sending leg', function () {
-    $savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $transfer = ForecastItem::factory()->amount(-30000)->create([
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,

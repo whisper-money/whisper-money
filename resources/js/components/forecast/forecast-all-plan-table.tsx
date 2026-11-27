@@ -205,14 +205,16 @@ function RowHeader({
                 <TitleWithHint
                     name={row.account.name}
                     hint={
-                        row.account.minimumBalance === null
-                            ? undefined
-                            : __('Wanted minimum :amount', {
-                                  amount: format(
-                                      row.account.minimumBalance,
-                                      row.account.currencyCode,
-                                  ),
-                              })
+                        row.account.projectionOnly
+                            ? __('Projection only, never warns')
+                            : row.account.minimumBalance === null
+                              ? undefined
+                              : __('Wanted minimum :amount', {
+                                    amount: format(
+                                        row.account.minimumBalance,
+                                        row.account.currencyCode,
+                                    ),
+                                })
                     }
                 />
             );

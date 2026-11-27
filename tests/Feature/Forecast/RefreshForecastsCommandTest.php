@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Features\Forecast;
 use App\Models\Account;
 use App\Models\ForecastItem;
@@ -23,7 +24,7 @@ use Laravel\Pennant\Feature;
 function forecastUserWithUnmatchedRent(): array
 {
     $user = User::factory()->create(['timezone' => 'Europe/Madrid']);
-    $account = Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'EUR']);
+    $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $user->id, 'currency_code' => 'EUR']);
     ForecastItem::factory()->amount(-90000)->create([
         'user_id' => $user->id,
         'account_id' => $account->id,

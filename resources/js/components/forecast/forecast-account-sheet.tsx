@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/Forecast/ForecastAccountSettingController';
+import { ForecastAccountChoices } from '@/components/forecast/forecast-account-choices';
 import { type ForecastSheetProps } from '@/components/forecast/forecast-editor';
 import {
     Field,
@@ -8,7 +9,11 @@ import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useForecastSave } from '@/hooks/use-forecast-save';
-import { alertThreshold, withAccountSettings } from '@/lib/forecast/edits';
+import {
+    alertThreshold,
+    isLiquidAccount,
+    withAccountSettings,
+} from '@/lib/forecast/edits';
 import { __ } from '@/utils/i18n';
 import { useState } from 'react';
 
@@ -17,7 +22,8 @@ const GROWING = ['investment', 'retirement', 'real_estate', 'savings'];
 
 /**
  * How the account takes part in the forecast: the balance its owner wants
- * to keep (the warnings read against it) and its yearly growth.
+ * to keep (the warnings read against it; only a checking or savings account
+ * warns), its yearly growth, and which accounts the forecast covers.
  */
 export function ForecastAccountSheet({
     forecast,
@@ -81,25 +87,40 @@ export function ForecastAccountSheet({
                 </div>
             }
         >
-            <Field
-                label={__('Wanted minimum')}
-                htmlFor="forecast-account-minimum"
-                hint={__(
-                    'We warn you when the forecast drops below it. Leave it empty to be warned below zero.',
-                )}
-                error={errors.minimum_balance}
-            >
-                <AmountInput
-                    id="forecast-account-minimum"
-                    value={minimum ?? 0}
-                    onChange={(value, isEmpty) =>
-                        setMinimum(isEmpty ? null : value)
-                    }
-                    currencyCode={account.currencyCode}
-                    placeholder={__('No minimum')}
-                    commitOnChange
-                />
-            </Field>
+            {isLiquidAccount(account.type) ? (
+                <Field
+                    label={__('Wanted minimum')}
+                    htmlFor="forecast-account-minimum"
+                    hint={__(
+                        'We warn you when the forecast drops below it. Leave it empty to be warned below zero.',
+                    )}
+                    error={errors.minimum_balance}
+                >
+                    <AmountInput
+                        id="forecast-account-minimum"
+                        value={minimum ?? 0}
+                        onChange={(value, isEmpty) =>
+                            setMinimum(isEmpty ? null : value)
+                        }
+                        currencyCode={account.currencyCode}
+                        placeholder={__('No minimum')}
+                        commitOnChange
+                    />
+                </Field>
+            ) : (
+                <p
+                    className="text-sm text-muted-foreground"
+                    data-test="forecast-account-never-warns"
+                >
+                    {account.projectionOnly
+                        ? __(
+                              'This account counts toward the total but never warns you, and no transfer is offered from it: only checking and savings accounts do that.',
+                          )
+                        : __(
+                              'This account never warns you: only checking and savings accounts do.',
+                          )}
+                </p>
+            )}
 
             {GROWING.includes(account.type) && (
                 <Field
@@ -120,6 +141,15 @@ export function ForecastAccountSheet({
                     />
                 </Field>
             )}
+
+            <ForecastAccountChoices
+                choices={forecast.accountChoices}
+                onExcluded={(accountId) => {
+                    if (accountId === account.id) {
+                        onClose();
+                    }
+                }}
+            />
         </ForecastSheet>
     );
 }

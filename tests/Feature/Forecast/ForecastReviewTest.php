@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Enums\ForecastFrequency;
 use App\Enums\ForecastItemKind;
@@ -38,8 +39,8 @@ beforeEach(function () {
     Feature::for($this->user)->activate(Forecast::class);
     $this->spaceId = $this->user->activeSpace()->id;
 
-    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'name' => 'Checking', 'currency_code' => 'EUR']);
-    $this->savings = Account::factory()->create(['user_id' => $this->user->id, 'name' => 'Savings', 'currency_code' => 'EUR']);
+    $this->checking = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'name' => 'Checking', 'currency_code' => 'EUR']);
+    $this->savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'name' => 'Savings', 'currency_code' => 'EUR']);
     AccountBalance::factory()->create(['account_id' => $this->checking->id, 'balance_date' => '2026-11-20', 'balance' => 300000]);
 
     $this->housing = forecastExpenseCategory($this->user, name: 'Housing');
@@ -158,7 +159,7 @@ describe('the review data', function () {
     });
 
     it('lists only the accounts the forecast includes', function () {
-        Account::factory()->create(['user_id' => User::factory()->create()->id]);
+        Account::factory()->create(['type' => AccountType::Checking, 'user_id' => User::factory()->create()->id]);
 
         expect(collect(reviewData($this->user)['accounts'])->pluck('id')->all())
             ->toEqualCanonicalizing([$this->checking->id, $this->savings->id]);
@@ -378,7 +379,7 @@ describe('confirming', function () {
     ]);
 
     it('refuses another user\'s account', function () {
-        $stranger = Account::factory()->create(['user_id' => User::factory()->create()->id]);
+        $stranger = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => User::factory()->create()->id]);
 
         postReview($this->user, ['manual' => [['name' => 'IBI', 'amount' => -48000, 'month' => 4, 'accountId' => $stranger->id, 'frequency' => 'yearly']]])
             ->assertSessionHasErrors('manual.0.accountId');
@@ -389,7 +390,7 @@ describe('confirming', function () {
     it('lets a user without Pro answer it', function () {
         $free = User::factory()->onboarded()->paywallSeen()->create(['currency_code' => 'EUR']);
         Feature::for($free)->activate(Forecast::class);
-        $account = Account::factory()->create(['user_id' => $free->id, 'currency_code' => 'EUR']);
+        $account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $free->id, 'currency_code' => 'EUR']);
         forecastMonthlyCharges($account, '2025-12-01', 12, -85000, 'ALQUILER PISO CENTRO');
 
         postReview($free, [

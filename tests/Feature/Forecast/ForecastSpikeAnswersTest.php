@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastConfidence;
 use App\Enums\ForecastExclusionReason;
 use App\Enums\ForecastFrequency;
@@ -13,7 +14,7 @@ use App\Services\Forecast\ForecastSpikeAnswers;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $this->account = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $this->category = forecastExpenseCategory($this->user);
     $this->spike = forecastCharge($this->account, '2026-11-20', -120000, 'SEGURO HOGAR MAPFRE 2026', $this->category);
 });

@@ -62,7 +62,13 @@ class ForecastPresenter
         $isPro = $user->hasProPlan();
         $included = $this->accounts->included($user, $spaceId);
         $all = $accountId === self::ALL_ACCOUNTS;
-        $base = ['scope' => $all ? self::ALL_ACCOUNTS : 'account', 'today' => $today, 'horizon' => $horizon, 'isPro' => $isPro];
+        $base = [
+            'scope' => $all ? self::ALL_ACCOUNTS : 'account',
+            'today' => $today,
+            'horizon' => $horizon,
+            'isPro' => $isPro,
+            'accountChoices' => $this->accounts->choices($user, $spaceId),
+        ];
 
         if ($included->isEmpty()) {
             abort_if($accountId !== null && ! $all, 404);
@@ -210,7 +216,8 @@ class ForecastPresenter
     }
 
     /**
-     * One pill per account, marked when it has a problem.
+     * One pill per account, marked when it has a problem or is projected
+     * only (it never warns).
      *
      * @return list<array<string, mixed>>
      */
@@ -221,6 +228,7 @@ class ForecastPresenter
             'name' => $account->name,
             'type' => $account->type,
             'currencyCode' => $account->currency_code,
+            'projectionOnly' => ForecastAccounts::isProjectionOnly($account->type),
             'hasAlert' => $this->isStrong($context->alerts[$account->id]),
         ])->all();
     }

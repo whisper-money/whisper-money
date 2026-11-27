@@ -32,7 +32,18 @@ export interface ForecastAccountTab {
     name: string;
     type: string;
     currencyCode: string;
+    /** Counted in the total but never warns nor lends. */
+    projectionOnly: boolean;
     hasAlert: boolean;
+}
+
+/** An account of the space, and whether the forecast covers it. */
+export interface ForecastAccountChoice {
+    id: string;
+    name: string;
+    type: string;
+    included: boolean;
+    projectionOnly: boolean;
 }
 
 export interface ForecastAccountSummary {
@@ -43,7 +54,9 @@ export interface ForecastAccountSummary {
     minimumBalance: number | null;
     /** Yearly growth of an investment or property, in basis points. */
     annualRateBps: number | null;
-    /** The balance the warnings read against; null for a card or a loan without a minimum. */
+    /** Counted in the total but never warns nor lends: an investment, a pension, another kind of account. */
+    projectionOnly: boolean;
+    /** The balance the warnings read against; null for an account that never warns (anything but checking and savings). */
     alertThreshold: number | null;
 }
 
@@ -156,6 +169,8 @@ interface ForecastBase {
     today: string;
     horizon: ForecastHorizon;
     isPro: boolean;
+    /** Every account of the space, by name, with whether the forecast covers it. */
+    accountChoices: ForecastAccountChoice[];
 }
 
 export interface ForecastEmpty extends ForecastBase {

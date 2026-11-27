@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Enums\ForecastFrequency;
 use App\Features\Forecast;
 use App\Models\Account;
@@ -19,8 +20,8 @@ use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     $this->user = User::factory()->create(['currency_code' => 'EUR']);
-    $this->checking = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR', 'name' => 'A checking']);
-    $this->savings = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR', 'name' => 'B savings']);
+    $this->checking = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR', 'name' => 'A checking']);
+    $this->savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR', 'name' => 'B savings']);
     AccountBalance::factory()->create(['account_id' => $this->checking->id, 'balance_date' => '2026-11-01', 'balance' => 150000]);
     AccountBalance::factory()->create(['account_id' => $this->savings->id, 'balance_date' => '2026-10-15', 'balance' => 900000]);
     ForecastAccountSetting::factory()->create(['account_id' => $this->savings->id, 'annual_rate_bps' => 250, 'minimum_balance' => 500000]);
@@ -82,7 +83,7 @@ it('leaves out the accounts the user excluded, archived lines and other users\' 
     ForecastAccountSetting::query()->where('account_id', $this->savings->id)->update(['included' => false]);
     ForecastItem::factory()->archived()->amount(-5000)->create(['user_id' => $this->user->id, 'account_id' => $this->checking->id, 'anchor_date' => '2026-01-15']);
     $partner = User::factory()->create();
-    $partnerAccount = Account::factory()->create(['user_id' => $partner->id, 'space_id' => $this->user->current_space_id]);
+    $partnerAccount = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $partner->id, 'space_id' => $this->user->current_space_id]);
     ForecastItem::factory()->amount(-5000)->create(['user_id' => $partner->id, 'account_id' => $partnerAccount->id, 'anchor_date' => '2026-01-15']);
 
     $plan = app(ForecastPlanBuilder::class)->build($this->user, $this->user->current_space_id, horizonMonths: 2, startDate: '2026-11-10');

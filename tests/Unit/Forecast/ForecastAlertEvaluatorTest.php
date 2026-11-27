@@ -55,7 +55,7 @@ it('never warns without a threshold', function () {
         ->and((new ForecastAlertEvaluator)->strongCount($months, null))->toBe(0);
 });
 
-it('holds an account to its wanted minimum, else to zero, except a card or a loan, which live below zero', function (AccountType $type, ?int $minimum, ?int $threshold) {
+it('holds a checking or savings account to its wanted minimum, else to zero, and no other account to anything', function (AccountType $type, ?int $minimum, ?int $threshold) {
     expect((new ForecastAlertEvaluator)->threshold($type, $minimum))->toBe($threshold);
 })->with([
     'checking' => [AccountType::Checking, null, 0],
@@ -63,7 +63,12 @@ it('holds an account to its wanted minimum, else to zero, except a card or a loa
     'savings' => [AccountType::Savings, null, 0],
     'credit card' => [AccountType::CreditCard, null, null],
     'loan' => [AccountType::Loan, null, null],
-    'credit card with a minimum' => [AccountType::CreditCard, -100000, -100000],
+    'credit card with a minimum' => [AccountType::CreditCard, -100000, null],
+    'investment' => [AccountType::Investment, null, null],
+    'investment with a minimum' => [AccountType::Investment, 30000, null],
+    'retirement' => [AccountType::Retirement, null, null],
+    'others' => [AccountType::Others, 30000, null],
+    'real estate' => [AccountType::RealEstate, null, null],
 ]);
 
 it('rates one month by the same rule, for the stored alerts', function (int $min, int $pessimisticMin, ?int $threshold, ?ForecastAlertLevel $level) {
