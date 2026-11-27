@@ -27,7 +27,7 @@ final readonly class ProjectionInput
     ) {}
 
     /**
-     * @param  array{accounts: list<array{id: string, openingBalance: int, annualRateBps?: int|null, minimumBalance?: int|null}>, occurrences: list<array{itemId: string, accountId: string, destinationAccountId?: string|null, date: string, occurrenceDate?: string, amount: int}>, estimates?: list<array{accountId: string, month: string, amount: int}>, startDate: string, horizonMonths: int}  $data
+     * @param  array{accounts: list<array{id: string, openingBalance: int, annualRateBps?: int|null, minimumBalance?: int|null, trendSlope?: int|null, trendBand?: int|null}>, occurrences: list<array{itemId: string, accountId: string, destinationAccountId?: string|null, date: string, occurrenceDate?: string, amount: int}>, estimates?: list<array{accountId: string, month: string, amount: int}>, startDate: string, horizonMonths: int}  $data
      */
     public static function fromArray(array $data): self
     {

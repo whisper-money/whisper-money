@@ -56,6 +56,10 @@ export interface ProjectionAccount {
     openingBalance: number;
     annualRateBps?: number | null;
     minimumBalance?: number | null;
+    /** The balance trend added on each whole month's close, in place of the yearly rate. */
+    trendSlope?: number | null;
+    /** The trend's uncertainty, added to each whole month's band. */
+    trendBand?: number | null;
 }
 
 export type MonthlyEstimateKind = 'income' | 'expense';
@@ -102,8 +106,9 @@ export interface ProjectedMonth {
     estimated: number;
     /** The estimated income. */
     estimatedIncome: number;
-    /** 40% of the estimated spend plus 10% of the estimated income: the uncertainty of the estimates alone. */
+    /** 40% of the estimated spend plus 10% of the estimated income, plus a balance trend's band on whole months. */
     band: number;
+    /** The minimum less the estimates' band alone: a trend's band never raises a warning. */
     pessimisticMin: number;
 }
 

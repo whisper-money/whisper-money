@@ -13,7 +13,9 @@ use App\Enums\ForecastEstimateKind;
  * spend, which `estimatedIncome` and `estimated` report on their own. `band`
  * is the uncertainty of those estimates alone (concrete lines have none):
  * 40% of the estimated spend plus 10% of the estimated income, not carried
- * over. `pessimisticMin` is the minimum less that band.
+ * over. An account with a balance trend adds the trend's band to `band` on
+ * each whole month; `pessimisticMin` is the minimum less the estimates' band
+ * alone, so the swings of a balance nobody spends from never raise a warning.
  */
 final class MonthAccumulator
 {
@@ -45,6 +47,11 @@ final class MonthAccumulator
     public int $estimated = 0;
 
     public int $estimatedIncome = 0;
+
+    /**
+     * The uncertainty of a balance trend, in minor units (see ProjectionAccount).
+     */
+    public int $trendBand = 0;
 
     /**
      * End-of-day balance of each day of the month, keyed by date.
@@ -96,6 +103,7 @@ final class MonthAccumulator
         $this->growth += $other->growth;
         $this->estimated += $other->estimated;
         $this->estimatedIncome += $other->estimatedIncome;
+        $this->trendBand += $other->trendBand;
     }
 
     public function addEstimate(ForecastEstimateKind $kind, int $amount): void
@@ -108,6 +116,11 @@ final class MonthAccumulator
     }
 
     public function band(): int
+    {
+        return $this->estimateBand() + $this->trendBand;
+    }
+
+    private function estimateBand(): int
     {
         return intdiv($this->estimated * self::EXPENSE_BAND_NUMERATOR, self::EXPENSE_BAND_DENOMINATOR)
             + intdiv($this->estimatedIncome, self::INCOME_BAND_DENOMINATOR);
@@ -132,7 +145,7 @@ final class MonthAccumulator
             'estimated' => $this->estimated,
             'estimatedIncome' => $this->estimatedIncome,
             'band' => $this->band(),
-            'pessimisticMin' => $min - $this->band(),
+            'pessimisticMin' => $min - $this->estimateBand(),
         ];
     }
 }

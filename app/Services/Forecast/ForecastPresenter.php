@@ -229,6 +229,7 @@ class ForecastPresenter
             'type' => $account->type,
             'currencyCode' => $account->currency_code,
             'projectionOnly' => ForecastAccounts::isProjectionOnly($account->type),
+            'trend' => $context->trend($account->id),
             'hasAlert' => $this->isStrong($context->alerts[$account->id]),
         ])->all();
     }
@@ -331,12 +332,7 @@ class ForecastPresenter
         $accounts = collect($plan->input->accounts)->sortBy(fn (ProjectionAccount $account): int => $account->id === $accountId ? 0 : 1)->values();
 
         return [
-            'accounts' => $accounts->map(fn (ProjectionAccount $account): array => [
-                'id' => $account->id,
-                'openingBalance' => $account->openingBalance,
-                'annualRateBps' => $account->annualRateBps,
-                'minimumBalance' => $account->minimumBalance,
-            ])->all(),
+            'accounts' => $accounts->map(fn (ProjectionAccount $account): array => $account->toArray())->all(),
             'occurrences' => array_values(array_map(
                 fn (Occurrence $occurrence): array => $occurrence->toArray(),
                 array_filter($plan->input->occurrences, fn (Occurrence $occurrence): bool => $occurrence->date <= $end),

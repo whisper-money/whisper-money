@@ -21,7 +21,7 @@ import {
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { shortAccountCount } from '@/lib/forecast/all-accounts';
-import { isShort, monthWithYear } from '@/lib/forecast/format';
+import { isShort, monthWithYear, trendLabel } from '@/lib/forecast/format';
 import {
     accountMonthGroups,
     allMonthGroups,
@@ -62,15 +62,28 @@ export function ForecastMobileAddButton() {
     );
 }
 
-/** An account as the phone's picker names it: a warning or "projection only" after it. */
-function mobileAccountLabel(account: ForecastAccountTab): string {
+/** An account as the phone's picker names it: a warning, "projection only" or its balance trend after it. */
+function mobileAccountLabel(
+    account: ForecastAccountTab,
+    format: (amount: number, currencyCode: string) => string,
+): string {
     if (account.hasAlert) {
         return `${account.name} · ⚠`;
     }
 
-    return account.projectionOnly
-        ? `${account.name} · ${__('projection only')}`
-        : account.name;
+    const trend = trendLabel(
+        account.trend,
+        (amount) => format(amount, account.currencyCode),
+        true,
+    );
+
+    return [
+        account.name,
+        account.projectionOnly ? __('projection only') : null,
+        trend,
+    ]
+        .filter((part) => part !== null)
+        .join(' · ');
 }
 
 /** The phone's account and horizon pickers, as the system's own selects, and the way to choose the accounts. */
@@ -81,6 +94,9 @@ function MobileControls({
 }) {
     const id = useId();
     const editor = useForecastEditor();
+    const { formatAmount } = useFormatAmount();
+    const format = (amount: number, currencyCode: string) =>
+        formatAmount(amount, currencyCode, { fractionDigits: 0 });
     const accountId = forecast.scope === 'all' ? 'all' : forecast.account.id;
     const visit = (account: string, horizon: ForecastHorizon) =>
         router.visit(forecastIndex({ query: { account, horizon } }).url, {
@@ -104,7 +120,7 @@ function MobileControls({
                 <option value="all">{__('All accounts')}</option>
                 {forecast.accounts.map((account) => (
                     <option key={account.id} value={account.id}>
-                        {mobileAccountLabel(account)}
+                        {mobileAccountLabel(account, format)}
                     </option>
                 ))}
             </select>

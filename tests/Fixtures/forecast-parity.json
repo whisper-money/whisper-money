@@ -732,5 +732,136 @@
                 ]
             }
         }
+    },
+    {
+        "name": "balance trend: added on whole-month closes in place of the yearly rate, its band widening the band but not the pessimistic minimum",
+        "input": {
+            "items": [
+                {
+                    "id": "top-up",
+                    "accountId": "current",
+                    "destinationAccountId": "savings",
+                    "frequency": "monthly",
+                    "anchorDate": "2027-01-20",
+                    "endsOn": null,
+                    "versions": [
+                        {
+                            "effectiveFrom": "2027-01-20",
+                            "amount": -20000
+                        }
+                    ],
+                    "overrides": []
+                }
+            ],
+            "accounts": [
+                {
+                    "id": "current",
+                    "openingBalance": 150000,
+                    "annualRateBps": null,
+                    "minimumBalance": 50000,
+                    "trendSlope": null,
+                    "trendBand": null
+                },
+                {
+                    "id": "savings",
+                    "openingBalance": 300000,
+                    "annualRateBps": null,
+                    "minimumBalance": 250000,
+                    "trendSlope": -1500,
+                    "trendBand": 40000
+                },
+                {
+                    "id": "fund",
+                    "openingBalance": 1360000,
+                    "annualRateBps": 1200,
+                    "minimumBalance": null,
+                    "trendSlope": 29986,
+                    "trendBand": 3023
+                }
+            ],
+            "estimates": [
+                {
+                    "accountId": "current",
+                    "month": "2027-01",
+                    "amount": 50000
+                },
+                {
+                    "accountId": "current",
+                    "month": "2027-02",
+                    "amount": 50000
+                },
+                {
+                    "accountId": "current",
+                    "month": "2027-03",
+                    "amount": 50000
+                }
+            ],
+            "startDate": "2027-01-15",
+            "horizonMonths": 3
+        },
+        "expected": {
+            "occurrences": [
+                {
+                    "itemId": "top-up",
+                    "accountId": "current",
+                    "destinationAccountId": "savings",
+                    "date": "2027-01-20",
+                    "occurrenceDate": "2027-01-20",
+                    "amount": -20000
+                },
+                {
+                    "itemId": "top-up",
+                    "accountId": "current",
+                    "destinationAccountId": "savings",
+                    "date": "2027-02-20",
+                    "occurrenceDate": "2027-02-20",
+                    "amount": -20000
+                },
+                {
+                    "itemId": "top-up",
+                    "accountId": "current",
+                    "destinationAccountId": "savings",
+                    "date": "2027-03-20",
+                    "occurrenceDate": "2027-03-20",
+                    "amount": -20000
+                }
+            ],
+            "projection": {
+                "accounts": [
+                    {
+                        "accountId": "current",
+                        "minimumBalance": 50000,
+                        "months": [
+                            { "month": "2027-01", "min": 80000, "minDate": "2027-01-31", "close": 80000, "income": 0, "expenses": 50000, "transfers": -20000, "growth": 0, "estimated": 50000, "estimatedIncome": 0, "band": 20000, "pessimisticMin": 60000 },
+                            { "month": "2027-02", "min": 10000, "minDate": "2027-02-28", "close": 10000, "income": 0, "expenses": 50000, "transfers": -20000, "growth": 0, "estimated": 50000, "estimatedIncome": 0, "band": 20000, "pessimisticMin": -10000 },
+                            { "month": "2027-03", "min": -60000, "minDate": "2027-03-31", "close": -60000, "income": 0, "expenses": 50000, "transfers": -20000, "growth": 0, "estimated": 50000, "estimatedIncome": 0, "band": 20000, "pessimisticMin": -80000 }
+                        ]
+                    },
+                    {
+                        "accountId": "savings",
+                        "minimumBalance": 250000,
+                        "months": [
+                            { "month": "2027-01", "min": 300000, "minDate": "2027-01-15", "close": 320000, "income": 0, "expenses": 0, "transfers": 20000, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 300000 },
+                            { "month": "2027-02", "min": 320000, "minDate": "2027-02-01", "close": 338500, "income": 0, "expenses": 0, "transfers": 20000, "growth": -1500, "estimated": 0, "estimatedIncome": 0, "band": 40000, "pessimisticMin": 320000 },
+                            { "month": "2027-03", "min": 338500, "minDate": "2027-03-01", "close": 357000, "income": 0, "expenses": 0, "transfers": 20000, "growth": -1500, "estimated": 0, "estimatedIncome": 0, "band": 40000, "pessimisticMin": 338500 }
+                        ]
+                    },
+                    {
+                        "accountId": "fund",
+                        "minimumBalance": null,
+                        "months": [
+                            { "month": "2027-01", "min": 1360000, "minDate": "2027-01-15", "close": 1360000, "income": 0, "expenses": 0, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 1360000 },
+                            { "month": "2027-02", "min": 1360000, "minDate": "2027-02-01", "close": 1389986, "income": 0, "expenses": 0, "transfers": 0, "growth": 29986, "estimated": 0, "estimatedIncome": 0, "band": 3023, "pessimisticMin": 1360000 },
+                            { "month": "2027-03", "min": 1389986, "minDate": "2027-03-01", "close": 1419972, "income": 0, "expenses": 0, "transfers": 0, "growth": 29986, "estimated": 0, "estimatedIncome": 0, "band": 3023, "pessimisticMin": 1389986 }
+                        ]
+                    }
+                ],
+                "total": [
+                    { "month": "2027-01", "min": 1760000, "minDate": "2027-01-31", "close": 1760000, "income": 0, "expenses": 50000, "transfers": 0, "growth": 0, "estimated": 50000, "estimatedIncome": 0, "band": 20000, "pessimisticMin": 1740000 },
+                    { "month": "2027-02", "min": 1711786, "minDate": "2027-02-27", "close": 1738486, "income": 0, "expenses": 50000, "transfers": 0, "growth": 28486, "estimated": 50000, "estimatedIncome": 0, "band": 63023, "pessimisticMin": 1691786 },
+                    { "month": "2027-03", "min": 1690099, "minDate": "2027-03-30", "close": 1716972, "income": 0, "expenses": 50000, "transfers": 0, "growth": 28486, "estimated": 50000, "estimatedIncome": 0, "band": 63023, "pessimisticMin": 1670099 }
+                ]
+            }
+        }
     }
 ]

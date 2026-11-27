@@ -7,6 +7,7 @@ use App\Models\ForecastAccountSetting;
 use App\Models\ForecastItem;
 use App\Models\User;
 use App\Services\BalanceLookup;
+use App\Services\Forecast\Data\BalanceTrend;
 use App\Services\Forecast\Data\CategoryEstimate;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\ForecastPlan;
@@ -23,10 +24,11 @@ use Illuminate\Database\Eloquent\Collection;
  * each from its last known balance with its yearly rate and wanted minimum;
  * the occurrences of the lines that still project for them (the ones the
  * user made or kept by hand: detected recurring lines stay stored but no
- * longer project, see ForecastItem::projecting()); and the income and spend
- * estimates of each parent category, and the usual transfers between the
- * user's accounts (see TransferEstimator), which move money as transfer
- * occurrences. Estimates are worked out over every included account,
+ * longer project, see ForecastItem::projecting()); the balance trend of
+ * each account that only has a balance history (see ForecastBalanceTrends);
+ * the income and spend estimates of each parent category; and the usual
+ * transfers between the user's accounts (see TransferEstimator), which move
+ * money as transfer occurrences. Estimates are worked out over every included account,
  * because a budget is split across them, and only then narrowed to the
  * selection. A transfer counts when either of its accounts is included and
  * selected; the projector moves only the accounts it projects.
@@ -43,6 +45,7 @@ class ForecastPlanBuilder
         private readonly EstimateCalculator $estimates,
         private readonly ForecastAccounts $accounts,
         private readonly TransferEstimator $transfers,
+        private readonly ForecastBalanceTrends $trends,
     ) {}
 
     /**
@@ -59,6 +62,7 @@ class ForecastPlanBuilder
         $categoryEstimates = $this->estimates->estimate($user, $spaceId, $included, $startDate, $horizonMonths, $occurrences, $items->pluck('category_id', 'id')->all());
         $selected = $accountIds === null ? $included : $included->filter(fn (Account $account): bool => in_array($account->id, $accountIds, true))->values();
         $selectedIds = array_flip($selected->modelKeys());
+        $trends = $this->trends->for($selected, $startDate);
 
         $selectedEstimates = array_values(array_filter($categoryEstimates, fn (CategoryEstimate $estimate): bool => isset($selectedIds[$estimate->accountId])));
         $selectedTransfers = array_values(array_filter(
@@ -70,7 +74,7 @@ class ForecastPlanBuilder
 
         return new ForecastPlan(
             new ProjectionInput(
-                $this->projectionAccounts($selected, $settings, $startDate),
+                $this->projectionAccounts($selected, $settings, $startDate, $trends),
                 [...array_values(array_filter($occurrences, $touchesSelection)), ...$this->transferOccurrences($selectedTransfers)],
                 array_map(fn (CategoryEstimate $estimate) => $estimate->toMonthlyEstimate(), $selectedEstimates),
                 $startDate,
@@ -79,6 +83,7 @@ class ForecastPlanBuilder
             $selectedEstimates,
             $items,
             $selectedTransfers,
+            $trends,
         );
     }
 
@@ -119,9 +124,10 @@ class ForecastPlanBuilder
     /**
      * @param  Collection<int, Account>  $accounts
      * @param  Collection<string, ForecastAccountSetting>  $settings
+     * @param  array<string, BalanceTrend>  $trends
      * @return list<ProjectionAccount>
      */
-    private function projectionAccounts(Collection $accounts, Collection $settings, string $startDate): array
+    private function projectionAccounts(Collection $accounts, Collection $settings, string $startDate, array $trends): array
     {
         $day = Carbon::parse($startDate);
         $balances = BalanceLookup::forAccounts($accounts->modelKeys(), $day, $day);
@@ -132,6 +138,8 @@ class ForecastPlanBuilder
                 $balances->getBalanceAt($account->id, $day),
                 $settings->get($account->id)?->annual_rate_bps,
                 $settings->get($account->id)?->minimum_balance,
+                ($trends[$account->id] ?? null)?->monthlySlope,
+                ($trends[$account->id] ?? null)?->band,
             ))
             ->values()
             ->all();

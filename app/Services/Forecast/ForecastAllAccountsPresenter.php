@@ -119,6 +119,8 @@ class ForecastAllAccountsPresenter
                 $convert($account->id, $account->openingBalance),
                 $account->annualRateBps,
                 $account->minimumBalance === null ? null : $convert($account->id, $account->minimumBalance),
+                $account->trendSlope === null ? null : $convert($account->id, $account->trendSlope),
+                $account->trendBand === null ? null : $convert($account->id, $account->trendBand),
             ), array_values(array_filter($input->accounts, fn (ProjectionAccount $account): bool => $counted($account->id)))),
             array_map(fn (Occurrence $occurrence): Occurrence => new Occurrence(
                 $occurrence->itemId,

@@ -32,6 +32,17 @@ export type ForecastLineSource =
     | 'suggested'
     | 'estimate';
 
+/**
+ * The line an account with only a balance history is projected along, from
+ * its month-end balances of the last 12 complete months. `monthly` is null
+ * when fewer than 4 of them had a balance: the account is then kept flat.
+ */
+export interface ForecastTrend {
+    monthly: number | null;
+    band: number | null;
+    points: number;
+}
+
 export interface ForecastAccountTab {
     id: string;
     name: string;
@@ -39,6 +50,8 @@ export interface ForecastAccountTab {
     currencyCode: string;
     /** Counted in the total but never warns nor lends. */
     projectionOnly: boolean;
+    /** Null when the account is projected from its movements. */
+    trend: ForecastTrend | null;
     hasAlert: boolean;
 }
 
@@ -61,6 +74,8 @@ export interface ForecastAccountSummary {
     annualRateBps: number | null;
     /** Counted in the total but never warns nor lends: an investment, a pension, another kind of account. */
     projectionOnly: boolean;
+    /** Null when the account is projected from its movements. */
+    trend: ForecastTrend | null;
     /** The balance the warnings read against; null for an account that never warns (anything but checking and savings). */
     alertThreshold: number | null;
 }
