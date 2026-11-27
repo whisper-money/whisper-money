@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { dayOf, monthLongName } from '@/lib/forecast/format';
+import { dayOf, listOf, monthLongName } from '@/lib/forecast/format';
 import { type ForecastDashboardAlertData } from '@/types/forecast-entry';
 import { __ } from '@/utils/i18n';
 import { Link, useHttp } from '@inertiajs/react';
@@ -42,10 +42,10 @@ function useDescription(alert: ForecastDashboardAlertData): string {
         'You could drop to :amount around :day :month because of :causes.',
         {
             ...replacements,
-            causes: new Intl.ListFormat(locale, {
-                style: 'long',
-                type: 'conjunction',
-            }).format(alert.causes.map((cause) => cause.name)),
+            causes: listOf(
+                alert.causes.map((cause) => cause.name),
+                locale,
+            ),
         },
     );
 }
