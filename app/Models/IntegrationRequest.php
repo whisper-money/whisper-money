@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property IntegrationRequestStatus $status
  * @property ?string $comment
  * @property string $user_id
+ * @property-read int|null $voters_count Distinct voters, when loaded with `withCount(['votes as voters_count' => ...])`
  */
 class IntegrationRequest extends Model
 {
