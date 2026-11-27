@@ -104,18 +104,18 @@ const user: User = {
 };
 
 function setPage({
-    forecast,
+    forecast = false,
     isAdmin = false,
     hasProPlan = false,
     isSharedAccount = false,
     isDemoAccount = false,
 }: {
-    forecast: boolean;
+    forecast?: boolean;
     isAdmin?: boolean;
     hasProPlan?: boolean;
     isSharedAccount?: boolean;
     isDemoAccount?: boolean;
-}) {
+} = {}) {
     page.props = {
         version: '1.2.3',
         subscriptionsEnabled: true,
@@ -169,41 +169,39 @@ beforeEach(() => {
     }) as unknown as typeof window.matchMedia;
 });
 
-describe('user menu with the Forecast flag off', () => {
-    it('renders the menu everybody has today, unchanged', () => {
-        setPage({ forecast: false });
-        render(<NavUser />);
+describe('user menu regardless of the Forecast flag', () => {
+    it.each([false, true])(
+        'groups the shortcuts on desktop with the flag set to %s',
+        (forecast) => {
+            setPage({ forecast });
+            render(<NavUser />);
 
-        expect(menuItemLabels(openDropdown())).toEqual([
-            'Progress40 / 59',
-            'Monthly summaries',
-            'Enable privacy mode',
-            'Appearance',
-            'Settings',
-            'Documentation',
-            'Community',
-            'Feedback',
-            'Request integration',
-            'Support',
-            'Log out',
-        ]);
-    });
+            const menu = openDropdown();
 
-    it('keeps the dropdown on the phone, with no sheet', () => {
-        setPage({ forecast: false });
-        mobile.value = true;
-        render(<NavUser />);
+            expect(within(menu).getByText('Organize')).toBeInTheDocument();
+            expect(
+                within(menu).getByRole('menuitem', { name: /settings/i }),
+            ).toHaveAttribute('aria-haspopup', 'menu');
+        },
+    );
 
-        openDropdown();
+    it.each([false, true])(
+        'opens the bottom sheet on the phone with the flag set to %s',
+        (forecast) => {
+            setPage({ forecast });
+            mobile.value = true;
+            render(<NavUser />);
 
-        expect(screen.queryByTestId('user-menu-sheet')).toBeNull();
-        expect(screen.queryByText('Organize')).toBeNull();
-    });
+            fireEvent.click(screen.getByRole('button', { name: /test user/i }));
+
+            expect(screen.getByTestId('user-menu-sheet')).toBeInTheDocument();
+        },
+    );
 });
 
-describe('user menu with the Forecast flag on (desktop)', () => {
+describe('user menu (desktop)', () => {
     it('groups the shortcuts and folds the rest into submenus', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
 
         const menu = openDropdown();
@@ -228,7 +226,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('closes the menu once an entry is picked', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
 
         fireEvent.click(
@@ -241,7 +239,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('shows privacy mode as a switch that keeps the menu open', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
         openDropdown();
 
@@ -257,7 +255,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('opens the settings submenu grouped by data, account and integrations', () => {
-        setPage({ forecast: true, hasProPlan: true });
+        setPage({ hasProPlan: true });
         render(<NavUser />);
         openDropdown();
 
@@ -281,7 +279,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('grows a submenu out of its row and only fades it under reduced motion', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
         openDropdown();
 
@@ -301,7 +299,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('pivots the submenu on the middle of the row that opened it', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
         openDropdown();
 
@@ -324,7 +322,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('offers a shared account only the settings it can open', () => {
-        setPage({ forecast: true, isSharedAccount: true, isDemoAccount: true });
+        setPage({ isSharedAccount: true, isDemoAccount: true });
         render(<NavUser />);
         openDropdown();
 
@@ -338,7 +336,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('picks the theme and the chart colors as radio items', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
         openDropdown();
 
@@ -365,7 +363,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('keeps help and community in its own submenu', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
         openDropdown();
 
@@ -381,6 +379,14 @@ describe('user menu with the Forecast flag on (desktop)', () => {
         expect(
             within(help).getByRole('menuitem', { name: /community/i }),
         ).toHaveAttribute('href', 'https://discord.gg/m8hUhx6D9D');
+        const documentation = within(help).getByRole('menuitem', {
+            name: 'Documentation',
+        });
+        expect(documentation).toHaveAttribute('href', '/documentation');
+        expect(documentation).toHaveAttribute('target', '_blank');
+        expect(
+            within(help).getByRole('menuitem', { name: /feedback/i }),
+        ).toHaveAttribute('href', 'https://whispermoney.userjot.com/');
 
         fireEvent.click(
             within(help).getByRole('menuitem', { name: 'Support' }),
@@ -390,7 +396,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('shows the plan next to the name', () => {
-        setPage({ forecast: true, hasProPlan: false });
+        setPage({ hasProPlan: false });
         render(<NavUser />);
         openDropdown();
 
@@ -398,13 +404,13 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('shows Admin to the admin only', () => {
-        setPage({ forecast: true });
+        setPage();
         const { unmount } = render(<NavUser />);
         openDropdown();
         expect(screen.queryByRole('menuitem', { name: 'Admin' })).toBeNull();
         unmount();
 
-        setPage({ forecast: true, isAdmin: true });
+        setPage({ isAdmin: true });
         render(<NavUser />);
         openDropdown();
         expect(screen.getByRole('menuitem', { name: 'Admin' })).toHaveAttribute(
@@ -414,7 +420,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 
     it('never offers Accounts on desktop', () => {
-        setPage({ forecast: true });
+        setPage();
         render(<NavUser />);
 
         expect(
@@ -425,7 +431,7 @@ describe('user menu with the Forecast flag on (desktop)', () => {
     });
 });
 
-describe('user menu with the Forecast flag on (phone)', () => {
+describe('user menu (phone)', () => {
     function openSheet() {
         fireEvent.click(screen.getByRole('button', { name: /test user/i }));
 
@@ -433,7 +439,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
     }
 
     it('opens a bottom sheet whose Organize tiles start with Accounts', () => {
-        setPage({ forecast: true, hasProPlan: true });
+        setPage({ hasProPlan: true });
         mobile.value = true;
         render(<NavUser />);
 
@@ -457,7 +463,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
     });
 
     it('drills into a level and comes back', async () => {
-        setPage({ forecast: true, isAdmin: true });
+        setPage({ isAdmin: true });
         mobile.value = true;
         render(<NavUser />);
 
@@ -497,7 +503,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
     }
 
     it('slides the new level in while the current one slides out', async () => {
-        setPage({ forecast: true });
+        setPage();
         mobile.value = true;
         render(<NavUser />);
 
@@ -532,7 +538,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
     });
 
     it('settles on the root when Back is tapped mid-transition', async () => {
-        setPage({ forecast: true });
+        setPage();
         mobile.value = true;
         render(<NavUser />);
 
@@ -557,7 +563,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
         })) as unknown as typeof window.matchMedia;
-        setPage({ forecast: true });
+        setPage();
         mobile.value = true;
         render(<NavUser />);
 
@@ -579,7 +585,7 @@ describe('user menu with the Forecast flag on (phone)', () => {
     });
 
     it('marks the current theme in the appearance level', () => {
-        setPage({ forecast: true });
+        setPage();
         mobile.value = true;
         render(<NavUser />);
 
