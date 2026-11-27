@@ -406,11 +406,11 @@ export interface ForecastPageProps {
     newSuggestionCount?: number;
     /** Only sent when the page asks for it (`only: ['review']`). */
     review?: ForecastReview;
-    /** The "What you pay every month" card; deferred, so undefined at first. */
+    /** The "Recurring transactions" card; deferred, so undefined at first. */
     recurringCharges?: ForecastRecurringCharges;
 }
 
-/** A charge that repeats, on the "What you pay every month" card. */
+/** A charge that repeats, on the "Recurring transactions" card. */
 export interface ForecastRecurringCharge {
     /** Names the charge across visits, for "I'm dropping it" and "Keep". */
     key: string;

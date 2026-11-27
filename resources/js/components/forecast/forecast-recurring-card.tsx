@@ -6,16 +6,11 @@ import {
     store as keep,
     destroy as undoKeep,
 } from '@/actions/App/Http/Controllers/Forecast/ForecastRecurringKeepController';
+import { ForecastSection } from '@/components/forecast/forecast-section';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     EmptyState,
     EmptyStateDescription,
@@ -262,29 +257,39 @@ function ChargeRow({
 }
 
 function CardShell({
-    title,
+    total,
     children,
 }: {
-    title: string;
+    /** What the charges add up to a month, once they are loaded. */
+    total?: string;
     children: ReactNode;
 }) {
     return (
-        <Card className="gap-0 py-0" data-test="forecast-recurring-charges">
-            <CardHeader className="flex flex-col gap-0.5 border-b px-4 py-3.5">
-                <CardTitle>{title}</CardTitle>
-                <CardDescription>
-                    {__(
-                        'The charges that repeat in your accounts. Mark the ones you are dropping and the forecast stops counting them from next month.',
-                    )}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="px-4">{children}</CardContent>
-        </Card>
+        <ForecastSection
+            title={__('Recurring transactions')}
+            description={__(
+                'The charges that repeat in your accounts. Mark the ones you are dropping and the forecast stops counting them from next month.',
+            )}
+            aside={
+                total && (
+                    <p
+                        className="text-sm font-medium tabular-nums"
+                        data-test="recurring-total"
+                    >
+                        {__(':amount/month', { amount: total })}
+                    </p>
+                )
+            }
+        >
+            <Card className="gap-0 py-0" data-test="forecast-recurring-charges">
+                <CardContent className="px-4">{children}</CardContent>
+            </Card>
+        </ForecastSection>
     );
 }
 
 /**
- * "What you pay every month": the charges that repeat, the most expensive a
+ * "Recurring transactions": the charges that repeat, the most expensive a
  * month first, collapsed to the top five. Each can be dropped (its category's
  * estimate goes down from next month) or kept; both stay listed, marked, with
  * an Undo. The data is deferred: a skeleton stands in until it comes.
@@ -303,7 +308,7 @@ export function ForecastRecurringCard({
 
     if (data === undefined) {
         return (
-            <CardShell title={__('What you pay every month')}>
+            <CardShell>
                 <div
                     className="flex flex-col gap-3 py-4"
                     data-test="recurring-loading"
@@ -316,16 +321,14 @@ export function ForecastRecurringCard({
         );
     }
 
-    const title =
+    const total =
         data.totals.length === 0
-            ? __('What you pay every month')
-            : __('What you pay every month · :amount/month', {
-                  amount: data.totals
-                      .map((total) =>
-                          formatAmount(total.monthly, total.currencyCode),
-                      )
-                      .join(' + '),
-              });
+            ? undefined
+            : data.totals
+                  .map((total) =>
+                      formatAmount(total.monthly, total.currencyCode),
+                  )
+                  .join(' + ');
     const shown = expanded
         ? data.charges
         : data.charges.slice(0, COLLAPSED_COUNT);
@@ -345,7 +348,7 @@ export function ForecastRecurringCard({
         );
 
     return (
-        <CardShell title={title}>
+        <CardShell total={total}>
             {data.charges.length === 0 ? (
                 <EmptyState size="inline">
                     <EmptyStateTitle>

@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\Forecast\Data\RecurringCharge;
 
 /**
- * The "What you pay every month" card of one space: each recurring charge
+ * The "Recurring transactions" card of one space: each recurring charge
  * (see RecurringCharges) with its account, whether the user is dropping it
  * (from which month, and how much that took off the forecast, which is
  * less than the charge when its category had less left) or keeping it,

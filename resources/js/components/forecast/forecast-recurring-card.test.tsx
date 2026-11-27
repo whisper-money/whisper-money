@@ -94,17 +94,25 @@ describe('ForecastRecurringCard', () => {
         render(<ForecastRecurringCard recurringCharges={undefined} />);
 
         expect(getByTest('recurring-loading')).toBeTruthy();
-        expect(screen.getByText('What you pay every month')).toBeTruthy();
+        expect(
+            screen.getByRole('heading', { name: 'Recurring transactions' }),
+        ).toBeTruthy();
+        expect(document.querySelector('[data-test="recurring-total"]')).toBe(
+            null,
+        );
     });
 
     it('says when nothing repeats', () => {
         render(<ForecastRecurringCard recurringCharges={data([], [])} />);
 
         expect(screen.getByText('Nothing repeats yet')).toBeTruthy();
+        expect(document.querySelector('[data-test="recurring-total"]')).toBe(
+            null,
+        );
         expect(rows()).toHaveLength(0);
     });
 
-    it('titles the card with the monthly total of every currency', () => {
+    it('heads the section with the monthly total of every currency', () => {
         render(
             <ForecastRecurringCard
                 recurringCharges={data(
@@ -118,10 +126,11 @@ describe('ForecastRecurringCard', () => {
         );
 
         expect(
-            screen.getByText(
-                'What you pay every month · EUR 160.99 + USD 10/month',
-            ),
+            screen.getByRole('heading', { name: 'Recurring transactions' }),
         ).toBeTruthy();
+        expect(getByTest('recurring-total').textContent).toBe(
+            'EUR 160.99 + USD 10/month',
+        );
     });
 
     it('reads each charge: amount, frequency, account, last charge and yearly total', () => {

@@ -13,13 +13,9 @@ import {
     PlanMonthCell,
     type PlanCellContext,
 } from '@/components/forecast/forecast-plan-cells';
+import { ForecastSection } from '@/components/forecast/forecast-section';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import {
@@ -648,7 +644,7 @@ export function ForecastPlanTable({
 }
 
 /**
- * The plan's card: its title, "Expand all", and the table with the first
+ * The plan's section: its heading with "Expand all", and the card with the table with the first
  * column held in place while the months scroll.
  */
 export function PlanTableCard({
@@ -672,13 +668,11 @@ export function PlanTableCard({
     children: ReactNode;
 }) {
     return (
-        <Card className="gap-0 py-0" data-test="forecast-plan">
-            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
-                <div className="flex flex-col gap-0.5">
-                    <CardTitle>{title}</CardTitle>
-                    <CardDescription>{description}</CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
+        <ForecastSection
+            title={title}
+            description={description}
+            aside={
+                <>
                     {onToggleAll && (
                         <Button
                             variant="outline"
@@ -692,28 +686,31 @@ export function PlanTableCard({
                         </Button>
                     )}
                     {headerAction}
+                </>
+            }
+        >
+            <Card className="gap-0 py-0" data-test="forecast-plan">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] border-collapse text-[13px]">
+                        <thead>
+                            <tr className="border-b">
+                                <th
+                                    scope="col"
+                                    className={cn(
+                                        STICKY,
+                                        'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
+                                    )}
+                                >
+                                    {__('Item')}
+                                </th>
+                                {columns}
+                            </tr>
+                        </thead>
+                        <tbody>{children}</tbody>
+                    </table>
                 </div>
-            </CardHeader>
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] border-collapse text-[13px]">
-                    <thead>
-                        <tr className="border-b">
-                            <th
-                                scope="col"
-                                className={cn(
-                                    STICKY,
-                                    'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
-                                )}
-                            >
-                                {__('Item')}
-                            </th>
-                            {columns}
-                        </tr>
-                    </thead>
-                    <tbody>{children}</tbody>
-                </table>
-            </div>
-        </Card>
+            </Card>
+        </ForecastSection>
     );
 }
 
