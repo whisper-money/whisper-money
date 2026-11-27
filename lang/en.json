@@ -9,5 +9,8 @@
     "reserved in budgets": "reserved in budgets",
     "Nothing reserved in budgets": "Nothing reserved in budgets",
     "Expenses (cashflow)": "Expenses",
-    "Amount (cashflow)": "Amount"
+    "Amount (cashflow)": "Amount",
+    "Add yearly payment": "Add",
+    "Other payment": "Other",
+    "Yearly income": "Income"
 }

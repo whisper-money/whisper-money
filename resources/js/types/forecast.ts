@@ -177,7 +177,78 @@ export interface ForecastData extends ForecastBase {
     plan: ForecastPlan;
 }
 
+export type ForecastSuggestionFrequency =
+    | 'monthly'
+    | 'bimonthly'
+    | 'quarterly'
+    | 'yearly'
+    | 'once';
+
+/**
+ * A line the history suggests, as App\Services\Forecast\ForecastReviewPresenter
+ * sends it. `amount` is signed from the account, in its minor units; `key`
+ * is what the review sends back to keep or dismiss it.
+ */
+export interface ForecastSuggestion {
+    key: string;
+    kind: 'recurring' | 'transfer' | 'annual';
+    /** Recognised by its description, so it can be merged with another. */
+    mergeable: boolean;
+    name: string;
+    accountId: string;
+    accountName: string | null;
+    destinationAccountId: string | null;
+    destinationAccountName: string | null;
+    /** A transfer whose other side is not in the app. */
+    destinationUnknown: boolean;
+    currencyCode: string;
+    frequency: ForecastSuggestionFrequency;
+    anchorDay: number;
+    nextDate: string;
+    amount: number;
+    amountTolerance: number;
+    confidence: 'high' | 'review';
+    chargeCount: number;
+    expectedCount: number;
+}
+
+export interface ForecastAnnualSuggestion extends ForecastSuggestion {
+    /** The charges it stands on, oldest first. */
+    evidence: { date: string; amount: number }[];
+}
+
+export interface ForecastReviewAccount {
+    id: string;
+    name: string;
+    currencyCode: string;
+}
+
+/** How the day-to-day spend is estimated, in the user's currency. */
+export interface ForecastDailySpend {
+    currencyCode: string;
+    budgets: { name: string; amount: number }[];
+    median: { name: string; amount: number } | null;
+    unusableBudgets: string[];
+}
+
+export interface ForecastReview {
+    recurring: ForecastSuggestion[];
+    annual: ForecastAnnualSuggestion[];
+    accounts: ForecastReviewAccount[];
+    dailySpend: ForecastDailySpend | null;
+}
+
+export interface ForecastReviewPrompt {
+    /** Whether the space has any forecast line: without one the review opens on its own. */
+    hasLines: boolean;
+}
+
 export interface ForecastPageProps {
     forecast: ForecastData | ForecastEmpty;
     projectionInput: ProjectionInput | null;
+    reviewPrompt: ForecastReviewPrompt;
+    /** Suggestions not answered yet; deferred, so undefined at first. */
+    newSuggestionCount?: number;
+    /** Only sent when the page asks for it (`only: ['review']`). */
+    review?: ForecastReview;
 }

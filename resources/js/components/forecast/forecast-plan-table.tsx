@@ -48,13 +48,21 @@ import {
     type Row,
 } from '@tanstack/react-table';
 import { ChevronRightIcon } from 'lucide-react';
-import { createContext, useContext, useMemo, useState } from 'react';
+import {
+    createContext,
+    useContext,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 
 interface ForecastPlanTableProps {
     forecast: ForecastData;
     selectedMonth: string | null;
     /** Groups open on the first render, by row id. */
     initiallyExpanded?: string[];
+    /** Shown next to "Expand all": the review's link. */
+    headerAction?: ReactNode;
 }
 
 const STICKY = 'sticky left-0 z-10 bg-card';
@@ -450,6 +458,7 @@ export function ForecastPlanTable({
     forecast,
     selectedMonth,
     initiallyExpanded = [],
+    headerAction,
 }: ForecastPlanTableProps) {
     const locale = useLocale();
     const rows = useMemo(
@@ -514,22 +523,27 @@ export function ForecastPlanTable({
                             )}
                         </CardDescription>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                            setExpanded(
-                                allExpanded
-                                    ? {}
-                                    : Object.fromEntries(
-                                          groupIds.map((id) => [id, true]),
-                                      ),
-                            )
-                        }
-                        data-test="forecast-toggle-all"
-                    >
-                        {allExpanded ? __('Collapse all') : __('Expand all')}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                                setExpanded(
+                                    allExpanded
+                                        ? {}
+                                        : Object.fromEntries(
+                                              groupIds.map((id) => [id, true]),
+                                          ),
+                                )
+                            }
+                            data-test="forecast-toggle-all"
+                        >
+                            {allExpanded
+                                ? __('Collapse all')
+                                : __('Expand all')}
+                        </Button>
+                        {headerAction}
+                    </div>
                 </CardHeader>
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[900px] border-collapse text-[13px]">

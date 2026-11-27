@@ -29,8 +29,9 @@ use Illuminate\Support\Facades\Cache;
  * without a rule is recognised by amount and date alone, and so is the
  * receiving leg of a transfer, since the rule describes the sending one.
  *
- * An occurrence takes one transaction per account, and a transaction pays one
- * occurrence. The closest free occurrence wins, by date and then by amount;
+ * An occurrence takes one transaction per account (any number for a line
+ * made of several payments, see ForecastItem::takesSeveralPayments()), and a
+ * transaction pays one occurrence. The closest free occurrence wins, by date and then by amount;
  * when two are equally close the transaction is left unmatched for the user
  * to pair. The stored `deviation` is actual minus expected, signed from the
  * line's own account, so a transfer's receiving leg reads the same as its
@@ -213,15 +214,19 @@ class ForecastMatcher
 
     /**
      * The occurrences of these lines another transaction on the same account
-     * already paid, keyed `itemId|occurrenceDate`.
+     * already paid, keyed `itemId|occurrenceDate`. A line made of several
+     * payments takes one transaction per payment, so its occurrences are
+     * never full.
      *
      * @param  Collection<int, ForecastItem>  $items
      * @return array<string, true>
      */
     private function takenOccurrences(Transaction $transaction, Collection $items): array
     {
+        $single = $items->reject(fn (ForecastItem $item): bool => $item->takesSeveralPayments());
+
         return ForecastMatch::query()
-            ->whereIn('forecast_item_id', $items->modelKeys())
+            ->whereIn('forecast_item_id', $single->modelKeys())
             ->where('transaction_id', '!=', $transaction->id)
             ->whereHas('transaction', fn ($query) => $query->where('account_id', $transaction->account_id))
             ->get(['forecast_item_id', 'occurrence_date'])
