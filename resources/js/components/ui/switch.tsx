@@ -17,6 +17,7 @@ function Switch({
 }) {
   return (
     <button
+      {...props}
       type="button"
       role="switch"
       aria-checked={checked}
@@ -28,7 +29,6 @@ function Switch({
         checked ? "bg-primary" : "bg-neutral-300 dark:bg-neutral-600",
         className
       )}
-      {...props}
     >
       <span
         className={cn(

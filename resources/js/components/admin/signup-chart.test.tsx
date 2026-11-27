@@ -24,10 +24,12 @@ function chart(overrides: Partial<SignupChartData> = {}): SignupChartData {
                 end: '2026-03-01',
                 signups: 6,
                 active_users: 40,
-                previous_start: '2026-02-01',
-                previous_end: '2026-02-01',
-                previous_signups: 4,
-                previous_active_users: 50,
+                previous: {
+                    start: '2026-02-01',
+                    end: '2026-02-01',
+                    signups: 4,
+                    active_users: 50,
+                },
             },
         ],
         summary: {
@@ -35,6 +37,7 @@ function chart(overrides: Partial<SignupChartData> = {}): SignupChartData {
             active_users: 40,
             previous_signups: 4,
             previous_active_users: 50,
+            in_progress: false,
         },
         ...overrides,
     };
@@ -56,6 +59,25 @@ describe('SignupChart', () => {
 
         expect(screen.getByText('+50.0%')).toBeTruthy();
         expect(screen.getByText('-20.0%')).toBeTruthy();
+        expect(screen.getAllByText('vs last period')).toHaveLength(2);
+    });
+
+    it('says so when the previous period is cut at the same point', () => {
+        const data = chart();
+        render(
+            <SignupChart
+                chart={{
+                    ...data,
+                    summary: { ...data.summary, in_progress: true },
+                }}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('switch'));
+
+        expect(screen.getAllByText('vs same point last period')).toHaveLength(
+            2,
+        );
     });
 
     it('asks the server for the chart alone when the period moves', () => {

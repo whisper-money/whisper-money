@@ -26,6 +26,7 @@ import {
     parsePeriodParam,
     type PeriodType,
 } from '@/lib/period-param';
+import { cn } from '@/lib/utils';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -33,7 +34,7 @@ import { parseISO } from 'date-fns';
 import { useState } from 'react';
 import { Bar, ComposedChart, Line, XAxis, YAxis } from 'recharts';
 
-export type SignupChartPoint = {
+type SignupChartSide = {
     /** First UTC day of the bucket, `yyyy-MM-dd`. */
     start: string;
     /** Last UTC day of the bucket; the same as `start` for a day. */
@@ -42,11 +43,11 @@ export type SignupChartPoint = {
     signups: number | null;
     /** Distinct users active in the 30 days up to the bucket's end (or today). */
     active_users: number | null;
+};
+
+export type SignupChartPoint = SignupChartSide & {
     /** The bucket at the same index of the previous period; null past its end. */
-    previous_start: string | null;
-    previous_end: string | null;
-    previous_signups: number | null;
-    previous_active_users: number | null;
+    previous: SignupChartSide | null;
 };
 
 export type SignupChartData = {
@@ -60,6 +61,8 @@ export type SignupChartData = {
         active_users: number;
         previous_signups: number;
         previous_active_users: number;
+        /** The previous figures stop at the same day of their period. */
+        in_progress: boolean;
     };
 };
 
@@ -92,7 +95,11 @@ function percentChange(current: number, previous: number): number | null {
  * Moves the chart to another period: only `signupChart` is asked for again,
  * so the rest of /admin is not recomputed, and the URL keeps the period.
  */
-function visitPeriod(date: Date, periodType: PeriodType): void {
+function visitPeriod(
+    date: Date,
+    periodType: PeriodType,
+    setLoading: (loading: boolean) => void,
+): void {
     router.get(
         index.url({
             query: {
@@ -106,6 +113,8 @@ function visitPeriod(date: Date, periodType: PeriodType): void {
             preserveScroll: true,
             preserveState: true,
             replace: true,
+            onStart: () => setLoading(true),
+            onFinish: () => setLoading(false),
         },
     );
 }
@@ -125,7 +134,7 @@ function useBucketLabel(bucket: SignupChartData['bucket']) {
     };
 }
 
-type TooltipRow = { key: string; color: string; value: number | null };
+type TooltipRow = { key: string; value: number | null };
 
 function TooltipGroup({ label, rows }: { label: string; rows: TooltipRow[] }) {
     const config = chartConfig();
@@ -141,7 +150,9 @@ function TooltipGroup({ label, rows }: { label: string; rows: TooltipRow[] }) {
                     <div className="flex min-w-0 items-center gap-2">
                         <div
                             className="size-2.5 shrink-0 rounded-xs"
-                            style={{ backgroundColor: row.color }}
+                            style={{
+                                backgroundColor: `var(--color-${row.key})`,
+                            }}
                         />
                         <span className="truncate text-muted-foreground">
                             {config[row.key]?.label}
@@ -180,53 +191,43 @@ function SignupChartTooltip({
         return null;
     }
 
-    const showCurrent = point.signups !== null;
-    const showPrevious = compare && point.previous_start !== null;
+    const groups = [
+        point.signups !== null && {
+            side: point,
+            signups: 'signups',
+            active_users: 'active_users',
+        },
+        compare &&
+            point.previous && {
+                side: point.previous,
+                signups: 'previous_signups',
+                active_users: 'previous_active_users',
+            },
+    ].filter((group) => group !== false && group !== null);
 
-    if (!showCurrent && !showPrevious) {
+    if (groups.length === 0) {
         return null;
     }
 
     return (
         <ChartTooltipPortal coordinate={coordinate}>
             <div className="grid max-w-[min(20rem,calc(100vw-2rem))] min-w-[8rem] gap-2.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                {showCurrent && (
+                {groups.map((group) => (
                     <TooltipGroup
-                        label={label.full(point.start, point.end)}
+                        key={group.signups}
+                        label={label.full(group.side.start, group.side.end)}
                         rows={[
                             {
-                                key: 'signups',
-                                color: 'var(--color-signups)',
-                                value: point.signups,
+                                key: group.signups,
+                                value: group.side.signups,
                             },
                             {
-                                key: 'active_users',
-                                color: 'var(--color-active_users)',
-                                value: point.active_users,
+                                key: group.active_users,
+                                value: group.side.active_users,
                             },
                         ]}
                     />
-                )}
-                {showPrevious && (
-                    <TooltipGroup
-                        label={label.full(
-                            point.previous_start!,
-                            point.previous_end!,
-                        )}
-                        rows={[
-                            {
-                                key: 'previous_signups',
-                                color: 'var(--color-previous_signups)',
-                                value: point.previous_signups,
-                            },
-                            {
-                                key: 'previous_active_users',
-                                color: 'var(--color-previous_active_users)',
-                                value: point.previous_active_users,
-                            },
-                        ]}
-                    />
-                )}
+                ))}
             </div>
         </ChartTooltipPortal>
     );
@@ -275,7 +276,11 @@ function SignupSummary({
                         <StatTileTrend>
                             <PercentageTrendIndicator
                                 trend={percentChange(tile.value, tile.previous)}
-                                label={__('vs last period')}
+                                label={
+                                    summary.in_progress
+                                        ? __('vs same point last period')
+                                        : __('vs last period')
+                                }
                             />
                         </StatTileTrend>
                     )}
@@ -297,6 +302,7 @@ function SignupSummary({
  */
 export function SignupChart({ chart }: { chart: SignupChartData }) {
     const [compare, setCompare] = useState(false);
+    const [loading, setLoading] = useState(false);
     const label = useBucketLabel(chart.bucket);
     const currentDate = parsePeriodParam(chart.period, chart.period_type);
 
@@ -316,10 +322,10 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                         currentDate={currentDate}
                         periodType={chart.period_type}
                         onDateChange={(date) =>
-                            visitPeriod(date, chart.period_type)
+                            visitPeriod(date, chart.period_type, setLoading)
                         }
                         onPeriodTypeChange={(periodType) =>
-                            visitPeriod(currentDate, periodType)
+                            visitPeriod(currentDate, periodType, setLoading)
                         }
                     />
                     <div className="flex h-11 items-center gap-2 sm:h-9">
@@ -334,7 +340,13 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                     </div>
                 </div>
             </div>
-            <Card>
+            <Card
+                aria-busy={loading}
+                className={cn(
+                    'transition-opacity',
+                    loading && 'pointer-events-none opacity-60',
+                )}
+            >
                 <CardContent className="flex flex-col gap-6">
                     <SignupSummary chart={chart} compare={compare} />
                     <ChartContainer
@@ -377,7 +389,7 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                             {compare && (
                                 <Bar
                                     yAxisId="signups"
-                                    dataKey="previous_signups"
+                                    dataKey="previous.signups"
                                     fill="var(--color-previous_signups)"
                                     radius={[3, 3, 0, 0]}
                                 />
@@ -392,7 +404,7 @@ export function SignupChart({ chart }: { chart: SignupChartData }) {
                                 <Line
                                     yAxisId="active_users"
                                     type="monotone"
-                                    dataKey="previous_active_users"
+                                    dataKey="previous.active_users"
                                     stroke="var(--color-previous_active_users)"
                                     strokeWidth={2}
                                     strokeDasharray="4 4"

@@ -15,34 +15,38 @@ use Carbon\CarbonImmutable;
  * Sunday, clipped to the year).
  *
  * @phpstan-type Bucket array{start: CarbonImmutable, end: CarbonImmutable}
- * @phpstan-type Point array{start: string, end: string, signups: int|null, active_users: int|null, previous_start: string|null, previous_end: string|null, previous_signups: int|null, previous_active_users: int|null}
+ * @phpstan-type Figures array{signups: int, active_users: int}
+ * @phpstan-type Side array{start: string, end: string, signups: int|null, active_users: int|null}
  */
 class SignupChart
 {
     private const ACTIVE_WINDOW_DAYS = 30;
 
     /**
-     * Every bucket of the period, today's last among those drawn: the ones
-     * after today are there with null figures, so the axis spans the whole
-     * period. The previous period's buckets sit at the same index.
+     * Every bucket of the period: the ones after today are there with null
+     * figures, so the axis spans the whole period. Each carries the bucket at
+     * the same index of the previous period, null past that period's end.
      *
-     * @return array{period_type: string, period: string, previous_period: string, bucket: 'day'|'week', points: list<Point>, summary: array{signups: int, active_users: int, previous_signups: int, previous_active_users: int}}
+     * @return array{period_type: string, period: string, previous_period: string, bucket: 'day'|'week', points: list<array{start: string, end: string, signups: int|null, active_users: int|null, previous: Side|null}>, summary: array{signups: int, active_users: int, previous_signups: int, previous_active_users: int, in_progress: bool}}
      */
     public function for(PeriodSelection $selection): array
     {
         $today = CarbonImmutable::now('UTC')->startOfDay();
         $start = $selection->start($today);
+        $end = $selection->end($start);
         $previousStart = $selection->previous($start);
         $weekly = $selection->type === 'year';
 
-        $current = $this->buckets($start, $selection->end($start), $weekly);
+        $current = $this->buckets($start, $end, $weekly);
         $previous = $this->buckets($previousStart, $start->subDay(), $weekly);
+        $inProgress = $start->lte($today) && $end->gt($today);
+        $totals = $this->totalSpans($start, $end, $previousStart, $today, $inProgress);
 
-        $drawnPrevious = $this->untilToday($previous, $today);
-        $drawn = $this->untilToday($current, $today);
-        $figures = $this->figures([...$drawnPrevious, ...$drawn], $today);
-        $previousFigures = array_slice($figures, 0, count($drawnPrevious));
-        $currentFigures = array_slice($figures, count($drawnPrevious));
+        $figures = $this->figures([
+            ...$this->keyed('previous', $previous),
+            ...$this->keyed('current', $current),
+            ...$totals,
+        ], $today);
 
         return [
             'period_type' => $selection->type,
@@ -50,73 +54,100 @@ class SignupChart
             'previous_period' => $selection->param($previousStart),
             'bucket' => $weekly ? 'week' : 'day',
             'points' => array_map(fn (array $bucket, int $index): array => [
-                'start' => $bucket['start']->toDateString(),
-                'end' => $bucket['end']->toDateString(),
-                'signups' => $currentFigures[$index]['signups'] ?? null,
-                'active_users' => $currentFigures[$index]['active_users'] ?? null,
-                'previous_start' => isset($previous[$index]) ? $previous[$index]['start']->toDateString() : null,
-                'previous_end' => isset($previous[$index]) ? $previous[$index]['end']->toDateString() : null,
-                'previous_signups' => $previousFigures[$index]['signups'] ?? null,
-                'previous_active_users' => $previousFigures[$index]['active_users'] ?? null,
+                ...$this->side($bucket, $figures["current.{$index}"] ?? null),
+                'previous' => isset($previous[$index]) ? $this->side($previous[$index], $figures["previous.{$index}"] ?? null) : null,
             ], $current, array_keys($current)),
-            'summary' => $this->summary($currentFigures, $previousFigures, count($drawn) < count($current)),
+            'summary' => [
+                'signups' => $figures['total']['signups'] ?? 0,
+                'active_users' => $figures['total']['active_users'] ?? 0,
+                'previous_signups' => $figures['previous_total']['signups'] ?? 0,
+                'previous_active_users' => $figures['previous_total']['active_users'] ?? 0,
+                'in_progress' => $inProgress,
+            ],
         ];
     }
 
     /**
-     * The buckets that have started by today, the only ones with figures.
+     * The stretches the totals cover: the period up to today, and the one
+     * before it. While the period is in progress the previous one is cut at
+     * the same number of days, so a half-gone month is not set against a
+     * whole one, nor a week of three days against one of seven.
      *
-     * @param  list<Bucket>  $buckets
-     * @return list<Bucket>
+     * @return array<string, Bucket>
      */
-    private function untilToday(array $buckets, CarbonImmutable $today): array
+    private function totalSpans(CarbonImmutable $start, CarbonImmutable $end, CarbonImmutable $previousStart, CarbonImmutable $today, bool $inProgress): array
     {
-        return array_values(array_filter($buckets, fn (array $bucket): bool => $bucket['start']->lte($today)));
+        $previousEnd = $start->subDay();
+
+        return [
+            'total' => ['start' => $start, 'end' => $end],
+            'previous_total' => [
+                'start' => $previousStart,
+                'end' => $inProgress ? $previousStart->addDays((int) $start->diffInDays($today))->min($previousEnd) : $previousEnd,
+            ],
+        ];
     }
 
     /**
-     * Each bucket's sign-ups and active users, in the order given.
-     *
      * @param  list<Bucket>  $buckets
-     * @return list<array{signups: int, active_users: int}>
+     * @return array<string, Bucket>
+     */
+    private function keyed(string $prefix, array $buckets): array
+    {
+        return array_combine(
+            array_map(fn (int $index): string => "{$prefix}.{$index}", array_keys($buckets)),
+            $buckets,
+        );
+    }
+
+    /**
+     * @param  Bucket  $bucket
+     * @param  Figures|null  $figures  Null for a bucket after today.
+     * @return Side
+     */
+    private function side(array $bucket, ?array $figures): array
+    {
+        return [
+            'start' => $bucket['start']->toDateString(),
+            'end' => $bucket['end']->toDateString(),
+            'signups' => $figures['signups'] ?? null,
+            'active_users' => $figures['active_users'] ?? null,
+        ];
+    }
+
+    /**
+     * Each bucket's sign-ups up to its end, and the users active in the 30
+     * days up to its end, both capped at today. A bucket that starts after
+     * today has no figures and is left out.
+     *
+     * @param  array<string, Bucket>  $buckets
+     * @return array<string, Figures>
      */
     private function figures(array $buckets, CarbonImmutable $today): array
     {
+        $buckets = array_map(
+            fn (array $bucket): array => ['start' => $bucket['start'], 'end' => $bucket['end']->min($today)],
+            array_filter($buckets, fn (array $bucket): bool => $bucket['start']->lte($today)),
+        );
+
         if ($buckets === []) {
             return [];
         }
 
-        $signups = $this->signupsByDay($buckets[0]['start'], end($buckets)['end']);
-        $activeUsers = $this->activeUsersByDay(array_map(
-            fn (array $bucket): CarbonImmutable => $bucket['end']->min($today),
-            $buckets,
-        ));
+        $ends = array_map(fn (array $bucket): CarbonImmutable => $bucket['end'], $buckets);
+        $signups = $this->signupsByDay(min(array_column($buckets, 'start')), max($ends));
+        $activeUsers = $this->activeUsersByDay($ends);
 
-        return array_map(fn (array $bucket, int $index): array => [
-            'signups' => $this->sumBetween($signups, $bucket['start']->toDateString(), $bucket['end']->toDateString()),
-            'active_users' => $activeUsers[$index],
-        ], $buckets, array_keys($buckets));
-    }
+        $figures = [];
 
-    /**
-     * The period's totals: sign-ups in it, and the active users of its last
-     * drawn bucket. While the period is in progress the previous one is cut
-     * at the same bucket, so a half-gone month is not set against a whole one.
-     *
-     * @param  list<array{signups: int, active_users: int}>  $current
-     * @param  list<array{signups: int, active_users: int}>  $previous
-     * @return array{signups: int, active_users: int, previous_signups: int, previous_active_users: int}
-     */
-    private function summary(array $current, array $previous, bool $inProgress): array
-    {
-        $comparable = $inProgress ? array_slice($previous, 0, count($current)) : $previous;
+        foreach ($buckets as $key => $bucket) {
+            $figures[$key] = [
+                'signups' => $this->sumBetween($signups, $bucket['start']->toDateString(), $bucket['end']->toDateString()),
+                'active_users' => $activeUsers[$key],
+            ];
+        }
 
-        return [
-            'signups' => array_sum(array_column($current, 'signups')),
-            'active_users' => $current === [] ? 0 : end($current)['active_users'],
-            'previous_signups' => array_sum(array_column($comparable, 'signups')),
-            'previous_active_users' => $comparable === [] ? 0 : end($comparable)['active_users'],
-        ];
+        return $figures;
     }
 
     /**
@@ -164,27 +195,28 @@ class SignupChart
     /**
      * Distinct users per trailing window, every day in one scan of the log.
      *
-     * @param  list<CarbonImmutable>  $days  Ascending.
-     * @return list<int>
+     * @param  array<string, CarbonImmutable>  $days
+     * @return array<string, int>
      */
     private function activeUsersByDay(array $days): array
     {
+        $keys = array_keys($days);
         $columns = [];
         $bindings = [];
 
-        foreach ($days as $index => $day) {
+        foreach (array_values($days) as $index => $day) {
             $columns[] = "COUNT(DISTINCT CASE WHEN date BETWEEN ? AND ? THEN user_id END) as d{$index}";
             $bindings[] = $this->windowStart($day)->toDateString();
             $bindings[] = $day->toDateString();
         }
 
         $row = UserActiveDay::query()
-            ->whereBetween('date', [$this->windowStart($days[0])->toDateString(), end($days)->toDateString()])
+            ->whereBetween('date', [$this->windowStart(min($days))->toDateString(), max($days)->toDateString()])
             ->selectRaw(implode(', ', $columns), $bindings)
             ->toBase()
             ->first();
 
-        return array_map(fn (int $index): int => (int) ($row->{"d{$index}"} ?? 0), array_keys($days));
+        return array_combine($keys, array_map(fn (int $index): int => (int) ($row->{"d{$index}"} ?? 0), array_keys($keys)));
     }
 
     private function windowStart(CarbonImmutable $day): CarbonImmutable
