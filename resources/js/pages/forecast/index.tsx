@@ -20,6 +20,7 @@ import {
     ForecastMobileView,
 } from '@/components/forecast/forecast-mobile';
 import { ForecastPlanTable } from '@/components/forecast/forecast-plan-table';
+import { ForecastRecurringCard } from '@/components/forecast/forecast-recurring-card';
 import {
     ForecastReviewDialog,
     type ForecastReviewStep,
@@ -403,6 +404,7 @@ export default function ForecastPage({
     reviewPrompt,
     newSuggestionCount,
     review,
+    recurringCharges,
 }: ForecastPageProps) {
     const reviewState = useReview(reviewPrompt, !isEmpty(forecast));
     const isMobile = useIsMobile();
@@ -519,6 +521,11 @@ export default function ForecastPage({
                             reviewPrompt={reviewPrompt}
                             newSuggestionCount={newSuggestionCount}
                             onOpenReview={reviewState.openAt}
+                        />
+                    )}
+                    {!isEmpty(forecast) && (
+                        <ForecastRecurringCard
+                            recurringCharges={recurringCharges}
                         />
                     )}
                     {!isEmpty(forecast) && (

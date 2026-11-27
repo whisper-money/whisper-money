@@ -4501,5 +4501,19 @@
     "Tell users why this integration is not doable.": "Explica a los usuarios por qué esta integración no es viable.",
     "Pending review: :count": "Pendientes de revisión: :count",
     "No requests with this status.": "No hay solicitudes con este estado.",
-    "This status has no comment: the current one will be removed.": "Este estado no lleva comentario: se borrará el actual."
+    "This status has no comment: the current one will be removed.": "Este estado no lleva comentario: se borrará el actual.",
+    "What you pay every month": "Lo que pagas cada mes",
+    "What you pay every month · :amount/month": "Lo que pagas cada mes · :amount/mes",
+    "The charges that repeat in your accounts. Drop the ones you are cancelling and the forecast stops counting them from next month.": "Los cargos que se repiten en tus cuentas. Marca los que vas a dar de baja y la previsión deja de contarlos a partir del mes que viene.",
+    "Nothing repeats yet": "Todavía no se repite nada",
+    "When a charge comes back every month, quarter or year, it shows up here.": "Cuando un cargo vuelva cada mes, trimestre o año, aparecerá aquí.",
+    "last charged on :date": "último cargo el :date",
+    "≈ :amount a year": "≈ :amount al año",
+    "I’m dropping it": "Lo dejo",
+    "Keep": "Lo mantengo",
+    "Kept": "Mantenido",
+    "Dropped from :month": "Dado de baja desde :month",
+    "See all (:count)": "Ver todos (:count)",
+    "You set this category for next month only. Change its estimate instead.": "Fijaste esta categoría solo para el mes que viene. Cambia su estimación en su lugar.",
+    "This charge is not in an expense category, so the forecast does not count it as spend.": "Este cargo no está en una categoría de gasto, así que la previsión no lo cuenta como gasto."
 }
