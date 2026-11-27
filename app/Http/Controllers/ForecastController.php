@@ -11,8 +11,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * The cash-flow forecast ("Previsión") of one account, behind the Forecast
- * flag. Users without Pro reach it too, and see the next month only.
+ * The cash-flow forecast ("Previsión") of one account, or of every account
+ * together, behind the Forecast flag. Users without Pro reach it too, and
+ * see the next month only.
  *
  * `reviewPrompt` says whether the user has any line yet, which opens the
  * review on its own the first time. How many suggestions wait for an answer
@@ -28,7 +29,7 @@ class ForecastController extends Controller
         $spaceId = $user->activeSpace()->id;
 
         return Inertia::render('forecast/index', [
-            ...$presenter->present($user, $spaceId, $request->accountId(), $request->horizon()),
+            ...$presenter->present($user, $spaceId, $request->account(), $request->horizon()),
             'reviewPrompt' => [
                 'hasLines' => ForecastItem::query()->where('user_id', $user->id)->forSpace($spaceId)->notArchived()->exists(),
             ],

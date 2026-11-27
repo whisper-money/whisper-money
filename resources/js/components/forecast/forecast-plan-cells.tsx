@@ -163,26 +163,40 @@ function DriftSuggestion({
     );
 }
 
+/** "Checking · Detected · day 28": the origin, after the account it is on when the view shows several. */
+function withAccount(origin: string, accountName?: string): string {
+    return accountName ? `${accountName} · ${origin}` : origin;
+}
+
 export function LineHeader({
     line,
     currencyCode,
+    name,
+    accountName,
 }: {
     line: ForecastLine;
     currencyCode: string;
+    /** Shown instead of the line's own name. */
+    name?: string;
+    /** The account the line is on, when the view shows several. */
+    accountName?: string;
 }) {
     const locale = useLocale();
 
     return (
         <span className="flex flex-col gap-1">
-            <span className="text-[13px]">{lineName(line)}</span>
+            <span className="text-[13px]">{name ?? lineName(line)}</span>
             <span className="flex flex-wrap items-center gap-1.5">
                 <KindBadge kind={line.kind} />
                 <span className="text-[11px] text-muted-foreground">
-                    {lineOrigin(
-                        line.kind,
-                        line.source,
-                        line.anchorDate,
-                        locale,
+                    {withAccount(
+                        lineOrigin(
+                            line.kind,
+                            line.source,
+                            line.anchorDate,
+                            locale,
+                        ),
+                        accountName,
                     )}
                 </span>
             </span>
@@ -194,9 +208,12 @@ export function LineHeader({
 export function EstimateHeader({
     estimate,
     currencyCode,
+    accountName,
 }: {
     estimate: ForecastEstimate;
     currencyCode: string;
+    /** The account the estimate is for, when the view shows several. */
+    accountName?: string;
 }) {
     const number = useNumber(currencyCode);
     const firstPlanned = Object.values(estimate.amounts)[0];
@@ -226,7 +243,7 @@ export function EstimateHeader({
             <span className="flex flex-wrap items-center gap-1.5">
                 <KindBadge kind="estimate" />
                 <span className="text-[11px] text-muted-foreground">
-                    {basis}
+                    {withAccount(basis, accountName)}
                 </span>
             </span>
         </span>

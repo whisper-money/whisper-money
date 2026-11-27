@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BalanceLookup;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * What really happened on one account in the months the forecast chart shows
@@ -27,37 +28,52 @@ class ForecastPastMonths
      */
     public function forAccount(User $user, string $spaceId, Account $account, string $today, int $completeMonths = 2): array
     {
-        $from = ForecastCalendar::monthStart($today, -$completeMonths);
-        $flows = $this->flows($user, $spaceId, $account, $from, $today);
-        $balances = BalanceLookup::forAccounts([$account->id], Carbon::parse($from), Carbon::parse($today));
-        $months = [];
-
-        for ($offset = -$completeMonths; $offset <= 0; $offset++) {
-            $start = ForecastCalendar::monthStart($today, $offset);
-            $end = min(ForecastCalendar::horizonEnd($start, 1), $today);
-            $key = ForecastCalendar::monthKey($start);
-            $months[] = [
-                'month' => $key,
-                'income' => $flows[$key]['income'] ?? 0,
-                'expenses' => $flows[$key]['expenses'] ?? 0,
-                ...$this->balanceRange($balances, $account->id, $start, $end),
-            ];
-        }
-
-        return $months;
+        return $this->forAccounts($user, $spaceId, new Collection([$account]), $today, $completeMonths)[$account->id];
     }
 
     /**
-     * @return array<string, array{income: int, expenses: int}> By `Y-m` month.
+     * The same months for several accounts, read in one pass.
+     *
+     * @param  Collection<int, Account>  $accounts
+     * @return array<string, list<array{month: string, income: int, expenses: int, close: int|null, min: int|null}>> By account id, each oldest first.
      */
-    private function flows(User $user, string $spaceId, Account $account, string $from, string $to): array
+    public function forAccounts(User $user, string $spaceId, Collection $accounts, string $today, int $completeMonths = 2): array
+    {
+        $from = ForecastCalendar::monthStart($today, -$completeMonths);
+        $ids = $accounts->modelKeys();
+        $flows = $this->flows($user, $spaceId, array_flip($ids), $from, $today);
+        $balances = BalanceLookup::forAccounts($ids, Carbon::parse($from), Carbon::parse($today));
+        $byAccount = [];
+
+        foreach ($ids as $id) {
+            for ($offset = -$completeMonths; $offset <= 0; $offset++) {
+                $start = ForecastCalendar::monthStart($today, $offset);
+                $end = min(ForecastCalendar::horizonEnd($start, 1), $today);
+                $key = ForecastCalendar::monthKey($start);
+                $byAccount[$id][] = [
+                    'month' => $key,
+                    'income' => $flows[$id][$key]['income'] ?? 0,
+                    'expenses' => $flows[$id][$key]['expenses'] ?? 0,
+                    ...$this->balanceRange($balances, $id, $start, $end),
+                ];
+            }
+        }
+
+        return $byAccount;
+    }
+
+    /**
+     * @param  array<string, int>  $accountIds  The accounts read, as keys.
+     * @return array<string, array<string, array{income?: int, expenses?: int}>> By account id, then `Y-m` month.
+     */
+    private function flows(User $user, string $spaceId, array $accountIds, string $from, string $to): array
     {
         $transactions = $this->history->transactions($user, $spaceId, $from, $to);
         $legs = $this->pairer->pair($transactions);
         $flows = [];
 
         foreach ($transactions as $transaction) {
-            if ($transaction->account_id !== $account->id || isset($legs[$transaction->id])) {
+            if (! isset($accountIds[$transaction->account_id]) || isset($legs[$transaction->id])) {
                 continue;
             }
 
@@ -66,7 +82,7 @@ class ForecastPastMonths
             if ($kind !== null) {
                 $month = ForecastCalendar::monthKey($transaction->transaction_date->toDateString());
                 $share = $transaction->account->shareOfAmount($transaction->amount);
-                $flows[$month][$kind] = ($flows[$month][$kind] ?? 0) + ($kind === 'income' ? $share : -$share);
+                $flows[$transaction->account_id][$month][$kind] = ($flows[$transaction->account_id][$month][$kind] ?? 0) + ($kind === 'income' ? $share : -$share);
             }
         }
 

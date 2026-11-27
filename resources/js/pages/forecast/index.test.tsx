@@ -4,6 +4,7 @@ import {
     type ProjectionInput,
 } from '@/lib/forecast/types';
 import {
+    type ForecastAllData,
     type ForecastData,
     type ForecastGroup,
     type ForecastLine,
@@ -160,6 +161,7 @@ const home: ForecastGroup = {
 
 function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
     return {
+        scope: 'account',
         today: '2026-11-26',
         horizon: 6,
         isPro: true,
@@ -245,7 +247,7 @@ function forecast(overrides: Partial<ForecastData> = {}): ForecastData {
 }
 
 function renderPage(
-    data: ForecastData,
+    data: ForecastData | ForecastAllData,
     projectionInput: ProjectionInput | null = null,
     reviewPrompt: ForecastReviewPrompt = { hasLines: true },
     newSuggestionCount: number | undefined = 0,
@@ -898,6 +900,328 @@ describe('the review on the forecast page', () => {
 
         expect(
             document.querySelector('[data-test="forecast-review-link"]'),
+        ).toBeNull();
+    });
+});
+
+describe('the "All accounts" view', () => {
+    const savingsMonths = MONTHS.map((month) => projected(month, 800000));
+    const checkingMonths = MONTHS.map((month) =>
+        projected(month, month === '2027-04' ? -50000 : 110000),
+    );
+    const total = MONTHS.map((month, index) => ({
+        ...projected(month, 0),
+        close: checkingMonths[index].close + savingsMonths[index].close,
+        growth: index === 0 ? 0 : 9000,
+    }));
+
+    function all(overrides: Partial<ForecastAllData> = {}): ForecastAllData {
+        const base = forecast();
+
+        return {
+            scope: 'all',
+            today: base.today,
+            horizon: base.horizon,
+            isPro: true,
+            currencyCode: 'EUR',
+            account: null,
+            accounts: [
+                { ...base.accounts[0], hasAlert: true },
+                {
+                    id: 'savings',
+                    name: 'Savings',
+                    type: 'savings',
+                    currencyCode: 'EUR',
+                    hasAlert: false,
+                },
+            ],
+            months: base.months,
+            projection: total,
+            unconvertedCurrencies: [],
+            past: base.past,
+            accountForecasts: [
+                {
+                    ...base.account,
+                    minimumBalance: 30000,
+                    projection: checkingMonths,
+                },
+                {
+                    id: 'savings',
+                    name: 'Savings',
+                    type: 'savings',
+                    currencyCode: 'EUR',
+                    minimumBalance: null,
+                    annualRateBps: 1200,
+                    alertThreshold: 0,
+                    projection: savingsMonths,
+                },
+            ],
+            alert: {
+                level: 'split',
+                accountId: 'checking',
+                month: '2027-04',
+                min: -50000,
+                minDate: '2027-04-10',
+                softMonths: [],
+                transfer: {
+                    fromAccountId: 'savings',
+                    amount: 50000,
+                    date: '2027-04-01',
+                    month: '2027-04',
+                },
+            },
+            lockedAlertCount: null,
+            kpis: {
+                balanceToday: 1000000,
+                accountCount: 2,
+                end: { month: '2027-04', close: 2000000, band: 8000 },
+                saved: 500000,
+                growth: 45000,
+                moved: 250000,
+            },
+            plan: {
+                income: [],
+                expenses: [
+                    {
+                        ...home,
+                        items: [
+                            home.items[0],
+                            line({
+                                id: 'cleaning',
+                                name: 'Cleaning',
+                                accountId: 'savings',
+                                amounts: { '2026-12': -10000 },
+                            }),
+                        ],
+                        estimates: [
+                            { ...home.estimate!, accountId: 'savings' },
+                        ],
+                        totals: { '2026-12': -206000 },
+                        current: { real: -192000, pending: false },
+                    },
+                ],
+                transfers: [
+                    line({
+                        id: 'to-savings',
+                        name: 'To savings',
+                        kind: 'transfer',
+                        direction: 'in',
+                        counterpartyName: 'Checking',
+                        amounts: { '2026-12': 50000 },
+                        definition: {
+                            ...home.items[0].definition,
+                            id: 'to-savings',
+                            destinationAccountId: 'savings',
+                        },
+                        occurrenceDates: { '2026-12': '2026-12-02' },
+                    }),
+                ],
+                growth: Object.fromEntries(
+                    total.map((month) => [month.month, month.growth]),
+                ),
+                transferEffect: Object.fromEntries(
+                    MONTHS.map((month) => [month, 0]),
+                ),
+            },
+            ...overrides,
+        };
+    }
+
+    function row(id: string): HTMLElement {
+        return document.querySelector(
+            `[data-test="forecast-row-${id}"]`,
+        ) as HTMLElement;
+    }
+
+    it('selects the "All accounts" tab and says the money is in the wrong account', () => {
+        renderPage(all());
+
+        expect(
+            screen.getByRole('link', { name: 'All accounts' }).className,
+        ).toContain('bg-primary');
+
+        const alert = document.querySelector(
+            '[data-test="forecast-all-alert-split"]',
+        )!;
+        expect(alert).toHaveTextContent(
+            'Together you are doing fine, but the money is not where you need it',
+        );
+        expect(alert).toHaveTextContent(
+            'Your total holds in April, but Checking drops to €-500. You have enough in Savings to cover it with a transfer.',
+        );
+        expect(
+            within(alert as HTMLElement).getByRole('link', {
+                name: 'See Checking',
+            }),
+        ).toBeInTheDocument();
+    });
+
+    it('says the total itself does not hold when no account can lend', () => {
+        renderPage(
+            all({
+                alert: { ...all().alert, level: 'short', transfer: null },
+            }),
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-all-alert-short"]'),
+        ).toHaveTextContent('Together your accounts do not cover April');
+        expect(
+            document.querySelector('[data-test="forecast-all-plan-transfer"]'),
+        ).toBeNull();
+    });
+
+    it('shows the four figures of the total', () => {
+        renderPage(all());
+
+        const kpis = document.querySelector('[data-test="forecast-kpis"]')!;
+        expect(kpis).toHaveTextContent('Balance today · 2 accounts');
+        expect(kpis).toHaveTextContent('Where the rise comes from+€5000');
+        expect(kpis).toHaveTextContent('saved · +€450 from growth');
+        expect(kpis).toHaveTextContent('Moved between your accounts');
+        expect(kpis).toHaveTextContent(
+            'It neither adds to nor takes from your total',
+        );
+    });
+
+    it('marks the months an account runs short on the chart and the plan', () => {
+        renderPage(all());
+
+        expect(
+            document.querySelector(
+                '[data-test="forecast-chart-month-2027-04"]',
+            ),
+        ).toHaveTextContent('● 1 account');
+        expect(
+            document.querySelector('[data-test="forecast-column-2027-04"]'),
+        ).toHaveTextContent('⚠ 1 account');
+        expect(
+            document.querySelector('[data-test="forecast-column-2027-03"]'),
+        ).not.toHaveTextContent('⚠');
+    });
+
+    it('sums the categories across accounts, lines saying their account', () => {
+        renderPage(all());
+
+        const group = row('group:expenses:home');
+        expect(group).toHaveTextContent('2 concrete + estimated');
+        expect(group).toHaveTextContent('≈ -2060');
+        expect(group).toHaveTextContent('-1920');
+
+        fireEvent.click(within(group).getByRole('button'));
+
+        expect(row('line:rent')).toHaveTextContent(
+            'Checking · Detected · day 5',
+        );
+        expect(row('line:cleaning')).toHaveTextContent('Savings · Detected');
+        expect(row('estimate:home:savings')).toHaveTextContent(
+            'Savings · Median of 3 months',
+        );
+    });
+
+    it('lists the growth, the transfers neutral in the total and each account’s close', () => {
+        renderPage(all());
+
+        expect(row('growth')).toHaveTextContent('Savings · +12% a year');
+        expect(row('growth')).toHaveTextContent('+90');
+        expect(row('line:to-savings')).toHaveTextContent('Checking → Savings');
+        expect(row('line:to-savings')).toHaveTextContent('500');
+        expect(row('effect')).toHaveTextContent('Effect on the total');
+        expect(row('account:checking')).toHaveTextContent(
+            'Wanted minimum €300',
+        );
+        expect(row('account:checking')).toHaveTextContent('min. -500');
+        expect(row('account:savings')).not.toHaveTextContent('min.');
+        expect(row('total')).toHaveTextContent(
+            String((total[1].close as number) / 100),
+        );
+    });
+
+    it("edits a line on its own account and waits for the server's answer", () => {
+        visit.mockClear();
+        const input: ProjectionInput = {
+            accounts: [
+                { id: 'checking', openingBalance: 100000 },
+                { id: 'savings', openingBalance: 900000 },
+            ],
+            occurrences: [],
+            estimates: [],
+            startDate: '2026-11-26',
+            horizonMonths: 7,
+        };
+        renderPage(all(), input);
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-cell-line:to-savings-2026-12"]',
+            )!,
+        );
+
+        const sheet = document.querySelector(
+            '[data-test="forecast-line-sheet"]',
+        )!;
+        expect(sheet).toHaveTextContent('Transfer · Checking');
+    });
+
+    it('opens the suggested transfer from the warning', () => {
+        renderPage(all(), {
+            accounts: [
+                { id: 'checking', openingBalance: 100000 },
+                { id: 'savings', openingBalance: 900000 },
+            ],
+            occurrences: [],
+            estimates: [],
+            startDate: '2026-11-26',
+            horizonMonths: 7,
+        });
+
+        fireEvent.click(
+            document.querySelector('[data-test="forecast-all-plan-transfer"]')!,
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-add-sheet"]'),
+        ).not.toBeNull();
+    });
+
+    it('locks the months the free plan hides', () => {
+        const visible = MONTHS.slice(0, 2);
+        renderPage(
+            all({
+                isPro: false,
+                lockedAlertCount: 1,
+                alert: { ...all().alert, level: 'ok', accountId: null },
+                months: MONTHS.map((month, index) => ({
+                    month,
+                    status:
+                        index === 0
+                            ? ('current' as const)
+                            : index === 1
+                              ? ('future' as const)
+                              : ('locked' as const),
+                })),
+                projection: total.slice(0, 2),
+                accountForecasts: all().accountForecasts.map((account) => ({
+                    ...account,
+                    projection: account.projection.filter((month) =>
+                        visible.includes(month.month),
+                    ),
+                })),
+            }),
+        );
+
+        expect(
+            document.querySelector('[data-test="forecast-free-banner"]'),
+        ).toHaveTextContent('You have 1 warning further ahead');
+        expect(
+            document.querySelector('[data-test="forecast-column-2027-04"]'),
+        ).toHaveTextContent('PRO');
+        expect(
+            document.querySelectorAll('[data-test="forecast-locked-cell"]')
+                .length,
+        ).toBeGreaterThan(0);
+        expect(
+            document.querySelector('[data-test="forecast-all-alert-ok"]'),
         ).toBeNull();
     });
 });

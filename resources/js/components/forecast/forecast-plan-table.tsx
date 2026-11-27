@@ -35,6 +35,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
     type ForecastData,
+    type ForecastGroup,
     type ForecastMonthColumn,
     type ForecastTransferSuggestion,
 } from '@/types/forecast';
@@ -65,7 +66,7 @@ interface ForecastPlanTableProps {
     headerAction?: ReactNode;
 }
 
-const STICKY = 'sticky left-0 z-10 bg-card';
+export const STICKY = 'sticky left-0 z-10 bg-card';
 
 function sectionLabel(section: PlanSection): { name: string; hint: string } {
     switch (section) {
@@ -83,18 +84,16 @@ function sectionLabel(section: PlanSection): { name: string; hint: string } {
     }
 }
 
-function groupName(name: string | null): string {
+export function groupName(name: string | null): string {
     return name ?? __('Other spending');
 }
 
-function groupHint(row: Extract<PlanRow, { type: 'group' }>): string {
-    const count = row.group.items.length;
+/** "2 concrete + estimated". */
+export function concreteHint(count: number, estimated: boolean): string {
     const concrete =
         count === 1 ? __('1 concrete') : __(':count concrete', { count });
 
-    return row.group.estimate
-        ? __(':concrete + estimated', { concrete })
-        : concrete;
+    return estimated ? __(':concrete + estimated', { concrete }) : concrete;
 }
 
 function ColumnHeader({
@@ -112,6 +111,35 @@ function ColumnHeader({
         projected !== undefined &&
         column.status === 'future' &&
         isShort(projected.min, context.alertThreshold);
+
+    return (
+        <MonthHeader
+            column={column}
+            selected={selected}
+            locale={context.locale}
+            warning={
+                short
+                    ? `⚠ ${formatAmountNumber(projected.min, context.currencyCode, { fractionDigits: 0 })}`
+                    : null
+            }
+        />
+    );
+}
+
+/** A month's column heading: the month, and "IN PROGRESS", "PRO" or a warning under it. */
+export function MonthHeader({
+    column,
+    selected,
+    locale,
+    warning,
+}: {
+    column: ForecastMonthColumn;
+    selected: boolean;
+    locale: string;
+    /** What a future month that runs short says, or null. */
+    warning: string | null;
+}) {
+    const short = warning !== null && column.status === 'future';
     let tag = '';
 
     if (column.status === 'current') {
@@ -119,7 +147,7 @@ function ColumnHeader({
     } else if (column.status === 'locked') {
         tag = __('PRO');
     } else if (short) {
-        tag = `⚠ ${formatAmountNumber(projected.min, context.currencyCode, { fractionDigits: 0 })}`;
+        tag = warning;
     }
 
     return (
@@ -136,7 +164,7 @@ function ColumnHeader({
             data-selected={selected || undefined}
         >
             <span className="flex flex-col items-end gap-px">
-                <span>{monthColumnLabel(column.month, context.locale)}</span>
+                <span>{monthColumnLabel(column.month, locale)}</span>
                 <span className="text-[10px] font-semibold">{tag}</span>
             </span>
         </th>
@@ -170,7 +198,10 @@ function RowHeader({
                     />
                     <span>{groupName(data.group.name)}</span>
                     <span className="text-[11px] font-normal text-muted-foreground">
-                        {groupHint(data)}
+                        {concreteHint(
+                            data.group.items.length,
+                            data.group.estimate !== null,
+                        )}
                     </span>
                 </button>
             );
@@ -201,52 +232,90 @@ function RowHeader({
     }
 }
 
+/** A section's heading across the table: "INCOME", "EXPENSES your main categories". */
+export function SectionHeading({
+    name,
+    hint,
+    colSpan,
+}: {
+    name: string;
+    hint: string;
+    colSpan: number;
+}) {
+    return (
+        <tr>
+            <th
+                scope="colgroup"
+                colSpan={colSpan}
+                className="border-t px-4 pt-4 pb-1.5 text-left text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+            >
+                <span
+                    className={cn(
+                        STICKY,
+                        'flex items-baseline gap-2 bg-transparent',
+                    )}
+                >
+                    {name}
+                    {hint && (
+                        <span className="font-normal tracking-normal normal-case">
+                            {hint}
+                        </span>
+                    )}
+                </span>
+            </th>
+        </tr>
+    );
+}
+
 function FullWidthRow({ row, colSpan }: { row: PlanRow; colSpan: number }) {
     if (row.type === 'section') {
-        const { name, hint } = sectionLabel(row.section);
-
         return (
-            <tr>
-                <th
-                    scope="colgroup"
-                    colSpan={colSpan}
-                    className="border-t px-4 pt-4 pb-1.5 text-left text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
-                >
-                    <span
-                        className={cn(
-                            STICKY,
-                            'flex items-baseline gap-2 bg-transparent',
-                        )}
-                    >
-                        {name}
-                        {hint && (
-                            <span className="font-normal tracking-normal normal-case">
-                                {hint}
-                            </span>
-                        )}
-                    </span>
-                </th>
-            </tr>
+            <SectionHeading {...sectionLabel(row.section)} colSpan={colSpan} />
         );
     }
 
     if (row.type === 'add') {
         return (
-            <tr>
-                <td colSpan={colSpan} className="px-4 pb-1.5 pl-10">
-                    <AddLineButton row={row} />
-                </td>
-            </tr>
+            <AddLineRow
+                section={row.section}
+                group={row.group}
+                colSpan={colSpan}
+            />
         );
     }
 
     return null;
 }
 
-function AddLineButton({ row }: { row: Extract<PlanRow, { type: 'add' }> }) {
+/** "+ Add something concrete in Home", under a category's lines. */
+export function AddLineRow({
+    section,
+    group,
+    colSpan,
+}: {
+    section: 'income' | 'expenses';
+    group: Pick<ForecastGroup, 'name' | 'categoryId'>;
+    colSpan: number;
+}) {
+    return (
+        <tr>
+            <td colSpan={colSpan} className="px-4 pb-1.5 pl-10">
+                <AddLineButton section={section} group={group} />
+            </td>
+        </tr>
+    );
+}
+
+function AddLineButton({
+    section,
+    group,
+}: {
+    section: 'income' | 'expenses';
+    group: Pick<ForecastGroup, 'name' | 'categoryId'>;
+}) {
     const editor = useForecastEditor();
     const label = __('+ Add something concrete in :group', {
-        group: groupName(row.group.name),
+        group: groupName(group.name),
     });
 
     if (editor === null) {
@@ -261,8 +330,8 @@ function AddLineButton({ row }: { row: Extract<PlanRow, { type: 'add' }> }) {
                 editor.open({
                     kind: 'add',
                     prefill: {
-                        type: row.section === 'income' ? 'income' : 'expense',
-                        categoryId: row.group.categoryId,
+                        type: section === 'income' ? 'income' : 'expense',
+                        categoryId: group.categoryId,
                     },
                 })
             }
@@ -433,14 +502,37 @@ function MonthCell({
     }
 
     return (
+        <EditableCell
+            label={`${rowLabel(row)} · ${monthLongName(column.month, context.locale)}`}
+            onOpen={() => editor.open(target)}
+            testId={`forecast-cell-${row.id}-${column.month}`}
+        >
+            {content}
+        </EditableCell>
+    );
+}
+
+/** A cell whose figure can be changed: a button that opens its sheet. */
+export function EditableCell({
+    label,
+    onOpen,
+    testId,
+    children,
+}: {
+    label: string;
+    onOpen: () => void;
+    testId: string;
+    children: ReactNode;
+}) {
+    return (
         <button
             type="button"
             className="flex w-full rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            aria-label={`${rowLabel(row)} · ${monthLongName(column.month, context.locale)}`}
-            onClick={() => editor.open(target)}
-            data-test={`forecast-cell-${row.id}-${column.month}`}
+            aria-label={label}
+            onClick={onOpen}
+            data-test={testId}
         >
-            {content}
+            {children}
         </button>
     );
 }
@@ -513,140 +605,199 @@ export function ForecastPlanTable({
 
     return (
         <ForecastTableContext.Provider value={forecast}>
-            <Card className="gap-0 py-0" data-test="forecast-plan">
-                <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
-                    <div className="flex flex-col gap-0.5">
-                        <CardTitle>{__('Your plan')}</CardTitle>
-                        <CardDescription>
-                            {__(
-                                'By your categories. Open one to see what is concrete and what is estimated; tap a figure to change it.',
-                            )}
-                        </CardDescription>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                                setExpanded(
-                                    allExpanded
-                                        ? {}
-                                        : Object.fromEntries(
-                                              groupIds.map((id) => [id, true]),
-                                          ),
-                                )
+            <PlanTableCard
+                title={__('Your plan')}
+                description={__(
+                    'By your categories. Open one to see what is concrete and what is estimated; tap a figure to change it.',
+                )}
+                allExpanded={allExpanded}
+                headerAction={headerAction}
+                onToggleAll={() =>
+                    setExpanded(
+                        allExpanded
+                            ? {}
+                            : Object.fromEntries(
+                                  groupIds.map((id) => [id, true]),
+                              ),
+                    )
+                }
+                columns={forecast.months.map((column) => (
+                    <ColumnHeader
+                        key={column.month}
+                        column={column}
+                        selected={column.month === selectedMonth}
+                        context={context}
+                    />
+                ))}
+            >
+                {table.getRowModel().rows.map((row) => {
+                    const data = row.original;
+
+                    if (data.type === 'section' || data.type === 'add') {
+                        return (
+                            <FullWidthRow
+                                key={row.id}
+                                row={data}
+                                colSpan={colSpan}
+                            />
+                        );
+                    }
+
+                    const isChild =
+                        row.depth > 0 ||
+                        data.type === 'suggestion' ||
+                        (data.type === 'line' && data.line.kind === 'transfer');
+
+                    return (
+                        <PlanRowShell
+                            key={row.id}
+                            id={row.id}
+                            look={
+                                data.type === 'summary'
+                                    ? 'summary'
+                                    : data.type === 'group'
+                                      ? 'group'
+                                      : isChild
+                                        ? 'child'
+                                        : 'plain'
                             }
-                            data-test="forecast-toggle-all"
-                        >
-                            {allExpanded
-                                ? __('Collapse all')
-                                : __('Expand all')}
-                        </Button>
-                        {headerAction}
-                    </div>
-                </CardHeader>
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] border-collapse text-[13px]">
-                        <thead>
-                            <tr className="border-b">
-                                <th
-                                    scope="col"
-                                    className={cn(
-                                        STICKY,
-                                        'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
-                                    )}
-                                >
-                                    {__('Item')}
-                                </th>
-                                {forecast.months.map((column) => (
-                                    <ColumnHeader
-                                        key={column.month}
-                                        column={column}
-                                        selected={
-                                            column.month === selectedMonth
-                                        }
-                                        context={context}
-                                    />
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {table.getRowModel().rows.map((row) => {
-                                const data = row.original;
-
-                                if (
-                                    data.type === 'section' ||
-                                    data.type === 'add'
-                                ) {
-                                    return (
-                                        <FullWidthRow
-                                            key={row.id}
-                                            row={data}
-                                            colSpan={colSpan}
-                                        />
-                                    );
-                                }
-
-                                const isSummary = data.type === 'summary';
-                                const isChild =
-                                    row.depth > 0 ||
-                                    data.type === 'suggestion' ||
-                                    (data.type === 'line' &&
-                                        data.line.kind === 'transfer');
-
-                                return (
-                                    <tr
-                                        key={row.id}
-                                        className={cn(
-                                            data.type === 'group' && 'border-t',
-                                            isSummary && 'border-t bg-muted/50',
-                                        )}
-                                        data-test={`forecast-row-${row.id}`}
-                                    >
-                                        <th
-                                            scope="row"
-                                            className={cn(
-                                                STICKY,
-                                                'py-1 pr-4 text-left font-normal',
-                                                isChild ? 'pl-10' : 'pl-3',
-                                                isSummary &&
-                                                    'bg-muted pl-4 font-medium',
-                                            )}
-                                        >
-                                            <RowHeader
-                                                row={row}
-                                                currencyCode={
-                                                    forecast.currencyCode
-                                                }
-                                            />
-                                        </th>
-                                        {forecast.months.map((column) => (
-                                            <td
-                                                key={column.month}
-                                                className={cn(
-                                                    'p-0.5',
-                                                    column.status ===
-                                                        'current' &&
-                                                        'bg-muted/30',
-                                                    column.month ===
-                                                        selectedMonth &&
-                                                        'bg-muted',
-                                                )}
-                                            >
-                                                <MonthCell
-                                                    row={data}
-                                                    column={column}
-                                                    context={context}
-                                                />
-                                            </td>
-                                        ))}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
+                            header={
+                                <RowHeader
+                                    row={row}
+                                    currencyCode={forecast.currencyCode}
+                                />
+                            }
+                            months={forecast.months}
+                            selectedMonth={selectedMonth}
+                            cell={(column) => (
+                                <MonthCell
+                                    row={data}
+                                    column={column}
+                                    context={context}
+                                />
+                            )}
+                        />
+                    );
+                })}
+            </PlanTableCard>
         </ForecastTableContext.Provider>
+    );
+}
+
+/**
+ * The plan's card: its title, "Expand all", and the table with the first
+ * column held in place while the months scroll.
+ */
+export function PlanTableCard({
+    title,
+    description,
+    allExpanded,
+    onToggleAll,
+    headerAction,
+    columns,
+    children,
+}: {
+    title: string;
+    description: string;
+    allExpanded: boolean;
+    onToggleAll: () => void;
+    /** Next to "Expand all": the link to the review, when there is something new. */
+    headerAction?: ReactNode;
+    /** The month headings. */
+    columns: ReactNode;
+    children: ReactNode;
+}) {
+    return (
+        <Card className="gap-0 py-0" data-test="forecast-plan">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 border-b px-4 py-3.5">
+                <div className="flex flex-col gap-0.5">
+                    <CardTitle>{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onToggleAll}
+                        data-test="forecast-toggle-all"
+                    >
+                        {allExpanded ? __('Collapse all') : __('Expand all')}
+                    </Button>
+                    {headerAction}
+                </div>
+            </CardHeader>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-[13px]">
+                    <thead>
+                        <tr className="border-b">
+                            <th
+                                scope="col"
+                                className={cn(
+                                    STICKY,
+                                    'min-w-[250px] px-4 py-2.5 text-left font-medium text-muted-foreground',
+                                )}
+                            >
+                                {__('Item')}
+                            </th>
+                            {columns}
+                        </tr>
+                    </thead>
+                    <tbody>{children}</tbody>
+                </table>
+            </div>
+        </Card>
+    );
+}
+
+/** A row of the plan with a figure per month: a category, a line or a summary. */
+export function PlanRowShell({
+    id,
+    look,
+    header,
+    months,
+    selectedMonth,
+    cell,
+}: {
+    id: string;
+    look: 'group' | 'child' | 'summary' | 'plain';
+    header: ReactNode;
+    months: ForecastMonthColumn[];
+    selectedMonth: string | null;
+    cell: (column: ForecastMonthColumn) => ReactNode;
+}) {
+    const isSummary = look === 'summary';
+
+    return (
+        <tr
+            className={cn(
+                look === 'group' && 'border-t',
+                isSummary && 'border-t bg-muted/50',
+            )}
+            data-test={`forecast-row-${id}`}
+        >
+            <th
+                scope="row"
+                className={cn(
+                    STICKY,
+                    'py-1 pr-4 text-left font-normal',
+                    look === 'child' ? 'pl-10' : 'pl-3',
+                    isSummary && 'bg-muted pl-4 font-medium',
+                )}
+            >
+                {header}
+            </th>
+            {months.map((column) => (
+                <td
+                    key={column.month}
+                    className={cn(
+                        'p-0.5',
+                        column.status === 'current' && 'bg-muted/30',
+                        column.month === selectedMonth && 'bg-muted',
+                    )}
+                >
+                    {cell(column)}
+                </td>
+            ))}
+        </tr>
     );
 }

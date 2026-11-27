@@ -1,5 +1,5 @@
 import { type ProjectedMonth } from '@/lib/forecast/types';
-import { type ForecastData } from '@/types/forecast';
+import { type ForecastAllData, type ForecastData } from '@/types/forecast';
 
 export type ChartMonthStatus = 'past' | 'current' | 'future' | 'locked';
 
@@ -35,7 +35,9 @@ function projectedPoint(
  * happened so far plus what is still to come), the projected months and,
  * without Pro, the locked ones, which carry no figure at all.
  */
-export function buildChartSeries(forecast: ForecastData): ForecastChartPoint[] {
+export function buildChartSeries(
+    forecast: ForecastData | ForecastAllData,
+): ForecastChartPoint[] {
     const [current, ...future] = forecast.projection;
     const today = forecast.past[forecast.past.length - 1];
 

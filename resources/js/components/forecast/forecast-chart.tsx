@@ -9,6 +9,7 @@ import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { chartRoleColors } from '@/lib/chart-colors';
+import { shortAccountsByMonth } from '@/lib/forecast/all-accounts';
 import {
     buildChartSeries,
     type ForecastChartPoint,
@@ -20,7 +21,7 @@ import {
     monthShortLabel,
 } from '@/lib/forecast/format';
 import { cn } from '@/lib/utils';
-import { type ForecastData } from '@/types/forecast';
+import { type ForecastAllData, type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
 import {
@@ -39,6 +40,8 @@ const INCOME = chartRoleColors.cashflowIncomeColor;
 const EXPENSE = chartRoleColors.cashflowExpenseColor;
 const CLOSE = chartRoleColors.accountMainLineColor;
 
+const BALANCE_AXIS = 'balance';
+
 const chartConfig = {
     income: { label: 'Income', color: INCOME },
     expenses: { label: 'Expenses', color: EXPENSE },
@@ -46,7 +49,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 interface ForecastChartProps {
-    forecast: ForecastData;
+    forecast: ForecastData | ForecastAllData;
     selectedMonth: string | null;
     onSelectMonth: (month: string) => void;
 }
@@ -97,7 +100,7 @@ function Hatch({ id, color }: { id: string; color: string }) {
     );
 }
 
-function Legend() {
+function Legend({ total }: { total: boolean }) {
     return (
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
@@ -116,8 +119,14 @@ function Legend() {
             </span>
             <span className="flex items-center gap-1.5">
                 <span className="h-0.5 w-4" style={{ background: CLOSE }} />
-                {__('Closing balance')}
+                {total ? __('Total balance') : __('Closing balance')}
             </span>
+            {total && (
+                <span className="flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-destructive" />
+                    {__('An account with a warning')}
+                </span>
+            )}
             <span className="flex items-center gap-1.5">
                 <span
                     className="h-2.5 w-4 opacity-20"
@@ -140,10 +149,77 @@ function Legend() {
 }
 
 /**
+ * What a month's label says under its bars: the lowest balance of the
+ * account or, in the "All accounts" view, how many accounts run short.
+ */
+function MonthNote({
+    point,
+    forecast,
+    shortAccounts,
+}: {
+    point: ForecastChartPoint;
+    forecast: ForecastData | ForecastAllData;
+    shortAccounts: Record<string, number> | null;
+}) {
+    const { formatAmountNumber } = useFormatAmount();
+    const base = 'hidden text-[10px] tabular-nums sm:inline';
+
+    if (shortAccounts !== null) {
+        const count = shortAccounts[point.month] ?? 0;
+
+        return (
+            <span
+                className={cn(
+                    base,
+                    point.status === 'locked'
+                        ? 'text-muted-foreground'
+                        : 'font-semibold text-destructive',
+                )}
+            >
+                {point.status === 'locked'
+                    ? __('Pro')
+                    : count === 0
+                      ? '\u00a0'
+                      : count === 1
+                        ? __('● 1 account')
+                        : __('● :count accounts', { count })}
+            </span>
+        );
+    }
+
+    const threshold = forecast.account?.alertThreshold ?? null;
+
+    return (
+        <span
+            className={cn(
+                base,
+                point.min === null
+                    ? 'text-muted-foreground'
+                    : minTone(point.min, threshold),
+            )}
+        >
+            {point.min === null
+                ? point.status === 'locked'
+                    ? __('Pro')
+                    : '—'
+                : __('min. :amount', {
+                      amount: formatAmountNumber(
+                          point.min,
+                          forecast.currencyCode,
+                          { fractionDigits: 0 },
+                      ),
+                  })}
+        </span>
+    );
+}
+
+/**
  * Income and expenses month by month, with the closing balance and its
  * likely range: the real months first, then the forecast, hatched. Picking a
  * month (on the chart or on its label) selects its column in the plan.
- * Without Pro, the locked months are drawn as grey placeholders.
+ * Without Pro, the locked months are drawn as grey placeholders. In the
+ * "All accounts" view the line is the total, and a red dot marks the months
+ * an account runs short.
  */
 export function ForecastChart({
     forecast,
@@ -151,8 +227,14 @@ export function ForecastChart({
     onSelectMonth,
 }: ForecastChartProps) {
     const locale = useLocale();
-    const { formatAmountNumber } = useFormatAmount();
+    const total = forecast.scope === 'all';
+    const balanceAxis = total ? BALANCE_AXIS : 0;
     const points = useMemo(() => buildChartSeries(forecast), [forecast]);
+    const shortAccounts = useMemo(
+        () =>
+            forecast.scope === 'all' ? shortAccountsByMonth(forecast) : null,
+        [forecast],
+    );
     const placeholder = useMemo(
         () => Math.max(0, ...points.map((point) => point.income ?? 0)) * 0.5,
         [points],
@@ -170,12 +252,16 @@ export function ForecastChart({
         <Card className="gap-4" data-test="forecast-chart">
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-col gap-0.5">
-                    <CardTitle>{__('Income, expenses and balance')}</CardTitle>
+                    <CardTitle>
+                        {total
+                            ? __('Income, expenses and total balance')
+                            : __('Income, expenses and balance')}
+                    </CardTitle>
                     <CardDescription>
                         {__('Pick a month to see it in the plan')}
                     </CardDescription>
                 </div>
-                <Legend />
+                <Legend total={total} />
             </CardHeader>
             <CardContent className="flex flex-col">
                 <svg
@@ -248,7 +334,16 @@ export function ForecastChart({
                                 }}
                             />
                         )}
+                        {total && (
+                            /* The total dwarfs a month's flows: its line gets an axis of its own, as in the design. */
+                            <YAxis
+                                yAxisId={BALANCE_AXIS}
+                                hide
+                                domain={['dataMin', 'dataMax']}
+                            />
+                        )}
                         <Area
+                            yAxisId={balanceAxis}
                             dataKey="band"
                             stroke="none"
                             fill={CLOSE}
@@ -283,6 +378,7 @@ export function ForecastChart({
                             ))}
                         </Bar>
                         <Line
+                            yAxisId={balanceAxis}
                             dataKey="close"
                             stroke={CLOSE}
                             strokeWidth={2.5}
@@ -327,32 +423,11 @@ export function ForecastChart({
                                 >
                                     {label}
                                 </span>
-                                <span
-                                    className={cn(
-                                        'hidden text-[10px] tabular-nums sm:inline',
-                                        point.min === null
-                                            ? 'text-muted-foreground'
-                                            : minTone(
-                                                  point.min,
-                                                  forecast.account
-                                                      .alertThreshold,
-                                              ),
-                                    )}
-                                >
-                                    {point.min === null
-                                        ? point.status === 'locked'
-                                            ? __('Pro')
-                                            : '—'
-                                        : __('min. :amount', {
-                                              amount: formatAmountNumber(
-                                                  point.min,
-                                                  forecast.currencyCode,
-                                                  {
-                                                      fractionDigits: 0,
-                                                  },
-                                              ),
-                                          })}
-                                </span>
+                                <MonthNote
+                                    point={point}
+                                    forecast={forecast}
+                                    shortAccounts={shortAccounts}
+                                />
                             </button>
                         );
                     })}

@@ -22,7 +22,7 @@ interface ForecastAlertsProps {
 }
 
 /** "A, B and C", in the reader's language. */
-function listOf(items: string[], locale: string): string {
+export function listOf(items: string[], locale: string): string {
     return new Intl.ListFormat(locale, {
         style: 'long',
         type: 'conjunction',
@@ -39,7 +39,11 @@ function lockedTitle(count: number): string {
         : __('You have :count warnings further ahead', { count });
 }
 
-function FreePlanBanner({ lockedAlertCount }: { lockedAlertCount: number }) {
+export function FreePlanBanner({
+    lockedAlertCount,
+}: {
+    lockedAlertCount: number;
+}) {
     const [open, setOpen] = useState(false);
 
     return (

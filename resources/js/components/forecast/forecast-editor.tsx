@@ -7,9 +7,11 @@ import {
 import { ForecastEstimateSheet } from '@/components/forecast/forecast-estimate-sheet';
 import { ForecastLineSheet } from '@/components/forecast/forecast-line-sheet';
 import { useForecastSave } from '@/hooks/use-forecast-save';
+import { accountSheetForecast } from '@/lib/forecast/all-accounts';
 import { editedDefinitions, withLine } from '@/lib/forecast/edits';
 import { type ProjectionInput } from '@/lib/forecast/types';
 import {
+    type ForecastAllData,
     type ForecastData,
     type ForecastGroup,
     type ForecastLine,
@@ -18,7 +20,13 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 export type ForecastEditTarget =
     | { kind: 'line'; line: ForecastLine; month: string }
-    | { kind: 'estimate'; group: ForecastGroup; month: string }
+    | {
+          kind: 'estimate';
+          group: ForecastGroup;
+          month: string;
+          /** The account of the estimated rest, out of the "All accounts" view. */
+          accountId?: string;
+      }
     | { kind: 'add'; prefill?: AddPrefill }
     | { kind: 'account' };
 
@@ -41,23 +49,45 @@ export interface ForecastSheetProps {
     onClose: () => void;
 }
 
+/** The account an edit is about, when the target names one. */
+function targetAccountId(target: ForecastEditTarget): string | undefined {
+    switch (target.kind) {
+        case 'line':
+            return target.line.accountId;
+        case 'estimate':
+            return target.accountId;
+        case 'add':
+            return target.prefill?.accountId;
+        default:
+            return undefined;
+    }
+}
+
 /**
  * Holds which edit sheet of the forecast is open (a line, an estimated
  * rest, a new line or the account's settings) and lets the table, the
- * warnings and the figures open them.
+ * warnings and the figures open them. Out of the "All accounts" view, a
+ * sheet edits the account the line, the estimate or the new line is on.
  */
 export function ForecastEditorProvider({
-    forecast,
+    forecast: page,
     projectionInput,
     children,
 }: {
-    forecast: ForecastData;
+    forecast: ForecastData | ForecastAllData;
     projectionInput: ProjectionInput | null;
     children: ReactNode;
 }) {
     const [target, setTarget] = useState<ForecastEditTarget | null>(null);
     const [sequence, setSequence] = useState(0);
     const { save } = useForecastSave();
+    const forecast =
+        page.scope === 'all'
+            ? accountSheetForecast(
+                  page,
+                  target === null ? null : targetAccountId(target),
+              )
+            : page;
 
     const editor: ForecastEditor | null =
         projectionInput === null
