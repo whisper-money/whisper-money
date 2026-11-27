@@ -127,6 +127,7 @@ it('lowers next month’s category estimate by the charge when dropped, and leav
     $this->actingAs($this->user)->get(route('forecast.index'))->assertInertia(fn (AssertableInertia $page) => $page
         ->loadDeferredProps('recurring-charges', fn (AssertableInertia $reload) => $reload
             ->where('recurringCharges.charges.2.drop.month', '2026-12')
+            ->where('recurringCharges.charges.2.drop.reduction', 1599)
             ->where('recurringCharges.charges.1.drop', null)));
 });
 
@@ -179,6 +180,52 @@ it('keeps the adjustment the drops made until the last of them is undone', funct
     $this->actingAs($this->user)->delete(route('forecast.recurring-charges.drops.destroy', ForecastRecurringDrop::query()->sole()));
 
     expect(ForecastEstimateAdjustment::query()->count())->toBe(0);
+});
+
+it('leaves a figure the user set by hand since the drop alone on undo', function () {
+    $netflix = recurringChargeNamed($this->user, 'Netflix');
+    $this->actingAs($this->user)->post(route('forecast.recurring-charges.drops.store'), ['key' => $netflix->key]);
+    ForecastEstimateAdjustment::query()->sole()->update(['amount' => 3000]);
+
+    $this->actingAs($this->user)->delete(route('forecast.recurring-charges.drops.destroy', ForecastRecurringDrop::query()->sole()));
+
+    expect(ForecastRecurringDrop::query()->count())->toBe(0)
+        ->and(ForecastEstimateAdjustment::query()->sole()->amount)->toBe(3000);
+});
+
+it('refuses to drop a charge on a category set for next month only', function () {
+    ForecastEstimateAdjustment::factory()->create([
+        'user_id' => $this->user->id, 'account_id' => $this->checking->id, 'category_id' => $this->leisure->id,
+        'starts_on' => '2026-12-01', 'ends_on' => '2026-12-31', 'amount' => 5000,
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('forecast.recurring-charges.drops.store'), ['key' => recurringChargeNamed($this->user, 'Netflix')->key])
+        ->assertSessionHasErrors('key');
+
+    expect(ForecastRecurringDrop::query()->count())->toBe(0)
+        ->and(ForecastEstimateAdjustment::query()->sole()->amount)->toBe(5000);
+});
+
+it('stops keeping a charge once it is dropped, and does not keep a dropped one', function () {
+    $netflix = recurringChargeNamed($this->user, 'Netflix');
+    $this->actingAs($this->user)->post(route('forecast.recurring-charges.keeps.store'), ['key' => $netflix->key]);
+    $this->actingAs($this->user)->post(route('forecast.recurring-charges.drops.store'), ['key' => $netflix->key]);
+
+    expect(ForecastDismissal::query()->count())->toBe(0);
+
+    $this->actingAs($this->user)->post(route('forecast.recurring-charges.keeps.store'), ['key' => $netflix->key]);
+
+    expect(ForecastDismissal::query()->count())->toBe(0);
+});
+
+it('lets go of a kept charge that no longer repeats', function () {
+    $key = RecurringCharge::keyOf($this->checking->id, 'gone');
+    ForecastDismissal::factory()->create(['user_id' => $this->user->id, 'fingerprint' => $key, 'kind' => ForecastSuggestionKind::Kept]);
+
+    $this->actingAs($this->user)->delete(route('forecast.recurring-charges.keeps.destroy'), ['key' => $key])->assertRedirect();
+
+    expect(ForecastDismissal::query()->count())->toBe(0);
 });
 
 it('drops a charge only once', function () {

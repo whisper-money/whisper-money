@@ -3,12 +3,15 @@
 namespace App\Services\Forecast;
 
 use App\Enums\CategoryType;
+use App\Enums\ForecastSuggestionKind;
 use App\Models\Category;
+use App\Models\ForecastDismissal;
 use App\Models\ForecastEstimateAdjustment;
 use App\Models\ForecastRecurringDrop;
 use App\Models\User;
 use App\Services\Forecast\Data\CategoryEstimate;
 use App\Services\Forecast\Data\RecurringCharge;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,9 +23,13 @@ use Illuminate\Validation\ValidationException;
  * charge has none). It goes through an estimate adjustment "from here on",
  * the same one the user makes by hand: an open-ended one already starting
  * next month on that row is lowered, otherwise one is made at what the row
- * is planned at that month, less the charge. Each drop remembers what it
- * took off, so Undo gives back exactly that, and deletes the adjustment
- * once no drop that made it is left.
+ * is planned at that month, less the charge. Dropping a charge stops
+ * keeping it.
+ *
+ * Each drop remembers what it took off, so Undo gives back exactly that,
+ * and deletes the adjustment once no drop that made it is left. When the
+ * user changed the adjustment by hand since, their figure stands: Undo
+ * only forgets the drop.
  */
 class RecurringChargeDrops
 {
@@ -51,58 +58,39 @@ class RecurringChargeDrops
 
     public function drop(User $user, string $spaceId, RecurringCharge $charge): ForecastRecurringDrop
     {
+        if (! $this->canDrop($charge, $this->expenseCategoryIds($user))) {
+            throw ValidationException::withMessages(['key' => __('This charge is not in an expense category, so the forecast does not count it as spend.')]);
+        }
+
+        $existing = fn (): ?ForecastRecurringDrop => ForecastRecurringDrop::query()->where('user_id', $user->id)->forSpace($spaceId)->where('charge_key', $charge->key)->first();
+        $drop = $existing();
+
+        if ($drop !== null) {
+            return $drop;
+        }
+
         $month = ForecastCalendar::monthStart($user->localToday()->toDateString(), 1);
         [$categoryId, $planned] = $this->row($user, $spaceId, $charge, ForecastCalendar::monthKey($month));
 
-        return DB::transaction(function () use ($user, $spaceId, $charge, $month, $categoryId, $planned): ForecastRecurringDrop {
-            $existing = ForecastRecurringDrop::query()->where('user_id', $user->id)->forSpace($spaceId)->where('charge_key', $charge->key)->first();
-
-            if ($existing !== null) {
-                return $existing;
-            }
-
-            $adjustment = ForecastEstimateAdjustment::query()
-                ->where(['user_id' => $user->id, 'space_id' => $spaceId, 'account_id' => $charge->accountId, 'category_id' => $categoryId])
-                ->whereDate('starts_on', $month)
-                ->first();
-
-            if ($adjustment !== null && $adjustment->ends_on !== null) {
-                throw ValidationException::withMessages(['key' => __('You set this category for next month only. Change its estimate instead.')]);
-            }
-
-            $created = $adjustment === null;
-            $adjustment ??= new ForecastEstimateAdjustment([
-                'user_id' => $user->id,
-                'space_id' => $spaceId,
-                'account_id' => $charge->accountId,
-                'category_id' => $categoryId,
-                'starts_on' => $month,
-                'amount' => $planned,
-            ]);
-            $lowered = max($adjustment->amount - $charge->monthly, 0);
-            $reduction = $adjustment->amount - $lowered;
-            $adjustment->amount = $lowered;
-            $adjustment->save();
-
-            return ForecastRecurringDrop::query()->create([
-                'user_id' => $user->id,
-                'space_id' => $spaceId,
-                'forecast_estimate_adjustment_id' => $adjustment->id,
-                'charge_key' => $charge->key,
-                'reduction' => $reduction,
-                'created_adjustment' => $created,
-            ]);
-        });
+        try {
+            return DB::transaction(fn (): ForecastRecurringDrop => $this->lower($user, $spaceId, $charge, $month, $categoryId, $planned));
+        } catch (UniqueConstraintViolationException $exception) {
+            return $existing() ?? throw $exception;
+        }
     }
 
     public function undo(ForecastRecurringDrop $drop): void
     {
         DB::transaction(function () use ($drop): void {
-            $adjustment = $drop->adjustment;
-            $others = ForecastRecurringDrop::query()
-                ->where('forecast_estimate_adjustment_id', $adjustment->id)
-                ->whereKeyNot($drop->id)
-                ->get();
+            $adjustment = ForecastEstimateAdjustment::query()->lockForUpdate()->findOrFail($drop->forecast_estimate_adjustment_id);
+            $others = ForecastRecurringDrop::query()->where('forecast_estimate_adjustment_id', $adjustment->id)->whereKeyNot($drop->id)->get();
+            $untouched = $adjustment->ends_on === null && $adjustment->amount === $drop->adjustment_amount;
+
+            if (! $untouched) {
+                $drop->delete();
+
+                return;
+            }
 
             if ($others->isEmpty() && $drop->created_adjustment) {
                 $adjustment->delete();
@@ -111,13 +99,56 @@ class RecurringChargeDrops
             }
 
             $adjustment->increment('amount', $drop->reduction);
-
-            if ($drop->created_adjustment) {
-                $others->first()?->update(['created_adjustment' => true]);
-            }
-
+            ForecastRecurringDrop::query()->whereKey($others->modelKeys())->update([
+                'adjustment_amount' => $adjustment->amount,
+                ...($drop->created_adjustment ? ['created_adjustment' => true] : []),
+            ]);
             $drop->delete();
         });
+    }
+
+    /**
+     * Lowers (or makes) the adjustment of the row from `$month` on, and
+     * records the drop.
+     */
+    private function lower(User $user, string $spaceId, RecurringCharge $charge, string $month, ?string $categoryId, int $planned): ForecastRecurringDrop
+    {
+        $adjustment = ForecastEstimateAdjustment::query()
+            ->where(['user_id' => $user->id, 'space_id' => $spaceId, 'account_id' => $charge->accountId, 'category_id' => $categoryId])
+            ->whereDate('starts_on', $month)
+            ->lockForUpdate()
+            ->first();
+
+        if ($adjustment?->ends_on !== null) {
+            throw ValidationException::withMessages(['key' => __('You set this category for next month only. Change its estimate instead.')]);
+        }
+
+        $created = $adjustment === null;
+        $adjustment ??= new ForecastEstimateAdjustment([
+            'user_id' => $user->id,
+            'space_id' => $spaceId,
+            'account_id' => $charge->accountId,
+            'category_id' => $categoryId,
+            'starts_on' => $month,
+            'amount' => $planned,
+        ]);
+        $lowered = max($adjustment->amount - $charge->monthly, 0);
+        $reduction = $adjustment->amount - $lowered;
+        $adjustment->amount = $lowered;
+        $adjustment->save();
+
+        ForecastRecurringDrop::query()->where('forecast_estimate_adjustment_id', $adjustment->id)->update(['adjustment_amount' => $lowered]);
+        ForecastDismissal::query()->where(['user_id' => $user->id, 'space_id' => $spaceId, 'fingerprint' => $charge->key, 'kind' => ForecastSuggestionKind::Kept])->delete();
+
+        return ForecastRecurringDrop::query()->create([
+            'user_id' => $user->id,
+            'space_id' => $spaceId,
+            'forecast_estimate_adjustment_id' => $adjustment->id,
+            'charge_key' => $charge->key,
+            'reduction' => $reduction,
+            'adjustment_amount' => $lowered,
+            'created_adjustment' => $created,
+        ]);
     }
 
     /**
@@ -128,19 +159,11 @@ class RecurringChargeDrops
      */
     private function row(User $user, string $spaceId, RecurringCharge $charge, string $month): array
     {
-        $estimates = array_values(array_filter(
-            $this->plans->build($user, $spaceId, [$charge->accountId], 2)->categoryEstimates,
-            fn (CategoryEstimate $estimate): bool => ! $estimate->isIncome() && $estimate->month === $month && $estimate->accountId === $charge->accountId,
-        ));
+        $estimates = collect($this->plans->build($user, $spaceId, [$charge->accountId], 2)->categoryEstimates)
+            ->filter(fn (CategoryEstimate $estimate): bool => ! $estimate->isIncome() && $estimate->month === $month && $estimate->accountId === $charge->accountId)
+            ->keyBy(fn (CategoryEstimate $estimate): string => (string) $estimate->categoryId);
+        $estimate = $estimates->get((string) $charge->categoryId) ?? $estimates->get('');
 
-        foreach ([$charge->categoryId, null] as $categoryId) {
-            foreach ($estimates as $estimate) {
-                if ($estimate->categoryId === $categoryId) {
-                    return [$categoryId, (int) $estimate->planned];
-                }
-            }
-        }
-
-        return [$charge->categoryId, 0];
+        return $estimate === null ? [$charge->categoryId, 0] : [$estimate->categoryId, (int) $estimate->planned];
     }
 }

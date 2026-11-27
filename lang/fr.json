@@ -3363,7 +3363,6 @@
     "This status has no comment: the current one will be removed.": "Cet état n'a pas de commentaire : l'actuel sera supprimé.",
     "What you pay every month": "Ce que vous payez chaque mois",
     "What you pay every month · :amount/month": "Ce que vous payez chaque mois · :amount/mois",
-    "The charges that repeat in your accounts. Drop the ones you are cancelling and the forecast stops counting them from next month.": "Les prélèvements qui reviennent sur vos comptes. Indiquez ceux que vous résiliez et la prévision cesse de les compter à partir du mois prochain.",
     "Nothing repeats yet": "Rien ne se répète encore",
     "When a charge comes back every month, quarter or year, it shows up here.": "Quand un prélèvement revient chaque mois, trimestre ou année, il apparaît ici.",
     "last charged on :date": "dernier prélèvement le :date",
@@ -3374,5 +3373,11 @@
     "Dropped from :month": "Arrêté à partir de :month",
     "See all (:count)": "Tout voir (:count)",
     "You set this category for next month only. Change its estimate instead.": "Vous avez fixé cette catégorie pour le mois prochain seulement. Modifiez plutôt son estimation.",
-    "This charge is not in an expense category, so the forecast does not count it as spend.": "Ce prélèvement n’est pas dans une catégorie de dépense, la prévision ne le compte donc pas comme dépense."
+    "This charge is not in an expense category, so the forecast does not count it as spend.": "Ce prélèvement n’est pas dans une catégorie de dépense, la prévision ne le compte donc pas comme dépense.",
+    "The charges that repeat in your accounts. Mark the ones you are dropping and the forecast stops counting them from next month.": "Les prélèvements qui reviennent sur vos comptes. Indiquez ceux que vous arrêtez et la prévision cesse de les compter à partir du mois prochain.",
+    "Undo for :name": "Annuler pour :name",
+    ":dropped · the forecast only had :amount left": ":dropped · la prévision n’avait plus que :amount",
+    "I’m dropping :name": "J’arrête :name",
+    "Keep :name": "Je garde :name",
+    "≈ :amount a month": "≈ :amount par mois"
 }

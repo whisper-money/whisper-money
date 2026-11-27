@@ -24,6 +24,7 @@ class ForecastRecurringDropFactory extends Factory
             'forecast_estimate_adjustment_id' => fn (array $attributes) => ForecastEstimateAdjustment::factory()->state(['user_id' => $attributes['user_id']]),
             'charge_key' => sha1(fake()->unique()->uuid()),
             'reduction' => fake()->numberBetween(500, 5000),
+            'adjustment_amount' => fake()->numberBetween(0, 50000),
             'created_adjustment' => true,
         ];
     }

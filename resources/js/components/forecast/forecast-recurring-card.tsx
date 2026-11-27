@@ -22,6 +22,7 @@ import {
     EmptyStateTitle,
 } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useForecastSave } from '@/hooks/use-forecast-save';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
 import { monthWithYear } from '@/lib/forecast/format';
@@ -70,77 +71,101 @@ function useLastCharges(
     return charges ?? last;
 }
 
+type RouteDefinition = {
+    url: string;
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete';
+};
+
+/** Sends one of the card's actions. */
+type RunAction = (
+    route: RouteDefinition,
+    data?: Record<string, string>,
+) => void;
+
+/** A state badge and its Undo. */
+function MarkedCharge({
+    charge,
+    label,
+    test,
+    busy,
+    onUndo,
+}: {
+    charge: ForecastRecurringCharge;
+    label: string;
+    test: string;
+    busy: boolean;
+    onUndo: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" data-test={test}>
+                {label}
+            </Badge>
+            <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-0"
+                disabled={busy}
+                onClick={onUndo}
+                aria-label={__('Undo for :name', { name: charge.name })}
+                data-test={`${test}-undo`}
+            >
+                {__('Undo')}
+            </Button>
+        </div>
+    );
+}
+
 /** What the user can do about a charge, or what they already did. */
 function ChargeActions({
     charge,
     busy,
-    onAction,
+    run,
 }: {
     charge: ForecastRecurringCharge;
     busy: boolean;
-    onAction: (run: (onFinish: () => void) => void) => void;
+    run: RunAction;
 }) {
     const locale = useLocale();
-    const options = (onFinish: () => void) => ({
-        preserveScroll: true,
-        onFinish,
-    });
+    const { formatAmount } = useFormatAmount();
+    const key = { key: charge.key };
 
     if (charge.drop !== null) {
-        const dropId = charge.drop.id;
+        const { id, month, reduction } = charge.drop;
+        const dropped = __('Dropped from :month', {
+            month: monthWithYear(month, locale),
+        });
 
         return (
-            <div className="flex items-center gap-2">
-                <Badge variant="secondary" data-test="recurring-dropped">
-                    {__('Dropped from :month', {
-                        month: monthWithYear(charge.drop.month, locale),
-                    })}
-                </Badge>
-                <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto px-0"
-                    disabled={busy}
-                    onClick={() =>
-                        onAction((onFinish) =>
-                            router.delete(
-                                undoDrop(dropId).url,
-                                options(onFinish),
-                            ),
-                        )
-                    }
-                    data-test="recurring-undo-drop"
-                >
-                    {__('Undo')}
-                </Button>
-            </div>
+            <MarkedCharge
+                charge={charge}
+                label={
+                    reduction < charge.monthly
+                        ? __(':dropped · the forecast only had :amount left', {
+                              dropped,
+                              amount: formatAmount(
+                                  reduction,
+                                  charge.currencyCode,
+                              ),
+                          })
+                        : dropped
+                }
+                test="recurring-dropped"
+                busy={busy}
+                onUndo={() => run(undoDrop(id))}
+            />
         );
     }
 
     if (charge.kept) {
         return (
-            <div className="flex items-center gap-2">
-                <Badge variant="outline" data-test="recurring-kept">
-                    {__('Kept')}
-                </Badge>
-                <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto px-0"
-                    disabled={busy}
-                    onClick={() =>
-                        onAction((onFinish) =>
-                            router.delete(undoKeep().url, {
-                                ...options(onFinish),
-                                data: { key: charge.key },
-                            }),
-                        )
-                    }
-                    data-test="recurring-undo-keep"
-                >
-                    {__('Undo')}
-                </Button>
-            </div>
+            <MarkedCharge
+                charge={charge}
+                label={__('Kept')}
+                test="recurring-kept"
+                busy={busy}
+                onUndo={() => run(undoKeep(), key)}
+            />
         );
     }
 
@@ -151,15 +176,10 @@ function ChargeActions({
                     variant="outline"
                     size="sm"
                     disabled={busy}
-                    onClick={() =>
-                        onAction((onFinish) =>
-                            router.post(
-                                drop().url,
-                                { key: charge.key },
-                                options(onFinish),
-                            ),
-                        )
-                    }
+                    onClick={() => run(drop(), key)}
+                    aria-label={__('I’m dropping :name', {
+                        name: charge.name,
+                    })}
                     data-test="recurring-drop"
                 >
                     {__('I’m dropping it')}
@@ -169,15 +189,8 @@ function ChargeActions({
                 variant="ghost"
                 size="sm"
                 disabled={busy}
-                onClick={() =>
-                    onAction((onFinish) =>
-                        router.post(
-                            keep().url,
-                            { key: charge.key },
-                            options(onFinish),
-                        ),
-                    )
-                }
+                onClick={() => run(keep(), key)}
+                aria-label={__('Keep :name', { name: charge.name })}
                 data-test="recurring-keep"
             >
                 {__('Keep')}
@@ -186,14 +199,39 @@ function ChargeActions({
     );
 }
 
+/** "Monthly · Checking · last charged on … · ≈ €192 a year". */
+function chargeDetails(
+    charge: ForecastRecurringCharge,
+    locale: string,
+    formatAmount: (amount: number, currencyCode: string) => string,
+): string {
+    return [
+        frequencyLabel(charge.frequency),
+        charge.frequency === 'monthly'
+            ? null
+            : __('≈ :amount a month', {
+                  amount: formatAmount(charge.monthly, charge.currencyCode),
+              }),
+        charge.accountName,
+        __('last charged on :date', {
+            date: formatDate(charge.lastChargedOn, 'd MMM yyyy', locale),
+        }),
+        __('≈ :amount a year', {
+            amount: formatAmount(charge.yearly, charge.currencyCode),
+        }),
+    ]
+        .filter(Boolean)
+        .join(' · ');
+}
+
 function ChargeRow({
     charge,
     busy,
-    onAction,
+    run,
 }: {
     charge: ForecastRecurringCharge;
     busy: boolean;
-    onAction: (run: (onFinish: () => void) => void) => void;
+    run: RunAction;
 }) {
     const locale = useLocale();
     const { formatAmount } = useFormatAmount();
@@ -213,28 +251,10 @@ function ChargeRow({
                     />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    {[
-                        frequencyLabel(charge.frequency),
-                        charge.accountName,
-                        __('last charged on :date', {
-                            date: formatDate(
-                                charge.lastChargedOn,
-                                'd MMM yyyy',
-                                locale,
-                            ),
-                        }),
-                        __('≈ :amount a year', {
-                            amount: formatAmount(
-                                charge.yearly,
-                                charge.currencyCode,
-                            ),
-                        }),
-                    ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                    {chargeDetails(charge, locale, formatAmount)}
                 </p>
             </div>
-            <ChargeActions charge={charge} busy={busy} onAction={onAction} />
+            <ChargeActions charge={charge} busy={busy} run={run} />
         </li>
     );
 }
@@ -252,7 +272,7 @@ function CardShell({
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>
                     {__(
-                        'The charges that repeat in your accounts. Drop the ones you are cancelling and the forecast stops counting them from next month.',
+                        'The charges that repeat in your accounts. Mark the ones you are dropping and the forecast stops counting them from next month.',
                     )}
                 </CardDescription>
             </CardHeader>
@@ -275,7 +295,9 @@ export function ForecastRecurringCard({
     const data = useLastCharges(recurringCharges);
     const { formatAmount } = useFormatAmount();
     const [expanded, setExpanded] = useState(false);
-    const [busy, setBusy] = useState(false);
+    const { save, processing } = useForecastSave();
+    const [reloading, setReloading] = useState(false);
+    const busy = processing || reloading;
 
     if (data === undefined) {
         return (
@@ -305,10 +327,20 @@ export function ForecastRecurringCard({
     const shown = expanded
         ? data.charges
         : data.charges.slice(0, COLLAPSED_COUNT);
-    const onAction = (run: (onFinish: () => void) => void) => {
-        setBusy(true);
-        run(() => setBusy(false));
-    };
+    // The plan reloads with the save; the card reloads right after it.
+    const run: RunAction = (route, payload = {}) =>
+        save(
+            route,
+            payload,
+            null,
+            () =>
+                router.reload({
+                    only: ['recurringCharges'],
+                    onStart: () => setReloading(true),
+                    onFinish: () => setReloading(false),
+                }),
+            { toastErrors: true },
+        );
 
     return (
         <CardShell title={title}>
@@ -331,7 +363,7 @@ export function ForecastRecurringCard({
                                 key={charge.key}
                                 charge={charge}
                                 busy={busy}
-                                onAction={onAction}
+                                run={run}
                             />
                         ))}
                     </ul>

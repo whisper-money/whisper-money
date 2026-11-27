@@ -31,9 +31,18 @@ class RecurringChargeRequest extends FormRequest
         ];
     }
 
+    public function key(): string
+    {
+        return (string) $this->validated('key');
+    }
+
+    /**
+     * The charge itself, worked out again from the history: a 404 when the
+     * user does not pay it (any more) in the space.
+     */
     public function charge(): RecurringCharge
     {
-        $this->charge ??= app(RecurringCharges::class)->find($this->user(), $this->user()->activeSpace()->id, (string) $this->validated('key'));
+        $this->charge ??= app(RecurringCharges::class)->find($this->user(), $this->user()->activeSpace()->id, $this->key());
 
         abort_if($this->charge === null, 404);
 

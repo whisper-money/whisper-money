@@ -12,8 +12,9 @@ use App\Services\Forecast\Data\RecurringCharge;
 /**
  * The "What you pay every month" card of one space: each recurring charge
  * (see RecurringCharges) with its account, whether the user is dropping it
- * (and from which month) or keeping it, and what they all cost a month,
- * per currency. Dropped and kept charges stay listed.
+ * (from which month, and how much that took off the forecast, which is
+ * less than the charge when its category had less left) or keeping it,
+ * and what they all cost a month, per currency. Dropped and kept charges stay listed.
  */
 class RecurringChargesPresenter
 {
@@ -51,13 +52,26 @@ class RecurringChargesPresenter
                 'yearly' => $charge->yearly,
                 'lastChargedOn' => $charge->lastChargedOn,
                 'canDrop' => $this->drops->canDrop($charge, $expenseCategoryIds),
-                'drop' => $drops->has($charge->key) ? [
-                    'id' => $drops[$charge->key]->id,
-                    'month' => ForecastCalendar::monthKey($drops[$charge->key]->adjustment->starts_on->toDateString()),
-                ] : null,
+                'drop' => $this->dropOf($drops->get($charge->key)),
                 'kept' => $kept->has($charge->key),
             ], $charges),
             'totals' => array_map(fn (string $currency, int $monthly): array => ['currencyCode' => $currency, 'monthly' => $monthly], array_keys($totals), $totals),
+        ];
+    }
+
+    /**
+     * @return array{id: string, month: string, reduction: int}|null
+     */
+    private function dropOf(?ForecastRecurringDrop $drop): ?array
+    {
+        if ($drop === null) {
+            return null;
+        }
+
+        return [
+            'id' => $drop->id,
+            'month' => ForecastCalendar::monthKey($drop->adjustment->starts_on->toDateString()),
+            'reduction' => $drop->reduction,
         ];
     }
 }

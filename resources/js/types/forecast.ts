@@ -395,8 +395,12 @@ export interface ForecastRecurringCharge {
     lastChargedOn: string;
     /** False when its category is not spend the forecast counts. */
     canDrop: boolean;
-    /** Set once the user is dropping it: from which `YYYY-MM` month. */
-    drop: { id: string; month: string } | null;
+    /**
+     * Set once the user is dropping it: from which `YYYY-MM` month, and how
+     * much that took off the forecast a month (less than `monthly` when its
+     * category had less left).
+     */
+    drop: { id: string; month: string; reduction: number } | null;
     kept: boolean;
 }
 
