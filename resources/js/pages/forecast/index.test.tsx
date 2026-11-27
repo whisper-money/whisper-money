@@ -1501,9 +1501,17 @@ describe('the forecast page on a phone', () => {
             )!,
         );
         expect(chip('2027-03')).toHaveAttribute('aria-pressed', 'true');
+
+        // The last closed month only shows its tooltip: the month stays picked.
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-mobile-bar-2026-10"]',
+            )!,
+        );
+        expect(chip('2027-03')).toHaveAttribute('aria-pressed', 'true');
         expect(
-            document.querySelector('[data-test="forecast-mobile-bar-2026-10"]'),
-        ).toBeDisabled();
+            document.querySelector('[data-test="forecast-chart-tooltip"]'),
+        ).toHaveTextContent('Actual');
     });
 
     it('opens a category that holds lines into them and its estimate', () => {
