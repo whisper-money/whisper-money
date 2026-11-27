@@ -1,4 +1,4 @@
-import { store } from '@/actions/App/Http/Controllers/ForecastReviewController';
+import { store } from '@/actions/App/Http/Controllers/Forecast/ForecastReviewController';
 import { ForecastReviewAnnualStep } from '@/components/forecast/forecast-review-annual-step';
 import { ForecastReviewRecurringStep } from '@/components/forecast/forecast-review-recurring-step';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';

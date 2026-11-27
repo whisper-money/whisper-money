@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Forecast;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Forecast\StoreForecastReviewRequest;
 use App\Services\Forecast\ForecastReviewConfirmation;
 use Illuminate\Http\RedirectResponse;
