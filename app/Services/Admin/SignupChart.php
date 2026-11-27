@@ -12,9 +12,9 @@ use Carbon\CarbonImmutable;
  */
 class SignupChart
 {
-    public const DAYS = 30;
+    private const DAYS = 30;
 
-    public const ACTIVE_WINDOW_DAYS = 30;
+    private const ACTIVE_WINDOW_DAYS = 30;
 
     /**
      * Oldest day first, today last; a day with nothing on it is still there.
