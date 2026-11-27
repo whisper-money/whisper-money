@@ -28,9 +28,9 @@ use Illuminate\Database\Eloquent\Collection;
  * each account that only has a balance history (see ForecastBalanceTrends);
  * the income and spend estimates of each parent category; and the usual
  * transfers between the user's accounts (see TransferEstimator), which move
- * money as transfer occurrences. Estimates are worked out over every included account,
- * because a budget is split across them, and only then narrowed to the
- * selection. A transfer counts when either of its accounts is included and
+ * money as transfer occurrences. Estimates are worked out over every
+ * included account, because a budget is split across them, and only then
+ * narrowed to the selection. A transfer counts when either of its accounts is included and
  * selected; the projector moves only the accounts it projects.
  *
  * The forecast page, jobs and MCP tool of the later phases call it; until

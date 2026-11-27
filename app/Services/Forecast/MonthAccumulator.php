@@ -11,9 +11,9 @@ use App\Enums\ForecastEstimateKind;
  * `min` is the lowest end-of-day balance and `close` the last one. `income`
  * and `expenses` leave transfers out; they include the estimated income and
  * spend, which `estimatedIncome` and `estimated` report on their own. `band`
- * is the uncertainty of those estimates alone (concrete lines have none):
- * 40% of the estimated spend plus 10% of the estimated income, not carried
- * over. An account with a balance trend adds the trend's band to `band` on
+ * is the uncertainty of those estimates (concrete lines have none): 40% of
+ * the estimated spend plus 10% of the estimated income, not carried over.
+ * An account with a balance trend adds the trend's band to `band` on
  * each whole month; `pessimisticMin` is the minimum less the estimates' band
  * alone, so the swings of a balance nobody spends from never raise a warning.
  */
