@@ -30,10 +30,24 @@ const mobileLabels: Record<string, Record<string, string>> = {
         transactions: 'Movim.',
         budgets: 'Plan',
     },
+    fr: {
+        dashboard: 'Accueil',
+        cashflow: 'Trésorerie',
+        forecast: 'Prévision',
+        accounts: 'Comptes',
+        transactions: 'Opérations',
+        budgets: 'Plan',
+    },
 };
 
+/**
+ * Looked up by the language subtag, so a regional tag (`es-MX`, `fr-FR`) still
+ * finds its labels; an unknown language falls back to English.
+ */
 function getMobileLabel(key: string, locale: string): string {
-    return (mobileLabels[locale] ?? mobileLabels['en'])[key];
+    const language = locale.split(/[-_]/)[0].toLowerCase();
+
+    return (mobileLabels[language] ?? mobileLabels['en'])[key];
 }
 
 export function getMainNavItems(features: Features, locale: string): NavItem[] {
