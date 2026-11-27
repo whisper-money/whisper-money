@@ -153,7 +153,7 @@ class EstimateCalculator
         $flows = [];
 
         foreach ($transactions as $transaction) {
-            $kind = $this->sideOf($transaction);
+            $kind = self::sideOf($transaction);
 
             if ($kind === null || ! isset($included[$transaction->account_id]) || ($legs[$transaction->id] ?? null)?->isInternal()) {
                 continue;
@@ -174,7 +174,7 @@ class EstimateCalculator
      * Which side a transaction counts on, or null for one on neither (a
      * transfer, savings or investment category).
      */
-    private function sideOf(Transaction $transaction): ?ForecastEstimateKind
+    public static function sideOf(Transaction $transaction): ?ForecastEstimateKind
     {
         if ($transaction->isExpenseSide()) {
             return ForecastEstimateKind::Expense;
