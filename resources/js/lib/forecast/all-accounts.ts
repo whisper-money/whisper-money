@@ -84,10 +84,12 @@ function groupRows(
     ];
 }
 
-/** Whether any account the forecast includes grows by a yearly rate. */
+/** Whether any account the forecast includes grows by a yearly rate or follows a balance trend. */
 export function hasGrowth(forecast: ForecastAllData): boolean {
     return forecast.accountForecasts.some(
-        (account) => (account.annualRateBps ?? 0) > 0,
+        (account) =>
+            (account.annualRateBps ?? 0) > 0 ||
+            (account.trend?.monthly ?? null) !== null,
     );
 }
 

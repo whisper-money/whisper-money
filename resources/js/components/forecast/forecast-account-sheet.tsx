@@ -130,9 +130,15 @@ export function ForecastAccountSheet({
                 <Field
                     label={__('Yearly growth (%)')}
                     htmlFor="forecast-account-rate"
-                    hint={__(
-                        'How much the balance grows each year on its own, such as an index fund.',
-                    )}
+                    hint={
+                        (account.trend?.monthly ?? null) === null
+                            ? __(
+                                  'How much the balance grows each year on its own, such as an index fund.',
+                              )
+                            : __(
+                                  'Ignored while the account follows the trend of its balances.',
+                              )
+                    }
                     error={errors.annual_rate}
                 >
                     <Input

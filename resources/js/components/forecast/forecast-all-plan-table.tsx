@@ -418,8 +418,13 @@ function MonthFigure({
             return growth === 0 ? (
                 EMPTY_CELL
             ) : (
-                <PlanCell className="text-success">
-                    +{number(growth, forecast.currencyCode)}
+                <PlanCell
+                    className={
+                        growth > 0 ? 'text-success' : 'text-muted-foreground'
+                    }
+                >
+                    {growth > 0 ? '+' : ''}
+                    {number(growth, forecast.currencyCode)}
                 </PlanCell>
             );
         }

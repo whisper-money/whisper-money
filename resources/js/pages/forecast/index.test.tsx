@@ -1133,6 +1133,7 @@ describe('the "All accounts" view', () => {
                     base.accountForecasts[0],
                     {
                         ...base.accountForecasts[1],
+                        annualRateBps: null,
                         trend: { monthly: -1500, band: 800, points: 6 },
                     },
                 ],
@@ -1142,6 +1143,7 @@ describe('the "All accounts" view', () => {
         expect(row('account:savings')).toHaveTextContent(
             'Trend of the last 12 months: €-15/month',
         );
+        // The growth row stays for the trend, without a yearly rate to name.
         expect(row('growth')).not.toHaveTextContent('+12% a year');
     });
 
