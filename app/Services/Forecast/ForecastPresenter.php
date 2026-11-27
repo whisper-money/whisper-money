@@ -51,7 +51,7 @@ class ForecastPresenter
     ) {}
 
     /**
-     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account; ALL_ACCOUNTS shows them all together.
+     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account, else one that is not projected only; ALL_ACCOUNTS shows them all together.
      * @return array{forecast: array<string, mixed>, projectionInput: array<string, mixed>|null}
      *
      * @throws NotFoundHttpException When the account is not one the forecast includes.
@@ -274,6 +274,7 @@ class ForecastPresenter
 
         return $included->filter(fn (Account $account): bool => $this->isStrong($alerts[$account->id]))->sortBy(fn (Account $account): int => (int) $alerts[$account->id]['min'])->first()
             ?? $included->sortBy('position')->first(fn (Account $account): bool => $account->type === AccountType::Checking)
+            ?? $included->first(fn (Account $account): bool => ! ForecastAccounts::isProjectionOnly($account->type))
             ?? $included->first();
     }
 

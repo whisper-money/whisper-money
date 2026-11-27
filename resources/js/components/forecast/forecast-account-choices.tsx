@@ -27,26 +27,15 @@ function choiceDescription(choice: ForecastAccountChoice): string {
  */
 export function ForecastAccountChoices({
     choices,
-    onExcluded,
 }: {
     choices: ForecastAccountChoice[];
-    /** Called once an account has been left out. */
-    onExcluded?: (accountId: string) => void;
 }) {
     const id = useId();
     const { save, processing } = useForecastSave();
     const toggle = (choice: ForecastAccountChoice, included: boolean) =>
-        save(
-            update(choice.id),
-            { included },
-            null,
-            () => {
-                if (!included) {
-                    onExcluded?.(choice.id);
-                }
-            },
-            { toastErrors: true },
-        );
+        save(update(choice.id), { included }, null, undefined, {
+            toastErrors: true,
+        });
 
     return (
         <fieldset

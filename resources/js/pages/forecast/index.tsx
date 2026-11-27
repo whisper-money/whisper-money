@@ -1,5 +1,6 @@
 import { index as accountsList } from '@/actions/App/Http/Controllers/AccountController';
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
+import { ForecastAccountChoices } from '@/components/forecast/forecast-account-choices';
 import { ForecastAccountTabs } from '@/components/forecast/forecast-account-tabs';
 import { ForecastAlerts } from '@/components/forecast/forecast-alerts';
 import { ForecastAllAlerts } from '@/components/forecast/forecast-all-alerts';
@@ -441,15 +442,25 @@ export default function ForecastPage({
                                         {__('No accounts to forecast')}
                                     </EmptyStateTitle>
                                     <EmptyStateDescription>
-                                        {__(
-                                            'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',
-                                        )}
+                                        {forecast.accountChoices.length > 0
+                                            ? __(
+                                                  'None of your accounts is in the forecast: loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.',
+                                              )
+                                            : __(
+                                                  'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',
+                                              )}
                                     </EmptyStateDescription>
-                                    <Button asChild variant="outline">
-                                        <Link href={accountsList()}>
-                                            {__('Go to accounts')}
-                                        </Link>
-                                    </Button>
+                                    {forecast.accountChoices.length > 0 ? (
+                                        <ForecastAccountChoices
+                                            choices={forecast.accountChoices}
+                                        />
+                                    ) : (
+                                        <Button asChild variant="outline">
+                                            <Link href={accountsList()}>
+                                                {__('Go to accounts')}
+                                            </Link>
+                                        </Button>
+                                    )}
                                 </EmptyState>
                             </CardContent>
                         </Card>

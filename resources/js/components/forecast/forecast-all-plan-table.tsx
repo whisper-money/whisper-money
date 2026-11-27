@@ -80,7 +80,7 @@ function useNumber(): (amount: number, currencyCode: string) => string {
 /** Whether an account's close row also says its lowest point: when it has a minimum, or runs short. */
 function showsMinimum(account: ForecastAccountForecast): boolean {
     return (
-        account.minimumBalance !== null ||
+        (account.minimumBalance !== null && account.alertThreshold !== null) ||
         account.projection.some((month) =>
             isShort(month.pessimisticMin, account.alertThreshold),
         )
@@ -204,18 +204,7 @@ function RowHeader({
             return (
                 <TitleWithHint
                     name={row.account.name}
-                    hint={
-                        row.account.projectionOnly
-                            ? __('Projection only, never warns')
-                            : row.account.minimumBalance === null
-                              ? undefined
-                              : __('Wanted minimum :amount', {
-                                    amount: format(
-                                        row.account.minimumBalance,
-                                        row.account.currencyCode,
-                                    ),
-                                })
-                    }
+                    hint={accountRowHint(row.account, format)}
                 />
             );
         case 'total':
@@ -228,6 +217,22 @@ function RowHeader({
                 </span>
             );
     }
+}
+
+/** What an account's closing row says under its name: projected only, or its wanted minimum. */
+function accountRowHint(
+    account: ForecastAccountForecast,
+    format: (amount: number, currencyCode: string) => string,
+): string | undefined {
+    if (account.projectionOnly) {
+        return __('Projection only, never warns');
+    }
+
+    return account.minimumBalance === null
+        ? undefined
+        : __('Wanted minimum :amount', {
+              amount: format(account.minimumBalance, account.currencyCode),
+          });
 }
 
 /** "likely ± 400 € a month": the band of the first whole month. */

@@ -100,6 +100,43 @@ function selectedColumn(): string | null {
     );
 }
 
+describe('the forecast page with no account in it', () => {
+    it('lists the excluded accounts so one can be switched on', () => {
+        visit.mockClear();
+        render(
+            <ForecastPage
+                forecast={{
+                    scope: 'account',
+                    today: '2026-11-26',
+                    horizon: 6,
+                    isPro: true,
+                    account: null,
+                    accounts: [],
+                    accountChoices: [
+                        {
+                            id: 'house',
+                            name: 'House',
+                            type: 'real_estate',
+                            included: false,
+                            projectionOnly: true,
+                        },
+                    ],
+                }}
+                projectionInput={null}
+                reviewPrompt={{ hasLines: false }}
+            />,
+        );
+
+        const house = document.querySelector(
+            '[data-test="forecast-account-choice-house"]',
+        ) as HTMLElement;
+        expect(house).toHaveTextContent('Not in the forecast');
+
+        fireEvent.click(within(house).getByRole('checkbox'));
+        expect(visit.mock.calls.at(-1)?.[0]).toBe('/forecast/accounts/house');
+    });
+});
+
 describe('the forecast page', () => {
     it('opens the group that explains the problem and folds the rest on demand', () => {
         renderPage(forecast());
@@ -740,9 +777,13 @@ describe('editing the forecast', () => {
                 '[data-test="forecast-account-never-warns"]',
             ),
         ).not.toBeNull();
-        expect(
-            settings.querySelector('[data-test="forecast-account-choices"]'),
-        ).not.toBeNull();
+
+        fireEvent.click(
+            settings.querySelector(
+                '[data-test="forecast-account-choose-accounts"]',
+            )!,
+        );
+        expect(sheet('forecast-accounts-sheet')).not.toBeNull();
     });
 
     it("accepts the update a line's last payments suggest", () => {

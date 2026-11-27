@@ -104,6 +104,23 @@ it('stays on the view the user was on when leaving out another account', functio
         ->assertRedirect(route('forecast.index'));
 });
 
+it('shows a card rather than an investment by default when there is no checking account', function () {
+    byTypeAccount($this->user, 'A broker', AccountType::Investment);
+    $card = byTypeAccount($this->user, 'Card', AccountType::CreditCard, 0);
+
+    expect(byTypeForecast($this->user)['account']['id'])->toBe($card->id);
+});
+
+it('offers every excluded account when the forecast covers none', function () {
+    $house = byTypeAccount($this->user, 'House', AccountType::RealEstate);
+
+    $forecast = byTypeForecast($this->user);
+
+    expect($forecast['accounts'])->toBe([])
+        ->and($forecast['accountChoices'])->toHaveCount(1)
+        ->and($forecast['accountChoices'][0])->toMatchArray(['id' => $house->id, 'included' => false]);
+});
+
 it('counts a projection-only account in the total', function () {
     byTypeAccount($this->user, 'Checking', AccountType::Checking, 100000);
     byTypeAccount($this->user, 'Broker', AccountType::Investment, 500000);

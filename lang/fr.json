@@ -3334,5 +3334,7 @@
     "projection only": "projection seule",
     "Choose accounts": "Choisir les comptes",
     "Projection only, never warns": "Projection seule, sans alerte",
-    "Never warns": "Sans alerte"
+    "Never warns": "Sans alerte",
+    "None of your accounts is in the forecast: loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.": "Aucun de vos comptes n’est dans la prévision : les prêts et les biens immobiliers en sont exclus sauf si vous les incluez. Cochez-en un pour voir comment son solde va évoluer.",
+    "Choose the accounts in the forecast": "Choisir les comptes de la prévision"
 }

@@ -1,6 +1,8 @@
 import { update } from '@/actions/App/Http/Controllers/Forecast/ForecastAccountSettingController';
-import { ForecastAccountChoices } from '@/components/forecast/forecast-account-choices';
-import { type ForecastSheetProps } from '@/components/forecast/forecast-editor';
+import {
+    type ForecastSheetProps,
+    useForecastEditor,
+} from '@/components/forecast/forecast-editor';
 import {
     Field,
     ForecastSheet,
@@ -23,7 +25,8 @@ const GROWING = ['investment', 'retirement', 'real_estate', 'savings'];
 /**
  * How the account takes part in the forecast: the balance its owner wants
  * to keep (the warnings read against it; only a checking or savings account
- * warns), its yearly growth, and which accounts the forecast covers.
+ * warns), its yearly growth, and the way to the accounts the forecast
+ * covers.
  */
 export function ForecastAccountSheet({
     forecast,
@@ -31,6 +34,7 @@ export function ForecastAccountSheet({
     onClose,
 }: ForecastSheetProps) {
     const { save, processing, errors } = useForecastSave();
+    const editor = useForecastEditor();
     const account = forecast.account;
     const [minimum, setMinimum] = useState<number | null>(
         account.minimumBalance,
@@ -142,14 +146,16 @@ export function ForecastAccountSheet({
                 </Field>
             )}
 
-            <ForecastAccountChoices
-                choices={forecast.accountChoices}
-                onExcluded={(accountId) => {
-                    if (accountId === account.id) {
-                        onClose();
-                    }
-                }}
-            />
+            {editor && (
+                <Button
+                    variant="link"
+                    className="h-auto self-start p-0"
+                    onClick={() => editor.open({ kind: 'accounts' })}
+                    data-test="forecast-account-choose-accounts"
+                >
+                    {__('Choose the accounts in the forecast')}
+                </Button>
+            )}
         </ForecastSheet>
     );
 }
