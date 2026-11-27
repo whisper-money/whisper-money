@@ -1,3 +1,4 @@
+import { ForecastChartTooltipCard } from '@/components/forecast/forecast-chart-tooltip';
 import { Card, CardContent } from '@/components/ui/card';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
@@ -7,6 +8,10 @@ import {
     type ForecastChartPoint,
 } from '@/lib/forecast/chart-series';
 import {
+    chartTooltipData,
+    mobileTooltipLeft,
+} from '@/lib/forecast/chart-tooltip';
+import {
     balanceSeverity,
     monthLongName,
     monthShortLabel,
@@ -14,7 +19,15 @@ import {
 import { cn } from '@/lib/utils';
 import { type ForecastAllData, type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
-import { useMemo } from 'react';
+import {
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode,
+    type RefObject,
+} from 'react';
 
 const CLOSE = chartRoleColors.accountMainLineColor;
 const HEIGHT = 120;
@@ -122,7 +135,8 @@ function barHeight(point: ForecastChartPoint, highest: number): number {
 /**
  * The phone's chart: a bar per month for its lowest balance, coloured when
  * it runs short, under the closing balance and its likely range. Tapping a
- * month picks it, as the month chips do.
+ * month picks it, as the month chips do, and shows the desktop chart's
+ * tooltip over its bar; the last closed month only shows the tooltip.
  */
 export function ForecastMobileChart({
     forecast,
@@ -135,6 +149,24 @@ export function ForecastMobileChart({
     const points = useMemo(() => mobileChartPoints(forecast), [forecast]);
     const paths = useMemo(() => linePaths(points), [points]);
     const highest = Math.max(1, ...points.map((point) => point.min ?? 0));
+    const barsRef = useRef<HTMLDivElement>(null);
+    const [tooltipMonth, setTooltipMonth] = useBarTooltip(barsRef);
+    const tooltipPoint = points.find((point) => point.month === tooltipMonth);
+    const tooltipData = tooltipPoint
+        ? chartTooltipData(tooltipPoint, forecast)
+        : null;
+
+    const tapMonth = (point: ForecastChartPoint) => {
+        if (point.status !== 'past') {
+            onSelectMonth(point.month);
+        }
+
+        setTooltipMonth((open) =>
+            open === point.month || point.status === 'locked'
+                ? null
+                : point.month,
+        );
+    };
 
     return (
         <Card size="sm" className="gap-2" data-test="forecast-mobile-chart">
@@ -142,7 +174,7 @@ export function ForecastMobileChart({
                 <span className="text-xs text-muted-foreground">
                     {__('Closing balance and likely range · tap a month')}
                 </span>
-                <div className="relative flex h-[120px]">
+                <div ref={barsRef} className="relative flex h-[120px]">
                     <svg
                         viewBox={`0 0 1000 ${HEIGHT}`}
                         preserveAspectRatio="none"
@@ -163,14 +195,17 @@ export function ForecastMobileChart({
                             <button
                                 key={point.month}
                                 type="button"
-                                disabled={point.status === 'past'}
-                                aria-pressed={selected}
+                                aria-pressed={
+                                    point.status === 'past'
+                                        ? undefined
+                                        : selected
+                                }
                                 aria-label={
                                     point.min === null
                                         ? monthLongName(point.month, locale)
                                         : `${monthLongName(point.month, locale)} · ${formatAmount(point.min, forecast.currencyCode, { fractionDigits: 0 })}`
                                 }
-                                onClick={() => onSelectMonth(point.month)}
+                                onClick={() => tapMonth(point)}
                                 className={cn(
                                     'relative flex min-w-0 flex-1 flex-col items-center justify-end rounded-t-md',
                                     selected && 'bg-muted',
@@ -205,6 +240,17 @@ export function ForecastMobileChart({
                             vectorEffect="non-scaling-stroke"
                         />
                     </svg>
+                    <MobileChartTooltip
+                        barsRef={barsRef}
+                        month={tooltipData === null ? null : tooltipMonth}
+                    >
+                        {tooltipData && (
+                            <ForecastChartTooltipCard
+                                data={tooltipData}
+                                forecast={forecast}
+                            />
+                        )}
+                    </MobileChartTooltip>
                 </div>
                 <div className="flex" aria-hidden="true">
                     {points.map((point) => (
@@ -228,6 +274,101 @@ export function ForecastMobileChart({
                 </span>
             </CardContent>
         </Card>
+    );
+}
+
+/**
+ * The month whose tooltip is open, closed again when the user taps anywhere
+ * but the bars (a tap on a bar decides for itself), scrolls or turns the phone.
+ */
+function useBarTooltip(barsRef: RefObject<HTMLElement | null>) {
+    const [month, setMonth] = useState<string | null>(null);
+    const open = month !== null;
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        const dismiss = () => setMonth(null);
+        const dismissOutside = (event: PointerEvent) => {
+            if (!barsRef.current?.contains(event.target as Node)) {
+                dismiss();
+            }
+        };
+
+        document.addEventListener('pointerdown', dismissOutside);
+        // The page's scroll only: the month chips scroll their own strip to
+        // the picked month, which must not close the tooltip it just opened.
+        window.addEventListener('scroll', dismiss);
+        window.addEventListener('resize', dismiss);
+
+        return () => {
+            document.removeEventListener('pointerdown', dismissOutside);
+            window.removeEventListener('scroll', dismiss);
+            window.removeEventListener('resize', dismiss);
+        };
+    }, [barsRef, open]);
+
+    return [month, setMonth] as const;
+}
+
+/**
+ * The tooltip's place over the bars: its bottom just above them, centred on
+ * the tapped month and kept inside the screen (it is absolute inside the
+ * bars, hence the offset from their left). It is a polite live region,
+ * so a screen reader reads the card out when a tap opens it.
+ */
+function MobileChartTooltip({
+    barsRef,
+    month,
+    children,
+}: {
+    barsRef: RefObject<HTMLElement | null>;
+    month: string | null;
+    children: ReactNode;
+}) {
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const [left, setLeft] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        const bars = barsRef.current;
+        const bar = bars?.querySelector(
+            `[data-test="forecast-mobile-bar-${month}"]`,
+        );
+        const tooltip = tooltipRef.current;
+
+        if (!bars || !bar || !tooltip) {
+            setLeft(null);
+
+            return;
+        }
+
+        const barRect = bar.getBoundingClientRect();
+
+        setLeft(
+            mobileTooltipLeft({
+                barCenter: barRect.left + barRect.width / 2,
+                chartLeft: bars.getBoundingClientRect().left,
+                tooltipWidth: tooltip.offsetWidth,
+                screenWidth: document.documentElement.clientWidth,
+            }),
+        );
+    }, [barsRef, month]);
+
+    return (
+        <div
+            ref={tooltipRef}
+            aria-live="polite"
+            className="pointer-events-none absolute bottom-[calc(100%+0.5rem)] z-50 w-max"
+            style={{
+                left: left ?? 0,
+                opacity: left === null ? 0 : 1,
+            }}
+            data-test="forecast-mobile-chart-tooltip"
+        >
+            {children}
+        </div>
     );
 }
 

@@ -49,8 +49,6 @@ const CLOSE = chartRoleColors.accountMainLineColor;
 
 const BALANCE_AXIS = 'balance';
 
-const TOOLTIP_COLORS = { income: INCOME, expenses: EXPENSE, close: CLOSE };
-
 const chartConfig = {
     income: { label: 'Income', color: INCOME },
     expenses: { label: 'Expenses', color: EXPENSE },
@@ -381,7 +379,6 @@ export function ForecastChart({
                                     coordinate={coordinate}
                                     points={points}
                                     forecast={forecast}
-                                    colors={TOOLTIP_COLORS}
                                 />
                             )}
                         />
