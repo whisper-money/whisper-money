@@ -1,4 +1,4 @@
-import { addMonths } from './calendar';
+import { addDays, addMonths } from './calendar';
 import type {
     ExpandableForecastItem,
     ForecastFrequency,
@@ -13,13 +13,27 @@ import type {
  * inclusive. tests/Fixtures/forecast-parity.json keeps the two in step.
  */
 
-const FREQUENCY_MONTHS: Record<ForecastFrequency, number | null> = {
+/** Months between two occurrences of a line that repeats by whole months. */
+const FREQUENCY_MONTHS: Record<
+    Exclude<ForecastFrequency, 'weekly' | 'once'>,
+    number
+> = {
     monthly: 1,
     bimonthly: 2,
     quarterly: 3,
     yearly: 12,
-    once: null,
 };
+
+/** The date of the occurrence `period` steps after `anchor`. */
+function occurrence(
+    frequency: Exclude<ForecastFrequency, 'once'>,
+    anchor: string,
+    period: number,
+): string {
+    return frequency === 'weekly'
+        ? addDays(anchor, period * 7)
+        : addMonths(anchor, period * FREQUENCY_MONTHS[frequency]);
+}
 
 function compare(a: string, b: string): number {
     if (a === b) {
@@ -54,9 +68,9 @@ function lastScheduledDate(item: ExpandableForecastItem, to: string): string {
 }
 
 function scheduledDates(item: ExpandableForecastItem, until: string): string[] {
-    const step = FREQUENCY_MONTHS[item.frequency];
+    const frequency = item.frequency;
 
-    if (step === null) {
+    if (frequency === 'once') {
         return item.anchorDate <= until ? [item.anchorDate] : [];
     }
 
@@ -64,7 +78,7 @@ function scheduledDates(item: ExpandableForecastItem, until: string): string[] {
     for (
         let period = 0, date = item.anchorDate;
         date <= until;
-        period++, date = addMonths(item.anchorDate, period * step)
+        period++, date = occurrence(frequency, item.anchorDate, period)
     ) {
         dates.push(date);
     }

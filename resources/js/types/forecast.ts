@@ -18,6 +18,7 @@ export type ForecastAlertLevel = 'strong' | 'soft' | 'ok';
 export type ForecastMonthStatus = 'current' | 'future' | 'locked';
 
 export type ForecastLineKind =
+    | 'weekly'
     | 'monthly'
     | 'bimonthly'
     | 'quarterly'
@@ -417,7 +418,7 @@ export interface ForecastRecurringCharge {
     accountId: string;
     accountName: string | null;
     currencyCode: string;
-    frequency: 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
+    frequency: 'weekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'yearly';
     /** The median of its last three charges, positive, in minor units. */
     amount: number;
     /** What it costs a month and a year at its frequency. */

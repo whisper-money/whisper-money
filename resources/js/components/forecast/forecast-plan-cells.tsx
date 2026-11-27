@@ -95,6 +95,7 @@ export function LockedCell() {
 }
 
 const KIND_BADGE: Record<ForecastLineKind | 'estimate', string> = {
+    weekly: 'border-transparent bg-chart-1/15 text-foreground',
     monthly: 'border-transparent bg-chart-1/15 text-foreground',
     bimonthly: 'border-transparent bg-chart-1/15 text-foreground',
     quarterly: 'border-transparent bg-chart-1/15 text-foreground',
@@ -160,6 +161,7 @@ export function LineHeader({
                             line.source,
                             line.anchorDate,
                             locale,
+                            line.definition.frequency,
                         ),
                         accountName,
                     )}

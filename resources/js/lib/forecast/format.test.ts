@@ -8,6 +8,12 @@ describe('lineOrigin', () => {
         );
     });
 
+    it('reads a weekly line by its weekday, not a day of the month', () => {
+        expect(
+            lineOrigin('transfer', 'manual', '2026-12-03', 'en', 'weekly'),
+        ).toBe('Added by you · every Thursday');
+    });
+
     it('keeps the origin of a transfer the user added', () => {
         expect(lineOrigin('transfer', 'manual', '2026-12-05', 'en')).toBe(
             'Added by you · day 5',

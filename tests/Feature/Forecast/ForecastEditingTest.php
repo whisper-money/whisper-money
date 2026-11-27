@@ -180,6 +180,29 @@ describe('adding a line', function () {
             ->destination_external->toBeTrue();
     });
 
+    it('stores a weekly transfer out of the app, planned every 7 days from its date', function () {
+        $this->actingAs($this->user)->post(route('forecast.items.store'), [
+            'type' => 'transfer',
+            'name' => 'Cleaner',
+            'account_id' => $this->checking->id,
+            'destination_external' => true,
+            'amount' => 5000,
+            'date' => '2026-12-03',
+            'frequency' => 'weekly',
+        ])->assertSessionHasNoErrors();
+
+        $item = ForecastItem::query()->where('name', 'Cleaner')->sole();
+        $forecast = $this->actingAs($this->user)->get($this->from)->viewData('page')['props']['forecast'];
+        $line = collect($forecast['plan']['expenses'])->flatMap(fn (array $group): array => $group['items'])->firstWhere('id', $item->id);
+
+        expect($item->frequency)->toBe(ForecastFrequency::Weekly)
+            ->and($item->kind)->toBe(ForecastItemKind::Recurring)
+            ->and($line['kind'])->toBe('weekly')
+            ->and($line['definition'])->toMatchArray(['frequency' => 'weekly', 'anchorDate' => '2026-12-03'])
+            ->and($line['amounts']['2026-12'])->toBe(-25000)
+            ->and($line['amounts']['2027-01'])->toBe(-20000);
+    });
+
     it('rejects what it cannot plan', function (Closure $data, string $field) {
         $this->actingAs($this->user)->post(route('forecast.items.store'), $data($this))->assertSessionHasErrors($field);
 
@@ -188,7 +211,8 @@ describe('adding a line', function () {
         'no name' => [fn ($test) => newExpense($test->checking, ['name' => '']), 'name'],
         'no amount' => [fn ($test) => newExpense($test->checking, ['amount' => 0]), 'amount'],
         'a day already gone' => [fn ($test) => newExpense($test->checking, ['date' => '2026-11-25']), 'date'],
-        'an unknown repetition' => [fn ($test) => newExpense($test->checking, ['frequency' => 'weekly']), 'frequency'],
+        'an unknown repetition' => [fn ($test) => newExpense($test->checking, ['frequency' => 'fortnightly']), 'frequency'],
+        'a weekly charge, which its category already estimates' => [fn ($test) => newExpense($test->checking, ['frequency' => 'weekly']), 'frequency'],
         'an end before the start' => [fn ($test) => newExpense($test->checking, ['frequency' => 'yearly', 'ends_on' => '2026-12-01']), 'ends_on'],
         'a monthly charge, which its category already estimates' => [fn ($test) => newExpense($test->checking, ['frequency' => 'monthly']), 'frequency'],
         'a quarterly income' => [fn ($test) => newExpense($test->checking, ['type' => 'income', 'frequency' => 'quarterly']), 'frequency'],

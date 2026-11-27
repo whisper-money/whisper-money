@@ -6,6 +6,7 @@
  */
 
 export type ForecastFrequency =
+    | 'weekly'
     | 'monthly'
     | 'bimonthly'
     | 'quarterly'
