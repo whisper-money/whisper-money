@@ -434,12 +434,14 @@ export default function ForecastPage({
                         actions={
                             isMobile ? (
                                 <div className="flex items-center gap-2">
-                                    <ForecastStartOverMenu
-                                        className="size-10 rounded-full"
-                                        onStartedOver={
-                                            reviewState.onStartedOver
-                                        }
-                                    />
+                                    {!isEmpty(forecast) && (
+                                        <ForecastStartOverMenu
+                                            className="size-10 rounded-full"
+                                            onStartedOver={
+                                                reviewState.onStartedOver
+                                            }
+                                        />
+                                    )}
                                     <ForecastMobileAddButton />
                                 </div>
                             ) : (
@@ -453,11 +455,13 @@ export default function ForecastPage({
                                         }
                                     />
                                     <AddButton />
-                                    <ForecastStartOverMenu
-                                        onStartedOver={
-                                            reviewState.onStartedOver
-                                        }
-                                    />
+                                    {!isEmpty(forecast) && (
+                                        <ForecastStartOverMenu
+                                            onStartedOver={
+                                                reviewState.onStartedOver
+                                            }
+                                        />
+                                    )}
                                 </div>
                             )
                         }

@@ -17,6 +17,8 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\ForecastAlertRaised;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Pennant\Feature;
 
@@ -103,6 +105,28 @@ it('deletes every forecast row of the user in the space they are in', function (
         ->and($this->user->notifications()->count())->toBe(0);
 });
 
+it('leaves no row behind in any forecast table', function () {
+    seedForecastRows($this->user, $this->spaceId);
+
+    $this->actingAs($this->user)->post(route('forecast.start-over'))->assertRedirect();
+
+    $tables = collect(Schema::getTableListing(schemaQualified: false))
+        ->filter(fn (string $table): bool => str_starts_with($table, 'forecast_'));
+
+    expect($tables)->not->toBeEmpty();
+    $tables->each(fn (string $table) => expect(DB::table($table)->count())->toBe(0, "{$table} kept rows"));
+});
+
+it('deletes a bell row whose alerts are gone, when none was in another space', function () {
+    $otherSpace = Space::factory()->create(['owner_id' => $this->user->id]);
+    seedForecastRows($this->user, $otherSpace->id);
+    $this->user->notify(new ForecastAlertRaised('2026-12', 'gone', ['an-alert-deleted-long-ago']));
+
+    $this->actingAs($this->user)->post(route('forecast.start-over'))->assertRedirect();
+
+    expect($this->user->notifications()->where('data->signature', 'gone')->exists())->toBeFalse();
+});
+
 it('keeps the forecast of another member of the same space', function () {
     $member = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     seedForecastRows($member, $this->spaceId);
@@ -128,7 +152,7 @@ it('keeps the user\'s forecast in their other spaces', function () {
 it('keeps a bell row that names no alert while the user has alerts in another space', function () {
     $otherSpace = Space::factory()->create(['owner_id' => $this->user->id]);
     seedForecastRows($this->user, $otherSpace->id);
-    $this->user->notify(new ForecastAlertRaised('2026-12', 'legacy'));
+    $this->user->notify(new ForecastAlertRaised('2026-12', 'legacy', []));
 
     $this->actingAs($this->user)->post(route('forecast.start-over'))->assertRedirect();
 
@@ -137,7 +161,7 @@ it('keeps a bell row that names no alert while the user has alerts in another sp
 
 it('deletes a bell row that names no alert when every alert was in this space', function () {
     seedForecastRows($this->user, $this->spaceId);
-    $this->user->notify(new ForecastAlertRaised('2026-12', 'legacy'));
+    $this->user->notify(new ForecastAlertRaised('2026-12', 'legacy', []));
 
     $this->actingAs($this->user)->post(route('forecast.start-over'))->assertRedirect();
 

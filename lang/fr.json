@@ -3339,5 +3339,5 @@
     "Choose the accounts in the forecast": "Choisir les comptes de la prévision",
     "Start over": "Recommencer",
     "Start your forecast over?": "Recommencer votre prévision ?",
-    "Your edits, yearly payments and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Vos modifications, paiements annuels et alertes de cet espace sont supprimés, et la prévision est recalculée à partir de vos transactions. Cette action est irréversible."
+    "Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Vos modifications, paiements annuels, réglages de comptes et alertes de cet espace sont supprimés, et la prévision est recalculée à partir de vos transactions. Cette action est irréversible."
 }

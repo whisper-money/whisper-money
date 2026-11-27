@@ -886,7 +886,9 @@ describe('the review on the forecast page', () => {
             screen.getByRole('alertdialog', {
                 name: 'Start your forecast over?',
             }),
-        ).toHaveTextContent('Your edits, yearly payments and alerts');
+        ).toHaveTextContent(
+            'Your edits, yearly payments, account settings and alerts',
+        );
         expect(post).not.toHaveBeenCalled();
 
         fireEvent.click(

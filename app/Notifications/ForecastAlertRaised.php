@@ -20,7 +20,7 @@ class ForecastAlertRaised extends Notification
     public function __construct(
         public string $month,
         public string $signature,
-        public array $alerts = [],
+        public array $alerts,
     ) {}
 
     /**

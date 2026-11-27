@@ -18,7 +18,7 @@ import { type MouseEvent, useState } from 'react';
 /**
  * The forecast header's "More options" menu, with "Start over": after asking,
  * it deletes what the user built in this space's forecast (their edits,
- * yearly payments and alerts), so it is worked out again from their
+ * yearly payments, account settings and alerts), so it is worked out again from their
  * transactions. `onStartedOver` runs once the page is back, to open the
  * review as the first time.
  */
@@ -63,7 +63,11 @@ export function ForecastStartOverMenu({
             </MoreOptionsMenu>
             <AlertDialog
                 open={open}
-                onOpenChange={(next) => !processing && setOpen(next)}
+                onOpenChange={(next) => {
+                    if (!processing) {
+                        setOpen(next);
+                    }
+                }}
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -72,7 +76,7 @@ export function ForecastStartOverMenu({
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {__(
-                                'Your edits, yearly payments and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.',
+                                'Your edits, yearly payments, account settings and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.',
                             )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>

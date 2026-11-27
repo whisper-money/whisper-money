@@ -27,9 +27,9 @@ use Illuminate\Support\Facades\DB;
  * another member of a shared space, or the user's other spaces, keep theirs.
  *
  * A bell row about a short month names the alerts it was rung for. It goes
- * when every alert it names was in this space. A row from before rows named
- * their alerts goes only when the user has no alert in another space, since
- * it cannot tell which space it was about.
+ * unless one of them is in another of the user's spaces. A row from before
+ * rows named their alerts goes only when the user has no alert in another
+ * space, since it cannot tell which space it was about.
  */
 class ForecastStartOver
 {
@@ -69,27 +69,29 @@ class ForecastStartOver
 
     private function deleteAlerts(User $user, string $spaceId): void
     {
-        $alertIds = ForecastAlert::query()->where('user_id', $user->id)->forSpace($spaceId)->pluck('id')->all();
-        $hasAlertsElsewhere = ForecastAlert::query()->where('user_id', $user->id)->where('space_id', '!=', $spaceId)->exists();
+        $elsewhere = ForecastAlert::query()->where('user_id', $user->id)->where('space_id', '!=', $spaceId)->pluck('id')->all();
 
         $rung = $user->notifications()->where('type', ForecastAlertRaised::class)->get()
-            ->filter(fn (DatabaseNotification $notification): bool => self::wasAboutOnly($notification, $alertIds, $hasAlertsElsewhere));
+            ->reject(fn (DatabaseNotification $notification): bool => self::concernsAnotherSpace($notification, $elsewhere));
 
         DatabaseNotification::query()->whereKey($rung->modelKeys())->delete();
-        ForecastAlert::query()->whereKey($alertIds)->delete();
+        ForecastAlert::query()->where('user_id', $user->id)->forSpace($spaceId)->delete();
     }
 
     /**
-     * @param  list<string>  $alertIds
+     * Whether a bell row may be about another space: it names one of that
+     * space's alerts, or names none and the user has alerts elsewhere.
+     *
+     * @param  list<string>  $elsewhere  The ids of the user's alerts in other spaces.
      */
-    private static function wasAboutOnly(DatabaseNotification $notification, array $alertIds, bool $hasAlertsElsewhere): bool
+    private static function concernsAnotherSpace(DatabaseNotification $notification, array $elsewhere): bool
     {
-        $named = $notification->data['alerts'] ?? null;
+        $named = $notification->data['alerts'] ?? [];
 
         if (! is_array($named) || $named === []) {
-            return ! $hasAlertsElsewhere;
+            return $elsewhere !== [];
         }
 
-        return array_diff($named, $alertIds) === [];
+        return array_intersect($named, $elsewhere) !== [];
     }
 }
