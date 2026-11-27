@@ -15,10 +15,12 @@ class ForecastAlertRaised extends Notification
     /**
      * @param  string  $month  `Y-m`, the earliest month short.
      * @param  string  $signature  The alerts it was rung for, so a retry does not ring twice.
+     * @param  list<string>  $alerts  The ids of those alerts, so starting a space's forecast over takes the row away.
      */
     public function __construct(
         public string $month,
         public string $signature,
+        public array $alerts = [],
     ) {}
 
     /**
@@ -30,13 +32,14 @@ class ForecastAlertRaised extends Notification
     }
 
     /**
-     * @return array{month: string, signature: string}
+     * @return array{month: string, signature: string, alerts: list<string>}
      */
     public function toDatabase(User $notifiable): array
     {
         return [
             'month' => $this->month,
             'signature' => $this->signature,
+            'alerts' => $this->alerts,
         ];
     }
 }

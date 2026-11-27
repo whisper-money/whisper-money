@@ -86,7 +86,7 @@ class ForecastAlertNotifier
         $signature = self::signature($alerts);
 
         if (! $this->alreadyRung($user, $signature)) {
-            $user->notify(new ForecastAlertRaised($month, $signature));
+            $user->notify(new ForecastAlertRaised($month, $signature, $alerts->modelKeys()));
         }
 
         if (! $user->canReceiveEmails() || ! $user->wantsForecastAlertEmail()) {

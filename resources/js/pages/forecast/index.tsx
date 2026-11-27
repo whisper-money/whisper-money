@@ -24,6 +24,7 @@ import {
     ForecastReviewDialog,
     type ForecastReviewStep,
 } from '@/components/forecast/forecast-review-dialog';
+import { ForecastStartOverMenu } from '@/components/forecast/forecast-start-over';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -99,11 +100,20 @@ function rememberReviewSkipped(userId: string | undefined): void {
     }
 }
 
+function forgetReviewSkipped(userId: string | undefined): void {
+    try {
+        window.localStorage.removeItem(skippedKey(userId));
+    } catch {
+        // Private mode: nothing was remembered.
+    }
+}
+
 /**
  * The page's review: it opens on its own the first time the user comes with
  * no line at all, and on demand from the plan's link, the empty state or the
  * "yearly payments" shortcut. Closing it without saving, while there is still
- * no line, counts as skipping it.
+ * no line, counts as skipping it. Starting the forecast over forgets that it
+ * was skipped and opens it again, as the first time.
  */
 function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
     const userId = usePage<{ auth?: { user?: { id?: string } } }>().props.auth
@@ -139,6 +149,11 @@ function useReview(prompt: ForecastReviewPrompt, canReview: boolean) {
             setOpen(next);
         },
         onSaved: () => setOpen(false),
+        onStartedOver: () => {
+            forgetReviewSkipped(userId);
+            setStep(1);
+            setOpen(true);
+        },
     };
 }
 
@@ -418,7 +433,15 @@ export default function ForecastPage({
                         }
                         actions={
                             isMobile ? (
-                                <ForecastMobileAddButton />
+                                <div className="flex items-center gap-2">
+                                    <ForecastStartOverMenu
+                                        className="size-10 rounded-full"
+                                        onStartedOver={
+                                            reviewState.onStartedOver
+                                        }
+                                    />
+                                    <ForecastMobileAddButton />
+                                </div>
                             ) : (
                                 <div className="flex flex-wrap items-center gap-2">
                                     <ForecastHorizonPicker
@@ -430,6 +453,11 @@ export default function ForecastPage({
                                         }
                                     />
                                     <AddButton />
+                                    <ForecastStartOverMenu
+                                        onStartedOver={
+                                            reviewState.onStartedOver
+                                        }
+                                    />
                                 </div>
                             )
                         }

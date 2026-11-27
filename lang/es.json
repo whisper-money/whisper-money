@@ -4478,5 +4478,8 @@
     "Projection only, never warns": "Solo proyección, nunca avisa",
     "Never warns": "Nunca avisa",
     "None of your accounts is in the forecast: loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.": "Ninguna de tus cuentas está en la previsión: los préstamos y los inmuebles quedan fuera salvo que los incluyas. Marca una para ver cómo va a evolucionar su saldo.",
-    "Choose the accounts in the forecast": "Elegir las cuentas de la previsión"
+    "Choose the accounts in the forecast": "Elegir las cuentas de la previsión",
+    "Start over": "Empezar de cero",
+    "Start your forecast over?": "¿Empezar tu previsión de cero?",
+    "Your edits, yearly payments and alerts in this space are deleted, and the forecast is worked out again from your transactions. This cannot be undone.": "Se borran tus cambios, pagos anuales y alertas de este espacio, y la previsión se vuelve a calcular a partir de tus movimientos. No se puede deshacer."
 }
