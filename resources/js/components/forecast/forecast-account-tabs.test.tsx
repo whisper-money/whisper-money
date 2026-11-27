@@ -86,7 +86,7 @@ describe('ForecastAccountTabs', () => {
         expect(option('all')).toHaveTextContent(
             'All accounts4 accounts · 1 with a warning',
         );
-        expect(option('all')).toHaveAttribute('aria-current', 'page');
+        expect(option('all')).toHaveAttribute('aria-checked', 'true');
         expect(within(menu).getByText('Your accounts')).toBeInTheDocument();
         expect(within(menu).getByText('Projection only')).toBeInTheDocument();
         expect(option('payroll')).toHaveTextContent('PayrollCheckingAlert');
@@ -126,8 +126,11 @@ describe('ForecastAccountTabs', () => {
         ).toBeNull();
 
         openMenu();
-        expect(option('payroll')).toHaveAttribute('aria-current', 'page');
-        expect(option('all')).not.toHaveAttribute('aria-current');
+        expect(option('payroll')).toHaveAttribute('aria-checked', 'true');
+        expect(option('all')).toHaveAttribute('aria-checked', 'false');
+
+        fireEvent.click(option('payroll'));
+        expect(router.visit).not.toHaveBeenCalled();
     });
 
     it('goes to the account picked, keeping the horizon and the scroll', () => {

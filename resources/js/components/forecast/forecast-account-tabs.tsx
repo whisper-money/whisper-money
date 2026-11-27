@@ -13,7 +13,7 @@ import {
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { trendLabel } from '@/lib/forecast/format';
 import { cn } from '@/lib/utils';
-import { type AccountType, formatAccountType } from '@/types/account';
+import { formatAccountType } from '@/types/account';
 import {
     type ForecastAccountTab,
     type ForecastHorizon,
@@ -60,7 +60,7 @@ export function ForecastAccountTabs({
         });
     const hint = (account: ForecastAccountTab): string =>
         [
-            formatAccountType(account.type as AccountType),
+            formatAccountType(account.type),
             trendLabel(
                 account.trend,
                 (amount) =>
@@ -86,84 +86,78 @@ export function ForecastAccountTabs({
     );
 
     return (
-        <nav aria-label={__('Account')} className="flex">
-            <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="outline"
-                        className="h-10 min-w-[260px] justify-start gap-2.5 rounded-lg px-3"
-                        data-test="forecast-account-filter"
-                    >
-                        <CreditCardIcon className="text-muted-foreground" />
-                        <span className="flex-1 text-left font-medium">
-                            {selected?.name ?? __('All accounts')}
-                        </span>
-                        {selected?.hasAlert && <AlertDot />}
-                        {!selected && alertCount > 0 && (
-                            <span
-                                className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive-foreground dark:bg-destructive/20"
-                                data-test="forecast-account-filter-alerts"
-                            >
-                                {alertCount === 1
-                                    ? __('1 warning')
-                                    : __(':count warnings', {
-                                          count: alertCount,
-                                      })}
-                            </span>
-                        )}
-                        <ChevronDownIcon className="text-muted-foreground" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    align="start"
-                    sideOffset={6}
-                    className="flex w-[340px] flex-col rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
-                    data-test="forecast-account-menu"
+        <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="outline"
+                    className="h-10 min-w-[260px] justify-start gap-2.5 rounded-lg px-3"
+                    data-test="forecast-account-filter"
                 >
-                    <AccountOption
-                        name={__('All accounts')}
-                        hint={allAccountsHint(accounts.length, alertCount)}
-                        selected={selectedId === null}
-                        hasAlert={false}
-                        onSelect={() => show('all')}
-                        dataTest="forecast-tab-all"
-                    />
-                    {spending.length > 0 && (
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel className={GROUP_LABEL}>
-                                {__('Your accounts')}
-                            </DropdownMenuLabel>
-                            {spending.map(option)}
-                        </DropdownMenuGroup>
+                    <CreditCardIcon className="text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-left font-medium">
+                        {selected?.name ?? __('All accounts')}
+                    </span>
+                    {selected?.hasAlert && <AlertDot />}
+                    {!selected && alertCount > 0 && (
+                        <span
+                            className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-destructive dark:bg-destructive/20"
+                            data-test="forecast-account-filter-alerts"
+                        >
+                            {alertCount === 1
+                                ? __('1 warning')
+                                : __(':count warnings', {
+                                      count: alertCount,
+                                  })}
+                        </span>
                     )}
-                    {projectionOnly.length > 0 && (
-                        <DropdownMenuGroup>
-                            <DropdownMenuLabel className={GROUP_LABEL}>
-                                {__('Projection only')}
-                            </DropdownMenuLabel>
-                            {projectionOnly.map(option)}
-                        </DropdownMenuGroup>
-                    )}
-                    {editor && (
-                        <>
-                            <DropdownMenuSeparator className="mx-0" />
-                            <DropdownMenuItem
-                                className="min-h-10 gap-2.5 rounded-md px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
-                                onSelect={() =>
-                                    editor.open({ kind: 'accounts' })
-                                }
-                                data-test="forecast-choose-accounts"
-                            >
-                                <SlidersHorizontalIcon />
-                                {__(
-                                    'Choose which accounts go into the forecast',
-                                )}
-                            </DropdownMenuItem>
-                        </>
-                    )}
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </nav>
+                    <ChevronDownIcon className="text-muted-foreground" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+                align="start"
+                sideOffset={6}
+                className="flex w-[340px] flex-col rounded-[10px] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
+                data-test="forecast-account-menu"
+            >
+                <AccountOption
+                    name={__('All accounts')}
+                    hint={allAccountsHint(accounts.length, alertCount)}
+                    selected={selectedId === null}
+                    hasAlert={false}
+                    onSelect={() => show('all')}
+                    dataTest="forecast-tab-all"
+                />
+                {spending.length > 0 && (
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel className={GROUP_LABEL}>
+                            {__('Your accounts')}
+                        </DropdownMenuLabel>
+                        {spending.map(option)}
+                    </DropdownMenuGroup>
+                )}
+                {projectionOnly.length > 0 && (
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel className={GROUP_LABEL}>
+                            {__('Projection only')}
+                        </DropdownMenuLabel>
+                        {projectionOnly.map(option)}
+                    </DropdownMenuGroup>
+                )}
+                {editor && (
+                    <>
+                        <DropdownMenuSeparator className="mx-0" />
+                        <DropdownMenuItem
+                            className="min-h-10 gap-2.5 rounded-md px-2.5 py-1.5 text-muted-foreground focus:text-muted-foreground"
+                            onSelect={() => editor.open({ kind: 'accounts' })}
+                            data-test="forecast-choose-accounts"
+                        >
+                            <SlidersHorizontalIcon />
+                            {__('Choose which accounts go into the forecast')}
+                        </DropdownMenuItem>
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -217,8 +211,9 @@ function AccountOption({
                 'min-h-10 gap-2.5 rounded-md px-2.5 py-1.5 text-foreground focus:bg-muted',
                 selected && 'bg-muted',
             )}
-            aria-current={selected ? 'page' : undefined}
-            onSelect={onSelect}
+            role="menuitemradio"
+            aria-checked={selected}
+            onSelect={selected ? undefined : onSelect}
             data-test={dataTest}
         >
             <span className="flex size-4 shrink-0">
@@ -237,7 +232,7 @@ function AccountOption({
                 <span className="text-xs text-muted-foreground">{hint}</span>
             </span>
             {hasAlert && (
-                <span className="flex items-center gap-1.5 text-xs text-destructive-foreground">
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-destructive">
                     <AlertDot />
                     {__('Alert')}
                 </span>

@@ -3,6 +3,7 @@ import {
     type ProjectedMonth,
     type ProjectionInput,
 } from '@/lib/forecast/types';
+import { type AccountType } from '@/types/account';
 
 /**
  * The forecast page's payload, as App\Services\Forecast\ForecastPresenter
@@ -47,7 +48,7 @@ export interface ForecastTrend {
 export interface ForecastAccountTab {
     id: string;
     name: string;
-    type: string;
+    type: AccountType;
     currencyCode: string;
     /** Counted in the total but never warns nor lends. */
     projectionOnly: boolean;

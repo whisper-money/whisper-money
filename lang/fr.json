@@ -3388,5 +3388,6 @@
     ":count with a warning": ":count avec alerte",
     "Projection only": "Projection seule",
     "Alert": "Alerte",
-    "Choose which accounts go into the forecast": "Choisir les comptes inclus dans la prévision"
+    "Choose which accounts go into the forecast": "Choisir les comptes inclus dans la prévision",
+    "Your accounts": "Vos comptes"
 }
