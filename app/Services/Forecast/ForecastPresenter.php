@@ -7,6 +7,7 @@ use App\Enums\ForecastAlertLevel;
 use App\Enums\ForecastFrequency;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\Forecast\Data\ForecastContext;
 use App\Services\Forecast\Data\ForecastPlan;
 use App\Services\Forecast\Data\MonthlyEstimate;
 use App\Services\Forecast\Data\Occurrence;
@@ -18,7 +19,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * The forecast of one account as its page shows it: the warnings, the four
  * figures, the chart and the plan, plus the projection input the page can
  * recompute from. Every account the forecast includes is projected once, so
- * each one's tab can say whether it has a problem.
+ * each one's tab can say whether it has a problem. With ALL_ACCOUNTS the
+ * page shows them together instead (see ForecastAllAccountsPresenter).
  *
  * The month in progress is always shown, followed by the horizon. Without
  * Pro only the next month is: the months after it are listed by name, with
@@ -28,9 +30,14 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class ForecastPresenter
 {
     /**
+     * The `account` query value of the view of every account together.
+     */
+    public const ALL_ACCOUNTS = 'all';
+
+    /**
      * Months of real history the chart shows before today's.
      */
-    private const PAST_MONTHS = 2;
+    public const PAST_MONTHS = 2;
 
     public function __construct(
         private readonly ForecastPlanBuilder $builder,
@@ -40,10 +47,11 @@ class ForecastPresenter
         private readonly ForecastPastMonths $pastMonths,
         private readonly ForecastPlanRows $rows,
         private readonly ForecastTransferSuggester $transfers,
+        private readonly ForecastAllAccountsPresenter $allAccounts,
     ) {}
 
     /**
-     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account.
+     * @param  string|null  $accountId  Null picks the account with a problem, else the main checking account; ALL_ACCOUNTS shows them all together.
      * @return array{forecast: array<string, mixed>, projectionInput: array<string, mixed>|null}
      *
      * @throws NotFoundHttpException When the account is not one the forecast includes.
@@ -53,73 +61,110 @@ class ForecastPresenter
         $today = $user->localToday()->toDateString();
         $isPro = $user->hasProPlan();
         $included = $this->accounts->included($user, $spaceId);
-        $base = ['today' => $today, 'horizon' => $horizon, 'isPro' => $isPro];
+        $all = $accountId === self::ALL_ACCOUNTS;
+        $base = ['scope' => $all ? self::ALL_ACCOUNTS : 'account', 'today' => $today, 'horizon' => $horizon, 'isPro' => $isPro];
 
         if ($included->isEmpty()) {
-            abort_if($accountId !== null, 404);
+            abort_if($accountId !== null && ! $all, 404);
 
             return ['forecast' => [...$base, 'account' => null, 'accounts' => []], 'projectionInput' => null];
         }
 
-        $plan = $this->builder->build($user, $spaceId, null, $horizon + 1, $today);
-        $projected = collect($this->projector->project($plan->input)['accounts'])->keyBy('accountId');
-        $visibleCount = 1 + ($isPro ? $horizon : min(ForecastEditWindow::FREE_MONTHS, $horizon));
-        $thresholds = $included->mapWithKeys(fn (Account $account): array => [$account->id => $this->alerts->threshold($account->type, $projected[$account->id]['minimumBalance'])]);
-        $alerts = $projected->map(fn (array $projection, string $id): array => $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $thresholds[$id]))->all();
-        $account = $this->selectedAccount($included, $accountId, $alerts);
-        $projection = $projected[$account->id];
-        $visible = array_slice($projection['months'], 0, $visibleCount);
-        $locked = array_slice($projection['months'], $visibleCount);
+        $context = $this->context($user, $spaceId, $today, $included, $horizon, $isPro);
+
+        if ($all) {
+            return [
+                'forecast' => [
+                    ...$base,
+                    'currencyCode' => $user->currency_code,
+                    'account' => null,
+                    'accounts' => $this->tabs($context),
+                    'months' => $this->monthColumns($context, $included->first()->id),
+                    ...$this->allAccounts->present($context),
+                ],
+                'projectionInput' => $this->projectionInput($context->plan, null, $today, $context->visibleCount),
+            ];
+        }
+
+        $account = $this->selectedAccount($included, $accountId, $context->alerts);
+        $visible = $context->visibleMonths($account->id);
+        $alert = $context->alerts[$account->id];
 
         return [
             'forecast' => [
                 ...$base,
                 'currencyCode' => $account->currency_code,
-                'account' => [
-                    ...$this->accountSummary($account, $projection['minimumBalance']),
-                    'annualRateBps' => $this->projectionAccount($plan, $account->id)->annualRateBps,
-                    'alertThreshold' => $thresholds[$account->id],
-                ],
-                'accounts' => $included->map(fn (Account $other): array => [
-                    'id' => $other->id,
-                    'name' => $other->name,
-                    'type' => $other->type,
-                    'currencyCode' => $other->currency_code,
-                    'hasAlert' => $this->isStrong($alerts[$other->id]),
-                ])->all(),
-                'months' => $this->monthColumns($visible, $locked),
+                'account' => $context->accountSummary($account),
+                'accounts' => $this->tabs($context),
+                'months' => $this->monthColumns($context, $account->id),
                 'projection' => $visible,
                 'past' => $this->pastMonths->forAccount($user, $spaceId, $account, $today, self::PAST_MONTHS),
                 'alert' => [
-                    ...$alerts[$account->id],
-                    'causes' => $this->causes($plan, $account->id, $alerts[$account->id]['month']),
-                    'transfer' => $this->transfers->suggest($account, $visible, $included, $projected->all(), $thresholds->all(), $today),
+                    ...$alert,
+                    'causes' => $this->causes($context->plan, $account->id, $alert['month']),
+                    'transfer' => $this->transfers->suggest($account, $visible, $included, $context->projected, $context->thresholds, $today),
                 ],
-                'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($locked, $thresholds[$account->id]),
-                'kpis' => $this->kpis($visible, $this->projectionAccount($plan, $account->id)->openingBalance),
-                'plan' => $this->rows->build($user, $plan, $account, array_column($visible, 'month')),
+                'lockedAlertCount' => $isPro ? null : $this->alerts->strongCount($context->lockedMonths($account->id), $context->thresholds[$account->id]),
+                'kpis' => $this->kpis($visible, $context->projectionAccount($account->id)->openingBalance),
+                'plan' => $this->rows->build($user, $context->plan, $account, array_column($visible, 'month')),
             ],
-            'projectionInput' => $this->projectionInput($plan, $account->id, $today, $visibleCount),
+            'projectionInput' => $this->projectionInput($context->plan, $account->id, $today, $context->visibleCount),
         ];
+    }
+
+    /**
+     * Every included account projected once in its own currency, with its
+     * warnings over the months shown: the month in progress and the horizon,
+     * or without Pro only the next month.
+     *
+     * @param  Collection<int, Account>  $included
+     */
+    private function context(User $user, string $spaceId, string $today, Collection $included, int $horizon, bool $isPro): ForecastContext
+    {
+        $plan = $this->builder->build($user, $spaceId, null, $horizon + 1, $today);
+        $projected = collect($this->projector->project($plan->input)['accounts'])->keyBy('accountId')->all();
+        $visibleCount = 1 + ($isPro ? $horizon : min(ForecastEditWindow::FREE_MONTHS, $horizon));
+        $thresholds = $included->mapWithKeys(fn (Account $account): array => [$account->id => $this->alerts->threshold($account->type, $projected[$account->id]['minimumBalance'])])->all();
+        $alerts = [];
+
+        foreach ($projected as $id => $projection) {
+            $alerts[$id] = $this->alerts->evaluate(array_slice($projection['months'], 0, $visibleCount), $thresholds[$id]);
+        }
+
+        return new ForecastContext($user, $spaceId, $today, $included, $plan, $projected, $visibleCount, $thresholds, $alerts);
+    }
+
+    /**
+     * One pill per account, marked when it has a problem.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function tabs(ForecastContext $context): array
+    {
+        return $context->included->map(fn (Account $account): array => [
+            'id' => $account->id,
+            'name' => $account->name,
+            'type' => $account->type,
+            'currencyCode' => $account->currency_code,
+            'hasAlert' => $this->isStrong($context->alerts[$account->id]),
+        ])->all();
     }
 
     /**
      * The plan's columns: the month in progress, the months shown and, without
      * Pro, the locked ones by name only.
      *
-     * @param  list<array<string, int|string|null>>  $visible
-     * @param  list<array<string, int|string|null>>  $locked
      * @return list<array{month: string, status: 'current'|'future'|'locked'}>
      */
-    private function monthColumns(array $visible, array $locked): array
+    private function monthColumns(ForecastContext $context, string $accountId): array
     {
         $columns = [];
 
-        foreach ($visible as $index => $month) {
+        foreach ($context->visibleMonths($accountId) as $index => $month) {
             $columns[] = ['month' => (string) $month['month'], 'status' => $index === 0 ? 'current' : 'future'];
         }
 
-        foreach ($locked as $month) {
+        foreach ($context->lockedMonths($accountId) as $month) {
             $columns[] = ['month' => (string) $month['month'], 'status' => 'locked'];
         }
 
@@ -147,20 +192,6 @@ class ForecastPresenter
         return $included->filter(fn (Account $account): bool => $this->isStrong($alerts[$account->id]))->sortBy(fn (Account $account): int => (int) $alerts[$account->id]['min'])->first()
             ?? $included->sortBy('position')->first(fn (Account $account): bool => $account->type === AccountType::Checking)
             ?? $included->first();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function accountSummary(Account $account, ?int $minimumBalance): array
-    {
-        return [
-            'id' => $account->id,
-            'name' => $account->name,
-            'type' => $account->type,
-            'currencyCode' => $account->currency_code,
-            'minimumBalance' => $minimumBalance,
-        ];
     }
 
     /**
@@ -212,20 +243,16 @@ class ForecastPresenter
             ->all();
     }
 
-    private function projectionAccount(ForecastPlan $plan, string $accountId): ProjectionAccount
-    {
-        return collect($plan->input->accounts)->first(fn (ProjectionAccount $candidate): bool => $candidate->id === $accountId);
-    }
-
     /**
      * The engine's input over the months shown, in the camelCase shape
      * resources/js/lib/forecast/project.ts takes. Every included account is
      * in it, the selected one first, so the page can show what a transfer
      * does to both sides; an account's projection never depends on another's.
      *
+     * @param  string|null  $accountId  The account shown, or null for all of them.
      * @return array<string, mixed>
      */
-    private function projectionInput(ForecastPlan $plan, string $accountId, string $today, int $months): array
+    private function projectionInput(ForecastPlan $plan, ?string $accountId, string $today, int $months): array
     {
         $end = ForecastCalendar::horizonEnd($today, $months);
         $lastMonth = ForecastCalendar::monthKey($end);

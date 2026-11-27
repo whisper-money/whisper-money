@@ -40,7 +40,8 @@ export interface ForecastSave {
  * in flight, then replaced by the forecast the server answers with (only
  * `forecast` and `projectionInput` reload). A request that fails puts the
  * page back as it was, and its validation errors are returned for the
- * sheet to show, or toasted when no sheet is open to show them.
+ * sheet to show, or toasted when no sheet is open to show them. The "All
+ * accounts" view has no account to recompute, so it waits for the server.
  */
 export function useForecastSave(): ForecastSave {
     const [processing, setProcessing] = useState(false);

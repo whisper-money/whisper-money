@@ -15,14 +15,14 @@ const PILL_OFF = 'border-border bg-background text-foreground hover:bg-muted';
 
 interface ForecastAccountTabsProps {
     accounts: ForecastAccountTab[];
-    selectedId: string;
+    /** The account shown, or null for "All accounts". */
+    selectedId: string | null;
     horizon: ForecastHorizon;
 }
 
 /**
- * The accounts the forecast covers, one pill each, the one with a problem
- * marked with a red dot. "All accounts" holds the place of the combined view,
- * which comes later.
+ * "All accounts", then the accounts the forecast covers, one pill each, the
+ * one with a problem marked with a red dot.
  */
 export function ForecastAccountTabs({
     accounts,
@@ -31,18 +31,15 @@ export function ForecastAccountTabs({
 }: ForecastAccountTabsProps) {
     return (
         <nav aria-label={__('Account')} className="flex flex-wrap gap-2">
-            <span
-                aria-disabled="true"
-                title={__('Coming soon')}
-                className={cn(
-                    PILL,
-                    PILL_OFF,
-                    'cursor-default opacity-60 hover:bg-background',
-                )}
+            <Link
+                href={forecastIndex({ query: { account: 'all', horizon } })}
+                preserveScroll
+                aria-current={selectedId === null ? 'page' : undefined}
+                className={cn(PILL, selectedId === null ? PILL_ON : PILL_OFF)}
                 data-test="forecast-tab-all"
             >
                 {__('All accounts')}
-            </span>
+            </Link>
             {accounts.map((account) => {
                 const selected = account.id === selectedId;
 

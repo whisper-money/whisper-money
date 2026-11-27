@@ -159,11 +159,13 @@ interface ForecastBase {
 }
 
 export interface ForecastEmpty extends ForecastBase {
+    scope: 'account' | 'all';
     account: null;
     accounts: [];
 }
 
 export interface ForecastData extends ForecastBase {
+    scope: 'account';
     currencyCode: string;
     account: ForecastAccountSummary;
     accounts: ForecastAccountTab[];
@@ -243,8 +245,91 @@ export interface ForecastReviewPrompt {
     hasLines: boolean;
 }
 
+/*
+ * The "All accounts" view (`?account=all`), as
+ * App\Services\Forecast\ForecastAllAccountsPresenter builds it. The total,
+ * the KPIs and each category's totals are in the user's currency
+ * (`currencyCode`); each line, estimated rest and account in its own.
+ */
+
+/** The estimated rest of one account under a parent category. */
+export interface ForecastAccountEstimate extends ForecastEstimate {
+    accountId: string;
+}
+
+/** A parent category summed across the accounts. */
+export interface ForecastAllGroup extends Omit<ForecastGroup, 'estimate'> {
+    estimates: ForecastAccountEstimate[];
+    /** What the category adds up to by month, in the user's currency. */
+    totals: Record<string, number>;
+    /** What it really added up to in the month in progress so far. */
+    current: { real: number; pending: boolean };
+}
+
+/** One account's own projection, in its currency. */
+export interface ForecastAccountForecast extends ForecastAccountSummary {
+    projection: ProjectedMonth[];
+}
+
+/**
+ * `split`: an account runs short and what the others have above their
+ * threshold covers it; `short`: it does not, so the total does not hold.
+ */
+export type ForecastAllAlertLevel = 'split' | 'short' | 'soft' | 'ok';
+
+export interface ForecastAllAlert {
+    level: ForecastAllAlertLevel;
+    /** The account in the worst trouble. */
+    accountId: string | null;
+    month: string | null;
+    min: number | null;
+    minDate: string | null;
+    softMonths: string[];
+    transfer: ForecastTransferSuggestion | null;
+}
+
+export interface ForecastAllKpis {
+    balanceToday: number;
+    accountCount: number;
+    end: { month: string; close: number; band: number };
+    /** Income less expenses over the months shown. */
+    saved: number;
+    /** The estimated growth over the months shown. */
+    growth: number;
+    /** What the transfers between the accounts move over the months shown. */
+    moved: number;
+}
+
+export interface ForecastAllPlan {
+    income: ForecastAllGroup[];
+    expenses: ForecastAllGroup[];
+    /** Signed from the destination: the positive amount moved. */
+    transfers: ForecastLine[];
+    growth: Record<string, number>;
+    /** What the transfers change the total by: zero unless one leaves the forecast. */
+    transferEffect: Record<string, number>;
+}
+
+export interface ForecastAllData extends ForecastBase {
+    scope: 'all';
+    currencyCode: string;
+    account: null;
+    accounts: ForecastAccountTab[];
+    months: ForecastMonthColumn[];
+    /** The total of every account counted. */
+    projection: ProjectedMonth[];
+    /** Currencies with no rate today: their accounts are left out of the total. */
+    unconvertedCurrencies: string[];
+    past: ForecastPastMonth[];
+    accountForecasts: ForecastAccountForecast[];
+    alert: ForecastAllAlert;
+    lockedAlertCount: number | null;
+    kpis: ForecastAllKpis;
+    plan: ForecastAllPlan;
+}
+
 export interface ForecastPageProps {
-    forecast: ForecastData | ForecastEmpty;
+    forecast: ForecastData | ForecastAllData | ForecastEmpty;
     projectionInput: ProjectionInput | null;
     reviewPrompt: ForecastReviewPrompt;
     /** Suggestions not answered yet; deferred, so undefined at first. */

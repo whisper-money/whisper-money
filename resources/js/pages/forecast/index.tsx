@@ -2,13 +2,18 @@ import { index as accountsList } from '@/actions/App/Http/Controllers/AccountCon
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
 import { ForecastAccountTabs } from '@/components/forecast/forecast-account-tabs';
 import { ForecastAlerts } from '@/components/forecast/forecast-alerts';
+import { ForecastAllAlerts } from '@/components/forecast/forecast-all-alerts';
+import { ForecastAllPlanTable } from '@/components/forecast/forecast-all-plan-table';
 import { ForecastChart } from '@/components/forecast/forecast-chart';
 import {
     ForecastEditorProvider,
     useForecastEditor,
 } from '@/components/forecast/forecast-editor';
 import { ForecastHorizonPicker } from '@/components/forecast/forecast-horizon-picker';
-import { ForecastKpis } from '@/components/forecast/forecast-kpis';
+import {
+    ForecastAllKpis,
+    ForecastKpis,
+} from '@/components/forecast/forecast-kpis';
 import { ForecastPlanTable } from '@/components/forecast/forecast-plan-table';
 import {
     ForecastReviewDialog,
@@ -26,7 +31,9 @@ import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { initiallyExpandedGroups } from '@/lib/forecast/plan-rows';
 import { type BreadcrumbItem } from '@/types';
 import {
+    type ForecastAllData,
     type ForecastData,
+    type ForecastEmpty,
     type ForecastPageProps,
     type ForecastReviewPrompt,
 } from '@/types/forecast';
@@ -35,8 +42,8 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 /** The month picked by default: the one with the problem, else the next one. */
-function defaultMonth(forecast: ForecastData): string | null {
-    if (forecast.alert.level === 'strong' && forecast.alert.month) {
+function defaultMonth(forecast: ForecastData | ForecastAllData): string | null {
+    if (forecast.alert.level !== 'ok' && forecast.alert.month) {
         return forecast.alert.month;
     }
 
@@ -165,17 +172,61 @@ function NoLinesYet({
     );
 }
 
-function ForecastContent({
-    forecast,
-    reviewPrompt,
-    newSuggestionCount,
-    onOpenReview,
-}: {
-    forecast: ForecastData;
+interface ReviewProps {
     reviewPrompt: ForecastReviewPrompt;
     newSuggestionCount: number | undefined;
     onOpenReview: (step: ForecastReviewStep) => void;
-}) {
+}
+
+/** "Recurring detected (2 new)", over the plan once the user has lines. */
+function ReviewLink({
+    reviewPrompt,
+    newSuggestionCount,
+    onOpenReview,
+}: ReviewProps) {
+    if (!newSuggestionCount || !reviewPrompt.hasLines) {
+        return null;
+    }
+
+    return (
+        <button
+            type="button"
+            className="text-[13px] underline underline-offset-4 hover:text-foreground/80"
+            onClick={() => onOpenReview(1)}
+            data-test="forecast-review-link"
+        >
+            {newSuggestionCount === 1
+                ? __('Recurring detected (1 new)')
+                : __('Recurring detected (:count new)', {
+                      count: newSuggestionCount,
+                  })}
+        </button>
+    );
+}
+
+/** The page of a user with no line yet, which leads to the review. */
+function NoLinesPrompt({
+    reviewPrompt,
+    newSuggestionCount,
+    onOpenReview,
+}: ReviewProps) {
+    if (reviewPrompt.hasLines) {
+        return null;
+    }
+
+    return (
+        <NoLinesYet
+            newCount={newSuggestionCount}
+            onReview={() => onOpenReview(newSuggestionCount === 0 ? 2 : 1)}
+        />
+    );
+}
+
+function ForecastContent({
+    forecast,
+    ...review
+}: ReviewProps & { forecast: ForecastData }) {
+    const { reviewPrompt, newSuggestionCount, onOpenReview } = review;
     const [selectedMonth, setSelectedMonth] = useState(() =>
         defaultMonth(forecast),
     );
@@ -183,14 +234,7 @@ function ForecastContent({
 
     return (
         <>
-            {!reviewPrompt.hasLines && (
-                <NoLinesYet
-                    newCount={newSuggestionCount}
-                    onReview={() =>
-                        onOpenReview(newSuggestionCount === 0 ? 2 : 1)
-                    }
-                />
-            )}
+            <NoLinesPrompt {...review} />
             <ForecastAccountTabs
                 accounts={forecast.accounts}
                 selectedId={forecast.account.id}
@@ -222,20 +266,11 @@ function ForecastContent({
                         forecast.alert.month,
                     )}
                     headerAction={
-                        newSuggestionCount && reviewPrompt.hasLines ? (
-                            <button
-                                type="button"
-                                className="text-[13px] underline underline-offset-4 hover:text-foreground/80"
-                                onClick={() => onOpenReview(1)}
-                                data-test="forecast-review-link"
-                            >
-                                {newSuggestionCount === 1
-                                    ? __('Recurring detected (1 new)')
-                                    : __('Recurring detected (:count new)', {
-                                          count: newSuggestionCount,
-                                      })}
-                            </button>
-                        ) : null
+                        <ReviewLink
+                            reviewPrompt={reviewPrompt}
+                            newSuggestionCount={newSuggestionCount}
+                            onOpenReview={onOpenReview}
+                        />
                     }
                 />
             </div>
@@ -248,13 +283,60 @@ function ForecastContent({
     );
 }
 
+/**
+ * Every account together: the total, where its rise comes from, the plan by
+ * category across the accounts and how each account closes.
+ */
+function ForecastAllContent({
+    forecast,
+    ...review
+}: ReviewProps & { forecast: ForecastAllData }) {
+    const [selectedMonth, setSelectedMonth] = useState(() =>
+        defaultMonth(forecast),
+    );
+
+    return (
+        <>
+            <NoLinesPrompt {...review} />
+            <ForecastAccountTabs
+                accounts={forecast.accounts}
+                selectedId={null}
+                horizon={forecast.horizon}
+            />
+            <ForecastAllAlerts forecast={forecast} />
+            <ForecastAllKpis forecast={forecast} />
+            <ForecastChart
+                forecast={forecast}
+                selectedMonth={selectedMonth}
+                onSelectMonth={setSelectedMonth}
+            />
+            <ForecastAllPlanTable
+                forecast={forecast}
+                selectedMonth={selectedMonth}
+                headerAction={<ReviewLink {...review} />}
+            />
+            <p className="text-xs text-muted-foreground">
+                {__(
+                    'Transfers between your accounts go apart: they change the balance of each account but not the total. The growth uses the yearly rate of each investment account. The likely range applies to the estimate only.',
+                )}
+            </p>
+        </>
+    );
+}
+
+function isEmpty(
+    forecast: ForecastPageProps['forecast'],
+): forecast is ForecastEmpty {
+    return forecast.accounts.length === 0;
+}
+
 /** The edit sheets, once there is an account to edit. */
 function EditorBoundary({
     forecast,
     projectionInput,
     children,
 }: ForecastPageProps & { children: ReactNode }) {
-    if (forecast.account === null) {
+    if (isEmpty(forecast)) {
         return children;
     }
 
@@ -279,7 +361,7 @@ export default function ForecastPage({
     newSuggestionCount,
     review,
 }: ForecastPageProps) {
-    const reviewState = useReview(reviewPrompt, forecast.account !== null);
+    const reviewState = useReview(reviewPrompt, !isEmpty(forecast));
     const breadcrumbs: BreadcrumbItem[] = [
         { title: __('Forecast'), href: forecastIndex().url },
     ];
@@ -302,13 +384,17 @@ export default function ForecastPage({
                             <div className="flex flex-wrap items-center gap-2">
                                 <ForecastHorizonPicker
                                     horizon={forecast.horizon}
-                                    accountId={forecast.account?.id ?? null}
+                                    accountId={
+                                        forecast.scope === 'all'
+                                            ? 'all'
+                                            : (forecast.account?.id ?? null)
+                                    }
                                 />
                                 <AddButton />
                             </div>
                         }
                     />
-                    {forecast.account === null ? (
+                    {isEmpty(forecast) ? (
                         <Card>
                             <CardContent>
                                 <EmptyState>
@@ -328,6 +414,14 @@ export default function ForecastPage({
                                 </EmptyState>
                             </CardContent>
                         </Card>
+                    ) : forecast.scope === 'all' ? (
+                        <ForecastAllContent
+                            key={`all:${forecast.horizon}`}
+                            forecast={forecast}
+                            reviewPrompt={reviewPrompt}
+                            newSuggestionCount={newSuggestionCount}
+                            onOpenReview={reviewState.openAt}
+                        />
                     ) : (
                         <ForecastContent
                             key={`${forecast.account.id}:${forecast.horizon}`}
@@ -337,7 +431,7 @@ export default function ForecastPage({
                             onOpenReview={reviewState.openAt}
                         />
                     )}
-                    {forecast.account !== null && (
+                    {!isEmpty(forecast) && (
                         <ForecastReviewDialog
                             open={reviewState.open}
                             onOpenChange={reviewState.onOpenChange}
@@ -345,7 +439,12 @@ export default function ForecastPage({
                             isPro={forecast.isPro}
                             review={review}
                             initialStep={reviewState.step}
-                            defaultAccountId={forecast.account.id}
+                            defaultAccountId={
+                                forecast.scope === 'all'
+                                    ? (forecast.alert.accountId ??
+                                      forecast.accounts[0].id)
+                                    : forecast.account.id
+                            }
                         />
                     )}
                 </div>

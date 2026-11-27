@@ -11,6 +11,7 @@ use App\Services\Forecast\Data\CategoryEstimate;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\ForecastPlan;
 use App\Services\Forecast\Data\Occurrence;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -49,18 +50,47 @@ class ForecastPlanRows
         $items = $plan->items
             ->filter(fn (ForecastItem $item): bool => $item->account_id === $account->id || $item->destination_account_id === $account->id)
             ->values();
+        $estimates = array_values(array_filter($plan->categoryEstimates, fn (CategoryEstimate $estimate): bool => $estimate->accountId === $account->id));
+
+        return $this->assemble($user, $items, $estimates, fn (): string => $account->id, $months, false);
+    }
+
+    /**
+     * The plan of every included account at once: each line is seen from its
+     * own account, a transfer from its destination (so it reads as the
+     * positive amount moved), and each parent category lists the estimated
+     * rest of every account that has one, as `estimates`.
+     *
+     * @param  list<string>  $months  The `Y-m` months shown, the month in progress first.
+     * @return array{income: list<array<string, mixed>>, expenses: list<array<string, mixed>>, transfers: list<array<string, mixed>>}
+     */
+    public function buildAll(User $user, ForecastPlan $plan, array $months): array
+    {
+        return $this->assemble($user, $plan->items, $plan->categoryEstimates, fn (ForecastItem $item): string => $item->destination_account_id ?? $item->account_id, $months, true);
+    }
+
+    /**
+     * @param  Collection<int, ForecastItem>  $items
+     * @param  list<CategoryEstimate>  $estimates
+     * @param  Closure(ForecastItem): string  $sideOf  The account each line's amounts are signed from.
+     * @param  list<string>  $months
+     * @return array{income: list<array<string, mixed>>, expenses: list<array<string, mixed>>, transfers: list<array<string, mixed>>}
+     */
+    private function assemble(User $user, Collection $items, array $estimates, Closure $sideOf, array $months, bool $perAccountEstimates): array
+    {
+        $sides = $items->mapWithKeys(fn (ForecastItem $item): array => [$item->id => $sideOf($item)])->all();
         $occurrences = $this->occurrences($items, $months);
-        $amounts = $this->amountsByItem($occurrences, $account->id);
+        $amounts = $this->amountsByItem($occurrences, $sides);
         $dates = $this->datesIn($occurrences, $months[0]);
-        $matched = $this->matchedThisMonth($items, $account->id, $months[0]);
-        $counterparts = $this->counterpartNames($user, $items, $account->id);
+        $matched = $this->matchedThisMonth($items, $sides, $months[0]);
+        $counterparts = $this->counterpartNames($user, $items, $sides);
         $editing = $this->editDetails($user, $items, $occurrences, ForecastCalendar::horizonEnd($months[0].'-01', count($months)));
         $parents = $this->history->parentCategories($user);
         $groups = ['income' => [], 'expenses' => []];
         $transfers = [];
 
         foreach ($items as $item) {
-            $row = [...$this->itemRow($item, $account->id, $amounts[$item->id] ?? [], $counterparts), ...$editing[$item->id]];
+            $row = [...$this->itemRow($item, $sides[$item->id], $amounts[$item->id] ?? [], $counterparts), ...$editing[$item->id]];
             $row['current'] = $this->currentCell($row['amounts'][$months[0]] ?? null, $matched[$item->id] ?? null, $dates[$item->id] ?? null);
 
             if ($item->destination_account_id !== null) {
@@ -73,15 +103,23 @@ class ForecastPlanRows
             $groups[$section][$this->groupKey($item->category_id, $parents)]['items'][] = $row;
         }
 
-        foreach ($this->estimatesByGroup($plan->categoryEstimates, $account->id) as $key => $estimates) {
-            $groups['expenses'][$key]['estimate'] = $this->estimateRow($estimates, $months);
+        foreach ($this->estimatesByGroup($estimates) as $key => $byAccount) {
+            foreach ($byAccount as $accountId => $accountEstimates) {
+                $row = $this->estimateRow($accountEstimates, $months);
+
+                if ($perAccountEstimates) {
+                    $groups['expenses'][$key]['estimates'][] = ['accountId' => (string) $accountId, ...$row];
+                } else {
+                    $groups['expenses'][$key]['estimate'] = $row;
+                }
+            }
         }
 
         $categories = $this->categories(array_merge(array_keys($groups['income']), array_keys($groups['expenses'])));
 
         return [
-            'income' => $this->groupRows($groups['income'], $categories),
-            'expenses' => $this->groupRows($groups['expenses'], $categories),
+            'income' => $this->groupRows($groups['income'], $categories, $perAccountEstimates),
+            'expenses' => $this->groupRows($groups['expenses'], $categories, $perAccountEstimates),
             'transfers' => $this->sortedByWeight($transfers),
         ];
     }
@@ -203,18 +241,19 @@ class ForecastPlanRows
     }
 
     /**
-     * Each line's amount by month, from the account's side.
+     * Each line's amount by month, from its side.
      *
      * @param  list<Occurrence>  $occurrences
+     * @param  array<string, string>  $sides  The account each line is signed from, by line id.
      * @return array<string, array<string, int>> By line id, then month.
      */
-    private function amountsByItem(array $occurrences, string $accountId): array
+    private function amountsByItem(array $occurrences, array $sides): array
     {
         $amounts = [];
 
         foreach ($occurrences as $occurrence) {
             $month = ForecastCalendar::monthKey($occurrence->date);
-            $signed = self::signedFor($accountId, $occurrence->accountId, $occurrence->amount);
+            $signed = self::signedFor($sides[$occurrence->itemId], $occurrence->accountId, $occurrence->amount);
             $amounts[$occurrence->itemId][$month] = ($amounts[$occurrence->itemId][$month] ?? 0) + $signed;
         }
 
@@ -251,12 +290,13 @@ class ForecastPlanRows
 
     /**
      * What the transactions that paid each line this month add up to, from
-     * the account's side. Lines nothing paid yet are left out.
+     * the line's side. Lines nothing paid yet are left out.
      *
      * @param  Collection<int, ForecastItem>  $items
+     * @param  array<string, string>  $sides  By line id.
      * @return array<string, int> By line id.
      */
-    private function matchedThisMonth(Collection $items, string $accountId, string $month): array
+    private function matchedThisMonth(Collection $items, array $sides, string $month): array
     {
         $matches = ForecastMatch::query()
             ->whereIn('forecast_item_id', $items->modelKeys())
@@ -270,7 +310,7 @@ class ForecastPlanRows
                 continue;
             }
 
-            $signed = self::signedFor($accountId, $match->transaction->account_id, $match->transaction->amount);
+            $signed = self::signedFor($sides[$match->forecast_item_id], $match->transaction->account_id, $match->transaction->amount);
             $real[$match->forecast_item_id] = ($real[$match->forecast_item_id] ?? 0) + $signed;
         }
 
@@ -281,13 +321,14 @@ class ForecastPlanRows
      * The name of the other account of each transfer, by account id.
      *
      * @param  Collection<int, ForecastItem>  $items
+     * @param  array<string, string>  $sides  By line id.
      * @return array<string, string>
      */
-    private function counterpartNames(User $user, Collection $items, string $accountId): array
+    private function counterpartNames(User $user, Collection $items, array $sides): array
     {
         $ids = $items
             ->filter(fn (ForecastItem $item): bool => $item->destination_account_id !== null)
-            ->map(fn (ForecastItem $item): string => $item->account_id === $accountId ? (string) $item->destination_account_id : $item->account_id)
+            ->map(fn (ForecastItem $item): string => $item->account_id === $sides[$item->id] ? (string) $item->destination_account_id : $item->account_id)
             ->unique()
             ->values()
             ->all();
@@ -345,16 +386,14 @@ class ForecastPlanRows
 
     /**
      * @param  list<CategoryEstimate>  $estimates
-     * @return array<string, list<CategoryEstimate>>
+     * @return array<string, array<string, list<CategoryEstimate>>> By group, then account id.
      */
-    private function estimatesByGroup(array $estimates, string $accountId): array
+    private function estimatesByGroup(array $estimates): array
     {
         $byGroup = [];
 
         foreach ($estimates as $estimate) {
-            if ($estimate->accountId === $accountId) {
-                $byGroup[$estimate->categoryId ?? self::OTHER][] = $estimate;
-            }
+            $byGroup[$estimate->categoryId ?? self::OTHER][$estimate->accountId][] = $estimate;
         }
 
         return $byGroup;
@@ -412,11 +451,11 @@ class ForecastPlanRows
     /**
      * The groups heaviest first, the uncategorized one last.
      *
-     * @param  array<string, array{items?: list<array<string, mixed>>, estimate?: array<string, mixed>}>  $groups
+     * @param  array<string, array{items?: list<array<string, mixed>>, estimate?: array<string, mixed>, estimates?: list<array<string, mixed>>}>  $groups
      * @param  array<string, Category>  $categories
      * @return list<array<string, mixed>>
      */
-    private function groupRows(array $groups, array $categories): array
+    private function groupRows(array $groups, array $categories, bool $perAccountEstimates): array
     {
         $rows = [];
 
@@ -429,7 +468,9 @@ class ForecastPlanRows
                 'icon' => $categories[$key]->icon ?? null,
                 'color' => $categories[$key]->color ?? null,
                 'items' => $this->sortedByWeight($group['items'] ?? []),
-                'estimate' => $group['estimate'] ?? null,
+                ...($perAccountEstimates
+                    ? ['estimates' => $this->sortedByWeight($group['estimates'] ?? [])]
+                    : ['estimate' => $group['estimate'] ?? null]),
             ];
         }
 
@@ -459,7 +500,7 @@ class ForecastPlanRows
         $total = array_sum(array_map(abs(...), $row['amounts'] ?? []));
         $total += array_sum(array_map(abs(...), $row['estimate']['amounts'] ?? []));
 
-        foreach ($row['items'] ?? [] as $item) {
+        foreach ([...$row['items'] ?? [], ...$row['estimates'] ?? []] as $item) {
             $total += $this->weight($item);
         }
 

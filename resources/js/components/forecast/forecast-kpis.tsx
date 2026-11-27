@@ -15,7 +15,11 @@ import {
     monthLongName,
     monthWithYear,
 } from '@/lib/forecast/format';
-import { type ForecastData } from '@/types/forecast';
+import {
+    type ForecastAllData,
+    type ForecastData,
+    type ForecastKpis as ForecastKpisData,
+} from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 
 function KpiCard({ children }: { children: React.ReactNode }) {
@@ -25,6 +29,39 @@ function KpiCard({ children }: { children: React.ReactNode }) {
                 <StatTile size="lg">{children}</StatTile>
             </CardContent>
         </Card>
+    );
+}
+
+/** Where the horizon ends, and its likely range. */
+function EndKpi({
+    end,
+    currencyCode,
+}: {
+    end: ForecastKpisData['end'];
+    currencyCode: string;
+}) {
+    const locale = useLocale();
+    const { formatAmount } = useFormatAmount();
+    const format = (amount: number) =>
+        formatAmount(amount, currencyCode, { fractionDigits: 0 });
+
+    return (
+        <KpiCard>
+            <StatTileLabel>
+                {__('At the end of :month', {
+                    month: monthWithYear(end.month, locale),
+                })}
+            </StatTileLabel>
+            <StatTileValue>
+                <WholeAmount amount={end.close} currencyCode={currencyCode} />
+            </StatTileValue>
+            <StatTileDescription>
+                {__('likely between :low and :high', {
+                    low: format(end.close - end.band),
+                    high: format(end.close + end.band),
+                })}
+            </StatTileDescription>
+        </KpiCard>
     );
 }
 
@@ -85,27 +122,7 @@ export function ForecastKpis({
                     )}
                 </StatTileDescription>
             </KpiCard>
-            <KpiCard>
-                <StatTileLabel>
-                    {__('At the end of :month', {
-                        month: monthWithYear(kpis.end.month, locale),
-                    })}
-                </StatTileLabel>
-                <StatTileValue>
-                    <AmountDisplay
-                        amountInCents={kpis.end.close}
-                        currencyCode={currencyCode}
-                        maximumFractionDigits={0}
-                        minimumFractionDigits={0}
-                    />
-                </StatTileValue>
-                <StatTileDescription>
-                    {__('likely between :low and :high', {
-                        low: format(kpis.end.close - kpis.end.band),
-                        high: format(kpis.end.close + kpis.end.band),
-                    })}
-                </StatTileDescription>
-            </KpiCard>
+            <EndKpi end={kpis.end} currencyCode={currencyCode} />
             <KpiCard>
                 <StatTileLabel>{__('Lowest point')}</StatTileLabel>
                 <StatTileValue
@@ -159,6 +176,94 @@ export function ForecastKpis({
                     ) : (
                         __('Add your yearly payments to sharpen it')
                     )}
+                </StatTileDescription>
+            </KpiCard>
+        </div>
+    );
+}
+
+function WholeAmount({
+    amount,
+    currencyCode,
+}: {
+    amount: number;
+    currencyCode: string;
+}) {
+    return (
+        <AmountDisplay
+            amountInCents={amount}
+            currencyCode={currencyCode}
+            maximumFractionDigits={0}
+            minimumFractionDigits={0}
+        />
+    );
+}
+
+/**
+ * The four figures of the "All accounts" view: what the accounts hold
+ * today, where the total ends and its likely range, where its rise comes
+ * from (what is saved and what the investments grow), and what moves
+ * between the accounts without changing the total.
+ */
+export function ForecastAllKpis({ forecast }: { forecast: ForecastAllData }) {
+    const { formatAmount } = useFormatAmount();
+    const { kpis, currencyCode } = forecast;
+    const format = (amount: number, sign = false) =>
+        `${sign && amount > 0 ? '+' : ''}${formatAmount(amount, currencyCode, { fractionDigits: 0 })}`;
+
+    return (
+        <div
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            data-test="forecast-kpis"
+        >
+            <KpiCard>
+                <StatTileLabel>
+                    {kpis.accountCount === 1
+                        ? __('Balance today · 1 account')
+                        : __('Balance today · :count accounts', {
+                              count: kpis.accountCount,
+                          })}
+                </StatTileLabel>
+                <StatTileValue>
+                    <WholeAmount
+                        amount={kpis.balanceToday}
+                        currencyCode={currencyCode}
+                    />
+                </StatTileValue>
+                <StatTileDescription>
+                    {__('The last known balance of each one')}
+                </StatTileDescription>
+            </KpiCard>
+            <EndKpi end={kpis.end} currencyCode={currencyCode} />
+            <KpiCard>
+                <StatTileLabel>
+                    {kpis.saved + kpis.growth < 0
+                        ? __('Where the drop comes from')
+                        : __('Where the rise comes from')}
+                </StatTileLabel>
+                <StatTileValue
+                    className={kpis.saved > 0 ? 'text-success' : undefined}
+                >
+                    {format(kpis.saved, true)}
+                </StatTileValue>
+                <StatTileDescription>
+                    {__('saved · :growth from growth', {
+                        growth: format(kpis.growth, true),
+                    })}
+                </StatTileDescription>
+            </KpiCard>
+            <KpiCard>
+                <StatTileLabel>
+                    {__('Moved between your accounts')}
+                </StatTileLabel>
+                <StatTileValue>
+                    <WholeAmount
+                        amount={kpis.moved}
+                        currencyCode={currencyCode}
+                    />
+                </StatTileValue>
+                <StatTileDescription>
+                    {__('It neither adds to nor takes from your total')}
                 </StatTileDescription>
             </KpiCard>
         </div>
