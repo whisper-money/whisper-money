@@ -26,8 +26,9 @@ use Illuminate\Database\Eloquent\Collection;
  * is left after what already went.
  *
  * A pair counts when one of its accounts is in the forecast: a transfer to
- * a loan or a house it leaves out is money leaving it, one from them is
- * money coming in. A transfer whose other leg is not in the app is not
+ * a card, a loan or a house it leaves out is money leaving it (paying off
+ * the card each month becomes an outflow of the checking account it is paid
+ * from), one from them is money coming in. A transfer whose other leg is not in the app is not
  * internal; it stays in its category, see EstimateCalculator.
  */
 class TransferEstimator

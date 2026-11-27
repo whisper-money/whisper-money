@@ -465,7 +465,7 @@ export default function ForecastPage({
                                     <EmptyStateDescription>
                                         {forecast.accountChoices.length > 0
                                             ? __(
-                                                  'None of your accounts is in the forecast: loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.',
+                                                  'None of your accounts is in the forecast: credit cards, loans and properties are left out unless you include them. Tick one to see how its balance is going to evolve.',
                                               )
                                             : __(
                                                   'The forecast covers the accounts of this space that are not archived. Add one to see how its balance is going to evolve.',

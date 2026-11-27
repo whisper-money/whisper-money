@@ -11,10 +11,14 @@ use Illuminate\Support\Collection as SupportCollection;
 
 /**
  * The accounts a user's forecast in one space covers. What the user saved for
- * an account decides; without that, its type does: checking, savings and
- * credit card accounts are in, investment, retirement and other accounts are
- * in as projection only, and a loan or a property is left out (its monthly
- * payment is already an expense of the checking account it is paid from).
+ * an account decides; without that, its type does: checking and savings
+ * accounts are in, investment, retirement and other accounts are in as
+ * projection only, and a credit card, a loan or a property is left out (what
+ * the checking account pays it each month is already money leaving that
+ * account: TransferEstimator projects it as such).
+ *
+ * A credit card the user includes is projected like the day-to-day money
+ * (see SPENDING), not as projection only.
  *
  * A projection-only account counts toward the total, but never raises a
  * warning and never lends money to another one: only a liquid account
@@ -27,7 +31,7 @@ class ForecastAccounts
      *
      * @var list<AccountType>
      */
-    private const EXCLUDED_BY_DEFAULT = [AccountType::Loan, AccountType::RealEstate];
+    private const EXCLUDED_BY_DEFAULT = [AccountType::CreditCard, AccountType::Loan, AccountType::RealEstate];
 
     /**
      * Where the user's day-to-day money is: what the forecast warns about and

@@ -14,8 +14,8 @@ use Laravel\Pennant\Feature;
 
 /**
  * Which accounts the forecast covers when the user said nothing about them:
- * checking, savings and cards; investments, pensions and other accounts as
- * projection only; never a loan or a property.
+ * checking and savings; investments, pensions and other accounts as
+ * projection only; never a credit card, a loan or a property.
  */
 beforeEach(function () {
     Mail::fake();
@@ -59,7 +59,7 @@ it('decides by type which accounts are in and which are projection only', functi
 })->with([
     'checking' => [AccountType::Checking, true, false],
     'savings' => [AccountType::Savings, true, false],
-    'credit card' => [AccountType::CreditCard, true, false],
+    'credit card' => [AccountType::CreditCard, false, false],
     'investment' => [AccountType::Investment, true, true],
     'retirement' => [AccountType::Retirement, true, true],
     'others' => [AccountType::Others, true, true],
@@ -104,9 +104,22 @@ it('stays on the view the user was on when leaving out another account', functio
         ->assertRedirect(route('forecast.index'));
 });
 
-it('shows a card rather than an investment by default when there is no checking account', function () {
+it('keeps a card the user includes as day-to-day money, not projection only', function () {
+    $checking = byTypeAccount($this->user, 'Checking', AccountType::Checking);
+    $card = byTypeAccount($this->user, 'Card', AccountType::CreditCard, -45000);
+    ForecastAccountSetting::factory()->create(['account_id' => $card->id, 'included' => true]);
+
+    $forecast = byTypeForecast($this->user, ['account' => $card->id]);
+
+    expect(app(ForecastAccounts::class)->included($this->user, $this->spaceId)->modelKeys())->toBe([$card->id, $checking->id])
+        ->and(collect($forecast['accountChoices'])->firstWhere('id', $card->id))->toMatchArray(['included' => true, 'projectionOnly' => false])
+        ->and(collect($forecast['accounts'])->firstWhere('id', $card->id))->toMatchArray(['projectionOnly' => false, 'hasAlert' => false]);
+});
+
+it('shows an included card rather than an investment by default when there is no checking account', function () {
     byTypeAccount($this->user, 'A broker', AccountType::Investment);
     $card = byTypeAccount($this->user, 'Card', AccountType::CreditCard, 0);
+    ForecastAccountSetting::factory()->create(['account_id' => $card->id, 'included' => true]);
 
     expect(byTypeForecast($this->user)['account']['id'])->toBe($card->id);
 });
