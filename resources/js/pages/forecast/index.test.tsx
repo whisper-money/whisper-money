@@ -944,6 +944,33 @@ describe('editing the forecast', () => {
         expect(sheet('forecast-accounts-sheet')).not.toBeNull();
     });
 
+    it('shows a usual transfer between accounts as a read-only row', () => {
+        const usual = line({
+            id: 'usual-transfer',
+            name: 'Savings',
+            kind: 'transfer',
+            source: 'estimate',
+            direction: 'out',
+            counterpartyName: 'Savings',
+            amounts: { '2026-12': -50000, '2027-01': -50000 },
+            occurrenceDates: {},
+            current: { planned: null, real: null, date: null, status: 'none' },
+        });
+        renderPage(
+            editable({
+                plan: { income: [], expenses: [home], transfers: [usual] },
+            }),
+            editingInput(),
+        );
+
+        const row = document.querySelector<HTMLElement>(
+            '[data-test="forecast-row-line:usual-transfer"]',
+        )!;
+        expect(row).toHaveTextContent('→ Savings');
+        expect(row).toHaveTextContent('-500');
+        expect(row.querySelector('[data-test^="forecast-cell-"]')).toBeNull();
+    });
+
     it('offers no drift update on a line any more: a category covers what repeats', () => {
         renderPage(editable(), editingInput());
 
