@@ -5,6 +5,7 @@ import {
 } from '@/types/forecast';
 import { formatDate, formatMonthName } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { type ForecastFrequency } from './types';
 
 /** A plan column's month: "nov 26". */
 export function monthColumnLabel(month: string, locale: string): string {
@@ -33,6 +34,8 @@ export function dayOf(date: string): number {
 
 export function lineKindLabel(kind: ForecastLineKind): string {
     switch (kind) {
+        case 'weekly':
+            return __('Weekly');
         case 'monthly':
             return __('Recurring');
         case 'bimonthly':
@@ -70,13 +73,18 @@ export function lineOrigin(
     source: ForecastLineSource,
     anchorDate: string,
     locale: string,
+    frequency?: ForecastFrequency,
 ): string {
     const when =
-        kind === 'yearly'
-            ? formatMonthName(anchorDate.slice(0, 7), locale)
-            : kind === 'once'
-              ? formatDate(anchorDate, 'd MMM', locale)
-              : __('day :day', { day: dayOf(anchorDate) });
+        frequency === 'weekly'
+            ? __('every :weekday', {
+                  weekday: formatDate(anchorDate, 'EEEE', locale),
+              })
+            : kind === 'yearly'
+              ? formatMonthName(anchorDate.slice(0, 7), locale)
+              : kind === 'once'
+                ? formatDate(anchorDate, 'd MMM', locale)
+                : __('day :day', { day: dayOf(anchorDate) });
 
     return `${sourceLabel(source)} · ${when}`;
 }

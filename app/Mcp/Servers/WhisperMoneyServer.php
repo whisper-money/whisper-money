@@ -178,8 +178,8 @@ app is kept in their books.
   user set, else 0; null for anything but a checking or savings account, which
   never alerts: cards, loans, investments, properties),
   `soft` when only `pessimistic_min` does, else `ok`; `alert.strong_month` is the
-  worst strong month, and `soft_months` lists the soft ones. `alert_causes` names the largest non-monthly charges of an
-  alert month, what explains the dip. With `plan: "free"` only the month in
+  worst strong month, and `soft_months` lists the soft ones. `alert_causes` names the largest charges of an
+  alert month that do not come every week or month, what explains the dip. With `plan: "free"` only the month in
   progress and the next one are forecast (`months_shown`), whatever the `horizon`, as in the app:
   never guess later months; `locked_strong_month_count` says how many of the
   locked ones hold a strong alert, which the Pro plan shows. Without `account`,

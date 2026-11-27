@@ -4314,6 +4314,7 @@
     "around :day :month": "hacia el :day de :month",
     "arrives on the :day": "llega el :day",
     "day :day": "día :day",
+    "every :weekday": "cada :weekday",
     "has a warning": "tiene un aviso",
     "likely between :low and :high": "probable entre :low y :high",
     "min. :amount": "mín. :amount",

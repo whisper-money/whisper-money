@@ -75,8 +75,7 @@ class RecurringCharges
     {
         $recent = array_slice($candidate->transactionIds, -self::AMOUNT_CHARGES);
         $amount = (int) round(collect($recent)->map(fn (string $id): int => abs((int) $byId->get($id)?->amount))->median());
-        $months = (int) $candidate->frequency->months();
-        $yearly = intdiv($amount * 12, $months);
+        $yearly = $amount * (int) $candidate->frequency->perYear();
 
         return new RecurringCharge(
             key: RecurringCharge::keyOf($candidate->accountId, $candidate->identity()),

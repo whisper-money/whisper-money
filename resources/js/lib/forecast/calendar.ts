@@ -35,6 +35,18 @@ export function addMonths(anchor: string, months: number): string {
     );
 }
 
+/** The date `days` days after `anchor`, or before it when negative. */
+export function addDays(anchor: string, days: number): string {
+    const [year, month, day] = parseDate(anchor);
+    const date = new Date(Date.UTC(year, month - 1, day + days));
+
+    return formatDate(
+        date.getUTCFullYear(),
+        date.getUTCMonth() + 1,
+        date.getUTCDate(),
+    );
+}
+
 /** The first day of the month `offset` months after the one `date` is in. */
 export function monthStart(date: string, offset = 0): string {
     return addMonths(`${date.slice(0, 8)}01`, offset);

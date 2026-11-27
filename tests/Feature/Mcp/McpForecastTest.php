@@ -146,6 +146,14 @@ it('marks every month below the threshold as strong, not only the worst one, eac
         ->and($months['2027-03']['alert_level'])->toBe('ok');
 });
 
+it('never names a weekly line as a cause, since it comes every week like a monthly one', function () {
+    mcpForecastLine($this->user, $this->checking, 'Cleaner', -1000, '2026-12-03', ForecastFrequency::Weekly);
+
+    $months = collect(getForecastJson($this->user)['accounts'][0]['months'])->keyBy('month');
+
+    expect($months['2027-04']['alert_causes'])->toBe([['name' => 'Car insurance', 'amount' => 700000]]);
+});
+
 it('adds every account up in the user\'s currency, and says when another account covers a shortfall', function () {
     mcpForecastAccount($this->user, 'Savings', 900000);
 

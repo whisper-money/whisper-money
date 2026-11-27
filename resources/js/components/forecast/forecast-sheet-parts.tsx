@@ -173,6 +173,8 @@ export function frequencyLabel(frequency: ForecastFrequency): string {
     switch (frequency) {
         case 'once':
             return __('Once');
+        case 'weekly':
+            return __('Weekly');
         case 'monthly':
             return __('Monthly');
         case 'bimonthly':
@@ -186,6 +188,7 @@ export function frequencyLabel(frequency: ForecastFrequency): string {
 
 const FREQUENCIES: ForecastFrequency[] = [
     'once',
+    'weekly',
     'monthly',
     'bimonthly',
     'quarterly',

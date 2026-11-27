@@ -2,6 +2,7 @@
 
 namespace App\Services\Forecast;
 
+use App\Enums\ForecastFrequency;
 use App\Services\Forecast\Data\ExpandableItem;
 use App\Services\Forecast\Data\ItemOverride;
 use App\Services\Forecast\Data\ItemVersion;
@@ -95,14 +96,12 @@ final class OccurrenceExpander
      */
     private function scheduledDates(ExpandableItem $item, string $until): array
     {
-        $step = $item->frequency->months();
-
-        if ($step === null) {
+        if ($item->frequency === ForecastFrequency::Once) {
             return $item->anchorDate <= $until ? [$item->anchorDate] : [];
         }
 
         $dates = [];
-        for ($period = 0; ($date = ForecastCalendar::addMonths($item->anchorDate, $period * $step)) <= $until; $period++) {
+        for ($period = 0; ($date = (string) $item->frequency->occurrence($item->anchorDate, $period)) <= $until; $period++) {
             $dates[] = $date;
         }
 

@@ -42,6 +42,8 @@ function frequencyLabel(
     frequency: ForecastRecurringCharge['frequency'],
 ): string {
     switch (frequency) {
+        case 'weekly':
+            return __('Weekly');
         case 'monthly':
             return __('Monthly');
         case 'bimonthly':

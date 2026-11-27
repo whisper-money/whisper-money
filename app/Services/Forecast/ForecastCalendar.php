@@ -59,6 +59,16 @@ final class ForecastCalendar
     }
 
     /**
+     * The date `$days` days after `$anchor`, or before it when negative.
+     */
+    public static function addDays(string $anchor, int $days): string
+    {
+        [$year, $month, $day] = self::parse($anchor);
+
+        return gmdate('Y-m-d', gmmktime(0, 0, 0, $month, $day + $days, $year));
+    }
+
+    /**
      * The last day a projection of `$horizonMonths` months from `$startDate`
      * covers: the end of the `$horizonMonths`-th month, counting the first.
      */

@@ -186,8 +186,9 @@ export function groupRowIds(rows: PlanRow[]): string[] {
 }
 
 /**
- * The groups open on the first render: those holding a line that is not
- * monthly in the problem month, which is what explains the dip.
+ * The groups open on the first render: those holding a line that does not
+ * come every week or month in the problem month, which is what explains the
+ * dip, as app/Services/Forecast/ForecastAlertCauses.php names it.
  */
 export function initiallyExpandedGroups(
     plan: ForecastPlan,
@@ -200,6 +201,7 @@ export function initiallyExpandedGroups(
     const opens = (group: ForecastGroup) =>
         group.items.some(
             (line) =>
+                line.kind !== 'weekly' &&
                 line.kind !== 'monthly' &&
                 line.amounts[alertMonth] !== undefined,
         );

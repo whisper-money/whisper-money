@@ -3156,6 +3156,7 @@
     "around :day :month": "vers le :day :month",
     "arrives on the :day": "arrive le :day",
     "day :day": "jour :day",
+    "every :weekday": "chaque :weekday",
     "has a warning": "a une alerte",
     "likely between :low and :high": "probablement entre :low et :high",
     "min. :amount": "min. :amount",

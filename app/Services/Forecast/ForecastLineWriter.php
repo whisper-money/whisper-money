@@ -201,7 +201,8 @@ class ForecastLineWriter
      * The schedule's first date: the suggestion's next one, moved back a
      * whole number of periods to the first charge, and further to a month
      * long enough for its day, so a schedule on the 31st does not start on a
-     * 30th and stay there.
+     * 30th and stay there. Detected lines repeat by whole months; one that
+     * does not (weekly) starts on its next date.
      *
      * @param  Collection<string, Transaction>  $samples
      */

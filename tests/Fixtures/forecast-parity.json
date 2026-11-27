@@ -863,5 +863,64 @@
                 ]
             }
         }
+    },
+    {
+        "name": "weekly line lands every 7 days across months and the year, through a skip, a move and a new amount, until ends_on",
+        "input": {
+            "items": [
+                {
+                    "id": "cleaner",
+                    "accountId": "current",
+                    "destinationAccountId": null,
+                    "frequency": "weekly",
+                    "anchorDate": "2026-12-24",
+                    "endsOn": "2027-03-04",
+                    "versions": [
+                        { "effectiveFrom": "2026-12-24", "amount": -4000 },
+                        { "effectiveFrom": "2027-02-01", "amount": -4500 }
+                    ],
+                    "overrides": [
+                        { "occurrenceDate": "2027-01-14", "amount": null, "movedTo": null, "skipped": true },
+                        { "occurrenceDate": "2027-02-04", "amount": null, "movedTo": "2027-01-31", "skipped": false }
+                    ]
+                }
+            ],
+            "accounts": [
+                { "id": "current", "openingBalance": 100000, "annualRateBps": null, "minimumBalance": null }
+            ],
+            "estimates": [],
+            "startDate": "2027-01-01",
+            "horizonMonths": 3
+        },
+        "expected": {
+            "occurrences": [
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-01-07", "occurrenceDate": "2027-01-07", "amount": -4000 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-01-21", "occurrenceDate": "2027-01-21", "amount": -4000 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-01-28", "occurrenceDate": "2027-01-28", "amount": -4000 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-01-31", "occurrenceDate": "2027-02-04", "amount": -4500 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-02-11", "occurrenceDate": "2027-02-11", "amount": -4500 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-02-18", "occurrenceDate": "2027-02-18", "amount": -4500 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-02-25", "occurrenceDate": "2027-02-25", "amount": -4500 },
+                { "itemId": "cleaner", "accountId": "current", "destinationAccountId": null, "date": "2027-03-04", "occurrenceDate": "2027-03-04", "amount": -4500 }
+            ],
+            "projection": {
+                "accounts": [
+                    {
+                        "accountId": "current",
+                        "minimumBalance": null,
+                        "months": [
+                            { "month": "2027-01", "min": 83500, "minDate": "2027-01-31", "close": 83500, "income": 0, "expenses": 16500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83500 },
+                            { "month": "2027-02", "min": 70000, "minDate": "2027-02-25", "close": 70000, "income": 0, "expenses": 13500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 70000 },
+                            { "month": "2027-03", "min": 65500, "minDate": "2027-03-04", "close": 65500, "income": 0, "expenses": 4500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 65500 }
+                        ]
+                    }
+                ],
+                "total": [
+                    { "month": "2027-01", "min": 83500, "minDate": "2027-01-31", "close": 83500, "income": 0, "expenses": 16500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 83500 },
+                    { "month": "2027-02", "min": 70000, "minDate": "2027-02-25", "close": 70000, "income": 0, "expenses": 13500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 70000 },
+                    { "month": "2027-03", "min": 65500, "minDate": "2027-03-04", "close": 65500, "income": 0, "expenses": 4500, "transfers": 0, "growth": 0, "estimated": 0, "estimatedIncome": 0, "band": 0, "pessimisticMin": 65500 }
+                ]
+            }
+        }
     }
 ]

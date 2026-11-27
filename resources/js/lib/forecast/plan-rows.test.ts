@@ -3,10 +3,11 @@ import {
     buildPlanRows,
     estimateBand,
     groupRowIds,
+    initiallyExpandedGroups,
     type PlanRow,
 } from '@/lib/forecast/plan-rows';
 import { projectForecast } from '@/lib/forecast/project';
-import { forecast, home } from '@/pages/forecast/forecast.fixture';
+import { forecast, home, line } from '@/pages/forecast/forecast.fixture';
 import { type ForecastGroup } from '@/types/forecast';
 import { describe, expect, it } from 'vitest';
 
@@ -154,5 +155,31 @@ describe('an estimate edited on the plan', () => {
         expect(edited.plan.expenses[0].estimate).toEqual(
             otherSpending.estimate,
         );
+    });
+});
+
+describe('the groups open on the first render', () => {
+    it('opens the group of a line that explains the dip, never one that comes every week or month', () => {
+        const cleaning: ForecastGroup = {
+            ...groceries,
+            key: 'cleaning',
+            items: [
+                line({
+                    id: 'cleaner',
+                    kind: 'weekly',
+                    amounts: { '2027-04': -20000 },
+                }),
+                line({
+                    id: 'gym',
+                    kind: 'monthly',
+                    amounts: { '2027-04': -4000 },
+                }),
+            ],
+        };
+        const plan = { income: [], expenses: [home, cleaning], transfers: [] };
+
+        expect(initiallyExpandedGroups(plan, '2027-04')).toEqual([
+            'group:expenses:home',
+        ]);
     });
 });
