@@ -5,7 +5,7 @@ import {
     type ForecastData,
     type ForecastReviewPrompt,
 } from '@/types/forecast';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -19,16 +19,17 @@ import {
 } from './forecast.fixture';
 import ForecastPage from './index';
 
-const { visit, reload, viewport } = vi.hoisted(() => ({
+const { visit, reload, post, viewport } = vi.hoisted(() => ({
     visit: vi.fn(),
     reload: vi.fn(),
+    post: vi.fn(),
     viewport: { isMobile: false },
 }));
 
 vi.mock('@inertiajs/react', async () => ({
     Head: () => null,
     Link: (await import('@/lib/inertia-link.fixture')).FixtureLink,
-    router: { visit, reload, post: vi.fn() },
+    router: { visit, reload, post },
     usePage: () => ({
         props: {
             pricing: { defaultPlan: 'monthly' },
@@ -866,6 +867,51 @@ describe('the review on the forecast page', () => {
         expect(
             window.localStorage.getItem('forecast-review-skipped:guest'),
         ).toBe('1');
+    });
+
+    it('starts the forecast over after asking, and opens the review again', async () => {
+        window.localStorage.setItem('forecast-review-skipped:guest', '1');
+        post.mockClear();
+        renderPage(forecast(), null, { hasLines: true }, 0);
+
+        fireEvent.pointerDown(screen.getByLabelText('More options'), {
+            button: 0,
+            ctrlKey: false,
+        });
+        fireEvent.click(
+            within(await screen.findByRole('menu')).getByText('Start over'),
+        );
+
+        expect(
+            screen.getByRole('alertdialog', {
+                name: 'Start your forecast over?',
+            }),
+        ).toHaveTextContent(
+            'Your edits, yearly payments, account settings and alerts',
+        );
+        expect(post).not.toHaveBeenCalled();
+
+        fireEvent.click(
+            document.querySelector(
+                '[data-test="forecast-start-over-confirm"]',
+            )!,
+        );
+
+        expect(post).toHaveBeenCalledWith(
+            '/forecast/start-over',
+            {},
+            expect.anything(),
+        );
+
+        act(() => post.mock.calls[0][2].onSuccess());
+
+        expect(screen.queryByRole('alertdialog')).toBeNull();
+        expect(
+            window.localStorage.getItem('forecast-review-skipped:guest'),
+        ).toBeNull();
+        expect(
+            document.querySelector('[data-test="forecast-review"]'),
+        ).not.toBeNull();
     });
 
     it('has no link when nothing new was found', () => {

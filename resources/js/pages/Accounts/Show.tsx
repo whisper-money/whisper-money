@@ -22,6 +22,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { MoreOptionsMenu } from '@/components/more-options-menu';
 import { PageHeader } from '@/components/page-header';
 import { AddTransactionLabel } from '@/components/transactions/add-transaction-button';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
@@ -34,11 +35,8 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
-    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState, EmptyStateDescription } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
@@ -86,8 +84,8 @@ import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router } from '@inertiajs/react';
-import { Archive, ArchiveRestore, ChevronDown, Pencil } from 'lucide-react';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Archive, ArchiveRestore, Pencil } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AccountWithDetails extends Account {
@@ -108,25 +106,6 @@ interface Props {
     labels?: LabelType[];
     automationRules?: AutomationRule[];
     transactions?: Transaction[];
-}
-
-/** The header's "More options" menu. Every action set has one so the actions that
- * belong to the account itself, rather than to its balances, live in one place. */
-function MoreOptionsMenu({ children }: { children: ReactNode }) {
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label={__('More options')}
-                >
-                    <ChevronDown className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">{children}</DropdownMenuContent>
-        </DropdownMenu>
-    );
 }
 
 /** One empty list for every render, so the chart's memoised work holds. */

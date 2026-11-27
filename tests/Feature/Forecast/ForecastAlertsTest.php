@@ -80,7 +80,8 @@ it('stores a strong alert for each month short and tells about them once', funct
         && ! $mail->belowMinimum
         && count($mail->alertIds) === 10);
 
-    expect($user->notifications()->count())->toBe(1);
+    expect($user->notifications()->count())->toBe(1)
+        ->and($user->notifications()->first()->data['alerts'])->toEqualCanonicalizing(ForecastAlert::query()->pluck('id')->all());
     $row = app(NotificationFeed::class)->page($user)[0];
     expect($row['kind'])->toBe('forecast_alert')
         ->and($row['url'])->toBe(route('forecast.index'));
