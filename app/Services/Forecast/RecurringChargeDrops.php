@@ -3,6 +3,7 @@
 namespace App\Services\Forecast;
 
 use App\Enums\CategoryType;
+use App\Enums\ForecastEstimateKind;
 use App\Enums\ForecastSuggestionKind;
 use App\Models\Category;
 use App\Models\ForecastDismissal;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * estimate the charge lives in goes down by what it costs a month, never
  * below zero. That is its parent category's row on its account, or "Other
  * spending" when the category is too small for a row of its own (or the
- * charge has none). It goes through an estimate adjustment "from here on",
+ * charge has none). It goes through a spend estimate adjustment "from here on",
  * the same one the user makes by hand: an open-ended one already starting
  * next month on that row is lowered, otherwise one is made at what the row
  * is planned at that month, less the charge. Dropping a charge stops
@@ -114,7 +115,7 @@ class RecurringChargeDrops
     private function lower(User $user, string $spaceId, RecurringCharge $charge, string $month, ?string $categoryId, int $planned): ForecastRecurringDrop
     {
         $adjustment = ForecastEstimateAdjustment::query()
-            ->where(['user_id' => $user->id, 'space_id' => $spaceId, 'account_id' => $charge->accountId, 'category_id' => $categoryId])
+            ->where(['user_id' => $user->id, 'space_id' => $spaceId, 'account_id' => $charge->accountId, 'category_id' => $categoryId, 'kind' => ForecastEstimateKind::Expense])
             ->whereDate('starts_on', $month)
             ->lockForUpdate()
             ->first();
@@ -129,6 +130,7 @@ class RecurringChargeDrops
             'space_id' => $spaceId,
             'account_id' => $charge->accountId,
             'category_id' => $categoryId,
+            'kind' => ForecastEstimateKind::Expense,
             'starts_on' => $month,
             'amount' => $planned,
         ]);

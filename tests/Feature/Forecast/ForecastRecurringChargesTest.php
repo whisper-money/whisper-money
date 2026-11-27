@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\CategoryType;
+use App\Enums\ForecastEstimateKind;
 use App\Enums\ForecastSuggestionKind;
 use App\Features\Forecast;
 use App\Models\Account;
@@ -116,6 +117,7 @@ it('lowers next month’s category estimate by the charge when dropped, and leav
     $adjustment = ForecastEstimateAdjustment::query()->sole();
 
     expect($adjustment)->account_id->toBe($this->checking->id)
+        ->kind->toBe(ForecastEstimateKind::Expense)
         ->category_id->toBe($this->leisure->id)
         ->amount->toBe(4400)
         ->and($adjustment->starts_on->toDateString())->toBe('2026-12-01')
@@ -226,6 +228,27 @@ it('lets go of a kept charge that no longer repeats', function () {
     $this->actingAs($this->user)->delete(route('forecast.recurring-charges.keeps.destroy'), ['key' => $key])->assertRedirect();
 
     expect(ForecastDismissal::query()->count())->toBe(0);
+});
+
+it('lowers "Other spending" for an uncategorised charge, leaving "Other income" alone', function () {
+    foreach (['2026-07', '2026-08', '2026-09', '2026-10', '2026-11'] as $month) {
+        forecastCharge($this->checking, "{$month}-15", -6000, 'PADEL CLUB', null, ['creditor_name' => 'Padel Club']);
+    }
+    $income = ForecastEstimateAdjustment::factory()->create([
+        'user_id' => $this->user->id, 'account_id' => $this->checking->id, 'category_id' => null,
+        'kind' => ForecastEstimateKind::Income, 'starts_on' => '2026-12-01', 'ends_on' => null, 'amount' => 20000,
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('forecast.recurring-charges.drops.store'), ['key' => recurringChargeNamed($this->user, 'Padel Club')->key])
+        ->assertSessionHasNoErrors();
+
+    $spend = ForecastEstimateAdjustment::query()->whereKeyNot($income->id)->sole();
+
+    expect($spend)->category_id->toBeNull()
+        ->kind->toBe(ForecastEstimateKind::Expense)
+        ->amount->toBe(0)
+        ->and($income->fresh()->amount)->toBe(20000);
 });
 
 it('drops a charge only once', function () {
