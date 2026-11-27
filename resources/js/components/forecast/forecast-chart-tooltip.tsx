@@ -104,7 +104,7 @@ export function ForecastChartTooltip({
     return (
         <ChartTooltipPortal coordinate={coordinate}>
             <div
-                className="grid max-w-[min(20rem,calc(100vw-2rem))] min-w-[12rem] grid-cols-[minmax(0,1fr)] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
+                className="grid max-w-[min(26rem,calc(100vw-2rem))] min-w-[12rem] grid-cols-[minmax(0,1fr)] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl"
                 data-test="forecast-chart-tooltip"
             >
                 <div className="flex items-baseline justify-between gap-4">
