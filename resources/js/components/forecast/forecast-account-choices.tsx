@@ -23,8 +23,8 @@ function choiceDescription(choice: ForecastAccountChoice): string {
 
 /**
  * Every account of the space, ticked when the forecast covers it. By
- * default a credit card, a loan or a property is left out and an investment is projected
- * only; ticking or unticking one saves it at once.
+ * default a credit card, a loan or a property is left out and an
+ * investment is projected only; ticking or unticking one saves it at once.
  */
 export function ForecastAccountChoices({
     choices,

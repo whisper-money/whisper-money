@@ -195,6 +195,24 @@ it('counts paying off a card the forecast leaves out as money leaving checking, 
         ->and(array_column($projection['accounts'][0]['months'], 'close'))->toBe([500000, 440000, 380000, 320000]);
 });
 
+it('keeps paying off a card whose payment never pairs as an expense of checking', function () {
+    $checking = Account::factory()->create(['type' => AccountType::Checking, 'name' => 'Checking', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    $card = Account::factory()->create(['type' => AccountType::CreditCard, 'name' => 'Visa', 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
+    AccountBalance::factory()->create(['account_id' => $checking->id, 'balance_date' => '2026-11-09', 'balance' => 500000]);
+    $groceries = forecastExpenseCategory($this->user, name: 'Groceries');
+    foreach (['2026-08', '2026-09', '2026-10', '2026-11'] as $month) {
+        forecastCharge($checking, "{$month}-03", -60000, 'LIQUIDACION TARJETA');
+        forecastCharge($card, "{$month}-08", -60000, 'MERCADONA', $groceries);
+    }
+
+    $plan = transferPlan($this->user);
+
+    expect(collect($plan->input->accounts)->pluck('id')->all())->toBe([$checking->id])
+        ->and($plan->transferEstimates)->toBeEmpty()
+        ->and(collect($plan->categoryEstimates)->where('accountId', $card->id))->toBeEmpty()
+        ->and(collect($plan->categoryEstimates)->where('accountId', $checking->id)->where('month', '2026-12')->sum('amount'))->toBe(60000);
+});
+
 it('nets what comes back against what goes, and goes the way the median says', function () {
     $checking = Account::factory()->create(['type' => AccountType::Checking, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
     $savings = Account::factory()->create(['type' => AccountType::Savings, 'user_id' => $this->user->id, 'currency_code' => 'EUR']);
