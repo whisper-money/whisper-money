@@ -1,12 +1,12 @@
 import { index as forecastIndex } from '@/actions/App/Http/Controllers/ForecastController';
-import { FreePlanBanner, listOf } from '@/components/forecast/forecast-alerts';
+import { FreePlanBanner } from '@/components/forecast/forecast-alerts';
 import { useForecastEditor } from '@/components/forecast/forecast-editor';
 import { suggestedTransfer } from '@/components/forecast/forecast-plan-table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { monthLongName } from '@/lib/forecast/format';
+import { listOf, monthLongName } from '@/lib/forecast/format';
 import { cn } from '@/lib/utils';
 import { type ForecastAllData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';

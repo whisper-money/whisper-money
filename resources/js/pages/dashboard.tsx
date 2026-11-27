@@ -1,4 +1,5 @@
 import { CustomDashboardsView } from '@/components/dashboard/custom-dashboards/custom-dashboards-view';
+import { ForecastAlertNotice } from '@/components/dashboard/forecast-alert-notice';
 import MonthlySummaryNotice from '@/components/dashboard/monthly-summary-notice';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -22,8 +23,15 @@ export default function Dashboard() {
         },
     ];
 
-    const notice = props.monthlySummary && (
-        <MonthlySummaryNotice summary={props.monthlySummary} />
+    const notice = (props.forecastAlert || props.monthlySummary) && (
+        <>
+            {props.forecastAlert && (
+                <ForecastAlertNotice alert={props.forecastAlert} />
+            )}
+            {props.monthlySummary && (
+                <MonthlySummaryNotice summary={props.monthlySummary} />
+            )}
+        </>
     );
 
     return (

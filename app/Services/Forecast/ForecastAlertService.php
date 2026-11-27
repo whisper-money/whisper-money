@@ -8,6 +8,7 @@ use App\Models\ForecastAlert;
 use App\Models\ForecastItem;
 use App\Models\User;
 use App\Services\Forecast\Data\ForecastAlertFinding;
+use App\Services\Forecast\Data\ForecastPlan;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -52,6 +53,7 @@ class ForecastAlertService
         private readonly ForecastAlertEvaluator $evaluator,
         private readonly ForecastAccounts $accounts,
         private readonly ForecastAlertNotifier $notifier,
+        private readonly ForecastAlertCauses $causes,
     ) {}
 
     public function refresh(User $user): void
@@ -82,7 +84,10 @@ class ForecastAlertService
             ->update(['resolved_at' => now()]);
     }
 
-    private static function monthsFor(User $user): int
+    /**
+     * How many months, the one in progress first, the user's alerts cover.
+     */
+    public static function monthsFor(User $user): int
     {
         return $user->hasProPlan() ? self::PRO_MONTHS : self::FREE_MONTHS;
     }
@@ -96,9 +101,10 @@ class ForecastAlertService
         $findings = [];
 
         foreach ($this->accounts->spaceIds($user) as $spaceId) {
-            $projection = $this->projector->project($this->plans->build($user, $spaceId, horizonMonths: $months)->input);
+            $plan = $this->plans->build($user, $spaceId, horizonMonths: $months);
+            $projection = $this->projector->project($plan->input);
 
-            foreach ($this->evaluate($projection['accounts']) as $finding) {
+            foreach ($this->evaluate($projection['accounts'], $plan) as $finding) {
                 $findings[$finding->key()] = ['space_id' => $spaceId, 'finding' => $finding];
             }
         }
@@ -113,7 +119,7 @@ class ForecastAlertService
      * @param  list<array{accountId: string, minimumBalance: int|null, months: list<array<string, int|string|null>>}>  $accounts
      * @return list<ForecastAlertFinding>
      */
-    private function evaluate(array $accounts): array
+    private function evaluate(array $accounts, ForecastPlan $plan): array
     {
         $types = Account::query()->whereKey(array_column($accounts, 'accountId'))->pluck('type', 'id');
         $findings = [];
@@ -122,7 +128,7 @@ class ForecastAlertService
             $threshold = $this->evaluator->threshold($types[$account['accountId']], $account['minimumBalance']);
 
             foreach ($account['months'] as $month) {
-                $findings[] = $this->finding($account['accountId'], $month, $threshold);
+                $findings[] = $this->finding($account['accountId'], $month, $threshold, $plan);
             }
         }
 
@@ -132,7 +138,7 @@ class ForecastAlertService
     /**
      * @param  array<string, int|string|null>  $month
      */
-    private function finding(string $accountId, array $month, ?int $threshold): ?ForecastAlertFinding
+    private function finding(string $accountId, array $month, ?int $threshold, ForecastPlan $plan): ?ForecastAlertFinding
     {
         $level = $this->evaluator->levelOf($month, $threshold);
 
@@ -140,11 +146,18 @@ class ForecastAlertService
             return null;
         }
 
-        // Still at or above zero at its lowest: it is the wanted minimum the
-        // balance falls under, not zero.
-        $lowest = (int) ($level === ForecastAlertLevel::Strong ? $month['min'] : $month['pessimisticMin']);
+        $key = (string) $month['month'];
 
-        return new ForecastAlertFinding($accountId, (string) $month['month'], $level, $lowest >= 0);
+        if ($level === ForecastAlertLevel::Soft) {
+            // Still at or above zero at its lowest: it is the wanted minimum
+            // the balance falls under, not zero.
+            return new ForecastAlertFinding($accountId, $key, $level, (int) $month['pessimisticMin'] >= 0);
+        }
+
+        $lowest = (int) $month['min'];
+        $lowestOn = $month['minDate'] === null ? null : (string) $month['minDate'];
+
+        return new ForecastAlertFinding($accountId, $key, $level, $lowest >= 0, $lowest, $lowestOn, $this->causes->for($plan, $accountId, $key));
     }
 
     /**
@@ -184,9 +197,27 @@ class ForecastAlertService
     {
         $flicker = $alert->resolved_at->gte($now->copy()->subDays(self::REOPEN_GRACE_DAYS));
 
+        // A new problem is not one the user asked to be reminded of later.
         return $flicker
-            ? ['level' => $finding->level, 'resolved_at' => null]
-            : ['level' => $finding->level, 'first_seen_at' => $now, 'notified_at' => null, 'resolved_at' => null];
+            ? ['level' => $finding->level, 'resolved_at' => null, ...ForecastAlert::detailsFrom($finding)]
+            : ['level' => $finding->level, 'first_seen_at' => $now, 'notified_at' => null, 'resolved_at' => null, 'snoozed_until' => null, ...ForecastAlert::detailsFrom($finding)];
+    }
+
+    /**
+     * The snooze the account's problem is under from an earlier month on, if
+     * any: a month that turns short after the user asked to be reminded later
+     * is the same problem, and stays put away with it.
+     */
+    private function snoozeCovering(ForecastAlertFinding $finding): ?string
+    {
+        $until = ForecastAlert::query()
+            ->where('account_id', $finding->accountId)
+            ->whereNull('resolved_at')
+            ->where('month', '<', $finding->month.'-01')
+            ->where('snoozed_until', '>', now()->toDateString())
+            ->max('snoozed_until');
+
+        return $until === null ? null : (string) $until;
     }
 
     private function upsert(?ForecastAlert $alert, User $user, string $spaceId, ForecastAlertFinding $finding, CarbonInterface $now): void
@@ -194,20 +225,27 @@ class ForecastAlertService
         if ($alert === null) {
             ForecastAlert::query()->createOrFirst(
                 ['account_id' => $finding->accountId, 'month' => $finding->month.'-01'],
-                ['user_id' => $user->id, 'space_id' => $spaceId, 'level' => $finding->level, 'first_seen_at' => $now],
+                [
+                    'user_id' => $user->id,
+                    'space_id' => $spaceId,
+                    'level' => $finding->level,
+                    'first_seen_at' => $now,
+                    'snoozed_until' => $this->snoozeCovering($finding),
+                    ...ForecastAlert::detailsFrom($finding),
+                ],
             );
 
             return;
         }
 
-        if ($alert->resolved_at !== null) {
-            $alert->update($this->reopening($alert, $finding, $now));
+        // Saved only when something changed: with nothing changed a run
+        // writes nothing.
+        $alert->fill($alert->resolved_at !== null
+            ? $this->reopening($alert, $finding, $now)
+            : ['level' => $finding->level, ...ForecastAlert::detailsFrom($finding)]);
 
-            return;
-        }
-
-        if ($alert->level !== $finding->level) {
-            $alert->update(['level' => $finding->level]);
+        if ($alert->isDirty()) {
+            $alert->save();
         }
     }
 }

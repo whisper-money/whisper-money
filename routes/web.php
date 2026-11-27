@@ -26,6 +26,7 @@ use App\Http\Controllers\Forecast\ForecastItemController;
 use App\Http\Controllers\Forecast\ForecastItemDriftController;
 use App\Http\Controllers\Forecast\ForecastReviewController;
 use App\Http\Controllers\Forecast\ForecastSpikeController;
+use App\Http\Controllers\ForecastAlertSnoozeController;
 use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\IntegrationsController;
@@ -357,6 +358,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
         Route::post('forecast/spikes/{transaction}', [ForecastSpikeController::class, 'store'])->name('forecast.spikes.store');
         Route::patch('forecast/accounts/{account}', [ForecastAccountSettingController::class, 'update'])->name('forecast.accounts.update');
         Route::post('forecast/review', [ForecastReviewController::class, 'store'])->name('forecast.review.store');
+        Route::post('forecast/alerts/{alert}/snooze', [ForecastAlertSnoozeController::class, 'store'])->name('forecast.alerts.snooze');
     });
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');

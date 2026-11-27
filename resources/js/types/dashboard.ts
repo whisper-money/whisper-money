@@ -11,6 +11,7 @@ import {
     type BalanceDialogAccount,
     type CreditCardUsage,
 } from '@/types/account';
+import { type ForecastDashboardAlertData } from '@/types/forecast-entry';
 import {
     type DashboardMonthlyGoal,
     type MonthlyVerdicts,
@@ -215,6 +216,8 @@ export interface DashboardProps extends SharedData {
     /** Deferred: what is in use of each credit card, by account id. */
     creditCardUsage?: Record<string, CreditCardUsage>;
     monthlySummary?: MonthlySummaryNoticeData | null;
+    /** Behind the Forecast flag: absent without it, null with no problem. */
+    forecastAlert?: ForecastDashboardAlertData | null;
     /** Deferred: the "Finish setting up" card, null when there is none to draw. */
     setupChecklist?: SetupChecklist | null;
     /** Deferred: the estimate-only or balance-only state, null for everybody else. */

@@ -24,6 +24,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Carbon $first_seen_at
  * @property Carbon|null $notified_at
  * @property Carbon|null $resolved_at
+ * @property int|null $lowest_balance The strong month's lowest balance, in the account's minor units.
+ * @property Carbon|null $lowest_on The day that lowest balance falls on.
+ * @property list<array{name: string, amount: int}>|null $causes The charges behind the dip, largest first.
+ * @property Carbon|null $snoozed_until The dashboard card stays hidden until this day.
  */
 class ForecastAlert extends Model
 {
@@ -39,6 +43,10 @@ class ForecastAlert extends Model
         'first_seen_at',
         'notified_at',
         'resolved_at',
+        'lowest_balance',
+        'lowest_on',
+        'causes',
+        'snoozed_until',
     ];
 
     /** @var list<string> */
@@ -54,6 +62,10 @@ class ForecastAlert extends Model
             'first_seen_at' => 'datetime',
             'notified_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'lowest_balance' => 'integer',
+            'lowest_on' => 'date:Y-m-d',
+            'causes' => 'array',
+            'snoozed_until' => 'date:Y-m-d',
         ];
     }
 
@@ -63,6 +75,16 @@ class ForecastAlert extends Model
     public function key(): string
     {
         return ForecastAlertFinding::keyFor($this->account_id, $this->month->format('Y-m'));
+    }
+
+    /**
+     * What the alert keeps of a finding for the dashboard's card.
+     *
+     * @return array{lowest_balance: int|null, lowest_on: string|null, causes: list<array{name: string, amount: int}>}
+     */
+    public static function detailsFrom(ForecastAlertFinding $finding): array
+    {
+        return ['lowest_balance' => $finding->lowestBalance, 'lowest_on' => $finding->lowestOn, 'causes' => $finding->causes];
     }
 
     /** @return BelongsTo<User, $this> */

@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useFormatAmount } from '@/hooks/use-format-amount';
 import { useLocale } from '@/hooks/use-locale';
-import { dayOf, monthLongName } from '@/lib/forecast/format';
+import { dayOf, listOf, monthLongName } from '@/lib/forecast/format';
 import { type ForecastData } from '@/types/forecast';
 import { __ } from '@/utils/i18n';
 import {
@@ -19,14 +19,6 @@ import { useState } from 'react';
 interface ForecastAlertsProps {
     forecast: ForecastData;
     onShowMonth: (month: string) => void;
-}
-
-/** "A, B and C", in the reader's language. */
-export function listOf(items: string[], locale: string): string {
-    return new Intl.ListFormat(locale, {
-        style: 'long',
-        type: 'conjunction',
-    }).format(items);
 }
 
 function lockedTitle(count: number): string {
