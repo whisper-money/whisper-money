@@ -29,6 +29,7 @@ import {
     SheetDescription,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
 import { useLocale } from '@/hooks/use-locale';
 import { clientFiltersToQueryParams } from '@/hooks/use-server-transaction-source';
 import { type AmountDirection } from '@/lib/amount-filter';
@@ -457,10 +458,11 @@ function FiltersDraft({
                 <label className={cn(ROW, 'cursor-pointer')}>
                     {__('AI guesses only')}
                     <AiSparkleIcon className="size-4 shrink-0" />
-                    <SwitchButton
-                        label={__('AI guesses only')}
+                    <Switch
+                        aria-label={__('AI guesses only')}
+                        className="ml-auto"
                         checked={draft.aiCategorizedOnly}
-                        onChange={(aiCategorizedOnly) =>
+                        onCheckedChange={(aiCategorizedOnly) =>
                             update({ aiCategorizedOnly })
                         }
                     />
@@ -822,39 +824,5 @@ function CategoryOptions({
                 onChange(toggleCategorySelection(selectedIds, id, categories))
             }
         />
-    );
-}
-
-/** An on/off switch, 44px wide. */
-function SwitchButton({
-    label,
-    checked,
-    onChange,
-}: {
-    label: string;
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-}) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            aria-label={label}
-            onClick={() => onChange(!checked)}
-            className={cn(
-                'relative ml-auto h-[26px] w-11 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                checked ? 'bg-primary' : 'bg-neutral-300 dark:bg-neutral-600',
-            )}
-        >
-            <span
-                className={cn(
-                    'absolute top-[3px] left-[3px] size-5 rounded-full shadow-xs transition-transform',
-                    checked
-                        ? 'translate-x-[18px] bg-primary-foreground'
-                        : 'bg-white',
-                )}
-            />
-        </button>
     );
 }

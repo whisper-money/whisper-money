@@ -7,7 +7,7 @@ import {
 } from '@/components/admin/integration-request-list';
 import {
     SignupChart,
-    type SignupChartPoint,
+    type SignupChartData,
 } from '@/components/admin/signup-chart';
 import { AdminUserTable, type AdminUser } from '@/components/admin/user-table';
 import HeadingSmall from '@/components/heading-small';
@@ -47,7 +47,7 @@ type CommandGroups = Record<string, Record<string, boolean>>;
 
 interface Props {
     commands: CommandGroups;
-    signupChart: SignupChartPoint[];
+    signupChart: SignupChartData;
     latestUsers: AdminUser[];
     userCount: number;
     integrationRequests: AdminIntegrationRequest[];
@@ -320,7 +320,7 @@ export default function Admin({
 
                 <div className="space-y-8">
                     <CommandRunner commands={commands} result={result} />
-                    <SignupChart points={signupChart} />
+                    <SignupChart chart={signupChart} />
                     <LatestUsers users={latestUsers} total={userCount} />
                     <PendingIntegrationRequests
                         requests={integrationRequests}

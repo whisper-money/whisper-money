@@ -1,24 +1,7 @@
+import { formatPeriodParam, type PeriodType } from '@/lib/period-param';
 import { cashflow } from '@/routes';
 import { router } from '@inertiajs/react';
-import { format, getQuarter } from 'date-fns';
 import { useEffect } from 'react';
-
-export type CashflowPeriodType = 'month' | 'quarter' | 'year';
-
-function formatPeriodParam(
-    currentDate: Date,
-    periodType: CashflowPeriodType,
-): string {
-    if (periodType === 'quarter') {
-        return `${format(currentDate, 'yyyy')}-Q${getQuarter(currentDate)}`;
-    }
-
-    if (periodType === 'year') {
-        return format(currentDate, 'yyyy');
-    }
-
-    return format(currentDate, 'yyyy-MM');
-}
 
 /**
  * Keeps the period the user is looking at in the URL, so a refresh or a shared link
@@ -38,7 +21,7 @@ function formatPeriodParam(
  */
 export function usePeriodUrlSync(
     currentDate: Date,
-    periodType: CashflowPeriodType,
+    periodType: PeriodType,
     initialPeriod: string | null,
     initialPeriodType: string,
 ): void {

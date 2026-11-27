@@ -5,11 +5,12 @@ import {
     trend as cashflowTrend,
 } from '@/actions/App/Http/Controllers/Api/CashflowAnalyticsController';
 import { fetchJson } from '@/lib/fetch-json';
+import { type PeriodType } from '@/lib/period-param';
 import { Category } from '@/types/category';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type CashflowPeriodType = 'month' | 'quarter' | 'year';
+export type CashflowPeriodType = PeriodType;
 
 export interface CashflowSummary {
     income: number;

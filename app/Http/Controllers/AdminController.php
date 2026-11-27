@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Services\Admin\SignupChart;
 use App\Support\Admin\AdminIntegrationRequestRow;
 use App\Support\Admin\AdminUserRow;
+use App\Support\PeriodSelection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -85,19 +87,23 @@ class AdminController extends Controller
         return array_merge(...array_values(self::COMMANDS));
     }
 
-    public function index(SignupChart $signupChart): Response
+    /**
+     * Every query sits behind a closure: moving the chart to another period
+     * reloads `signupChart` alone, and the rest is then not computed at all.
+     */
+    public function index(Request $request, SignupChart $signupChart): Response
     {
         return Inertia::render('admin/index', [
             'commands' => self::COMMANDS,
-            'signupChart' => $signupChart->points(),
-            'latestUsers' => User::query()
+            'signupChart' => fn (): array => $signupChart->for(PeriodSelection::fromRequest($request)),
+            'latestUsers' => fn (): array => User::query()
                 ->latest()
                 ->limit(self::LATEST_USERS)
                 ->get()
                 ->map(AdminUserRow::from(...))
                 ->all(),
-            'userCount' => User::query()->count(),
-            'integrationRequests' => $this->pendingIntegrationRequests(),
+            'userCount' => fn (): int => User::query()->count(),
+            'integrationRequests' => fn (): array => $this->pendingIntegrationRequests(),
             'result' => session('commandResult'),
         ]);
     }

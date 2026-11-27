@@ -25,6 +25,7 @@ import {
     cashflowBlockTransactionsUrl,
 } from '@/lib/cashflow-block';
 import { monthKey } from '@/lib/monthly-savings';
+import { parsePeriodParam } from '@/lib/period-param';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { type ForecastRestOfMonthData } from '@/types/forecast-entry';
@@ -34,7 +35,6 @@ import {
     endOfMonth,
     endOfQuarter,
     endOfYear,
-    parse,
     startOfMonth,
     startOfQuarter,
     startOfYear,
@@ -48,43 +48,6 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: cashflow().url,
     },
 ];
-
-function parsePeriodParam(
-    period: string | null,
-    periodType: CashflowPeriodType,
-): Date {
-    if (!period) {
-        return new Date();
-    }
-
-    try {
-        if (periodType === 'quarter') {
-            const match = /^(\d{4})-Q([1-4])$/.exec(period);
-
-            if (match) {
-                return new Date(Number(match[1]), (Number(match[2]) - 1) * 3);
-            }
-        }
-
-        if (periodType === 'year') {
-            const match = /^(\d{4})$/.exec(period);
-
-            if (match) {
-                return new Date(Number(match[1]), 0);
-            }
-        }
-
-        const parsedDate = parse(period, 'yyyy-MM', new Date());
-
-        if (!isNaN(parsedDate.getTime())) {
-            return parsedDate;
-        }
-    } catch {
-        return new Date();
-    }
-
-    return new Date();
-}
 
 function getPeriodRange(
     currentDate: Date,
