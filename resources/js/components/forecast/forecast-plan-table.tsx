@@ -692,7 +692,9 @@ export function PlanTableCard({
             }
         >
             <Card className="gap-0 py-0" data-test="forecast-plan">
-                <div className="overflow-x-auto">
+                {/* Clips the cells' fills to the card's corners; the card
+                    itself can't clip, or it would cut its own hover glow. */}
+                <div className="overflow-x-auto rounded-[inherit]">
                     <table className="w-full min-w-[900px] border-collapse text-[13px]">
                         <thead>
                             <tr className="border-b">
