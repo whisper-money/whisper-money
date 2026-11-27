@@ -4538,5 +4538,12 @@
     "Actual": "Real",
     "So far + forecast": "Real + previsión",
     "Lowest balance": "Saldo mínimo",
-    "Accounts with a warning": "Cuentas con aviso"
+    "Accounts with a warning": "Cuentas con aviso",
+    "1 warning": "1 aviso",
+    ":count warnings": ":count avisos",
+    "1 with a warning": "1 con aviso",
+    ":count with a warning": ":count con aviso",
+    "Projection only": "Solo proyección",
+    "Alert": "Aviso",
+    "Choose which accounts go into the forecast": "Elegir qué cuentas entran en la previsión"
 }

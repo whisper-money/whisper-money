@@ -3381,5 +3381,13 @@
     "Actual": "Réel",
     "So far + forecast": "Réel + prévision",
     "Lowest balance": "Solde le plus bas",
-    "Accounts with a warning": "Comptes avec alerte"
+    "Accounts with a warning": "Comptes avec alerte",
+    "1 warning": "1 alerte",
+    ":count warnings": ":count alertes",
+    "1 with a warning": "1 avec alerte",
+    ":count with a warning": ":count avec alerte",
+    "Projection only": "Projection seule",
+    "Alert": "Alerte",
+    "Choose which accounts go into the forecast": "Choisir les comptes inclus dans la prévision",
+    "Your accounts": "Vos comptes"
 }
